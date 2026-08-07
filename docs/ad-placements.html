@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>전면광고 지면 — 4개 프로젝트 플로우 비교</title>
+    <meta
+      name="description"
+      content="솔리테어 · 퍼블마 · 코지 · 마종 4개 프로젝트의 전면광고 지면을 유저 플로우 노드 축에 올려 비교"
+    />
+    <link rel="stylesheet" href="../style.css" />
+    <script>
+      (function () {
+        var t;
+        try {
+          t = localStorage.getItem("theme");
+        } catch (e) {}
+        if (!t)
+          t = window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      })();
+    </script>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#summary">지면 요약</a>
+        <a class="nav-back" href="#flow">플로우 노드</a>
+        <a class="nav-back" href="#detail">호출부 상세</a>
+        <a class="nav-back" href="#notes">읽는 법</a>
+        <span class="nav-spacer"></span>
+        <button class="icon-btn" id="theme" title="테마 전환" aria-label="테마 전환">
+          ☀
+        </button>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 광고</div>
+        <h1 class="doc-title">전면광고 지면 — 4개 프로젝트 플로우 비교</h1>
+        <p class="doc-lede">
+          유저가 게임을 한 바퀴 도는 동안 어느 지점에서 전면광고를 만나는지 같은
+          플로우 축에 올렸습니다. 호출부 개수가 아니라
+          <b>유저가 실제로 통과하는 노드</b> 기준입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">각 리포 main 브랜치 코드 실측</span>
+          <span class="tag">2026-08-07</span>
+          <span class="tag">솔리테어는 A빌드(const.json) 기준</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 지면 요약 ================= -->
+      <section class="doc-section" id="summary">
+        <h2 class="doc-h2">지면 요약</h2>
+        <p class="doc-h2-sub">
+          광고를 만날 수 있는 플로우 노드 수 · 루프당 노출
+        </p>
+
+        <div class="table-scroll sum">
+          <table>
+            <thead>
+              <tr>
+                <th>프로젝트</th>
+                <th style="text-align: right">
+                  광고 노드 / 적용 가능<sup class="fn">1</sup>
+                </th>
+                <th style="text-align: right">커버리지</th>
+                <th>관문 위치</th>
+                <th>루프 한 바퀴당 노출</th>
+                <th>노출 상한을 정하는 요소</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-p="sol">
+                <td>솔리테어 <span class="cnt">[2]</span></td>
+                <td class="num">2 / 8</td>
+                <td class="num"><span class="mx mx-bad">25%</span></td>
+                <td>클리어 결과창</td>
+                <td><span class="mx mx-bad">2~5바퀴당 1회</span></td>
+                <td>
+                  <code>clear_interval</code> 레벨 티어별 (6~10레벨 5판, 11~20
+                  3판, 21+ 2판)
+                </td>
+              </tr>
+              <tr data-p="mah">
+                <td>마종 <span class="cnt">[9]</span></td>
+                <td class="num">9 / 10</td>
+                <td class="num"><span class="mx mx-ok">90%</span></td>
+                <td>판 시작 + 클리어 + 로비 복귀</td>
+                <td><span class="mx mx-ok">1바퀴당 2~3회</span></td>
+                <td>30초 쿨다운</td>
+              </tr>
+              <tr data-p="pbm">
+                <td>퍼블마 <span class="cnt">[8]</span></td>
+                <td class="num">8 / 10</td>
+                <td class="num"><span class="mx mx-ok">80%</span></td>
+                <td>결과창 (판이 끝나면 반드시 통과)</td>
+                <td><span class="mx mx-ok">1바퀴당 1회</span></td>
+                <td>30초 쿨다운</td>
+              </tr>
+              <tr data-p="coz">
+                <td>코지 <span class="cnt">[5]</span></td>
+                <td class="num">5 / 10</td>
+                <td class="num"><span class="mx mx-warn">50%</span></td>
+                <td>판 시작 (진입하려면 반드시 통과)</td>
+                <td><span class="mx mx-ok">1바퀴당 1회</span></td>
+                <td>30초 쿨다운</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--sol)">
+          <p>
+            솔리테어도 클리어 결과창은 반드시 지나가는 관문입니다. 다만 그 관문에
+            <code>clear_interval</code>이 걸려 있어 통과해도 2~5번 중 한 번만
+            광고가 나옵니다 —
+            <strong>관문은 있는데 문이 대부분 열려 있는 상태</strong>입니다.
+            카운트에는 조건부(특정 경로·판수 조건에서만 노출)도 포함했습니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= 플로우 노드 매트릭스 ================= -->
+      <section class="doc-section flow" id="flow">
+        <h2 class="doc-h2">플로우 노드별 광고 유무</h2>
+        <p class="doc-h2-sub">셀 이름은 실제 LogITPosition enum 값</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>유저 플로우 노드</th>
+                <th>솔리테어 [2]</th>
+                <th>퍼블마 [8]</th>
+                <th>코지 [5]</th>
+                <th>마종 [9]</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="node">
+                  로비 → 판 진입 (솔로)<span class="step">프리레벨 팝업 통과</span>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">game_play 주석 처리<sup class="fn">5</sup></span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk part">
+                    <span
+                      ><span class="sname">game_play</span
+                      ><span class="cnote">모어게임 경유일 때만</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_start</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">play_solo</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  로비 → 판 진입 (친구 전환 성공)<span class="step"
+                    >컨텍스트 전환 후</span
+                  >
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_start</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">switch_success</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  친구 전환 취소 → 솔로 진입<span class="step">전환 실패 폴백</span>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">enum만 존재</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">switch_cancel</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">switch_cancel</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  판 클리어 → 결과창<span class="step">보상 수령</span>
+                </td>
+                <td>
+                  <div class="mk part">
+                    <span
+                      ><span class="sname">game_over</span
+                      ><span class="cnote"
+                        >2~5판당 1회 · x2 보상 선택 시 생략</span
+                      ></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">game_over</span
+                      ><span class="cnote">매번</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">다음 판 시작에서 노출</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">stage_clear</span
+                      ><span class="cnote">매번</span></span
+                    >
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  판 실패 → 결과<span class="step">이어하기 거절 시점</span>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">실패 팝업·자동 종료 없음<sup class="fn">2</sup></span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">game_over</span
+                      ><span class="cnote">승패 공용</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">continue_fail</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_fail</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  판 도중 재시도<span class="step">같은 판 다시</span>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">재시도 기능 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">판 도중 재시도 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_retry</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_retry</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  판 도중 나가기<span class="step">스스로 종료</span>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">game_quit</span
+                      ><span class="cnote">인터벌 검사 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">game_quit</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_exit</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">stage_exit</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  결과창 → 로비 복귀<span class="step">홈으로</span>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">클리어 광고와 같은 지점</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">game_over</span
+                      ><span class="cnote">[홈] 버튼</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">enum만 존재</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">result_lobby</span></span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  결과창 → 바로 재플레이<span class="step">로비 안 거치고</span>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">Quick Next Loop 비활성<sup class="fn">3</sup></span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">game_over</span
+                      ><span class="cnote">[다시하기] 버튼</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">결과창 재플레이 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">결과창 재플레이 없음</span></span
+                    >
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  리그 / 토너먼트 결과창<span class="step">경쟁 결과 확인 후</span>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">리그 결과창 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span><span class="sname">gameover_resultLeague</span></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">리그 결과창 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">리그 결과창 없음</span></span
+                    >
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  로비 콘텐츠 이용<span class="step">컬렉션 · 꾸미기</span>
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk na">
+                    <span
+                      ><span class="sname">해당 없음</span
+                      ><span class="cnote">로비 콘텐츠 없음</span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk on">
+                    <span
+                      ><span class="sname">collection</span
+                      ><span class="cnote">그림 교체 후 공유</span></span
+                    >
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  재화 수령 버튼<span class="step">무료 보상 받기</span>
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk off"><span><span class="sname">없음</span></span></div>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">shop_free_coin_10 철수<sup class="fn">4</sup></span></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <div class="mk off">
+                    <span
+                      ><span class="sname">없음</span
+                      ><span class="cnote">shop_free_coin_10 철수<sup class="fn">4</sup></span></span
+                    >
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="legend">
+          <span style="color: var(--ok)">노출 있음 — 노드를 지나면 광고 판정</span>
+          <span style="color: var(--warn)">조건부 — 특정 경로나 판수 조건에서만</span>
+          <span style="color: var(--bad)">없음 — 노드는 있으나 광고를 붙이지 않음</span>
+          <span style="color: var(--text-faint)"
+            >해당 없음 — 그 게임에 노드 자체가 없음<sup class="fn">1</sup></span
+          >
+        </p>
+      </section>
+
+      <!-- ================= 호출부 상세 ================= -->
+      <section class="doc-section" id="detail">
+        <h2 class="doc-h2">지면별 호출부 상세</h2>
+        <p class="doc-h2-sub">
+          위 표가 <b>유저가 통과하는 노드</b> 기준이라면, 여기는
+          <b>코드에 박힌 호출부</b> 기준입니다. 같은 지면이 여러 진입 경로에 깔려
+          있으면 호출부 수가 노드 수보다 큽니다.
+        </p>
+
+        <details class="fold">
+          <summary>솔리테어 — 2개 지면 / 2곳</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>지면 이름</th>
+                    <th>언제 뜨나</th>
+                    <th style="text-align: right">호출부</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="slot">game_over</td>
+                    <td>레벨 클리어 결과창 [받기] 누를 때. x2 보상(RV) 선택 시 생략</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">game_quit</td>
+                    <td>엔드레벨/설정 → 나가기 확정 후 로비 이동 직전</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td class="slot">game_play</td>
+                    <td>게임 진입 시 — 주석 처리, 미사용</td>
+                    <td class="num">0곳</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td class="slot">switch_cancel</td>
+                    <td>enum만 존재, 호출부 없음</td>
+                    <td class="num">0곳</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td class="slot">gameover_resultLeague</td>
+                    <td>enum만 존재, 호출부 없음</td>
+                    <td class="num">0곳</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">활성 합계</td>
+                    <td class="num">2개 지면 / 2곳</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>퍼블마 — 5개 지면 / 13곳</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>지면 이름</th>
+                    <th>언제 뜨나</th>
+                    <th style="text-align: right">호출부</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="slot">game_over</td>
+                    <td>게임오버 결과창에서 [다시하기] 또는 [홈] 누를 때 (승패 무관)</td>
+                    <td class="num">4곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">gameover_resultLeague</td>
+                    <td>리그 결과창에서 [다시하기] 또는 [홈]</td>
+                    <td class="num">4곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">game_quit</td>
+                    <td>설정 → 나가기 확인 → [예] 누른 뒤</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">game_play</td>
+                    <td>
+                      모어게임 팝업 [클래식 플레이], 토너먼트 새 상대 교체 시(상대
+                      2명마다)
+                    </td>
+                    <td class="num">2곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">switch_cancel</td>
+                    <td>토너먼트/친구 컨텍스트 전환 취소 → 솔로로 전환해 진입</td>
+                    <td class="num">2곳</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">활성 합계</td>
+                    <td class="num">5개 지면 / 13곳</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>코지 — 4개 지면 / 23곳</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>지면 이름</th>
+                    <th>언제 뜨나</th>
+                    <th style="text-align: right">호출부</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="slot">stage_start</td>
+                    <td>
+                      다음 판 시작 · 컨텍스트 전환 후 진입. 리더보드 · 토너먼트 ·
+                      프로필 경유 진입 포함
+                    </td>
+                    <td class="num">17곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">stage_retry</td>
+                    <td>재시도할 때</td>
+                    <td class="num">4곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">continue_fail</td>
+                    <td>이어하기 실패했을 때</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">stage_exit</td>
+                    <td>판에서 나갈 때</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td class="slot">result_lobby</td>
+                    <td>enum만 존재, 호출부 없음</td>
+                    <td class="num">0곳</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">활성 합계</td>
+                    <td class="num">4개 지면 / 23곳</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>마종 — 9개 지면 / 38곳</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>지면 이름</th>
+                    <th>언제 뜨나</th>
+                    <th style="text-align: right">호출부</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="slot">stage_clear</td>
+                    <td>스테이지 클리어. 결과창 · 보상박스 · 그림보상 팝업 여러 갈래</td>
+                    <td class="num">5곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">stage_fail</td>
+                    <td>판 실패 — 아이템 이어하기를 취소한 순간</td>
+                    <td class="num">5곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">stage_retry</td>
+                    <td>아이템 안 쓰고 재도전 선택</td>
+                    <td class="num">6곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">stage_exit</td>
+                    <td>설정팝업에서 나가기</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">switch_success</td>
+                    <td>친구 컨텍스트 전환 성공 후 진입 직전</td>
+                    <td class="num">7곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">switch_cancel</td>
+                    <td>컨텍스트 전환 취소</td>
+                    <td class="num">4곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">play_solo</td>
+                    <td>혼자 플레이 시작</td>
+                    <td class="num">5곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">collection</td>
+                    <td>컬렉션 그림 교체 성공 → 광고 → 피드 공유</td>
+                    <td class="num">4곳</td>
+                  </tr>
+                  <tr>
+                    <td class="slot">result_lobby</td>
+                    <td>결과창에서 [로비로]</td>
+                    <td class="num">1곳</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">활성 합계</td>
+                    <td class="num">9개 지면 / 38곳</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= 읽는 법 ================= -->
+      <section class="doc-section" id="notes">
+        <h2 class="doc-h2">읽는 법</h2>
+        <p class="doc-h2-sub">표에서 바로 안 보이는 맥락</p>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--coz)">
+            <div class="note-title">지면 수보다 호출부 수를 봐야 한다</div>
+            <p>
+              코지는 지면 4개지만 호출부가 <strong>23곳</strong>입니다.
+              <code>stage_start</code> 하나가 17곳에 깔려 있어서 "게임 시작"이라는
+              한 순간을 진입 경로별로 다 커버합니다. 실제 커버리지는 지면 수보다
+              호출부 수가 더 잘 보여줍니다.
+            </p>
+          </div>
+
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">솔리테어가 적은 건 맞지만, 빈 곳은 따로 있다</div>
+            <p>
+              솔리테어는 <strong>2개 지면 / 2곳</strong>으로 4개 프로젝트 중
+              압도적으로 적습니다. 다만 솔리테어의 판 종료 경로는 클리어와 나가기
+              둘뿐이라 <strong>종료 시점 커버리지 자체는 완전</strong>합니다. 부족한
+              건 종료 외 지면 — 시작 · 전환 · 로비입니다.
+            </p>
+          </div>
+
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">솔리테어에 남아 있는 흔적</div>
+            <p>
+              솔리테어에 <code>switch_cancel</code>,
+              <code>gameover_resultLeague</code>, <code>game_play</code> enum이 이미
+              있는 건 과거에 붙였다가 뺐거나 붙일 계획이었다는 흔적입니다. 특히
+              <code>game_play</code>는 코드가 주석으로 남아 있어서
+              <strong>되살리기 가장 쉽습니다</strong>.
+            </p>
+          </div>
+
+          <div class="note" style="--acc: var(--mah)">
+            <div class="note-title">추가를 검토한다면 근거가 가장 강한 건 "판 시작"</div>
+            <p>
+              <code>play_solo</code> / <code>stage_start</code> /
+              <code>game_play</code>(판 시작)는 4개 중
+              <strong>3개 프로젝트가 쓰고 있는 유일한 유형</strong>입니다. 근거로
+              삼기에 가장 강하고, 솔리테어에만 없습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>각주</b><br />
+          <b><sup class="fn">1</sup> 적용 가능 노드</b> — 전체 12개 노드에서
+          <b>그 게임에 노드 자체가 없는 것</b>을 뺀 수입니다. 붙일 자리가 없는 것과
+          자리는 있는데 안 붙인 것을 같은 분모로 세면 비교가 왜곡되기 때문입니다.
+          제외 내역 — <b>솔리테어</b>: 판 실패(실패 팝업·자동 종료 없음),
+          재시도(같은 판 다시 하는 기능 없음), 결과창 재플레이(Quick Next Loop
+          비활성), 리그 결과창(없음) → 4개 제외. <b>퍼블마</b>: 판 도중
+          재시도(게임오버 후 [다시하기]만 있음), 로비 콘텐츠(로비 탭이 홈 ·
+          리더보드 · 리그뿐) → 2개 제외. <b>코지 · 마종</b>: 결과창 재플레이, 리그
+          결과창 → 각 2개 제외.<br />
+
+          <b><sup class="fn">2</sup> 솔리테어에 실패 팝업이 없는 이유</b> — 판이
+          끝나는 경우가 <b>컴플릿과 스스로 종료 두 가지</b>뿐입니다. 낼 카드가
+          없어도 게임이 자동으로 끝나지 않고,
+          <code>ViewGame.onClickEndLevel()</code>을 유저가 눌러야 종료됩니다. 즉
+          종료 커버리지 자체는 2/2로 완전하지만,
+          <b>관문 통과가 유저 행동에 의존</b>합니다.<br />
+
+          <b><sup class="fn">3</sup> 현재 로비 경유 플로우인 근거</b> — A빌드
+          <code>const.json</code>에 <code>is_quick_next_loop_open</code> ·
+          <code>is_reward_on_result_open</code> 키가 없습니다. 없으면
+          <code>Const.isQuickNextLoopActive</code>가 false로 떨어지고
+          <code>isPrelevelPopupOpen</code>은 기본 true라, 매 판 로비를
+          경유합니다(레벨 1→2 예외만). Quick Next Loop를 켜면 "결과창 → 바로
+          재플레이" 노드가 새로 생깁니다.<br />
+
+          <b><sup class="fn">4</sup> shop_free_coin_10 철수</b> — 마종 · 코지
+          <code>ShopService.ts</code>의 광고형 상품 블록이 통째로 주석 처리되어
+          있고, <code>LogITPosition</code> enum에서도 제거됐습니다. 두 프로젝트에서
+          동일하게 걷어낸 상태이며 사유는 코드에 기록이 없습니다.<br />
+
+          <b><sup class="fn">5</sup> game_play 주석</b> —
+          <code>PopupGameEntry.ts:1317</code>에 호출 코드가 주석으로 남아 있습니다.
+          언제 · 왜 껐는지는 코드만으로 확인되지 않습니다.<br />
+
+          <b>노드 수 계산</b> — 광고가 걸린 노드를 셌고 조건부도 포함했습니다. 같은
+          지면(예: 퍼블마 <code>game_over</code>)이 여러 노드를 겸하는 경우 노드마다
+          1개로 계산했습니다.
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap wrap--wide">
+        <a href="../index.html">← Supergene 기획 허브로 돌아가기</a>
+      </div>
+    </footer>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
