@@ -578,14 +578,21 @@
           값입니다.
         </p>
 
+        <div class="doc-meta" style="margin: 0 0 14px">
+          <span class="tag">집계 기간 2026-07-31 ~ 2026-08-06</span>
+          <span class="tag">7일</span>
+          <span class="tag">보상형 지면 제외</span>
+        </div>
+
         <div id="share-summary"></div>
 
         <div class="note" style="--acc: var(--sol)">
           <p>
-            솔리테어 전면 노출은 <strong>696회</strong>입니다. 4개 프로젝트 합계
-            2,115,293회의 <strong>0.03%</strong> — 코지 · 마종 대비 약 1/1,300
-            수준입니다. 지면 수가 적은 것과 별개로 <b>모수 자체가 작다</b>는 뜻이라,
-            지면을 늘렸을 때의 기대 효과도 이 모수 위에서 봐야 합니다.
+            솔리테어 전면 노출은 7일간 <strong>696회 · 일평균 99회</strong>입니다.
+            4개 프로젝트 합계 2,115,293회의 <strong>0.03%</strong> — 코지 · 마종
+            (일평균 12만~13만회) 대비 약 1/1,300 수준입니다. 지면 수가 적은 것과
+            별개로 <b>모수 자체가 작다</b>는 뜻이라, 지면을 늘렸을 때의 기대 효과도
+            이 모수 위에서 봐야 합니다.
           </p>
         </div>
 
@@ -1139,19 +1146,24 @@
 
     <!-- ==========================================================
          실측 노출 비중 (전면광고 지면만)
-         rows: [지면명, 노출수] — 노출수만 고치면 합계·비중·막대가
+         집계 기간 2026-07-31 ~ 2026-08-06 (7일)
+         rows: [지면명, 노출수] — 노출수만 고치면 합계·비중·일평균·막대가
          전부 다시 계산됩니다. 보상형 지면은 애초에 넣지 않습니다.
+         기간을 바꾸면 DAYS와 위 doc-meta 태그도 같이 고쳐주세요.
          ========================================================== -->
     <script>
       (function () {
+        var DAYS = 7; // 2026-07-31 ~ 2026-08-06
+
         var SHARE = [
           {
             name: "솔리테어",
             key: "sol",
             acc: "--sol",
+            // [유저 플로우 노드, 지면명, 노출수]
             rows: [
-              ["game_over", 601],
-              ["game_quit", 95],
+              ["판 클리어 → 결과창", "game_over", 601],
+              ["판 도중 나가기", "game_quit", 95],
             ],
           },
           {
@@ -1159,11 +1171,11 @@
             key: "pbm",
             acc: "--pbm",
             rows: [
-              ["game_play", 225635],
-              ["game_over", 84745],
-              ["gameover_resultLeague", 8455],
-              ["switch_cancel", 625],
-              ["game_quit", 51],
+              ["로비 → 판 진입 (솔로)", "game_play", 225635],
+              ["판 종료 → 결과창 · 로비 복귀 · 재플레이", "game_over", 84745],
+              ["리그 / 토너먼트 결과창", "gameover_resultLeague", 8455],
+              ["친구 전환 취소 → 솔로 진입", "switch_cancel", 625],
+              ["판 도중 나가기", "game_quit", 51],
             ],
           },
           {
@@ -1171,10 +1183,10 @@
             key: "coz",
             acc: "--coz",
             rows: [
-              ["stage_start", 685274],
-              ["stage_retry", 155897],
-              ["continue_fail", 63898],
-              ["stage_exit", 198],
+              ["로비 → 판 진입 (솔로 · 전환 성공 · 전환 취소)", "stage_start", 685274],
+              ["판 도중 재시도", "stage_retry", 155897],
+              ["판 실패 → 결과", "continue_fail", 63898],
+              ["판 도중 나가기", "stage_exit", 198],
             ],
           },
           {
@@ -1182,13 +1194,13 @@
             key: "mah",
             acc: "--mah",
             rows: [
-              ["stage_clear", 741990],
-              ["stage_retry", 106582],
-              ["switch_success", 24671],
-              ["switch_cancel", 9877],
-              ["result_lobby", 6336],
-              ["stage_exit", 276],
-              ["collection", 87],
+              ["판 클리어 → 결과창", "stage_clear", 741990],
+              ["판 도중 재시도", "stage_retry", 106582],
+              ["로비 → 판 진입 (친구 전환 성공)", "switch_success", 24671],
+              ["친구 전환 취소 → 솔로 진입", "switch_cancel", 9877],
+              ["결과창 → 로비 복귀", "result_lobby", 6336],
+              ["판 도중 나가기", "stage_exit", 276],
+              ["로비 콘텐츠 이용", "collection", 87],
             ],
           },
         ];
@@ -1202,14 +1214,19 @@
         };
 
         // 합계·비중은 전부 노출수에서 계산한다 — 손으로 적은 % 없음
+        // r = [노드, 지면명, 노출수] → r[3]에 비중을 채워 넣는다
         SHARE.forEach(function (p) {
           p.total = p.rows.reduce(function (s, r) {
-            return s + r[1];
+            return s + r[2];
           }, 0);
           p.rows.forEach(function (r) {
-            r[2] = p.total > 0 ? (r[1] / p.total) * 100 : 0;
+            r[3] = p.total > 0 ? (r[2] / p.total) * 100 : 0;
           });
         });
+
+        var nodeCell = function (r) {
+          return r[0] + '<span class="slotname">[' + r[1] + "]</span>";
+        };
 
         // ---- 요약표 ----
         var sumBody = SHARE.map(function (p) {
@@ -1217,32 +1234,35 @@
           return (
             '<tr data-p="' + p.key + '"><td>' + p.name + "</td>" +
             '<td class="num">' + comma(p.total) + "</td>" +
+            '<td class="num">' + comma(Math.round(p.total / DAYS)) + "</td>" +
             '<td class="num">' + p.rows.length + "</td>" +
-            '<td class="slot">' + top[0] + "</td>" +
-            '<td class="num">' + top[2].toFixed(1) + "%</td></tr>"
+            '<td class="node">' + nodeCell(top) + "</td>" +
+            '<td class="num">' + top[3].toFixed(1) + "%</td></tr>"
           );
         }).join("");
 
         sumHost.className = "table-scroll sum";
         sumHost.innerHTML =
           "<table><thead><tr><th>프로젝트</th>" +
-          '<th style="text-align:right">전면 노출</th>' +
-          '<th style="text-align:right">집계 지면</th>' +
-          "<th>최다 지면</th>" +
-          '<th style="text-align:right">최다 지면 비중</th>' +
+          '<th style="text-align:right">전면 노출 (7일)</th>' +
+          '<th style="text-align:right">일평균</th>' +
+          '<th style="text-align:right">집계 노드</th>' +
+          "<th>최다 노드</th>" +
+          '<th style="text-align:right">최다 노드 비중</th>' +
           "</tr></thead><tbody>" + sumBody + "</tbody></table>";
 
         // ---- 프로젝트별 표 ----
         SHARE.forEach(function (p) {
-          var top = p.rows[0] ? p.rows[0][2] : 100;
+          var top = p.rows[0] ? p.rows[0][3] : 100;
 
           var body = p.rows
             .map(function (r) {
-              var w = top > 0 ? (r[2] / top) * 100 : 0;
+              var w = top > 0 ? (r[3] / top) * 100 : 0;
               return (
-                '<tr><td class="slot">' + r[0] + "</td>" +
-                '<td class="num">' + comma(r[1]) + "</td>" +
-                '<td class="num">' + r[2].toFixed(1) + "%" +
+                '<tr><td class="node">' + nodeCell(r) + "</td>" +
+                '<td class="num">' + comma(r[2]) + "</td>" +
+                '<td class="num">' + comma(Math.round(r[2] / DAYS)) + "</td>" +
+                '<td class="num">' + r[3].toFixed(1) + "%" +
                 '<span class="sbar"><i style="width:' + w.toFixed(1) + '%"></i></span></td></tr>'
               );
             })
@@ -1254,11 +1274,13 @@
           wrap.innerHTML =
             '<div class="proj-head"><span class="proj-dot"></span>' +
             '<span class="proj-name">' + p.name + "</span>" +
-            '<span class="proj-count">' + p.rows.length + "개 지면 / 총 " +
-            comma(p.total) + "회</span></div>" +
+            '<span class="proj-count">' + p.rows.length + "개 노드 / 총 " +
+            comma(p.total) + "회 · 일평균 " + comma(Math.round(p.total / DAYS)) +
+            "회</span></div>" +
             '<div class="table-scroll"><table><thead><tr>' +
-            "<th>지면 이름</th>" +
-            '<th style="text-align:right">노출</th>' +
+            "<th>유저 플로우 노드</th>" +
+            '<th style="text-align:right">노출 (7일)</th>' +
+            '<th style="text-align:right">일평균</th>' +
             '<th style="text-align:right">비중</th>' +
             "</tr></thead><tbody>" + body + "</tbody></table></div>";
           host.appendChild(wrap);
