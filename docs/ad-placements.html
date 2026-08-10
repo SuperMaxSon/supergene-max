@@ -99,7 +99,7 @@
                 <td class="num"><span class="cnt">3</span>개</td>
                 <td>클리어 결과창 · 전환 거절<sup class="fn">7</sup></td>
                 <td>
-                  <span class="mx mx-warn">2~5바퀴당 1회</span>
+                  <span class="mx mx-warn">1~4바퀴당 1회</span>
                   <span class="why">전환 거절 시 추가 1회</span>
                 </td>
                 <td>
@@ -143,13 +143,14 @@
         <div class="note" style="--acc: var(--sol)">
           <p>
             솔리테어도 클리어 결과창은 반드시 지나가는 관문입니다. 다만 그 관문에
-            <code>clear_interval</code>이 걸려 있어 통과해도 2~5번 중 한 번만
-            광고가 나옵니다 —
-            <strong>관문은 있는데 문이 대부분 열려 있는 상태</strong>입니다. 이번에
-            추가한 전환 거절 지면은 <strong>클리어 간격을 적용하지 않아</strong>
-            30초 쿨다운 · 세션 게이트 · 일 상한만 통과하면 노출됩니다. 다만 유저가
-            전환 팝업을 실제로 거절해야 도달하는 노드라 이 지면에 닿는지는
-            여전히 유저 행동에 달려 있습니다. 카운트에는 조건부(특정 경로 · 판수 조건에서만
+            <code>clear_interval</code>이 걸려 <strong>레벨 구간마다 열리는 정도가
+            다릅니다</strong> — 1~5는 미노출, 6~10은 4판당 1회, 11~20은 2판당 1회,
+            21+부터 매판입니다. 이번에 추가한 전환 거절 지면은
+            <strong>클리어 간격(6단계)만 면제</strong>되고 나머지 게이트는 그대로
+            적용됩니다. 특히 <code>clear_interval</code> &gt; 0 검사가 남아 있어
+            <b>1~5레벨과 B빌드에서는 거절 지면도 나가지 않습니다</b>. 게다가 유저가
+            전환 팝업을 실제로 거절해야 도달하는 노드라 이 지면에 닿는지는 여전히
+            유저 행동에 달려 있습니다. 카운트에는 조건부(특정 경로 · 판수 조건에서만
             노출)도 포함했습니다.
           </p>
         </div>
@@ -273,7 +274,7 @@
                     <span
                       ><span class="sname">game_over</span
                       ><span class="cnote"
-                        >2~5판당 1회 · x2 보상 선택 시 생략</span
+                        >레벨 티어별 1~4판당 1회 · x2 보상 선택 시 생략</span
                       ></span
                     >
                   </div>
@@ -1138,7 +1139,7 @@
           <code>onClickRestart</code> · <code>onClickHome</code> 두 버튼에만 붙어
           있고 승패 공용이라 실제로는 <b>결과창을 나갈 때 1회</b>인데 표에서는 4개
           노드로 잡힙니다. 반대로 솔리테어 <code>game_over</code>는 1개 노드지만
-          <code>clear_interval</code>에 걸려 <b>2~5판당 1회</b>만 뜹니다. 즉 노드가
+          <code>clear_interval</code>에 걸려 레벨 구간에 따라 <b>1~4판당 1회</b>만 뜹니다. 즉 노드가
           많다고 광고가 많이 뜨는 게 아니고, 실제 노출량은
           <b>아래 실측 노출 비중</b>으로 봐야 합니다.<br />
 
@@ -1185,14 +1186,25 @@
           구좌에서 거절해도 광고가 붙지 않습니다(코드 주석 명시). 마종 정렬이며,
           거절 횟수 기반 미노출은 두지 않고 반복 억제는
           <code>ContextRecommender</code>의 세션 내 1회 소모가 담당합니다.
-          판정에서 <code>clear_interval</code>(클리어 간격)만 건너뛰고
-          나머지 게이트(마스터 스위치 · 레벨 6 · 튜토리얼 · 세션 게이트 · 일 상한 ·
-          30초 간격 · 프리로드)는 그대로 적용합니다 — 클리어 카운터를 소모하면 기존
-          <code>game_over</code> 노출을 잠식해 순증이 되지 않기 때문입니다. 기존
-          <code>game_quit</code>도 같은 이유로 이 단계를 건너뜁니다.
-          <b>주의</b> — 거절 지면 전용 스위치가 없어 문제 시
-          <code>is_interstitial_ad_open</code>(마스터)을 내려야 하고, 그러면 클리어 ·
-          나가기 지면까지 함께 꺼집니다. 실기 검증은 아직 하지 않았습니다.<br />
+          판정은 <code>ADPlayer.getBlockReason()</code> 한 함수를 지면 구분 없이
+          타고, 지면차는 <b>딱 두 군데</b>뿐입니다. ① <b>6단계 클리어 간격</b> —
+          <code>game_quit</code> · <code>switch_cancel</code>은 클리어 카운터를
+          읽지도 올리지도 않고 건너뜁니다(카운터를 소모하면 기존
+          <code>game_over</code> 노출을 잠식해 순증이 되지 않기 때문). ②
+          <b>2-1단계</b> — <code>game_quit</code>만
+          <code>is_interstitial_ad_quit_open</code>(=1) 검사를 추가로 받습니다.<br />
+          나머지 7개 게이트는 전 지면 공통입니다 — 레벨 6+ 하드차단 ·
+          <code>is_interstitial_ad_open</code> · 튜토리얼 제외 ·
+          <b><code>clear_interval</code> &gt; 0</b> · 세션 게이트(=1, 통과) ·
+          일 상한(=0, 검사 생략) · 30초 최소 간격 · 프리로드 재고. 즉
+          <b>"30초 쿨다운만"은 틀린 서술</b>입니다 — 라이브 const가 느슨해 체감상
+          30초와 재고만 걸리는 것처럼 보일 뿐, <b>레벨 6 미만 · 튜토리얼 중 ·
+          B빌드</b>에서는 30초와 무관하게 나가지 않습니다.<br />
+          <b>주의</b> — 거절 지면에는 전용 스위치가 없어 문제 시
+          <code>is_interstitial_ad_open</code>(마스터)을 내려야 하고, 그러면 클리어
+          지면까지 함께 꺼집니다(나가기 지면만
+          <code>is_interstitial_ad_quit_open</code>으로 단독 차단 가능). 라이브
+          발화는 빌드 438에서 498회로 확인됐습니다.<br />
 
           <b>노드 수 계산</b> — 광고가 걸린 노드를 셌고 조건부도 포함했습니다. 같은
           지면(예: 퍼블마 <code>game_over</code>)이 여러 노드를 겸하는 경우 노드마다
