@@ -32,7 +32,7 @@ const SECTIONS = [
         desc: "솔리테어 · 퍼블마 · 코지 · 마종의 전면광고를 유저 플로우 노드 13개 축에 올려 비교. 빌드 438 전환 거절 지면 첫 실측(비중 6.9%) 반영.",
         url: "docs/ad-placements.html",
         status: "완료",
-        version: "v1.7",
+        version: "v1.8",
         updated: "2026-08-10",
         pinned: true,
         tags: ["광고", "전면", "4프로젝트", "커버리지", "실측", "추가제안"],
