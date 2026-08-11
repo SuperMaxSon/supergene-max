@@ -37,6 +37,16 @@ const SECTIONS = [
         pinned: true,
         tags: ["광고", "전면", "4프로젝트", "커버리지", "실측", "추가제안"],
       },
+      {
+        title: "로딩 속도 — 3개 프로젝트 비교",
+        desc: "솔리테어 · 코지 · 퍼블마의 로딩 소요를 NRU/RU · US 기준으로 실측. 부팅 지연 전량이 LOAD_FB→LOAD_INTRO 한 구간에 몰려 있고(솔리테어 0.97초 = 코지의 3.3배), OS를 맞춰도 2.5배 격차. RU 인트로는 코지의 2배(4.72초).",
+        url: "docs/loading-speed-compare.html",
+        status: "진행중",
+        version: "v1.2",
+        updated: "2026-08-11",
+        pinned: false,
+        tags: ["로딩", "속도", "BigQuery", "NRU", "RU", "3프로젝트"],
+      },
     ],
   },
   {

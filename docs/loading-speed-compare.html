@@ -1,0 +1,1197 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>로딩 속도 — 3개 프로젝트 비교 (솔리테어 · 코지 · 퍼블마)</title>
+    <meta
+      name="description"
+      content="1010_LOAD_COMPLETE 기준 로딩 소요 시간을 솔리테어 · 코지 · 퍼블마 3개 프로젝트, NRU/RU로 나눠 비교"
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#summary">결론</a>
+        <a class="nav-back" href="#ruler">측정 기준</a>
+        <a class="nav-back" href="#result">실측</a>
+        <a class="nav-back" href="#trend">개선 판정</a>
+        <a class="nav-back" href="#seq">구간 분해</a>
+        <a class="nav-back" href="#boot">부팅 해부</a>
+        <a class="nav-back" href="#gap">로그 실태</a>
+        <a class="nav-back" href="#next">다음</a>
+        <a class="nav-back" href="#notes">각주</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 로딩</div>
+        <h1 class="doc-title">로딩 속도 — 3개 프로젝트 비교</h1>
+        <p class="doc-lede">
+          유저가 게임을 켜고 <b>실제로 플레이 가능한 상태</b>가 되기까지 얼마나
+          걸리는지를 솔리테어 · 코지 · 퍼블마 3개에서 나란히 쟀습니다. 신규(NRU)와
+          복귀(RU)를 나눴고, 회선·기기 환경을 통제하려고 <b>US만</b> 봤습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">BigQuery 실측 · 2026-08-08 ~ 08-10</span>
+          <span class="tag">country = US</span>
+          <span class="tag">앵커 정의는 각 리포 main 코드 실측</span>
+          <span class="tag">v1.2 · 2026-08-11</span>
+        </div>
+        <div class="note" style="--acc: var(--analysis); margin-top: 14px">
+          <div class="note-title" style="color: var(--analysis)">
+            갱신 v1.2 — 부팅 구간을 해부하고, 기존 로딩 최적화 문서와 접합했습니다
+          </div>
+          <p>
+            <strong>부팅 지연 전량이 한 구간에 몰려 있습니다.</strong>
+            <code>LOAD_FB → LOAD_INTRO</code>(index.js 다운로드/파싱 + 인트로 씬)가
+            솔리테어 0.97초로 코지의 3.3배이고, 나머지 두 구간은 0.00~0.08초입니다.
+          </p>
+          <p style="margin-top: 6px">
+            <strong>OS 믹스가 프로젝트마다 다릅니다</strong> — 솔리테어는 안드로이드
+            69%, 코지는 iOS 54%. 다만 <b>OS를 맞춰도 배율은 2.5배로 동일</b>해서,
+            격차는 믹스가 아니라 구조에서 옵니다.
+            <a href="#boot" style="color: var(--analysis); font-weight: 700">↓ 부팅 해부</a>
+          </p>
+        </div>
+        <div class="note" style="--acc: var(--bad); margin-top: 10px">
+          <div class="note-title" style="color: var(--bad)">
+            갱신 v1.1 — 초판의 판단 2건을 정정했습니다
+          </div>
+          <p>
+            <strong
+              >① <code>ALL_LOAD_FB</code> ·
+              <code>ALL_LOAD_INTRO_START/FINISH</code>는 실제로 찍히고
+              있습니다.</strong
+            >
+            초판에서 "5개 리포 어디에도 없다"고 적었는데, 클라 TS에 호출부가 없을
+            뿐 <b>발화 주체가 클라 밖(웹 로더/부트 스크립트)</b>이라 코드 검색에
+            안 걸린 것이었습니다. 커버리지 97~99%로 정상 수집 중입니다.
+          </p>
+          <p style="margin-top: 6px">
+            <strong>② 솔리테어도 <code>INTRO_*</code>를 찍습니다.</strong>
+            <code>INTRO_FB_START_FINISH</code> 98.4% 등 정상입니다. 따라서
+            <b>로그 배선 작업 없이 지금 바로 인트로 구간 분해가 가능</b>합니다.
+            <a href="#seq" style="color: var(--bad); font-weight: 700">↓ 분해 결과</a>
+          </p>
+        </div>
+        <div class="note" style="--acc: var(--warn); margin-top: 14px">
+          <div class="note-title" style="color: var(--warn)">읽기 전에</div>
+          <p>
+            <strong
+              >세 프로젝트의 <code>1010_LOAD_COMPLETE</code>는 결승선 위치가
+              다릅니다.</strong
+            >
+            코지는 로그인 응답까지만 재고, 솔리테어·퍼블마는 첫 화면 표시까지
+            잽니다. 그래서 아래 숫자는 <b>순위표가 아니라 하한선</b>으로 읽어야
+            합니다 — 코지가 유리한 자로 쟀는데도 가장 빠릅니다.
+            <a href="#ruler" style="color: var(--warn); font-weight: 700"
+              >↓ 기준 차이 보기</a
+            >
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 결론 ================= -->
+      <section class="doc-section" id="summary">
+        <h2 class="doc-h2">한눈에</h2>
+        <p class="doc-h2-sub">
+          NRU p50 기준 · 코지를 0으로 놓은 상대 격차
+        </p>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--coz)">
+            <div class="stat-num">3.04<span class="stat-unit">초</span></div>
+            <div class="stat-name">코지 NRU p50</div>
+            <div class="stat-sub">표본 7,682 · 가장 빠름</div>
+          </div>
+          <div class="stat" style="--acc: var(--pbm)">
+            <div class="stat-num">4.34<span class="stat-unit">초</span></div>
+            <div class="stat-name">퍼블마 NRU p50</div>
+            <div class="stat-sub">코지 대비 +1.30초</div>
+          </div>
+          <div class="stat" style="--acc: var(--sol)">
+            <div class="stat-num">5.17<span class="stat-unit">초</span></div>
+            <div class="stat-name">솔리테어 NRU p50</div>
+            <div class="stat-sub">코지 대비 +2.13초 · 가장 느림</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">17.3<span class="stat-unit">초</span></div>
+            <div class="stat-name">솔리테어 NRU p90</div>
+            <div class="stat-sub">코지 7.9초의 2.2배 — 꼬리가 문제</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">중앙값보다 꼬리가 더 아프다</div>
+            <p>
+              솔리테어는 NRU p50이 5.17초인데 <strong>평균이 8.44초</strong>입니다.
+              평균이 중앙값의 1.6배라는 건 소수 세션이 심하게 느리다는 뜻이고,
+              실제로 p90이 17.3초입니다. 코지는 p50 3.04 / 평균 4.79 / p90 7.93으로
+              분포가 훨씬 조밀합니다. <b>"평균을 조금 줄이는" 문제가 아니라
+              저사양·저속 구간이 무너지는 문제</b>로 봐야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">표본 주의</div>
+            <p>
+              솔리테어 US 표본은 3일 기준 <strong>NRU 438 / RU 400</strong>으로
+              코지(7,682 / 8,935)의 약 1/20입니다. <b>p50은 신뢰할 만하지만 p90은
+              흔들릴 수 있습니다.</b> 꼬리를 근거로 의사결정하려면 기간을 7~14일로
+              늘려 재확인이 필요합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 측정 기준 ================= -->
+      <section class="doc-section" id="ruler">
+        <h2 class="doc-h2">같은 이벤트, 다른 결승선</h2>
+        <p class="doc-h2-sub">
+          <code>1010_LOAD_COMPLETE</code>가 찍히는 순간이 프로젝트마다 다르다 —
+          코드 실측
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>프로젝트 / 경로</th>
+                <th>1010이 찍히는 순간</th>
+                <th>구간에 포함되는 비용</th>
+                <th style="text-align: right">유불리</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>코지</td>
+                <td>로그인 로그 응답 <b>+100ms</b> 타이머<sup class="fn">1</sup></td>
+                <td>FB SDK + 로그인 API <b>까지만</b> — 화면 표시 비용 제외</td>
+                <td style="text-align: right">
+                  <span class="mx mx-ok">가장 짧게 나옴</span>
+                </td>
+              </tr>
+              <tr>
+                <td>퍼블마</td>
+                <td>ViewGame 표시 직후</td>
+                <td>로그인 + gameStart 왕복 + 첫 화면</td>
+                <td style="text-align: right"><span class="mx">중간</span></td>
+              </tr>
+              <tr>
+                <td>솔리테어 <b>RU</b></td>
+                <td>프리레벨 팝업 노출 시점<sup class="fn">2</sup></td>
+                <td>로그인 + 로비 번들 + 리더보드 + 팝업</td>
+                <td style="text-align: right"><span class="mx">중간</span></td>
+              </tr>
+              <tr>
+                <td>솔리테어 <b>NRU</b></td>
+                <td>
+                  인게임 표시 시점 — <code>2100</code><b>보다 뒤</b><sup class="fn">3</sup>
+                </td>
+                <td>로그인 + gameStart 왕복 + 판 구성 전체</td>
+                <td style="text-align: right">
+                  <span class="mx mx-warn">길게 나옴</span>
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td>마종 <span class="tag">이번 집계 제외</span></td>
+                <td>판 구성 완료 후</td>
+                <td>전부 포함 (가장 보수적)</td>
+                <td style="text-align: right">
+                  <span class="mx mx-warn">가장 길게 나옴</span>
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td>코인매치 <span class="tag">이번 집계 제외</span></td>
+                <td>ViewGame 표시 직후</td>
+                <td>로그인 + playStart 왕복 + 첫 화면</td>
+                <td style="text-align: right"><span class="mx">중간</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--coz)">
+            <div class="note-title">이 표가 중요한 이유</div>
+            <p>
+              코지의 <code>1010</code>은 <b>번들 다운로드와 인스턴스화가 끝나기
+              전에</b> 찍힙니다. 즉 코지 3.04초에는 "게임 화면이 뜨기까지"의 비용이
+              들어있지 않습니다. 반대로 솔리테어 NRU 5.17초에는 그게 다 들어있죠.
+              <strong
+                >따라서 실제 체감 격차는 표에 찍힌 +2.13초보다 큽니다.</strong
+              >
+              숫자를 그대로 "코지가 2초 빠르다"로 옮기면 과소평가입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">그래도 이 지표를 쓰는 이유</div>
+            <p>
+              <code>1010</code>의 <code>$.time</code> 필드는 5개 클라 모두
+              <b>동일한 계산식</b>(<code>Date.now() - window.startTime</code>)이라
+              조인 없이 한 행으로 값이 나옵니다. 세션 키를 맞출 필요가 없어
+              집계 오류가 끼어들 여지가 가장 적습니다. 결승선 차이만 인지하고 쓰면
+              <b>"최소한 이만큼은 느리다"의 하한선</b>으로는 충분히 유효합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 실측 ================= -->
+      <section class="doc-section" id="result">
+        <h2 class="doc-h2">실측 결과</h2>
+        <p class="doc-h2-sub">
+          2026-08-08 ~ 08-10 · US · 플레이어별 첫 세션 1건
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>프로젝트</th>
+                <th style="text-align: right">표본수</th>
+                <th style="text-align: right">평균</th>
+                <th style="text-align: right">p50</th>
+                <th style="text-align: right">p90</th>
+                <th style="text-align: right">코지 대비 p50</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="3"><b>NRU</b><br /><span class="why">신규</span></td>
+                <td>코지</td>
+                <td class="num">7,682</td>
+                <td class="num">4.79</td>
+                <td class="num"><b>3.04</b></td>
+                <td class="num">7.93</td>
+                <td class="num">—</td>
+              </tr>
+              <tr>
+                <td>퍼블마</td>
+                <td class="num">3,805</td>
+                <td class="num">7.76</td>
+                <td class="num"><b>4.34</b></td>
+                <td class="num">14.13</td>
+                <td class="num">+1.30</td>
+              </tr>
+              <tr>
+                <td>솔리테어</td>
+                <td class="num">438</td>
+                <td class="num">8.44</td>
+                <td class="num"><b>5.17</b></td>
+                <td class="num">17.29</td>
+                <td class="num">
+                  <span class="mx mx-warn">+2.13</span>
+                </td>
+              </tr>
+              <tr>
+                <td rowspan="3"><b>RU</b><br /><span class="why">복귀</span></td>
+                <td>코지</td>
+                <td class="num">8,935</td>
+                <td class="num">6.11</td>
+                <td class="num"><b>3.23</b></td>
+                <td class="num">11.02</td>
+                <td class="num">—</td>
+              </tr>
+              <tr>
+                <td>퍼블마</td>
+                <td class="num">9,031</td>
+                <td class="num">9.11</td>
+                <td class="num"><b>4.84</b></td>
+                <td class="num">16.70</td>
+                <td class="num">+1.61</td>
+              </tr>
+              <tr>
+                <td>솔리테어</td>
+                <td class="num">400</td>
+                <td class="num">12.08</td>
+                <td class="num"><b>6.10</b></td>
+                <td class="num">21.88</td>
+                <td class="num">
+                  <span class="mx mx-bad">+2.88</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">RU가 NRU보다 느린 건 3개 공통</div>
+            <p>
+              코지 +0.19 / 퍼블마 +0.50 / 솔리테어 <strong>+0.93</strong>초.
+              복귀 유저는 진행상황·이벤트 데이터가 추가로 붙으니 방향 자체는
+              자연스럽습니다. 다만 <b>솔리테어의 증가폭이 두 배 이상</b>인데,
+              코드상 RU만 로비 번들 + 리더보드 + 프리레벨 팝업 경로를 타기
+              때문으로 보입니다 —
+              <span class="why"
+                >구조상 그렇다는 것이고, 로그로는 아직 확인되지 않았습니다(각주 4)</span
+              >
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">집계 방식</div>
+            <p>
+              <code>1010_LOAD_COMPLETE</code>의 <code>$.time</code>을 초로 환산해
+              분위수를 냈습니다. 플레이어당 <b>가장 이른 1건</b>만 남겨(하루 여러
+              세션이 있어도 첫 세션) 헤비 유저 가중을 뺐고, 0~600초를 벗어난 값은
+              이상치로 잘랐습니다. NRU/RU는 테이블 컬럼
+              <code>logincount_total &le; 1</code>로 나눴습니다 — 프로젝트마다 NRU
+              판정 로그가 제각각이라(코지는 NRU 구분 로그 자체가 없음) 컬럼 기준이
+              유일하게 통일 가능한 축입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 개선 판정 ================= -->
+      <section class="doc-section" id="trend">
+        <h2 class="doc-h2">개선됐나? — 판정 보류</h2>
+        <p class="doc-h2-sub">
+          솔리테어만 두 창을 비교 · 08-06~08-08 vs 08-08~08-10
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>구간</th>
+                <th style="text-align: right">표본수</th>
+                <th style="text-align: right">평균</th>
+                <th style="text-align: right">p50</th>
+                <th style="text-align: right">p90</th>
+                <th style="text-align: right">p50 변화</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NRU · 08-06~08 <span class="why">목·금·토</span></td>
+                <td class="num">443</td>
+                <td class="num">10.45</td>
+                <td class="num">5.81</td>
+                <td class="num">21.90</td>
+                <td class="num">—</td>
+              </tr>
+              <tr>
+                <td>NRU · 08-08~10 <span class="why">토·일·월</span></td>
+                <td class="num">438</td>
+                <td class="num">8.44</td>
+                <td class="num">5.17</td>
+                <td class="num">17.29</td>
+                <td class="num"><span class="mx mx-ok">-0.64</span></td>
+              </tr>
+              <tr>
+                <td>RU · 08-06~08 <span class="why">목·금·토</span></td>
+                <td class="num">362</td>
+                <td class="num">11.75</td>
+                <td class="num">5.64</td>
+                <td class="num">23.70</td>
+                <td class="num">—</td>
+              </tr>
+              <tr>
+                <td>RU · 08-08~10 <span class="why">토·일·월</span></td>
+                <td class="num">400</td>
+                <td class="num">12.08</td>
+                <td class="num">6.10</td>
+                <td class="num">21.88</td>
+                <td class="num"><span class="mx mx-bad">+0.46</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">개선이라고 말할 수 없는 이유 4가지</div>
+            <p>
+              <strong>① 두 세그가 반대로 움직였다.</strong> 같은 빌드·같은 인트로를
+              타는데 NRU만 -0.64초, RU만 +0.46초는 구조적으로 설명이 안 됩니다.
+              진짜 개선이면 보통 둘 다 같은 방향입니다.
+            </p>
+            <p>
+              <strong>② 대조군이 없다.</strong> 두 창을 다 가진 건 솔리테어뿐입니다.
+              그 기간 FB CDN·회선이 나았던 건지 우리 코드 덕인지 구분할 방법이
+              없습니다.
+            </p>
+            <p>
+              <strong>③ 요일이 갈렸다.</strong> 앞 창은 목·금·토, 뒤 창은 토·일·월.
+              주말은 기기·회선 구성이 달라 분포가 통째로 움직입니다. 하루 130명대
+              표본에선 영향이 큽니다.
+            </p>
+            <p>
+              <strong>④ 빌드가 섞였다.</strong> 08-06~08-08 창 안에서만 로딩 코드가
+              두 번 바뀌고 롤백까지 있었습니다<sup class="fn">5</sup>. 날짜로 자르면
+              서로 다른 빌드가 한 셀에 들어갑니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">확정하려면 두 가지</div>
+            <p>
+              <strong>축을 날짜에서 <code>client_version</code>으로 바꾼다.</strong>
+              배포 경계에서 값이 딱 갈리면 우리 변경 효과가 맞고, 안 갈리면
+              요일·회선 노이즈였던 겁니다. 이게 결정적입니다.
+            </p>
+            <p>
+              <strong>코지·퍼블마도 같은 두 창을 뽑는다.</strong> 셋 다 같이
+              좋아졌으면 외부 요인, 솔리테어만 좋아졌으면 우리 효과입니다(차이의
+              차이). 쿼리 날짜만 바꾸면 되니 비용이 거의 없습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 구간 분해 ================= -->
+      <!-- 판 시작(2100)을 0으로 놓고 각 로그의 상대 위치를 재는 방식.
+           음수 = 판 시작보다 먼저 찍힌 로그. 코드 감사에서 찾은 순서 역전이
+           여기서 그대로 확인된다. -->
+      <section class="doc-section" id="seq">
+        <h2 class="doc-h2">구간 분해 — 시간이 어디서 가나</h2>
+        <p class="doc-h2-sub">
+          <code>2100_GAMEPLAY_START</code>을 0으로 놓은 상대 시각 p50 (초) ·
+          음수는 판 시작보다 먼저 찍힌 로그
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>로그 / 구간</th>
+                <th style="text-align: right">SCJ NRU</th>
+                <th style="text-align: right">COZY NRU</th>
+                <th style="text-align: right">PBM NRU</th>
+                <th style="text-align: right">SCJ RU</th>
+                <th style="text-align: right">COZY RU</th>
+                <th style="text-align: right">PBM RU</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>ALL_LOAD_FB</code></td>
+                <td class="num">-3.74</td>
+                <td class="num">-3.59</td>
+                <td class="num">-28.54</td>
+                <td class="num">-16.36</td>
+                <td class="num">-4.08</td>
+                <td class="num">-4.42</td>
+              </tr>
+              <tr>
+                <td><code>1000_LOGIN_COMPLETE</code></td>
+                <td class="num">-1.05</td>
+                <td class="num">-1.66</td>
+                <td class="num">-25.65</td>
+                <td class="num">-11.64</td>
+                <td class="num">-1.79</td>
+                <td class="num">-1.95</td>
+              </tr>
+              <tr>
+                <td><code>1010_LOAD_COMPLETE</code></td>
+                <td class="num">+0.03</td>
+                <td class="num">-1.45</td>
+                <td class="num">-22.98</td>
+                <td class="num">-9.23</td>
+                <td class="num">-1.56</td>
+                <td class="num">-0.31</td>
+              </tr>
+              <tr>
+                <td><code>2100_GAMEPLAY_START</code> <span class="why">기준점</span></td>
+                <td class="num">0</td>
+                <td class="num">0</td>
+                <td class="num">0</td>
+                <td class="num">0</td>
+                <td class="num">0</td>
+                <td class="num">0</td>
+              </tr>
+              <tr>
+                <td><b>FB → 로그인 완료</b></td>
+                <td class="num">2.69</td>
+                <td class="num">1.93</td>
+                <td class="num">2.89</td>
+                <td class="num"><span class="mx mx-bad">4.72</span></td>
+                <td class="num">2.29</td>
+                <td class="num">2.47</td>
+              </tr>
+              <tr>
+                <td><b>로그인 완료 → 1010</b></td>
+                <td class="num">1.08</td>
+                <td class="num">0.21</td>
+                <td class="num">2.67</td>
+                <td class="num"><span class="mx mx-bad">2.41</span></td>
+                <td class="num">0.23</td>
+                <td class="num">1.64</td>
+              </tr>
+              <tr>
+                <td><b>1010 → 판 시작</b></td>
+                <td class="num">-0.03</td>
+                <td class="num">1.45</td>
+                <td class="num">22.98<span class="why">튜토</span></td>
+                <td class="num"><span class="mx mx-bad">9.23</span></td>
+                <td class="num">1.56</td>
+                <td class="num">0.31</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">① 솔리테어 RU는 인트로 자체가 느리다</div>
+            <p>
+              <code>FB → 로그인 완료</code> 4.72초로 <strong>코지(2.29)의 2배, 자기
+              NRU(2.69)의 1.7배</strong>입니다. <code>로그인 → 1010</code>도 2.41초로
+              코지(0.23)의 10배입니다. 반면 <b>NRU 인트로는 코지와 큰 차이가
+              없습니다</b>(2.69 vs 1.93).
+            </p>
+            <p>
+              즉 병목은 인트로 공통 구간이 아니라 <strong>RU 전용 경로</strong>입니다
+              — 로비 번들 프리로드, 친구 리더보드 조회, 프리레벨 팝업 로드가 여기
+              들어갑니다. 초판에서 가설로만 적었던 게 데이터로 확인됐습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">② 판 진입 9.23초 — 대부분은 유저 대기다</div>
+            <p>
+              <code>2090</code> 프리레벨 노출(-10.99) → <code>2094</code> Play
+              누름(-3.88) = <strong>7.1초 고민</strong>,
+              <code>3050</code> 전환 팝업(-3.60) → <code>3051</code> 수락(-0.21) =
+              <strong>3.4초</strong>. 퍼블마 RU는 같은 구간이 0.31초입니다(로딩 끝나면
+              바로 판 시작).
+            </p>
+            <p>
+              <b>이건 일방적 손해가 아닙니다</b> — 부스터·베팅 선택은 수익에 기여하는
+              UI입니다. 줄일 대상은 유저 선택이 아니라
+              <strong>컨텍스트 전환 팝업 3.4초</strong> 쪽이 먼저입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">③ 신규 유저는 판 시작 후 2초간 빈 화면을 본다</div>
+            <p>
+              솔리테어 NRU는 <code>2100</code> → <code>2110_TUTO_INGAME_INTRO</code>가
+              <strong>+1.96초</strong>입니다. 코지는 +0.02초입니다. 첫
+              터치(<code>9990</code>)는 +6.91초에 나옵니다. 신규 유저 첫 인상 구간에
+              2초 공백이 있다는 뜻입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">곁가지 — 에러율과 완주율</div>
+            <p>
+              <strong>인트로 에러</strong>(<code>ALL_INTRO_DEBUG_ERROR_98</code>):
+              솔리테어 8.8%(NRU)·8.9%(RU) vs 코지 3.9%·5.4%, 퍼블마 NRU 0%.
+              <b>p90 꼬리(17~22초)의 유력한 원인 후보</b>입니다.
+            </p>
+            <p>
+              <strong>첫 판 완주율</strong>(<code>2300</code> 커버리지): 퍼블마 84.2% &gt;
+              솔리테어 59.0% &gt; 코지 51.1%. <b>코지는 로딩이 가장 빠른데 첫 판 완주는
+              가장 낮습니다</b> — 로딩 속도와 초반 이탈이 같은 방향이 아니라는 뜻이라,
+              로딩만 개선 지표로 삼으면 안 됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표의 한계 2가지 — 확정 수치가 아닙니다</div>
+            <p>
+              <strong>① 중앙값의 차 ≠ 차의 중앙값.</strong> 이벤트별로 독립적으로 낸
+              p50이라 뺄셈이 정확하지 않습니다. 실제로 퍼블마 NRU는
+              <code>ALL_LOAD_FB → 1010</code>이 5.56초로 나오는데, 같은 기간
+              <code>1010.$.time</code> p50(4.34초)보다 큽니다 — 앞뒤가 안 맞습니다.
+              <b>확정하려면 플레이어별 차이의 중앙값으로 다시 뽑아야 합니다.</b> 지금
+              표는 방향과 크기를 잡는 용도입니다.
+            </p>
+            <p>
+              <strong>② 생존자 편향.</strong> 기준점이 <code>2100</code>이라
+              <b>판을 시작한 세션만</b> 들어 있습니다. 로딩 도중 이탈한 유저는 통째로
+              빠졌으므로 <b>실제 로딩 체감은 이 숫자보다 나쁩니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 부팅 해부 ================= -->
+      <!-- 로더(main.js)가 찍는 3개 체크포인트로 부팅을 쪼갠 결과.
+           사내 research-loadfb-introstart-gap.md 가 요청한 "BQ 3분할"의 답. -->
+      <section class="doc-section" id="boot">
+        <h2 class="doc-h2">부팅 해부 — 지연이 한 구간에 몰려 있다</h2>
+        <p class="doc-h2-sub">
+          로더 체크포인트 3개로 쪼갠 결과 · NRU p50 (초) · 2026-08-08~10 · US
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>구간</th>
+                <th>무엇이 일어나는가</th>
+                <th style="text-align: right">SCJ</th>
+                <th style="text-align: right">COZY</th>
+                <th style="text-align: right">PBM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>LOAD_FB → LOAD_INTRO</code></td>
+                <td>
+                  index.js 다운로드 + 파싱, 인트로 씬 로드
+                  <span class="why">(import pack · png 9장 · ttf 폰트 대기)</span>
+                </td>
+                <td class="num"><span class="mx mx-bad">0.97</span></td>
+                <td class="num">0.29</td>
+                <td class="num">0.55</td>
+              </tr>
+              <tr>
+                <td><code>LOAD_INTRO → _START</code></td>
+                <td>씬 전환 시작까지</td>
+                <td class="num">0.00</td>
+                <td class="num">0.01</td>
+                <td class="num">0.01</td>
+              </tr>
+              <tr>
+                <td><code>_START → _FINISH</code></td>
+                <td>씬 활성화 완료</td>
+                <td class="num">0.06</td>
+                <td class="num">0.03</td>
+                <td class="num">0.08</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">전량이 첫 구간에 있다</div>
+            <p>
+              뒤의 두 구간은 사실상 0입니다. <strong
+                >씬 전환·활성화 자체는 비싸지 않고, 비용은 전부 index.js와 씬 로드에
+                있습니다.</strong
+              >
+              솔리테어는 이 구간이 코지의 <b>3.3배</b>입니다.
+            </p>
+            <p>
+              번들 크기로 보면 부팅 총량이 솔리테어 1.52MB vs 코지 0.95MB(1.6배)인데
+              <b>시간 격차는 3.3배</b>입니다. 전송량만으로 설명되지 않는다는 뜻이라,
+              <strong>파싱·디코딩(CPU) 쪽 비용이 더 크게 작용</strong>하고 있습니다.
+              main index.js가 전송 638KB / <b>원본 3.02MB</b>인데, 압축은 다운로드만
+              줄이고 <b>파싱은 원본 크기 기준</b>이기 때문입니다.
+            </p>
+          </div>
+        </div>
+
+        <h2 class="doc-h2" style="margin-top: 26px">
+          OS 믹스 — 프로젝트마다 유저 구성이 다르다
+        </h2>
+        <p class="doc-h2-sub">NRU 세션의 디바이스 구성 (로더 이벤트 커버리지 기준)</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>프로젝트</th>
+                <th style="text-align: right">Android</th>
+                <th style="text-align: right">iOS</th>
+                <th style="text-align: right">기타</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>솔리테어</td>
+                <td class="num"><span class="mx mx-warn">69.4%</span></td>
+                <td class="num">8.6%</td>
+                <td class="num">18.2%</td>
+              </tr>
+              <tr>
+                <td>코지</td>
+                <td class="num">40.2%</td>
+                <td class="num"><span class="mx mx-ok">54.4%</span></td>
+                <td class="num">3.6%</td>
+              </tr>
+              <tr>
+                <td>퍼블마</td>
+                <td class="num">42.7%</td>
+                <td class="num">39.3%</td>
+                <td class="num">13.8%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll" style="margin-top: 12px">
+          <table>
+            <thead>
+              <tr>
+                <th>부팅 구간 <span class="why">LOAD_FB → LOAD_INTRO_FINISH</span></th>
+                <th style="text-align: right">Android</th>
+                <th style="text-align: right">iOS</th>
+                <th style="text-align: right">기타</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>솔리테어</td>
+                <td class="num">1.35초</td>
+                <td class="num">0.52초</td>
+                <td class="num">0.42초</td>
+              </tr>
+              <tr>
+                <td>코지</td>
+                <td class="num">0.55초</td>
+                <td class="num">0.21초</td>
+                <td class="num">0.30초</td>
+              </tr>
+              <tr>
+                <td>퍼블마</td>
+                <td class="num">1.05초</td>
+                <td class="num">0.54초</td>
+                <td class="num">0.78초</td>
+              </tr>
+              <tr>
+                <td><b>솔리테어 ÷ 코지</b></td>
+                <td class="num"><b>2.45배</b></td>
+                <td class="num"><b>2.48배</b></td>
+                <td class="num">1.4배</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">믹스는 교란 요인이지만, 격차의 원인은 아니다</div>
+            <p>
+              iOS 유저는 기기·회선이 대체로 좋습니다. 코지는 iOS가 과반이고 솔리테어는
+              안드로이드가 69%이니, <b>단순 평균 비교는 이 차이에 오염</b>돼 있습니다.
+            </p>
+            <p>
+              <strong>다만 OS를 맞춰도 배율이 2.5배로 같습니다.</strong> 믹스를 걷어내도
+              솔리테어가 2.5배 느리다는 뜻이라, <b>격차의 원인은 유저 구성이 아니라
+              빌드 구조</b>입니다. 반대로 말하면, 안드로이드 비중이 높은 것 자체는
+              고칠 수 없으니 <b>구조를 고쳐야 그 몫까지 같이 좋아집니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">
+              이미지 선주입 3.0MB 가설 — 기각은 아니고 "꼬리 전용"으로 격하
+            </div>
+            <p>
+              솔리테어는 부팅 시점에 인게임 이미지 6장(원본 합계 <b>3.0MB</b>)을
+              iOS는 <code>preload</code>, 안드로이드는 <code>prefetch</code>로 주입합니다.
+              PNG은 이미 압축된 포맷이라 <b>전송 단계에서 더 줄지 않습니다</b> — 느린
+              회선에서는 이 3.0MB가 그대로 파이프를 먹습니다.
+            </p>
+            <p>
+              그런데 <strong>주입 방식이 정반대인 두 OS에서 배율이 2.5배로
+              동일</strong>합니다. 이게 주범이면 고우선순위로 끼어드는 iOS가 더 나빠야
+              합니다. <b>중앙값에서는 영향이 안 보이므로 꼬리(느린 회선) 전용 가설로
+              내려둡니다.</b> 완전 기각은 아닙니다 — 솔리테어가 무너지는 구간이 정확히
+              그 꼬리입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">로컬 저사양 계측은 중앙값이 아니라 꼬리를 재고 있었다</div>
+            <p>
+              사내 로컬 프로파일(CPU 10.8배 저하 + Fast 4G)에서 이 구간은
+              <b>약 5.8초</b>(index.js 3.2초 + 씬 2.6초)로 측정됐습니다. 라이브 필드
+              p50은 <b>0.97초</b>로 <strong>약 1/6</strong>입니다.
+            </p>
+            <p>
+              둘 다 맞는 값입니다 — <b>로컬 프로파일이 재고 있던 건 저사양 세그먼트,
+              즉 p90 이상의 꼬리</b>입니다. 개선 판단을 로컬 수치로만 하면 중간 유저
+              기준으로는 과대평가, 반대로 필드 p50만 보면 <b>가장 아픈 세그먼트를
+              놓칩니다.</b> 두 숫자를 같이 봐야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 로그 실태 ================= -->
+      <section class="doc-section" id="gap">
+        <h2 class="doc-h2">로그 앵커 실태 — 실측으로 정정</h2>
+        <p class="doc-h2-sub">
+          코드 검색이 아니라 실제 발화 커버리지 기준 (판 대비 %)
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>앵커 로그</th>
+                <th style="text-align: right">솔리테어 NRU</th>
+                <th style="text-align: right">코지 NRU</th>
+                <th style="text-align: right">퍼블마 NRU</th>
+                <th>판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>ALL_LOAD_FB</code></td>
+                <td class="num">98.6%</td>
+                <td class="num">99.6%</td>
+                <td class="num">97.7%</td>
+                <td><span class="mx mx-ok">정상 수집</span></td>
+              </tr>
+              <tr>
+                <td><code>ALL_LOAD_INTRO_START / _FINISH</code></td>
+                <td class="num">98.6%</td>
+                <td class="num">99.6%</td>
+                <td class="num">97.8%</td>
+                <td><span class="mx mx-ok">정상 수집</span></td>
+              </tr>
+              <tr>
+                <td><code>INTRO_FB_START_FINISH</code> <span class="why">INTRO_* 대표</span></td>
+                <td class="num">98.4%</td>
+                <td class="num">99.5%</td>
+                <td class="num">97.7%</td>
+                <td><span class="mx mx-ok">솔리테어도 발화</span></td>
+              </tr>
+              <tr>
+                <td><code>1000_LOGIN_COMPLETE</code></td>
+                <td class="num">99.3%</td>
+                <td class="num">99.8%</td>
+                <td class="num">97.9%</td>
+                <td><span class="mx mx-ok">정상 수집</span></td>
+              </tr>
+              <tr>
+                <td><code>1010_LOAD_COMPLETE</code> + <code>$.time</code></td>
+                <td class="num">99.3%</td>
+                <td class="num">99.8%</td>
+                <td class="num">98.1%</td>
+                <td><span class="mx mx-ok">정상 수집</span></td>
+              </tr>
+              <tr>
+                <td><code>9990_PLAY_FIRST_TOUCH</code> <span class="why">첫 입력</span></td>
+                <td class="num">64.2%</td>
+                <td class="num">53.3%<span class="why">2115</span></td>
+                <td class="num">98.1%</td>
+                <td><span class="mx mx-warn">프로젝트별 번호 다름</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">코드 검색으로 판단하면 틀린다 — 초판의 실수</div>
+            <p>
+              초판에서는 각 리포의 <code>assets/script</code>를 검색해
+              <code>ALL_LOAD_FB</code>는 "정의만 있고 호출부 0",
+              <code>ALL_LOAD_INTRO_*</code>는 "5개 리포 전부 없음",
+              솔리테어 <code>INTRO_*</code>는 "래퍼만 있고 미발화"라고 적었습니다.
+              <strong>셋 다 틀렸습니다.</strong>
+            </p>
+            <p>
+              실제로는 <b>웹 로더·부트 스크립트 등 클라 리포 밖에서 발화</b>하고 있어
+              코드 검색에 안 걸렸을 뿐, 커버리지 97~99%로 정상 수집 중입니다.
+              <b>로그 발화 여부는 코드가 아니라 데이터로 판정해야 합니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">그래서 신규 로그 작업이 필요 없다</div>
+            <p>
+              초판의 "다음에 할 일"에 있던
+              <b>솔리테어 <code>logIntro*</code> 배선</b>과
+              <b><code>ALL_LOAD_INTRO_START/FINISH</code> 신설</b>은
+              <strong>둘 다 이미 되어 있습니다.</strong> 클라 수정 없이 쿼리만으로
+              3개 프로젝트 인트로를 같은 해상도로 분해할 수 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">다만 첫 입력 로그는 여전히 비교 불가</div>
+            <p>
+              커버리지가 솔리테어 64.2% / 코지 53.3%(<code>2115</code>) / 퍼블마
+              98.1%로 갈립니다. 번호도 이름도 다르고, 솔리테어·퍼블마는 튜토 가이드가
+              입력을 막는 동안 발화하지 않습니다. <b>"화면 뜨고 첫 터치까지"를 세
+              프로젝트에서 같은 정의로 비교할 수는 없습니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 다음 ================= -->
+      <section class="doc-section" id="next">
+        <h2 class="doc-h2">다음에 할 일</h2>
+        <p class="doc-h2-sub">비용이 낮은 순서</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>할 일</th>
+                <th>얻는 것</th>
+                <th>비용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>빌드별 재집계</b> — 날짜 대신 <code>client_version</code></td>
+                <td>08-07 로딩 변경이 실제 효과였는지 확정</td>
+                <td><span class="mx mx-ok">쿼리 1회</span></td>
+              </tr>
+              <tr>
+                <td><b>코지·퍼블마도 08-06~08 창 추가</b></td>
+                <td>외부 요인 제거 (차이의 차이)</td>
+                <td><span class="mx mx-ok">쿼리 1회</span></td>
+              </tr>
+              <tr>
+                <td><b>플레이어별 차이의 중앙값으로 재집계</b></td>
+                <td>구간 분해 수치 확정 (지금은 중앙값 뺄셈이라 근사)</td>
+                <td><span class="mx mx-ok">쿼리 1회</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <b><code>ALL_LOAD_FB</code> 앵커로 로딩 총량 재집계</b>
+                </td>
+                <td>
+                  <code>1010</code>의 결승선 차이 없는 공정 비교 — <b>신규 로그 불필요</b>
+                </td>
+                <td><span class="mx mx-ok">쿼리 1회</span></td>
+              </tr>
+              <tr>
+                <td><b>솔리테어 RU 인트로 4.72초 내부 분해</b></td>
+                <td>
+                  RU 전용 경로(로비 번들·리더보드·팝업) 중 어디가 먹는지 확정
+                </td>
+                <td><span class="mx mx-ok">쿼리 1회</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <b>로더에 체크포인트 1줄 추가</b>
+                  <span class="why"><code>loadBundle(MAIN)</code> 완료 시점</span>
+                </td>
+                <td>
+                  뭉쳐 있는 <code>LOAD_FB→LOAD_INTRO</code>를
+                  <b>index.js와 씬으로 영구 분리</b> — 기존 접두사·OS 체계에 자동 편입
+                </td>
+                <td><span class="mx mx-ok">1줄 + 배포</span></td>
+              </tr>
+              <tr>
+                <td><b>인트로 에러 98 발생 조건 조사</b></td>
+                <td>솔리테어 8.8% vs 코지 3.9% — p90 꼬리 원인 후보</td>
+                <td><span class="mx mx-warn">코드 조사</span></td>
+              </tr>
+              <tr>
+                <td><b>컨텍스트 전환 팝업 3.4초 단축 검토</b></td>
+                <td>RU 판 진입 9.23초 중 유일하게 UX 개선 여지가 있는 구간</td>
+                <td><span class="mx mx-warn">기획 판단 필요</span></td>
+              </tr>
+              <tr class="is-dead">
+                <td>
+                  <b>index.js 코드 스플리팅</b>
+                  <span class="pill" style="background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad)">착수 금지</span>
+                </td>
+                <td>
+                  사내 로드맵 <b>REJECTED</b> — 원본 −23%지만 압축 전송 기준 실이득
+                  약 80KB. 2026-07 시도는 역직렬화 크래시로 롤백됨
+                </td>
+                <td><span class="mx mx-bad">기각됨</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">순서를 이렇게 잡는 이유</div>
+            <p>
+              <b>앞 다섯 줄은 쿼리만으로 끝나고</b> 클라를 건드리지
+              않습니다. 노이즈를 먼저 걷어내야 "솔리테어가 진짜 느린가"에 답이 나오고,
+              그 답이 나온 뒤에 코드 작업 우선순위를 정하는 게 맞습니다. 반대로 하면
+              노이즈를 쫓아 코드를 고치게 됩니다.
+            </p>
+            <p>
+              v1.1에서 <b>로그 신설·배선 항목 2개가 목록에서 빠졌습니다</b> — 이미
+              찍히고 있던 것으로 확인됐기 때문입니다. 코드 검색만 믿고 작업을 잡았다면
+              <b>이미 있는 로그를 다시 만들 뻔했습니다.</b>
+            </p>
+            <p>
+              v1.2에서는 <b>index.js 코드 스플리팅이 목록에서 빠졌습니다.</b> 이 문서의
+              데이터만 보면 "파싱이 지배적이니 쪼개자"가 자연스러운 결론이지만,
+              <strong>사내 로딩 로드맵에 이미 기각 항목으로 올라가 있고 실제 시도가
+              크래시로 롤백된 이력</strong>이 있습니다. 새 데이터가 나와도
+              <b>기존 기각 목록을 먼저 확인해야</b> 같은 실패를 반복하지 않습니다.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>사용한 쿼리 (A안 — 로딩 총량)</summary>
+          <div class="fold-body">
+            <!-- pre 전용 스타일이 없어 가로 넘침을 .table-scroll(overflow-x:auto)로 막는다 -->
+            <div class="table-scroll">
+              <pre><code>WITH raw_log AS (
+  SELECT 'SCJ' AS g, log_date, player_id, logincount_total, event, data, log_time
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date BETWEEN '2026-08-08' AND '2026-08-10'
+    AND (is_dev = FALSE OR is_dev IS NULL) AND player_id &gt; 0 AND country = 'US'
+  UNION ALL
+  SELECT 'COZY', log_date, player_id, logincount_total, event, data, log_time
+  FROM `game-log-359704.raw.cozy_tiles`
+  WHERE log_date BETWEEN '2026-08-08' AND '2026-08-10'
+    AND (is_dev = FALSE OR is_dev IS NULL) AND player_id &gt; 0 AND country = 'US'
+  UNION ALL
+  SELECT 'PBM', log_date, player_id, logincount_total, event, data, log_time
+  FROM `game-log-359704.raw.puzzle_block_master`
+  WHERE log_date BETWEEN '2026-08-08' AND '2026-08-10'
+    AND (is_dev = FALSE OR is_dev IS NULL) AND player_id &gt; 0 AND country = 'US'
+),
+load_done AS (
+  SELECT g,
+         IF(logincount_total &lt;= 1, 'NRU', 'RU') AS seg,
+         player_id,
+         CAST(JSON_VALUE(data, '$.time') AS INT64) / 1000 AS load_sec
+  FROM raw_log
+  WHERE event = '1010_LOAD_COMPLETE'
+    AND JSON_VALUE(data, '$.time') IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY g, player_id ORDER BY log_time) = 1
+),
+agg AS (
+  SELECT g, seg,
+         COUNT(*) AS n,
+         AVG(load_sec) AS avg_sec,
+         APPROX_QUANTILES(load_sec, 100)[OFFSET(50)] AS p50,
+         APPROX_QUANTILES(load_sec, 100)[OFFSET(90)] AS p90
+  FROM load_done
+  WHERE load_sec BETWEEN 0 AND 600
+  GROUP BY 1, 2
+)
+SELECT g, seg, n,
+       ROUND(avg_sec, 2), ROUND(p50, 2), ROUND(p90, 2),
+       ROUND(p50 - MAX(IF(g = 'COZY', p50, NULL)) OVER (PARTITION BY seg), 2)
+FROM agg
+ORDER BY seg, p50</code></pre>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= 각주 ================= -->
+      <section class="doc-section" id="notes">
+        <h2 class="doc-h2">각주</h2>
+        <p class="doc-h2-sub">판정 근거 — 모두 각 리포 main 브랜치 코드 실측</p>
+
+        <div class="notes">
+          <div class="note">
+            <div class="note-title">1 — 코지의 1010은 화면과 무관하다</div>
+            <p>
+              <code>LogManager.logLoginComplete()</code> 안에서 로그인 로그 응답
+              Promise에 <code>setTimeout 100ms</code>를 걸어
+              <code>logLoadComplete()</code>를 호출합니다. 인게임을 띄우는 건 완전히
+              다른 병렬 링크(<code>requestStart</code>)라
+              <b>1010과 2100의 선후는 회선·기기에 따라 뒤집힐 수 있습니다</b> —
+              코드만으로는 부호를 확정할 수 없고, 데이터로 확인해야 합니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">2 — 솔리테어 RU는 프리레벨 팝업이 결승선</div>
+            <p>
+              <code>PopupGameEntry.onShowStart</code>에서
+              <code>logLoadComplete()</code>를 부르고, 바로 다음 줄에서
+              <code>2090_PRE_LEVEL_SHOW</code>를 찍습니다. 즉 RU의 1010은
+              <b>유저가 Play를 누르기 전</b> 시점입니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">3 — 솔리테어 NRU는 2100이 1010보다 앞선다</div>
+            <p>
+              레벨 1~2는 로비를 건너뛰고 인게임으로 직행합니다.
+              <code>prepareGame()</code>에서 <code>2100</code>을 찍은 뒤
+              <code>view.show()</code> → <code>onShowStart</code>에서
+              <code>1010</code>이 찍히므로 <b>순서가 뒤집혀 있습니다</b>. 두 로그의
+              시간차는 1프레임 수준입니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">
+              4 — RU 경로 비용은 가설에서 확인으로
+              <span class="pill" style="background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok)">v1.1 갱신</span>
+            </div>
+            <p>
+              솔리테어 RU는 로비 번들 프리로드 + 친구 리더보드 조회(soft timeout 3초)
+              + 프리레벨 팝업 로드를 거칩니다. 초판에서는 "구조상 그럴 것"이라는
+              가설이었으나, <strong
+                >구간 분해에서 RU 인트로가 NRU의 1.7배(4.72 vs 2.69초)로 확인</strong
+              >됐습니다. 다만 <b>세 요소 중 어느 것이 얼마를 먹는지는 아직
+              분해되지 않았습니다</b> — <code>INTRO_*</code> 쌍으로 추가 분해가
+              가능합니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">5 — 08-06~08-08 창의 빌드 혼재</div>
+            <p>
+              해당 기간 커밋: <code>f1ec06b7</code> 인게임 이미지 선주입 제거 →
+              <code>aec765e4</code> 같은 변경 <b>롤백</b> →
+              <code>690edc36</code> 밸런스시트 로딩 fetch 전환 및 4xx 즉시 포기(인트로
+              403 스톨 해소) → <code>76fa97bf</code> 프리로드 지면 확대.
+              배포 반영 시점은 커밋일과 다르므로 <code>client_version</code>으로
+              확인해야 합니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">
+              6 — 순서 역전이 데이터로 확인됨
+              <span class="pill" style="background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok)">v1.1 추가</span>
+            </div>
+            <p>
+              구간 분해에서 솔리테어 NRU의 <code>1010</code>이
+              <strong>+0.03초</strong>로 나옵니다 — <code>2100</code>보다 뒤입니다.
+              각주 3의 코드 판정(1프레임 수준 역전)이 라이브 데이터로 그대로
+              확인됐습니다. 퍼블마 NRU의 튜토 로그가 전부 음수(-22 ~ -0.25초)로
+              나오는 것도 <b>튜토가 <code>2100</code>보다 앞</b>이라는 감사 결과와
+              일치합니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">
+              7 — 압축은 다운로드만 줄인다
+              <span class="pill" style="background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok)">v1.2 추가</span>
+            </div>
+            <p>
+              페이스북은 스크립트를 <b>brotli로 전송 압축</b>하므로 빌드에서 보이는
+              원본 크기로 다운로드 이득을 계산하면 <b>과대평가</b>됩니다(main index.js
+              원본 3.02MB → 전송 638KB). 반대로 <strong>PNG은 이미 압축된 포맷이라
+              전송에서 거의 안 줄어듭니다</strong>(실측 −1.6%) — 텍스트에만 성립하는
+              명제를 이미지에 적용하면 안 됩니다.
+            </p>
+            <p>
+              그리고 <b>파싱 비용은 압축과 무관하게 원본 크기 기준</b>입니다. 그래서
+              "전송은 638KB니까 가볍다"와 "파싱은 3.02MB치"가 동시에 참입니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">
+              8 — 이미지 선주입 제거는 한 번 시도됐다가 롤백됐다
+              <span class="pill" style="background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok)">v1.2 추가</span>
+            </div>
+            <p>
+              2026-08-06 저녁 부팅 이미지 주입 블록을 제거했다가 <b>다음 날 아침
+              롤백</b>했습니다. 사유는 "제거 근거였던 <b>이중 다운로드가 실제로는
+              발생하지 않음</b>" — 원래 관측이 로컬 서버 빌드의 것이었고 캐시 헤더
+              차이로 로컬에서만 보였을 가능성이 큽니다.
+            </p>
+            <p>
+              <strong>다만 이 롤백이 반증한 것은 "중복 다운로드" 주장뿐입니다.</strong>
+              "중복이 아니어도 부팅 창에서 3.0MB를 받는 것 자체가 파이프를 점유한다"는
+              별개의 주장은 <b>아직 검증되지 않았습니다.</b> 그리고 이 축은
+              <b>로컬 서버 빌드로 판정할 수 없습니다</b> — 회선·기기 경합이 원인인데
+              개발 환경에는 그 조건이 없기 때문입니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">집계에서 빠진 것</div>
+            <p>
+              마종·코인매치는 BigQuery 테이블명이 확인되지 않아 이번 집계에서
+              제외했습니다(<code>raw.mahjong</code> / <code>raw.coin_match</code>로
+              추정). 테이블만 확인되면 같은 쿼리에 UNION 한 줄씩 추가하면 됩니다.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
