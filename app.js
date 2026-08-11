@@ -1,32 +1,12 @@
 /* ==========================================================================
-   app.js — 렌더링 / 테마 / 검색 / 스크롤스파이
+   app.js — 렌더링 / 검색 / 스크롤스파이
    허브(index.html)와 문서 페이지에서 공용으로 로드됩니다.
    문서 페이지에는 없는 DOM 은 모두 null 가드 처리.
+   테마 전환은 라이트 단일 테마로 정리하면서 제거됨.
    ========================================================================== */
 
 (function () {
   "use strict";
-
-  /* ---------- 테마 ---------- */
-
-  var root = document.documentElement;
-  var themeBtn = document.getElementById("theme");
-
-  function setTheme(t) {
-    root.setAttribute("data-theme", t);
-    try {
-      localStorage.setItem("theme", t);
-    } catch (e) {}
-    if (themeBtn) themeBtn.textContent = t === "dark" ? "☀" : "☾";
-  }
-
-  setTheme(root.getAttribute("data-theme") || "dark");
-
-  if (themeBtn) {
-    themeBtn.addEventListener("click", function () {
-      setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
-    });
-  }
 
   /* ---------- 허브 렌더 ---------- */
 
