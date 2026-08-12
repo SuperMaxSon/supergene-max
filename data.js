@@ -114,6 +114,16 @@ const SECTIONS = [
     desc: "협업 문서 · 배포 가이드 · 사내 툴",
     cards: [
       {
+        title: "솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나",
+        desc: "커밋 메시지만으로는 복원되지 않는 수정 사유를 육하원칙으로 남긴 기록. 08-05~08-11 Max 커밋 37건을 diff 전량 확인해 정리했고, 되감긴 커밋 4건·사유 미복원 5건·아직 열려 있는 구멍을 함께 표시. 냥이 이벤트 버그는 서버 진행도 리셋 / 기기 시계 불신 / 보상 선지급 세 축으로 수렴.",
+        url: "docs/commit-history-solitaire.html",
+        status: "진행중",
+        version: "v1.0",
+        updated: "2026-08-12",
+        pinned: false,
+        tags: ["커밋", "작업기록", "솔리테어", "육하원칙", "되감김", "diff실측"],
+      },
+      {
         title: "이 사이트에 문서 추가하는 법",
         desc: "data.js 파일 하나만 고치면 됩니다. README 에 설명이 있습니다.",
         url: "https://github.com/SuperMaxSon/supergene-max#readme",
