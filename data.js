@@ -102,7 +102,7 @@ const SECTIONS = [
         desc: "인게임 설정팝업의 재도전 버튼 QA 순서. 어디까지 취소되고 어디서부터 되돌릴 수 없는지, 코드 리뷰에서 이미 확인된 이슈까지 함께 정리했다.",
         url: "docs/ingame-retry-qa-flow.html",
         status: "진행중",
-        version: "v1.0",
+        version: "v1.1",
         updated: "2026-08-12",
         pinned: false,
         tags: ["재도전", "QA", "프리게임팝업", "정산", "회귀", "알려진이슈"],
