@@ -43,7 +43,7 @@
           <span class="tag">빌드(client_version)로 분리 측정</span>
           <span class="tag">NRU/RU 분해 · 동일 날짜창 대조</span>
           <span class="tag">빌드 ≥ 438만 신뢰 구간</span>
-          <span class="tag">v6.0 · 2026-08-12</span>
+          <span class="tag">v6.1 · 2026-08-12</span>
         </div>
       </div>
     </header>
@@ -592,8 +592,85 @@ case 'tournament':
                 <td><span class="mx">미검증</span></td>
                 <td>이웃이 없으면 "만들어도 아무도 안 온다"는 학습이 생긴다</td>
               </tr>
+              <tr class="is-dead">
+                <td>17</td>
+                <td>
+                  FB 컨텍스트가 유지돼 일반 판마다 공유가 반복 노출된다
+                  <span class="why">QA 제기 · 08-12</span>
+                </td>
+                <td><span class="mx mx-bad">기각 · 시점차</span></td>
+                <td>
+                  07-23까지는 사실. <code>b6711ca6</code>(07-24)·<code>7af989e5</code>(08-03)로
+                  판 시작·거절·로비 전 경로에서 SOLO 복귀
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td>18</td>
+                <td>
+                  P2P 판 종료에 토너먼트 공유가 덧붙는다
+                  <span class="why"><code>case 'p2p'</code> break 누락</span>
+                </td>
+                <td><span class="mx mx-bad">기각 · 무해</span></td>
+                <td>
+                  P2P 스레드엔 토너먼트가 없어 <code>getTournamentAsync</code>가 null →
+                  즉시 return. 다이얼로그는 안 열리고 FB 왕복만 낭비
+                </td>
+              </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- 가설 17은 "언제까지 맞았는가"가 핵심이라 커밋 타임라인을 따로 붙인다. -->
+        <div class="note" style="--acc: var(--analysis)">
+          <div class="note-title">가설 17 보강 — 컨텍스트 유지 경로가 닫힌 시점</div>
+          <p>
+            "한 번 전환하면 계속 물고 간다"의 실체는 <code>b6711ca6</code> 이전의
+            <code>if (contextType === "TOURNAMENT" || contextType === "THREAD") return;</code>
+            한 줄이었습니다. 이미 전환된 컨텍스트면 추천도 SOLO 복귀도 하지 않고 빠져나갔습니다.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>커밋</th>
+                  <th>변경</th>
+                  <th>유지 여부</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>04-06</td>
+                  <td><code>32bc8fbe</code></td>
+                  <td>로비 재진입 시 SOLO 복귀</td>
+                  <td>로비 경유 시만 리셋</td>
+                </tr>
+                <tr>
+                  <td>06-26</td>
+                  <td><code>6628c652</code></td>
+                  <td>결과 → 다음판 직행(QNL)</td>
+                  <td>로비 미경유 → <b>유지</b></td>
+                </tr>
+                <tr>
+                  <td>07-24</td>
+                  <td><code>b6711ca6</code></td>
+                  <td>추천 대상 없으면 SOLO 복귀</td>
+                  <td>절반 차단</td>
+                </tr>
+                <tr>
+                  <td>08-03</td>
+                  <td><code>ab0fa15b</code> · <code>7af989e5</code></td>
+                  <td>전 경로 SOLO 복귀 + 판 시작 판정 통합</td>
+                  <td><b>완전 차단</b></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            08-03은 <a href="#cause">폭락 원인</a>의 A/B 게이트 삭제(<code>c0091b1d</code>)와 같은 날입니다.
+            <b>컨텍스트 복귀는 조이면서 전환 팝업은 전원에게 열었고</b>, 지금의 공유 편중은 그 조합의 결과입니다.
+            <span class="why">외부에서 "반복 노출"로 보이는 현상의 실제 정체 — 유지가 아니라 매 판 재추천</span>
+          </p>
         </div>
 
         <div class="note" style="--acc: var(--warn)">
@@ -676,7 +753,10 @@ case 'tournament':
                 <td>
                   억제 미노출 규모와 상한 3의 회차 분포 적정성.
                   <code>3130</code>·<code>reject_count</code> 모두 08-11 신규라
-                  <b>배포 전엔 관측 불가</b>
+                  <b>배포 전엔 관측 불가</b>.
+                  08-07~08-11 실측 <code>3130</code> <b>0건</b>으로 확인 —
+                  최신 빌드 441도 08-10 빌드라 <code>e0969068</code>(08-11 10:56) 미탑재입니다.
+                  <span class="why">3130이 0이라고 상한이 꺼진 것으로 읽으면 안 됨</span>
                 </td>
                 <td style="text-align: right"><span class="mx">배포 대기</span></td>
               </tr>
