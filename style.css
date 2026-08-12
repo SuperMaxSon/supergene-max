@@ -1151,3 +1151,196 @@ details.fold > summary:hover {
     max-width: none;
   }
 }
+
+/* ==========================================================================
+   커밋 히스토리 목록 (docs/commit-history-solitaire.html)
+   행 하나 = details.ch. 닫힌 상태에서 「작성자 → 설명 → 해시」가 한 줄로 읽힌다.
+   37행이 전부 같은 흰 카드로 늘어서면 훑는 게 불가능해, 왼쪽 색 띠로 영역을
+   구분하고 펼친 본문은 라벨 열 대비 + 「왜」 행 강조로 위계를 준다.
+   색은 --acc 인라인 오버라이드로만 갈아끼운다.
+   ========================================================================== */
+
+.ch-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 16px;
+  margin-bottom: 14px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.ch-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ch-legend span::before {
+  content: "";
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--acc);
+}
+
+.ch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+details.ch {
+  --acc: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--acc);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+details.ch > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 11px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+details.ch > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.ch > summary:hover {
+  background: var(--surface-2);
+}
+
+details.ch[open] {
+  border-color: color-mix(in srgb, var(--acc) 32%, var(--border-soft));
+  box-shadow: var(--shadow-lg);
+}
+
+details.ch[open] > summary {
+  background: color-mix(in srgb, var(--acc) 6%, var(--surface));
+}
+
+/* 작성자 — 영역색을 옅게 깐 칩. 커밋이 누구 것인지가 가장 먼저 읽혀야 한다. */
+.ch-who {
+  flex: none;
+  min-width: 42px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  color: var(--acc);
+  font-size: 10.5px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.ch-what {
+  flex: 1 1 320px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.ch-id {
+  flex: none;
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+details.ch[open] .ch-id {
+  color: var(--acc);
+}
+
+/* 펼친 본문 — 라벨/값 2열. 표 대신 dl을 쓰는 이유는 행마다 배경을 깔아야 해서다. */
+.ch-body {
+  padding: 0 14px 12px;
+}
+
+.ch-body dl {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  margin: 0;
+}
+
+.ch-body dt,
+.ch-body dd {
+  padding: 8px 9px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.ch-body dt {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text-faint);
+}
+
+.ch-body dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--text-dim);
+}
+
+.ch-body dd b,
+.ch-body dd strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* 「왜」가 이 문서의 본체라 영역색으로 띄운다. */
+.ch-body dt.k-why,
+.ch-body dd.k-why {
+  background: color-mix(in srgb, var(--acc) 7%, transparent);
+}
+
+.ch-body dt.k-why {
+  color: var(--acc);
+}
+
+.ch-body dd.k-why {
+  color: var(--text);
+}
+
+/* 아직 안 닫힌 구멍 · 되감김은 빨강으로 따로 뗀다. */
+.ch-body dt.k-open,
+.ch-body dd.k-open {
+  background: color-mix(in srgb, var(--bad) 7%, transparent);
+}
+
+.ch-body dt.k-open {
+  color: var(--bad);
+}
+
+@media (max-width: 640px) {
+  .ch-body dl {
+    grid-template-columns: 1fr;
+  }
+  .ch-body dt {
+    padding-bottom: 0;
+    border-top: 1px solid var(--border-soft);
+  }
+  .ch-body dd {
+    border-top: 0;
+  }
+  .ch-id {
+    margin-left: 0;
+  }
+}
