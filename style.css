@@ -1347,47 +1347,134 @@ details.ch[open] .ch-id {
 
 /* 커밋 히스토리 — 키워드 필터.
    nav 바로 아래에 붙여 37행을 스크롤하다가도 바로 좁힐 수 있게 한다.
+   sticky라 행 위로 겹치므로 배경을 깔고 블러를 준다.
    검색 대상은 커밋 문구뿐 아니라 펼친 본문 전체(파일명·심볼·사유)다. */
 .ch-toolbar {
   position: sticky;
-  top: calc(var(--nav-h) + 8px);
+  top: var(--nav-h);
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin: 0 -8px 14px;
+  padding: 10px 8px;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 아이콘·입력·지우기 버튼을 한 덩어리로 묶어 포커스 링이 통째로 걸리게 한다. */
+.ch-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 6px 0 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ch-field:focus-within {
+  border-color: var(--analysis);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--analysis) 15%, transparent),
+    var(--shadow);
+}
+
+.ch-ico {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 9px;
+  color: var(--text-faint);
+  transition: color 0.15s;
+}
+
+.ch-field:focus-within .ch-ico {
+  color: var(--analysis);
 }
 
 .ch-search {
   flex: 1;
   min-width: 0;
-  padding: 9px 13px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  height: 100%;
+  border: 0;
+  background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text);
   -webkit-appearance: none;
   appearance: none;
+}
+
+.ch-search:focus {
+  outline: none;
 }
 
 .ch-search::placeholder {
   color: var(--text-faint);
 }
 
-.ch-search:focus {
-  outline: none;
-  border-color: var(--analysis);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--analysis) 16%, transparent);
+/* 네이티브 x 버튼은 브라우저마다 모양이 달라 직접 그린다. */
+.ch-search::-webkit-search-cancel-button,
+.ch-search::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ch-clear {
+  flex: none;
+  display: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ch-clear:hover {
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  color: var(--bad);
+}
+
+.ch-toolbar.is-filled .ch-clear {
+  display: grid;
+}
+
+/* 단축키 힌트. 입력이 있으면 지우기 버튼에 자리를 내준다. */
+.ch-kbd {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.ch-toolbar.is-filled .ch-kbd {
+  display: none;
 }
 
 .ch-count {
   flex: none;
-  padding: 5px 11px;
+  padding: 6px 12px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   color: var(--text-dim);
   font-size: 11.5px;
   font-weight: 800;
@@ -1396,8 +1483,15 @@ details.ch[open] .ch-id {
   box-shadow: var(--shadow);
 }
 
+.ch-toolbar.is-filled .ch-count {
+  border-color: color-mix(in srgb, var(--analysis) 30%, transparent);
+  background: color-mix(in srgb, var(--analysis) 9%, var(--surface));
+  color: var(--analysis);
+}
+
 .ch-count.ch-zero {
-  background: color-mix(in srgb, var(--bad) 13%, transparent);
+  border-color: color-mix(in srgb, var(--bad) 30%, transparent);
+  background: color-mix(in srgb, var(--bad) 10%, var(--surface));
   color: var(--bad);
 }
 
@@ -1407,7 +1501,7 @@ details.ch[open] .ch-id {
 
 .ch-empty {
   display: none;
-  padding: 30px 16px;
+  padding: 34px 16px;
   text-align: center;
   font-size: 13px;
   color: var(--text-faint);
@@ -1422,9 +1516,15 @@ details.ch[open] .ch-id {
 
 /* 검색어가 걸린 구간. 필터 중에만 칠해 어디서 걸렸는지 눈으로 잡게 한다. */
 .ch-hit {
-  padding: 0 1px;
+  padding: 0 2px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--warn) 34%, transparent);
+  background: color-mix(in srgb, var(--warn) 32%, transparent);
   color: var(--text);
   font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .ch-kbd {
+    display: none;
+  }
 }
