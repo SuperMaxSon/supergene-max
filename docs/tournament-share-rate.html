@@ -6,7 +6,7 @@
     <title>토너먼트 바이럴 조사 — 전환율 4.9% vs 31%</title>
     <meta
       name="description"
-      content="공유율 → 거절률 → 채널 이동 → 전환율로 좁혀 들어간 기록. 과노출은 해소됐고, 남은 본체는 다이얼로그 전환율."
+      content="공유율 → 거절률 → 채널 이동 → 전환율로 좁혀 들어간 기록. 과노출은 해소됐고, 남은 본체는 다이얼로그 전환율. 빌드 432 이하 지표는 로그 결함으로 오염."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
@@ -17,6 +17,7 @@
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#summary">결론</a>
         <a class="nav-back" href="#gap">마종 대조</a>
+        <a class="nav-back" href="#taint">지표 오염</a>
         <a class="nav-back" href="#build">억제 효과</a>
         <a class="nav-back" href="#cause">폭락 원인</a>
         <a class="nav-back" href="#tried">가설 이력</a>
@@ -34,12 +35,15 @@
           「토너 공유율」에서 출발해 <b>과노출</b> → <b>채널 이동</b> → <b>전환율</b>로 좁혔습니다.
           과노출은 억제 배포로 해소됐고(이제 마종보다 덜 띄웁니다), 남은 본체는
           <b>다이얼로그가 열렸을 때 수락되는 비율 4.9% (마종 31%)</b>입니다.
+          다만 <b>빌드 432 이하 지표는 로그 결함으로 오염</b>돼 있어 절대값으로 읽으면 안 됩니다
+          (<a href="#taint">지표 오염</a>).
         </p>
         <div class="doc-meta">
           <span class="tag">BigQuery · 2026-07-20 ~ 08-11</span>
           <span class="tag">빌드(client_version)로 분리 측정</span>
           <span class="tag">NRU/RU 분해 · 동일 날짜창 대조</span>
-          <span class="tag">v5.0 · 2026-08-12</span>
+          <span class="tag">빌드 ≥ 438만 신뢰 구간</span>
+          <span class="tag">v6.0 · 2026-08-12</span>
         </div>
       </div>
     </header>
@@ -53,7 +57,7 @@
           <div class="stat" style="--acc: var(--bad)">
             <div class="stat-num">4.9<span class="stat-unit">%</span></div>
             <div class="stat-name">다이얼로그 수락률</div>
-            <div class="stat-sub">마종 ~31% — 여기가 본체</div>
+            <div class="stat-sub">마종 34.9% — 여기가 본체</div>
           </div>
           <div class="stat" style="--acc: var(--bad)">
             <div class="stat-num">6.8<span class="stat-unit">배</span></div>
@@ -80,7 +84,10 @@
             <b>②</b> "생성 성공률 24배 폭락"은 상당 부분 <b>착시</b>였습니다 — 생성 채널만 셌고,
             실제로는 공유 채널로 옮겨간 것입니다.<br />
             <b>③</b> 남은 격차는 전부 <b>전환율</b>입니다. 마종은 생성·공유 두 채널에서 모두 31%,
-            우리는 3.6% / 6.7%입니다.
+            우리는 3.6% / 6.7%입니다. 다이얼로그 파라미터·게이팅·거절 상한·로그 정의는
+            <b>이미 마종과 동일</b>하므로, 원인은 다이얼로그 "밖"에 있습니다.<br />
+            <b>④</b> 단, <b>빌드 432 이하 지표는 오염</b>돼 있습니다. 이 조사에서 "폭락"·"미스터리"로
+            부른 것 중 상당수가 로그 결함이었습니다 — <a href="#taint">지표 오염</a>.
           </p>
         </div>
       </section>
@@ -199,6 +206,92 @@
         </div>
       </section>
 
+      <!-- ================= 지표 오염 ================= -->
+      <!-- 아래 두 섹션(#build, #cause)의 표를 읽기 전에 반드시 통과해야 하는 경고. -->
+      <section class="doc-section" id="taint">
+        <h2 class="doc-h2">먼저 — 빌드 432 이하 지표는 오염돼 있다</h2>
+        <p class="doc-h2-sub">
+          <code>06a31dae</code>(03-10) ~ <code>da6e4845</code>(08-07)에만 존재했던 경로
+        </p>
+
+        <div class="table-scroll">
+          <pre>
+case 'tournament':
+  BaseLogManager.log(TournamentShare)      // ← 3200 찍음
+  if (isAbleToShowOnlyUnpromptedPopup()) {
+      switchToContextSolo()
+      this.createTournament(...)           // ← 3100 없이 바로 생성
+          error   → 3120
+              NETWORK_FAILURE → getTournamentsAsync() → 무조건 3110   // 복구 확인 없음
+          success → 3110
+  } else {
+      shareTournament(...) → 3210 / 3220
+  }</pre>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>결함</th>
+                <th>오염된 지표</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><code>3200</code>을 찍고 <b>공유를 안 한다</b> (생성으로 감)</td>
+                <td><code>3210</code>/<code>3220</code>이 영영 안 붙음 → <b>공유 해소율</b></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><code>3100</code> 없이 <code>3110</code>/<code>3120</code>만 찍는다</td>
+                <td>성공률·거절률의 <b>분모 누락</b></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>
+                  <code>NETWORK_FAILURE</code> 시 <b>복구 확인 없이</b> <code>3110</code>
+                </td>
+                <td><code>3120</code>+<code>3110</code> 이중 계상 + <b>허수 성공</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">이 조사에서 실제로 오염 구간을 수치로 읽었습니다</div>
+            <p>
+              <b>공유 해소율 89.8%</b>(벤치 96~97%) — 결함 1로 설명됩니다.
+              <b>미스터리가 아니었고 조사 항목에서 종료</b>합니다.<br />
+              <b>거절률 87~92%</b> — 결함 2로 분모가 빠져 부풀려진 값입니다.
+              <code>91% → 62.8%</code> 개선폭도 그만큼 과대평가입니다.<br />
+              <b>판당 성공 2.658%(빌드 409)</b> — 결함 3의 허수가 섞여 있습니다.
+              아래 <a href="#cause">폭락 원인</a>의 409 행도 부풀려진 상태입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">살아남는 결론 — 억제 효과는 오히려 과소평가였다</div>
+            <p>
+              오염은 <code>3110</code>을 <b>부풀리는</b> 방향입니다. 그런데도 빌드 438 이전이
+              더 낮게 나왔다는 건, 억제 효과가 실제로는 표에 보이는 것보다
+              <strong>더 크다</strong>는 뜻입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">읽는 법</div>
+          <p>
+            아래 두 섹션의 <b>빌드 432 이하 행은 절대값으로 인용하지 마세요.</b>
+            방향성(어느 시점에 무엇이 바뀌었는가)만 참고 가능합니다.
+            신뢰 가능한 절대값은 <b>빌드 438 이상</b>과 <a href="#gap">마종 대조</a>뿐입니다.
+          </p>
+        </div>
+      </section>
+
       <!-- ================= 억제 효과 ================= -->
       <section class="doc-section" id="build">
         <h2 class="doc-h2">억제는 작동했다 — 컷은 빌드 438</h2>
@@ -206,6 +299,14 @@
           <code>da6e4845</code>(08-07, 연속 거절 상한)가 실린 빌드 · 거절률 =
           <code>3120(USER_INPUT) ÷ 3100</code>
         </p>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">⚠ 409 · 415 · 431 행은 오염 구간</div>
+          <p>
+            분모(<code>3100</code>) 누락으로 거절률이 부풀려져 있고 <code>3110</code>에는 허수가
+            섞여 있습니다(<a href="#taint">지표 오염</a>). <b>438 · 441 행만 절대값으로 읽으세요.</b>
+          </p>
+        </div>
 
         <div class="table-scroll">
           <table>
@@ -271,6 +372,17 @@
         <p class="doc-h2-sub">
           RU 한정 · 동일 날짜창 08-03~08-05 · 판당 % · 총 바이럴 = 생성 성공 + 공유 성공
         </p>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">⚠ 세 행 모두 오염 구간 (409 · 415 · 416)</div>
+          <p>
+            셋 다 빌드 432 이하라 <a href="#taint">지표 오염</a>의 영향을 받습니다.
+            특히 <b>409의 총 바이럴 3.185%는 허수 <code>3110</code>이 섞여 부풀려진 값</b>이므로,
+            "416이 409를 회복했다"는 판정은 실제로 <b>회복 폭이 더 컸다</b>는 쪽으로 기울어야 합니다.
+            그래도 <b>채널 이동이 일어났다는 결론 자체는 유지</b>됩니다 — 생성/공유 노출 비율의
+            역전(93→57 / 1.1→36.9)은 분모 결함과 무관한 관측이기 때문입니다.
+          </p>
+        </div>
 
         <div class="table-scroll">
           <table>
@@ -444,18 +556,48 @@
                 <td><span class="mx mx-ok">확정 · 원인 미상</span></td>
                 <td>노출량·거절률·코드결함을 다 통제해도 19%p가 남음</td>
               </tr>
-              <tr>
+              <tr class="is-dead">
                 <td>13</td>
                 <td>마종의 31%는 로그 정의가 느슨해 부풀려진 값이다</td>
+                <td><span class="mx mx-bad">기각</span></td>
+                <td>
+                  마종은 생성 실패만 24.6만 건 · 에러코드 종류도 우리보다 많음.
+                  열린 다이얼로그 수락률 <b>34.9%(생성) / 34.6%(공유)</b>
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td>14</td>
+                <td>
+                  다이얼로그 파라미터가 마종과 달라서다
+                  <span class="why"><code>entryPointData</code> 필드 수 차이 추정</span>
+                </td>
+                <td><span class="mx mx-bad">기각</span></td>
+                <td>
+                  <code>title</code>·<code>image</code>·게이팅·거절 상한 3·로그 정의 모두 동일.
+                  <code>entryPointData</code>는 <b>다이얼로그 UI에 노출되지 않음</b>
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td>15</td>
+                <td>공유 해소율 89.8%(벤치 96~97%)에 미지의 원인이 있다</td>
+                <td><span class="mx mx-bad">기각 · 종료</span></td>
+                <td>
+                  08-07 이전 경로가 <code>3200</code>을 찍고 공유 대신 생성으로 갔다
+                  (<a href="#taint">지표 오염</a> 결함 1)
+                </td>
+              </tr>
+              <tr>
+                <td>16</td>
+                <td>소셜 밀도 차이다 <span class="why">마종 992K판 vs 우리 47.7K판</span></td>
                 <td><span class="mx">미검증</span></td>
-                <td>마종 <code>3120</code>/<code>3220</code> 실패 분포 미측정</td>
+                <td>이웃이 없으면 "만들어도 아무도 안 온다"는 학습이 생긴다</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">중간에 정정한 판단 7건</div>
+          <div class="note-title">중간에 정정한 판단 9건</div>
           <p>
             <b>①</b> "코지 비교는 무효" → 해소율 97.4%로 부정.
             <b>②</b> 마종 거절률 70% 가정 → 실제 58.2%.
@@ -464,6 +606,10 @@
             <b>⑤</b> "억제해도 판당 성공은 안 는다" → 2배 늘었다.
             <b>⑥</b> "판당 생성 성공 25배 차" → 한 채널만 셌음, 총 바이럴 기준 <b>6.8배</b>.
             <b>⑦</b> "<code>PENDING_REQUEST</code> 14%p 회수" → 실제 +0.7%p.
+            <b>⑧</b> "<code>entryPointData</code> 우리 1필드 vs 마종 6필드" → 실제로는 우리가
+            7필드로 더 많고, 애초에 UI에 안 보이는 값.
+            <b>⑨</b> <b>빌드 432 이하 수치를 그대로 인용</b> → 로그 결함으로 오염
+            (<a href="#taint">지표 오염</a>). 이 문서 v5.0까지의 절대값 인용이 여기 해당됩니다.
           </p>
         </div>
       </section>
@@ -486,42 +632,20 @@
               <tr>
                 <td>1</td>
                 <td>
-                  <b>마종 실패 분포 확인</b>
-                  <span class="why"><code>3120</code>·<code>3220</code> error_code</span>
-                </td>
-                <td>
-                  마종 31%가 "깨끗한 31%"인지 먼저 검증해야 합니다. 로그 정의가 느슨해
-                  부풀려진 값이면 <b>19%p 목표 자체가 허수</b>가 됩니다
-                </td>
-                <td style="text-align: right"><span class="mx mx-warn">1쿼리</span></td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>
-                  <b>다이얼로그 파라미터 1:1 대조</b>
-                  <span class="why">보상 · 문구 · 이미지 · <code>entryPointData</code> · 타이밍</span>
-                </td>
-                <td>
-                  격차의 2/3 이상이 여기입니다. 현재 근거는 <code>entryPointData</code>
-                  필드 수 차이(우리 1 vs 마종 6) 하나뿐이고 그것도 미검증 추정입니다
-                </td>
-                <td style="text-align: right"><span class="mx mx-bad">최대 +19%p</span></td>
-              </tr>
-              <tr>
-                <td>3</td>
-                <td>
-                  <b><code>NETWORK_FAILURE</code> 복구 경로 3110 누락 수정</b>
+                  <b><code>NETWORK_FAILURE</code> 복구 경로 3110 <u>조건부</u> 추가</b>
                   <span class="why"><code>FacebookPlatform.ts:640-658</code></span>
                 </td>
                 <td>
                   <code>random_key</code>로 실제 생성된 토너먼트를 찾아 서버 등록까지 하는데
-                  <code>3120</code>만 남습니다. 성공이 실패로 집계됩니다. 로그만 손대므로
-                  동작 리스크 없음
+                  <code>3120</code>만 남습니다. 성공이 실패로 집계됩니다.
+                  <b>과거엔 이 로그가 있었으나 복구 확인 없이 무조건 찍는 버그였고</b>,
+                  08-07에 경로가 사라지며 같이 없어졌습니다 —
+                  <code>createdTournament?.getID()</code> 확인 후 조건부로 넣어야 합니다
                 </td>
                 <td style="text-align: right"><span class="mx mx-warn">최대 +8.1%p</span></td>
               </tr>
               <tr>
-                <td>4</td>
+                <td>2</td>
                 <td>
                   <b><code>switchToContextSolo</code> 30초 회귀 수정</b>
                   <span class="why"><code>7265c3c4</code>(07-27)에서 2초 → 30초</span>
@@ -529,12 +653,25 @@
                 <td>
                   <code>switchAsync</code>는 유저 제스처 밖에서 hang합니다. 30초간 FB 요청
                   슬롯을 점유해 후속 <code>createAsync</code>가
-                  <code>PENDING_REQUEST</code>로 튕깁니다. 호출부 13곳
+                  <code>PENDING_REQUEST</code>로 튕깁니다 — 마종 1.17% vs 우리 14.0%,
+                  <b>12배</b>. 호출부 13곳
                 </td>
                 <td style="text-align: right"><span class="mx">+0.7%p</span></td>
               </tr>
               <tr>
-                <td>5</td>
+                <td>3</td>
+                <td>
+                  <b>소셜 밀도 측정</b>
+                  <span class="why">컨텍스트당 친구·토너먼트 이웃 수</span>
+                </td>
+                <td>
+                  파라미터·게이팅·로그 정의가 모두 정렬됐는데 수락률만 7배 차입니다.
+                  남은 후보 중 유일하게 <b>클라로 못 고치는</b> 축이라 먼저 재야 합니다
+                </td>
+                <td style="text-align: right"><span class="mx mx-bad">본체 후보</span></td>
+              </tr>
+              <tr>
+                <td>4</td>
                 <td>08-11 빌드 배포 후 <code>3130</code> 관측</td>
                 <td>
                   억제 미노출 규모와 상한 3의 회차 분포 적정성.
@@ -544,24 +681,30 @@
                 <td style="text-align: right"><span class="mx">배포 대기</span></td>
               </tr>
               <tr>
-                <td>6</td>
-                <td>공유 채널 미해결분 조사</td>
-                <td>우리 해소율 89.8%, 벤치 96~97%. 생성측 미해결 5.3%p와 같은 원인인지 미확인</td>
-                <td style="text-align: right"><span class="mx">미착수</span></td>
+                <td>5</td>
+                <td>빌드 438 이후로 공유 해소율 재측정</td>
+                <td>
+                  89.8%는 오염 구간 값이었습니다. 오염 경로가 사라진 438 이후에는
+                  벤치(96~97%) 수준으로 회복됐을 것으로 예상 — <b>확인만 필요</b>
+                </td>
+                <td style="text-align: right"><span class="mx">1쿼리</span></td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">지표를 읽을 때의 함정 3가지</div>
+          <div class="note-title">지표를 읽을 때의 함정 4가지</div>
           <p>
             <b>①</b> <code>3100</code>·<code>3200</code>은 게이트를 통과한 시도만 셉니다.
             게이트를 조이면 분모가 줄어 비율이 오릅니다 — 판단은 <b>판당 성공 절대 건수</b>로.<br />
             <b>②</b> 구간은 날짜가 아니라 <code>client_version</code>으로 갈라야 합니다.
             커밋일 ≠ 빌드 반영일입니다.<br />
             <b>③</b> <b>생성과 공유를 반드시 합쳐서</b> 보세요. 한 채널만 보면 채널 이동을
-            폭락으로 오독합니다 — 이 조사에서 실제로 두 번 그랬습니다.
+            폭락으로 오독합니다 — 이 조사에서 실제로 두 번 그랬습니다.<br />
+            <b>④</b> 수치가 이상하면 <b>그 구간의 로그 코드를 먼저 확인</b>하세요.
+            이 조사에서 "폭락"·"미스터리"로 부른 것 중 상당수가 로그 결함이었습니다
+            (<a href="#taint">지표 오염</a>).
           </p>
         </div>
       </section>
@@ -658,11 +801,14 @@ ORDER BY cnt DESC;</pre>
         <div class="foot">
           <b>확인 범위</b> BigQuery 실측은 솔리테어·마종. 솔리테어는 2026-07-20~08-11을
           <code>client_version</code> 및 <code>logincount_total</code>(NRU/RU)로 분리,
-          마종 대조는 08-08~08-11 집계. 코드 실측은 각 리포 main 브랜치.
-          <b>미검증</b> 가설 13(마종 로그 정의), 빌드 415가 두 채널을 동시에 죽인 원인,
-          다이얼로그 수락률 격차의 구체 원인.
-          <b>통제되지 않음</b> 마종 판수 992K vs 우리 47.7K — 규모 20배 차가 컨텍스트 밀도
-          (친구·토너먼트 이웃 수)에 주는 영향.
+          마종 대조는 08-08~08-11 집계. 코드 실측은 각 리포 main 브랜치 + 커밋 이력
+          (<code>06a31dae</code>·<code>7265c3c4</code>·<code>c0091b1d</code>·<code>da6e4845</code>).
+          <b>신뢰 구간</b> 절대값은 <b>빌드 438 이상</b>만 유효 — 432 이하는
+          <a href="#taint">지표 오염</a> 참조.
+          <b>미검증</b> 가설 16(소셜 밀도), 빌드 415가 두 채널을 동시에 죽인 원인,
+          다이얼로그 수락률 4.9% vs 34.9%의 구체 원인.
+          <b>통제되지 않음</b> 마종 판수 992K vs 우리 47.7K — 규모 20배 차가 컨텍스트 밀도에
+          주는 영향.
         </div>
       </section>
     </main>
