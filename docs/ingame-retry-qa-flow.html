@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>인게임 재도전 — QA 가이드</title>
+    <meta
+      name="description"
+      content="인게임 설정팝업에 추가된 재도전 버튼의 QA 순서. 어디까지 취소할 수 있고 어디서부터 되돌릴 수 없는지, 무엇이 버그가 아닌지까지 정리."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#flow">동작 흐름도</a>
+        <a class="nav-back" href="#setup">준비</a>
+        <a class="nav-back" href="#stepA">A. 기본 동작</a>
+        <a class="nav-back" href="#stepB">B. 취소</a>
+        <a class="nav-back" href="#stepC">C. 실패·복구</a>
+        <a class="nav-back" href="#stepD">D. 회귀</a>
+        <a class="nav-back" href="#known">알려진 이슈</a>
+        <a class="nav-back" href="#fail">버그 판정</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · QA</div>
+        <h1 class="doc-title">인게임 재도전 — QA 가이드</h1>
+        <p class="doc-lede">
+          판을 진행하다가 설정 버튼 → <b>재도전</b>을 누르면, 로비를 거치지 않고
+          <b>같은 스테이지</b>로 판을 다시 시작합니다. 재도전 버튼만 눌렀을 때는 아직 아무것도
+          확정되지 않고, <b>프리게임 팝업에서 Play를 누르는 순간</b> 이전 판이 포기 처리됩니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">솔리테어 · 미커밋 dev 코드</span>
+          <span class="tag">2026-08-12</span>
+          <span class="tag">실기 미검증</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 동작 흐름도 ================= -->
+      <!-- QA가 가장 먼저 잡아야 하는 개념이 "되돌릴 수 있는 구간 / 없는 구간"이다.
+           표보다 그림이 빠르므로 흐름도를 맨 위에 둔다. SVG는 .table-scroll 안에 넣어
+           좁은 화면에서 축소되지 않고 가로 스크롤되게 한다. -->
+      <section class="doc-section" id="flow">
+        <h2 class="doc-h2">
+          동작 흐름도
+          <span class="doc-h2-sub">Play를 누르기 전까지는 언제든 원래 판으로 돌아올 수 있습니다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <svg
+            viewBox="0 0 900 640"
+            width="900"
+            height="640"
+            role="img"
+            aria-label="인게임 재도전 버튼의 동작 흐름도"
+          >
+            <defs>
+              <marker
+                id="ah"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <!-- 시작 -->
+            <rect x="290" y="16" width="240" height="44" rx="8"
+                  fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="410" y="44" text-anchor="middle" font-size="14"
+                  font-weight="600" fill="var(--text)">설정팝업 → [재도전] 터치</text>
+            <line x1="410" y1="60" x2="410" y2="80" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+
+            <!-- 1. QNL 그룹 분기 -->
+            <polygon points="410,80 550,122 410,164 270,122"
+                     fill="var(--surface)" stroke="var(--border)" />
+            <text x="410" y="118" text-anchor="middle" font-size="13" fill="var(--text)">Quick Next Loop 그룹?</text>
+            <text x="410" y="136" text-anchor="middle" font-size="11"
+                  fill="var(--text-dim)">프리게임 팝업이 원래 안 뜨는 그룹</text>
+
+            <line x1="550" y1="122" x2="690" y2="122" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="620" y="114" text-anchor="middle" font-size="12" fill="var(--text-dim)">예</text>
+            <rect x="700" y="100" width="190" height="44" rx="8"
+                  fill="var(--surface)" stroke="var(--analysis)" />
+            <text x="795" y="121" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">팝업 없이 즉시 재시작</text>
+            <text x="795" y="136" text-anchor="middle" font-size="11"
+                  fill="var(--text-faint)">입장료 0 · 1배 · 부스터 없음</text>
+
+            <line x1="410" y1="164" x2="410" y2="196" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="426" y="184" font-size="12" fill="var(--text-dim)">아니오</text>
+
+            <!-- 2. 프리게임 팝업 -->
+            <rect x="250" y="196" width="320" height="52" rx="8"
+                  fill="var(--surface)" stroke="var(--sol)" />
+            <text x="410" y="218" text-anchor="middle" font-size="13.5"
+                  font-weight="600" fill="var(--text)">프리게임 팝업 노출</text>
+            <text x="410" y="236" text-anchor="middle" font-size="11"
+                  fill="var(--text-dim)">뒤에는 진행 중인 보드가 그대로 보임</text>
+
+            <!-- 3. 취소 / Play 분기 -->
+            <line x1="410" y1="248" x2="410" y2="272" stroke="var(--text-faint)" />
+            <line x1="200" y1="272" x2="620" y2="272" stroke="var(--text-faint)" />
+            <text x="200" y="266" text-anchor="middle" font-size="12" fill="var(--text-dim)">X / ESC</text>
+            <text x="620" y="266" text-anchor="middle" font-size="12" fill="var(--text-dim)">Play</text>
+            <line x1="200" y1="272" x2="200" y2="300" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <line x1="620" y1="272" x2="620" y2="300" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+
+            <rect x="90" y="304" width="220" height="52" rx="8"
+                  fill="var(--surface)" stroke="var(--ok)" />
+            <text x="200" y="326" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">원래 판 그대로 복귀</text>
+            <text x="200" y="344" text-anchor="middle" font-size="11"
+                  fill="var(--text-dim)">골드 · 아이템 차감 없음</text>
+
+            <rect x="500" y="304" width="240" height="52" rx="8"
+                  fill="var(--surface)" stroke="var(--bad)" />
+            <text x="620" y="326" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">이전 판 포기 정산</text>
+            <text x="620" y="344" text-anchor="middle" font-size="11"
+                  fill="var(--text-dim)">누적 보상 없음 · 여기서부터 되돌릴 수 없음</text>
+
+            <line x1="620" y1="356" x2="620" y2="384" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+
+            <!-- 4. 새 판 시작 성공 여부 -->
+            <polygon points="620,386 730,426 620,466 510,426"
+                     fill="var(--surface)" stroke="var(--border)" />
+            <text x="620" y="431" text-anchor="middle" font-size="13" fill="var(--text)">새 판 시작 성공?</text>
+
+            <line x1="730" y1="426" x2="742" y2="426" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="736" y="416" text-anchor="middle" font-size="12" fill="var(--text-dim)">실패</text>
+            <rect x="745" y="404" width="145" height="44" rx="8"
+                  fill="var(--surface-3)" stroke="var(--warn)" />
+            <text x="817" y="424" text-anchor="middle" font-size="12.5"
+                  font-weight="600" fill="var(--text)">에러 팝업 → 로비</text>
+            <text x="817" y="439" text-anchor="middle" font-size="11"
+                  fill="var(--text-faint)">돌아갈 판이 없음</text>
+
+            <line x1="620" y1="466" x2="620" y2="494" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="636" y="486" font-size="12" fill="var(--text-dim)">성공</text>
+
+            <rect x="490" y="498" width="260" height="52" rx="8"
+                  fill="var(--surface)" stroke="var(--sol)" />
+            <text x="620" y="520" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">같은 스테이지로 재시작</text>
+            <text x="620" y="538" text-anchor="middle" font-size="11"
+                  fill="var(--text-dim)">보드는 새로 섞임 · 로비를 거치지 않음</text>
+
+            <text x="60" y="596" font-size="12.5" fill="var(--text-dim)">
+              Play를 누르는 순간 이전 판이 정산되고, 그 뒤로는 취소가 없습니다.
+            </text>
+            <text x="60" y="616" font-size="12.5" fill="var(--text-dim)">
+              반대로 재도전 버튼만 누르고 팝업을 닫으면 골드도 아이템도 전혀 소모되지 않습니다.
+            </text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 기능에서 볼 것은 결국 두 지점입니다</div>
+            <p>
+              <b>취소 지점</b>(팝업을 닫으면 판이 온전히 돌아오는가)과
+              <b>확정 지점</b>(Play 이후 이전 판이 정확히 한 번만 정산되는가). 나머지는 기존
+              프리게임 팝업과 같은 동작이라 회귀 확인만 하면 됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">"같은 스테이지"지 "같은 보드"가 아닙니다</div>
+            <p>
+              스테이지 ID와 난이도는 이전 판과 같지만, <b>카드 배치는 매번 새로 섞입니다.</b>
+              재도전했는데 보드 모양이 달라진 것은 <b>정상</b>입니다. 이슈로 올리지 않아도 됩니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 준비 ================= -->
+      <section class="doc-section" id="setup">
+        <h2 class="doc-h2">준비</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>빌드</td>
+                <td>솔리테어 dev 빌드. 재도전 버튼은 <b>인게임 설정팝업에만</b> 있습니다</td>
+              </tr>
+              <tr>
+                <td>버튼 위치</td>
+                <td>판 진행 중 우상단 설정(톱니) → 팝업 안 <b>재도전</b></td>
+              </tr>
+              <tr>
+                <td>YouTube 빌드</td>
+                <td><b>현재 재도전 버튼이 없습니다</b> — 검증 대상 아님 (아래 알려진 이슈 K-3)</td>
+              </tr>
+              <tr>
+                <td>골드 준비</td>
+                <td>재도전은 <b>입장료를 다시 받습니다.</b> 골드 부족 케이스(B-3)도 봐야 하므로 부족 계정도 한 개 준비</td>
+              </tr>
+              <tr>
+                <td>확인용 값</td>
+                <td>재도전 전후의 <b>골드 · 부스터 개수 · 스테이지 번호 · 난이도 표시</b>를 매번 적어 두기</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--analysis)">
+          <div class="note-title">기록을 남겨야 판정되는 항목이 많습니다</div>
+          <p>
+            "골드가 두 번 빠진 것 같다", "미션이 더 올라간 것 같다" 같은 제보는 <b>이전 값이 없으면
+            확인이 불가능</b>합니다. 재도전 직전 값을 스크린샷으로 남겨 주세요.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= A. 기본 동작 ================= -->
+      <section class="doc-section" id="stepA">
+        <h2 class="doc-h2">
+          A. 기본 동작
+          <span class="doc-h2-sub">일반 판(프리게임 팝업이 뜨는 그룹) 기준</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A-1</td>
+                <td>판 진행 중 설정 → <b>재도전</b> 터치</td>
+                <td>설정팝업이 닫히고 <b>프리게임 팝업</b>이 뜬다. 뒤에는 진행 중이던 보드가 보인다</td>
+              </tr>
+              <tr>
+                <td>A-2</td>
+                <td>A-1 상태에서 <b>스테이지 번호 · 난이도</b> 확인</td>
+                <td>진행 중이던 판과 <b>같은 스테이지 · 같은 난이도</b>로 표시된다</td>
+              </tr>
+              <tr>
+                <td>A-3</td>
+                <td><b>Play</b> 터치</td>
+                <td>로비를 거치지 않고 같은 스테이지로 새 판이 시작된다. <b>입장료가 다시 차감</b>된다</td>
+              </tr>
+              <tr>
+                <td>A-4</td>
+                <td>A-3 직후 이전 판에서 모았던 <b>골드 · 별</b> 확인</td>
+                <td><b>지급되지 않는다</b> (포기와 같은 처리). 보드·타이머·부스터 카운트는 전부 초기화</td>
+              </tr>
+              <tr>
+                <td>A-5</td>
+                <td>프리게임 팝업에서 <b>부스터를 골라서</b> Play</td>
+                <td>고른 부스터가 정상 소모되고 새 판에 적용된다</td>
+              </tr>
+              <tr>
+                <td>A-6</td>
+                <td>재도전을 <b>연속 3회</b> 반복</td>
+                <td>매번 정상 시작. 팝업 겹침 · 버튼 먹통 · 검은 화면이 없어야 한다</td>
+              </tr>
+              <tr>
+                <td>A-7</td>
+                <td>재도전한 판을 <b>끝까지 클리어</b></td>
+                <td>결과창 · 보상 · 미션 · 다음 난이도가 평소와 동일하게 나온다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--validate)">
+          <div class="note-title">A-4가 이 기능의 정의입니다</div>
+          <p>
+            재도전은 <b>"포기 + 같은 스테이지 재시작"</b>입니다. 이전 판에서 모은 보상이 넘어오면
+            <b>골드 무한 증식</b>이 되므로 가장 먼저 확인해야 합니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= B. 취소 ================= -->
+      <!-- 취소는 "아무 일도 안 일어나야 한다"를 확인하는 구간이라 항목마다 기준값 비교가 필요하다. -->
+      <section class="doc-section" id="stepB">
+        <h2 class="doc-h2">
+          B. 취소 — 원래 판으로 돌아오는지
+          <span class="doc-h2-sub">각각 따로 실행. 매번 직전 골드 값을 적어 두고 비교</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>B-1</td>
+                <td>재도전 → 프리게임 팝업에서 <b>X</b> 터치</td>
+                <td>진행 중이던 판이 <b>그대로</b> 돌아온다. 카드 배치 · 남은 카드 수 · 부스터가 전부 유지</td>
+              </tr>
+              <tr>
+                <td>B-2</td>
+                <td>B-1 직후 <b>골드 · 부스터 개수</b> 확인</td>
+                <td><b>1도 줄지 않았다</b></td>
+              </tr>
+              <tr>
+                <td>B-3</td>
+                <td><b>골드가 부족한</b> 상태에서 재도전 → Play</td>
+                <td>광고 골드 / 상점 팝업이 뜬다. <b>닫으면 원래 판으로 복귀</b>하고 아무것도 차감되지 않는다</td>
+              </tr>
+              <tr>
+                <td>B-4</td>
+                <td>B-1로 복귀한 판을 <b>그대로 클리어</b></td>
+                <td>결과창 · 보상이 정상. 재도전을 눌렀던 흔적이 남지 않는다</td>
+              </tr>
+              <tr>
+                <td>B-5</td>
+                <td>재도전 → 취소 → <b>다시 재도전</b></td>
+                <td>두 번째도 정상적으로 팝업이 뜬다 (버튼이 먹통이 되지 않는다)</td>
+              </tr>
+              <tr>
+                <td>B-6</td>
+                <td>재도전 → 취소 → 설정 → <b>나가기</b>(기존 포기)</td>
+                <td>기존 포기 플로우가 그대로 동작한다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">B-5는 눈에 안 띄지만 치명적입니다</div>
+          <p>
+            취소 처리가 한 군데라도 빠지면 <b>재도전 버튼이 그 판 내내 먹통</b>이 됩니다. 화면상으로는
+            아무 일도 없어 보여서 놓치기 쉽습니다. 취소한 뒤에는 <b>반드시</b> 한 번 더 눌러 보세요.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= C. 실패·복구 ================= -->
+      <section class="doc-section" id="stepC">
+        <h2 class="doc-h2">
+          C. 실패 · 복구
+          <span class="doc-h2-sub">Play 이후 잘못됐을 때 어떻게 되는지</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>C-1</td>
+                <td>재도전 Play 직전에 <b>비행기 모드</b> → Play</td>
+                <td>에러 팝업이 뜨고, 확인하면 <b>로비로 나간다</b> (이전 판은 이미 정산됐으므로 정상)</td>
+              </tr>
+              <tr>
+                <td>C-2</td>
+                <td>C-1 이후 로비에서 <b>골드 · 미션 · 스테이지 진행도</b> 확인</td>
+                <td>이전 판이 <b>포기 1회</b>로만 반영돼 있다. 골드가 이중으로 빠지지 않았다</td>
+              </tr>
+              <tr>
+                <td>C-3</td>
+                <td>C-1 이후 로비에서 다시 판 진입</td>
+                <td>정상 진입한다 (진입 자체가 막히지 않는다)</td>
+              </tr>
+              <tr>
+                <td>C-4</td>
+                <td>재도전 Play 직후 <b>앱을 강제 종료</b> → 재실행</td>
+                <td>골드 · 미션이 이중 반영되지 않는다. 판이 깨진 상태로 복구되지 않는다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">C-1에서 "로비로 나가는 것"은 버그가 아닙니다</div>
+            <p>
+              Play를 누른 시점에 이전 판은 이미 서버에서 종료됩니다. 새 판까지 실패하면
+              <b>돌아갈 판이 없어서</b> 로비로 내보내는 것이 설계된 동작입니다. 대신 C-2처럼
+              <b>정산이 한 번만</b> 됐는지가 확인 대상입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">C-1에서 에러 팝업이 두 개 뜰 수 있습니다 — 이미 알려진 이슈</div>
+            <p>
+              서버가 에러코드를 돌려주는 경우에 한해 에러 팝업이 <b>2개 겹쳐서</b> 뜹니다
+              (아래 K-1). 확인을 두 번 눌러야 로비로 나갑니다. <b>중복 제보하지 않아도 됩니다</b> —
+              대신 그때 <b>골드가 몇 번 빠졌는지</b>는 꼭 적어 주세요.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= D. 회귀 ================= -->
+      <section class="doc-section" id="stepD">
+        <h2 class="doc-h2">
+          D. 기존 기능이 그대로인지
+          <span class="doc-h2-sub">이번 작업이 프리게임 팝업과 인게임 정산을 같이 건드렸습니다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>D-1</td>
+                <td>로비에서 <b>평소대로</b> 판 진입 (재도전 안 씀)</td>
+                <td>프리게임 팝업 · 부스터 · 배수 · 친구 랭킹이 전부 기존과 동일</td>
+              </tr>
+              <tr>
+                <td>D-2</td>
+                <td>인게임 설정 → <b>나가기</b> (기존 포기)</td>
+                <td>기존 포기 팝업 · 로비 복귀가 그대로</td>
+              </tr>
+              <tr>
+                <td>D-3</td>
+                <td>인게임 <b>엔드레벨</b> 버튼</td>
+                <td>기존 보상 팝업이 그대로</td>
+              </tr>
+              <tr>
+                <td>D-4</td>
+                <td><b>토너먼트 판</b>에서 재도전 → Play</td>
+                <td>토너먼트에서 튕겨 나가지 않는다. 이전 판까지의 점수는 등록돼 있다</td>
+              </tr>
+              <tr>
+                <td>D-5</td>
+                <td><b>튜토리얼 레벨</b>(1~2렙)에서 재도전</td>
+                <td>정상 재시작. 튜토리얼 안내가 <b>다시 나오지 않는다</b> (정상)</td>
+              </tr>
+              <tr>
+                <td>D-6</td>
+                <td>재도전 후 로비로 나가서 <b>냥이 추격전</b> 발동 확인</td>
+                <td>발동 조건을 채웠다면 로비에서 정상적으로 뜬다</td>
+              </tr>
+              <tr>
+                <td>D-7</td>
+                <td>재도전 여러 번 후 <b>데일리 미션</b> 카운트 확인</td>
+                <td>"판 플레이" 미션이 <b>재도전 횟수만큼</b> 올라간다 (현재 사양 — 아래 K-4)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--validate)">
+          <div class="note-title">D-4와 D-6이 이번 작업에서 가장 깨지기 쉬운 곳</div>
+          <p>
+            재도전은 <b>로비를 거치지 않는</b> 유일한 재시작 경로입니다. 토너먼트 연결 상태와
+            냥이 추격전 발동 감지가 원래 "로비를 지나갈 때" 처리되던 것이라, 이 두 개만 따로
+            손을 봤습니다. 나머지 항목보다 우선해서 봐 주세요.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= 알려진 이슈 ================= -->
+      <!-- 코드 리뷰에서 이미 확인된 것들. 중복 제보를 줄이기 위해 QA 진입 전에 공유한다.
+           "확인 필요"와 "확정"을 섞지 않도록 상태 열을 분리했다. -->
+      <section class="doc-section" id="known">
+        <h2 class="doc-h2">
+          이미 알고 있는 것
+          <span class="doc-h2-sub">코드 리뷰에서 확인된 항목 — 중복 제보 불필요</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>증상</th>
+                <th>상태</th>
+                <th>QA가 해줄 것</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>K-1</td>
+                <td>새 판 시작이 <b>서버 에러</b>로 실패하면 에러 팝업이 2개 겹친다</td>
+                <td><span class="pill" style="--plan: var(--bad)">확정 · 미수정</span></td>
+                <td>겹치는 것 말고 <b>골드가 몇 번 빠졌는지</b>만 기록</td>
+              </tr>
+              <tr>
+                <td>K-2</td>
+                <td>재도전 터치 직후 팝업이 뜨기 전 <b>짧은 순간</b> 보드와 엔드레벨 버튼이 눌린다</td>
+                <td><span class="pill" style="--plan: var(--bad)">확정 · 미수정</span></td>
+                <td>일부러 연타해서 <b>결과창과 프리게임 팝업이 겹치는지</b> 확인</td>
+              </tr>
+              <tr>
+                <td>K-3</td>
+                <td><b>YouTube 빌드</b>에는 재도전 버튼이 없다</td>
+                <td><span class="pill" style="--plan: var(--warn)">확정 · 기획 확인 중</span></td>
+                <td>검증 대상 아님</td>
+              </tr>
+              <tr>
+                <td>K-4</td>
+                <td>재도전할 때마다 <b>"판 플레이" 미션</b>이 1씩 올라간다</td>
+                <td><span class="pill" style="--plan: var(--warn)">현재 사양 · 정책 확인 중</span></td>
+                <td>숫자만 기록 (버그로 올리지 않음)</td>
+              </tr>
+              <tr>
+                <td>K-5</td>
+                <td>Play 직후 팝업 닫힘 연출과 새 보드 등장이 <b>살짝 겹쳐 보인다</b></td>
+                <td><span class="pill" style="--plan: var(--warn)">확정 · 연출 이슈</span></td>
+                <td>심하게 튀는 기기가 있으면 기종명과 함께 제보</td>
+              </tr>
+              <tr>
+                <td>K-6</td>
+                <td>재도전 버튼 클릭 <b>로그가 없다</b></td>
+                <td><span class="pill" style="--plan: var(--analysis)">로그표 확정 대기</span></td>
+                <td>해당 없음</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--analysis)">
+          <div class="note-title">이 표를 읽는 법</div>
+          <p>
+            <b>확정</b>은 코드에서 원인까지 확인된 것이고, <b>확인 중</b>은 기획·정책 답이 나와야
+            버그인지 사양인지 정해지는 것입니다. 어느 쪽이든 <b>새 이슈로 올릴 필요는 없지만</b>,
+            표의 "QA가 해줄 것" 칸은 채워 주셔야 수정 방향이 정해집니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= 버그 판정 ================= -->
+      <section class="doc-section" id="fail">
+        <h2 class="doc-h2">이건 버그입니다</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>증상</th>
+                <th>어긋난 항목</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>재도전으로 시작한 판에 <b>이전 판의 골드·별이 남아 있다</b></td>
+                <td>A-4 (<b>최우선</b> — 보상 증식)</td>
+              </tr>
+              <tr>
+                <td>재도전을 <b>취소했는데</b> 골드나 부스터가 줄었다</td>
+                <td>B-2 · B-3 (<b>최우선</b>)</td>
+              </tr>
+              <tr>
+                <td>재도전 <b>한 번</b>에 골드가 <b>두 번</b> 빠졌다</td>
+                <td>C-2 (<b>최우선</b> — 이중 정산)</td>
+              </tr>
+              <tr>
+                <td>취소하고 나서 재도전 버튼이 <b>더 이상 안 눌린다</b></td>
+                <td>B-5</td>
+              </tr>
+              <tr>
+                <td>취소했는데 보드가 <b>초기화</b>돼 있거나 다른 판으로 바뀌었다</td>
+                <td>B-1</td>
+              </tr>
+              <tr>
+                <td>재도전 후 스테이지 번호나 <b>난이도가 달라졌다</b></td>
+                <td>A-2</td>
+              </tr>
+              <tr>
+                <td><b>토너먼트 판</b>에서 재도전했더니 토너먼트에서 빠져나왔다</td>
+                <td>D-4</td>
+              </tr>
+              <tr>
+                <td>재도전 후 로비에서 <b>냥이 추격전</b>이 발동했어야 하는데 안 떴다</td>
+                <td>D-6</td>
+              </tr>
+              <tr>
+                <td>재도전 반복 후 <b>검은 화면 · 팝업 먹통 · 버튼 무반응</b></td>
+                <td>A-6</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <b>버그가 아닌 것</b> 보드 카드 배치가 이전 판과 다른 것 / 재도전 후 튜토리얼 안내가 안
+          나오는 것 / 입장료를 다시 받는 것 / 새 판 시작에 실패했을 때 로비로 나가는 것.
+          <b>확인 범위</b> 이 문서는 미커밋 dev 코드를 읽고 작성했으며,
+          <b>실제 기기에서 한 번도 실행되지 않았습니다.</b> 알려진 이슈 K-1 · K-2는 수정 전 상태라
+          QA 중 그대로 재현됩니다.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>
