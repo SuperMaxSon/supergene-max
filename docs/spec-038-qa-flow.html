@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SPEC-038 토너 초대 토글 — QA 가이드</title>
+    <meta
+      name="description"
+      content="토너 판 클리어 시 공유와 초대가 번갈아 뜨는 기능의 QA 순서. 판정 흐름도와 함께 무엇을 하면 무엇이 떠야 하는지만 정리."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#flow">판정 흐름도</a>
+        <a class="nav-back" href="#setup">준비</a>
+        <a class="nav-back" href="#stepA">A. 기본 동작</a>
+        <a class="nav-back" href="#stepB">B. 안 떠야 하는 경우</a>
+        <a class="nav-back" href="#stepC">C. 회귀</a>
+        <a class="nav-back" href="#fail">버그 판정</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · QA</div>
+        <h1 class="doc-title">SPEC-038 토너 초대 토글 — QA 가이드</h1>
+        <p class="doc-lede">
+          토너 판을 깰 때마다 <b>공유 다이얼로그</b>만 뜨던 것을,
+          <b>초대 → 공유 → 초대 → 공유</b> 로 번갈아 뜨게 바꿨습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">솔리테어 · FB 인스턴트 dev 빌드</span>
+          <span class="tag">2026-08-12</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 판정 흐름도 ================= -->
+      <!-- QA가 가장 먼저 알아야 하는 건 "언제 무엇이 뜨는가" 하나다.
+           SVG는 .table-scroll 안에 넣어 좁은 화면에서 줄어들지 않고 가로 스크롤되게 한다. -->
+      <section class="doc-section" id="flow">
+        <h2 class="doc-h2">
+          판정 흐름도
+          <span class="doc-h2-sub">판을 깬 순간 위에서부터 순서대로 걸러집니다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <svg
+            viewBox="0 0 900 700"
+            width="900"
+            height="700"
+            role="img"
+            aria-label="토너 판 클리어 시 공유·초대 다이얼로그 판정 흐름도"
+          >
+            <defs>
+              <marker
+                id="ah"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <!-- 시작 -->
+            <rect x="170" y="20" width="220" height="44" rx="8"
+                  fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="280" y="48" text-anchor="middle" font-size="14"
+                  font-weight="600" fill="var(--text)">토너 판 클리어</text>
+            <line x1="280" y1="64" x2="280" y2="84" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+
+            <!-- 1. 링크 진입 -->
+            <polygon points="280,88 410,130 280,172 150,130"
+                     fill="var(--surface)" stroke="var(--border)" />
+            <text x="280" y="126" text-anchor="middle" font-size="13" fill="var(--text)">토너 링크로</text>
+            <text x="280" y="143" text-anchor="middle" font-size="13" fill="var(--text)">실행했나?</text>
+
+            <line x1="410" y1="130" x2="570" y2="130" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="490" y="122" text-anchor="middle" font-size="12" fill="var(--text-dim)">아니오</text>
+            <rect x="580" y="108" width="250" height="44" rx="8"
+                  fill="var(--surface)" stroke="var(--analysis)" />
+            <text x="705" y="135" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">공유 다이얼로그</text>
+
+            <line x1="280" y1="172" x2="280" y2="204" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="296" y="192" font-size="12" fill="var(--text-dim)">예</text>
+
+            <!-- 2. 신규 유저 -->
+            <polygon points="280,208 410,250 280,292 150,250"
+                     fill="var(--surface)" stroke="var(--border)" />
+            <text x="280" y="245" text-anchor="middle" font-size="13" fill="var(--text)">신규 유저인가?</text>
+            <text x="280" y="262" text-anchor="middle" font-size="11"
+                  fill="var(--text-dim)">튜토 미완 + 4승 미만</text>
+
+            <line x1="410" y1="250" x2="570" y2="250" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="490" y="242" text-anchor="middle" font-size="12" fill="var(--text-dim)">예</text>
+            <rect x="580" y="228" width="250" height="44" rx="8"
+                  fill="var(--surface-3)" stroke="var(--border)" />
+            <text x="705" y="255" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text-dim)">아무것도 안 뜸</text>
+
+            <line x1="280" y1="292" x2="280" y2="324" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="296" y="312" font-size="12" fill="var(--text-dim)">아니오</text>
+
+            <!-- 3. 쿨타임 -->
+            <polygon points="280,328 410,370 280,412 150,370"
+                     fill="var(--surface)" stroke="var(--border)" />
+            <text x="280" y="365" text-anchor="middle" font-size="13" fill="var(--text)">직전 다이얼로그에서</text>
+            <text x="280" y="382" text-anchor="middle" font-size="13" fill="var(--text)">60초 이내인가?</text>
+
+            <line x1="410" y1="370" x2="570" y2="370" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="490" y="362" text-anchor="middle" font-size="12" fill="var(--text-dim)">예</text>
+            <rect x="580" y="348" width="250" height="44" rx="8"
+                  fill="var(--surface-3)" stroke="var(--border)" />
+            <text x="705" y="369" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text-dim)">아무것도 안 뜸</text>
+            <text x="705" y="384" text-anchor="middle" font-size="11"
+                  fill="var(--text-faint)">차례는 그대로 유지</text>
+
+            <line x1="280" y1="412" x2="280" y2="444" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <text x="296" y="432" font-size="12" fill="var(--text-dim)">아니오</text>
+
+            <!-- 4. 차례 -->
+            <polygon points="280,448 410,490 280,532 150,490"
+                     fill="var(--surface)" stroke="var(--border)" />
+            <text x="280" y="495" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">지금 차례는?</text>
+
+            <line x1="280" y1="532" x2="280" y2="552" stroke="var(--text-faint)" />
+            <line x1="170" y1="552" x2="450" y2="552" stroke="var(--text-faint)" />
+            <text x="170" y="546" text-anchor="middle" font-size="12" fill="var(--text-dim)">초대 차례</text>
+            <text x="450" y="546" text-anchor="middle" font-size="12" fill="var(--text-dim)">공유 차례</text>
+            <line x1="170" y1="552" x2="170" y2="576" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+            <line x1="450" y1="552" x2="450" y2="576" stroke="var(--text-faint)"
+                  marker-end="url(#ah)" />
+
+            <rect x="60" y="580" width="220" height="46" rx="8"
+                  fill="var(--surface)" stroke="var(--sol)" />
+            <text x="170" y="608" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">초대 다이얼로그</text>
+
+            <rect x="340" y="580" width="220" height="46" rx="8"
+                  fill="var(--surface)" stroke="var(--analysis)" />
+            <text x="450" y="608" text-anchor="middle" font-size="13"
+                  font-weight="600" fill="var(--text)">공유 다이얼로그</text>
+
+            <text x="60" y="668" font-size="12.5" fill="var(--text-dim)">
+              다이얼로그를 띄우기 직전에 차례가 뒤집힙니다 — 유저가 닫아도 다음 판은 반대쪽입니다.
+            </text>
+          </svg>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">"안 뜨는 게 정상"인 갈래가 둘 있습니다</div>
+          <p>
+            <b>신규 유저</b>와 <b>60초 이내 재클리어</b>는 공유·초대 어느 쪽도 뜨지 않는 것이
+            정상입니다. 다이얼로그가 안 떴다고 바로 이슈로 올리기 전에 이 두 가지부터 확인해
+            주세요. 반대로 <b>아이콘으로 실행</b>했을 때는 예전처럼 <b>공유가 반드시 떠야</b>
+            합니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= 준비 ================= -->
+      <section class="doc-section" id="setup">
+        <h2 class="doc-h2">준비</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>빌드</td>
+                <td>FB 인스턴트 <b>dev</b> 빌드 (에디터 프리뷰에서는 토너 기능이 동작하지 않습니다)</td>
+              </tr>
+              <tr>
+                <td>실행 방법</td>
+                <td><b>토너 링크를 눌러서</b> 실행. 아이콘으로 켜면 이 기능이 아예 안 걸립니다</td>
+              </tr>
+              <tr>
+                <td>차례 확인 · 변경</td>
+                <td>브라우저 콘솔에서 아래 명령 (다음 차례를 초대/공유로 강제 지정)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>콘솔 명령 펼치기</summary>
+          <div class="fold-body">
+            <pre>// 지금 차례 확인
+// true = 다음은 초대 / false = 다음은 공유 / null = 아직 한 번도 안 뜬 상태(다음은 초대)
+localStorage.getItem("tournamentInviteNext");
+
+// 다음 차례를 "초대"로 지정
+localStorage.setItem("tournamentInviteNext", "true");
+location.reload();
+
+// 다음 차례를 "공유"로 지정하려면 "true" 자리에 "false"</pre>
+
+            <div class="note" style="--acc: var(--warn)">
+              <div class="note-title">페이스북 플레이어 데이터가 아니라 브라우저 저장소입니다</div>
+              <p>
+                이 값은 <b>브라우저 localStorage</b>에 저장됩니다. <code>FBInstant.player.getDataAsync</code>로
+                찾으면 나오지 않습니다. 시크릿 모드처럼 localStorage가 막힌 환경에서만 페이스북
+                저장소 안에 묶여 들어가고, 그때는 위 명령이 동작하지 않으니 일반 창에서 테스트해
+                주세요. 또 기기나 브라우저가 바뀌면 차례가 초기화되어 <b>초대부터</b> 다시 시작하는데,
+                이것도 정상 동작입니다.
+              </p>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= A. 기본 동작 ================= -->
+      <!-- 순서 자체가 검증 대상이라 위에서부터 끊지 않고 진행해야 한다. -->
+      <section class="doc-section" id="stepA">
+        <h2 class="doc-h2">
+          A. 기본 동작
+          <span class="doc-h2-sub">토너 링크로 실행한 뒤, 위에서부터 끊지 말고 순서대로</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A-1</td>
+                <td>차례를 <b>초대</b>로 지정하고 판 클리어</td>
+                <td><b>초대</b> 다이얼로그가 뜬다 → 전송</td>
+              </tr>
+              <tr>
+                <td>A-2</td>
+                <td>곧바로(<b>60초 안</b>) 한 판 더 클리어</td>
+                <td>아무것도 안 뜬다</td>
+              </tr>
+              <tr>
+                <td>A-3</td>
+                <td><b>60초 지난 뒤</b> 한 판 더 클리어</td>
+                <td><b>공유</b> 다이얼로그가 뜬다 (차례가 넘어갔으므로)</td>
+              </tr>
+              <tr>
+                <td>A-4</td>
+                <td>60초 지난 뒤 클리어 → 초대창을 <b>그냥 닫기</b></td>
+                <td>초대 다이얼로그가 떴다가 닫힌다</td>
+              </tr>
+              <tr>
+                <td>A-5</td>
+                <td>60초 지난 뒤 한 판 더 클리어</td>
+                <td><b>공유</b>가 뜬다 (취소해도 차례는 넘어감)</td>
+              </tr>
+              <tr>
+                <td>A-6</td>
+                <td>앱을 <b>완전히 껐다 켜고</b> 60초 뒤 클리어</td>
+                <td>껐을 때의 차례가 그대로 이어진다 (초기화되지 않음)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--validate)">
+          <div class="note-title">A-2와 A-5가 이 기능의 핵심</div>
+          <p>
+            <b>A-2</b>는 60초 안에 또 뜨지 않는지, <b>A-5</b>는 초대를 취소해도 다음 판이 공유로
+            넘어가는지를 봅니다. 둘 중 하나라도 어긋나면 바로 이슈로 올려 주세요.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= B. 안 떠야 하는 경우 ================= -->
+      <section class="doc-section" id="stepB">
+        <h2 class="doc-h2">
+          B. 안 떠야 하는 경우
+          <span class="doc-h2-sub">각각 따로 실행</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>B-1</td>
+                <td><b>아이콘으로</b> 실행 → 토너 판 클리어</td>
+                <td>항상 <b>공유</b>만 뜬다. 초대는 절대 안 뜬다</td>
+              </tr>
+              <tr>
+                <td>B-2</td>
+                <td><b>새 계정</b>(튜토리얼 미완료)으로 토너 판 3번 클리어</td>
+                <td>세 번 모두 <b>아무것도 안 뜬다</b></td>
+              </tr>
+              <tr>
+                <td>B-3</td>
+                <td>기능을 <b>끈 상태</b>(개발자에게 요청)로 토너 판 클리어</td>
+                <td>예전처럼 <b>공유만</b> 뜬다. 60초 제한도 없다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">B-3이 제일 중요합니다</div>
+          <p>
+            문제가 생겼을 때 되돌리는 유일한 방법이 <b>기능 끄기</b>입니다. 껐을 때 예전 동작으로
+            완전히 돌아가지 않으면 라이브에서 되돌릴 수단이 없습니다. 개발자에게 요청해서 한 번은
+            꼭 확인해 주세요.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= C. 회귀 ================= -->
+      <section class="doc-section" id="stepC">
+        <h2 class="doc-h2">
+          C. 기존 기능이 그대로인지
+          <span class="doc-h2-sub">이번에 건드리지 않았지만 옆에 있는 것들</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>C-1</td>
+                <td>일반(비토너) 판 클리어</td>
+                <td>기존 토너 <b>만들기</b> 다이얼로그가 그대로 뜬다</td>
+              </tr>
+              <tr>
+                <td>C-2</td>
+                <td>토너 판을 <b>중간에 나가기</b></td>
+                <td>아무것도 안 뜨고, 다음 판 차례도 그대로다</td>
+              </tr>
+              <tr>
+                <td>C-3</td>
+                <td>레벨 진입 · 우편함 · 레벨 완료 화면에서 <b>친구 초대</b></td>
+                <td>초대가 기존대로 정상 동작한다</td>
+              </tr>
+              <tr>
+                <td>C-4</td>
+                <td>B-2(신규 계정, 아무것도 안 뜸) 상태에서 클리어 후 <b>토너 순위 확인</b></td>
+                <td><b>다이얼로그가 안 떠도 내 점수는 올라가 있어야 한다</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">C-4를 빠뜨리지 마세요</div>
+          <p>
+            다이얼로그를 막는 처리와 점수를 서버에 올리는 처리가 붙어 있어서, 잘못 만들면
+            <b>"팝업이 안 뜨는 판은 점수도 안 올라가는"</b> 문제가 생깁니다. 눈에 잘 안 띄는 대신
+            영향이 가장 큰 항목입니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= 버그 판정 ================= -->
+      <section class="doc-section" id="fail">
+        <h2 class="doc-h2">이건 버그입니다</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>증상</th>
+                <th>어긋난 항목</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>초대만 계속 뜨고 공유가 한 번도 안 뜬다</td>
+                <td>A-3 · A-5 (차례가 안 넘어감)</td>
+              </tr>
+              <tr>
+                <td>클리어할 때마다 매번 다이얼로그가 뜬다</td>
+                <td>A-2 (60초 제한이 안 걸림)</td>
+              </tr>
+              <tr>
+                <td>아이콘으로 켰는데 초대가 뜬다</td>
+                <td>B-1 (적용 범위를 벗어남)</td>
+              </tr>
+              <tr>
+                <td>기능을 껐는데도 초대가 뜨거나 공유가 안 뜬다</td>
+                <td>B-3 (되돌리기 불가 — <b>최우선</b>)</td>
+              </tr>
+              <tr>
+                <td>다이얼로그가 안 뜬 판의 토너 점수가 안 올라간다</td>
+                <td>C-4 (<b>최우선</b>)</td>
+              </tr>
+              <tr>
+                <td>앱을 껐다 켜면 항상 초대부터 다시 시작한다</td>
+                <td>A-6 (차례가 저장 안 됨)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <b>참고</b> 초대 이미지와 문구는 기존 친구 초대와 같은 것을 씁니다 — 새 이미지가 아니어도
+          정상입니다. <b>미검증</b> 이 문서의 항목은 아직 실제 기기에서 한 번도 실행되지 않았습니다.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>

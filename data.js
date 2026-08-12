@@ -98,6 +98,16 @@ const SECTIONS = [
     desc: "시뮬레이션 결과 · 파라미터 테스트",
     cards: [
       {
+        title: "SPEC-038 토너 초대 토글 — QA 가이드",
+        desc: "토너 판을 깰 때 공유와 초대가 번갈아 뜨도록 바꾼 기능의 QA 순서. 무엇을 하면 무엇이 떠야 하는지, 안 뜨는 게 정상인 경우는 언제인지만 정리했다.",
+        url: "docs/spec-038-qa-flow.html",
+        status: "진행중",
+        version: "v1.0",
+        updated: "2026-08-12",
+        pinned: false,
+        tags: ["SPEC-038", "QA", "토너먼트", "초대", "로그검증", "회귀"],
+      },
+      {
         title: "여기에 검증 결과를 추가하세요",
         desc: "시뮬레이션 리포트나 A/B 테스트 결과 링크를 모아두는 자리입니다.",
         url: "#",
