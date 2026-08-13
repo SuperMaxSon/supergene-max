@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-13 12:27",
+  updated: "2026-08-13 16:01",
 };
 
 const SECTIONS = [
@@ -113,13 +113,13 @@ const SECTIONS = [
       },
       {
         title: "인게임 재도전 — QA 가이드",
-        desc: "나가기 팝업(Quit Level?)의 Retry 버튼 QA 순서. 어디까지 취소되고 어디서부터 되돌릴 수 없는지를 흐름도로 먼저 잡는다. Retry가 Back·Quit과 한 팝업에 모이면서 팝업 두 겹 정리와 버튼 연타가 새 위험으로 올라왔다. 케이스 22개.",
+        desc: "나가기 팝업(Quit Level?)의 Retry 버튼 QA 순서. v3.0에서 정산 시점이 Play → Retry 직후로 당겨지고, 프리게임 팝업을 닫으면 판으로 복귀하지 않고 로비로 나간다 — 이전 문서와 기대값이 반대인 구간이 있다. 케이스 26개.",
         url: "docs/ingame-retry-qa-flow.html",
         status: "진행중",
-        version: "v2.2",
-        updated: "2026-08-13 11:32",
+        version: "v3.0",
+        updated: "2026-08-13 16:01",
         pinned: false,
-        tags: ["재도전", "QA", "나가기팝업", "프리게임팝업", "정산", "회귀", "알려진이슈"],
+        tags: ["재도전", "QA", "나가기팝업", "프리게임팝업", "정산", "로비이탈", "회귀", "알려진이슈"],
       },
       {
         title: "나가기 종료 처리 순서 변경 — QA 가이드",
