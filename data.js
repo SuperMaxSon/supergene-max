@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-13 17:13",
+  updated: "2026-08-13 17:16",
 };
 
 const SECTIONS = [
@@ -45,9 +45,9 @@ const SECTIONS = [
         title: "로딩 속도 — 3개 프로젝트 비교",
         desc: "솔리테어 · 코지 · 퍼블마의 로딩 소요를 NRU/RU · US 기준으로 실측. 부팅 지연 전량이 LOAD_FB→LOAD_INTRO 한 구간에 집중(솔리테어 0.97초 = 코지 3.3배), OS를 맞춰도 2.5배 격차. 5개 클라 NRU 첫 판 로그 순서 감사에 실측 시각·발화율을 얹어 교차 검증.",
         url: "docs/loading-speed-compare.html",
-        status: "진행중",
+        status: "완료",
         version: "v1.3",
-        updated: "2026-08-11",
+        updated: "2026-08-13 17:16",
         pinned: false,
         tags: ["로딩", "속도", "BigQuery", "NRU", "RU", "로그순서", "5프로젝트"],
       },
