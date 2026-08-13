@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-13 11:32",
+  updated: "2026-08-13 12:27",
 };
 
 const SECTIONS = [
@@ -137,7 +137,7 @@ const SECTIONS = [
         url: "docs/spec-038-qa-flow.html",
         status: "진행중",
         version: "v1.6",
-        updated: "2026-08-13",
+        updated: "2026-08-13 12:27",
         pinned: false,
         tags: ["SPEC-038", "QA", "토너먼트", "초대", "로그검증", "회귀"],
       },
