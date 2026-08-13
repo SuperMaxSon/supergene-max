@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-13",
+  updated: "2026-08-13 11:32",
 };
 
 const SECTIONS = [
@@ -117,7 +117,7 @@ const SECTIONS = [
         url: "docs/ingame-retry-qa-flow.html",
         status: "진행중",
         version: "v2.2",
-        updated: "2026-08-13",
+        updated: "2026-08-13 11:32",
         pinned: false,
         tags: ["재도전", "QA", "나가기팝업", "프리게임팝업", "정산", "회귀", "알려진이슈"],
       },
