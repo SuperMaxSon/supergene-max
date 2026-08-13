@@ -136,7 +136,7 @@ const SECTIONS = [
         desc: "토너 판을 깰 때 공유와 초대가 번갈아 뜨도록 바꾼 기능의 QA 순서. 무엇을 하면 무엇이 떠야 하는지, 안 뜨는 게 정상인 경우는 언제인지 정리했다. 3460/3470/3480 로그와 초대 수신 측 유입(entrypoint) 확인 절차, 기획서와 의도적으로 다른 2가지도 함께 표시했다.",
         url: "docs/spec-038-qa-flow.html",
         status: "진행중",
-        version: "v1.4",
+        version: "v1.5",
         updated: "2026-08-13",
         pinned: false,
         tags: ["SPEC-038", "QA", "토너먼트", "초대", "로그검증", "회귀"],
