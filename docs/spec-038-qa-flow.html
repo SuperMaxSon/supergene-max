@@ -20,6 +20,7 @@
         <a class="nav-back" href="#stepA">A. 기본 동작</a>
         <a class="nav-back" href="#stepB">B. 안 떠야 하는 경우</a>
         <a class="nav-back" href="#stepC">C. 회귀</a>
+        <a class="nav-back" href="#stepD">D. 로그 · 유입</a>
         <a class="nav-back" href="#spec-diff">기획서와 다른 점</a>
         <a class="nav-back" href="#fail">버그 판정</a>
         <span class="nav-spacer"></span>
@@ -36,7 +37,7 @@
         </p>
         <div class="doc-meta">
           <span class="tag">솔리테어 · FB 인스턴트 dev 빌드</span>
-          <span class="tag">2026-08-13 개정</span>
+          <span class="tag">2026-08-13 12:17 개정</span>
         </div>
       </div>
     </header>
@@ -399,12 +400,140 @@ location.reload();
         </div>
       </section>
 
+      <!-- ================= D. 로그 · 유입 ================= -->
+      <!-- 화면 동작이 맞아도 로그가 틀리면 지표를 못 읽는다. 눈으로 안 보이는 절이라 확인 방법을 먼저 준다. -->
+      <section class="doc-section" id="stepD">
+        <h2 class="doc-h2">
+          D. 로그 · 유입 확인
+          <span class="doc-h2-sub">화면은 정상인데 로그가 틀리면 지표를 못 읽습니다 — 개발자 도구 필요</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>확인 방법</td>
+                <td>
+                  크롬 <b>개발자 도구 → Network</b> 탭에서 <code>game-log</code> 로 필터. 각 요청의
+                  <b>Payload</b>에 <code>event</code>(이벤트 이름)와 <code>data</code>(파라미터)가 들어 있습니다
+                </td>
+              </tr>
+              <tr>
+                <td>보는 이벤트</td>
+                <td>
+                  <code>3460_MSG_P2P_INVITE</code>(초대창 뜸) ·
+                  <code>3470_MSG_P2P_INVITE_SUCCESS</code>(전송 완료) ·
+                  <code>3480_MSG_P2P_INVITE_FAIL</code>(취소 · 실패)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>D-1</td>
+                <td>A-1처럼 <b>초대 다이얼로그가 뜬 순간</b></td>
+                <td>
+                  <code>3460</code>이 1건. <code>position</code>이
+                  <b><code>"tournament_invite"</code></b>, <code>image_id</code>가 <code>"invite"</code>
+                </td>
+              </tr>
+              <tr>
+                <td>D-2</td>
+                <td>그 초대창에서 <b>전송 완료</b></td>
+                <td><code>3470</code>이 1건. <code>position</code>은 D-1과 동일</td>
+              </tr>
+              <tr>
+                <td>D-3</td>
+                <td>초대창을 <b>취소 · 그냥 닫기</b> (A-4)</td>
+                <td>
+                  <code>3480</code>이 1건. <code>position</code> 동일 +
+                  <code>error_code</code>가 <code>"USER_INPUT"</code>
+                </td>
+              </tr>
+              <tr>
+                <td>D-4</td>
+                <td><b>공유 차례</b>에서 판 클리어 (A-3)</td>
+                <td><code>3460</code>은 안 나가고 <code>3200_TOURNAMENT_SHARE</code>만 나간다</td>
+              </tr>
+              <tr>
+                <td>D-5</td>
+                <td>
+                  받은 <b>초대 링크로 다른 계정이 게임 진입</b>
+                  <span style="color: var(--text-dim)">(수신 측 · 계정 2개 필요)</span>
+                </td>
+                <td>
+                  <code>1000_LOGIN_COMPLETE</code>의
+                  <code>entrypoint.payload.social</code>이
+                  <b><code>"TOURNAMENT_INVITE"</code></b>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">D-1에서 <code>position</code>이 숫자면 바로 이슈입니다</div>
+          <p>
+            <code>"tournament_invite"</code> 같은 <b>이름</b>이 아니라 <code>"0"</code> ·
+            <code>"1"</code> 같은 <b>숫자 문자열</b>로 찍히면, 초대가 어느 지면에서 나갔는지 나중에
+            구분할 수 없습니다. 같은 실수가 기존 메시지 로그(3400 계열)에 이미 있어서 특히 주의해서
+            봐야 하는 항목입니다.
+          </p>
+        </div>
+
+        <details class="fold">
+          <summary>D-5를 콘솔로 더 빠르게 확인하기</summary>
+          <div class="fold-body">
+            <pre>// 초대 링크로 들어온 직후, 수신 계정의 브라우저 콘솔에서
+FBInstant.getEntryPointData();
+// → { social: "TOURNAMENT_INVITE", feed: "INVITE", is_invite: true, ... } 여야 정상</pre>
+
+            <div class="note" style="--acc: var(--validate)">
+              <div class="note-title">초대로 들어온 유저가 토너먼트 화면으로 가는 것은 정상입니다</div>
+              <p>
+                초대 유입도 <b>토너 진입 분기</b>를 그대로 탑니다. 초대를 받아 들어온 사람이 그
+                토너먼트로 바로 들어가야 초대가 이어지기 때문에 <b>의도한 동작</b>입니다.
+                <code>social</code> 값만 <code>TOURNAMENT_INVITE</code>인지 확인해 주세요 —
+                토너 <b>공유</b>로 들어오면 <code>TOURNAMENT</code>입니다.
+              </p>
+            </div>
+          </div>
+        </details>
+
+        <div class="note" style="--acc: var(--validate)">
+          <div class="note-title">다른 지면 초대에서도 3460이 찍히는 것은 정상입니다</div>
+          <p>
+            C-3(레벨 진입 · 우편함 · 레벨 완료)에서 친구를 초대해도 이제 <code>3460</code>이 나갑니다.
+            그동안 계측이 없던 지면들이라 이번 빌드부터 함께 수집되는 것으로, 이때는
+            <code>position</code>이 <code>invite_level_entry</code> ·
+            <code>invite_mail</code> · <code>invite_level_complete</code>로 찍힙니다.
+          </p>
+        </div>
+      </section>
+
       <!-- ================= 기획서와 다른 점 ================= -->
       <!-- QA가 기획서만 보고 정상 동작을 결함으로 올리는 것을 막는 절. -->
       <section class="doc-section" id="spec-diff">
         <h2 class="doc-h2">
           기획서와 다른 점
-          <span class="doc-h2-sub">아래 3가지는 <b>의도된 차이</b>입니다 — 결함이 아닙니다</span>
+          <span class="doc-h2-sub">아래 2가지는 <b>의도된 차이</b>입니다 — 결함이 아닙니다</span>
         </h2>
 
         <p>
@@ -414,12 +543,20 @@ location.reload();
 
         <ul>
           <li>첫 차례가 <b>공유가 아니라 초대</b>입니다</li>
-          <li>초대창을 <b>취소해도 차례는 넘어갑니다</b> (A-4 · A-5)</li>
           <li><b>신규 계정</b>은 공유·초대 어느 쪽도 안 뜹니다 (B-2)</li>
         </ul>
 
+        <div class="note" style="--acc: var(--validate)">
+          <div class="note-title">"취소해도 차례가 넘어간다"는 기획서에도 반영됐습니다</div>
+          <p>
+            기획서 최신판에 <b>차례를 뒤집는 기준 = 다이얼로그가 뜬 것 (유저 취소 포함)</b>으로
+            명시돼 있어, 더 이상 차이 항목이 아닙니다. A-4 · A-5는 <b>기획서대로 동작하는지</b>를
+            보는 항목으로 그대로 진행해 주세요.
+          </p>
+        </div>
+
         <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">이 3가지는 이슈로 올리지 말아 주세요</div>
+          <div class="note-title">이 2가지는 이슈로 올리지 말아 주세요</div>
           <p>
             반대로 여기에 <b>없는</b> 기획서 불일치를 발견하면 올려 주세요 — 의도한 차이가 아닐 수 있습니다.
           </p>
@@ -462,6 +599,22 @@ location.reload();
               <tr>
                 <td>앱을 껐다 켜면 항상 초대부터 다시 시작한다</td>
                 <td>A-6 (차례가 저장 안 됨)</td>
+              </tr>
+              <tr>
+                <td>초대창은 떴는데 3460이 안 찍힌다</td>
+                <td>D-1 (초대 지표가 통째로 비어버림 — <b>최우선</b>)</td>
+              </tr>
+              <tr>
+                <td>3460의 <code>position</code>이 <code>"0"</code> 같은 숫자로 찍힌다</td>
+                <td>D-1 (지면 구분 불가)</td>
+              </tr>
+              <tr>
+                <td>초대창을 취소했는데 3480이 안 찍히거나 <code>error_code</code>가 없다</td>
+                <td>D-3 (취소와 오류를 구분할 수 없음)</td>
+              </tr>
+              <tr>
+                <td>초대 링크로 들어왔는데 <code>social</code>이 <code>TOURNAMENT_INVITE</code>가 아니다</td>
+                <td>D-5 (초대로 들어온 유저를 못 셈)</td>
               </tr>
             </tbody>
           </table>
