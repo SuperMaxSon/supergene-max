@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>토너먼트 참가 · 전환 다이얼로그 1회 — QA 가이드</title>
+    <meta
+      name="description"
+      content="토너먼트 목록에서 참가할 때 전환 다이얼로그를 Play 시점 1회로 줄이고, 참가할 수 없는 토너먼트를 목록에서 제외한 수정의 QA 순서."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#change">변경점</a>
+        <a class="nav-back" href="#setup">준비</a>
+        <a class="nav-back" href="#stepA">A. 목록</a>
+        <a class="nav-back" href="#stepB">B. 참가</a>
+        <a class="nav-back" href="#stepC">C. 점수</a>
+        <a class="nav-back" href="#stepD">D. 회귀</a>
+        <a class="nav-back" href="#known">알려진 이슈</a>
+        <a class="nav-back" href="#fail">버그 판정</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · QA</div>
+        <h1 class="doc-title">토너먼트 참가 · 전환 다이얼로그 1회 — QA 가이드</h1>
+        <p class="doc-lede">
+          토너먼트 목록에서 참가하는 흐름을 고쳤습니다. ① <b>참가를 누를 때는 다이얼로그가 뜨지 않고</b>
+          프리게임 팝업으로 바로 갑니다 — 전환 다이얼로그는 <b>Play를 누를 때 딱 한 번</b>입니다.
+          ② <b>참가할 수 없는 토너먼트는 목록에 아예 나오지 않습니다.</b>
+          중요한 전제: 수정 전에는 <b>목록에서 참가가 한 번도 성공하지 않았습니다</b> — 이번에 처음 동작하는 기능이라
+          점수·공유까지 이어지는 C 섹션이 핵심입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">솔리테어 · FB 인스턴트 <b>prod</b> 빌드 필수</span>
+          <span class="tag">친구 계정 2개 필요</span>
+          <span class="tag">클라 코드 실측 + 실기 로그 확인</span>
+          <span class="tag">2026-08-13</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 변경점 ================= -->
+      <!--
+        전/후를 같은 가로축에 두면 "다이얼로그가 2번 → 1번"이 한눈에 보인다.
+        수정 전 행의 실패 상자를 둘 다 bad로 칠해, 두 번 다 실패했다는 사실을 강조한다.
+      -->
+      <section class="doc-section" id="change">
+        <h2 class="doc-h2">변경점</h2>
+
+        <div class="table-scroll">
+          <svg
+            viewBox="0 0 900 360"
+            width="900"
+            height="360"
+            role="img"
+            aria-label="토너먼트 참가 흐름의 전후 비교. 수정 전에는 전환 다이얼로그가 두 번 뜨고 두 번 모두 실패했으며, 수정 후에는 Play 시점에 한 번만 뜨고 참가에 성공한다."
+          >
+            <defs>
+              <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5"
+                      markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <text x="20" y="24" font-size="14" font-weight="700" fill="var(--text)">토너먼트 목록 → 참가 → 판 시작</text>
+
+            <text x="20" y="56" font-size="13" font-weight="600" fill="var(--text-dim)">전</text>
+            <rect x="20" y="66" width="96" height="40" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="68" y="91" text-anchor="middle" font-size="13" fill="var(--text)">참가 누름</text>
+            <line x1="116" y1="86" x2="140" y2="86" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="146" y="66" width="140" height="40" rx="8" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="216" y="91" text-anchor="middle" font-size="13" fill="var(--text)">다이얼로그 1회차</text>
+            <line x1="286" y1="86" x2="310" y2="86" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="316" y="66" width="130" height="40" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="381" y="91" text-anchor="middle" font-size="13" fill="var(--text)">프리게임 팝업</text>
+            <line x1="446" y1="86" x2="470" y2="86" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="476" y="66" width="76" height="40" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="514" y="91" text-anchor="middle" font-size="13" fill="var(--text)">Play</text>
+            <line x1="552" y1="86" x2="576" y2="86" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="582" y="66" width="140" height="40" rx="8" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="652" y="91" text-anchor="middle" font-size="13" fill="var(--text)">다이얼로그 2회차</text>
+            <line x1="722" y1="86" x2="746" y2="86" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="752" y="66" width="128" height="40" rx="8" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="816" y="91" text-anchor="middle" font-size="13" fill="var(--text)">혼자 판 시작</text>
+            <text x="20" y="128" font-size="12" fill="var(--bad)">← 참가는 두 번 다 실패. 목록에 참가 자체가 불가능한 토너먼트만 떠 있었다</text>
+
+            <line x1="20" y1="148" x2="880" y2="148" stroke="var(--border)" />
+
+            <text x="20" y="180" font-size="13" font-weight="600" fill="var(--text-dim)">후</text>
+            <rect x="20" y="190" width="96" height="40" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="68" y="215" text-anchor="middle" font-size="13" fill="var(--text)">참가 누름</text>
+            <line x1="116" y1="210" x2="140" y2="210" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="146" y="190" width="130" height="40" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="211" y="215" text-anchor="middle" font-size="13" fill="var(--text)">프리게임 팝업</text>
+            <line x1="276" y1="210" x2="300" y2="210" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="306" y="190" width="76" height="40" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="344" y="215" text-anchor="middle" font-size="13" fill="var(--text)">Play</text>
+            <line x1="382" y1="210" x2="406" y2="210" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="412" y="190" width="146" height="40" rx="8" fill="var(--surface)" stroke="var(--ok)" />
+            <text x="485" y="215" text-anchor="middle" font-size="13" fill="var(--text)">다이얼로그 1회</text>
+
+            <line x1="558" y1="210" x2="582" y2="200" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="588" y="172" width="292" height="34" rx="8" fill="var(--surface)" stroke="var(--ok)" />
+            <text x="734" y="194" text-anchor="middle" font-size="13" fill="var(--text)">수락 → 그 토너먼트로 참가해서 판 시작</text>
+
+            <line x1="558" y1="210" x2="582" y2="228" stroke="var(--text-faint)" marker-end="url(#ah2)" />
+            <rect x="588" y="214" width="292" height="34" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="734" y="236" text-anchor="middle" font-size="13" fill="var(--text)">거절 → 전면광고 → 혼자 판 시작</text>
+
+            <text x="20" y="272" font-size="12" fill="var(--ok)">← 목록에는 실제로 참가 가능한 토너먼트만 표시된다</text>
+
+            <line x1="20" y1="292" x2="880" y2="292" stroke="var(--border)" />
+
+            <text x="20" y="320" font-size="14" font-weight="700" fill="var(--text)">목록 구성 변화</text>
+            <rect x="20" y="330" width="410" height="24" rx="6" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="225" y="347" text-anchor="middle" font-size="12" fill="var(--text)">전 · 내 것 → 남의 것 → 친구 것 (남의 것이 화면을 다 차지)</text>
+            <rect x="450" y="330" width="430" height="24" rx="6" fill="var(--surface)" stroke="var(--ok)" />
+            <text x="665" y="347" text-anchor="middle" font-size="12" fill="var(--text)">후 · 내 것 → 친구 것 → 남의 것, 참가 불가한 항목은 제외</text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">"플로우만 바뀐 것"이 아닙니다 — 점수 경로가 새로 살아납니다</div>
+            <p>
+              수정 전에는 토너먼트 방으로 들어가는 데 <b>매번 실패</b>했고, 그래서 판은 항상 혼자 방에서 진행됐습니다.
+              점수 등록·순위 갱신·공유는 모두 "토너먼트 방일 때만" 동작하는 코드라 <b>실행된 적이 없습니다.</b>
+              이제 참가가 실제로 되니까 그 코드들이 <b>처음으로 돌기 시작합니다</b> — 점수가 오르고, 클리어 후
+              공유·초대가 뜨고, 미션이 오릅니다. 그래서 C 섹션을 반드시 봐야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">목록이 짧아지는 건 정상입니다</div>
+            <p>
+              페이스북은 <b>내가 만든 것 · 내가 이미 참가한 것 · 친구가 참가한 것</b>만 참가를 허용합니다.
+              모르는 사람의 토너먼트는 원칙적으로 참가할 수 없어서, 눌러도 실패할 항목을 미리 걸러냈습니다.
+              친구가 토너먼트를 하고 있지 않으면 <b>목록이 만들기 칸만 남을 수 있고, 그것도 정상</b>입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 준비 ================= -->
+      <section class="doc-section" id="setup">
+        <h2 class="doc-h2">준비</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>빌드</td>
+                <td><b>prod(라이브) 빌드 필수.</b> dev 빌드는 서버가 실제 페이스북 토너먼트가 아닌 데이터를 주기 때문에 <b>무조건 실패</b>합니다 — dev에서 실패해도 버그가 아닙니다</td>
+              </tr>
+              <tr>
+                <td>계정</td>
+                <td>튜토리얼 완료 계정 <b>2개</b>(서로 친구). 한쪽이 토너먼트를 만들어 두어야 다른 쪽 목록에 <b>친구 토너먼트</b>가 생깁니다</td>
+              </tr>
+              <tr>
+                <td>사전 세팅</td>
+                <td>계정 B로 판을 깨고 <b>토너먼트 만들기</b> → 계정 A로 로비 → 토너먼트 팝업에 그 토너먼트가 보여야 A 섹션 진행 가능</td>
+              </tr>
+              <tr>
+                <td>확인 수단</td>
+                <td>화면 동작 + 토너먼트 순위표. 로그로 볼 때는 <b>3000/3010/3020</b>(전환), <b>3300/3310/3320</b>(점수 등록), <b>3200 계열</b>(공유)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">먼저 못 박습니다 — 정상이지만 이상해 보이는 것</div>
+          <p>
+            ① 토너먼트 목록이 <b>예전보다 적게</b> 보입니다(참가 불가 항목 제외). ②
+            <b>내가 만든 토너먼트</b>는 만든 세션에서만 목록에 보입니다 — 앱을 껐다 켜면 사라지는 게 기존 동작입니다.
+            ③ 참가를 눌렀을 때 <b>다이얼로그가 안 뜨는 것</b>이 이번 수정의 핵심입니다. 이슈로 올리지 마세요.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= A. 목록 ================= -->
+      <section class="doc-section" id="stepA">
+        <h2 class="doc-h2">
+          A. 목록 · 진입
+          <span class="doc-h2-sub">참가를 누른 뒤 프리게임 팝업까지</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A-1</td>
+                <td>로비에서 <b>토너먼트 팝업</b> 열기</td>
+                <td>목록이 뜬다. <b>친구가 참가 중인 토너먼트</b>가 앞쪽에 보인다</td>
+              </tr>
+              <tr>
+                <td>A-2</td>
+                <td>목록의 항목 하나에서 <b>참가</b> 누름</td>
+                <td><b>다이얼로그 없이</b> 프리게임 팝업이 바로 뜬다</td>
+              </tr>
+              <tr>
+                <td>A-3</td>
+                <td>A-2의 프리게임 팝업을 <b>그냥 닫음</b></td>
+                <td>로비로 돌아온다. 참가도 안 되고 다이얼로그도 안 뜬다</td>
+              </tr>
+              <tr>
+                <td>A-4</td>
+                <td>A-3 직후 <b>로비에서 일반 플레이</b>로 판 시작</td>
+                <td>아까 고른 토너먼트가 <b>따라붙지 않는다</b> — 평소 판 시작과 동일</td>
+              </tr>
+              <tr>
+                <td>A-5</td>
+                <td>목록 <b>2페이지</b>까지 넘겨보기</td>
+                <td>페이지 이동 정상. 빈 칸·깨진 칸 없음</td>
+              </tr>
+              <tr>
+                <td>A-6</td>
+                <td>친구가 토너먼트를 <b>하나도 안 만든 상태</b>로 목록 열기</td>
+                <td><b>만들기 칸만</b> 남을 수 있다 (정상)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--analysis)">
+          <div class="note-title">A-3·A-4가 확인하는 것</div>
+          <p>
+            참가 정보는 프리게임 팝업이 들고 있다가 <b>Play를 누를 때 한 번만</b> 씁니다. 팝업을 닫으면 그 정보는
+            버려져야 하고, 다음 판에 <b>남아 있으면 안 됩니다.</b> 남아 있으면 엉뚱한 판에서 토너먼트 다이얼로그가 뜹니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= B. 참가 ================= -->
+      <section class="doc-section" id="stepB">
+        <h2 class="doc-h2">
+          B. 참가 · 거절
+          <span class="doc-h2-sub">이번 수정의 핵심</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>B-1</td>
+                <td>참가 → 프리게임 팝업 → <b>Play</b></td>
+                <td><b>전환 다이얼로그가 한 번</b> 뜬다</td>
+              </tr>
+              <tr>
+                <td>B-2</td>
+                <td>B-1의 다이얼로그에서 <b>수락</b></td>
+                <td>판이 시작된다. <b>내가 고른 그 토너먼트</b>에 참가된 상태여야 한다</td>
+              </tr>
+              <tr>
+                <td>B-3</td>
+                <td>B-2로 시작한 판을 <b>클리어</b> → 그 토너먼트 순위표 확인</td>
+                <td><b>내 점수가 그 토너먼트에 올라가 있다</b></td>
+              </tr>
+              <tr>
+                <td>B-4</td>
+                <td>다시 참가 → Play → 다이얼로그에서 <b>거절(X)</b></td>
+                <td><b>다이얼로그가 다시 뜨지 않는다.</b> 전면광고 후 혼자 방에서 판이 시작된다</td>
+              </tr>
+              <tr>
+                <td>B-5</td>
+                <td>B-4를 <b>연속 3번</b> 반복</td>
+                <td>매번 다이얼로그는 <b>1번만.</b> 2번 이상 뜨면 버그</td>
+              </tr>
+              <tr>
+                <td>B-6</td>
+                <td>B-4로 시작한 판 클리어</td>
+                <td>토너먼트 순위에 <b>안 올라간다</b>(거절했으므로 정상). 혼자 판 클리어와 동일하게 처리</td>
+              </tr>
+              <tr>
+                <td>B-7</td>
+                <td>이미 참가 중인 토너먼트를 <b>다시 참가</b> → Play</td>
+                <td>다이얼로그 없이 바로 판 시작(같은 방이므로 정상)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">B-2·B-3이 최우선</div>
+            <p>
+              <b>고른 것과 다른 토너먼트에 들어가면 즉시 보고</b>해주세요. 검증 도중 다른 토너먼트로 대체 참가하는
+              진단 코드를 넣었다 뺐는데, 그 흔적이 남아 있으면 여기서 드러납니다. 순위표에서
+              <b>토너먼트 제목·참가자 목록이 내가 고른 것과 일치</b>하는지 봐야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">B-5는 반복이 중요합니다</div>
+            <p>
+              수정 도중 <b>거절할 때마다 다이얼로그가 계속 다시 뜨는 문제</b>가 있었습니다(최대 10번).
+              원인은 제거했지만, 재발하면 유저가 빠져나갈 수 없는 상태가 되므로 반드시 3회 이상 반복해주세요.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= C. 점수 ================= -->
+      <!--
+        이 섹션이 이번 QA의 존재 이유다. 참가가 처음 성공하면서 점수·공유·미션 코드가
+        전부 처음 실행되므로, "새 기능 검증"에 준해서 본다.
+      -->
+      <section class="doc-section" id="stepC">
+        <h2 class="doc-h2">
+          C. 점수 · 공유 · 미션
+          <span class="doc-h2-sub">처음 동작하는 구간 — 가장 위험</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>C-1</td>
+                <td>참가한 토너먼트 판 <b>클리어</b></td>
+                <td>순위표에 <b>내 점수 반영.</b> 이전 점수보다 낮으면 <b>낮은 점수로 내려가지 않아야</b> 한다</td>
+              </tr>
+              <tr>
+                <td>C-2</td>
+                <td>C-1 직후 화면</td>
+                <td><b>공유 또는 초대</b> 다이얼로그가 뜬다(둘 중 하나·번갈아). 안 뜨는 조건도 있으니 아래 주석 참고</td>
+              </tr>
+              <tr>
+                <td>C-3</td>
+                <td>C-2에서 <b>공유 성공</b> → 미션 확인</td>
+                <td>토너먼트 미션 진행도가 <b>1 오른다</b></td>
+              </tr>
+              <tr>
+                <td>C-4</td>
+                <td>참가한 판을 <b>중간에 나가기</b>(포기)</td>
+                <td>점수가 <b>안 올라가거나</b> 그 판 획득분만 반영. 순위가 <b>내려가지 않는다</b></td>
+              </tr>
+              <tr>
+                <td>C-5</td>
+                <td>참가한 판 클리어 후 <b>연승 스타</b> 획득 연출</td>
+                <td>순위표 점수가 그 값만큼 <b>추가로 반영</b>될 수 있다(정상). 중복 가산은 아니어야 한다</td>
+              </tr>
+              <tr>
+                <td>C-6</td>
+                <td>C-1 후 로비 복귀 → <b>다음 판을 일반 플레이</b>로 시작</td>
+                <td>그 판 점수가 <b>이전 토너먼트에 올라가지 않는다</b></td>
+              </tr>
+              <tr>
+                <td>C-7</td>
+                <td>참가한 판에서 <b>재도전</b> 사용</td>
+                <td>같은 토너먼트가 유지되고, 점수는 <b>재도전 결과 기준</b>으로 1회만 반영</td>
+              </tr>
+              <tr>
+                <td>C-8</td>
+                <td>C-1의 순위표에서 <b>내 순위 숫자</b> 확인</td>
+                <td>점수 대비 순위가 맞다. 1위가 아닌데 <b>1위로 표시되면</b> 보고</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">C-6이 회귀 위험 1순위</div>
+            <p>
+              토너먼트 방은 판이 끝나도 <b>바로 풀리지 않습니다.</b> 다음 판을 시작할 때 정리되는 구조라,
+              그 사이에 점수가 엉뚱한 토너먼트로 흘러가면 <b>남의 순위표에 내 점수가 꽂히는</b> 사고가 됩니다.
+              C-1 → 로비 → 일반 플레이 → 클리어를 한 번은 꼭 이어서 확인해주세요.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">C-2가 안 뜨는 게 정상인 경우</div>
+            <p>
+              누적 승수가 적고 튜토리얼을 안 끝낸 계정, 직전에 이미 공유·초대가 떠서 <b>쿨다운</b>인 경우,
+              토너먼트가 <b>이미 종료</b>된 경우에는 안 뜹니다. 이건 기존 규칙(SPEC-038)이고 이번 수정과 무관합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">C-8은 표시 값만의 문제</div>
+            <p>
+              순위 숫자는 참가 시점에 저장한 값 또는 서버 캐시에서 추정합니다. 참가 경로에서는 참가 시점 순위를
+              저장하므로 정확해야 하지만, 어긋나도 <b>점수 자체가 틀린 것은 아닙니다.</b> 로그 값 정확도 이슈로
+              분리해서 보고해주세요.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= D. 회귀 ================= -->
+      <section class="doc-section" id="stepD">
+        <h2 class="doc-h2">
+          D. 회귀
+          <span class="doc-h2-sub">건드리지 않은 경로가 그대로인지</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>순서</th>
+                <th>이렇게 하면</th>
+                <th>이래야 정상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>D-1</td><td>솔로 판 클리어 → <b>토너먼트 만들기</b></td><td>기존과 동일하게 만들어지고 목록에 보인다</td></tr>
+              <tr><td>D-2</td><td>로비 토너먼트 탭에서 <b>직접 만들기</b></td><td>기존과 동일. 만든 직후 목록 맨 앞에 보인다</td></tr>
+              <tr><td>D-3</td><td><b>토너먼트 초대 링크</b>로 게임 진입</td><td>바로 그 토너먼트 방에서 시작. 전환 다이얼로그 <b>없음</b></td></tr>
+              <tr><td>D-4</td><td>친구와 <b>1:1 대결</b> 진행</td><td>상대·방 유지, 결과 전달 정상</td></tr>
+              <tr><td>D-5</td><td>로비 <b>일반 플레이</b>로 판 시작 반복</td><td>친구·토너먼트 추천 다이얼로그가 기존 빈도로 뜬다</td></tr>
+              <tr><td>D-6</td><td>튜토리얼 계정(레벨 1~2)으로 진행</td><td>전환 다이얼로그가 뜨지 않고 판으로 직행</td></tr>
+              <tr><td>D-7</td><td>토너먼트 팝업 열기 → <b>즉시 닫기</b>를 빠르게 반복</td><td>멈춤·중복 팝업 없음. 로딩이 계속 걸려 있지 않다</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">D-7은 새로 생긴 대기 때문입니다</div>
+          <p>
+            목록을 만들 때 <b>참가 가능한 토너먼트가 무엇인지 페이스북에 한 번 물어봅니다.</b> 그만큼 팝업이
+            느려질 수 있는데, <b>로딩이 끝까지 안 사라지거나</b> 닫았는데 다시 뜨면 버그입니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= 알려진 이슈 ================= -->
+      <section class="doc-section" id="known">
+        <h2 class="doc-h2">
+          알려진 이슈 · 이번 범위 밖
+          <span class="doc-h2-sub">보고는 환영하지만 이번 수정 대상이 아님</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>현상</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>판 시작 시 <b>추천으로</b> 뜬 토너먼트 전환을 수락했는데 참가되지 않음</td>
+                <td><b>미수정.</b> 추천 경로는 아직 참가 불가한 토너먼트를 대상으로 삼는다 — 별도 작업 예정</td>
+              </tr>
+              <tr>
+                <td>내가 만든 토너먼트가 다음 세션 목록에 안 보임</td>
+                <td>기존 정책(만든 세션에서만 노출). 변경 여부 확인 중</td>
+              </tr>
+              <tr>
+                <td>목록에 뜨는 토너먼트 개수가 계정마다 다름</td>
+                <td>정상. 친구의 참가 상황에 따라 달라진다</td>
+              </tr>
+              <tr>
+                <td>dev 빌드에서 참가가 항상 실패</td>
+                <td>정상. dev 서버 데이터가 실제 페이스북 토너먼트가 아니다 — <b>prod로 테스트</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= 버그 판정 ================= -->
+      <section class="doc-section" id="fail">
+        <h2 class="doc-h2">이건 버그입니다</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>증상</th>
+                <th>항목</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>고른 것과 <b>다른 토너먼트</b>에 참가된다</td><td>B-2 (<b>최우선</b>)</td></tr>
+              <tr><td>참가해서 판을 깼는데 순위표에 점수가 없다</td><td>B-3 / C-1 (<b>최우선</b>)</td></tr>
+              <tr><td>거절했는데 다이얼로그가 계속 다시 뜬다</td><td>B-4 / B-5 (<b>최우선</b>)</td></tr>
+              <tr><td>일반 플레이로 깬 판 점수가 아까 토너먼트에 올라간다</td><td>C-6 (<b>최우선</b>)</td></tr>
+              <tr><td>참가를 눌렀을 때 전환 다이얼로그가 뜬다</td><td>A-2</td></tr>
+              <tr><td>Play를 눌렀는데 다이얼로그가 두 번 뜬다</td><td>B-1 / B-5</td></tr>
+              <tr><td>프리게임 팝업을 닫았는데 다음 판에서 토너먼트 다이얼로그가 뜬다</td><td>A-3 / A-4</td></tr>
+              <tr><td>순위표 점수가 이전보다 낮은 값으로 내려간다</td><td>C-1 / C-4</td></tr>
+              <tr><td>공유 성공했는데 미션이 안 오른다</td><td>C-3</td></tr>
+              <tr><td>재도전했더니 점수가 두 번 올라간다</td><td>C-7</td></tr>
+              <tr><td>토너먼트 팝업 로딩이 안 끝난다</td><td>D-7</td></tr>
+              <tr><td>초대 링크로 들어왔는데 전환 다이얼로그가 뜬다</td><td>D-3</td></tr>
+              <tr><td>목록이 예전보다 적게 나온다</td><td>버그 아님 — 참가 불가 항목 제외</td></tr>
+              <tr><td>친구 토너먼트가 하나도 없어 만들기 칸만 보인다</td><td>버그 아님 — A-6</td></tr>
+              <tr><td>클리어 후 공유·초대가 안 뜬다(승수 적음·쿨다운·종료된 토너먼트)</td><td>버그 아님 — C-2 주석</td></tr>
+              <tr><td>거절하고 시작한 판이 순위에 안 오른다</td><td>버그 아님 — B-6</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 클라이언트 코드 실측 + 타입 검사 통과 + prod 빌드 실기 로그로 <b>참가 성공·거절 2케이스만</b> 확인.
+          <b>미검증</b> C 섹션 전체(<b>점수·공유·미션이 실제로 반영되는지는 아직 아무도 확인하지 않았습니다</b>),
+          D 섹션 전체. 참가 성공은 이번에 처음 동작하는 경로이므로 <b>C를 신규 기능 검증에 준해서</b> 봐주세요.
+          <b>주의</b> dev 빌드에서는 재현 자체가 불가능합니다 — 반드시 prod 빌드로 진행해주세요.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>
