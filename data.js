@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-12",
+  updated: "2026-08-13",
 };
 
 const SECTIONS = [
@@ -57,7 +57,7 @@ const SECTIONS = [
         url: "docs/tournament-share-rate.html",
         status: "진행중",
         version: "v6.1",
-        updated: "2026-08-12",
+        updated: "2026-08-13",
         pinned: false,
         tags: ["토너먼트", "바이럴", "전환율", "BigQuery", "빌드컷", "지표오염", "가설기각"],
       },
@@ -103,10 +103,10 @@ const SECTIONS = [
     cards: [
       {
         title: "인게임 재도전 — QA 가이드",
-        desc: "인게임 설정팝업의 재도전 버튼 QA 순서. 어디까지 취소되고 어디서부터 되돌릴 수 없는지, 코드 리뷰에서 이미 확인된 이슈까지 함께 정리했다. QA가 조작할 수 없는 내부 광고 조건표와 중복 강조를 덜어냈다.",
+        desc: "인게임 설정팝업의 재도전 버튼 QA 순서. 어디까지 취소되고 어디서부터 되돌릴 수 없는지를 흐름도로 먼저 잡는다. 코드 리뷰에서 나온 결함 2건(에러 팝업 중복·재도전 직후 입력 열림)은 수정되어 회귀 확인 항목으로 옮겼다.",
         url: "docs/ingame-retry-qa-flow.html",
         status: "진행중",
-        version: "v1.1",
+        version: "v1.2",
         updated: "2026-08-13",
         pinned: false,
         tags: ["재도전", "QA", "프리게임팝업", "정산", "회귀", "알려진이슈"],
@@ -117,7 +117,7 @@ const SECTIONS = [
         url: "docs/quit-gameend-order-qa.html",
         status: "진행중",
         version: "v1.0",
-        updated: "2026-08-12",
+        updated: "2026-08-13",
         pinned: false,
         tags: ["나가기", "QA", "전면광고", "세션복귀", "로그순서", "회귀"],
       },
@@ -127,7 +127,7 @@ const SECTIONS = [
         url: "docs/spec-038-qa-flow.html",
         status: "진행중",
         version: "v1.0",
-        updated: "2026-08-12",
+        updated: "2026-08-13",
         pinned: false,
         tags: ["SPEC-038", "QA", "토너먼트", "초대", "로그검증", "회귀"],
       },
@@ -153,7 +153,7 @@ const SECTIONS = [
         url: "docs/commit-history-solitaire.html",
         status: "진행중",
         version: "v5.0",
-        updated: "2026-08-12",
+        updated: "2026-08-13",
         pinned: false,
         tags: ["커밋", "작업기록", "솔리테어", "육하원칙", "태그필터", "묶음", "diff실측"],
       },
