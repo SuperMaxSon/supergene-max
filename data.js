@@ -116,7 +116,7 @@ const SECTIONS = [
         desc: "나가기 팝업으로 옮겨진 재도전 버튼의 QA 순서. 어디까지 취소되고 어디서부터 되돌릴 수 없는지를 흐름도로 먼저 잡는다. 설정팝업 경로가 사라지고 진입이 2개로 늘면서 팝업 두 겹 정리·버튼 연타가 새 위험으로 올라왔다.",
         url: "docs/ingame-retry-qa-flow.html",
         status: "진행중",
-        version: "v2.0",
+        version: "v2.1",
         updated: "2026-08-13",
         pinned: false,
         tags: ["재도전", "QA", "나가기팝업", "프리게임팝업", "정산", "회귀", "알려진이슈"],
