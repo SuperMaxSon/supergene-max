@@ -3211,8 +3211,36 @@
           if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); input.focus(); }
         });
 
-        setGrouped(true);
+        // 다른 문서(QA 이슈 코드 대조 등)에서 커밋 해시를 들고 넘어오는 경로.
+        // 이 문서에는 커밋별 앵커가 없어(주 단위 w29~w33만) 해시로 바로 점프할 수단이 없다.
+        // 검색어를 URL로 받아 채워주면 링크 하나로 해당 커밋만 남길 수 있다.
+        // 묶음(setGrouped)은 검색어가 있을 때 풀어야 접힌 행이 가려지지 않는다.
+        var seeded = "";
+        try {
+          seeded = (new URLSearchParams(location.search).get("q") || "").trim();
+        } catch (e) {
+          seeded = "";
+        }
+
+        setGrouped(!seeded);
+        if (seeded) {
+          input.value = seeded;
+        }
         apply();
+
+        // 단일 커밋으로 좁혀졌으면 펼쳐서 바로 읽히게 한다. 여러 건이면 목록 상태를 유지한다.
+        if (seeded) {
+          // 숨김은 style이 아니라 .ch-hide 클래스로 한다(apply 참고).
+          var hits = rows.filter(function (row) {
+            return !row.classList.contains("ch-hide");
+          });
+          if (hits.length === 1) {
+            hits[0].open = true;
+          }
+          if (hits.length > 0 && toolbar) {
+            toolbar.scrollIntoView({ block: "start" });
+          }
+        }
       })();
     </script>
   </body>
