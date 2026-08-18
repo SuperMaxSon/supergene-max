@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-18 17:33",
+  updated: "2026-08-18 17:36",
 };
 
 const SECTIONS = [
@@ -36,8 +36,8 @@ const SECTIONS = [
         desc: "다섯 프로젝트의 공유·초대·전환 코드를 항목별로 나란히 놓고(✅/❌/—), 그 차이가 수치로 나타나는지 US 실측으로 확인. 시도가 아니라 성공률 문제 — 피드공유 시도는 유저일당 0.113으로 2위인데 성공률 43.8%로 최하위(코지·퍼블마 79%), 응답률도 84.5%로 우리만 낮다. 실패 사유를 열면 유저 취소가 아니라 PENDING_REQUEST(다른 FB 요청과 겹쳐 거절)가 실패의 81%이고 시도당 발생률이 퍼블마의 3.6배(26.5% vs 7.3%) — 원인은 무엇을 넘기느냐가 아니라 언제 부르느냐다. 가설 둘이 실측으로 밀렸다: iOS·웹 intent 이탈은 Windows 93.4%로 벤치와 같은 구간이라 무해, Android shareDestination·switchContext도 파라미터로는 충돌을 설명 못 한다. 새 후보는 결과창(우리 공유의 80%가 여기)에서 전면광고·토너 공유/생성 지연·컨텍스트 팝업이 겹치는 직렬화. 3500 position이 숫자로 나가는 것도 실측 확인(0·1 vs 퍼블마 이름 문자열).",
         url: "docs/viral-surface-cross-project.html",
         status: "진행중",
-        version: "v4.2",
-        updated: "2026-08-18 17:33",
+        version: "v4.3",
+        updated: "2026-08-18 17:36",
         pinned: false,
         tags: ["바이럴", "공유", "성공률", "PENDING_REQUEST", "5프로젝트", "OS분해", "BigQuery", "가설반증"],
       },
