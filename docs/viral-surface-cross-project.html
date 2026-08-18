@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>바이럴 지면 로직 — 벤치 4종 전면 대조</title>
+    <meta
+      name="description"
+      content="솔리테어의 바이럴 지면 로직을 코지·퍼블마·마종·코인매치 코드와 전면 대조. 차이 15건 중 가장 큰 것은 피드 공유 shareAsync 파라미터 — 벤치 4종이 전부 같고 우리만 다릅니다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#verdict">① 판정</a>
+        <a class="nav-back" href="#dialog">② 공유 호출</a>
+        <a class="nav-back" href="#gate">③ 게이트·억제</a>
+        <a class="nav-back" href="#log">④ 로그</a>
+        <a class="nav-back" href="#surface">⑤ 지면 목록</a>
+        <a class="nav-back" href="#todo">⑥ 할 일</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 바이럴</div>
+        <h1 class="doc-title">바이럴 지면 로직 — 벤치 4종 전면 대조</h1>
+        <p class="doc-lede">
+          솔리테어의 바이럴 지면(공유·초대·메시지·컨텍스트 전환)을 <b>코지 · 퍼블마 · 마종 · 코인매치</b> 네 리포의
+          코드와 한 줄씩 맞춰봤습니다. 차이는 <b>15건</b>이고, 그중 대부분은 이미 의도가 문서로 남아 있습니다.<br />
+          <b>가장 큰 것 하나</b> — 피드 공유를 부르는 <code>shareAsync</code> 파라미터가
+          <b>벤치 네 프로젝트는 코드가 전부 동일한데 우리만 다릅니다.</b> 그중 목적지 필터는 7/16에
+          실측으로 폐기한 이력이 있지만, <code>intent</code>와 <code>initialData</code> 이탈은
+          <b>이유가 어디에도 없습니다.</b><br />
+          <b>반대쪽도 같이 봅니다</b> — 전환 팝업 계측(3050~3052)·생성 억제 로그(3130)·시트로 조정되는 거절 상한은
+          우리만 갖고 있습니다. 공유 보상·미션도 우리만 있는데, 이건 기능 우위이면서 동시에
+          <b>"공유 시도 20.8회 vs 벤치 9~10회" 비교의 전제를 흔듭니다.</b>
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--warn)">차이 15건 · 코드 실측만 · BQ 수치 없음</span>
+          <span class="tag">각 리포 main 브랜치 코드 실측</span>
+          <span class="tag">벤치 4종: 코지 · 퍼블마 · 마종 · 코인매치</span>
+          <span class="tag">2026-08-18 16:55 갱신 · v1.0</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- 판정 먼저. "차이 몇 건"만으로는 어디부터 손댈지 안 정해지므로
+           심각도(우리만 다름 / 벤치 일부만 / 우위)를 같은 표의 열로 넣었다 -->
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          ① 판정 — 차이 15건을 심각도로 정렬
+          <span class="doc-h2-sub">🔴 우리만 다름 · 🟡 벤치 일부만 보유 · 🟢 우리만 보유(우위) · ⚪ 확인 필요</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">4<span class="stat-unit">/4</span></div>
+            <div class="stat-name">공유 호출이 다름</div>
+            <div class="stat-sub">벤치 네 곳 코드가 동일, 우리만 이탈</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">5</div>
+            <div class="stat-name">공유 페이로드 필드 수</div>
+            <div class="stat-sub">지면마다 1필드씩 다름 (퍼블마 7필드 공통)</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">2</div>
+            <div class="stat-name">우리에게 없는 억제 로직</div>
+            <div class="stat-sub">둘 다 코지 보유 · 마종·퍼블마엔 없음</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">4</div>
+            <div class="stat-name">우리만 있는 계측·기능</div>
+            <div class="stat-sub">3050~3052 · 3130 · 공유보상 · 미션</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">#</th>
+                <th style="width: 34%">항목</th>
+                <th style="width: 20%">판정</th>
+                <th>영향</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A-1</td>
+                <td><b>피드 공유 <code>shareAsync</code> 파라미터</b></td>
+                <td><b style="color: var(--bad)">🔴 우리만 (4/4 벤치 일치)</b></td>
+                <td>공유 다이얼로그 동작 자체. 전 피드 공유 지면</td>
+              </tr>
+              <tr>
+                <td>A-2</td>
+                <td><b>공유 페이로드가 지면마다 다름</b></td>
+                <td><b style="color: var(--bad)">🔴 우리만</b></td>
+                <td>유입 분류(<code>social</code>)·광고 귀속(<code>ad_parent</code>) 결손</td>
+              </tr>
+              <tr>
+                <td>E-1</td>
+                <td><b><code>3500</code> position이 숫자 문자열</b></td>
+                <td><b style="color: var(--bad)">🔴 우리만 (벤치 3/3 이름)</b></td>
+                <td>크로스 프로젝트 집계에 매핑표 필요</td>
+              </tr>
+              <tr>
+                <td>E-2</td>
+                <td><b>결과창 공유 1클릭에 3600+3500 이중 기록</b></td>
+                <td><b style="color: var(--bad)">🔴 우리만</b></td>
+                <td>공유 시도 이중 계상 → SPEC-038 가드레일 해석</td>
+              </tr>
+              <tr>
+                <td>A-3</td>
+                <td>종료된 토너 컨텍스트가 쿨타임·NRU 게이트 우회</td>
+                <td><b style="color: var(--warn)">🟡 우리만</b></td>
+                <td>60초 쿨타임 무시 공유 (반증 가능 — ②참조)</td>
+              </tr>
+              <tr>
+                <td>A-4</td>
+                <td>p2p 클리어 후 토너 생성 지면 없음</td>
+                <td><b style="color: var(--warn)">🟡 우리만</b></td>
+                <td>생성 지면 1개 부재</td>
+              </tr>
+              <tr>
+                <td>B-1</td>
+                <td>전환 팝업 거절 누적 억제 없음</td>
+                <td><b style="color: var(--warn)">🟡 코지 보유</b></td>
+                <td>거절 유저에게 계속 노출. 코드 주석이 사실과 어긋남</td>
+              </tr>
+              <tr>
+                <td>B-2</td>
+                <td>공유 실패 후 추천·IT 영구 차단 없음</td>
+                <td><b style="color: var(--warn)">🟡 코지만 보유</b></td>
+                <td>실패 반복 유저 방치</td>
+              </tr>
+              <tr>
+                <td>B-3</td>
+                <td>소셜 슬롯 게이트 미노출이 무로그</td>
+                <td><b style="color: var(--warn)">🟡 계측 갭</b></td>
+                <td>억제량 측정 불가 (생성은 3130 있음)</td>
+              </tr>
+              <tr>
+                <td>D-1</td>
+                <td>리더보드/친구 목록 초대 지면 실질 부재</td>
+                <td><b style="color: var(--warn)">🟡 벤치 3종 보유</b></td>
+                <td>핸들러는 로그만 찍고 프리팹 미배선</td>
+              </tr>
+              <tr>
+                <td>E-4</td>
+                <td><code>3400</code> position이 세 지면 모두 <code>play_result</code></td>
+                <td><b style="color: var(--warn)">🟡 우리만</b></td>
+                <td>리더보드 선물 vs 판 종료 메시지 분리 불가</td>
+              </tr>
+              <tr>
+                <td>C-1</td>
+                <td>공유 보상 골드 + 서버 쿨다운</td>
+                <td><b style="color: var(--ok)">🟢 우리만 (기능 우위)</b></td>
+                <td>공유 시도 KPI 밴드 비교를 왜곡</td>
+              </tr>
+              <tr>
+                <td>C-2</td>
+                <td>초대·공유·토너 미션 연동</td>
+                <td><b style="color: var(--ok)">🟢 우리만</b></td>
+                <td>같은 방향 왜곡</td>
+              </tr>
+              <tr>
+                <td>D-2</td>
+                <td>리더보드 선물 메시지</td>
+                <td><b style="color: var(--ok)">🟢 우리만</b></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>C-3</td>
+                <td>공유 성공을 '토너 <b>조인</b>' 미션으로 계상</td>
+                <td><b>⚪ 확인 필요</b></td>
+                <td>미션 진척의 의미</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법 — "다름"과 "틀림"을 섞지 않았습니다</div>
+            <p>
+              🔴는 <b>벤치 전원이 같은데 우리만 다른 것</b>입니다. 벤치 합의가 있으니 이탈에 근거가 필요합니다.
+              🟡는 <b>벤치도 갈리는 것</b>이라 우리 선택이 소수파일 뿐 틀린 게 아닙니다 —
+              그래서 표에 "코지 보유"처럼 <b>누가 갖고 있는지</b>를 같이 적었습니다.
+              🟢는 우리 우위지만 <b>KPI 비교의 전제를 흔드는 쪽</b>이기도 해서 같은 표에 뒀습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--text-dim)">
+            <div class="note-title">차이지만 조치 불필요 — 의도가 이미 확인된 것</div>
+            <p>
+              토너 소셜 토글 영속화·초기값 <code>share</code>(커밋 <code>46f1211e</code>) ·
+              <code>joinAsync</code> 사용(우리만) · <code>retryUntilTimeout</code> 제거(<code>2c365626</code>) ·
+              생성 거절 상한 시트화(기본 3 = 벤치 하드코딩 3) · <code>3050~3052</code>·<code>3130</code> 추가 계측 ·
+              시트 10108이 0일 때 게이트가 함께 꺼지는 것(SPEC-038의 <b>롤백 정의와 일치</b>).<br />
+              <b>헛다리도 적어둡니다</b> — <code>chooseContext</code> 죽은 코드, <code>shareWithOverlayAsync</code> 미구현,
+              토너 초대 유입의 초대자 귀속 누락은 <b>벤치도 같아서 차이가 아닙니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 가장 큰 차이 두 건. 코드를 나란히 두는 게 표보다 빠르다 -->
+      <section class="doc-section" id="dialog">
+        <h2 class="doc-h2">
+          ② 공유 호출 — 벤치 4종이 전부 같고 우리만 다릅니다
+          <span class="doc-h2-sub">A-1 · A-2</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">파라미터</th>
+                <th style="width: 39%">솔리테어</th>
+                <th>벤치 4종 (코드 동일)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>플랫폼 분기</b></td>
+                <td><b style="color: var(--bad)">없음 — 단일 경로</b></td>
+                <td>ANDROID / 그 외로 갈라 호출</td>
+              </tr>
+              <tr>
+                <td><b><code>intent</code></b></td>
+                <td><b style="color: var(--bad)"><code>'SHARE'</code> 고정</b></td>
+                <td>안드로이드 <code>"SHARE"</code> / <b>그 외 <code>"REQUEST"</code></b></td>
+              </tr>
+              <tr>
+                <td><code>shareDestination</code></td>
+                <td>미지정</td>
+                <td>안드로이드만 <code>GROUP·NEWSFEED·COPY_LINK·MESSENGER</code></td>
+              </tr>
+              <tr>
+                <td><code>switchToContext</code></td>
+                <td>미지정</td>
+                <td>안드로이드 <code>true</code> (공유한 스레드로 이동)</td>
+              </tr>
+              <tr>
+                <td><code>initialData</code></td>
+                <td><b style="color: var(--bad)">미전달</b></td>
+                <td><code>backgroundImageSrc / shareText / gameScore</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">확실한 것과 확실하지 않은 것을 갈라둡니다</div>
+            <p>
+              <b>확실</b> — 코드가 다릅니다. 위치는 <code>FacebookPlatform.ts:1954</code> 대
+              코지 <code>Fbi.ts:2378</code> · 퍼블마 <code>:2270</code> · 마종 <code>:2140</code> · 코인매치 <code>:2239</code>이고,
+              <b>벤치 네 파일의 해당 블록은 서로 같습니다.</b><br />
+              <b>확실하지 않음</b> — 어느 쪽 성공률이 높은지는 <b>측정하지 않았습니다.</b>
+              <code>shareDestination</code>은 2026-07-16에 데스크톱 웹 미반영으로 <b>우리가 실측 후 폐기한 이력</b>이 있어
+              근거 있는 이탈입니다. 하지만 <b><code>intent</code>와 <code>initialData</code>는 그 실험과 무관</b>하고
+              이탈 이유가 코드·문서 어디에도 없습니다. 포팅 누락일 수도, 의도적 단순화일 수도 있습니다.
+            </p>
+          </div>
+        </div>
+
+        <h2 class="doc-h2" style="margin-top: 28px">
+          A-2 · 공유 페이로드가 지면마다 한 필드씩입니다
+          <span class="doc-h2-sub">퍼블마는 전 지면 공통 7필드</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">지면</th>
+                <th style="width: 26%">넘기는 필드</th>
+                <th>위치</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>도시 완성 공유</td>
+                <td><code>{ social }</code></td>
+                <td><code>PopupDecoShare.ts:168</code></td>
+              </tr>
+              <tr>
+                <td>결과창 P2P 공유</td>
+                <td><code>{ ad_parent }</code></td>
+                <td><code>PopupCompleteLevel.ts:848</code></td>
+              </tr>
+              <tr>
+                <td>카드 마일스톤</td>
+                <td><code>{ ad_parent }</code></td>
+                <td><code>PopupEventCardMilestone.ts:303</code></td>
+              </tr>
+              <tr>
+                <td>그룹 랭킹</td>
+                <td><code>{ social }</code></td>
+                <td><code>PopupEventClearRanking.ts:276</code></td>
+              </tr>
+              <tr>
+                <td>스탬프 마일스톤</td>
+                <td><code>{ social }</code></td>
+                <td><code>PopupEventWinningMilestone.ts:212</code></td>
+              </tr>
+              <tr>
+                <td><b>퍼블마 (전 지면 동일)</b></td>
+                <td colspan="2">
+                  <code>player</code> · <code>feed</code> · <code>social</code> · <code>timestamp</code> ·
+                  <code>version</code> · <code>ad_parent</code> · <code>score</code>
+                  <span class="tag">LobbyTabHome.ts:670-677</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">영향은 두 갈래이고 둘 다 코드로 확인됐습니다</div>
+            <p>
+              <code>social</code>이 없는 지면으로 유입되면 <code>BaseIntro.ts:440</code>의
+              <code>adPlacementIDGetter.updateEntryPoint(entryData.social)</code>이 <b>빈 값을 받습니다</b>(광고 진입점 분류 손실).
+              <code>ad_parent</code>가 없는 지면은 <b>광고 부모 체인이 끊깁니다.</b>
+              <code>player</code>가 없어 공유 유입의 공유자 식별도 안 됩니다 —
+              단 초대자 귀속은 <code>SOCIAL_INVITE</code>만 쓰는 별개 경로라 여기 영향은 없습니다.<br />
+              <b>고치는 비용은 작습니다</b> — 공통 페이로드 빌더 하나로 모으면 호출부 5곳 각 1줄입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="gate">
+        <h2 class="doc-h2">
+          ③ 게이트와 억제 — 판정 순서에 구멍 하나, 없는 억제 둘
+          <span class="doc-h2-sub">A-3 · A-4 · B-1~B-3</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 8%">순서</th>
+                <th style="width: 46%">판정 (<code>resolveTournamentSocialAction</code>)</th>
+                <th>평가</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>①</td>
+                <td><code>tournamentInviteEnabled</code>(시트 10108) = 0 → <b>share 반환</b></td>
+                <td>정상 — SPEC-038 <b>롤백 정의와 일치</b></td>
+              </tr>
+              <tr>
+                <td>②</td>
+                <td><code>isTournamentOngoing == false</code> → <b>share 반환</b></td>
+                <td><b style="color: var(--warn)">구멍 — 쿨타임·NRU 검사 전에 빠져나갑니다</b></td>
+              </tr>
+              <tr>
+                <td>③</td>
+                <td>승수 &lt; 4 <b>AND</b> 튜토 미완 → 미노출</td>
+                <td>퍼블마와 <b>논리적으로 동치</b></td>
+              </tr>
+              <tr>
+                <td>④</td>
+                <td>60초 쿨타임 → 미노출</td>
+                <td>퍼블마와 동일 값</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">A-3 · ②가 왜 구멍인가 — 그리고 어떻게 반증되는가</div>
+            <p>
+              토너가 <b>이미 끝난</b> 컨텍스트에서 판을 깨면 ③④를 건너뛰고 공유가 나갑니다 —
+              <b>60초 쿨타임도, NRU 보호도 적용되지 않습니다.</b> 퍼블마는 같은 조건을
+              <code>isTournamentContext = false</code>로 접어 생성 경로로 보내므로 쿨타임을 항상 소모합니다
+              (<code>TournamentBattleView.ts:184, 315-342</code>).<br />
+              <b>반증 가능성</b> — 종료된 토너의 <code>shareAsync</code>가 FB에서 그냥 실패한다면 실사용 영향은 0입니다.
+              <code>3220</code>의 <code>error_code</code> 분포 한 번으로 갈립니다. <b>아직 안 봤습니다.</b><br />
+              <b>선결</b> — 시트 10108의 라이브 값. 로컬 폴백 <code>const.json</code>에 <b>키가 없어 기본 0</b>이고,
+              0이면 ②는 애초에 도달하지 않습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-scroll" style="margin-top: 18px">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">억제 로직</th>
+                <th style="width: 10%">솔</th>
+                <th style="width: 10%">코지</th>
+                <th style="width: 10%">퍼블마</th>
+                <th style="width: 10%">마종</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>생성 연속 거절 상한</b></td>
+                <td><b style="color: var(--ok)">시트</b></td>
+                <td>3 고정</td>
+                <td>없음</td>
+                <td>3 고정</td>
+                <td>기본값 3 = 벤치와 동일. 빌드 없이 조정 가능한 건 우리만</td>
+              </tr>
+              <tr>
+                <td><b>전환 거절 누적 억제</b></td>
+                <td><b style="color: var(--warn)">없음</b></td>
+                <td><b>3회</b></td>
+                <td>없음</td>
+                <td>없음</td>
+                <td>코지는 3회 거절 시 그 채널 추천 중단 + <code>logNoMoreP2P</code></td>
+              </tr>
+              <tr>
+                <td><b>공유 실패 후 영구 차단</b></td>
+                <td><b style="color: var(--warn)">없음</b></td>
+                <td><b>있음</b></td>
+                <td>없음</td>
+                <td>없음</td>
+                <td>코지는 <code>NETWORK_FAILURE</code> 시 P2P·토너 추천 + 그 세션 IT까지 차단</td>
+              </tr>
+              <tr>
+                <td>슬롯 미노출 로그</td>
+                <td><b style="color: var(--warn)">없음</b></td>
+                <td>없음</td>
+                <td>없음</td>
+                <td>없음</td>
+                <td>생성은 <code>3130</code>이 있는데 소셜 슬롯만 무로그</td>
+              </tr>
+              <tr>
+                <td>전환 팝업 노출 계측</td>
+                <td><b style="color: var(--ok)">3050~3052</b></td>
+                <td>없음</td>
+                <td>없음</td>
+                <td>없음</td>
+                <td>노출·수락·닫기 3단. 우리만</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">B-1 · 코드 주석이 코지 실측과 어긋납니다</div>
+            <p>
+              <code>ContextSwitchExposure.ts:28</code>은 거절 횟수 억제를 <b>"mahjong/cozy 정렬로 제거"</b>했다고 적어뒀습니다.
+              마종·퍼블마는 맞지만 <b>코지는 갖고 있고 실제로 읽습니다</b>
+              (<code>cozytiles DataManager.ts:188-189, 233-249</code>, 추천 후보 선정 <code>:1134, :1165</code>).<br />
+              제거 판단 자체를 되돌릴 필요는 없습니다 — <b>동작이 아니라 근거 문구가 틀렸습니다.</b>
+              다음 판단자가 "벤치 전원 없음"으로 오독할 위험이 있어 주석 정정 대상입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">A-4 · p2p 클리어 뒤 생성 다이얼로그가 우리만 없습니다</div>
+            <p>
+              <code>case 'p2p'</code>에 <code>break</code>가 없어 <code>case 'tournament'</code>로 낙하하고,
+              p2p 스레드에는 토너가 없으니 <code>getTournamentAsync()</code> null에서 리턴합니다
+              (<code>FacebookPlatform.ts:568-590</code>). <b>메시지만 나가고 생성은 없습니다.</b>
+              퍼블마(<code>ViewGame.ts:1884-1919</code>) · 마종(<code>ViewMahjong.ts:1709</code>) ·
+              코지(<code>ViewCozyTile.ts:2647, 2729</code>)는 모두 여기서 생성 다이얼로그를 띄웁니다.<br />
+              <b>양면</b> — 늘리면 생성 유입이 늘지만 판 종료 노출 피로도 같이 늘어납니다.
+              선행 문서는 이 fall-through를 "3200이 부풀지 않는다"까지만 확인했고,
+              <b>부족했던 쪽은 생성 지면의 부재</b>였습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="log">
+        <h2 class="doc-h2">
+          ④ 로그 — 집계에 바로 영향 가는 것 네 건
+          <span class="doc-h2-sub">E-1 ~ E-4</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 24%">항목</th>
+                <th style="width: 26%">솔리테어</th>
+                <th style="width: 26%">벤치</th>
+                <th>집계 영향</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b><code>3500</code> position</b></td>
+                <td><b style="color: var(--bad)">숫자 문자열</b> (<code>position.toString()</code>)</td>
+                <td>3/3 이름 (<code>LogFeedPosition[position]</code>)</td>
+                <td>매핑표 필요 + <b>enum 인덱스가 프로젝트마다 달라 숫자 대조도 불가</b></td>
+              </tr>
+              <tr>
+                <td><b>결과창 공유 1클릭</b></td>
+                <td><b style="color: var(--bad)"><code>3600</code> + <code>3500</code></b></td>
+                <td>퍼블마는 3600 코드 자체가 없음</td>
+                <td>3500+3600 합으로 세면 <b>이 지면만 2배</b></td>
+              </tr>
+              <tr>
+                <td><code>3400</code> position</td>
+                <td>세 지면 모두 <code>play_result</code></td>
+                <td>퍼블마는 초대에 <code>invite</code> 사용</td>
+                <td>리더보드 선물 / 판 종료 / 패배 메시지 <b>분리 불가</b></td>
+              </tr>
+              <tr>
+                <td>CHOOSE_FRIEND 코드</td>
+                <td><code>3001/3002/3003</code></td>
+                <td>퍼블마·마종 <code>3700/3710/3720</code></td>
+                <td><b>발화 0건</b>(호출부 없음) — 지금은 무해</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">E-1 · 인덱스가 어긋나 숫자로도 못 맞춥니다</div>
+            <p>
+              <code>LogInvitePosition</code>의 0번이 우리는 <code>invite_level_entry</code>인데
+              퍼블마·마종은 <code>invite_event</code>입니다. 이름을 안 쓰면 <b>같은 숫자가 다른 지면</b>을 가리킵니다.<br />
+              <code>_ignore/check-open-items.md</code>의 <b>B-5는 3400계열만</b> 다루고 있어 항목을 확장했습니다(E-4).
+              한편 초대 로그 <code>3460~3480</code>은 이름을 씁니다(<code>:2282</code>) —
+              <b>계열별로 인코딩이 섞여 있는 상태</b>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">E-2 · SPEC-038 가드레일 수치를 읽을 때 바로 걸립니다</div>
+            <p>
+              <code>PopupCompleteLevel.ts:828</code>이 <code>3600_SCREENSHOT_SHARE</code>(<code>position="p2p_win"</code>)를
+              직접 찍고, 이어지는 <code>shareFeed</code>가 내부에서 <code>3500_FEED_SHARE</code>를 찍습니다.
+              마종의 3600은 오버레이 공유 전용 경로(<code>Intro.ts:418</code>)라 3500과 겹치지 않습니다.
+              <b>즉 이중 계상은 우리 결과창 지면 하나에서만 발생합니다</b> — 규모는 쿼리 한 번으로 확정됩니다(⑥).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="surface">
+        <h2 class="doc-h2">
+          ⑤ 지면 목록 — 무엇이 우리에게 있고 없는가
+          <span class="doc-h2-sub">초대 · 공유 · 메시지</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 28%">초대 지면</th>
+                <th style="width: 14%">솔</th>
+                <th style="width: 14%">코지</th>
+                <th style="width: 14%">퍼블마</th>
+                <th style="width: 14%">마종</th>
+                <th>비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>프리게임 팝업</td>
+                <td><b style="color: var(--ok)">있음</b></td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>우리만. 미션 연동</td>
+              </tr>
+              <tr>
+                <td>결과창</td>
+                <td><b style="color: var(--ok)">있음</b></td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>우리만. 미션 연동</td>
+              </tr>
+              <tr>
+                <td>메일/인박스</td>
+                <td>있음</td>
+                <td>있음(4곳)</td>
+                <td>있음</td>
+                <td>있음(2곳)</td>
+                <td>공통</td>
+              </tr>
+              <tr>
+                <td>토너 초대(판 종료)</td>
+                <td>있음</td>
+                <td>—</td>
+                <td>있음</td>
+                <td>—</td>
+                <td>SPEC-038. 퍼블마가 유일한 선례</td>
+              </tr>
+              <tr>
+                <td><b>리더보드/친구 목록</b></td>
+                <td><b style="color: var(--bad)">없음</b></td>
+                <td>있음</td>
+                <td>있음</td>
+                <td>있음</td>
+                <td><b>벤치 3종 보유 · 우리만 부재</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">D-1 · "버튼은 있는데 지면은 없다"에 가깝습니다</div>
+            <p>
+              <code>PopupLeaderboard.ts:582</code> <code>onClickFriendsInvite()</code>는 <code>5207</code> 로그만 찍고
+              <code>inviteFriend</code>를 <b>부르지 않습니다.</b> 게다가 <code>PopupLeaderBoard.prefab</code>에
+              이 핸들러가 <b>배선돼 있지도 않습니다</b>(배선된 것: <code>onClickClose / Friends / FriendsWeeklyUp / Down / GiftButton / Global / WorldWeeklyUp / Down</code>).
+              <b>제거 의도인지 미완인지는 코드만으로 판정 불가</b>입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-scroll" style="margin-top: 18px">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 34%">피드 공유 지면</th>
+                <th style="width: 16%">솔</th>
+                <th>벤치</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>결과창(승리·P2P)</td><td>있음</td><td>퍼블마 있음</td></tr>
+              <tr><td>실패 결과창</td><td><b style="color: var(--warn)">없음</b></td><td>퍼블마 <code>game_over</code></td></tr>
+              <tr><td>로비(도시 완성)</td><td>있음 <span class="tag">position=lobby</span></td><td>퍼블마 있음</td></tr>
+              <tr><td>리더보드</td><td><b style="color: var(--warn)">없음</b> (enum만)</td><td>퍼블마 있음</td></tr>
+              <tr><td>이벤트 3종</td><td>있음</td><td>퍼블마 3종</td></tr>
+              <tr><td>컬렉션·데일리·프로필</td><td>없음</td><td>코지·마종 보유</td></tr>
+              <tr>
+                <td><b>리더보드 선물 메시지</b></td>
+                <td><b style="color: var(--ok)">있음</b></td>
+                <td><b>4종 전무</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">C-1 · C-2 — 우위이면서 동시에 비교의 함정입니다</div>
+            <p>
+              공유 보상 골드(도시 완성·P2P 추월, <b>서버 쿨다운 포함</b>)와
+              초대·공유·토너 미션 연동은 <b>솔리테어 단독</b>입니다. 벤치 4종에는
+              <code>shareReward</code>·<code>invite_friend</code> 미션이 <b>검색 결과 0건</b>입니다.<br />
+              그래서 SPEC-038이 근거로 쓴 <b>"공유 시도 20.8회/유저 vs 벤치 밴드 9~10회"는
+              보상·미션이 없는 게임과의 비교</b>입니다. 슬롯 빈도만으로 밴드를 맞추면
+              <b>보상으로 유인한 몫까지 슬롯에서 깎게 됩니다.</b> 지표 담당과 공유가 필요한 전제입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="todo">
+        <h2 class="doc-h2">
+          ⑥ 할 일 — 확정된 것 / 물어봐야 하는 것 / 재보면 끝나는 것
+          <span class="doc-h2-sub">순서는 비용 대비 확정력</span>
+        </h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">1. 쿼리 세 번 — 오늘 안에 세 건이 확정됩니다</div>
+            <p>
+              <b>A-3</b>: <code>3220_TOURNAMENT_SHARE_FAIL</code>의 <code>error_code</code> 분포 →
+              종료 토너 공유가 그냥 실패하면 <b>구멍이 아닙니다.</b><br />
+              <b>E-2</b>: <code>3500</code> vs <code>3600</code> 건수·유저수 → 이중 계상 규모.<br />
+              <b>E-1</b>: <code>3500</code>의 <code>position</code> 값 분포 → 숫자로 나가는지 실물 확인.
+              세 쿼리 전문은 <code>_ignore/research-viral-surface-cross-project-0818.md</code> §10에 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">2. 물어봐야 확정되는 것 — 코드로는 안 갈립니다</div>
+            <p>
+              <b>시트 10108</b>(<code>tournament_invite_enabled</code>) 라이브 값 — 로컬 폴백에 키가 없어 기본 0입니다.
+              A-3의 심각도가 이 값에 달려 있습니다.<br />
+              <b>D-1</b> 리더보드 초대 지면 제거가 의도인지(핸들러 잔존 + 프리팹 미배선).<br />
+              <b>C-3</b> 토너 <b>공유 성공</b>을 <code>conditionDetail:'join'</code> 미션으로 +1 하는 것이 의도인지
+              (<code>FacebookPlatform.ts:640</code>).<br />
+              <b>A-1</b> <code>intent</code>·<code>initialData</code> 이탈이 의도적 단순화인지 포팅 누락인지.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">3. 값이 정해지면 바로 되는 수정</div>
+            <p>
+              <b>A-2</b> 공통 페이로드 빌더 1개 → 호출부 5곳 각 1줄. <b>가장 싸고 영향이 분명한 수정입니다.</b><br />
+              <b>B-1</b> <code>ContextSwitchExposure.ts:28</code> 주석 정정(동작 변경 없음).<br />
+              <b>B-3</b> 소셜 슬롯 미노출 로그 추가 — <code>3130</code>과 같은 형태면 억제량이 측정 가능해집니다.<br />
+              <b>E-1</b> <code>3500</code> position을 이름으로 — 단 <b>적용 시점부터 BQ 값 체계가 갈리므로</b>
+              B-5와 함께, 사전 공유 후 처리해야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--text-dim)">
+            <div class="note-title">4. 미구현·죽은 코드 — 지금 무해하지만 함정입니다</div>
+            <p>
+              <code>FacebookPlatform.ts:2267-2280</code>의 <code>useXmlOverlay</code> 분기는 참·거짓 양쪽에서
+              <code>invitePayload.image</code>만 설정합니다 → <b>XML 오버레이 초대는 미구현</b>입니다.
+              퍼블마는 <code>imageOverlayPath</code> + <code>pathToCSS</code>를 넣습니다.
+              현재 호출부가 전부 <code>null</code>이라 무해하지만, <b>파일명을 넘겨도 조용히 무시됩니다.</b><br />
+              <code>sendMessage(isRetry=true)</code> 호출부가 없어 <b><code>3430/3440/3450</code>은 발화 0건</b>입니다(퍼블마도 동일).
+              코지·마종은 이미지 생성 실패 시 템플릿 리로드 + 재시도를 돌립니다.
+              우리는 이미지 생성이 실패하면 <b>이미지 없이 그대로 발사하고 성공으로 기록</b>합니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>기준</b> 각 리포 <code>main</code> 브랜치 <b>코드 실측만</b>이고 <b>BigQuery 수치는 없습니다</b> —
+          "영향"은 전부 코드 경로에서 도출한 것이며 규모는 미측정입니다. 대조 리포는
+          <code>cozytiles-client</code>(코지, 벤치 1순위) · <code>block-blast-client</code>(퍼블마) ·
+          <code>mahjong-client</code>(마종) · <code>coin-match-client</code>(코인매치).
+          코인매치는 초대·피드 지면 enum이 아예 없어 <b>공유 호출 파라미터 대조에만</b> 썼습니다.
+          <b>선행 문서가 다룬 범위는 중복하지 않았습니다</b> —
+          3200 정의 차이는 <code>research-tourshare-ctxswitch-vs-cozy.md</code>,
+          토글 설계는 <code>research-spec-038-share-exposure-normalization.md</code>,
+          IT 지면은 <code>research-viral-it-benchmark-gap.md</code>가 정본입니다.
+          <b>확인 못 한 것</b> — 시트 10108·10106의 라이브 CDN 값(로컬 폴백에 10106·10108 키 없음),
+          벤치 프로젝트의 라이브 시트 값, 프리팹 배선은 솔리테어와 코지·마종 일부만 확인.
+          전문·SQL: <code>_ignore/research-viral-surface-cross-project-0818.md</code> ·
+          오픈 항목: <code>_ignore/check-open-items.md</code> §E(11건).
+          관련: <a href="viral-orientation-gap.html">솔 바이럴이 마종의 32%인 이유</a> ·
+          <a href="tournament-share-rate.html">토너먼트 바이럴 조사</a>
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
