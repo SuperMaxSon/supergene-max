@@ -536,13 +536,27 @@
               <b>상한 추정이고 실현치가 아닙니다</b> — 원인이 방향이 맞는지, 바꿨을 때 실제로 회복되는지는 아직 확인 전입니다.
             </p>
           </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">지금 코드를 고치면 안 되는 이유</div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">로깅 결함 2건은 이미 수정됨 — 그래서 이 수치는 로그 탓이 아니다</div>
             <p>
-              확정된 로깅 버그가 두 건 있습니다
-              (<code>NETWORK_FAILURE</code> 복구 경로의 3110 누락, <code>switchToContextSolo</code> 30초 회귀).
-              <b>둘 다 지표를 올리는 방향</b>이라 지금 넣으면 이후 개선이
-              "방향 수정 효과"인지 "로그 정정 효과"인지 다시 못 가릅니다. <b>1·2번을 끝내고 넣는 게 안전합니다.</b>
+              <b>정정(2026-08-18).</b> 이 문서 v1.0은 두 건을 "미수정"으로 적었으나 <b>둘 다 이미 반영돼 있습니다.</b>
+            </p>
+            <p>
+              ① <b><code>NETWORK_FAILURE</code> 복구 경로 3110 누락 → 수정 완료</b>(<code>6065577c</code>).
+              <code>FacebookPlatform.ts:826·829</code>에서 <code>recovered:"1"</code>로 3110을 남기고,
+              3120은 <code>if (!tournament)</code>로 막아 로비 경로와 규칙을 통일했습니다.
+              <code>_createTournamentRejectCount = 0</code> 리셋도 <code>:818</code>에 들어가 있습니다.
+            </p>
+            <p>
+              ② <b><code>switchToContextSolo</code>의 30초 <code>retryUntilTimeout</code> → 제거 완료.</b>
+              현재는 <b>2초 one-shot hang 감지 + 다음 유저 제스처 재실행</b>(single-flight, P2P 재진입 시 취소)으로
+              <code>81537d62</code> 방식이 복원된 상태입니다.
+            </p>
+            <p>
+              <b>이 정정은 결론을 약화시키지 않고 강화합니다.</b> 복구 경로 3110이 이미 기록되고 있으므로
+              <b>모바일 생성 0%는 "성공을 실패로 찍는 로깅 누락"으로 설명될 여지가 없습니다.</b>
+              단, 예전에 측정한 <code>PENDING_REQUEST</code> 14.0%는 그 회귀가 살아 있던 시기(8/8~10) 값이라
+              <b>현재값으로 인용하면 안 됩니다</b> — 재측정 대상입니다.
             </p>
           </div>
         </div>
