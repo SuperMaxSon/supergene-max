@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>공유 실패 — 원인과 고칠 것</title>
+    <title>공유 · 메시지 — 왜 실패하나</title>
     <meta
       name="description"
-      content="피드 공유 성공률 43.8%(벤치 79%)의 원인. 어쩔 수 없는 게 아니라 우리 로직 문제 3개이고, 실패의 81%는 PENDING_REQUEST입니다."
+      content="KPI 축3(컨텍스트·공유) 원인 조사. 피드공유 성공률 43.8%(벤치 79%)의 81%는 PENDING_REQUEST이고, 메시지는 쏘면 100% 가는데 친구 컨텍스트에 들어갈 길이 3곳뿐입니다."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
@@ -17,27 +17,32 @@
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#verdict">① 결론</a>
         <a class="nav-back" href="#evidence">② 근거</a>
-        <a class="nav-back" href="#appendix">③ 부록</a>
+        <a class="nav-back" href="#history">가설 이력</a>
+        <a class="nav-back" href="#next">③ 다음 할 일</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
 
     <header class="doc-header">
       <div class="wrap wrap--wide">
-        <div class="doc-eyebrow">분석 · 바이럴</div>
-        <h1 class="doc-title">공유 실패 — 원인과 고칠 것</h1>
+        <div class="doc-eyebrow">KPI 축3 · 컨텍스트·공유 / 원인 조사</div>
+        <h1 class="doc-title">공유 · 메시지 — 왜 실패하나</h1>
         <p class="doc-lede">
+          <b>범위</b> — 이 문서는 <b>피드공유 · 메시지 · 컨텍스트 전환</b> 세 가지를 다룹니다.
+          토너먼트 생성·공유 수락률은 <a href="tournament-share-rate.html">tournament-share-rate.html</a>,
+          주간 수치는 <a href="weekly-kpi.html">weekly-kpi.html</a>이 담당합니다.<br />
           피드 공유 성공률이 <b>43.8%</b>입니다. 코지·퍼블마는 79%입니다.
-          <b>시도가 적어서가 아닙니다</b> — 시도는 유저일당 0.113으로 4종 중 2위입니다.<br />
+          <b>시도가 적어서가 아닙니다</b> — 시도는 유저일당 0.113으로 4종 중 2위입니다.
           실패의 <b>81%가 <code>PENDING_REQUEST</code></b>(다른 FB 요청이 진행 중이라 거절)이고
-          유저 취소는 3건뿐입니다. 즉 <b>무엇을 넘기느냐가 아니라 언제 부르느냐의 문제</b>이고,
-          <b>플랫폼 탓이 아니라 우리 로직 문제</b>입니다. 고칠 지점 3개가 코드에 있습니다.
+          유저 취소는 3건뿐이라, <b>무엇을 넘기느냐가 아니라 언제 부르느냐의 문제</b>입니다.<br />
+          메시지는 성격이 다릅니다 — <b>쏘면 100% 갑니다.</b> 전환도 마종보다 많이 성공합니다.
+          다만 그 전환의 <b>94.6%가 토너먼트</b>라 <b>친구에게 갈 일 자체가 없습니다.</b>
         </p>
         <div class="doc-meta">
-          <span class="pill" style="--acc: var(--bad)">우리 로직 문제 3건 · 가장 값싼 수정은 로그 필드 1개 포기</span>
+          <span class="pill" style="--acc: var(--bad)">공유: 우리 로직 문제 3건 · 메시지: 원인 확정(진입 지면 부족)</span>
           <span class="tag">US · 솔 08-10~17 / 벤치 08-15~17</span>
           <span class="tag">코드는 각 리포 main 브랜치</span>
-          <span class="tag">2026-08-18 17:51 갱신 · v5.0</span>
+          <span class="tag">2026-08-18 18:06 갱신 · v5.0</span>
         </div>
       </div>
     </header>
@@ -48,7 +53,7 @@
       <section class="doc-section" id="verdict">
         <h2 class="doc-h2">
           ① 결론 — 고칠 것 3개
-          <span class="doc-h2-sub">위에서부터 비용 대비 확정력 순서</span>
+          <span class="doc-h2-sub">위에서부터 비용 대비 확정력 순서 · 피드공유 채널</span>
         </h2>
 
         <div class="table-scroll">
@@ -123,6 +128,21 @@
               볼 수 있지만 그 컬럼은 아직 미검증입니다.
             </p>
           </div>
+          <!-- 메시지는 원인이 이미 확정된 별개 채널이라, 공유 3건과 같은 표에 섞지 않고
+               결론에서 한 문단으로 갈라둔다. 근거는 ②의 메시지 퍼널 절 -->
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">메시지는 별개 채널이고, 원인은 이미 확정입니다 — 친구에게 갈 일이 없다</div>
+            <p>
+              메시지는 공유와 실패 방식이 정반대입니다. <b>성공률이 모든 OS에서 100%</b>고
+              <code>updateAsync</code>는 창이 없어 유저 마찰이 0입니다. 그런데
+              <b>판당 발사율이 마종의 1/7~1/15</b>입니다.<br />
+              원인은 전환 실패가 아닙니다 — <b>전환 성공은 판당 41.3%로 마종(32.5%)보다 많습니다.</b>
+              다만 <b>그 전환의 94.6%가 토너먼트</b>고 <b>친구는 5.4%</b>입니다.
+              친구 컨텍스트에만 들어가면 <b>전환당 메시지 0.88</b>로 마종(≤0.61) 이상입니다.
+              <b>퍼널 아래쪽은 우리가 더 낫고, 위쪽이 통째로 비어 있습니다.</b>
+              → 근거는 <a href="#evidence">②의 메시지 퍼널 분해</a>, 할 일은 <a href="#next">③</a>.
+            </p>
+          </div>
           <div class="note" style="--acc: var(--text-dim)">
             <div class="note-title">어쩔 수 없는 것 — 고칠 수 없거나 원인이 아닌 것</div>
             <p>
@@ -132,9 +152,8 @@
               <b>FB Android 쪽 동시성 제약</b> — 같은 코드인데 Windows는 93.4%로 정상이고 Android만 27.2%입니다.
               제약 자체는 못 바꾸지만, <b>거기서 증폭되는 것은 우리 호출 수</b>라 대응은 우리 몫입니다.<br />
               <b>원인이 아닌 것</b> — 유저 취소(<code>USER_INPUT</code>)는 3건입니다.
-              그리고 <b>파라미터 가설 두 개는 실측으로 죽었습니다</b>:
-              iOS·웹 <code>intent</code> 이탈은 그 구간(Windows)에서 벤치와 성공률이 같고,
-              Android <code>shareDestination</code>·<code>switchContext</code>는 무엇을 넣어도 호출 충돌을 없애지 못합니다.
+              그리고 <b>파라미터 가설 두 개는 실측으로 죽었습니다</b> — 상세는
+              <a href="#history">가설 이력</a>에 보존했습니다.
             </p>
           </div>
         </div>
@@ -187,7 +206,7 @@
                 <td style="text-align: right">90.6%</td>
               </tr>
               <tr>
-                <td>토너공유 성공률</td>
+                <td>토너공유 성공률 <span class="tag">상세는 별도 문서</span></td>
                 <td style="text-align: right"><b style="color: var(--bad)">8.6%</b></td>
                 <td style="text-align: right">19.5%</td>
                 <td style="text-align: right">10.7%</td>
@@ -205,6 +224,8 @@
               응답률(성공·실패가 시도로 돌아온 비율)도 우리만 5~6pt 낮아, 콜백이 아예 안 온 건이 더 많습니다.<br />
               색은 솔리테어 열에만 넣습니다 — 벤치는 기준선입니다. 시도 횟수는 많은 것이 유입엔 좋고
               노출 피로엔 나빠 방향이 정해지지 않으므로 무색입니다.
+              토너공유 줄은 위치를 잡기 위한 참고값이고, 수락률 분해는
+              <a href="tournament-share-rate.html">tournament-share-rate.html</a>이 다룹니다.
             </p>
           </div>
         </div>
@@ -356,7 +377,7 @@
                 <td style="text-align: right">54.6%</td>
                 <td style="text-align: right">72.0%</td>
                 <td style="text-align: right">70.0%</td>
-                <td>3위. 우리 전환의 94.6%가 다이얼로그 없는 토너인데도 뒤집</td>
+                <td>3위. 우리 전환의 94.6%가 다이얼로그 없는 토너인데도 뒤짐</td>
               </tr>
               <tr>
                 <td>열세</td>
@@ -369,7 +390,7 @@
               </tr>
               <tr>
                 <td>열세</td>
-                <td>토너생성 성공률</td>
+                <td>토너생성 성공률 <span class="tag">별도 문서</span></td>
                 <td style="text-align: right"><b style="color: var(--bad)">2.5%</b></td>
                 <td style="text-align: right">15.4%</td>
                 <td style="text-align: right">7.7%</td>
@@ -378,7 +399,7 @@
               </tr>
               <tr>
                 <td>열세</td>
-                <td>토너생성 성공 / 유저일</td>
+                <td>토너생성 성공 / 유저일 <span class="tag">별도 문서</span></td>
                 <td style="text-align: right"><b style="color: var(--bad)">0.037</b></td>
                 <td style="text-align: right">0.406</td>
                 <td style="text-align: right">0.306</td>
@@ -401,7 +422,7 @@
                 <td style="text-align: right">—</td>
                 <td style="text-align: right">96.5%</td>
                 <td style="text-align: right">—</td>
-                <td>1.2pt 열세. 지면 자체가 우리·퍼블마만</td>
+                <td>1.2pt 열세. 지면 자체가 우리·퍼블마만 · <a href="#history">지표 신뢰도 주의</a></td>
               </tr>
             </tbody>
           </table>
@@ -415,100 +436,214 @@
               전환 우위도 "전환이 잘 된다"가 아니라 <b>"많이 부른다"</b>입니다 — 성공률로는 3위입니다.<br />
               호출량만으로는 설명되지 않습니다. 우리가 FB 비동기 호출을 가장 많이 던지는 것은 맞지만
               (전환+토너공유 7.49 vs 퍼블마 6.14, +22%) <code>PENDING_REQUEST</code> 차이는 3.6배입니다.
-              그래서 결론 ①의 무게는 <b>양이 아니라 겹치는 방식</b>에 있습니다.
+              그래서 결론 ①의 무게는 <b>양이 아니라 겹치는 방식</b>에 있습니다.<br />
+              토너생성 두 줄은 위치 확인용으로만 남겼습니다 — 생성률 자체의 분해는
+              <a href="tournament-share-rate.html">tournament-share-rate.html</a> 소관입니다.
+            </p>
+          </div>
+        </div>
+
+        <!-- 전환 성공 총량은 우리가 더 많다는 게 이 표의 핵심이라, 총량 행을 맨 위에 둔다.
+             그래야 "못 들어간다"는 직관이 첫 줄에서 깨진다 -->
+        <h2 class="doc-h2" style="margin-top: 28px">
+          메시지 퍼널 분해 — 전환은 더 많이 하는데, 친구가 아니라 토너로 간다
+          <span class="doc-h2-sub">솔 vs 마종 · 컨텍스트 <code>contextType</code> 분해는 8/13 하루</span>
+        </h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">메시지 격차(전체 격차의 67%) — 원인 확정: 친구에게 갈 일이 없다</div>
+            <p>
+              <b>메시지 성공률은 모든 OS에서 100%입니다</b>(Android·Windows·OS X·iOS 전부).
+              <code>updateAsync</code>는 창이 없어 유저 마찰이 0이고, 쏘면 그대로 갑니다.
+              그런데 <b>판당 발사율이 마종의 1/7~1/15</b>입니다(Android 3.15% vs 23.31%, Windows 0.87% vs 12.60%).<br />
+              컨텍스트 전환을 분해해서 <b>"창을 못 뚫어 P2P에 못 들어간다"는 가설이 반증됐습니다</b> —
+              전환 성공은 <b>판당 41.3%로 마종(32.5%)보다 오히려 많습니다.</b>
+              그런데 <b>그 전환의 94.6%가 토너먼트</b>고 <b>친구는 5.4%</b>입니다.
+              그리고 친구 컨텍스트에만 들어가면 <b>전환당 메시지 0.88</b>로 마종(≤0.61) 이상입니다.<br />
+              <b>퍼널 아래쪽은 우리가 더 낫고, 위쪽이 통째로 비어 있습니다.</b>
+              <b>발사율만 마종 수준이 되면 0.19 → 1.64/DAU (+1.45)</b>, 지금 총 바이럴 1.26의 두 배가 넘습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">단계</th>
+                <th style="text-align: right">솔</th>
+                <th style="text-align: right">마종</th>
+                <th style="text-align: right">배수</th>
+                <th style="width: 26%">판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>컨텍스트 전환 성공 / 판</td>
+                <td style="text-align: right"><b style="color: var(--ok)">41.3%</b></td>
+                <td style="text-align: right">32.5%</td>
+                <td style="text-align: right"><b style="color: var(--ok)">솔 1.27×</b></td>
+                <td>우리가 더 많이 전환한다</td>
+              </tr>
+              <tr>
+                <td>그중 <code>friend</code> 비중</td>
+                <td style="text-align: right"><b style="color: var(--bad)">5.4%</b></td>
+                <td style="text-align: right">~69%<sup class="fn">1</sup></td>
+                <td style="text-align: right">—</td>
+                <td><b>94.6%가 토너먼트</b></td>
+              </tr>
+              <tr>
+                <td><b>친구 전환 / 판</b></td>
+                <td style="text-align: right"><b style="color: var(--bad)">2.2%</b></td>
+                <td style="text-align: right">~22%<sup class="fn">1</sup></td>
+                <td style="text-align: right"><b style="color: var(--bad)">10×</b></td>
+                <td><b>여기가 병목</b></td>
+              </tr>
+              <tr>
+                <td>메시지 / 친구 전환</td>
+                <td style="text-align: right"><b style="color: var(--ok)">0.88</b></td>
+                <td style="text-align: right">≥0.61</td>
+                <td style="text-align: right"><b style="color: var(--ok)">솔 동등 이상</b></td>
+                <td>들어가면 우리가 더 쏜다</td>
+              </tr>
+              <tr>
+                <td>메시지 / 판</td>
+                <td style="text-align: right">1.96%</td>
+                <td style="text-align: right">19.7%</td>
+                <td style="text-align: right"><b style="color: var(--bad)">10×</b></td>
+                <td>위 두 줄의 곱</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">진입 지면이 3곳뿐이고, 셋 다 유저가 먼저 찾아오는 자리다</div>
+            <p>
+              솔의 친구 전환 진입점은 <code>SceneManager.ts:384</code>(FB 메시지 딥링크) ·
+              <code>:604</code>(게임 시작 시 추천 컨텍스트) · <code>LeaderboardRankItem.ts:206</code>(리더보드 선물) <b>셋뿐</b>입니다.
+              <b>딥링크는 게임 밖에서 들어오는 것이고, 나머지 둘도 유저가 찾아가야 합니다.</b>
+              마종은 <b>8곳</b>이고 그중 하나는 <b>탭 0회 자동 추천 매치</b>입니다.<br />
+              <b>재사용 가드는 양쪽 다 있습니다</b> — 이미 그 친구와 컨텍스트면 창 없이 바로 판으로 갑니다.
+              차이는 <b>해제</b>뿐입니다: 마종은 <code>currentP2PPlayerId</code>를 <b>되돌리는 코드가 아예 없고</b>,
+              솔은 <code>switchToContextSolo()</code> 첫 줄이 그걸 지우는데 <b>호출부가 16곳</b>입니다.
+              <b>가드를 만들어놓고 참이 될 수 없게 매번 지우는 구조</b>입니다.<br />
+              <sup class="fn">1</sup> 마종의 <code>friend</code> 비중은 <b>역산값</b>입니다(메시지 실측 ÷ 전환당 전환율).
+              직접 측정하지 않았습니다.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>메시지 진입 방식 5개 프로젝트 대조 펼치기 — 솔만 "친구와 한 판" 개념이 없다</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 14%">프로젝트</th>
+                    <th style="width: 22%">발동 축</th>
+                    <th style="width: 12%">P2P 판 개념</th>
+                    <th>게임 내 진입점</th>
+                    <th style="width: 14%">자동 추천 매치</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b>마종</b></td>
+                    <td>클라 스테이지 타입</td>
+                    <td>있음</td>
+                    <td>로비 PLAY <b>탭 1회</b> · 친구 탭 · 프로필 팝업</td>
+                    <td><b>있음</b> (전환율 1위 자동)</td>
+                  </tr>
+                  <tr>
+                    <td><b>코지</b></td>
+                    <td>클라 스테이지 타입</td>
+                    <td>있음</td>
+                    <td>로비 · 리더보드 · 프로필 팝업 · 딥링크 (<b>5곳+</b>)</td>
+                    <td><b>있음</b></td>
+                  </tr>
+                  <tr>
+                    <td>퍼블마</td>
+                    <td>스테이지 타입 + THREAD 이중</td>
+                    <td>있음</td>
+                    <td><code>SceneManager</code> 3곳</td>
+                    <td><span class="tag">확인 필요</span></td>
+                  </tr>
+                  <tr>
+                    <td>코인매치</td>
+                    <td>FB 엔트리데이터 PVP</td>
+                    <td>없음</td>
+                    <td><span class="tag">확인 필요</span></td>
+                    <td><span class="tag">확인 필요</span></td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td><b>솔</b></td>
+                    <td><b>FB 컨텍스트 THREAD 단일</b></td>
+                    <td><b>없음</b></td>
+                    <td><b>없음</b> — FB 메시지 딥링크 · 리더보드 선물 버튼뿐</td>
+                    <td><b>없음</b></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--sol)">
+                <div class="note-title">그리고 어렵게 들어가도 유지가 안 된다</div>
+                <p>
+                  마종은 생성 성공 시 클라가 <code>currentStageType = TOURNAMENT</code>를 들고 있어 계속 유지됩니다.
+                  솔은 매판 <code>getContextType()</code>을 다시 묻는데,
+                  <b><code>switchToContextSolo()</code> 호출부가 16곳</b>(로비 복귀 · 재도전 이탈 · 리더보드 · 토너 팝업 닫기)이라
+                  <b>로비 한 번 갔다 오면 SOLO로 리셋</b>됩니다.
+                  <b>우리만 상태를 FB에 맡기고, 남들은 클라가 들고 있습니다.</b><br />
+                  공유 호출 파라미터·게이트·로그 필드까지 포함한 5프로젝트 전체 대조표는
+                  <a href="social-code-matrix.html">social-code-matrix.html</a>로 분리했습니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- ③ 부록(5프로젝트 코드 대조표)은 v5.0에서 별도 레퍼런스 문서로 분리했다.
+             이 문서는 "왜 실패하나"만 다루고, "어디가 어떻게 다른가"는 그쪽이 맡는다 -->
+        <div class="notes" style="margin-top: 26px">
+          <div class="note" style="--acc: var(--text-dim)">
+            <div class="note-title">코드 대조표는 어디로 갔나</div>
+            <p>
+              공유 호출 파라미터 · 지면과 게이트 · 로그 기록 방식의
+              <b>5프로젝트(솔·코지·퍼블마·마종·코인매치) 대조표</b>는 원인 조사가 아니라 레퍼런스라
+              <a href="social-code-matrix.html">social-code-matrix.html</a>로 옮겼습니다.
+              결론 ①의 1번(<code>getPlayersAsync</code> 재시도 30회)이 그 표에서 우리만 ✅인 줄입니다.
             </p>
           </div>
         </div>
       </section>
 
-      <section class="doc-section" id="appendix">
+      <section class="doc-section" id="history">
         <h2 class="doc-h2">
-          ③ 부록 — 프로젝트 대조표
-          <span class="doc-h2-sub">✅ 있음 · ❌ 안 함 · — 기능 자체가 없어 해당 없음 · 색은 솔리테어 열만</span>
+          가설 이력 — 기각·철회된 것
+          <span class="doc-h2-sub">같은 걸 다시 세우지 않기 위해 · 공유·메시지 채널 한정</span>
         </h2>
 
         <details class="fold">
-          <summary>공유 호출 — <code>shareAsync</code>에 무엇을 넘기는가</summary>
+          <summary>⚠️ 철회 — "초대 95%"를 근거로 쓴 이전 결론</summary>
           <div class="fold-body">
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 20%">파라미터</th>
-                    <th style="width: 20%; color: var(--sol)">솔리테어</th>
-                    <th style="width: 15%; color: var(--coz)">코지</th>
-                    <th style="width: 15%; color: var(--pbm)">퍼블마</th>
-                    <th style="width: 15%; color: var(--mah)">마종</th>
-                    <th style="width: 15%">코인매치</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>플랫폼 분기</td>
-                    <td>❌ 단일 경로</td>
-                    <td>✅</td>
-                    <td>✅</td>
-                    <td>✅</td>
-                    <td>✅</td>
-                  </tr>
-                  <tr>
-                    <td><code>intent</code> — 안드로이드</td>
-                    <td><code>SHARE</code></td>
-                    <td><code>SHARE</code></td>
-                    <td><code>SHARE</code></td>
-                    <td><code>SHARE</code></td>
-                    <td><code>SHARE</code></td>
-                  </tr>
-                  <tr>
-                    <td><code>intent</code> — iOS·웹</td>
-                    <td><code>SHARE</code> <span class="tag">실측 무해</span></td>
-                    <td><code>REQUEST</code></td>
-                    <td><code>REQUEST</code></td>
-                    <td><code>REQUEST</code></td>
-                    <td><code>REQUEST</code></td>
-                  </tr>
-                  <tr>
-                    <td><code>shareDestination</code></td>
-                    <td>❌</td>
-                    <td>안드 4개</td>
-                    <td>안드 4개</td>
-                    <td>안드 4개</td>
-                    <td>안드 4개</td>
-                  </tr>
-                  <tr>
-                    <td>공유 후 컨텍스트 이동</td>
-                    <td>❌</td>
-                    <td><code>switchContext</code></td>
-                    <td><code>switchToContext</code></td>
-                    <td><code>switchContext</code></td>
-                    <td><code>switchContext</code></td>
-                  </tr>
-                  <tr>
-                    <td><code>initialData</code></td>
-                    <td>❌</td>
-                    <td>❌</td>
-                    <td>✅</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td><code>data</code> 필드 수</td>
-                    <td><b style="color: var(--bad)">1개 (지면마다 다름)</b></td>
-                    <td>8개</td>
-                    <td>7개</td>
-                    <td>5개</td>
-                    <td>—</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
             <div class="notes">
-              <div class="note" style="--acc: var(--text-dim)">
-                <div class="note-title">이 표의 현재 위치</div>
+              <div class="note" style="--acc: var(--bad)">
+                <div class="note-title">지표 자체가 유저 결정을 재고 있지 않다</div>
                 <p>
-                  <code>intent</code>·플랫폼 분기는 <b>실측으로 무해 판정</b>되어 결론에서 빠졌습니다.
-                  남은 실제 문제는 <code>data</code> 필드입니다 — <code>social</code>이 없는 지면은 광고 진입점 분류가,
-                  <code>ad_parent</code>가 없는 지면은 귀속 체인이 끊깁니다. 공통 빌더 1개로 호출부 5곳 각 1줄입니다.
+                  초대 수락률이 <b>화면 크기가 전혀 다른 4개 OS에서 92~99%로 균일</b>합니다
+                  (Android 94.96 · Windows 91.99 · OS X 98.54 · iOS 95.74).
+                  <b>유저 결정이 걸린 창이 이런 분포를 낼 수 없습니다.</b><br />
+                  코드를 보면 <code>3470</code>은 <code>FB.inviteAsync().then()</code>에 그냥 붙어 있습니다
+                  (<code>FacebookPlatform.ts:2288</code>) — 유저가 친구를 실제로 골랐는지가 아니라
+                  <b>프라미스가 resolve됐는지</b>를 찍습니다. <b>초대 유입률 1.14%</b>도 여기에 들어맞습니다.<br />
+                  → <b>철회:</b> "같은 안드로이드에서 초대 창은 95% 먹히니 모바일 다이얼로그는 멀쩡하다"는 논거.
+                  ②의 P2P초대 성공률 95.3%도 같은 이유로 <b>액면가로 읽으면 안 됩니다.</b><br />
+                  → <b>남은 확인:</b> <code>3480</code>에 <code>USER_INPUT</code>이 있는가(쿼리 1개).
+                  우리 바이럴의 61%가 초대라, 이게 허수면 우선순위 판단의 분모가 바뀝니다.
                 </p>
               </div>
             </div>
@@ -516,127 +651,17 @@
         </details>
 
         <details class="fold">
-          <summary>지면과 게이트 — 언제 띄우고 언제 막는가</summary>
+          <summary>반증 — iOS·웹 <code>intent</code> 이탈이 공유 실패의 원인이다</summary>
           <div class="fold-body">
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 26%">항목</th>
-                    <th style="width: 22%; color: var(--sol)">솔리테어</th>
-                    <th style="width: 17%; color: var(--coz)">코지</th>
-                    <th style="width: 17%; color: var(--pbm)">퍼블마</th>
-                    <th style="width: 18%; color: var(--mah)">마종</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>판 종료 소셜 슬롯</td>
-                    <td>공유 ↔ 초대 토글</td>
-                    <td>공유만</td>
-                    <td>공유 ↔ 초대 토글</td>
-                    <td>공유만</td>
-                  </tr>
-                  <tr>
-                    <td>슬롯 쿨타임</td>
-                    <td>60초 (종료 토너는 우회)</td>
-                    <td>❌</td>
-                    <td>60초</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>토글 상태 보관</td>
-                    <td>FB 스토리지 (세션 넘어 유지)</td>
-                    <td>—</td>
-                    <td>뷰 필드 (세션마다 초기화)</td>
-                    <td>—</td>
-                  </tr>
-                  <tr>
-                    <td>p2p 클리어 후 토너 생성</td>
-                    <td>❌</td>
-                    <td>✅</td>
-                    <td>✅</td>
-                    <td>✅</td>
-                  </tr>
-                  <tr>
-                    <td>생성 연속 거절 상한</td>
-                    <td><b style="color: var(--ok)">시트 (기본 3)</b></td>
-                    <td>3 고정</td>
-                    <td>❌</td>
-                    <td>3 고정</td>
-                  </tr>
-                  <tr>
-                    <td>전환 거절 누적 억제</td>
-                    <td>❌</td>
-                    <td><b>3회 → 채널 중단</b></td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>공유 실패 후 추천·IT 차단</td>
-                    <td>❌</td>
-                    <td>✅</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>리더보드·친구 초대 지면</td>
-                    <td>❌ <span class="tag">로그만 · 미배선</span></td>
-                    <td>✅</td>
-                    <td>✅</td>
-                    <td>✅</td>
-                  </tr>
-                  <tr>
-                    <td>프리게임·결과창 초대 지면</td>
-                    <td>✅</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>공유 보상 · 미션 연동</td>
-                    <td>✅</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td><code>intr_en</code> 모드 처리</td>
-                    <td>제스처 지연</td>
-                    <td>제스처 지연</td>
-                    <td>공유 ↔ 생성 교대</td>
-                    <td>제스처 지연</td>
-                  </tr>
-                  <tr>
-                    <td>판 종료 <code>getPlayersAsync</code></td>
-                    <td><b style="color: var(--bad)">✅ 재시도 30회</b></td>
-                    <td>❌</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>토너 참가 API</td>
-                    <td><code>joinAsync</code></td>
-                    <td><code>switchAsync</code></td>
-                    <td><code>switchAsync</code></td>
-                    <td><code>switchAsync</code></td>
-                  </tr>
-                  <tr>
-                    <td>P2P 이미지 실패 재시도</td>
-                    <td>❌ <span class="tag">이미지 없이 발사</span></td>
-                    <td>✅</td>
-                    <td>❌</td>
-                    <td>✅</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
             <div class="notes">
               <div class="note" style="--acc: var(--text-dim)">
-                <div class="note-title">결론 ①의 1번이 이 표의 <code>getPlayersAsync</code> 줄입니다</div>
+                <div class="note-title">그 이탈이 걸리는 구간에서 우리는 벤치와 같다</div>
                 <p>
-                  나머지 줄은 벤치도 서로 갈리는 항목이라 우리 선택이 소수파일 뿐입니다.
-                  공유 실패와 직접 연결되는 것은 <code>getPlayersAsync</code> 한 줄입니다.
+                  우리만 iOS·웹에서도 <code>intent: SHARE</code>를 넘기고 벤치 4종은 <code>REQUEST</code>입니다.
+                  그런데 그 차이가 실제로 걸리는 구간인 <b>Windows에서 솔 93.4% · 코지 95.6% · 퍼블마 94.4% · 마종 93.3%</b>로
+                  <b>사실상 동일</b>합니다. 격차는 전부 Android(27.2%)에서 나오고, Android는 4종 모두
+                  <code>SHARE</code>를 넘기는 <b>같은 조건</b>입니다.<br />
+                  → <b>실측 무해 판정.</b> 결론에서 제외했습니다.
                 </p>
               </div>
             </div>
@@ -644,84 +669,164 @@
         </details>
 
         <details class="fold">
-          <summary>로그 — 같은 행동을 어떻게 기록하는가</summary>
+          <summary>반증 — Android <code>shareDestination</code>·<code>switchContext</code> 파라미터를 안 넘겨서다</summary>
+          <div class="fold-body">
+            <div class="notes">
+              <div class="note" style="--acc: var(--text-dim)">
+                <div class="note-title">파라미터로는 호출 충돌이 사라지지 않는다</div>
+                <p>
+                  벤치 4종은 Android에 <code>shareDestination</code> 4개를 넘기고 공유 후
+                  <code>switchContext</code>/<code>switchToContext</code>로 컨텍스트를 옮깁니다. 우리는 둘 다 ❌입니다.
+                  다만 우리 실패의 <b>81%가 <code>PENDING_REQUEST</code></b>이고, 이 에러는
+                  <b>다른 FB 요청이 이미 진행 중일 때</b> 나옵니다 —
+                  <b>무엇을 넣어도 겹치는 호출이 남아 있으면 그대로 납니다.</b><br />
+                  → <b>기각.</b> 파라미터 정비는 별개 과제(로그 귀속)로 남기고, 공유 실패의 원인 후보에서는 뺐습니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>기각 — 메시지 격차가 전달 실패 / 컨텍스트 전환 실패 때문이다</summary>
           <div class="fold-body">
             <div class="table-scroll">
               <table>
                 <thead>
-                  <tr>
-                    <th style="width: 26%">항목</th>
-                    <th style="width: 22%; color: var(--sol)">솔리테어</th>
-                    <th style="width: 17%; color: var(--coz)">코지</th>
-                    <th style="width: 17%; color: var(--pbm)">퍼블마</th>
-                    <th style="width: 18%; color: var(--mah)">마종</th>
-                  </tr>
+                  <tr><th style="width: 40%">후보</th><th>배제 근거</th></tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td><code>3500</code> position</td>
-                    <td><b style="color: var(--bad)">숫자 문자열 (<code>0</code>·<code>1</code>)</b></td>
-                    <td>이름</td>
-                    <td>이름</td>
-                    <td>이름</td>
+                  <tr class="is-dead">
+                    <td>메시지 격차가 전달 실패 때문</td>
+                    <td><b>성공률 100%</b>(전 OS). 전적으로 발사 횟수 문제</td>
                   </tr>
-                  <tr>
-                    <td><code>3500</code> image_id</td>
-                    <td><code>"0"</code> 고정</td>
-                    <td>실제 값</td>
-                    <td>빈 문자열</td>
-                    <td>실제 값</td>
+                  <tr class="is-dead">
+                    <td>메시지 격차가 컨텍스트 전환 실패 때문</td>
+                    <td>전환 성공이 <b>판당 41.3%로 마종 32.5%보다 많다.</b> 문제는 그중 94.6%가 토너먼트인 것</td>
                   </tr>
-                  <tr>
-                    <td>결과창 공유 1클릭</td>
-                    <td><b style="color: var(--bad)"><code>3600</code> + <code>3500</code></b></td>
-                    <td><code>3500</code></td>
-                    <td><code>3500</code></td>
-                    <td><code>3500</code> (3600은 별 경로)</td>
-                  </tr>
-                  <tr>
-                    <td><code>3400</code> position</td>
-                    <td>세 지면 모두 <code>play_result</code></td>
-                    <td><code>play</code></td>
-                    <td><code>play_result</code> · <code>invite</code></td>
-                    <td><code>play_result</code></td>
-                  </tr>
-                  <tr>
-                    <td>전환 팝업 노출·수락·닫기</td>
-                    <td><code>3050~3052</code></td>
-                    <td>❌</td>
-                    <td>❌</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>토너 생성 억제</td>
-                    <td><code>3130</code></td>
-                    <td>❌</td>
-                    <td>—</td>
-                    <td>❌</td>
-                  </tr>
-                  <tr>
-                    <td>소셜 슬롯 미노출</td>
-                    <td>❌</td>
-                    <td>—</td>
-                    <td>❌</td>
-                    <td>—</td>
+                  <tr class="is-dead">
+                    <td>친구 컨텍스트에 들어가도 우리가 덜 쏜다</td>
+                    <td><b>전환당 메시지 0.88 vs 마종 ≤0.61.</b> 들어가면 우리가 더 쏜다</td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div class="notes">
               <div class="note" style="--acc: var(--text-dim)">
-                <div class="note-title">집계에 걸리는 것 둘</div>
+                <div class="note-title">셋을 지우고 나면 남는 건 하나</div>
                 <p>
-                  position이 숫자로 나가면 프로젝트끼리 못 맞춥니다 — enum 0번이 우리는 프리게임 초대,
-                  퍼블마·마종은 이벤트 초대입니다. 그리고 결과창 공유를 <code>3500</code>+<code>3600</code> 합으로 세면
-                  그 지면만 두 번 잡힙니다. 둘 다 바꾸는 순간 BQ 값 체계가 갈리므로 사전 공유가 먼저입니다.
+                  전달도 되고, 전환도 되고, 들어가면 더 쏩니다. 남는 원인은
+                  <b>친구 컨텍스트에 도달하는 경로가 3곳뿐이고 그중 게임 안에 있는 건 둘</b>이라는 것뿐입니다.
+                  그래서 ③의 1순위가 진입점 추가입니다.
                 </p>
               </div>
             </div>
           </div>
         </details>
+      </section>
+
+      <section class="doc-section" id="next">
+        <h2 class="doc-h2">
+          ③ 다음 할 일
+          <span class="doc-h2-sub">이 문서 범위(공유·메시지·전환)만 · 이득 × 확실성 ÷ 비용 순</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">순위</th>
+                <th style="width: 24%">할 일</th>
+                <th style="text-align: right; width: 13%">기대 이득 /DAU</th>
+                <th style="width: 13%">확실성</th>
+                <th style="width: 13%">비용</th>
+                <th>한 줄</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>1</b></td>
+                <td><b>메시지 진입점 추가</b></td>
+                <td style="text-align: right"><b style="color: var(--ok)">+0.45~0.90</b></td>
+                <td><b style="color: var(--ok)">원인 확정</b></td>
+                <td>파일 2~4개<br />서버 없음</td>
+                <td>나머지를 다 합친 것보다 크고, 유일하게 지금 착수 가능</td>
+              </tr>
+              <tr>
+                <td><b>2</b></td>
+                <td><code>getPlayersAsync</code> 재시도 루프 제거<br /><span class="tag">결론 ① 1번</span></td>
+                <td style="text-align: right">+0.036<sup class="fn">2</sup></td>
+                <td><b style="color: var(--ok)">확정 버그</b></td>
+                <td><b style="color: var(--ok)">최소</b></td>
+                <td>가성비 1위 — 잃는 것은 로그 <code>tournament_size</code> 하나</td>
+              </tr>
+              <tr>
+                <td><b>3</b></td>
+                <td>지연 실행 트리거 좁히기<br /><span class="tag">결론 ① 2번</span></td>
+                <td style="text-align: right">2와 합산</td>
+                <td><span style="color: var(--warn)">후보</span></td>
+                <td>작음</td>
+                <td>결과창에서 피드공유와 토너공유가 겹치는 것만 끊는다</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>FB 다이얼로그 단일 게이트<br /><span class="tag">결론 ① 3번</span></td>
+                <td style="text-align: right">—</td>
+                <td><span style="color: var(--warn)">2·3 이후 판단</span></td>
+                <td>중간</td>
+                <td>1·2를 고친 뒤에도 <code>PENDING_REQUEST</code>가 남으면 착수</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>공유 <code>data</code> 필드 정비</td>
+                <td style="text-align: right">지표 품질</td>
+                <td><b style="color: var(--ok)">확정</b></td>
+                <td>호출부 5곳 각 1줄</td>
+                <td>KPI 이득이 아니라 귀속 체인 복구 — <a href="social-code-matrix.html">대조표</a> 참고</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">0단계 · 측정만 — 개발 0, 순서 다툼 없이 둘 다 한다</div>
+            <p>
+              <b>0-1 · <code>3480</code>에 <code>USER_INPUT</code>이 있는가</b>(쿼리 1개) —
+              우리 바이럴의 <b>61%가 초대</b>인데, <a href="#history">가설 이력</a>대로 그 수치는
+              프라미스 resolve를 세고 있을 수 있습니다. 허수면 <b>우선순위 판단의 분모 자체가 바뀝니다.</b><br />
+              <b>0-2 · <code>3520</code>의 <code>PENDING_REQUEST</code> 현재값</b>(쿼리 1개) —
+              2번을 배포한 전후로 재면 <b>결론 ①이 맞았는지가 그 한 번에 갈립니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">1위 · 메시지 진입점 — 발사 로직은 건드릴 필요가 없다</div>
+            <p>
+              격차의 <b>67%</b>이고 <b>쏘면 100% 성공</b>이라 수락률 리스크가 없습니다.
+              친구 전환 <b>판당 2.2%를 10%까지만 올려도</b> 전환당 0.88 그대로면
+              주간 US 메시지가 <b>446 → 약 2,000건(4.5배)</b>입니다.
+              FB 창에 의존하지 않으니 가로·iOS 문제와도 무관합니다.<br />
+              <b>마종·코지도 매칭 서버가 없습니다.</b> 클라가 친구 하나 골라 컨텍스트를 전환할 뿐입니다.
+              그리고 솔은 이미 <b>THREAD 컨텍스트 + 상대 ID가 있으면 판 클리어 시 자동으로 쏩니다</b> —
+              <b>그 상태에 도달하는 길만 하나 열면</b> 기존 게이트가 그대로 통과됩니다.
+              로비에 <b>「친구와 하기」</b> → 친구 선택 → <b>기존 <code>PopupSwitchContext.setP2P()</code> 재사용</b>.
+              <b>리더보드 선물 버튼이 이미 같은 흐름을 씁니다.</b><br />
+              <span class="tag">단 「어떤 친구를 왜 추천하는가」는 UX 설계 필요</span>
+              <span class="tag">2단계로 판정 축을 FB 컨텍스트 → 클라 상태로 옮기면 <code>switchToContextSolo</code> 16곳 리셋 문제도 해소</span><br />
+              <b>반대편</b> — 유저가 안 누르면 0입니다. 마종은 로비 PLAY <b>기본 경로</b>가 P2P고 자동 추천까지 있는데
+              우리는 <b>선택 버튼 하나</b>라 상한(+1.78)에 바로 못 갑니다. 그래서 <b>절반 이하로 잡았습니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 문서 밖에서 이어지는 것</div>
+            <p>
+              <b>토너먼트 생성률·토너 공유 수락률</b>은 원인 후보가 로그로 소진돼 실기 확인 대기 상태입니다 —
+              <a href="tournament-share-rate.html">tournament-share-rate.html</a>이 이어받습니다.
+              <b>주간 추이</b>는 <a href="weekly-kpi.html">weekly-kpi.html</a>,
+              <b>프로젝트별 코드 차이</b>는 <a href="social-code-matrix.html">social-code-matrix.html</a>입니다.
+            </p>
+          </div>
+        </div>
 
         <div class="foot">
           <b>기준</b> 코드는 각 리포 <code>main</code> 브랜치. 수치는 BigQuery <code>country='US'</code> ·
@@ -729,11 +834,19 @@
           실패 사유·position 분해만 <b>08-17 하루 · 솔리테어와 퍼블마 두 곳</b>입니다(<code>data</code> 컬럼 스캔 비용).
           OS 분해는 표본 30건 이상만 남기고 <code>os IS NULL</code>(로그인 직후 이탈 세션)은 제외했습니다.
           환경 컬럼이 없어 prod/dev 분리는 못 했습니다.
+          <b>메시지 퍼널 절</b>은 솔 vs 마종 비교이고 컨텍스트 <code>contextType</code> 분해는 <b>8/13 하루</b>,
+          판당 발사율 = 시도 ÷ <code>2100_GAMEPLAY_START</code>,
+          <b>마종 <code>friend</code> 비중(~69%)과 친구 전환/판(~22%)은 역산값</b>으로 직접 측정하지 않았습니다.
+          <sup class="fn">2</sup> 기대 이득 +0.036은 <code>PENDING_REQUEST</code>를 0으로 만들었을 때의 상한 추정입니다.
           <b>차이가 아닌 것</b> — <code>chooseContext</code> 죽은 코드, XML 오버레이 공유 미구현,
           토너 초대 유입의 초대자 귀속 누락, <code>messageEnabled</code> 플래그는 벤치도 같거나 전부 미사용입니다.
           전문·SQL은 <code>_ignore/research-viral-surface-cross-project-0818.md</code> ·
           <code>_ignore/kpi-share-call-4proj.sql</code>, 오픈 항목은 <code>_ignore/check-open-items.md</code> §E.
-          관련: <a href="viral-orientation-gap.html">솔 바이럴이 마종의 32%인 이유</a>
+          관련: <a href="tournament-share-rate.html">토너먼트 생성·공유 수락률</a> ·
+          <a href="social-code-matrix.html">5프로젝트 소셜 코드 대조표</a> ·
+          <a href="weekly-kpi.html">주간 KPI</a>.
+          이 문서의 메시지 퍼널은 구 「솔 바이럴이 마종의 32%인 이유」에서 흡수한 것으로,
+          원문은 <code>_ignore/done/</code>에 보관돼 있습니다.
         </div>
       </section>
     </main>

@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>주간 KPI 3축 — 광고 · 플레이 · 공유</title>
+    <meta
+      name="description"
+      content="광고 노출·플레이 횟수·컨텍스트와 공유 3축을 같은 기준으로 전주 대비 측정하는 상설 주간 지표 문서. 숫자와 판정만 싣고, 원인은 축별 조사 문서로 넘긴다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <!-- 상설 URL. 파일명에 회차 날짜를 넣지 않는다 — 매주 이 파일을 덮어쓴다.
+         회차 구간은 title / doc-title / lede / doc-meta 네 곳에만 적혀 있다. -->
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#summary">한눈에</a>
+        <a class="nav-back" href="#ad">축1 광고</a>
+        <a class="nav-back" href="#play">축2 플레이</a>
+        <a class="nav-back" href="#social">축3 공유</a>
+        <a class="nav-back" href="#verdict">판정</a>
+        <a class="nav-back" href="#howto">갱신 방법</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 주간 KPI · 상설</div>
+        <h1 class="doc-title">주간 KPI 3축</h1>
+        <p class="doc-lede">
+          <b>이 문서는 숫자만 봅니다. 원인·가설은 축별 조사 문서로 내려갑니다</b> — 각 축 끝의 “왜 그런가 →” 줄을 따라가세요.
+          <br />
+          이번 회차는 <b>당주 8/10 ~ 8/16</b>을 <b>전주 8/3 ~ 8/9</b>와 같은 기준(US · 각 7일 · 유저-일 단위)으로 놓고 본 것입니다.
+          축은 셋 — <b>광고 노출 · 플레이 횟수 · 컨텍스트와 공유</b>. 표에는 전주 값, 당주 값, 변화, 그리고 판정만 남깁니다.
+          <br />
+          URL에 날짜가 없습니다. <b>매주 이 페이지를 덮어씁니다</b> — 갱신 절차는 맨 아래 <a href="#howto"><b>갱신 방법</b></a>에 있습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--sol)">솔리테어</span>
+          <span class="tag">상설 URL · 매주 갱신</span>
+          <span class="tag">이번 회차 8/10~8/16 vs 전주 8/3~8/9 · 각 7일</span>
+          <span class="tag">country = US · 유저일수 2,810 → 2,621 (−6.7%)</span>
+          <span class="tag">BigQuery raw.solitaire_city_journey · app = solitaire_city_journey_prod</span>
+          <span class="tag">일부 지표는 전 국가 · 8/10~8/17 (각주 A)</span>
+          <span class="tag">/DAU 지표는 분모가 다름 (각주 B)</span>
+          <span class="tag">갱신 2026-08-18 18:10</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="summary">
+        <h2 class="doc-h2">
+          한눈에
+          <span class="doc-h2-sub">축별 대표 지표 · 전주 대비</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">4.1<span class="stat-unit">배</span></div>
+            <div class="stat-name">축1 · 유저당 전면 노출</div>
+            <div class="stat-sub">0.93 → 3.83회</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">−5.9<span class="stat-unit">%</span></div>
+            <div class="stat-name">축2 · 유저당 판 수</div>
+            <div class="stat-sub">9.21 → 8.67 · p50은 2 → 3</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">−36<span class="stat-unit">%</span></div>
+            <div class="stat-name">축3 · 공유 실패</div>
+            <div class="stat-sub">8,844 → 5,630건</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">+107<span class="stat-unit">%</span></div>
+            <div class="stat-name">축3 · 전환 팝업 닫기</div>
+            <div class="stat-sub">1,822 → 3,772건</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">세 축을 한 판정으로 합치지 않습니다 — 분모가 다릅니다</div>
+            <p>
+              축1은 <strong>유저당 평균과 도달률</strong>(8.0% → 32.8%)로, 축2는 <strong>평균(−5.9%)과 p50(2 → 3)이 서로 반대 방향</strong>이라
+              두 값을 나란히, 축3은 총량이 아니라 <strong>유저당 성공(1.38 → 1.39)과 실패 건수(−36%)</strong>로 읽습니다.
+              한 축의 방향을 다른 축에 옮겨 적지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">역방향으로 움직인 값 두 개</div>
+            <p>
+              <b>노출 성공률</b> 94.9% → 68.6%, 주 실패 13,139건, <code>switch_cancel</code> 지면은 절반이 실패
+              <sup class="fn">A</sup>. <b>전환 팝업</b>은 노출 <code>3000</code>이 +31.1%인데 닫기 <code>3052</code>가 +107.0%입니다.
+              두 값이 왜 이렇게 움직였는지는 이 문서에서 다루지 않습니다 — 각 축 끝의 조사 문서 링크로 갑니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="ad">
+        <h2 class="doc-h2">
+          축1 · 광고 노출
+          <span class="doc-h2-sub">달성</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">지표</th>
+                <th style="text-align: right">전주</th>
+                <th style="text-align: right">당주</th>
+                <th style="text-align: right">변화</th>
+                <th style="width: 22%">읽는 법</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>유저당 노출 · 평균</b></td>
+                <td style="text-align: right">0.93</td>
+                <td style="text-align: right"><b>3.83</b></td>
+                <td style="text-align: right"><b>4.12배</b></td>
+                <td>주 목표 지표</td>
+              </tr>
+              <tr>
+                <td><b>노출 도달률</b></td>
+                <td style="text-align: right">8.0%</td>
+                <td style="text-align: right"><b>32.8%</b></td>
+                <td style="text-align: right"><b>+24.8pt</b></td>
+                <td>한 번이라도 본 유저 비중</td>
+              </tr>
+              <tr>
+                <td>노출 유저 1인 강도 <span class="tag">파생</span></td>
+                <td style="text-align: right">11.6</td>
+                <td style="text-align: right">11.7</td>
+                <td style="text-align: right">+0.9%</td>
+                <td>평균 ÷ 도달률</td>
+              </tr>
+              <tr>
+                <td>p50 (전체)</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right">동일</td>
+                <td>중간 유저는 여전히 0회</td>
+              </tr>
+              <tr>
+                <td>p50 (노출 유저)</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right">5</td>
+                <td style="text-align: right">+25%</td>
+                <td>보는 사람의 중간값</td>
+              </tr>
+              <tr>
+                <td>p90 (노출 유저)</td>
+                <td style="text-align: right">26</td>
+                <td style="text-align: right">29</td>
+                <td style="text-align: right">+11.5%</td>
+                <td>상위 10% 헤비층</td>
+              </tr>
+              <tr>
+                <td>노출 성공률 <span class="tag">전 국가 · 8/10~8/17</span></td>
+                <td style="text-align: right">94.9%</td>
+                <td style="text-align: right">68.6%</td>
+                <td style="text-align: right">−26.3pt</td>
+                <td>주 실패 13,139건 <sup class="fn">A</sup></td>
+              </tr>
+              <tr>
+                <td>총광고 완료 /DAU <span class="tag">기준 다름</span></td>
+                <td style="text-align: right">4.32</td>
+                <td style="text-align: right">7.16</td>
+                <td style="text-align: right">+66%</td>
+                <td>전면 외 광고 포함 <sup class="fn">B</sup></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">이 표를 읽는 법 — 평균은 도달률 × 1인 강도로 분해합니다</div>
+            <p>
+              전주 <code>0.080 × 11.6</code>, 당주 <code>0.328 × 11.7</code>입니다. 평균 배율 <strong>4.12배</strong>와
+              도달률 배율 <strong>4.10배</strong>가 소수점까지 겹치고 1인 강도는 +0.9%로 사실상 고정입니다.
+              p50(전체) 0은 측정 실패가 아니라 당주에도 유저 <b>67.2%</b>가 노출 0회라는 뜻입니다(100 − 32.8).
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">각주 A · B — 같은 표 안에 기준이 다른 행이 둘 있습니다</div>
+            <p>
+              <sup class="fn">A</sup> 노출 성공률 · 실패 13,139건 · <code>switch_cancel</code> 절반 실패는
+              <strong>전 국가 · 8/10~8/17</strong> 값입니다. 나머지 행(US · 8/10~8/16)과 기간·지역이 모두 다릅니다.<br />
+              <sup class="fn">B</sup> 총광고 완료 /DAU는 <strong>전면 노출만이 아닌 광고 완료 전체</strong>이고 분모가
+              <b>로그인 완료 유저-일</b>이라, 같은 표 첫 행의 유저당 전면 노출(0.93 → 3.83)과 직접 비교할 수 없습니다.
+              두 분모의 정확한 차이는 원본 문서에 적혀 있지 않습니다 — <b>확인 필요</b>.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">왜 그런가 →</div>
+            <p>
+              지면 구조 · 노출 경로 · 쿨타임 · 지면별 실패는 여기서 설명하지 않습니다.
+              <a href="ad-placements.html"><span class="pill" style="--acc: var(--analysis)">전면광고 지면 — 4개 프로젝트 플로우 비교</span></a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="play">
+        <h2 class="doc-h2">
+          축2 · 플레이 횟수
+          <span class="doc-h2-sub">혼재</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">지표</th>
+                <th style="text-align: right">전주</th>
+                <th style="text-align: right">당주</th>
+                <th style="text-align: right">변화</th>
+                <th style="width: 22%">읽는 법</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>유저당 판 수 · 평균</td>
+                <td style="text-align: right">9.21</td>
+                <td style="text-align: right">8.67</td>
+                <td style="text-align: right">−5.9%</td>
+                <td>상단이 줄었다</td>
+              </tr>
+              <tr>
+                <td>유저당 판 수 · p50</td>
+                <td style="text-align: right">2</td>
+                <td style="text-align: right">3</td>
+                <td style="text-align: right">+50%</td>
+                <td>하단이 올라왔다</td>
+              </tr>
+              <tr>
+                <td>판수 /DAU <span class="tag">기준 다름</span></td>
+                <td style="text-align: right">9.65</td>
+                <td style="text-align: right">9.10</td>
+                <td style="text-align: right">−6%</td>
+                <td>분모가 다름 <sup class="fn">B</sup></td>
+              </tr>
+              <tr>
+                <td>하루1회 직행 발동률 <span class="tag">전 국가 · 8/10~8/17</span></td>
+                <td style="text-align: right">—</td>
+                <td style="text-align: right">50~54%</td>
+                <td style="text-align: right">신규</td>
+                <td>8/12 배포, 폴백 0.1% <sup class="fn">A</sup></td>
+              </tr>
+              <tr>
+                <td>재도전 진입 지면 <code>game_retry</code> <span class="tag">전 국가 · 8/10~8/17</span></td>
+                <td style="text-align: right">—</td>
+                <td style="text-align: right">936시도</td>
+                <td style="text-align: right">신규</td>
+                <td>지면이 살아 있는지만 확인 <sup class="fn">A</sup></td>
+              </tr>
+              <tr class="is-dead">
+                <td>재도전율 (<code>2223</code> ÷ <code>2220</code>)</td>
+                <td style="text-align: right">—</td>
+                <td style="text-align: right">미조회</td>
+                <td style="text-align: right">—</td>
+                <td>쿼리 미실행 · <b>확인 필요</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 표를 읽는 법 — 평균과 p50을 반드시 같이 봅니다</div>
+            <p>
+              평균은 −5.9%인데 p50은 2 → 3입니다. <strong>한 값만 인용하면 정반대 결론이 나옵니다</strong>.
+              분포 하단과 상단이 서로 다른 방향으로 움직였다는 사실까지가 이 문서의 범위이고,
+              어느 쪽이 무엇 때문인지는 여기서 판단하지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 축은 이번 회차에도 절반이 비어 있습니다</div>
+            <p>
+              8/13에 붙인 <b>재도전 버튼</b>의 성과 지표인 <code>2223</code> ÷ <code>2220</code>이 <strong>미조회</strong>입니다.
+              전 국가 기준으로 <code>game_retry</code> 지면이 936시도로 살아 있는 것만 확인됐습니다.
+              <b>확인 필요</b> 칸은 값을 추정해 채우지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">왜 그런가 →</div>
+            <p>
+              첫 10분 온보딩 흐름과 로딩 구간이 판 수에 어떻게 걸리는지는 조사 문서에 있습니다.
+              <a href="nru-first-10min-compare.html"><span class="pill" style="--acc: var(--analysis)">NRU 0~10분 — 6개 프로젝트 온보딩 비교</span></a>
+              <a href="loading-speed-compare.html"><span class="pill" style="--acc: var(--analysis)">로딩 속도 — 3개 프로젝트 비교</span></a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="social">
+        <h2 class="doc-h2">
+          축3 · 컨텍스트와 공유
+          <span class="doc-h2-sub">공유는 개선, 전환은 악화</span>
+        </h2>
+
+        <!-- ① 채널별 시도·성공 (절대치) -->
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">채널</th>
+                <th style="text-align: right">전주 시도</th>
+                <th style="text-align: right">전주 성공</th>
+                <th style="text-align: right">전주 성공률</th>
+                <th style="text-align: right">당주 시도</th>
+                <th style="text-align: right">당주 성공</th>
+                <th style="text-align: right">당주 성공률</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>P2P초대</b> <span class="tag">신규</span></td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right">—</td>
+                <td style="text-align: right">1,919</td>
+                <td style="text-align: right"><b>1,818</b></td>
+                <td style="text-align: right"><b>94.7%</b></td>
+              </tr>
+              <tr>
+                <td>토너포스트</td>
+                <td style="text-align: right">6,473</td>
+                <td style="text-align: right">3,231</td>
+                <td style="text-align: right">49.9%</td>
+                <td style="text-align: right">1,257</td>
+                <td style="text-align: right">1,207</td>
+                <td style="text-align: right"><b>96.0%</b></td>
+              </tr>
+              <tr>
+                <td>토너공유</td>
+                <td style="text-align: right">7,050</td>
+                <td style="text-align: right">530</td>
+                <td style="text-align: right">7.5%</td>
+                <td style="text-align: right">6,036</td>
+                <td style="text-align: right">506</td>
+                <td style="text-align: right"><b>8.4%</b></td>
+              </tr>
+              <tr>
+                <td>피드공유</td>
+                <td style="text-align: right">342</td>
+                <td style="text-align: right">118</td>
+                <td style="text-align: right">34.5%</td>
+                <td style="text-align: right">287</td>
+                <td style="text-align: right">117</td>
+                <td style="text-align: right">40.8%</td>
+              </tr>
+              <tr>
+                <td><b>합계</b></td>
+                <td style="text-align: right">13,865</td>
+                <td style="text-align: right">3,879</td>
+                <td style="text-align: right">28.0%</td>
+                <td style="text-align: right">9,499</td>
+                <td style="text-align: right">3,648</td>
+                <td style="text-align: right"><b>38.4%</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">이 표를 읽는 법 — 총량이 아니라 유저당과 실패로 읽습니다</div>
+            <p>
+              성공 합계는 3,879 → 3,648로 −6.0%인데 <strong>유저일수도 −6.7%</strong>라
+              유저당 성공은 <strong>1.38 → 1.39</strong>로 제자리입니다. 대신 실패가 <strong>8,844 → 5,630(−36%)</strong>입니다.
+              성공한 유저 수는 414 → 583(채널 간 중복 가능). 당주 공유 실패 5,630건의 <strong>97%가 토너공유 한 채널</strong>
+              (시도 6,036 · 성공 506 · 실패 5,456)에서 나옵니다.
+            </p>
+          </div>
+        </div>
+
+        <!-- ② viral-orientation-gap ①표에서 흡수한 /DAU 시계열.
+             위 채널 표와 중복되는 성공률 3개(공유율·초대 성공률·생성률)는 여기서 뺐다 —
+             값이 같고 반올림 자릿수만 다르다. -->
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 26%">유저당(/DAU) 지표 <span class="tag">각주 B 기준</span></th>
+                <th style="text-align: right">전주</th>
+                <th style="text-align: right">당주</th>
+                <th style="text-align: right">Δ</th>
+                <th style="width: 26%">읽는 법</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>총 바이럴 성공 /DAU</b></td>
+                <td style="text-align: right"><b>0.500</b></td>
+                <td style="text-align: right"><b>1.256</b></td>
+                <td style="text-align: right"><b>+151%</b></td>
+                <td>상승분 분해는 아래 노트</td>
+              </tr>
+              <tr>
+                <td><b>메세지 성공 /DAU</b></td>
+                <td style="text-align: right">0.182</td>
+                <td style="text-align: right">0.188</td>
+                <td style="text-align: right">+3%</td>
+                <td>채널 표에 없는 채널</td>
+              </tr>
+              <tr>
+                <td>메세지 판당 발사율</td>
+                <td style="text-align: right">1.88%</td>
+                <td style="text-align: right">2.06%</td>
+                <td style="text-align: right">+10%</td>
+                <td>분모 <code>2100_GAMEPLAY_START</code></td>
+              </tr>
+              <tr>
+                <td><b>공유 판당 발사율</b></td>
+                <td style="text-align: right">—</td>
+                <td style="text-align: right">26.57%</td>
+                <td style="text-align: right"><span class="tag">신규 측정</span></td>
+                <td>전주 값 없음 · 분모 <code>2100</code></td>
+              </tr>
+              <tr>
+                <td>토너 공유시도 /DAU</td>
+                <td style="text-align: right">2.75</td>
+                <td style="text-align: right">2.54</td>
+                <td style="text-align: right">−8%</td>
+                <td>절대치는 위 채널 표</td>
+              </tr>
+              <tr>
+                <td><b>토너 초대 시도 /DAU</b></td>
+                <td style="text-align: right">0.00</td>
+                <td style="text-align: right">0.81</td>
+                <td style="text-align: right"><span class="tag">신설</span></td>
+                <td>P2P초대 = 이번 회차 신설</td>
+              </tr>
+              <tr>
+                <td>토너 생성시도 /DAU</td>
+                <td style="text-align: right">4.85</td>
+                <td style="text-align: right">1.60</td>
+                <td style="text-align: right">−67%</td>
+                <td>절대치는 아래 전환 표</td>
+              </tr>
+              <tr>
+                <td>피드 성공 /DAU</td>
+                <td style="text-align: right">0.046</td>
+                <td style="text-align: right">0.049</td>
+                <td style="text-align: right">+7%</td>
+                <td>절대치는 위 채널 표</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">+151%는 산술 분해까지 붙여야 값입니다</div>
+            <p>
+              초대 성공은 <b>0.81 × 94.74% = 0.767/DAU</b>이고 총 상승분은 0.756입니다 —
+              <strong>상승분의 101%가 초대 하나</strong>이고, <strong>초대를 빼면 0.500 → 0.491</strong>로 제자리입니다.
+              그 초대 성공률 94.74%는 원본에서 <b>무엇을 재는 값인지 재검증 대상</b>으로 표기돼 있습니다
+              (초대 유입률이 1.14% = 74/6,519).
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">각주 B — 이 표만 기준이 다릅니다</div>
+            <p>
+              분모 <b>DAU = 로그인 완료 유저-일</b>로, 위 채널 표·아래 전환 표(US · 유저-일)와 <strong>같은 분모가 아닙니다</strong>.
+              기간도 <b>달력 주(월~일) 8/3~8/9 vs 8/10~8/16, 빌드 필터 없음</b>입니다.
+              판당 발사율 = 시도 ÷ <code>2100_GAMEPLAY_START</code>, 생성률·공유율 = 성공 ÷ 시도.<br />
+              <b>중복 제거</b> — 토너 공유율 8.38% · 토너 초대 성공률 94.74% · 토너 생성률 2.56%는 위·아래 표의
+              8.4% · 94.7% · 2.6%와 같은 값이라(반올림 자릿수 차이) 여기서 다시 싣지 않았습니다.
+              <b>벤치(마종) 대조 열은 이 문서에 옮기지 않았습니다</b> — 축3 조사 문서 소관입니다.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>당주 채널 구성 펼치기 — 초대 61% · 공유 17% · 메세지 15%</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 24%">채널</th>
+                    <th style="text-align: right">당주 /DAU</th>
+                    <th style="text-align: right">비중</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b>초대</b></td>
+                    <td style="text-align: right"><b>0.767</b></td>
+                    <td style="text-align: right"><b>61%</b></td>
+                  </tr>
+                  <tr>
+                    <td>공유</td>
+                    <td style="text-align: right">0.213</td>
+                    <td style="text-align: right">17%</td>
+                  </tr>
+                  <tr>
+                    <td>메세지</td>
+                    <td style="text-align: right">0.188</td>
+                    <td style="text-align: right">15%</td>
+                  </tr>
+                  <tr>
+                    <td>피드</td>
+                    <td style="text-align: right">0.049</td>
+                    <td style="text-align: right">4%</td>
+                  </tr>
+                  <tr>
+                    <td>생성</td>
+                    <td style="text-align: right">0.041</td>
+                    <td style="text-align: right">3%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--sol)">
+                <div class="note-title">전주 대비가 없는 표라 접어 뒀습니다</div>
+                <p>
+                  당주 한 주의 구성만 있는 값입니다(각주 B 기준). 이번 회차 기준 <strong>우리 바이럴의 61%가 초대</strong>이고,
+                  그 초대 성공률은 위에 적은 대로 <b>재검증 대상</b>입니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- ③ 컨텍스트 전환 · 토너먼트 생성 (절대치) -->
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 28%">컨텍스트 전환 · 토너먼트 생성</th>
+                <th style="text-align: right">전주</th>
+                <th style="text-align: right">당주</th>
+                <th style="text-align: right">변화</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>전환 시도 (<code>3000</code>)</td>
+                <td style="text-align: right">10,372</td>
+                <td style="text-align: right">13,599</td>
+                <td style="text-align: right">+31.1%</td>
+              </tr>
+              <tr>
+                <td>전환 성공 (<code>3010</code>)</td>
+                <td style="text-align: right">8,103</td>
+                <td style="text-align: right">9,374</td>
+                <td style="text-align: right">+15.7%</td>
+              </tr>
+              <tr>
+                <td>전환 성공률 <span class="tag">기준 변경</span></td>
+                <td style="text-align: right">78.1%</td>
+                <td style="text-align: right">68.9%</td>
+                <td style="text-align: right">−9.2pt <sup class="fn">C</sup></td>
+              </tr>
+              <tr>
+                <td>팝업 수락 (<code>3051</code>)</td>
+                <td style="text-align: right">8,057</td>
+                <td style="text-align: right">9,397</td>
+                <td style="text-align: right">+16.6%</td>
+              </tr>
+              <tr>
+                <td>팝업 수락률</td>
+                <td style="text-align: right">77.8%</td>
+                <td style="text-align: right">69.1%</td>
+                <td style="text-align: right">−8.7pt</td>
+              </tr>
+              <tr>
+                <td><b>팝업 닫기 (<code>3052</code>)</b></td>
+                <td style="text-align: right">1,822</td>
+                <td style="text-align: right"><b>3,772</b></td>
+                <td style="text-align: right"><b>+107.0%</b></td>
+              </tr>
+              <tr>
+                <td>토너 생성 시도 (<code>3100</code>)</td>
+                <td style="text-align: right">12,412</td>
+                <td style="text-align: right">3,793</td>
+                <td style="text-align: right">−69.4%</td>
+              </tr>
+              <tr>
+                <td>토너 생성 성공 (<code>3110</code>)</td>
+                <td style="text-align: right">167</td>
+                <td style="text-align: right">97</td>
+                <td style="text-align: right">−41.9%</td>
+              </tr>
+              <tr>
+                <td>토너 생성 억제 (<code>3130</code>)</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right">5,480</td>
+                <td style="text-align: right">신규</td>
+              </tr>
+              <tr>
+                <td>토너 생성 성공률</td>
+                <td style="text-align: right">1.3% <sup class="fn">D</sup></td>
+                <td style="text-align: right">2.6%</td>
+                <td style="text-align: right">+1.3pt</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">각주 C · D — 전주와 당주가 같은 자로 잰 값이 아닌 행</div>
+            <p>
+              <sup class="fn">C</sup> 8/11부터 <b>전환 실패 경로에도 슬로우 임계가 적용</b>됩니다. 이전에는 실패로 잡히지 않던
+              느린 전환이 당주부터 실패로 집계되므로, −9.2pt는 <strong>기준 변경분이 섞인 값</strong>입니다.
+              반면 팝업 닫기 +107.0%는 정의 변경과 무관한 카운트입니다.<br />
+              <sup class="fn">D</sup> 전주 토너 생성은 <b>실패 13,670건이 시도 12,412건보다 많습니다</b> — 시도 없이 실패만 남는
+              경로가 있었다는 뜻이라 <strong>전주 값은 비교 근거로 쓰지 않습니다</strong>. 당주도 시도 3,793 대비 실패 3,630(96%)입니다.
+              성공률 1.3% → 2.6%와 함께 <b>절대 성공 167 → 97(−41.9%)</b>을 반드시 같이 인용합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">왜 그런가 →</div>
+            <p>
+              공유·메세지 채널의 실패 사유와 지면 구조는
+              <a href="viral-surface-cross-project.html"><span class="pill" style="--acc: var(--analysis)">공유 실패 — 원인과 고칠 것</span></a>,
+              토너먼트 전환·생성·공유 경로는
+              <a href="tournament-share-rate.html"><span class="pill" style="--acc: var(--analysis)">토너먼트 바이럴 조사</span></a>
+              에 있습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          판정
+          <span class="doc-h2-sub">3축 · 전주 대비</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 10%">축</th>
+                <th style="width: 22%">KPI</th>
+                <th style="width: 14%">판정</th>
+                <th>근거 (숫자만)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1 광고</td>
+                <td>유저당 전면 노출</td>
+                <td><span class="pill" style="--acc: var(--ok)">달성</span></td>
+                <td>0.93 → 3.83회(4.12배). 도달률 8.0 → 32.8%(4.10배), 1인 강도 11.6 → 11.7.</td>
+              </tr>
+              <tr>
+                <td>1 광고</td>
+                <td>노출 안정성</td>
+                <td><span class="pill" style="--acc: var(--bad)">역행</span></td>
+                <td>성공률 94.9% → 68.6%, 주 실패 13,139건 <sup class="fn">A</sup>.</td>
+              </tr>
+              <tr>
+                <td>2 플레이</td>
+                <td>세션당 판 수</td>
+                <td><span class="pill" style="--acc: var(--warn)">혼재</span></td>
+                <td>평균 −5.9% / p50 +50%. /DAU 기준으로도 9.65 → 9.10(−6%) <sup class="fn">B</sup>.</td>
+              </tr>
+              <tr>
+                <td>2 플레이</td>
+                <td>하루1회 직행</td>
+                <td><span class="pill" style="--acc: var(--ok)">달성</span></td>
+                <td>발동률 50~54%, 실패 폴백 0.1%(3,044건 중 3건) <sup class="fn">A</sup>.</td>
+              </tr>
+              <tr>
+                <td>2 플레이</td>
+                <td>재도전 이탈 회수</td>
+                <td><span class="pill" style="--acc: var(--analysis)">미조회</span></td>
+                <td><code>2220</code> 대비 <code>2223</code>·<code>2222</code> 쿼리 미실행. <b>확인 필요</b>.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>공유·초대 성공률</td>
+                <td><span class="pill" style="--acc: var(--ok)">달성</span></td>
+                <td>합계 28.0% → 38.4%, 실패 −36%. P2P초대 94.7% 신설, 포스트 49.9 → 96.0%.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>공유 총량</td>
+                <td><span class="pill" style="--acc: var(--validate)">유지</span></td>
+                <td>유저당 성공 1.38 → 1.39. 성공 합계 3,879 → 3,648, 유저일수 −6.7%.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>총 바이럴 성공 /DAU</td>
+                <td><span class="pill" style="--acc: var(--warn)">신설분</span></td>
+                <td>0.500 → 1.256(+151%). 상승분의 101%가 초대이고, 초대 제외 시 0.491 <sup class="fn">B</sup>.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>메세지 성공 /DAU</td>
+                <td><span class="pill" style="--acc: var(--validate)">유지</span></td>
+                <td>0.182 → 0.188(+3%). 판당 발사율 1.88% → 2.06% <sup class="fn">B</sup>.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>토너공유 채널</td>
+                <td><span class="pill" style="--acc: var(--bad)">방치</span></td>
+                <td>7.5% → 8.4%. 당주 공유 실패 5,630건의 97%(5,456건)가 이 채널.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>컨텍스트 전환</td>
+                <td><span class="pill" style="--acc: var(--bad)">역행</span></td>
+                <td>팝업 닫기 +107.0%, 수락률 −8.7pt. 성공률 −9.2pt는 기준 변경분 포함 <sup class="fn">C</sup>.</td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>토너먼트 생성</td>
+                <td><span class="pill" style="--acc: var(--warn)">분모 정리</span></td>
+                <td>성공률 1.3 → 2.6%, 절대 성공 167 → 97(−41.9%), 억제 5,480건 신규 <sup class="fn">D</sup>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">판정 표기 규칙</div>
+            <p>
+              <b>달성 / 유지 / 혼재 / 역행 / 방치 / 분모 정리 / 신설분 / 미조회</b> 여덟 가지만 씁니다.
+              판정은 <strong>전주 대비 숫자의 방향</strong>에만 근거하고, 왜 그 방향이 나왔는지는 붙이지 않습니다 —
+              그 설명이 필요하면 해당 축의 “왜 그런가 →” 링크로 갑니다.
+              값이 없으면 <b>미조회</b>로 두고 추정치로 채우지 않습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> BigQuery <code>game-log-359704.raw.solitaire_city_journey</code>,
+          <code>app = 'solitaire_city_journey_prod'</code>, <code>country = 'US'</code>,
+          전주 8/3~8/9 vs 당주 8/10~8/16(각 7일), 유저-일 단위. 유저일수 2,810 → 2,621.
+          축1은 평균과 <code>APPROX_QUANTILES</code> p50/p90 병기입니다.
+          <b>각주 A</b> 노출 성공률 · 실패 13,139건 · <code>switch_cancel</code> 절반 실패 · 직행 발동률 50~54% ·
+          <code>game_retry</code> 936시도는 <b>전 국가 · 8/10~8/17</b> 값입니다.
+          <b>각주 B</b> /DAU 지표는 분모가 <b>로그인 완료 유저-일</b>이고 <b>달력 주(월~일) · 빌드 필터 없음</b>이라
+          본문 US·유저-일 표와 같은 자가 아닙니다. 두 분모의 정확한 차이는 원본에 없어 <b>확인 필요</b>.
+          <b>각주 C</b> 8/11 전환 실패 경로 슬로우 임계 적용으로 전환 성공률은 전주·당주 기준이 다릅니다.
+          <b>각주 D</b> 전주 토너먼트 생성은 실패 13,670 &gt; 시도 12,412 — <b>신뢰 불가</b>. 전주 생성률 1.35%도 같은 오염 구간입니다.
+          <b>확인 필요</b> 판 수 상단 하락 원인 · <code>3220</code>과 <code>4020</code>의 에러 코드 분포 ·
+          재도전율(<code>2223</code>) · 456 배포 후 신규 지면 재측정 · D1 리텐션 · 초대 성공률 94.74%의 측정 대상.
+        </div>
+      </section>
+
+      <!-- 상설 문서라 갱신 절차를 문서 안에 둔다. 다음 사람이 같은 자로 재도록. -->
+      <section class="doc-section" id="howto">
+        <h2 class="doc-h2">
+          갱신 방법
+          <span class="doc-h2-sub">매주 · 어느 값을 어디서 채우나</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 10%">축</th>
+                <th style="width: 28%">채울 값</th>
+                <th>출처와 필터</th>
+                <th style="width: 12%">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>공통</td>
+                <td>기간 · 유저일수</td>
+                <td>
+                  <code>game-log-359704.raw.solitaire_city_journey</code> ·
+                  <code>app = 'solitaire_city_journey_prod'</code> · <code>country = 'US'</code> ·
+                  직전 7일과 그 앞 7일
+                </td>
+                <td><span class="pill" style="--acc: var(--ok)">기준 확정</span></td>
+              </tr>
+              <tr>
+                <td>1 광고</td>
+                <td>유저당 노출 평균 · 도달률 · p50 · p90</td>
+                <td>같은 테이블 · 유저-일 단위 · 평균과 <code>APPROX_QUANTILES</code>(전체 / 노출 유저 각각)</td>
+                <td><span class="pill" style="--acc: var(--ok)">기준 확정</span></td>
+              </tr>
+              <tr>
+                <td>1 광고</td>
+                <td>노출 성공률 · 실패 건수 · 지면별 실패</td>
+                <td><b>전 국가 · 8일 구간</b>으로 뽑던 값(각주 A). 쿼리 원문은 문서에 남아 있지 않음</td>
+                <td><span class="pill" style="--acc: var(--warn)">확인 필요</span></td>
+              </tr>
+              <tr>
+                <td>2 플레이</td>
+                <td>유저당 판 수 평균 · p50</td>
+                <td>같은 테이블 · US · 유저-일 단위</td>
+                <td><span class="pill" style="--acc: var(--ok)">기준 확정</span></td>
+              </tr>
+              <tr>
+                <td>2 플레이</td>
+                <td>하루1회 직행 발동률 · 폴백</td>
+                <td><b>전 국가 · 8일 구간</b>(각주 A). 발동 대비 폴백 건수로 계산</td>
+                <td><span class="pill" style="--acc: var(--warn)">확인 필요</span></td>
+              </tr>
+              <tr>
+                <td>2 플레이</td>
+                <td>재도전율</td>
+                <td><code>2223</code> ÷ <code>2220</code>, 종료율은 <code>2222</code>. <b>아직 한 번도 실행 안 됨</b></td>
+                <td><span class="pill" style="--acc: var(--bad)">미조회</span></td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>채널별 시도 · 성공 · 성공률</td>
+                <td>
+                  US · 7일. 토너공유는 <code>3220</code>(에러 코드 분해 대상으로 지목됨).
+                  P2P초대 · 토너포스트 · 피드공유의 이벤트 코드는 문서에 명시돼 있지 않음
+                </td>
+                <td><span class="pill" style="--acc: var(--warn)">확인 필요</span></td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>컨텍스트 전환 · 토너먼트 생성</td>
+                <td>
+                  US · 7일. <code>3000</code> <code>3010</code> <code>3051</code> <code>3052</code>
+                  <code>3100</code> <code>3110</code> <code>3120</code> <code>3130</code>
+                </td>
+                <td><span class="pill" style="--acc: var(--ok)">기준 확정</span></td>
+              </tr>
+              <tr>
+                <td>3 공유</td>
+                <td>/DAU 지표 (각주 B 표)</td>
+                <td>
+                  DAU = 로그인 완료 유저-일 · 달력 주(월~일) · 빌드 필터 없음.
+                  판당 발사율 = 시도 ÷ <code>2100_GAMEPLAY_START</code>, 생성률·공유율 = 성공 ÷ 시도
+                </td>
+                <td><span class="pill" style="--acc: var(--ok)">기준 확정</span></td>
+              </tr>
+              <tr>
+                <td>전체</td>
+                <td>SQL 파일 경로</td>
+                <td>원본 문서에 쿼리 파일 경로가 남아 있지 않음 — 다음 회차에 저장 위치를 정해 여기에 적을 것</td>
+                <td><span class="pill" style="--acc: var(--warn)">확인 필요</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">회차를 넘기는 순서</div>
+            <p>
+              ① <b>구간 표기</b>를 네 곳에서 바꿉니다 — <code>&lt;title&gt;</code>, 헤더 lede, <code>doc-meta</code>의 회차 태그와 유저일수 태그.
+              ② 각 표의 <b>전주 열에 지난 회차의 당주 값</b>을 옮기고 당주 열을 새로 채웁니다.
+              ③ 판정 표를 다시 매기고 <b>갱신 시각 태그</b>를 시각(HH:MM)까지 갱신합니다.
+              ④ 값이 안 나온 칸은 <b>비우고 “확인 필요” 또는 “미조회”</b>로 둡니다 — 추정치로 메우지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 문서에 쓰지 않는 것</div>
+            <p>
+              원인 · 가설 · 다음 액션 제안은 여기 적지 않습니다. 축별 조사 문서(<code>ad-placements</code> ·
+              <code>nru-first-10min-compare</code> · <code>loading-speed-compare</code> ·
+              <code>viral-surface-cross-project</code> · <code>tournament-share-rate</code>)가 그 자리입니다.
+              벤치(마종·코지·퍼블마) 대조도 이 문서가 아니라 해당 비교 문서에 둡니다.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>

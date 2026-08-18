@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>토너먼트 바이럴 조사 — 전환율 4.9% vs 31%</title>
+    <title>토너먼트 — 생성 · 수락률</title>
     <meta
       name="description"
-      content="공유율 → 거절률 → 채널 이동 → 전환율로 좁혀 들어간 기록. 과노출은 해소됐고, 남은 본체는 다이얼로그 전환율. 빌드 432 이하 지표는 로그 결함으로 오염."
+      content="KPI 축3(컨텍스트·공유)의 원인 조사. 토너먼트 생성과 토너 공유 수락률만 다룹니다. 공유 격차의 100%는 수락률이고(8.38% vs 30.86%), 생성은 사실상 데스크톱 전용입니다. 로그로 갈 수 있는 후보는 소진 — 다음은 실기 확인."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
@@ -16,7 +16,9 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#summary">결론</a>
-        <a class="nav-back" href="#gap">마종 대조</a>
+        <a class="nav-back" href="#os">기기별</a>
+        <a class="nav-back" href="#share">공유 수락률</a>
+        <a class="nav-back" href="#gap">08-12 대조</a>
         <a class="nav-back" href="#taint">지표 오염</a>
         <a class="nav-back" href="#build">억제 효과</a>
         <a class="nav-back" href="#cause">폭락 원인</a>
@@ -29,21 +31,23 @@
 
     <header class="doc-header">
       <div class="wrap wrap--wide">
-        <div class="doc-eyebrow">분석 · 바이럴</div>
-        <h1 class="doc-title">토너먼트 바이럴 조사</h1>
+        <div class="doc-eyebrow">KPI 축3 · 컨텍스트·공유 / 원인 조사</div>
+        <h1 class="doc-title">토너먼트 — 생성 · 수락률</h1>
         <p class="doc-lede">
-          「토너 공유율」에서 출발해 <b>과노출</b> → <b>채널 이동</b> → <b>전환율</b>로 좁혔습니다.
-          과노출은 억제 배포로 해소됐고(이제 마종보다 덜 띄웁니다), 남은 본체는
-          <b>다이얼로그가 열렸을 때 수락되는 비율 4.9% (마종 31%)</b>입니다.
-          다만 <b>빌드 432 이하 지표는 로그 결함으로 오염</b>돼 있어 절대값으로 읽으면 안 됩니다
-          (<a href="#taint">지표 오염</a>).
+          토너먼트 두 창(<b>생성</b>·<b>공유</b>)이 <b>왜 안 먹히는가</b>만 파고든 기록입니다.
+          공유는 <b>덜 쏴서가 아니라</b>(발사량은 마종의 1.22배) <b>격차의 100%가 수락률</b>이고
+          (<b>8.38% vs 마종 30.86%</b>), 생성은 <b>모바일에서만 붕괴</b>해 사실상 데스크톱 전용으로
+          돌아갑니다. <b>로그로 갈 수 있는 후보는 소진됐고 다음은 실기 확인</b>입니다.
+          <br />
+          수치를 인용하기 전에 <a href="#summary">대표값·이력값 기준표</a>를 먼저 보세요 —
+          이 문서 안에 <b>측정 창과 대상(생성/공유)이 다른 값이 둘</b> 있습니다.
         </p>
         <div class="doc-meta">
-          <span class="tag">BigQuery · 2026-07-20 ~ 08-11</span>
-          <span class="tag">빌드(client_version)로 분리 측정</span>
-          <span class="tag">NRU/RU 분해 · 동일 날짜창 대조</span>
-          <span class="tag">빌드 ≥ 438만 신뢰 구간</span>
-          <span class="tag">v6.1 · 2026-08-12</span>
+          <span class="pill" style="--acc: var(--warn)">대표값 갱신 · 8/07 되돌리기 제안 철회</span>
+          <span class="tag">BigQuery 실측 + 각 리포 main 코드 실측</span>
+          <span class="tag">대표 구간 2026-08-10 ~ 08-16 (주간)</span>
+          <span class="tag">이력 구간 2026-07-20 ~ 08-11 · 빌드 ≥ 438만 신뢰</span>
+          <span class="tag">v7.0 · 2026-08-18</span>
         </div>
       </div>
     </header>
@@ -53,52 +57,459 @@
       <section class="doc-section" id="summary">
         <h2 class="doc-h2">한눈에</h2>
 
+        <!-- 범위 선언을 맨 앞에 둔다. 이 문서가 예전엔 바이럴 전체를 다뤘기 때문에,
+             무엇이 빠졌는지 먼저 말하지 않으면 "여기 없네"로 오독된다 -->
+        <div class="note" style="--acc: var(--analysis)">
+          <div class="note-title">이 문서의 범위 — 토너먼트 생성 · 토너 공유 수락률</div>
+          <p>
+            그 둘만 다룹니다. <b>피드공유·메시지 채널</b>은
+            <a href="viral-surface-cross-project.html">viral-surface-cross-project.html</a>,
+            <b>주간 수치·시계열</b>은 <a href="weekly-kpi.html">weekly-kpi.html</a>,
+            <b>코드 대조</b>는 <a href="social-code-matrix.html">social-code-matrix.html</a>가 담당합니다.
+            여기서는 링크만 겁니다.
+          </p>
+        </div>
+
         <div class="stat-row">
           <div class="stat" style="--acc: var(--bad)">
-            <div class="stat-num">4.9<span class="stat-unit">%</span></div>
-            <div class="stat-name">다이얼로그 수락률</div>
-            <div class="stat-sub">마종 34.9% — 여기가 본체</div>
+            <div class="stat-num">8.38<span class="stat-unit">%</span></div>
+            <div class="stat-name">토너 공유 수락률</div>
+            <div class="stat-sub">마종 30.86% · 8/10~16 주간</div>
           </div>
           <div class="stat" style="--acc: var(--bad)">
-            <div class="stat-num">6.8<span class="stat-unit">배</span></div>
-            <div class="stat-name">총 바이럴 격차</div>
-            <div class="stat-sub">마종 17.14% vs 우리 2.52%</div>
+            <div class="stat-num">2.56<span class="stat-unit">%</span></div>
+            <div class="stat-name">토너 생성률</div>
+            <div class="stat-sub">마종 30.02% · 달성 8.5%</div>
           </div>
-          <div class="stat" style="--acc: var(--validate)">
-            <div class="stat-num">45<span class="stat-unit">%</span></div>
-            <div class="stat-name">판당 총 노출</div>
-            <div class="stat-sub">마종 55% — 이제 우리가 덜 띄운다</div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">38.7<span class="stat-unit">배</span></div>
+            <div class="stat-name">모바일 공유 ÷ 생성</div>
+            <div class="stat-sub">Android 생성 0.26% vs 공유 10.05%</div>
           </div>
-          <div class="stat" style="--acc: var(--sol)">
-            <div class="stat-num">11.1<span class="stat-unit">%</span></div>
-            <div class="stat-name">억제 후 신규유저 전환율</div>
-            <div class="stat-sub">이전 ~1% · 첫 제안은 원래 잘 먹힌다</div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">1.22<span class="stat-unit">배</span></div>
+            <div class="stat-name">판당 공유 발사량</div>
+            <div class="stat-sub">마종 대비 — 덜 쏴서가 아니다</div>
           </div>
         </div>
 
         <div class="note" style="--acc: var(--validate)">
-          <div class="note-title">조사 결론 세 줄</div>
+          <div class="note-title">조사 결론 네 줄</div>
           <p>
-            <b>①</b> 과하게 띄우던 문제는 <b>끝났습니다.</b> 억제(빌드 438) 이후 총 노출 45%로
-            마종(55%)보다 낮습니다.<br />
-            <b>②</b> "생성 성공률 24배 폭락"은 상당 부분 <b>착시</b>였습니다 — 생성 채널만 셌고,
-            실제로는 공유 채널로 옮겨간 것입니다.<br />
-            <b>③</b> 남은 격차는 전부 <b>전환율</b>입니다. 마종은 생성·공유 두 채널에서 모두 31%,
-            우리는 3.6% / 6.7%입니다. 다이얼로그 파라미터·게이팅·거절 상한·로그 정의는
-            <b>이미 마종과 동일</b>하므로, 원인은 다이얼로그 "밖"에 있습니다.<br />
-            <b>④</b> 단, <b>빌드 432 이하 지표는 오염</b>돼 있습니다. 이 조사에서 "폭락"·"미스터리"로
+            <b>①</b> <b>공유 격차의 100%가 수락률</b>입니다. 판당 발사는 우리가 1.22배 더 많고
+            (게이트가 우리만 4개인데도), <code>1.22배 × 수락률 0.27배 = 0.33배</code>가
+            실측 순 성공비와 정확히 맞습니다.<br />
+            <b>②</b> <b>생성은 모바일에서만 붕괴</b>했습니다. 데스크톱은 생성 6.69% ≈ 공유 6.81%로
+            두 창이 구별되지 않는데, <b>모바일만 0.26% vs 10.05%로 38.7배</b> 갈립니다.
+            생성 <b>시도의 50%가 안드로이드인데 성공의 5%</b>이고,
+            <b>생성 성공의 87%(97건 중 84건)가 Windows</b>입니다.<br />
+            <b>③</b> <b>로그로 갈 수 있는 후보는 소진</b>됐습니다. 창은 뜨고(<code>USER_INPUT</code> 84%),
+            기술 에러는 격차의 11%만 설명하며, 죽은·소규모 토너 가설은 역방향으로 기각됐습니다.
+            <b>다음은 실기 확인</b>입니다 — <a href="#next">다음 조치</a>.<br />
+            <b>④</b> 단, <b>빌드 432 이하 절대값은 오염</b>돼 있습니다. 이 조사에서 "폭락"·"미스터리"로
             부른 것 중 상당수가 로그 결함이었습니다 — <a href="#taint">지표 오염</a>.
           </p>
         </div>
+
+        <!-- 이 표가 이번 개정의 핵심. 같은 "수락률"이라는 이름으로 두 값이 돌아다녀
+             팀이 어느 쪽을 믿을지 모르는 상태였다. 지우지 않고 기준을 붙여 나란히 세운다 -->
+        <h3 style="margin: 26px 0 8px; font-size: 15px">
+          대표값과 이력값 — 같은 "수락률"이 아니다
+        </h3>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 21%">표기</th>
+                <th style="text-align: right">솔</th>
+                <th style="text-align: right">마종</th>
+                <th>무엇을 세나 (분모)</th>
+                <th>측정 창</th>
+                <th style="width: 13%">지위</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>토너 공유 수락률</b></td>
+                <td class="num"><span class="mx mx-bad">8.38%</span></td>
+                <td class="num">30.86%</td>
+                <td>
+                  <b>공유</b> 시도(<code>3200</code>) 대비 성공(<code>3210</code>)
+                </td>
+                <td>2026-08-10 ~ 08-16 주간 · US</td>
+                <td><span class="pill" style="--acc: var(--live)">현행 대표값</span></td>
+              </tr>
+              <tr class="is-dead">
+                <td>생성 다이얼로그 수락률</td>
+                <td class="num">4.9%</td>
+                <td class="num">34.9%</td>
+                <td>
+                  <b>생성</b> 시도 중 <b>실제로 열린 다이얼로그</b> 대비 수락
+                </td>
+                <td>2026-08-08 ~ 08-11 · <code>client_version ≥ 438</code></td>
+                <td><span class="tag">08-12 이력</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 표를 읽는 법 — 두 값은 애초에 같은 지표가 아니다</div>
+            <p>
+              <b>대상이 다르고(공유 vs 생성) 측정 창이 다릅니다.</b> 어느 쪽이 "맞다"가 아니라
+              <b>서로 다른 것을 재고 있습니다.</b><br />
+              <b>8.38% vs 30.86%</b>는 <b>8/10~16 주간 · 공유 채널</b> 값으로,
+              <a href="weekly-kpi.html">weekly-kpi</a>와 방향성 조사가 쓰는 값이고
+              <b>이 문서의 현행 대표값</b>입니다.<br />
+              <b>4.9% vs 34.9%</b>는 <b>08-12 판 · 생성 채널</b> 값입니다. 분모가 "시도"가 아니라
+              <b>"열린 다이얼로그"</b>라는 점을 특히 주의하세요 — 같은 구간의 시도 대비 생성 성공률은
+              <b>3.56%</b>이고, 100건 중 창이 열린 게 72건이라 4.9%가 나옵니다.
+              <b>세 값이 전부 다른 분모</b>입니다.<br />
+              <strong>인용할 때는 반드시 (측정 창 · 생성/공유)를 같이 적어주세요.</strong>
+              헷갈린다고 지우지 않고 기준을 붙여 남깁니다 —
+              아래 <a href="#gap">08-12 대조</a> 절이 그 이력 원본입니다.
+            </p>
+          </div>
+        </div>
       </section>
 
-      <!-- ================= 마종 대조 ================= -->
-      <!-- 이 문서에서 가장 중요한 표. 이전 판이 한 채널만 세서 결론을 틀리게 잡았다. -->
+      <!-- ================= 기기별 ================= -->
+      <!-- 방향성 조사(구멍 2a·2b)에서 흡수. 생성 붕괴의 위치를 먼저 못 박아야
+           뒤의 공유 분해가 "그럼 생성은?"으로 새지 않는다 -->
+      <section class="doc-section" id="os">
+        <h2 class="doc-h2">
+          기기별 — 데스크톱은 같고, 모바일에서만 갈린다
+          <span class="doc-h2-sub">창 종류 × OS · 공유÷생성 = 두 창의 수락률 비</span>
+        </h2>
+
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">⚠️ 먼저 — "초대 95%"를 근거로 쓴 이전 결론을 철회합니다</div>
+          <p>
+            초대 수락률이 <b>화면 크기가 전혀 다른 4개 OS에서 92~99%로 균일</b>합니다
+            (Android 94.96 · Windows 91.99 · OS X 98.54 · iOS 95.74).
+            <b>유저 결정이 걸린 창이 이런 분포를 낼 수 없습니다.</b><br />
+            코드를 보면 <code>3470</code>은 <code>FB.inviteAsync().then()</code>에 그냥 붙어 있습니다
+            (<code>FacebookPlatform.ts:2288</code>) — 유저가 친구를 실제로 골랐는지가 아니라
+            <b>프라미스가 resolve됐는지</b>를 찍습니다. <b>초대 유입률 1.14%</b>도 여기에 들어맞습니다.<br />
+            → <b>철회:</b> "같은 안드로이드에서 초대 창은 95% 먹히니 모바일 다이얼로그는 멀쩡하다"는 논거.
+            <b>대체 근거는 아래 표</b>로, 초대 없이도 같은 결론이 섭니다.
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">OS</th>
+                <th style="text-align: right">생성 시도</th>
+                <th style="text-align: right">생성 수락</th>
+                <th style="text-align: right">공유 시도</th>
+                <th style="text-align: right">공유 수락</th>
+                <th style="text-align: right">공유÷생성</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Windows</td>
+                <td class="num">1,256</td>
+                <td class="num">6.69%</td>
+                <td class="num">1,336</td>
+                <td class="num">6.81%</td>
+                <td class="num"><b>1.0×</b></td>
+              </tr>
+              <tr>
+                <td>OS X</td>
+                <td class="num">200</td>
+                <td class="num">2.00%</td>
+                <td class="num">545</td>
+                <td class="num">3.85%</td>
+                <td class="num">1.9×</td>
+              </tr>
+              <tr>
+                <td><b>Android</b></td>
+                <td class="num">1,909</td>
+                <td class="num"><span class="mx mx-bad">0.26%</span></td>
+                <td class="num">3,712</td>
+                <td class="num"><span class="mx mx-ok">10.05%</span></td>
+                <td class="num"><span class="mx mx-bad">38.7×</span></td>
+              </tr>
+              <tr>
+                <td><b>iOS</b></td>
+                <td class="num">273</td>
+                <td class="num"><span class="mx mx-bad">0.00%</span></td>
+                <td class="num">378</td>
+                <td class="num"><span class="mx mx-bad">1.06%</span></td>
+                <td class="num"><span class="tag">둘 다 죽음</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">이 표가 초대 없이 같은 결론을 세운다</div>
+            <p>
+              <b>데스크톱에서는 두 창이 구별되지 않습니다</b>(6.69 vs 6.81 — 사실상 동일).
+              <b>모바일에서만 38.7배로 갈립니다.</b>
+              화면이 넓으면 창 종류가 결과를 안 바꾸고, <b>좁은 가로 화면에서만 특정 창이 죽습니다.</b><br />
+              생성·공유는 <b>둘 다 취소 시 <code>USER_INPUT</code>으로 reject</b>되는 같은 성격의 지표라
+              직접 비교가 됩니다. 초대와 달리 이 비교는 안전합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">토너먼트는 사실상 데스크톱 전용으로 돌아가고 있다</div>
+            <p>
+              생성 <b>시도의 50%가 안드로이드인데 성공의 5%</b>입니다.
+              <b>생성 성공의 87%(97건 중 84건)가 Windows</b>에서 나옵니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">구멍 2a · 모바일 생성 붕괴 (격차의 44%) — 지역과 무관, 창 종류에 국한</div>
+            <p>
+              <b>US Android 0.17% / 비US Android 0.25% / iOS는 양쪽 다 0.00%.</b>
+              지역을 갈라도 결과가 같습니다 — <b>전 지역 공통</b>입니다.
+              마종은 정반대로 <b>모바일이 데스크톱의 2배</b>(33% vs 15.8%)입니다.
+              실패의 <b>73%가 <code>USER_INPUT</code></b> — 창은 열리고 <b>열린 뒤 전부 닫힙니다.</b>
+              개편 전(8/1~6)에도 Android는 약 7,400시도 0건이라 <b>개편 탓도 아니고 상시</b>입니다.<br />
+              사내 7개 중 <b>솔만 가로</b>(1280×720)이고 모바일 가로는 세로 공간이 ~360px뿐이라,
+              <b>창이 클수록 확인 버튼이 밖으로 밀린다</b>는 설명이 데스크톱=동일 / 모바일=38.7배 갈림과 맞습니다.
+              <b>다만 실기로 그 창들을 본 적이 없습니다</b> — 크기 차이는 아직 추정입니다.
+              <span class="tag">73%·7,400시도는 별도 창 실측 — 각각 8/11~17 국가무필터 · 8/1~6</span>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">구멍 2b · US 데스크톱만 낮다 — 원인 미규명</div>
+            <p>
+              <b>비US Windows 15.65%는 마종(15.82%)과 사실상 같습니다.</b>
+              그런데 <b>US Windows만 6.03%</b>로 2.6배 낮습니다.
+              모바일 붕괴와는 <b>별개 문제</b>이고 원인은 아직 모릅니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">iOS는 별건이다 — 마종 iOS는 안드로이드와 같다</div>
+            <p>
+              <b>마종 iOS 공유 수락률 34.23% ≈ Android 36.56%</b>로 차이가 없습니다.
+              그런데 <b>솔만 iOS가 Android의 1/10</b>입니다(1.06% vs 10.05%). 생성은 <b>273시도 0건</b>.<br />
+              378시도 4성공의 95% 신뢰구간은 <code>[0.3%, 2.7%]</code>로 마종 34%와 겹칠 여지가 없습니다.
+              <b>물량은 전체의 6%지만 배수는 32배</b>로 가장 극단적입니다. <b>원인 전무.</b>
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>지역 × OS 원본 표 펼치기 (8/14~17 전세계) — 2a·2b의 근거</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 12%">지역</th><th style="width: 14%">OS</th>
+                    <th style="text-align: right">생성시도</th><th style="text-align: right">생성성공</th>
+                    <th style="text-align: right">생성률</th><th style="text-align: right">공유율</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>비US</td><td>Windows</td><td class="num">2,933</td><td class="num">459</td><td class="num"><span class="mx mx-ok">15.65%</span></td><td class="num">8.84%</td></tr>
+                  <tr><td>US</td><td>Windows</td><td class="num">879</td><td class="num">53</td><td class="num"><span class="mx mx-warn">6.03%</span></td><td class="num">9.98%</td></tr>
+                  <tr><td>비US</td><td><b>Android</b></td><td class="num">1,602</td><td class="num">4</td><td class="num"><span class="mx mx-bad">0.25%</span></td><td class="num"><span class="mx mx-ok">14.30%</span></td></tr>
+                  <tr><td>US</td><td><b>Android</b></td><td class="num">1,190</td><td class="num">2</td><td class="num"><span class="mx mx-bad">0.17%</span></td><td class="num"><span class="mx mx-ok">12.87%</span></td></tr>
+                  <tr><td>비US</td><td>iOS</td><td class="num">106</td><td class="num">0</td><td class="num"><span class="mx mx-bad">0.00%</span></td><td class="num">0.0%</td></tr>
+                  <tr><td>US</td><td>iOS</td><td class="num">160</td><td class="num">0</td><td class="num"><span class="mx mx-bad">0.00%</span></td><td class="num">3.03%</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--warn)">
+                <div class="note-title">전세계 생성률이 높아 보이는 건 디바이스 믹스 착시다</div>
+                <p>
+                  전세계 생성 성공 578건 중 <b>513건(89%)이 데스크톱</b>이고 모바일은 6건입니다.
+                  비US는 데스크톱 비중이 <b>56.5%</b>로 US(24.7%)의 2.3배라 전체 생성률이 높게 나옵니다.
+                  <b>esther 41번 페이지가 전세계 기준</b>이라 우리 US 기준과 3배 차이가 나는데,
+                  <b>이벤트 정의는 재현 검증으로 완전히 일치</b>합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= 공유 수락률 ================= -->
+      <section class="doc-section" id="share">
+        <h2 class="doc-h2">
+          공유 수락률 — 방향은 곱해지는 요인이지 뿌리가 아니다
+          <span class="doc-h2-sub">격차의 100%가 수락률 · 발사량은 우리가 1.22배 많다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 18%">OS</th>
+                <th style="text-align: right">솔</th>
+                <th style="text-align: right">마종</th>
+                <th style="text-align: right">배수</th>
+                <th style="text-align: right">시도 비중</th>
+                <th style="text-align: right">부족분 기여</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Android</b></td>
+                <td class="num">10.05%</td>
+                <td class="num">36.56%</td>
+                <td class="num">3.6×</td>
+                <td class="num">62%</td>
+                <td class="num"><span class="mx mx-bad">78%</span></td>
+              </tr>
+              <tr>
+                <td>iOS</td>
+                <td class="num">1.06%</td>
+                <td class="num">34.23%</td>
+                <td class="num"><span class="mx mx-bad">32×</span></td>
+                <td class="num">6%</td>
+                <td class="num">10%</td>
+              </tr>
+              <tr>
+                <td>Windows</td>
+                <td class="num">6.81%</td>
+                <td class="num">13.59%</td>
+                <td class="num">2.0×</td>
+                <td class="num">22%</td>
+                <td class="num">7%</td>
+              </tr>
+              <tr>
+                <td>OS X</td>
+                <td class="num">3.85%</td>
+                <td class="num">14.02%</td>
+                <td class="num">3.6×</td>
+                <td class="num">9%</td>
+                <td class="num">4%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">전체 3.8배 ≈ 방향무관 2.3배 × 모바일 추가 1.7배</div>
+            <p>
+              <b>데스크톱</b>(Win+OSX) 솔 5.95% vs 마종 13.62% → <b>2.29배</b>.
+              <b>모바일</b>(And+iOS) 솔 9.22% vs 마종 35.38% → <b>3.84배</b>.<br />
+              가로가 자연스러운 데스크톱에서도 <b>2.29배가 남습니다.</b>
+              공유에 관한 한 <b>방향은 위에 얹히는 요인이고 뿌리가 아닙니다</b> —
+              뿌리는 모든 OS에 공통인 솔 고유 요인입니다.<br />
+              참고로 <b>마종도 데스크톱 공유는 13~14%로 모바일의 1/2.6</b>입니다.
+              데스크톱에서 공유가 약한 건 지면 특성이고 우리만의 문제가 아닙니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">격차의 100%가 수락률 — "덜 쏴서"는 배제된다</div>
+            <p>
+              판당 공유 발사율이 <b>솔 26.57% vs 마종 21.82%</b>로 <b>우리가 1.22배 더 쏩니다.</b>
+              코드에는 우리만 게이트가 4개(초대 교대 · 60초 쿨다운 · 4승 미만 차단 · 진행중 판정) 있고
+              마종은 0개인데도 그렇습니다.<br />
+              <b>1.22배 × 수락률 0.27배 = 0.33배</b>, 실측 순 성공비 <b>0.33배</b>와 정확히 맞습니다.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>공유 실패 사유 펼치기 — 창은 뜬다. 기술 에러를 다 걷어내도 3.3배가 남는다</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th style="width: 34%">실패 사유</th><th style="text-align: right">솔</th><th style="text-align: right">마종</th><th>의미</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><code>USER_INPUT</code></td><td class="num"><b>84.4%</b></td><td class="num"><b>95.0%</b></td><td>창이 뜬 뒤 유저가 닫음</td></tr>
+                  <tr><td><code>PENDING_REQUEST</code></td><td class="num"><span class="mx mx-bad">9.3%</span></td><td class="num">0.1%</td><td>다른 FB 요청과 경합 — <b>93배</b></td></tr>
+                  <tr><td><code>INVALID_OPERATION</code></td><td class="num">6.2%</td><td class="num">4.4%</td><td>유저 제스처 밖 호출 — 비슷</td></tr>
+                  <tr><td>기타</td><td class="num">0.1%</td><td class="num">0.6%</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--sol)">
+                <div class="note-title">기술 에러는 격차의 11%만 설명한다</div>
+                <p>
+                  기술 실패를 제외하고 <b>실제로 창이 뜬 시도만</b> 분모로 잡으면
+                  마종 <b>31.96%</b> vs 솔 <b>9.78%</b> — <b>3.7배가 3.3배로 줄 뿐</b>입니다.
+                  솔 기술 에러를 0으로 만들어도 판당 공유 성공은 <b>2.23% → 약 2.60%(+17%)</b>입니다.
+                  작지 않지만 답은 아닙니다. <b>본체는 뜬 창을 유저가 닫는 것</b>입니다.
+                </p>
+              </div>
+              <div class="note" style="--acc: var(--warn)">
+                <div class="note-title"><code>PENDING_REQUEST</code> — 이전에 폐기한 수치와 다른 건이다</div>
+                <p>
+                  폐기했던 <b>14.0%</b>는 <b>생성(<code>3120</code>) · 8/8~10</b> 값으로,
+                  <code>switchToContextSolo</code>의 30초 슬롯 점유 회귀가 살아 있던 구간이었습니다.
+                  그 회귀는 <b><code>2c365626</code>(8/13)에서 수정</b>됐고 지금 코드에 <code>retryUntilTimeout</code>은 없습니다.<br />
+                  여기 <b>9.3%는 공유(<code>3220</code>) · 8/14~16</b>, 즉 <b>수정 이후 구간</b>입니다.
+                  다만 <b>8/14는 신빌드가 100% 안 깔린 날일 수 있고</b>,
+                  <code>3120</code>의 현재값을 아직 재측정하지 않아 <b>"남아 있다"고 단정하지 않습니다.</b>
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div class="notes" style="margin-top: 26px">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">구멍 3 · 토너 공유 (격차의 17%) — 후보 소진. 로그로는 여기까지다</div>
+            <p>
+              <b>규명됨:</b> 격차 100%가 수락률(발사는 122%로 오히려 많음) ·
+              창은 뜬다(<code>USER_INPUT</code> 84%) · 기술 에러는 11%만 설명 ·
+              <b>방향무관 2.3배 × 모바일 1.7배</b>로 분해됨.<br />
+              <b>이번에 반증된 후보 둘:</b><br />
+              ① <b>노출 타이밍</b> — 8/07에 창을 클리어 연출 앞으로 당긴 변경이 원인이라고 봤는데,
+              <b>전후를 재보니 정반대</b>였습니다(아래 블록). <b>되돌리기 제안 철회</b> —
+              <a href="#tried">가설 이력 #19</a>.<br />
+              ② <b>종료·소규모 토너먼트 공유</b> — <code>tournament_size</code>별 수락률이
+              <b>solo 12.3% · small 14.62% · active 8.6%</b>로 <b>큰 토너가 오히려 낮습니다.</b> 역방향이라 기각.<br />
+              <b>남은 것:</b> 데스크톱에도 남는 <b>2.3배의 정체</b>. 로그로 갈 수 있는 후보를 다 썼고,
+              <strong>다음은 실기 확인</strong>입니다.
+            </p>
+          </div>
+          <!-- 철회의 근거는 여기 한 번, 가설 이력에 한 번 — 이 문서를 읽는 사람이
+               "다음 조치"부터 펼치는 경우가 많아 양쪽 모두에 남긴다 -->
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">그리고 공유는 지금 우리 역대 최고치다 — 8/07 변경은 성공했다</div>
+            <p>
+              8/07 전후로 공유 수락률을 갈라보면 <b>Windows 0.79% → 6.81%(8.6배)</b>이고
+              <b>시도량도 633 → 1,336(2.1배)</b>입니다.
+              더 큰 사실은 <b>8/07 이전에는 모바일에서 공유 시도가 사실상 없었다</b>는 것입니다
+              (Android·iOS·OS X 모두 3주간 100건 미만).
+              <code>gameEnd</code> 응답을 기다리는 동안 유저 제스처 창이 만료돼 창이 아예 안 열렸던 것으로 보입니다.<br />
+              <b>8/07 변경이 모바일 공유 경로를 처음 연 셈</b>이고, Windows 기준 마종 대비 격차는
+              <b>17배 → 2배</b>로 좁혀졌습니다. <b>공유는 망가진 게 아니라 개선 중</b>이고,
+              남은 −0.45/DAU가 지금 KPI 손실의 17%입니다.
+              <span class="tag">8/07 전후 = 7/28~8/03 vs 8/10~16 · 배포 전환 구간 8/04~09 제외</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 08-12 대조 (이력) ================= -->
+      <!-- 이 문서에서 가장 오래 대표값 노릇을 한 표. 값은 유지하되 "이력"으로 강등한다.
+           채널 이동·과노출 폐기 논거는 여전히 여기서만 나오므로 지우지 않는다 -->
       <section class="doc-section" id="gap">
-        <h2 class="doc-h2">마종 대조 — 두 채널을 합쳐야 비교가 성립한다</h2>
-        <p class="doc-h2-sub">
-          2026-08-08 ~ 08-11 · 우리는 <code>client_version ≥ 438</code> · 모두 판수 대비 %
-        </p>
+        <h2 class="doc-h2">
+          08-12 대조 (이력) — 두 채널을 합쳐야 비교가 성립한다
+          <span class="doc-h2-sub">2026-08-08 ~ 08-11 · <code>client_version ≥ 438</code> · 판수 대비 %</span>
+        </h2>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">이 절은 이력입니다 — 대표값은 위 <a href="#summary">한눈에</a>로 옮겼습니다</div>
+          <p>
+            여기 수치는 <b>08-12 판 · 08-08~08-11 창</b>입니다. 특히 <b>4.9% vs 34.9%</b>는
+            <b>생성 다이얼로그</b> 기준이라 현행 대표값(<b>공유 8.38% vs 30.86%</b>, 8/10~16)과
+            <b>대상도 창도 다릅니다.</b> 절대값을 인용할 땐 반드시 이 기준을 함께 적으세요.
+            채널 믹스·과노출 폐기 논거는 아직 이 절에서만 나오므로 표는 그대로 둡니다.
+          </p>
+        </div>
 
         <div class="table-scroll">
           <table>
@@ -185,31 +596,33 @@
           </table>
         </div>
 
-        <div class="note" style="--acc: var(--bad)">
-          <div class="note-title">마종은 두 채널 모두 31% — 채널 문제가 아니라 다이얼로그 문제</div>
-          <p>
-            생성과 공유는 FB API도 UI도 다른데 마종은 거의 같은 31%를 찍습니다.
-            채널 특성이 아니라 <b>다이얼로그가 먹히느냐</b>의 문제라는 뜻입니다.
-            우리 생성 시도 100건을 열어보면 실제로 다이얼로그가 열린 건 72건이고,
-            그중 수락은 3.56건 — <strong>열렸을 때 수락률이 4.9%</strong>입니다.
-          </p>
-        </div>
-
-        <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">정정 — 코드 결함으로 메울 수 있는 몫은 1/3 이하</div>
-          <p>
-            직전 판에서 <code>PENDING_REQUEST</code> 14.0%p를 고치면 그만큼 회수된다고 적었는데
-            <b>오류</b>입니다. 그 시도들도 다이얼로그가 열렸다면 같은 4.9%로 수락되므로
-            실제 회수는 <b>+0.7%p</b>입니다. <code>NETWORK_FAILURE</code>(최대 +8.1%p)까지
-            합쳐도 전환율은 3.56% → 최대 ~12%로, 마종 31%까지 <b>19%p가 남습니다.</b>
-          </p>
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">마종은 두 채널 모두 31% — 채널 문제가 아니라 다이얼로그 문제</div>
+            <p>
+              생성과 공유는 FB API도 UI도 다른데 마종은 거의 같은 31%를 찍습니다.
+              채널 특성이 아니라 <b>다이얼로그가 먹히느냐</b>의 문제라는 뜻입니다.
+              우리 생성 시도 100건을 열어보면 실제로 다이얼로그가 열린 건 72건이고,
+              그중 수락은 3.56건 — <strong>열렸을 때 수락률이 4.9%</strong>입니다
+              <span class="why">이 값이 위 기준표의 「생성 다이얼로그 수락률 · 08-12 이력」 행</span>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">정정 — 코드 결함으로 메울 수 있는 몫은 1/3 이하</div>
+            <p>
+              직전 판에서 <code>PENDING_REQUEST</code> 14.0%p를 고치면 그만큼 회수된다고 적었는데
+              <b>오류</b>입니다. 그 시도들도 다이얼로그가 열렸다면 같은 4.9%로 수락되므로
+              실제 회수는 <b>+0.7%p</b>입니다. <code>NETWORK_FAILURE</code>(최대 +8.1%p)까지
+              합쳐도 전환율은 3.56% → 최대 ~12%로, 마종 31%까지 <b>19%p가 남습니다.</b>
+            </p>
+          </div>
         </div>
       </section>
 
       <!-- ================= 지표 오염 ================= -->
       <!-- 아래 두 섹션(#build, #cause)의 표를 읽기 전에 반드시 통과해야 하는 경고. -->
       <section class="doc-section" id="taint">
-        <h2 class="doc-h2">먼저 — 빌드 432 이하 지표는 오염돼 있다</h2>
+        <h2 class="doc-h2">빌드 432 이하 지표는 오염돼 있다</h2>
         <p class="doc-h2-sub">
           <code>06a31dae</code>(03-10) ~ <code>da6e4845</code>(08-07)에만 존재했던 경로
         </p>
@@ -287,7 +700,8 @@ case 'tournament':
           <p>
             아래 두 섹션의 <b>빌드 432 이하 행은 절대값으로 인용하지 마세요.</b>
             방향성(어느 시점에 무엇이 바뀌었는가)만 참고 가능합니다.
-            신뢰 가능한 절대값은 <b>빌드 438 이상</b>과 <a href="#gap">마종 대조</a>뿐입니다.
+            신뢰 가능한 절대값은 <b>빌드 438 이상</b>과 <a href="#gap">08-12 대조</a>,
+            그리고 <a href="#summary">주간 대표값</a>뿐입니다.
           </p>
         </div>
       </section>
@@ -465,160 +879,292 @@ case 'tournament':
       </section>
 
       <!-- ================= 가설 이력 ================= -->
-      <!-- 기각된 가설을 남겨 같은 시도를 반복하지 않게 한다. -->
+      <!-- 기각·철회를 한 곳에 모은다. 두 문서에 흩어져 있던 탓에 이미 죽은 제안이
+           다른 문서의 "다음 조치"에서 되살아나는 일이 실제로 일어났다 -->
       <section class="doc-section" id="tried">
-        <h2 class="doc-h2">가설 이력</h2>
-        <p class="doc-h2-sub">순서대로 · 기각된 것도 남깁니다</p>
+        <h2 class="doc-h2">
+          가설 이력
+          <span class="doc-h2-sub">토너 관련 기각·철회 33건 · 방향성 조사에서 유입분 포함</span>
+        </h2>
 
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>가설</th>
-                <th>결과</th>
-                <th>근거</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="is-dead">
-                <td>1</td>
-                <td>08-07에 공유 다이얼로그를 앞당겨 거절이 늘었다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>이후 오히려 상승</td>
-              </tr>
-              <tr class="is-dead">
-                <td>2</td>
-                <td>공유에 넘기는 점수가 낮아 FB가 거부한다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td><code>INVALID_PARAM</code> 0건</td>
-              </tr>
-              <tr class="is-dead">
-                <td>3</td>
-                <td>코지와 지표 정의가 달라 비교가 무효다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>코지 해소율 97.4% — 정의 차이가 실측상 미미</td>
-              </tr>
-              <tr class="is-dead">
-                <td>4</td>
-                <td>유저 구성(RU 비중) 차이 때문이다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>US·RU로 통제해도 격차 유지</td>
-              </tr>
-              <tr>
-                <td>5</td>
-                <td>생성 다이얼로그를 과하게 띄운다</td>
-                <td><span class="mx mx-ok">확정 · 조치 완료</span></td>
-                <td>빌드 438에서 거절률 91% → 62.8%, 시도 3.7배 감소</td>
-              </tr>
-              <tr class="is-dead">
-                <td>6</td>
-                <td>억제하면 성공 절대수가 같이 떨어진다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>판당 성공 0.30% → 0.62%로 2배 상승</td>
-              </tr>
-              <tr class="is-dead">
-                <td>7</td>
-                <td>거절률을 마종 수준으로 낮추면 격차가 닫힌다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>거절률 4.6%p 차인데 전환율은 8.7배 차</td>
-              </tr>
-              <tr class="is-dead">
-                <td>8</td>
-                <td>생성 성공률이 24배 폭락했다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>총 바이럴은 3.185% → 2.886%로 유지 — <b>채널 이동</b></td>
-              </tr>
-              <tr class="is-dead">
-                <td>9</td>
-                <td>폭락은 유저 피로(달력 누적) 때문이다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>동일 날짜창에서 빌드별로 갈림 — 시간 아닌 <b>빌드</b> 귀인</td>
-              </tr>
-              <tr>
-                <td>10</td>
-                <td>08-03 A/B 게이트 삭제가 채널을 옮겼다</td>
-                <td><span class="mx mx-ok">확정</span></td>
-                <td>NRU 무사 / RU만 하락 · <code>ctx_popup_min_plays</code> 3이 NRU 제외</td>
-              </tr>
-              <tr class="is-dead">
-                <td>11</td>
-                <td><code>PENDING_REQUEST</code> 14%p를 고치면 그만큼 회수된다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>열렸어도 4.9%로 수락 → 실제 회수 <b>+0.7%p</b></td>
-              </tr>
-              <tr>
-                <td>12</td>
-                <td>
-                  <b>다이얼로그 자체가 안 먹힌다</b>
-                  <span class="why">수락률 4.9% vs 마종 ~31%</span>
-                </td>
-                <td><span class="mx mx-ok">확정 · 원인 미상</span></td>
-                <td>노출량·거절률·코드결함을 다 통제해도 19%p가 남음</td>
-              </tr>
-              <tr class="is-dead">
-                <td>13</td>
-                <td>마종의 31%는 로그 정의가 느슨해 부풀려진 값이다</td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>
-                  마종은 생성 실패만 24.6만 건 · 에러코드 종류도 우리보다 많음.
-                  열린 다이얼로그 수락률 <b>34.9%(생성) / 34.6%(공유)</b>
-                </td>
-              </tr>
-              <tr class="is-dead">
-                <td>14</td>
-                <td>
-                  다이얼로그 파라미터가 마종과 달라서다
-                  <span class="why"><code>entryPointData</code> 필드 수 차이 추정</span>
-                </td>
-                <td><span class="mx mx-bad">기각</span></td>
-                <td>
-                  <code>title</code>·<code>image</code>·게이팅·거절 상한 3·로그 정의 모두 동일.
-                  <code>entryPointData</code>는 <b>다이얼로그 UI에 노출되지 않음</b>
-                </td>
-              </tr>
-              <tr class="is-dead">
-                <td>15</td>
-                <td>공유 해소율 89.8%(벤치 96~97%)에 미지의 원인이 있다</td>
-                <td><span class="mx mx-bad">기각 · 종료</span></td>
-                <td>
-                  08-07 이전 경로가 <code>3200</code>을 찍고 공유 대신 생성으로 갔다
-                  (<a href="#taint">지표 오염</a> 결함 1)
-                </td>
-              </tr>
-              <tr>
-                <td>16</td>
-                <td>소셜 밀도 차이다 <span class="why">마종 992K판 vs 우리 47.7K판</span></td>
-                <td><span class="mx">미검증</span></td>
-                <td>이웃이 없으면 "만들어도 아무도 안 온다"는 학습이 생긴다</td>
-              </tr>
-              <tr class="is-dead">
-                <td>17</td>
-                <td>
-                  FB 컨텍스트가 유지돼 일반 판마다 공유가 반복 노출된다
-                  <span class="why">QA 제기 · 08-12</span>
-                </td>
-                <td><span class="mx mx-bad">기각 · 시점차</span></td>
-                <td>
-                  07-23까지는 사실. <code>b6711ca6</code>(07-24)·<code>7af989e5</code>(08-03)로
-                  판 시작·거절·로비 전 경로에서 SOLO 복귀
-                </td>
-              </tr>
-              <tr class="is-dead">
-                <td>18</td>
-                <td>
-                  P2P 판 종료에 토너먼트 공유가 덧붙는다
-                  <span class="why"><code>case 'p2p'</code> break 누락</span>
-                </td>
-                <td><span class="mx mx-bad">기각 · 무해</span></td>
-                <td>
-                  P2P 스레드엔 토너먼트가 없어 <code>getTournamentAsync</code>가 null →
-                  즉시 return. 다이얼로그는 안 열리고 FB 왕복만 낭비
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">철회 (2026-08-18) — "8/07 노출 타이밍 변경을 되돌린다"</div>
+          <p>
+            <b>실행 목록에서 뺐습니다.</b> 8/07에 공유 창을 클리어 연출 앞으로 당긴 변경이
+            거절을 늘렸다고 보고 되돌리기를 제안했는데, <b>전후를 실측하니 정반대</b>였습니다 —
+            <b>Windows 수락률 0.79% → 6.81%(8.6배)</b>, <b>시도량 633 → 1,336(2.1배)</b>.
+            8/07 이전에는 <b>모바일에서 공유 시도가 사실상 없었고</b>(Android·iOS·OS X 3주간 100건 미만),
+            그 변경이 <b>모바일 공유 경로를 처음 연 셈</b>입니다.
+            <strong>되돌리면 개선분을 반납합니다. 제안은 철회됐고 아래 #19로 남깁니다.</strong>
+            <span class="tag">전후 = 7/28~8/03 vs 8/10~16 · 배포 전환 구간 8/04~09 제외</span>
+          </p>
         </div>
+
+        <details class="fold">
+          <summary>가설 이력 33건 전체 펼치기 — 같은 걸 다시 세우지 않기 위해</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 4%">#</th>
+                    <th style="width: 34%">가설</th>
+                    <th style="width: 14%">결과</th>
+                    <th>근거</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="is-dead">
+                    <td>1</td>
+                    <td>08-07에 공유 다이얼로그를 앞당겨 거절이 늘었다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>이후 오히려 상승 — 08-18 정량 반증은 <b>#19</b></td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>2</td>
+                    <td>공유에 넘기는 점수가 낮아 FB가 거부한다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td><code>INVALID_PARAM</code> 0건</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>3</td>
+                    <td>코지와 지표 정의가 달라 비교가 무효다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>코지 해소율 97.4% — 정의 차이가 실측상 미미</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>4</td>
+                    <td>유저 구성(RU 비중) 차이 때문이다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>US·RU로 통제해도 격차 유지</td>
+                  </tr>
+                  <tr>
+                    <td>5</td>
+                    <td>생성 다이얼로그를 과하게 띄운다</td>
+                    <td><span class="mx mx-ok">확정 · 조치 완료</span></td>
+                    <td>빌드 438에서 거절률 91% → 62.8%, 시도 3.7배 감소</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>6</td>
+                    <td>억제하면 성공 절대수가 같이 떨어진다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>판당 성공 0.30% → 0.62%로 2배 상승</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>7</td>
+                    <td>거절률을 마종 수준으로 낮추면 격차가 닫힌다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>거절률 4.6%p 차인데 전환율은 8.7배 차</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>8</td>
+                    <td>생성 성공률이 24배 폭락했다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>총 바이럴은 3.185% → 2.886%로 유지 — <b>채널 이동</b></td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>9</td>
+                    <td>폭락은 유저 피로(달력 누적) 때문이다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>동일 날짜창에서 빌드별로 갈림 — 시간 아닌 <b>빌드</b> 귀인</td>
+                  </tr>
+                  <tr>
+                    <td>10</td>
+                    <td>08-03 A/B 게이트 삭제가 채널을 옮겼다</td>
+                    <td><span class="mx mx-ok">확정</span></td>
+                    <td>NRU 무사 / RU만 하락 · <code>ctx_popup_min_plays</code> 3이 NRU 제외</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>11</td>
+                    <td><code>PENDING_REQUEST</code> 14%p를 고치면 그만큼 회수된다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>열렸어도 4.9%로 수락 → 실제 회수 <b>+0.7%p</b></td>
+                  </tr>
+                  <tr>
+                    <td>12</td>
+                    <td>
+                      <b>다이얼로그 자체가 안 먹힌다</b>
+                      <span class="why">08-12 기준 생성 수락률 4.9% vs 마종 34.9% · 주간 공유 8.38% vs 30.86%</span>
+                    </td>
+                    <td><span class="mx mx-ok">확정 · 원인 미상</span></td>
+                    <td>노출량·거절률·코드결함을 다 통제해도 격차가 남음</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>13</td>
+                    <td>마종의 31%는 로그 정의가 느슨해 부풀려진 값이다</td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>
+                      마종은 생성 실패만 24.6만 건 · 에러코드 종류도 우리보다 많음.
+                      열린 다이얼로그 수락률 <b>34.9%(생성) / 34.6%(공유)</b>
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>14</td>
+                    <td>
+                      다이얼로그 파라미터가 마종과 달라서다
+                      <span class="why"><code>entryPointData</code> 필드 수 차이 추정</span>
+                    </td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>
+                      <code>title</code>·<code>image</code>·게이팅·거절 상한 3·로그 정의 모두 동일.
+                      <code>entryPointData</code>는 <b>다이얼로그 UI에 노출되지 않음</b>
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>15</td>
+                    <td>공유 해소율 89.8%(벤치 96~97%)에 미지의 원인이 있다</td>
+                    <td><span class="mx mx-bad">기각 · 종료</span></td>
+                    <td>
+                      08-07 이전 경로가 <code>3200</code>을 찍고 공유 대신 생성으로 갔다
+                      (<a href="#taint">지표 오염</a> 결함 1)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>16</td>
+                    <td>소셜 밀도 차이다 <span class="why">마종 992K판 vs 우리 47.7K판</span></td>
+                    <td><span class="mx">미검증</span></td>
+                    <td>이웃이 없으면 "만들어도 아무도 안 온다"는 학습이 생긴다</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>17</td>
+                    <td>
+                      FB 컨텍스트가 유지돼 일반 판마다 공유가 반복 노출된다
+                      <span class="why">QA 제기 · 08-12</span>
+                    </td>
+                    <td><span class="mx mx-bad">기각 · 시점차</span></td>
+                    <td>
+                      07-23까지는 사실. <code>b6711ca6</code>(07-24)·<code>7af989e5</code>(08-03)로
+                      판 시작·거절·로비 전 경로에서 SOLO 복귀 — 아래 타임라인
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>18</td>
+                    <td>
+                      P2P 판 종료에 토너먼트 공유가 덧붙는다
+                      <span class="why"><code>case 'p2p'</code> break 누락</span>
+                    </td>
+                    <td><span class="mx mx-bad">기각 · 무해</span></td>
+                    <td>
+                      P2P 스레드엔 토너먼트가 없어 <code>getTournamentAsync</code>가 null →
+                      즉시 return. 다이얼로그는 안 열리고 FB 왕복만 낭비
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>19</td>
+                    <td>
+                      <b>8/07 노출 타이밍 변경을 되돌린다</b>
+                      <span class="why">제안 · 08-18 방향성 조사에서 유입</span>
+                    </td>
+                    <td><span class="mx mx-bad">철회 · 08-18 반증</span></td>
+                    <td>
+                      <b>정반대.</b> Windows 수락률 <b>0.79% → 6.81%(8.6배)</b>,
+                      시도량 <b>633 → 1,336(2.1배)</b>. 모바일은 그 전에 시도 자체가 없었다
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>20</td>
+                    <td>
+                      죽은·소규모 토너먼트를 공유시켜서다
+                      <span class="why">08-18 유입</span>
+                    </td>
+                    <td><span class="mx mx-bad">기각 · 역방향</span></td>
+                    <td>
+                      <code>tournament_size</code>별 수락률
+                      <b>solo 12.3% · small 14.62% · active 8.6%</b> — 큰 토너가 더 낮다
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>21</td>
+                    <td>모바일에서 FB 창이 원래 안 먹힌다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>같은 Android에서 <b>공유 10.05%로 Windows 6.81%보다 높다</b>. 생성만 0.26%</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>22</td>
+                    <td>FB 모바일 웹뷰가 불리하다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>마종은 모바일이 데스크톱의 2.1배</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>23</td>
+                    <td>가로라서 <b>모든</b> 창이 안 먹힌다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>같은 가로 Android에서 공유는 10% 산다</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>24</td>
+                    <td>공유가 낮은 건 게이트 때문에 덜 쏴서다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>
+                      <b>판당 발사율 솔 26.57% vs 마종 21.82%.</b>
+                      게이트 4개를 다 거치고도 우리가 더 쏜다
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>25</td>
+                    <td>공유 창이 아예 안 열린다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>실패의 <b>84.4%가 <code>USER_INPUT</code></b> — 열린 뒤 닫힌 것</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>26</td>
+                    <td>공유 격차가 기술 에러 때문이다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>기술 실패 제외해도 <b>3.7배 → 3.3배</b>. 11%만 설명</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>27</td>
+                    <td>바이럴을 덜 띄워서다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>공유 시도 116% · 판당 발사 122%</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>28</td>
+                    <td>최근 개편이 만든 문제다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>개편 전(8/1~6)에도 Android 생성 약 7,400시도 0건</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>29</td>
+                    <td>로그 결함으로 성공이 실패로 찍힌다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td><code>6065577c</code>(8/13) 수정 후에도 모바일 생성 0%대</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>30</td>
+                    <td>모바일 붕괴가 US 특유 현상이다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>비US Android 0.25% · 비US iOS 0.00%로 <b>전 지역 공통</b></td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>31</td>
+                    <td>DOM 오버레이가 탭을 가로챈다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>창이 뜰 때 게임 iframe이 <code>hidden</code>이 된다 → 창은 iframe 바깥</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>32</td>
+                    <td>토너 카드 이미지가 마종만 있어서다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>
+                      솔 <code>doCreate()</code> → <code>image: null</code>,
+                      마종도 <code>customImg = null</code>(캡처 코드 주석 처리). <b>둘 다 없다</b>
+                    </td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>33</td>
+                    <td>esther 페이지와 지표 정의가 달라서다 <span class="why">08-18 유입</span></td>
+                    <td><span class="mx mx-bad">기각</span></td>
+                    <td>
+                      재현 검증에서 <code>cr_ok</code> 578=578 · <code>sh_ok</code> 632=632 ·
+                      <code>msg_ok</code> 653=653 <b>완전 일치</b>. 차이는 지역과 기간뿐
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
 
         <!-- 가설 17은 "언제까지 맞았는가"가 핵심이라 커밋 타임라인을 따로 붙인다. -->
         <div class="note" style="--acc: var(--analysis)">
@@ -674,7 +1220,7 @@ case 'tournament':
         </div>
 
         <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">중간에 정정한 판단 9건</div>
+          <div class="note-title">중간에 정정한 판단 10건</div>
           <p>
             <b>①</b> "코지 비교는 무효" → 해소율 97.4%로 부정.
             <b>②</b> 마종 거절률 70% 가정 → 실제 58.2%.
@@ -687,27 +1233,45 @@ case 'tournament':
             7필드로 더 많고, 애초에 UI에 안 보이는 값.
             <b>⑨</b> <b>빌드 432 이하 수치를 그대로 인용</b> → 로그 결함으로 오염
             (<a href="#taint">지표 오염</a>). 이 문서 v5.0까지의 절대값 인용이 여기 해당됩니다.
+            <b>⑩</b> <b>"8/07 노출 타이밍을 되돌리자"</b> → 전후 실측이 정반대. <b>철회</b>(#19).
           </p>
         </div>
       </section>
 
       <!-- ================= 다음 조치 ================= -->
       <section class="doc-section" id="next">
-        <h2 class="doc-h2">다음 조치</h2>
+        <h2 class="doc-h2">
+          다음 조치
+          <span class="doc-h2-sub">로그 후보가 소진돼 1순위가 실기 확인으로 바뀌었습니다</span>
+        </h2>
 
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>할 것</th>
+                <th style="width: 4%">#</th>
+                <th style="width: 28%">할 것</th>
                 <th>왜</th>
-                <th style="text-align: right">기대 / 상태</th>
+                <th style="text-align: right; width: 13%">기대 / 상태</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>1</td>
+                <td>
+                  <b>모바일 가로 실기 확인 — 생성·공유 창을 직접 본다</b>
+                  <span class="why">Android · iOS · 1280×720 가로</span>
+                </td>
+                <td>
+                  데스크톱은 두 창이 구별되지 않는데(6.69 vs 6.81) <b>모바일만 38.7배</b> 갈립니다.
+                  "창이 클수록 확인 버튼이 세로 ~360px 밖으로 밀린다"가 이 패턴과 맞지만
+                  <b>실기로 그 창들을 본 적이 없습니다.</b>
+                  <b>로그로 갈 수 있는 후보는 소진</b>됐고, 남은 건 눈으로 보는 것뿐입니다
+                </td>
+                <td style="text-align: right"><span class="mx mx-bad">1순위</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
                 <td>
                   <b><code>NETWORK_FAILURE</code> 복구 경로 3110 <u>조건부</u> 추가</b>
                   <span class="why"><code>FacebookPlatform.ts:640-658</code></span>
@@ -722,33 +1286,28 @@ case 'tournament':
                 <td style="text-align: right"><span class="mx mx-warn">최대 +8.1%p</span></td>
               </tr>
               <tr>
-                <td>2</td>
-                <td>
-                  <b><code>switchToContextSolo</code> 30초 회귀 수정</b>
-                  <span class="why"><code>7265c3c4</code>(07-27)에서 2초 → 30초</span>
-                </td>
-                <td>
-                  <code>switchAsync</code>는 유저 제스처 밖에서 hang합니다. 30초간 FB 요청
-                  슬롯을 점유해 후속 <code>createAsync</code>가
-                  <code>PENDING_REQUEST</code>로 튕깁니다 — 마종 1.17% vs 우리 14.0%,
-                  <b>12배</b>. 호출부 13곳
-                </td>
-                <td style="text-align: right"><span class="mx">+0.7%p</span></td>
-              </tr>
-              <tr>
                 <td>3</td>
                 <td>
                   <b>소셜 밀도 측정</b>
                   <span class="why">컨텍스트당 친구·토너먼트 이웃 수</span>
                 </td>
                 <td>
-                  파라미터·게이팅·로그 정의가 모두 정렬됐는데 수락률만 7배 차입니다.
+                  파라미터·게이팅·로그 정의가 모두 정렬됐는데 수락률만 몇 배씩 차이납니다.
                   남은 후보 중 유일하게 <b>클라로 못 고치는</b> 축이라 먼저 재야 합니다
                 </td>
                 <td style="text-align: right"><span class="mx mx-bad">본체 후보</span></td>
               </tr>
               <tr>
                 <td>4</td>
+                <td>US 데스크톱 생성률만 낮은 이유 확인 <span class="why">구멍 2b</span></td>
+                <td>
+                  비US Windows <b>15.65%</b>는 마종(15.82%)과 사실상 같은데
+                  <b>US Windows만 6.03%</b>입니다. 모바일 붕괴와 <b>별개 문제</b>이고 원인 미상
+                </td>
+                <td style="text-align: right"><span class="mx">미착수</span></td>
+              </tr>
+              <tr>
+                <td>5</td>
                 <td>08-11 빌드 배포 후 <code>3130</code> 관측</td>
                 <td>
                   억제 미노출 규모와 상한 3의 회차 분포 적정성.
@@ -761,7 +1320,7 @@ case 'tournament':
                 <td style="text-align: right"><span class="mx">배포 대기</span></td>
               </tr>
               <tr>
-                <td>5</td>
+                <td>6</td>
                 <td>빌드 438 이후로 공유 해소율 재측정</td>
                 <td>
                   89.8%는 오염 구간 값이었습니다. 오염 경로가 사라진 438 이후에는
@@ -769,23 +1328,53 @@ case 'tournament':
                 </td>
                 <td style="text-align: right"><span class="mx">1쿼리</span></td>
               </tr>
+              <tr class="is-dead">
+                <td>7</td>
+                <td>
+                  <b><code>switchToContextSolo</code> 30초 회귀 수정</b>
+                  <span class="why"><code>7265c3c4</code>(07-27)에서 2초 → 30초</span>
+                </td>
+                <td>
+                  30초간 FB 요청 슬롯을 점유해 후속 <code>createAsync</code>가
+                  <code>PENDING_REQUEST</code>로 튕기던 건 —
+                  <b><code>2c365626</code>(8/13)에서 수정됐고 지금 코드에
+                  <code>retryUntilTimeout</code>은 없습니다.</b>
+                  다만 <code>3120</code>의 현재값을 아직 재측정하지 않아
+                  <b>완전히 해소됐다고 단정하지는 않습니다</b>
+                </td>
+                <td style="text-align: right"><span class="mx mx-ok">완료 · 8/13</span></td>
+              </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">지표를 읽을 때의 함정 4가지</div>
-          <p>
-            <b>①</b> <code>3100</code>·<code>3200</code>은 게이트를 통과한 시도만 셉니다.
-            게이트를 조이면 분모가 줄어 비율이 오릅니다 — 판단은 <b>판당 성공 절대 건수</b>로.<br />
-            <b>②</b> 구간은 날짜가 아니라 <code>client_version</code>으로 갈라야 합니다.
-            커밋일 ≠ 빌드 반영일입니다.<br />
-            <b>③</b> <b>생성과 공유를 반드시 합쳐서</b> 보세요. 한 채널만 보면 채널 이동을
-            폭락으로 오독합니다 — 이 조사에서 실제로 두 번 그랬습니다.<br />
-            <b>④</b> 수치가 이상하면 <b>그 구간의 로그 코드를 먼저 확인</b>하세요.
-            이 조사에서 "폭락"·"미스터리"로 부른 것 중 상당수가 로그 결함이었습니다
-            (<a href="#taint">지표 오염</a>).
-          </p>
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">실행 목록에서 뺀 것 — 8/07 노출 타이밍 되돌리기</div>
+            <p>
+              <b>철회됐습니다.</b> 되돌릴 게 아니라 <b>Windows 수락률을 8.6배(0.79% → 6.81%)</b> 올리고
+              <b>시도량을 2.1배(633 → 1,336)</b> 늘린 변경이었습니다.
+              근거와 측정 창은 <a href="#tried">가설 이력 #19</a>에 남겼습니다.
+              <strong>이 제안이 다른 문서·스레드에서 다시 올라오면 이 항목을 가리켜 주세요.</strong>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">지표를 읽을 때의 함정 5가지</div>
+            <p>
+              <b>①</b> <code>3100</code>·<code>3200</code>은 게이트를 통과한 시도만 셉니다.
+              게이트를 조이면 분모가 줄어 비율이 오릅니다 — 판단은 <b>판당 성공 절대 건수</b>로.<br />
+              <b>②</b> 구간은 날짜가 아니라 <code>client_version</code>으로 갈라야 합니다.
+              커밋일 ≠ 빌드 반영일입니다.<br />
+              <b>③</b> <b>생성과 공유를 반드시 합쳐서</b> 보세요. 한 채널만 보면 채널 이동을
+              폭락으로 오독합니다 — 이 조사에서 실제로 두 번 그랬습니다.<br />
+              <b>④</b> 수치가 이상하면 <b>그 구간의 로그 코드를 먼저 확인</b>하세요.
+              이 조사에서 "폭락"·"미스터리"로 부른 것 중 상당수가 로그 결함이었습니다
+              (<a href="#taint">지표 오염</a>).<br />
+              <b>⑤</b> <b>"수락률"이라는 이름의 값이 이 문서에 셋</b> 있습니다(주간 공유 8.38% ·
+              08-12 생성 시도 대비 3.56% · 08-12 열린 창 대비 4.9%). 분모와 측정 창을 붙이지 않은
+              인용은 그대로 오류가 됩니다 — <a href="#summary">기준표</a>.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -799,7 +1388,7 @@ case 'tournament':
         </p>
 
         <details class="fold">
-          <summary>총 바이럴 대조 (이 문서의 핵심 표)</summary>
+          <summary>총 바이럴 대조 (08-12 이력 표의 원본)</summary>
           <div class="fold-body">
             <div class="table-scroll">
               <pre>
@@ -879,14 +1468,20 @@ ORDER BY cnt DESC;</pre>
         </details>
 
         <div class="foot">
-          <b>확인 범위</b> BigQuery 실측은 솔리테어·마종. 솔리테어는 2026-07-20~08-11을
-          <code>client_version</code> 및 <code>logincount_total</code>(NRU/RU)로 분리,
-          마종 대조는 08-08~08-11 집계. 코드 실측은 각 리포 main 브랜치 + 커밋 이력
-          (<code>06a31dae</code>·<code>7265c3c4</code>·<code>c0091b1d</code>·<code>da6e4845</code>).
-          <b>신뢰 구간</b> 절대값은 <b>빌드 438 이상</b>만 유효 — 432 이하는
+          <b>확인 범위</b> 현행 대표값(공유 수락률 8.38% vs 30.86% · 생성률 2.56% · 판당 발사율)은
+          <b>2026-08-10~16 주간 · US</b> 기준입니다. 기기별 표는 같은 주간이고,
+          지역 × OS 표는 <b>8/14~17 전세계</b>, 8/07 전후 비교는
+          <b>7/28~8/03 vs 8/10~16</b>(배포 전환 구간 <b>8/04~09 제외</b>)입니다.
+          <a href="#gap">08-12 대조</a>는 <b>08-08~08-11 · <code>client_version ≥ 438</code></b>이고,
+          빌드별 이력은 2026-07-20~08-11을 <code>client_version</code> 및
+          <code>logincount_total</code>(NRU/RU)로 분리했습니다.
+          코드 실측은 각 리포 main 브랜치 + 커밋 이력
+          (<code>06a31dae</code>·<code>7265c3c4</code>·<code>c0091b1d</code>·<code>da6e4845</code>·<code>2c365626</code>·<code>6065577c</code>).
+          <b>신뢰 구간</b> 빌드별 절대값은 <b>438 이상</b>만 유효 — 432 이하는
           <a href="#taint">지표 오염</a> 참조.
-          <b>미검증</b> 가설 16(소셜 밀도), 빌드 415가 두 채널을 동시에 죽인 원인,
-          다이얼로그 수락률 4.9% vs 34.9%의 구체 원인.
+          <b>미검증</b> 가설 16(소셜 밀도) · 모바일 창 크기 가설(실기 미확인) ·
+          US 데스크톱만 낮은 이유(구멍 2b) · 빌드 415가 두 채널을 동시에 죽인 원인 ·
+          <code>3120</code>의 <code>PENDING_REQUEST</code> 현재값.
           <b>통제되지 않음</b> 마종 판수 992K vs 우리 47.7K — 규모 20배 차가 컨텍스트 밀도에
           주는 영향.
         </div>
