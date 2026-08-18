@@ -33,14 +33,14 @@
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--live)">상시 갱신</span>
           <span class="tag">solitaire-tripeaks-client · main</span>
-          <span class="tag">마지막 갱신 2026-08-14</span>
+          <span class="tag">마지막 갱신 2026-08-18 17:10</span>
         </div>
       </div>
     </header>
 
     <main class="wrap wrap--wide">
       <section class="doc-section" id="open">
-        <h2 class="doc-h2">남은 것 3건</h2>
+        <h2 class="doc-h2">남은 것 4건</h2>
 
         <div class="table-scroll">
           <table>
@@ -54,9 +54,18 @@
             </thead>
             <tbody>
               <tr>
+                <td><span class="pill" style="--acc: var(--plan)">작업 중</span></td>
+                <td>토너먼트 생성 실패 시 재시도 분기 미진입</td>
+                <td>08-18 16:46<br /><span class="tag">당일</span></td>
+                <td>
+                  일부 디바이스에서 에러 메시지 규칙 때문에 재시도 분기를 타지 않는 문제.
+                  <b>이미 작업이 진행 중</b>(<code>FacebookPlatform.ts</code> 외 2파일 미커밋) · 내일 배포 합의됨.
+                </td>
+              </tr>
+              <tr>
                 <td><span class="pill" style="--acc: var(--bad)">미종결</span></td>
                 <td>UID 복사 시 Clipboard 권한 정책 위반 <code>#437</code></td>
-                <td>08-07 14:50<br /><span class="tag">7일째</span></td>
+                <td>08-07 14:50<br /><span class="tag">11일째</span></td>
                 <td>
                   재현이 안 돼 트래킹 중. 재현되면 <b>복사가 실패하는지, 로그만 나오는지</b>부터 구분.
                   <code>Utils.ts:25</code>에 <code>execCommand</code> 폴백이 이미 있어 로그만일 가능성이 큼.
@@ -65,16 +74,20 @@
               <tr>
                 <td><span class="pill" style="--acc: var(--warn)">검증 대기</span></td>
                 <td>토너먼트 컨텍스트 스위치가 연속 2회 노출</td>
-                <td>08-13 12:11<br /><span class="tag">1일째</span></td>
+                <td>08-13 12:11<br /><span class="tag">5일째</span></td>
                 <td>
-                  코드는 <code>4932a540</code>(08-14 08:44)으로 반영됨.
-                  <a href="tournament-join-context-qa.html">QA 가이드</a>대로 재현 1회만 하면 닫힘.
+                  다이얼로그 1회 경로(<code>SceneManager</code>·<code>PopupGameEntry</code>)는 <code>4932a540</code>으로 살아 있음 —
+                  재현 1회만 하면 닫힘.<br />
+                  <b>단 같이 나갔던 <code>joinAsync</code> 참여 경로·목록 필터는
+                  <code>9ea1a797</code>(08-18 09:00)에서 롤백</b>됐습니다("조인 전환 실패 + 목록 비는 문제").
+                  그래서 <a href="tournament-join-context-qa.html">QA 가이드</a> ②번
+                  "참가 불가 토너먼트는 목록 제외"는 <b>지금 코드와 어긋납니다</b> — 가이드 정정 필요.
                 </td>
               </tr>
               <tr>
                 <td><span class="pill" style="--acc: var(--analysis)">미확인</span></td>
                 <td>토너먼트 공유 팝업 과다 노출 (유저당 20.8회)</td>
-                <td>08-12 10:31<br /><span class="tag">2일째</span></td>
+                <td>08-12 10:31<br /><span class="tag">6일째</span></td>
                 <td>
                   원글에 답글도 티켓도 없어 <b>대응 여부부터 채널 확인</b> 필요.
                   SPEC-038은 별개 작업이라 이 건을 닫지 않음.
@@ -88,7 +101,58 @@
       <!-- 히스토리는 "그때 뭘 했더라"를 찾는 용도라 한 줄로 훑고 필요한 것만 펼친다.
            펼침 안의 어디서·어떻게는 커밋 히스토리 문서에서 그대로 가져온 값이다. -->
       <section class="doc-section" id="done">
-        <h2 class="doc-h2">히스토리 20건</h2>
+        <h2 class="doc-h2">히스토리 22건</h2>
+
+        <details class="fold">
+          <summary>
+            <span class="pill" style="--acc: var(--ok)">완료</span>
+            SPEC-039 재도전 판 난이도 완화
+            <span class="tag">08-18 12:17 → 15:07 · 2시간 50분</span>
+          </summary>
+          <div class="fold-body">
+            <p>
+              <b>대응</b> 재도전 판 클리어율이 58.1%(일반 판 96.9%)로 낮고 Hard+SH 비중이 2배였음 —
+              <b>덱을 소진한 판만</b> 티어를 재산정하고, 덱이 남은 채 끝낸 판은 이전 티어를 승계
+            </p>
+            <p>
+              <b>커밋</b> <code>1ca94d54</code> <span class="tag">08-18 15:07</span> SPEC-039 재도전 판 난이도 완화
+            </p>
+            <p><b>어디서</b> <code>ViewGame.ts</code> · <code>PopupQuitLevel.ts</code> · <code>ViewCreator.ts</code></p>
+            <p>
+              <b>어떻게</b> <code>resolveRetryDifficultyTier(isDeckExhausted, inheritedTier)</code> 신설 ·
+              연패 카운터 <code>30003</code>/<code>30009</code>를 티어 무관하게 증가로 변경 ·
+              나가기 팝업에 <code>isDeckExhausted</code> 전달
+            </p>
+            <p><b>지금 코드</b> <code>ViewGame.ts:2175</code></p>
+            <p>
+              <b>확인한 것</b> 커밋(15:07)이 기획 정정(15:58)보다 앞서 <b>"재산정 후 한 단계 하향 → 재산정만"이
+              미반영일 수 있다고 의심했으나</b>, <code>:2175</code>에 하향 로직이 없어 정정과 이미 일치.
+              시트 <code>dynamic_level 30009 param_2</code> 5→0은 기획이 DEV 배포 완료.
+            </p>
+            <p><b>배포</b> 08-19 예정 (스레드 합의)</p>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>
+            <span class="pill" style="--acc: var(--ok)">완료</span>
+            <code>2100_GAMEPLAY_START</code>에 기믹 구성 필드 4개 추가
+            <span class="tag">08-18 10:32 → 11:56 · 1시간 24분</span>
+          </summary>
+          <div class="fold-body">
+            <p>
+              <b>대응</b> 판별 기믹 종류·장수를 알 수 없어 프리레벨 부스터 기획·난이도 조정에 못 쓰던 것 —
+              판 생성 시점에 확정되는 <code>scoreCombination</code>을 페이로드에 풀어 넣음
+            </p>
+            <p>
+              <b>커밋</b> <code>298ff516</code> <span class="tag">08-18 11:56</span> 2100_GAMEPLAY_START 로그 수정
+            </p>
+            <p>
+              <b>지금 코드</b> <code>ViewGame.ts:899~902</code> —
+              <code>gimmick_plus</code> · <code>gimmick_rope</code> · <code>gimmick_runner</code> · <code>gimmick_lock_key</code>
+            </p>
+          </div>
+        </details>
 
         <details class="fold">
           <summary>
