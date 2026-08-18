@@ -18,6 +18,7 @@
         <a class="nav-back" href="#summary">요약</a>
         <a class="nav-back" href="#measured">실측</a>
         <a class="nav-back" href="#kpi">지표별 판정</a>
+        <a class="nav-back" href="#why">가설</a>
         <a class="nav-back" href="#stage">시점 지도</a>
         <a class="nav-back" href="#tutorial">튜토리얼</a>
         <a class="nav-back" href="#bq">BQ 요청</a>
@@ -32,8 +33,8 @@
         <h1 class="doc-title">NRU 0~10분 — 6개 프로젝트 온보딩 비교</h1>
         <p class="doc-lede">
           신규 유저 0~10분 구간에서 <b>솔리테어가 벤치 5개 대비 어느 지표가 약한지</b>를
-          가려내고, 약한 지표에 대해서만 <b>왜 약한지를 코드 로직으로 추적</b>하는
-          문서입니다. 대상은 솔리테어 + 벤치 5개(코지 · 코인매치 · 마종 · 퍼블마 · 더퍼즐).
+          가려내고, <b>지표 값이 왜 게임마다 갈리는지를 반증 가능한 가설로</b> 세운 뒤,
+          그 가설을 <b>코드 로직으로 추적</b>하는 문서입니다. 대상은 솔리테어 + 벤치 5개(코지 · 코인매치 · 마종 · 퍼블마 · 더퍼즐).
           지표 값은 <b>BigQuery 실측으로만</b> 채우고, 원인은
           <b>각 리포의 코드와 라이브 CDN 데이터</b>에서 찾습니다.
         </p>
@@ -41,24 +42,27 @@
           <span class="tag">6개 리포 코드 실측</span>
           <span class="tag">BQ 실측 2026-08-11~13 · US · NRU</span>
           <span class="tag">라이브 CDN stage-list 실측 포함</span>
-          <span class="tag">2026-08-18 10:16 갱신</span>
+          <span class="tag">2026-08-18 15:39 갱신</span>
+          <span class="tag">가설 7건 · 반증 조건 포함</span>
           <span class="tag">서버 지급값·국가별 A/B는 미반영</span>
         </div>
         <div class="note" style="--acc: var(--sol); margin-top: 14px">
           <div class="note-title" style="color: var(--sol)">
-            이 문서의 순서 — 3단계이고, 뒤 단계를 앞으로 당기지 않는다
+            이 문서의 순서 — 4단계이고, 뒤 단계를 앞으로 당기지 않는다
           </div>
           <p>
             <b>① 지표를 같은 정의로 재고 있는지 확정</b>
             (<a href="#measured" style="color: var(--sol); font-weight: 700">실측</a>) →
             <b>② 벤치 대비 우열 판별</b>
             (<a href="#kpi" style="color: var(--sol); font-weight: 700">지표별 판정</a>) →
-            <b>③ 약한 지표만 코드 로직으로 원인 추적</b>
+            <b>③ 값이 왜 갈리는지 반증 가능한 가설로</b>
+            (<a href="#why" style="color: var(--sol); font-weight: 700">가설 보드</a>) →
+            <b>④ 코드 로직으로 원인 추적</b>
             (<a href="#stage" style="color: var(--sol); font-weight: 700">시점 지도</a> ·
             <a href="#tutorial" style="color: var(--sol); font-weight: 700">튜토리얼</a>).
           </p>
           <p style="margin-top: 8px">
-            <strong>개선안은 이 문서의 산출물이 아닙니다.</strong> ③까지 끝난 항목에만
+            <strong>개선안은 이 문서의 산출물이 아닙니다.</strong> ④까지 끝난 항목에만
             가설이 붙고, 그 가설도 반증 조건과 함께 적습니다. 이 문서 초판은 ②를 건너뛰고
             <b>코드 차이를 곧바로 개선 방향으로</b> 옮겼다가 실측에서 반대 결과가 나와
             철회했습니다. 그래서 <b>차이(코드)와 격차(지표)를 끝까지 분리해서</b> 씁니다 —
@@ -85,7 +89,7 @@
           <div class="stat" style="--acc: var(--ok)">
             <div class="stat-num">3</div>
             <div class="stat-name">확인된 우위 — 지킬 항목</div>
-            <div class="stat-sub">10분 도달 · 세션당 판수 · 체류 p50 전부 1위</div>
+            <div class="stat-sub">전부 1위 · 단 셋이 독립인지는 미검증(가설 5-B)</div>
           </div>
           <div class="stat" style="--acc: var(--bad)">
             <div class="stat-num">1</div>
@@ -106,9 +110,12 @@
               같은 정의로 재고 있는 지표는 4개뿐이고, 그중 <strong>3개에서 솔리테어가
               6게임 중 1위</strong>입니다 — 10분 도달률 <b>16.6%</b>(코지 3.4 · 코인매치 4.0 ·
               마종 11.6 · 퍼블마 8.5 · 더퍼즐 1.6), 세션당 판수 <b>3.66</b>,
-              로딩 후 체류 중앙값 <b>270초</b>(코지의 6.8배). 세 지표가 같은 방향이므로
-              한 지표의 우연이 아닙니다.
+              로딩 후 체류 중앙값 <b>270초</b>(코지의 6.8배).
               <a href="#measured" style="color: var(--ok); font-weight: 700">↓ 실측 표</a>
+              다만 <strong>셋은 서로 독립 확증이 아닐 수 있습니다</strong> — 판이 짧으면
+              세 값이 같이 오릅니다(솔 1판 25~60초 vs 벤치 1.5~3분). 판 길이를 통제한
+              재측정 전까지 "세 지표가 같은 방향이라 우연이 아니다"로 읽지 않습니다.
+              <a href="#why" style="color: var(--ok); font-weight: 700">→ 가설 5-B</a>
             </p>
             <p style="margin-top: 8px">
               그래서 이 문서 초판의 질문("0~10분에서 우리가 무엇을 잘못하나")은
@@ -133,30 +140,23 @@
               그 14.7판을 사망률로 쪼개면 <strong>1판째 34.3%</strong>(판 시작자 기준),
               <strong>2~15판 평균 7.2%/판</strong>입니다.
               <b>1판이 나머지 판보다 약 5배 위험합니다.</b>
-              → <a href="#kpi" style="color: var(--bad); font-weight: 700">③ 원인 추적으로</a>
+              → <a href="#kpi" style="color: var(--bad); font-weight: 700">② 지표별 판정으로</a>
             </p>
           </div>
           <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">
-              ③ 원인 추적 — 첫 판이 마종의 2배 길다 (13탭 vs 8탭)
-            </div>
+            <div class="note-title">③ 원인 가설은 둘이고, 아직 개선안이 아니다</div>
             <p>
-              마종 첫 판 <code>TT_001</code>은 8타일 / 4매칭 = <b>8탭</b>이고, 솔리테어
-              <code>TUT_0001</code>은 13장 A→K 체인 = <b>13탭</b>입니다.
-              <b>난이도는 오히려 우리가 관대합니다</b> — 튜토 티어
-              <code>deck_help_rate / field_help_rate = 10000</code>이라 뽑는 카드가 100%
-              매칭 가능하고, 덱을 소진해도 실패 팝업이 없습니다.
-              <strong>즉 어려워서가 아니라 길어서입니다.</strong> 우리 판 길이 자체는 강점입니다
-              (25~60초 · 벤치 1.5~3분) — <b>첫 판만 예외적으로 깁니다.</b>
+              <b>3-A 분량</b> — 마종 첫 판 <code>TT_001</code>은 8탭, 솔리테어
+              <code>TUT_0001</code>은 13탭입니다. 난이도는 오히려 우리가 관대해서
+              (튜토 티어 100% 매칭 보장 · 실패 팝업 없음) <b>어려워서가 아니라 길어서</b>입니다.
+              <b>3-B 입력 무시</b> — 딜 연출 1.3~1.8초의 터치가 기록조차 되지 않습니다
+              (2026-07 실측 22.6%). <b>1번째 탭이 문제일 수도 있습니다.</b>
             </p>
             <p style="margin-top: 8px">
-              <b>여기까지가 원인 추적이고, 개선안은 아직 아닙니다.</b> 이 인과가 성립하려면
-              아래 세 개가 먼저 해소돼야 합니다 —
-              <b>(1)</b> −7.8pt가 유입 품질 차이가 아니라는 확인(오가닉 대조),
-              <b>(2)</b> "8탭이라서 완료율이 높다"는 것은 지금 <b>상관이며 인과가 아님</b>,
-              <b>(3)</b> 첫 판을 줄이면 <b>튜토리얼 구간 이탈(우리가 우위인 항목)을 깎을
-              위험</b>. 셋 다 <a href="#open" style="color: var(--validate); font-weight: 700">열려 있는 항목</a>에
-              올려 뒀습니다.
+              둘을 가르기 전에 <code>stage_list</code>를 건드리면 잘못된 레버를 당깁니다.
+              가르는 법과 반증 조건은
+              <a href="#why" style="color: var(--validate); font-weight: 700">③ 가설 보드</a>에
+              있습니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--warn)">
@@ -185,27 +185,6 @@
               나옵니다. 즉 위 우위 3개도, 열세 1개도 <b>일부는 게임 설계가 아니라 유입 품질
               차이일 수 있습니다.</b> <code>entrypoint_now.entry</code>별로 쪼개
               <b>오가닉끼리만</b> 비교하기 전까지 이 판정은 잠정입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">튜토리얼 — 코드 사실만 남기고 인과 주장은 철회했다</div>
-            <p>
-              <b>사실(코드):</b> 입력을 차단하는 딤 튜토리얼이 라이브에서 실제로 돌아가는
-              게임은 <strong>마종과 솔리테어 둘뿐</strong>입니다. 코지는 발동 조건이
-              <code>TU_001</code> 스테이지 ID 하드코딩인데 라이브 stage-list(2,445개)에 그
-              ID가 없고, 더퍼즐은 <code>cleared = true</code> 하드코딩 + 튜토리얼 프리팹
-              로딩이 주석 처리돼 딤 가이드가 0건입니다. 마종은 그 딤을 첫 판 게임 조작
-              4스텝에만 쓰고 끝내고, 솔리테어는 Lv3부터 로비 Play · 프리게임 Play · 상점 ·
-              출석 · 방치골드 · 리더보드로 24승까지 씁니다.
-            </p>
-            <p style="margin-top: 8px">
-              <b>철회한 주장:</b> 이 문서 초판은 여기에 "그러므로 이 구간 지표를 만드는 건
-              튜토리얼 완성도가 아니다"를 얹었습니다. <strong>근거가 없어 철회합니다.</strong>
-              사내 확인에 따르면 <strong>솔리테어의 튜토리얼 구간 이탈은 벤치보다 오히려
-              낮습니다</strong>(수치·정의 확인 중). 그렇다면 우리 튜토리얼은 약점이 아니라
-              강점이고, 지표 격차의 원인은 <b>튜토리얼 이후 구간</b>에서 찾아야 합니다.
-              스텝 수·딤 여부는 <b>차이일 뿐 결론이 아닙니다</b> — 어느 지표에서 실제로
-              갈리는지는 아래 지표별 판정 표의 측정으로만 확정합니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--ok)">
@@ -246,10 +225,11 @@
             → 분모 착시였고 같은 분모로 재면 270 vs 264로 동일).
           </p>
           <p style="margin-top: 8px">
-            <b>쓸 수 있는 4개에서의 결과:</b> 10분 도달률 <b>16.6% 1위</b> ·
-            세션당 판수 <b>3.66 1위</b> · 로딩 후 체류 p50 <b>270초 1위</b> ·
-            첫 판 완료율 <b>46.5% 2위</b>(마종 54.3%). <strong>3승 1패입니다.</strong>
-            그 1패가 다음 절의 원인 추적 대상이고, <b>3승은 지킬 항목</b>입니다.
+            <b>쓸 수 있는 4개의 결과는 3승 1패</b>입니다 — 10분 도달률 <b>16.6%</b> ·
+            세션당 판수 <b>3.66</b> · 체류 p50 <b>270초</b> 1위, 첫 판 완료율
+            <b>46.5%</b> 2위(마종 54.3%). <b>3승이 서로 독립인지는 아직 검증되지 않았습니다</b>
+            — 셋 다 판 길이의 함수일 수 있습니다
+            (<a href="#why" style="color: var(--bad); font-weight: 700">가설 5-B</a>).
           </p>
         </div>
 
@@ -442,7 +422,7 @@
               <br />
               <b>로딩 구간 p50</b> — 6개 전부 2~5초. <code>log_time</code>이 서버 도달
               시각이라 실제 로딩 시간이 아닙니다. 지표 1은
-              <a href="#bq">④ 측정 계획</a>의 방법으로 다시 재야 합니다.
+              <a href="#bq">⑤ 측정 계획</a>의 방법으로 다시 재야 합니다.
               <br />
               <b>타이머로 끝난 세션 비율</b> — <code>PLAYTIME</code> 타이머 양자화 가설을
               검증하려고 뽑은 값이고, 6개 다 13.8~26.9%로 비슷해 <b>가설은 기각</b>됐습니다.
@@ -561,9 +541,9 @@
           <p>
             <b>② 열이 "미판정"인 항목은 아직 아무것도 결정하지 않은 것입니다.</b>
             ③ 열의 가설은 <b>②가 열세로 확인된 뒤에만</b> 붙고, 붙을 때도 반증 조건을
-            함께 적습니다. 이 문서 초판은 이 순서를 어기고 코드 차이만 보고 개선 방향을
-            정했다가 철회했습니다 — <strong>차이는 근거가 아니고, 격차만 근거입니다.</strong>
-            현재 <b>열세 1 · 미판정 5 · 우위 3</b>입니다.
+            함께 적습니다. 현재 <b>열세 1 · 미판정 5 · 우위 3</b>이고,
+            <b>우위 3을 포함해 판정 전체를 흔드는 가설</b>은
+            <a href="#why" style="color: var(--bad); font-weight: 700">③ 가설 보드</a>에 모았습니다.
           </p>
         </div>
 
@@ -613,6 +593,10 @@
                     (1) −7.8pt 가 유입 품질 차이가 아니라는 확인(오가닉 대조),
                     (2) "8탭이라서 완료율이 높다"는 현재 <b>상관이며 인과가 아님</b>,
                     (3) 첫 판을 줄이면 <b>지표 4(우리가 우위)를 깎을 위험</b>
+                    <br /><br />
+                    <b>대안 가설이 하나 더 있다</b> — 이탈이 분량이 아니라
+                    <b>딜 연출 구간의 입력 무시</b>에서 날 가능성.
+                    <a href="#why">→ 가설 3-B</a>
                   </span>
                 </td>
               </tr>
@@ -651,6 +635,7 @@
                     <b>역방향 단서:</b> 더퍼즐 35.1%(압도적 최하)가 로컬 번들 25.6MB
                     때문이라면 <b>번들 크기가 레버</b>라는 뜻이다.
                     <b>우리 번들 크기는 아직 확인하지 않았다.</b>
+                    <a href="#why">→ 가설 1-B</a>
                   </span>
                 </td>
               </tr>
@@ -689,6 +674,7 @@
                     <b>순서 주의:</b> 로그를 early return 앞으로 옮기는 <b>계측 수정이
                     먼저다.</b> 그게 없으면 UX 를 고쳐도 개선 여부를 측정할 수 없다
                     (스냅 인프라 <code>registerCardTweenSnap</code>는 이미 있다).
+                    <a href="#why">→ 가설 3-B</a>
                   </span>
                 </td>
               </tr>
@@ -715,7 +701,8 @@
                 </td>
                 <td>
                   <b>재는 수단:</b> "첫 N판 이탈률"처럼 <b>N을 고정한 공통 잣대</b>를 먼저
-                  합의하고 6게임 동일 기준으로 재측정.
+                  합의하고 6게임 동일 기준으로 재측정. <b>N=3 제안</b>
+                  <a href="#why">→ 가설 4-A</a>
                   <span class="why">
                     <b>이 문서에서 가장 급한 미결이다.</b> 이게 정해지지 않으면 "우리가 더
                     좋다"도, 어디서 갈리는지도 말할 수 없다.
@@ -816,6 +803,11 @@
                     <b>잘 되고 있는 것을 깎을 위험</b>이 있다.
                     옛 개선안은 <a href="#open">열려 있는 항목</a>에 되살아나는 조건과
                     함께 보관했다.
+                    <br /><br />
+                    <b>다만 이 1위 자체를 흔드는 가설이 둘 있다</b> —
+                    최하위 더퍼즐 1.6%가 타이머 원점 차이일 가능성,
+                    그리고 이 우위가 판 길이의 함수일 가능성.
+                    <a href="#why">→ 가설 5-A · 5-B</a>
                   </span>
                 </td>
               </tr>
@@ -842,6 +834,8 @@
                     우리 판이 짧은 것(25~60초 · 벤치 1.5~3분)이 <b>이 지표의 강점 원인</b>이다.
                     판 사이 왕복(프리게임 팝업 → 결과창 → 로비)을 줄이자는 후보가 있었지만
                     <b>판수 자체가 1위인 동안은 근거가 없다.</b> 접힘에 보관했다.
+                    <b>바꿔 말하면 이 지표는 장르 구조의 산물일 수 있다.</b>
+                    <a href="#why">→ 가설 5-B</a>
                   </span>
                 </td>
               </tr>
@@ -871,6 +865,7 @@
                   <span class="why">
                     지표 1 · 2 · 5 의 합산으로 나타나는 <b>종속 지표</b>다.
                     이 값을 직접 올리려는 시도는 앞 지표를 우회하는 것이라 의미가 없다.
+                    <a href="#why">→ 가설 5-B</a>
                   </span>
                 </td>
               </tr>
@@ -879,21 +874,6 @@
         </div>
 
         <div class="notes">
-          <div class="note" style="--acc: var(--ok)">
-            <div class="note-title">이 표를 세로로 읽으면 — 지킬 항목이 3개, 잴 것이 5개, 볼 것이 1개</div>
-            <p>
-              <b>지킬 항목 3개</b>(10분 도달 · 세션당 판수 · 체류 p50)는 우리가 1위이므로
-              <strong>이 구간에서 개선을 찾는 것 자체가 방향이 거꾸로</strong>입니다.
-              특히 3판째 마찰과 판 사이 왕복은 "고칠 것"이 아니라
-              <b>지금 잘 되는 걸 깎지 않도록 지킬 것</b>입니다.
-            </p>
-            <p style="margin-top: 8px">
-              <b>잴 것 5개</b>가 이 문서의 실제 다음 일입니다 — 지표 1 · 2 는 측정 수단을
-              만들어야 하고, 지표 4 는 공통 정의를 합의해야 하고, 지표 8 · 9 는 아직 안
-              돌렸습니다. <b>볼 것 1개</b>는 열세가 확인된 지표 3 이고, 여기만 ③ 원인 추적이
-              들어가 있습니다.
-            </p>
-          </div>
           <div class="note" style="--acc: var(--warn)">
             <div class="note-title">지표 4의 공통 정의가 가장 급하다 — 지표 3이 여기에 묶여 있다</div>
             <p>
@@ -906,37 +886,312 @@
               그리고 이건 지표 4 하나의 문제가 아닙니다 — <b>지금 유일하게 확인된 열세
               (지표 3)의 원인 가설이 "첫 판이 길다"인데, 첫 판을 줄이면 지표 4가 깎일 수
               있습니다.</b> 두 지표를 같은 잣대로 동시에 볼 수 없으면
-              <strong>지표 3도 손댈 수 없습니다.</strong> 순서상 이게 먼저입니다.
+              <strong>지표 3도 손댈 수 없습니다.</strong>
+              잣대 제안은 <a href="#why" style="color: var(--warn); font-weight: 700">가설 4-A</a>에 있습니다.
             </p>
           </div>
         </div>
 
       </section>
 
+      <!-- ================= 왜 다른가 (가설 보드) ================= -->
+      <!--
+        판정(②) 뒤에 두는 이유: 판정이 나와야 "그 판정을 흔든다"는 서사가 성립하고,
+        뒤따르는 시점지도·튜토리얼이 그대로 가설의 근거표로 재사용된다.
+      -->
+      <section class="doc-section" id="why">
+        <h2 class="doc-h2">
+          ③ 왜 다른가 — 가설 보드
+          <span class="doc-h2-sub">판정을 흔드는 장치 · 흔들어서 남는 것만 개선 근거가 된다</span>
+        </h2>
+
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">편차 분해 — 게임 간 차이는 넷 중 하나에서 온다</div>
+          <p>
+            <b>A 계측</b>(같은 이름, 다른 사건 — 이벤트 발화 위치·타이머 원점·분모) ·
+            <b>B 코호트</b>(같은 지표, 다른 사람 — 유입 경로·유입량) ·
+            <b>C 구조</b>(같은 사람, 다른 장르 — 판 길이·진행 단위) ·
+            <b>D 온보딩 로직</b>(같은 조건, 다른 설계 — 마찰 배치·튜토 분량).
+            <strong>액션이 가능한 건 D 하나뿐이고, A~C를 걷어내기 전에는 D를 말할 수 없습니다.</strong>
+          </p>
+          <p style="margin-top: 8px">
+            그래서 검증 순서는 <strong>우리 우위를 무너뜨리는 가설부터</strong>입니다.
+            아래 5-A · 5-B는 둘 다 <b>우리 1위를 깎는 방향</b>입니다 —
+            이 둘이 살아남아야 우위 3개가 진짜입니다.
+          </p>
+        </div>
+
+        <div class="table-scroll judge fit">
+          <table>
+            <thead>
+              <tr>
+                <th>가설</th>
+                <th>근거</th>
+                <th>반증 조건</th>
+                <th>검증 수단 · 버킷</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="node">
+                  5-A · 더퍼즐 최하위는 타이머 원점 차이의 산물
+                  <span class="step">지표 5를 흔든다</span>
+                </td>
+                <td>
+                  <b>2026-08-18 6개 리포 코드 실측.</b> 5개 게임은 인트로 비동기 DAG의
+                  <b>같은 노드</b>(<code>addLink('login','loginLog')</code>)에서 타이머를 켠다 —
+                  로그인 응답 직후로 원점 동일. <b>더퍼즐만</b>
+                  <code>GameManager.ts:652</code>, 그것도 <code>playStageOnStart()</code>
+                  <b>뒤</b>다. 로딩·씬 전환이 끝난 뒤라 <b>같은 실시간 10분이 더퍼즐 시계로는
+                  10분에 못 미친다.</b>
+                  <span class="why">
+                    더퍼즐 타이머는 <code>GameManager</code> 컴포넌트에 붙어 있어
+                    <code>onDestroy</code>에서 <code>clearInterval</code>된다
+                    (<code>GameManager.ts:796</code>) — 씬이 갈리면 카운터가 끊긴다.
+                  </span>
+                </td>
+                <td>
+                  (1) 더퍼즐 <code>GameManager</code>가 persist 노드이고 씬이 단일이면
+                  <code>onDestroy</code> clear는 무해<br />
+                  (2) 로그인 → <code>playStageOnStart</code> 간격이 수 초면 편향은 무시 가능
+                </td>
+                <td>
+                  <b>코드</b> — 더퍼즐 씬 구성 + persist 여부 (오늘 확인 가능).
+                  <b>BQ</b> — 각 게임 <code>1010</code>(더퍼즐 <code>1040</code>) →
+                  <code>1110_PLAYTIME_10S</code> 간격 p50. 게임마다 다르면 원점이 다른 것
+                  <span class="why"><b>버킷 A</b> — 고칠 대상은 더퍼즐 계측이지 우리 온보딩이 아니다</span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  5-B · 우위 3개는 서로 독립 확증이 아니다
+                  <span class="step">우위 3 전부를 흔든다</span>
+                </td>
+                <td>
+                  현재 문서는 "세 지표가 같은 방향이라 한 지표의 우연이 아니다"라고 씁니다.
+                  그런데 <b>셋 다 판이 짧을수록 같이 오르는 양</b>입니다 —
+                  판이 짧으면 ① 같은 10분에 판수가 늘고(지표 6) ② 시작·종료 로그가 촘촘해져
+                  관측 세션이 길어지고(지표 7) ③ "한 판 더" 결정이 자주 옵니다(지표 5).
+                  솔 1판 <b>25~60초</b> vs 벤치 <b>1.5~3분</b>.
+                  <span class="why">
+                    즉 독립 확증 3개가 아니라 <b>한 원인의 세 얼굴</b>일 수 있다.
+                  </span>
+                </td>
+                <td>
+                  <b>이미 부분 반증이 있다</b> — 코지 튜토 판은 20~40초로 우리와 비슷한데
+                  10분 도달이 3.4%다. 판 길이만으로는 전부 설명되지 않는다
+                  → 남는 몫은 코호트(B) 또는 로직(D)
+                </td>
+                <td>
+                  <b>판 길이를 통제한 재측정</b> — "10분 도달률" 대신
+                  <b>"N판 도달률"(3판 · 5판)</b>. 그리고 판당 소요
+                  (<code>2100</code>→<code>2300</code> p50)를 실측해 대조
+                  <span class="why"><b>버킷 C</b> — 통제 후에도 남는 몫이 D다</span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  5-C · 유입 25배 = 코호트 구성 차이
+                  <span class="step">우위 3 · 열세 1 모두</span>
+                </td>
+                <td>
+                  <b>새 근거</b> — 10분 도달자의 판수는 <b>코지 16.1로 1위</b>(솔 14.7)입니다.
+                  초반 이탈은 코지가 압도적으로 나쁜데 <b>잔존자 밀도는 우리보다 높습니다.</b>
+                  저품질 유입이 앞에서 대량으로 빠지는 전형적 모양입니다
+                  (솔 US 일 143명 vs 코지 3,633명)
+                </td>
+                <td>
+                  <code>entrypoint_now.entry</code> 분해 후 <b>오가닉끼리</b> 비교했을 때
+                  격차가 그대로면 B는 기각
+                </td>
+                <td>
+                  <b>BQ</b> — 유입 경로별 분해
+                  (<a href="#bq">⑤ 측정 계획</a> 1순위)
+                  <span class="why"><b>버킷 B</b> — 통제만 가능하고 액션은 없다</span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  3-B · 첫 판 이탈은 분량이 아니라 조작 전에 난다
+                  <span class="step">유일한 열세의 레버를 바꾼다</span>
+                </td>
+                <td>
+                  딜 연출 <b>1.3~1.8초</b> 동안 <code>isPlaying = false</code> early return으로
+                  카드 터치가 무시되고, <code>9990_PLAY_FIRST_TOUCH</code>가 그 return
+                  <b>뒤</b>에 있어 로그도 남지 않습니다. 2026-07 실측 —
+                  "카드 배치 후 눌렀지만 <code>9990</code> 0건" 세션 <b>22.6%</b>,
+                  그중 <b>59%</b>가 4회 이상 터치.
+                  <span class="why">
+                    즉 첫 판 미완료의 일부는 <b>13번째 탭까지 못 가서</b>가 아니라
+                    <b>1번째 탭이 안 먹혀서</b>일 수 있다.
+                  </span>
+                </td>
+                <td>
+                  <b>3-A와 가르는 법</b> — <code>2100</code> → 세션 마지막 로그 경과 p50.
+                  <b>3초 미만</b>에 몰리면 3-B(연출 구간),
+                  <b>30초 이상</b>에 퍼지면 3-A(분량)
+                </td>
+                <td>
+                  <b>BQ</b> — 첫 판 이탈 시점 분포 + Q4
+                  <span class="why">
+                    <b>버킷 D.</b> 이 구분이 되기 전에 <code>TUT_0001</code>을 건드리면
+                    <b>잘못된 레버</b>를 당긴다 — 3-B가 참이면 탭 수를 8로 줄여도
+                    지표가 안 움직인다.
+                  </span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  3-A · 첫 판 분량 13탭 vs 8탭
+                  <span class="step">현행 원인 가설 · 유지</span>
+                </td>
+                <td>
+                  마종 <code>TT_001</code> 8타일 / 4매칭 = <b>8탭</b>,
+                  솔리테어 <code>TUT_0001</code> 13장 A→K = <b>13탭</b>.
+                  난이도는 오히려 우리가 관대(튜토 티어
+                  <code>deck_help_rate / field_help_rate = 10000</code>, 실패 팝업 없음)
+                </td>
+                <td>
+                  <a href="#open">열려 있는 항목</a>의 반증 3개 —
+                  유입 품질 · 상관≠인과 · 지표 4를 깎을 위험.
+                  <b>여기에 3-B가 하나 더 붙었다</b>
+                </td>
+                <td>
+                  <b>BQ</b> — 오가닉 대조 + 3-B와의 분리
+                  <span class="why"><b>버킷 D</b> — 확인되면 <code>stage_list</code> 한 행 변경</span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  1-B · 번들 전송량이 로딩 완료율의 주 레버
+                  <span class="step">미판정 1을 판정 가능하게</span>
+                </td>
+                <td>
+                  더퍼즐 <b>35.1%</b>(압도적 최하)가 로컬 번들 <b>25.6MB</b> 때문이라면
+                  번들 크기가 레버라는 뜻입니다. <b>우리 번들 크기는 아직 확인하지 않았습니다.</b>
+                </td>
+                <td>
+                  6개 전송 바이트를 재서 <code>1010</code> 도달률과 방향이 안 맞으면 기각
+                  (n=6이라 상관은 참고값)
+                </td>
+                <td>
+                  <b>라이브 CDN 전송 바이트</b> — FB는 js/png를 brotli로 보내므로
+                  <b>원본이 아니라 전송 바이트</b>로 재야 한다. 로컬 빌드는 6개 중 3개만 있고
+                  라이브와 다를 수 있다. 함께 <code>1010</code>의 <code>data.time</code> 분위
+                  <span class="why"><b>버킷 D</b> — 코지·마종도 <code>logLoadComplete</code>에 같은 <code>time</code> 주입 확인됨</span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="node">
+                  4-A · KPI 4 잣대를 "첫 3판 이탈률"로 고정
+                  <span class="step">미판정 4를 판정 가능하게</span>
+                </td>
+                <td>
+                  튜토 종료 시점이 솔 <b>24승</b> · 코지·마종 <b>3판</b> ·
+                  코인매치·더퍼즐 <b>5판</b> · 퍼블마 <b>3스텝</b>이라, 각자 기준으로 재면
+                  구간 길이 때문에 이탈률이 자동으로 갈립니다(긴 쪽이 불리)
+                </td>
+                <td>
+                  N=5면 코지·마종이 튜토 밖으로 나가고, N=24면 나머지 5개가 전부 밖이다.
+                  <b>N=3이 6게임 전부 튜토 구간 안에 들어가는 최대값</b>이라 이 잣대를 제안한다
+                </td>
+                <td>
+                  <b>합의 먼저</b> → 6게임 동일 기준 재측정
+                  <span class="why"><b>버킷 A</b> — 지표 3과 묶여 있어, 이 잣대 없이는 지표 3도 못 건드린다</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll flow6 fit">
+          <table>
+            <thead>
+              <tr>
+                <th>5-A 근거 · PLAYTIME 타이머 기동 위치</th>
+                <th><span class="proj-dot" style="--acc: var(--sol)"></span> 솔리테어</th>
+                <th><span class="proj-dot" style="--acc: var(--coz)"></span> 코지타일즈</th>
+                <th><span class="proj-dot" style="--acc: var(--cmt)"></span> 코인매치</th>
+                <th><span class="proj-dot" style="--acc: var(--mah)"></span> 마종</th>
+                <th><span class="proj-dot" style="--acc: var(--pbm)"></span> 퍼블마</th>
+                <th><span class="proj-dot" style="--acc: var(--tpz)"></span> 더퍼즐</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="node">
+                  기동 지점
+                  <span class="step">10분 도달률의 원점</span>
+                </td>
+                <td>
+                  <span class="mk on"><span class="sname">로그인 직후</span></span>
+                  <span class="cnote"><code>BaseIntro.ts:486</code></span>
+                </td>
+                <td>
+                  <span class="mk on"><span class="sname">로그인 직후</span></span>
+                  <span class="cnote"><code>Intro.ts:269</code></span>
+                </td>
+                <td>
+                  <span class="mk on"><span class="sname">로그인 직후</span></span>
+                  <span class="cnote"><code>Intro.ts:232</code></span>
+                </td>
+                <td>
+                  <span class="mk on"><span class="sname">로그인 직후</span></span>
+                  <span class="cnote"><code>Intro.ts:233</code></span>
+                </td>
+                <td>
+                  <span class="mk on"><span class="sname">로그인 직후</span></span>
+                  <span class="cnote"><code>Intro.ts:249</code></span>
+                </td>
+                <td>
+                  <span class="mk off"><span class="sname">스테이지 진입 후</span></span>
+                  <span class="cnote">
+                    <code>GameManager.ts:652</code> — <code>playStageOnStart()</code> 뒤 ·
+                    <code>onDestroy</code>에서 clear
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">이 보드가 판정에 미치는 영향 — 뒤집는 게 아니라 흔든다</div>
+          <p>
+            <b>우위 3</b> — 5-B가 참이면 독립 확증 3개가 아니라 <b>1개</b>가 되고,
+            5-A가 참이면 최하위 1개(더퍼즐 1.6%)가 계측 산물이 됩니다.
+            <b>열세 1</b> — 3-B가 참이면 레버가 <b>분량에서 입력 무시 창으로</b> 바뀝니다.
+            <b>미판정 5</b> — 1-B와 4-A로 2개는 판정 가능 상태까지 올라갑니다.
+          </p>
+          <p style="margin-top: 8px">
+            <strong>검증 전까지 판정 열은 그대로 둡니다.</strong> 무엇을 어떤 순서로 잴지는
+            <a href="#bq" style="color: var(--warn); font-weight: 700">⑤ 측정 계획</a>에
+            있고, 맨 위 두 줄(코드로 오늘 확인 가능한 것)이 이번에 추가된 항목입니다.
+          </p>
+        </div>
+      </section>
+
       <!-- ================= 첫 등장 시점 지도 ================= -->
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
-          ③ 원인 추적 근거 — 첫 등장 시점 지도
+          ④ 원인 추적 근거 — 첫 등장 시점 지도
           <span class="doc-h2-sub">행 = 시간(판수) · 열 = 게임 · 셀 = 그 시점에 처음 등장하는 것</span>
         </h2>
-
-        <p class="doc-lede">
-          온보딩 요소를 <b>6개</b>로 고정하고, 각 게임에서 그것이
-          <b>몇 판째에 처음 나오는지</b>만 찍었습니다. 아래로 읽으면 시간이 흐르고,
-          옆으로 읽으면 게임 간 비교가 됩니다. 빈 칸은 그 시점에 새로 열리는 게
-          없다는 뜻입니다.
-        </p>
 
         <div class="note" style="--acc: var(--warn)">
           <div class="note-title">이 지도는 차이 목록이고, 그 자체로는 판정이 아니다</div>
           <p>
-            여기 찍힌 칩은 전부 <b>코드로 확인된 차이</b>지만,
+            요소 <b>6개</b>가 각 게임에서 <b>몇 판째에 처음 나오는지</b>만 찍었습니다.
+            칩은 전부 코드로 확인된 차이지만
             <strong>어느 것이 격차의 원인인지는 이 지도로 정할 수 없습니다.</strong>
-            판정은 앞 절(<a href="#kpi" style="color: var(--warn); font-weight: 700">② 지표별 판정</a>)에서만
-            내리고, 이 지도는 <b>이미 열세로 확인된 지표</b>의 원인을 찾을 때 꺼내 보는
-            근거표입니다. 현재 그 대상은 <b>지표 3(첫 판 완료율) 하나</b>이고 관련된 칸은
-            1판 행입니다. 3판째 밀집은 지표 5가 1위인 동안
-            <b>고칠 항목이 아니라 지킬 항목</b>입니다.
+            현재 원인 추적 대상은 <b>지표 3 하나</b>이고 관련 칸은 1판 행입니다.
+            3판째 밀집은 지표 5가 1위인 동안 <b>고칠 항목이 아니라 지킬 항목</b>입니다.
           </p>
         </div>
 
@@ -1410,9 +1665,9 @@
       <!-- ================= 튜토리얼 ================= -->
       <section class="doc-section" id="tutorial">
         <h2 class="doc-h2">
-          ③ 원인 추적 근거 — 튜토리얼
+          ④ 원인 추적 근거 — 튜토리얼
           <span class="doc-h2-sub">
-            방식 · 길이 · 라이브 발동 여부 — 지표 3(첫 판 분량)과 지표 4(공통 정의)의 근거
+지표 3(첫 판 분량)과 지표 4(공통 정의)의 근거
           </span>
         </h2>
 
@@ -1431,90 +1686,58 @@
             </thead>
             <tbody>
               <tr>
-                <td class="node">전달 방식</td>
-                <td>
-                  Lv1~2 논블로킹 버블 1개<br />→ <b>Lv3부터 강제 딤</b>
+                <td class="node">
+                  첫 판 분량
+                  <span class="step">지표 3의 원인 가설 3-A</span>
                 </td>
-                <td>UI 축소 + 랙 경고 말풍선 (논블로킹)</td>
-                <td>손가락 트윈 3회 + 탭 불가 하단 라벨</td>
-                <td><b>8000×8000 딤 + 입력차단 + 손가락</b></td>
-                <td>딤 없음. 정답 외 배치를 물리적으로 차단</td>
-                <td>3판째부터 손가락 + 마스크 (첫 수 한정)</td>
-              </tr>
-              <tr>
-                <td class="node">입력 차단</td>
-                <td><span class="mk on"><span class="sname">Lv3부터</span></span></td>
-                <td><span class="mk off"><span class="sname">없음</span></span></td>
-                <td><span class="mk off"><span class="sname">없음</span></span></td>
-                <td><span class="mk on"><span class="sname">첫 판</span></span></td>
-                <td><span class="mk part"><span class="sname">배치만 제한</span></span></td>
+                <td>
+                  <span class="mx mx-bad">13탭</span>
+                  <span class="cnote"><code>TUT_0001</code> · 13장 A→K 체인</span>
+                </td>
+                <td><span class="mk na"><span class="sname">미확인</span></span></td>
+                <td><span class="mk na"><span class="sname">미확인</span></span></td>
+                <td>
+                  <b>8탭</b>
+                  <span class="cnote"><code>TT_001</code> · 8타일 / 4매칭</span>
+                </td>
+                <td><span class="mk na"><span class="sname">미확인</span></span></td>
                 <td><span class="mk na"><span class="sname">미확인</span></span></td>
               </tr>
               <tr>
-                <td class="node">스텝 / 지속</td>
+                <td class="node">
+                  튜토 종료 시점
+                  <span class="step">지표 4의 잣대 문제</span>
+                </td>
                 <td>
-                  <span class="mx mx-bad">29스텝 · 24승까지</span>
+                  <span class="mx mx-bad">24승까지 · 29스텝</span>
                   <span class="why">실 노출 26건 · Lv1~5는 입력 제한 티어</span>
                 </td>
-                <td>4스텝(미발동) · UI 축소는 3클리어까지</td>
-                <td>스텝 머신 없음 · <b>5판</b></td>
-                <td>4스텝 + 고정 5판</td>
+                <td>3클리어</td>
+                <td>5판</td>
+                <td>3클리어</td>
                 <td>3스텝</td>
-                <td>전용 스테이지 <b>5판</b></td>
-              </tr>
-              <tr>
-                <td class="node">
-                  라이브에서 실제로 도나
-                  <span class="step">BQ로 검증 가능</span>
-                </td>
-                <td><span class="mk on"><span class="sname">돈다</span></span></td>
-                <td>
-                  <span class="mk off"><span class="sname">손가락 튜토 미발동</span></span>
-                  <span class="why"><code>TU_001</code>이 라이브 stage-list(2,445개)에 없음</span>
-                </td>
-                <td>
-                  <span class="mk part"><span class="sname">손가락만</span></span>
-                  <span class="why">딤/컷아웃 마스크는 프리팹 미부착 데드 코드</span>
-                </td>
-                <td><span class="mk on"><span class="sname">돈다</span></span></td>
-                <td><span class="mk on"><span class="sname">돈다</span></span></td>
-                <td>
-                  <span class="mk off"><span class="sname">딤 가이드 0건</span></span>
-                  <span class="why"><code>cleared = true</code> 하드코딩 + 프리팹 로딩 주석 처리</span>
-                </td>
+                <td>5판</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">이 표는 "차이"만 말한다 — 우열은 말하지 않는다</div>
-            <p>
-              벤치 5개 중 <strong>2개(코지·더퍼즐)는 딤 튜토리얼이 라이브에서 돌지 않고</strong>,
-              1개(코인매치)는 딤 코드가 데드입니다. 이건 <b>확인된 코드 사실</b>입니다.
-              다만 여기서 "그러므로 튜토리얼은 지표와 무관하다"로 넘어가면 안 됩니다 —
-              <strong>솔리테어의 튜토리얼 구간 이탈은 벤치보다 낮다는 사내 확인이 있습니다</strong>
-              (수치·정의 확인 중). 즉 이 표가 보여주는 건 <b>설계 방식이 서로 다르다</b>는
-              것까지이고, 어느 쪽이 지표에 유리한지는 이 표로 판정할 수 없습니다.
-            </p>
-            <p style="margin-top: 8px">
-              벤치가 공통으로 하는 건 <strong>"3~5판까지 판만 계속 물리는 것"</strong>입니다.
-              더퍼즐은 튜토리얼 5판 동안 <b>실패 화면 자체를 없애</b>고(승패 무관 "다음"),
-              코인매치·더퍼즐은 결과 팝업 선택지를 <b>버튼 하나로 줄였습니다</b>. 이것도
-              차이의 기술이며, 채택 여부는 아래 지표별 판정 표에서 해당 지표가 실제로 갈릴 때만
-              검토합니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--sol)">
-            <div class="note-title">우리 튜토리얼이 실제로 하는 일 — 10분 구간 해당분</div>
-            <p>
-              시트 29스텝 중 0~10분에 걸리는 것은 아래입니다. Lv1~2 두 개만 게임 조작이고,
-              <strong>Lv3부터는 전부 메타 UI를 여는 강제 딤</strong>입니다. 그리고
-              <code>is_forced</code>는 표시 강제가 아니라 <b>dismiss 후 해당 기능을 자동 실행</b>하는
-              플래그라서, 유저 입장에서는 팝업을 닫는 순간 화면이 저절로 바뀝니다.
-            </p>
-          </div>
+        <div class="note" style="--acc: var(--validate)">
+          <div class="note-title">이 표는 두 지표의 근거로만 씁니다</div>
+          <p>
+            <b>첫 판 분량</b>은 지표 3의 원인 가설(3-A)이고 <b>6개 중 2개만 확인</b>돼
+            있습니다 — 나머지 4개는 아직 안 셌습니다.
+            <b>튜토 종료 시점</b>은 지표 4에서 공통 잣대가 필요한 이유 그 자체입니다.
+            우리만 24승까지 가고 벤치 최장은 5판이라, 각자 기준으로 재면
+            <b>구간이 긴 쪽이 자동으로 불리</b>합니다.
+            <a href="#why" style="color: var(--validate); font-weight: 700">→ 가설 3-A · 4-A</a>
+          </p>
+          <p style="margin-top: 8px">
+            <b>전달 방식 · 딤 여부 · 라이브 발동 여부는 이 표에서 내렸습니다.</b>
+            초판이 그 코드 차이에 "그러므로 이 구간 지표를 만드는 건 튜토리얼 완성도가
+            아니다"를 얹었다가 근거가 없어 철회한 항목이고, 이후 어떤 판정에도
+            인용되지 않았습니다. 원본은 개별 분석 문서에 그대로 있습니다.
+          </p>
         </div>
 
         <details class="fold">
@@ -1614,22 +1837,15 @@
       <!-- ================= BQ ================= -->
       <section class="doc-section" id="bq">
         <h2 class="doc-h2">
-          ④ 측정 계획
-          <span class="doc-h2-sub">미판정 5개를 재는 수단 — 이게 이 문서의 다음 일이다</span>
+          ⑤ 측정 계획
+          <span class="doc-h2-sub">가설 7건을 무너뜨리는 순서 — 코드로 오늘 되는 것부터</span>
         </h2>
 
         <div class="note" style="--acc: var(--ok)">
           <div class="note-title">6개 테이블 전부 확인됨 — 컬럼 구조 동일</div>
           <p>
-            <code>game-log-359704.raw.</code> 아래
-            <code>solitaire_city_journey</code> · <code>cozy_tiles</code> ·
-            <code>coin_match</code> · <code>mahjong</code> ·
-            <code>puzzle_block_master</code> · <code>the_puzzle</code>.
-            6개 모두 <code>game-log.supergenecasino.com</code>으로 같은 형식의 로그를
-            보내므로 <code>log_date</code> · <code>log_time</code> · <code>event</code> ·
-            <code>player_id</code> · <code>logincount_total</code> · <code>is_dev</code> ·
-            <code>country</code> · <code>data</code> 컬럼이 동일합니다. 세션 단위는
-            <code>(player_id, logincount_total)</code> 복합키이고, NRU 는
+            <code>game-log-359704.raw.</code> 아래 6개. 컬럼 동일, 세션 단위는
+            <code>(player_id, logincount_total)</code> 복합키이고 NRU 는
             <code>logincount_total = 1</code> 입니다.
           </p>
         </div>
@@ -1651,6 +1867,43 @@
             <tbody>
               <tr>
                 <td class="node">
+                  0
+                  <span class="step">코드 · BQ 불필요</span>
+                </td>
+                <td>
+                  <b>더퍼즐 타이머 원점</b>
+                  <span class="cnote">가설 5-A</span>
+                </td>
+                <td>
+                  더퍼즐 <code>GameManager</code> persist 여부 + 씬 구성.
+                  5개는 <code>addLink('login','loginLog')</code> 동일 노드인데
+                  더퍼즐만 <code>GameManager.ts:652</code>
+                </td>
+                <td>
+                  10분 도달률 최하위 <b>1.6%가 계측 산물인지.</b>
+                  <b>오늘 확인 가능</b>하고, 결과에 따라 지표 5의 분포 해석이 바뀝니다
+                </td>
+              </tr>
+              <tr>
+                <td class="node">
+                  0
+                  <span class="step">코드 · BQ 불필요</span>
+                </td>
+                <td>
+                  <b>6개 라이브 번들 전송 바이트</b>
+                  <span class="cnote">가설 1-B</span>
+                </td>
+                <td>
+                  라이브 CDN에서 <b>전송(brotli) 바이트</b>로 측정. 원본 크기 아님.
+                  로컬 빌드는 6개 중 3개만 있고 라이브와 다를 수 있음
+                </td>
+                <td>
+                  번들 크기가 <b>로딩 완료율의 레버인지.</b>
+                  더퍼즐 35.1%가 25.6MB 때문이라면 우리 값도 재야 합니다
+                </td>
+              </tr>
+              <tr>
+                <td class="node">
                   1
                   <span class="step">전제 조건</span>
                 </td>
@@ -1665,6 +1918,24 @@
                   지금의 <b>우위 3 · 열세 1 판정이 유지되는지.</b> 유입량이 25배 다르므로
                   (솔 428 vs 코지 10,900) 이걸 통제하지 않으면 나머지 측정이 다 잠정입니다.
                   <b>1순위인 이유</b>
+                </td>
+              </tr>
+              <tr>
+                <td class="node">
+                  1
+                  <span class="step">우위 3 검증</span>
+                </td>
+                <td>
+                  <b>판 길이 통제 — "N판 도달률"</b>
+                  <span class="cnote">가설 5-B</span>
+                </td>
+                <td>
+                  "10분 도달률" 대신 <b>3판 · 5판 도달률</b>로 재고,
+                  판당 소요(<code>2100</code>→<code>2300</code> p50)를 함께 실측
+                </td>
+                <td>
+                  <b>우위 3개가 서로 독립인지.</b> 셋 다 판이 짧으면 같이 오르는 값이라,
+                  통제 후에도 남는 몫만 온보딩 설계의 성과입니다
                 </td>
               </tr>
               <tr>
@@ -1902,12 +2173,12 @@
 
         <div class="note" style="--acc: var(--bad)">
           <div class="note-title">
-            맨 위 3개는 "확인 안 된 것"이 아니라 "유일한 열세 판정을 무효로 만들 수 있는 것"이다
+            맨 위 4개는 "확인 안 된 것"이 아니라 "유일한 열세 판정을 무효로 만들 수 있는 것"이다
           </div>
           <p>
-            무엇을 <b>재야 하는지</b>는 <a href="#bq" style="color: var(--bad); font-weight: 700">④ 측정 계획</a>에
+            무엇을 <b>재야 하는지</b>는 <a href="#bq" style="color: var(--bad); font-weight: 700">⑤ 측정 계획</a>에
             순위대로 있습니다. 여기는 <b>판단이 갈리는 미결</b>만 모았습니다.
-            특히 상단 3개는 지표 3(첫 판 완료율 −7.8pt)의 <b>반증 조건</b>이라,
+            특히 상단 4개는 지표 3(첫 판 완료율 −7.8pt)의 <b>반증 조건</b>이라,
             <strong>하나라도 살아 있으면 "첫 판 분량을 줄인다"는 결론으로 갈 수 없습니다.</strong>
           </p>
           <p style="margin-top: 8px">
@@ -1940,7 +2211,7 @@
                 </td>
                 <td>
                   <code>entrypoint_now.entry</code> 별 분해 후 <b>오가닉끼리만</b> 재비교
-                  (④ 측정 계획 1순위)
+                  (⑤ 측정 계획 1순위)
                 </td>
               </tr>
               <tr>
@@ -1972,6 +2243,26 @@
                 <td>
                   지표 4 의 공통 정의("첫 N판 이탈률") 합의 후,
                   <b>지표 3 과 4 를 같은 실험에서 동시 관측</b>
+                </td>
+              </tr>
+              <tr>
+                <td class="node">
+                  반증 4 — 이탈이 분량이 아니라 딜 연출 구간일 가능성
+                  <span class="step">지표 3</span>
+                </td>
+                <td>
+                  <code>9990_PLAY_FIRST_TOUCH</code>가 <code>isPlaying</code> early return
+                  뒤에 있어 딜 연출 1.3~1.8초의 터치가 기록되지 않는다.
+                  2026-07 실측 <b>22.6%</b>가 "터치했는데 <code>9990</code> 0건"이고
+                  그중 59%가 4회 이상 눌렀다. <b>13번째 탭이 아니라 1번째 탭이
+                  문제일 수 있다</b>
+                </td>
+                <td>
+                  <code>2100</code> → 세션 마지막 로그 경과 p50.
+                  3초 미만에 몰리면 연출 구간, 30초 이상이면 분량
+                  <span class="why">
+                    <a href="#why">가설 3-B</a> · 계측 수정이 UX 수정보다 먼저다
+                  </span>
                 </td>
               </tr>
               <tr>
