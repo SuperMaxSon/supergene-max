@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>바이럴 격차 — 가로모드 축</title>
+    <meta
+      name="description"
+      content="토너먼트 바이럴 격차의 원인을 가설별로 정리. 파라미터·게이팅·소셜밀도·국가를 모두 통제한 뒤 남은 것은 화면 방향이었다. 모바일 생성 전환율 마종 33.67% vs 솔 0.26%."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#summary">한눈에</a>
+        <a class="nav-back" href="#ledger">가설 이력</a>
+        <a class="nav-back" href="#data">실측</a>
+        <a class="nav-back" href="#why">왜 방향인가</a>
+        <a class="nav-back" href="#open">남은 것</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 바이럴</div>
+        <h1 class="doc-title">바이럴 격차 — 가로모드 축</h1>
+        <p class="doc-lede">
+          토너먼트 바이럴이 벤치 대비 왜 낮은지를 <b>가설별로 세우고 하나씩 죽여 온 기록</b>입니다.
+          파라미터·게이팅·로그정의·소셜밀도·국가를 전부 통제하고 남은 것이
+          <b>화면 방향</b>이었습니다. 데스크톱은 멀쩡한데 모바일에서만 토너먼트 생성이
+          <b>사실상 0</b>이고, 같은 화면의 공유는 살아 있습니다.
+          <a href="tournament-share-rate.html">토너먼트 바이럴 조사 v6.1</a>의 "원인 미상 19%p"를 잇는 문서입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--warn)">가설 생존 · 실기 확인 대기</span>
+          <span class="tag">BigQuery 실측 · US · 2026-08-10~08-16</span>
+          <span class="tag">솔 build ≥ 438</span>
+          <span class="tag">코드 실측 · 사내 7개 프로젝트</span>
+          <span class="tag">갱신 2026-08-18 15:03</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- 한눈에: 격차의 성질이 데스크톱과 모바일에서 완전히 다르다는 것이 이 문서의 핵심이라
+           stat 4개를 그 대비가 드러나도록 배치했다 -->
+      <section class="doc-section" id="summary">
+        <h2 class="doc-h2">
+          한눈에
+          <span class="doc-h2-sub">토너먼트 생성 전환율 · US · 7일</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--mah)">
+            <div class="stat-num">33.67<span class="stat-unit">%</span></div>
+            <div class="stat-name">마종 Android</div>
+            <div class="stat-sub">세로 게임 · 시도 111,531</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">0.26<span class="stat-unit">%</span></div>
+            <div class="stat-name">솔 Android</div>
+            <div class="stat-sub">가로 게임 · 1,909시도 5성공</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">0.00<span class="stat-unit">%</span></div>
+            <div class="stat-name">솔 iOS</div>
+            <div class="stat-sub">273시도 <b>0성공</b></div>
+          </div>
+          <div class="stat" style="--acc: var(--sol)">
+            <div class="stat-num">6.69<span class="stat-unit">%</span></div>
+            <div class="stat-name">솔 Windows</div>
+            <div class="stat-sub">데스크톱은 작동한다</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 네 숫자를 이렇게 읽는다</div>
+            <p>
+              <b>마종은 모바일이 데스크톱보다 2.1배 좋습니다</b>(Android 33.67% vs Windows 15.82%).
+              그러니 "FB 모바일 웹뷰라서 다이얼로그가 안 먹힌다"는 성립하지 않습니다.
+              우리는 정반대로 <b>모바일이 데스크톱의 1/26 ~ 0</b>입니다.
+              즉 데스크톱에서 우리는 <b>열세</b>(2.4배)고, 모바일에서는 <b>작동하지 않음</b>(130배~∞)입니다.
+              <b>성질이 다른 두 문제</b>이고, 이 문서가 다루는 건 뒤쪽입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">전제 — 우리만 가로다</div>
+            <p>
+              사내 7개 프로젝트 중 <b>솔리테어만 가로</b>입니다(1280×720,
+              <code>fbapp-config.json</code>에 <code>orientation</code>·<code>override_web_orientation</code>
+              둘 다 <code>LANDSCAPE</code>). 코지·마종·퍼블마·코인매치·스페이스블라스트·puzzle-omg는 전부 세로입니다.
+              <b>사내 대조군이 없어서 지금까지 한 번도 통제 변인으로 다뤄지지 않았습니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 가설 이력: 이 조사의 본체. 죽은 가설을 지우지 않고 남겨야
+           "왜 여기까지 왔는지"와 "무엇을 다시 뒤지면 안 되는지"가 함께 보인다 -->
+      <section class="doc-section" id="ledger">
+        <h2 class="doc-h2">
+          가설 이력
+          <span class="doc-h2-sub">기각 11 · 생존 1 · 미검증 3</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 8%">판정</th>
+                <th style="width: 26%">가설</th>
+                <th>근거</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill" style="--acc: var(--ok)">생존</span></td>
+                <td>
+                  <b>가로 + 좁은 세로 공간에서 큰 다이얼로그만 붕괴한다</b>
+                </td>
+                <td>
+                  데스크톱(가로지만 화면이 큼)은 작동, 모바일 가로(~360px)에서만 0에 수렴.
+                  같은 화면에서 <b>작은 공유 다이얼로그는 산다</b>(Android 10.05%).
+                  실패의 73%가 <code>USER_INPUT</code> — <b>열리고 나서 닫힌다</b>.
+                  <b>실기 관측은 아직 0건.</b>
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>가로라서 <b>모든</b> 다이얼로그가 안 먹힌다</td>
+                <td>같은 가로 화면에서 공유는 Android 10.05%로 살아 있다. 전면 붕괴가 아니다</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>FB 모바일 웹뷰 자체가 다이얼로그에 불리하다</td>
+                <td>마종은 모바일이 데스크톱의 <b>2.1배</b>(33.67% vs 15.82%). 플랫폼 문제가 아니다</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>국가·언어 믹스 차이</td>
+                <td><b>US 한정</b>으로 통제했는데도 Android 130배 격차가 그대로다</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>DOM 오버레이가 다이얼로그 탭을 가로챈다</td>
+                <td>
+                  다이얼로그가 뜰 때 게임 iframe이 <code>hidden</code>이 된다(<code>main.js:374</code>의
+                  <code>visibilitychange</code> 훅이 그 전제 위에 서 있다) → 다이얼로그는 iframe 바깥에서 그려진다.
+                  오버레이 컨테이너는 <code>pointer-events:none</code>이고 코지·퍼블마와 코드가 바이트 동일
+                </td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>다이얼로그 파라미터가 마종과 다르다</td>
+                <td><code>title</code>·<code>image</code>(둘 다 null)·<code>data</code> 페이로드 전부 동일. <code>entryPointData</code>는 다이얼로그 UI에 노출되지 않음</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>게이팅(거절 상한)이 다르다</td>
+                <td>양쪽 다 상한 3 · <code>USER_INPUT</code>만 카운트 · 성공 시 리셋. 2026-08-07에 마종 기준으로 정렬 완료</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>소셜 밀도(친구·토너먼트 이웃 수)가 얇다</td>
+                <td>바이럴 성공 1건당 <code>feed</code> 유입이 마종 0.158 vs 우리 0.162로 <b>2.8% 차</b>. 인과가 역방향이었다</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>진입점 믹스가 다르다</td>
+                <td>소셜 재진입 60.9% vs 23.5%는 <b>원인이 아니라 결과</b>. 위 항목과 같은 근거</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>로그 정의가 코지와 달라서 낮게 잡힌다</td>
+                <td>정렬 스펙트럼이 <code>coin-match &lt; 우리 ≒ 마종 &lt; 퍼블마 &lt; 코지</code>. <b>우리 정의는 의도적으로 마종에 맞춘 것</b>이고 코지가 예외였다</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+                <td>바이럴 시에만 세로로 띄우면 된다</td>
+                <td>FB SDK에 <b>런타임 방향 변경 API가 없다</b>. 방향은 번들 단위 선언이라 게임 전체 단위다</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--warn)">부분</span></td>
+                <td>과노출로 학습된 무시(피로)</td>
+                <td>
+                  실재했고 <b>억제(build 438)로 해소</b>됐다. 판당 시도 56%→14.8%, 판당 성공 0.30%→0.62%.
+                  단 이걸로 모바일 0%는 설명되지 않는다
+                </td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--warn)">부분</span></td>
+                <td>코드 결함(3110 누락 · <code>PENDING_REQUEST</code>)</td>
+                <td>실재하나 다 고쳐도 전환율 3.56% → 최대 ~12%. <b>격차의 1/3 이하</b></td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--text-dim)">미검증</span></td>
+                <td>노출 타이밍 — 마지막 카드 매칭 직후 클리어 연출 위</td>
+                <td>마종은 결과 처리 흐름 안에서 띄운다. <b>모바일에서만 유독 나쁠 이유는 약하지만 배제 못 함</b></td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--text-dim)">미검증</span></td>
+                <td>데스크톱에도 남는 2.4배 격차</td>
+                <td>Windows 6.69% vs 마종 15.82%. <b>방향으로 설명되지 않는 별건 요인이 하나 더 있다</b></td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--text-dim)">미검증</span></td>
+                <td>iOS는 공유까지 죽는다(1.06%)</td>
+                <td>Android는 공유가 사는데 iOS는 안 산다. <b>추가 요인 1개</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">죽은 가설을 지우지 않는 이유</div>
+            <p>
+              같은 가설을 다시 세우는 걸 막기 위해서입니다. 특히
+              <b>소셜 밀도</b>와 <b>파라미터 차이</b>는 직관적으로 계속 떠오르는데
+              둘 다 실측으로 명확히 기각됐습니다. 회색 줄은 종결된 항목입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 실측: 가설을 죽인 근거 데이터 자체 -->
+      <section class="doc-section" id="data">
+        <h2 class="doc-h2">
+          실측 — OS × 앱
+          <span class="doc-h2-sub">US · 2026-08-10(월)~08-16(일) · 전환율 = 성공 ÷ 시도</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 10%">OS</th>
+                <th style="width: 12%">앱</th>
+                <th style="text-align: right">생성 시도</th>
+                <th style="text-align: right">생성 성공</th>
+                <th style="text-align: right">생성 전환율</th>
+                <th style="text-align: right">공유 시도</th>
+                <th style="text-align: right">공유 성공</th>
+                <th style="text-align: right">공유 전환율</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="2"><b>Android</b></td>
+                <td><span class="tag">마종</span></td>
+                <td style="text-align: right">111,531</td>
+                <td style="text-align: right">37,552</td>
+                <td style="text-align: right"><b>33.67%</b></td>
+                <td style="text-align: right">57,932</td>
+                <td style="text-align: right">21,180</td>
+                <td style="text-align: right"><b>36.56%</b></td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--sol)">솔</span></td>
+                <td style="text-align: right">1,909</td>
+                <td style="text-align: right">5</td>
+                <td style="text-align: right"><b style="color: var(--bad)">0.26%</b></td>
+                <td style="text-align: right">3,712</td>
+                <td style="text-align: right">373</td>
+                <td style="text-align: right">10.05%</td>
+              </tr>
+              <tr>
+                <td rowspan="2"><b>iOS</b></td>
+                <td><span class="tag">마종</span></td>
+                <td style="text-align: right">110,838</td>
+                <td style="text-align: right">36,027</td>
+                <td style="text-align: right"><b>32.50%</b></td>
+                <td style="text-align: right">59,389</td>
+                <td style="text-align: right">20,328</td>
+                <td style="text-align: right"><b>34.23%</b></td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--sol)">솔</span></td>
+                <td style="text-align: right">273</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right"><b style="color: var(--bad)">0.00%</b></td>
+                <td style="text-align: right">378</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right"><b style="color: var(--bad)">1.06%</b></td>
+              </tr>
+              <tr>
+                <td rowspan="2"><b>Windows</b></td>
+                <td><span class="tag">마종</span></td>
+                <td style="text-align: right">40,784</td>
+                <td style="text-align: right">6,453</td>
+                <td style="text-align: right">15.82%</td>
+                <td style="text-align: right">26,574</td>
+                <td style="text-align: right">3,611</td>
+                <td style="text-align: right">13.59%</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--sol)">솔</span></td>
+                <td style="text-align: right">1,256</td>
+                <td style="text-align: right">84</td>
+                <td style="text-align: right">6.69%</td>
+                <td style="text-align: right">1,336</td>
+                <td style="text-align: right">91</td>
+                <td style="text-align: right">6.81%</td>
+              </tr>
+              <tr>
+                <td rowspan="2"><b>OS X</b></td>
+                <td><span class="tag">마종</span></td>
+                <td style="text-align: right">2,984</td>
+                <td style="text-align: right">405</td>
+                <td style="text-align: right">13.57%</td>
+                <td style="text-align: right">2,246</td>
+                <td style="text-align: right">315</td>
+                <td style="text-align: right">14.02%</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--sol)">솔</span></td>
+                <td style="text-align: right">200</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right">2.00%</td>
+                <td style="text-align: right">545</td>
+                <td style="text-align: right">21</td>
+                <td style="text-align: right">3.85%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법 — 분모와 빠진 것</div>
+            <p>
+              전환율은 <b>성공 ÷ 시도</b>입니다. <code>USER_INPUT</code>(유저 거절) 외의 실패
+              (<code>PENDING_REQUEST</code>, <code>NETWORK_FAILURE</code> 등)도 분모에 들어갑니다.
+              쿼리 용량을 줄이려고 <code>data</code> 컬럼을 참조하지 않아 <b>실패 사유 분리는 이번 실행에 없습니다</b>.
+              별도 실행(국가 무필터)에서 <b>Android 생성 실패의 73%가 <code>USER_INPUT</code></b>
+              (3,441 / 4,692)으로 확인됐습니다 — <b>다이얼로그는 열립니다</b>.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">iOS 0건은 "인기 없음"이 아니다</div>
+            <p>
+              <b>273번 시도해서 0번 성공</b>입니다. 참값이 3%만 돼도 273회 전패 확률은 약 0.02%입니다.
+              유저 취향으로 설명되는 숫자가 아니라 <b>기능이 성립하지 않는다</b>고 봐야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">통제되지 않은 것</div>
+            <p>
+              테이블에 <code>app</code> 컬럼이 없어 <b>prod/dev 트래픽 분리가 불가능</b>합니다.
+              데스크톱 쪽은 소수 계정 편중도 있습니다(Windows 유저-일 로그수 p50 231 / p99 8,182).
+              다만 Windows는 어차피 마종보다 낮게 나와 결론 방향을 바꾸지 않습니다.
+              <code>(null)</code> OS 버킷(로그인 직후 이탈한 초단기 세션)은 표에서 뺐습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 왜 방향인가: 데이터가 방향 가설과 어떻게 맞물리는지 -->
+      <section class="doc-section" id="why">
+        <h2 class="doc-h2">
+          왜 방향인가
+          <span class="doc-h2-sub">세 겹으로 맞는다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 20%">환경</th>
+                <th style="width: 16%">세로 공간</th>
+                <th>생성 <span class="tag">큰 다이얼로그</span></th>
+                <th>공유 <span class="tag">작은 다이얼로그</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Windows 데스크톱</td>
+                <td>넉넉</td>
+                <td><span class="pill" style="--acc: var(--ok)">정상</span> 6.69%</td>
+                <td><span class="pill" style="--acc: var(--ok)">정상</span> 6.81%</td>
+              </tr>
+              <tr>
+                <td>Android 모바일 가로</td>
+                <td>~360px</td>
+                <td><span class="pill" style="--acc: var(--bad)">붕괴</span> 0.26%</td>
+                <td><span class="pill" style="--acc: var(--ok)">정상</span> 10.05%</td>
+              </tr>
+              <tr>
+                <td>iOS 모바일 가로</td>
+                <td>~360px</td>
+                <td><span class="pill" style="--acc: var(--bad)">붕괴</span> 0.00%</td>
+                <td><span class="pill" style="--acc: var(--bad)">붕괴</span> 1.06%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">① 메커니즘은 "가로"가 아니라 "세로 공간 부족"</div>
+            <p>
+              Windows도 가로인데 정상 작동합니다. 화면이 크기 때문입니다.
+              모바일 가로에서만 0으로 수렴한다는 건 <b>방향 자체가 아니라 방향이 만들어내는
+              세로 공간(~360px)</b>이 원인이라는 뜻이고, 데스크톱이 멀쩡한 이유까지 함께 설명합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">② 큰 다이얼로그만 죽는다</div>
+            <p>
+              Android는 같은 화면·같은 세션에서 생성 0.26% / 공유 10.05%입니다.
+              채널 특성 차이가 아닙니다 — <b>마종은 두 채널이 33.67% / 36.56%로 거의 같습니다.</b>
+              우리만 두 채널이 40배 벌어지는데, 그 두 다이얼로그의 차이는 <b>크기</b>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">③ 열린다. 열린 다음 전원이 닫는다</div>
+            <p>
+              Android 생성 실패의 <b>73%가 <code>USER_INPUT</code></b>입니다.
+              미개시(<code>PENDING_REQUEST</code> 등)가 아니라 <b>열고 나서 못 누르는</b> 신호이고,
+              "확인 버튼이 화면 밖으로 밀린다"와 정확히 일치합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">④ 코드에 이미 흔적이 있다 — 다만 계측은 없다</div>
+            <p>
+              <code>main.js:356-378</code>에 <b>우리에게만</b> 있는 코드가 있습니다 —
+              <code>screen.orientation.lock('landscape')</code>를 <code>visibilitychange</code>마다 다시 겁니다.
+              주석이 <b>"Re-lock orientation when returning from FB SDK popups"</b>입니다.
+              누군가 이미 <b>FB 팝업 왕복에서 방향 잠금이 풀리는 것을 관측</b>했다는 뜻입니다.
+              다만 <code>.catch(function(){})</code>로 삼켜서 <b>이 lock이 성공하는지조차 로그에 없습니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 규모: 의사결정에 필요한 크기 -->
+      <section class="doc-section" id="scale">
+        <h2 class="doc-h2">
+          규모
+          <span class="doc-h2-sub">고쳤을 때 얼마나 되돌아오는가</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">57.5<span class="stat-unit">%</span></div>
+            <div class="stat-name">모바일이 차지하는 생성 시도</div>
+            <div class="stat-sub">3,792 중 2,182</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">5.2<span class="stat-unit">%</span></div>
+            <div class="stat-name">거기서 나온 성공 비중</div>
+            <div class="stat-sub">97건 중 5건</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">8.5<span class="stat-unit">배</span></div>
+            <div class="stat-name">생성 성공 회복 여력</div>
+            <div class="stat-sub">97 → 약 820건</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">4<span class="stat-unit">배</span></div>
+            <div class="stat-name">총 바이럴 회복 여력</div>
+            <div class="stat-sub">603 → 약 2,400건</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 추정의 전제</div>
+            <p>
+              <b>모바일 전환율만 마종 수준(생성 33%·공유 36%)으로 오르고 시도 수는 그대로</b>라고 뒀을 때의
+              산술입니다. 데스크톱은 현재값 유지로 계산했습니다.
+              <b>상한 추정이고 실현치가 아닙니다</b> — 원인이 방향이 맞는지, 방향을 바꿨을 때
+              실제로 회복되는지는 아직 확인되지 않았습니다.
+              시도의 절반 이상이 <b>성과 0인 환경에서 소모되고 있다</b>는 것이 이 절의 요지입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="open">
+        <h2 class="doc-h2">
+          남은 것
+          <span class="doc-h2-sub">확정 수단과 순서</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 8%">순서</th>
+                <th style="width: 28%">할 일</th>
+                <th style="width: 12%">비용</th>
+                <th>무엇이 갈리는가</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill" style="--acc: var(--bad)">1</span></td>
+                <td><b>실기 녹화</b> — Android FB 앱에서 클리어 → 토너 생성 다이얼로그</td>
+                <td>30분 · 배포 0회</td>
+                <td>
+                  <b>확인 버튼이 화면 안에 있는가.</b> 없으면 방향 확정, 있으면 방향 기각하고
+                  노출 타이밍 쪽으로 넘어간다. 라이브 빌드로 그냥 하면 된다
+                </td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--warn)">2</span></td>
+                <td>FB <b>App Dashboard</b>의 orientation 값 확인</td>
+                <td>5분</td>
+                <td>번들 설정과 불일치하면 그 자체가 버그다. 대시보드·번들 둘 다 맞춰야 하는 실사례가 있다</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--warn)">3</span></td>
+                <td>번들만 <b>PORTRAIT</b>로 바꿨을 때 다이얼로그가 세로로 뜨는지</td>
+                <td>빌드 1회</td>
+                <td>
+                  된다면 <b>프리팹 188개를 안 건드리고</b> 다이얼로그만 세로화할 수 있다.
+                  안 되면 전면 세로 포팅 외에 방법이 없다 — <b>미확인</b>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--text-dim)">4</span></td>
+                <td><code>screen.orientation.lock()</code> 성공/실패 로깅</td>
+                <td>1줄 · 배포 1사이클</td>
+                <td>이중 방향 강제 중 클라 쪽이 실효가 있는지. 지금은 <code>.catch</code>로 삼켜서 알 수 없다</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--text-dim)">5</span></td>
+                <td>데스크톱 2.4배 격차 별건 조사</td>
+                <td>—</td>
+                <td>방향으로 설명되지 않는 요인이 하나 더 있다. 위가 끝난 뒤에 본다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">지금 코드를 고치면 안 되는 이유</div>
+            <p>
+              확정된 로깅 버그가 두 건 있습니다
+              (<code>NETWORK_FAILURE</code> 복구 경로의 3110 누락, <code>switchToContextSolo</code> 30초 회귀).
+              <b>둘 다 지표를 올리는 방향</b>이라 지금 넣으면 이후 개선이
+              "방향 수정 효과"인지 "로그 정정 효과"인지 다시 못 가릅니다.
+              <b>1·2번을 끝내고 넣는 것이 안전합니다.</b>
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> BigQuery 실측은 US · 2026-08-10~08-16 · 솔 <code>client_version ≥ 438</code>
+          (그 이하는 로그 오염 구간이라 제외). 코드 실측은 각 리포 <code>main</code> 브랜치 기준.
+          <b>방향이 원인이라는 것은 데이터 정합이지 관측이 아닙니다</b> — 실기 확인 전까지는 가설입니다.
+          FB 공식 문서에는 가로 락에서 다이얼로그가 어떻게 렌더되는지에 대한 서술이 <b>없고</b>,
+          portrait/landscape와 바이럴 성과를 연결한 공개 자료도 <b>찾지 못했습니다</b>.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
