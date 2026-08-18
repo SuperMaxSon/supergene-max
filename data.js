@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-19 08:52",
+  updated: "2026-08-19 08:55",
 };
 
 const SECTIONS = [
@@ -43,11 +43,11 @@ const SECTIONS = [
       },
       {
         title: "공유 · 메시지 — 왜 실패하나",
-        desc: "축3 · 컨텍스트/공유. 피드공유 실패의 81%가 유저 취소가 아니라 PENDING_REQUEST(호출 충돌). 메시지는 전환을 더 많이 하는데 그 94.6%가 토너로 가고 친구는 5.4%뿐.",
+        desc: "축3 · 컨텍스트/공유. 피드공유 실패의 81%가 유저 취소가 아니라 PENDING_REQUEST(호출 충돌). 겹치는 호출이 무엇인지는 후보 4개이고, v5.0에 원인으로 적었던 3건은 grep 필터가 증거를 지운 오판이라 전수 재확인 후 철회했다. 메시지는 전환을 더 많이 하는데 그 94.6%가 토너로 가고 친구는 5.4%뿐.",
         url: "docs/viral-surface-cross-project.html",
         status: "진행중",
-        version: "v5.0",
-        updated: "2026-08-19 08:45",
+        version: "v5.2",
+        updated: "2026-08-19 08:55",
         pinned: false,
         tags: ["축3", "공유", "메시지", "PENDING_REQUEST", "퍼널"],
       },
@@ -73,11 +73,11 @@ const SECTIONS = [
       },
       {
         title: "5프로젝트 소셜 코드 대조표",
-        desc: "축3 · 레퍼런스. 공유 호출 · 지면과 게이트 · 로그를 5개 프로젝트 코드로 나란히 대조한 28행. 수치가 아니라 코드가 바뀔 때만 갱신한다.",
+        desc: "축3 · 레퍼런스. 공유 호출 · 지면과 게이트 · 로그를 5개 프로젝트 코드로 나란히 대조한 28행. 2026-08-19 세 줄 정정(getPlayersAsync는 5종 모두 사용 · 코지 거절 억제는 호출부 0 · 코지 P2P 재시도는 주석). 수치가 아니라 코드가 바뀔 때만 갱신한다.",
         url: "docs/social-code-matrix.html",
         status: "완료",
         version: "v1.1",
-        updated: "2026-08-19 08:45",
+        updated: "2026-08-19 08:55",
         pinned: false,
         tags: ["축3", "레퍼런스", "코드대조", "5프로젝트"],
       },
