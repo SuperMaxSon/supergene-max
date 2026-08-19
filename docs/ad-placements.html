@@ -40,7 +40,7 @@
           <span class="tag">솔리테어는 A빌드(const.json) 기준</span>
         </div>
         <div class="note" style="--acc: var(--sol); margin-top: 14px">
-          <div class="note-title" style="color: var(--sol)">갱신 2026-08-19 11:34</div>
+          <div class="note-title" style="color: var(--sol)">갱신 2026-08-19 12:05</div>
           <p style="margin-bottom: 6px">
             제안했던 <strong>지면 4개(럭키휠 · 방치 골드 · 앨범 완성 · 데코 완성)가
             2026-08-14 배포</strong>됐습니다(커밋 <code>86b3384d</code>, 14:54 KST).
@@ -217,8 +217,167 @@
           </p>
         </div>
 
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title" style="color: var(--bad)">지면 4개 추가로 개선된 KPI는 없습니다 — 순증 6명</div>
+          <p>
+            지면 추가의 올바른 판정 지표는 판당 노출이나 도달률이 아니라
+            <b>그 지면이 없었으면 광고를 못 봤을 유저 수(incremental reach)</b>입니다.
+            08-15~18 창으로 측정한 결과:
+          </p>
+          <div class="table-scroll" style="margin: 10px 0 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>구분</th>
+                  <th style="text-align: right">유저</th>
+                  <th style="text-align: right">비중</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>광고 노출 유저 (4일 누적 unique)</td>
+                  <td class="num">725</td>
+                  <td class="num">100%</td>
+                </tr>
+                <tr>
+                  <td>신규 4지면을 터치한 유저</td>
+                  <td class="num">66</td>
+                  <td class="num">9.1%</td>
+                </tr>
+                <tr>
+                  <td><b>신규 지면 없었으면 광고를 못 봤을 유저</b></td>
+                  <td class="num"><b>6</b></td>
+                  <td class="num"><span style="color: var(--bad)"><b>0.83%</b></span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 10px">
+            <b>66명 중 60명(91%)은 이미 기존 지면으로 광고를 보던 유저</b>입니다.
+            신규 지면은 새 유저층을 발굴한 것이 아니라
+            <b>이미 보는 유저에게 한 번 더 보여준 것</b>이었습니다.
+          </p>
+          <div class="table-scroll" style="margin: 10px 0 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>지표</th>
+                  <th style="text-align: right">기여</th>
+                  <th>판정</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>도달률</td>
+                  <td class="num">+6명 / 0.83%</td>
+                  <td><span class="mx mx-bad">사실상 0 · 확정</span></td>
+                </tr>
+                <tr>
+                  <td>절대 노출량</td>
+                  <td class="num">+85건 / 0.16%</td>
+                  <td><span class="mx mx-warn">미미 · 순증일 가능성 높음</span></td>
+                </tr>
+                <tr>
+                  <td>판당 IT 노출</td>
+                  <td class="num">0.555 → 0.545</td>
+                  <td><span class="mx mx-warn">검출 불가 (노이즈)</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 10px">
+            노출량 85건은 <b>진짜 순증일 가능성이 높습니다</b> —
+            신규 4지면이 <code>ADPlayer.isIndependentSurface()</code>에 등록돼 클리어 카운터를
+            리셋하지 않아 <code>game_over</code> 잠식을 막도록 설계됐고, 일 상한도 0(검사 생략)이라
+            상한 잠식이 없습니다. 공유하는 것은 최소 간격뿐입니다. <b>이 부분은 설계가
+            제대로 됐습니다.</b>
+          </p>
+          <p style="margin-top: 8px">
+            <b>판정이 이른 부분</b> — <code>album_complete</code>(5명) ·
+            <code>city_complete</code>(15명)는 앨범·도시 완성까지 <b>수주가 걸리는 저빈도
+            이벤트</b>라 4.4일 창에서는 도달 자체가 불가능한 유저가 대부분입니다.
+            이 둘은 <b>30일 창 재측정이 필요</b>합니다. 반면
+            <code>daily_wheel</code>(45명) · <code>idle_gold</code>(77명)는 하루 단위
+            트리거라 4.4일로도 판정이 서고, <b>도달률 기여 없음이 확정</b>입니다.
+          </p>
+        </div>
+
+        <div class="note" style="--acc: var(--sol)">
+          <div class="note-title" style="color: var(--sol)">전략적 결론 — 지면을 붙여서는 도달률이 오르지 않습니다</div>
+          <p>
+            이유가 코드에 있습니다. 신규 4지면도 <code>ADPlayer.getBlockReason()</code>을
+            <b>똑같이 탑니다</b>:
+          </p>
+          <div class="table-scroll" style="margin: 10px 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>게이트</th>
+                  <th>신규 4지면 적용</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>레벨 6 미만 하드 차단</td>
+                  <td><span class="mx mx-warn">적용</span></td>
+                </tr>
+                <tr>
+                  <td><code>is_interstitial_ad_open</code> 마스터 스위치</td>
+                  <td><span class="mx mx-warn">적용</span></td>
+                </tr>
+                <tr>
+                  <td>튜토리얼 진행 중 제외</td>
+                  <td><span class="mx mx-warn">적용</span></td>
+                </tr>
+                <tr>
+                  <td><code>clear_interval</code> &gt; 0 (레벨 1~5 차단)</td>
+                  <td><span class="mx mx-warn">적용</span></td>
+                </tr>
+                <tr>
+                  <td>세션 게이트</td>
+                  <td><span class="mx mx-warn">적용</span></td>
+                </tr>
+                <tr>
+                  <td>클리어 간격 (6단계)</td>
+                  <td><span class="mx mx-ok">면제</span> <span class="why">isNonClearSurface</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            면제되는 것은 <b>클리어 간격 하나뿐</b>입니다. 즉
+            <b>광고를 못 보는 DAU 66%는 게이트에서 막힌 유저이고, 지면을 몇 개 붙여도 같은
+            게이트에서 똑같이 막힙니다.</b> 신규 지면이 도달한 66명이 전부 "이미 게이트를
+            통과하던 유저"였던 것이 그 증거입니다.
+          </p>
+          <div class="table-scroll" style="margin: 10px 0 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>도달률을 올리는 방법</th>
+                  <th style="text-align: right">효과</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>지면 추가</td>
+                  <td class="num"><span style="color: var(--bad)">0.83%</span> <span class="why">실측</span></td>
+                </tr>
+                <tr>
+                  <td><b>게이트 완화</b>(레벨 6 하향 · <code>clear_interval</code> 조정)</td>
+                  <td class="num"><b>미측정 — 여기가 레버</b></td>
+                </tr>
+                <tr>
+                  <td>FB 물량(<code>ADS_NO_FILL</code>) 해결</td>
+                  <td class="num">상한 +9.4pt <span class="why">33.6% → 최대 43%</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="note" style="--acc: var(--warn)">
-          <div class="note-title" style="color: var(--warn)">지면 4개 추가 — 일자별로도 효과가 잡히지 않습니다</div>
+          <div class="note-title" style="color: var(--warn)">일자별 추이 — 배포일 이후 점프가 없습니다</div>
           <div class="table-scroll" style="margin: 6px 0 0">
             <table>
               <thead>
