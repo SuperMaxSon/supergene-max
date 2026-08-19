@@ -40,7 +40,7 @@
           <span class="tag">솔리테어는 A빌드(const.json) 기준</span>
         </div>
         <div class="note" style="--acc: var(--sol); margin-top: 14px">
-          <div class="note-title" style="color: var(--sol)">갱신 2026-08-19 10:41</div>
+          <div class="note-title" style="color: var(--sol)">갱신 2026-08-19 11:08</div>
           <p style="margin-bottom: 6px">
             제안했던 <strong>지면 4개(럭키휠 · 방치 골드 · 앨범 완성 · 데코 완성)가
             2026-08-14 배포</strong>됐습니다(커밋 <code>86b3384d</code>, 14:54 KST).
@@ -82,6 +82,76 @@
     </header>
 
     <main class="wrap wrap--wide">
+      <!-- ================= 핵심 결론 ================= -->
+      <section class="doc-section" id="conclusion">
+        <h2 class="doc-h2">핵심 결론 — 지면이 부족한 게 아닙니다</h2>
+        <p class="doc-h2-sub">
+          아래 전체 분석의 결론만 먼저 씁니다. 근거는 각 섹션에 있습니다.
+        </p>
+
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title" style="color: var(--bad)">문제 1 — FB가 유저 26%에게 광고를 주지 않습니다</div>
+          <p>
+            노출 단계 실패 17,509건의 <b>67%가 <code>ADS_NO_FILL</code></b>(FB가 "붙일 광고 없다"고
+            거절)이고, 그 실패가 <b>382명 — 도달 유저 1,451명의 26%에 집중</b>돼 있습니다
+            (유저당 22.3회). <code>ADPlayer.commitShown()</code>이 노출 성공 시에만
+            <code>lastAdTime</code>을 갱신하므로 <b>이 유저들은 벗어나지 못하고 매 클리어마다
+            실패만 반복</b>합니다. 국가별 프리로드 성공률이 AU 27.8% ~ BR 96.6%로 갈리는데
+            클라 코드는 전 국가 동일합니다 — <b>우리 코드가 원인이 아닙니다</b>.
+          </p>
+        </div>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title" style="color: var(--warn)">문제 2 — 그 사실을 볼 지표가 없었습니다</div>
+          <div class="table-scroll" style="margin: 6px 0 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>지금까지 한 일</th>
+                  <th>결과</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>지면 4개 추가 (2026-08-14)</td>
+                  <td>노출 기여 <b>0.16%</b> (85회 / 4.4일)</td>
+                </tr>
+                <tr>
+                  <td>노출률 추적</td>
+                  <td>게이트 위치로 <b>20pt 움직이는</b> 지표. 목표로 쓸 수 없음</td>
+                </tr>
+                <tr>
+                  <td>클라에서 고칠 수 있는 것 전부</td>
+                  <td>노출률 +1.5~2.5pt, <b>노출량 증가 0</b></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 10px">
+            정작 <b>"유저 26%가 광고를 한 번도 못 본다"</b>는 사실은 어느 지표에도 안 잡혔습니다 —
+            노출률에는 평균만 깎는 형태로 섞이고, 절대 노출량에는 아예 나타나지 않습니다.
+            <b>도달률을 보지 않았기 때문</b>입니다.
+          </p>
+        </div>
+
+        <div class="note" style="--acc: var(--ok)">
+          <div class="note-title" style="color: var(--ok)">할 일 3개</div>
+          <p>
+            <b>① FB 쪽 확인 (유일한 실질 레버)</b> — Audience Network에서 국가별 fill rate 대조.
+            AU 27.8%가 정상인지. 클라 로그로는 여기서 끝입니다.<br />
+            <b>② 지표 교체</b> — 집계 노출률을 KPI에서 빼고
+            <b>도달률(노출 1회 이상 유저 / DAU)</b> · 판당 IT 노출 · IT 매출로.
+            노출률은 알람·진단용으로만 남깁니다.<br />
+            <b>③ 지면 추가 방향 재고</b> — 4개 붙여 0.16%였습니다. 지면 수가 아니라
+            <b>광고가 안 붙는 26%</b>가 병목입니다.
+          </p>
+          <p style="margin-top: 8px">
+            <b>한 줄로</b> — 지면이 부족한 게 아니라, FB가 유저 4명 중 1명에게 광고를 주지 않고
+            있고 우리는 그걸 볼 지표가 없었습니다.
+          </p>
+        </div>
+      </section>
+
       <!-- ================= 지면 요약 ================= -->
       <section class="doc-section" id="summary">
         <h2 class="doc-h2">프로젝트별 전면광고 출력 조건</h2>
@@ -1088,6 +1158,105 @@
               FB Audience Network의 국가별 fill rate와 대조해야 합니다.
             </p>
           </div>
+
+          <div class="doc-meta" style="margin: 16px 0 8px">
+            <span class="tag">국가별 인트로 프리로드 성공률</span>
+            <span class="tag">요청 100건 이상</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>국가</th>
+                  <th style="text-align: right">유저</th>
+                  <th style="text-align: right">성공률</th>
+                  <th style="text-align: right">NO_FILL 비중</th>
+                  <th style="text-align: right">NO_FILL 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="slot">AU</td>
+                  <td class="num">63</td>
+                  <td class="num"><span style="color: var(--bad)">27.8%</span></td>
+                  <td class="num">71.3%</td>
+                  <td class="num">244</td>
+                </tr>
+                <tr>
+                  <td class="slot">ZA</td>
+                  <td class="num">46</td>
+                  <td class="num"><span style="color: var(--bad)">44.8%</span></td>
+                  <td class="num">20.8%</td>
+                  <td class="num">38</td>
+                </tr>
+                <tr>
+                  <td class="slot">FR</td>
+                  <td class="num">340</td>
+                  <td class="num"><span style="color: var(--bad)">47.5%</span></td>
+                  <td class="num">45.8%</td>
+                  <td class="num">748</td>
+                </tr>
+                <tr>
+                  <td class="slot">GB</td>
+                  <td class="num">231</td>
+                  <td class="num"><span style="color: var(--warn)">55.0%</span></td>
+                  <td class="num">42.9%</td>
+                  <td class="num">494</td>
+                </tr>
+                <tr>
+                  <td class="slot">DE</td>
+                  <td class="num">284</td>
+                  <td class="num"><span style="color: var(--warn)">58.0%</span></td>
+                  <td class="num">37.2%</td>
+                  <td class="num">397</td>
+                </tr>
+                <tr>
+                  <td class="slot">CA</td>
+                  <td class="num">358</td>
+                  <td class="num"><span style="color: var(--warn)">61.4%</span></td>
+                  <td class="num">37.8%</td>
+                  <td class="num">611</td>
+                </tr>
+                <tr>
+                  <td class="slot">US</td>
+                  <td class="num">1,538</td>
+                  <td class="num"><span style="color: var(--warn)">67.1%</span></td>
+                  <td class="num">29.2%</td>
+                  <td class="num"><b>1,660</b></td>
+                </tr>
+                <tr>
+                  <td class="slot">PH</td>
+                  <td class="num">218</td>
+                  <td class="num"><span style="color: var(--ok)">80.8%</span></td>
+                  <td class="num">6.6%</td>
+                  <td class="num">26</td>
+                </tr>
+                <tr>
+                  <td class="slot">PL</td>
+                  <td class="num">36</td>
+                  <td class="num"><span style="color: var(--ok)">91.1%</span></td>
+                  <td class="num">8.9%</td>
+                  <td class="num">23</td>
+                </tr>
+                <tr>
+                  <td class="slot">BR</td>
+                  <td class="num">62</td>
+                  <td class="num"><span style="color: var(--ok)">96.6%</span></td>
+                  <td class="num">3.4%</td>
+                  <td class="num">5</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="why" style="margin-top: 8px">
+            <b>영어권 6개국(AU · ZA · GB · CA · IN · US)이 전부 27.8~67.1%</b> 구간이고,
+            BR · PL · SE · AR · PH가 80~97%입니다. 광고 단가가 높은 시장에서 fill이 더 안 되는
+            건 상식과 반대입니다. 절대 손실은 <b>US 1,660 · FR 748 · CA 611 · GB 494 ·
+            DE 397 = NO_FILL의 76.5%가 서구 5개국</b>에 몰려 있습니다.<br />
+            <b>확인 필요</b> — AU 27.8%는 63명 342건 모수라 이상치 가능성이 있어 창을 늘려
+            재확인해야 합니다. KR은 유저 13명에 요청 667건(유저당 51회)으로 내부 테스터가
+            의심돼 표에서 제외했습니다.
+          </p>
 
           <!-- ===== 노출 단계 실패 분해 (4020) ===== -->
           <div class="doc-meta" style="margin: 20px 0 8px">
