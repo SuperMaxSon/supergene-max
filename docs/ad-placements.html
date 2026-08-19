@@ -40,7 +40,7 @@
           <span class="tag">솔리테어는 A빌드(const.json) 기준</span>
         </div>
         <div class="note" style="--acc: var(--sol); margin-top: 14px">
-          <div class="note-title" style="color: var(--sol)">갱신 2026-08-19 09:35</div>
+          <div class="note-title" style="color: var(--sol)">갱신 2026-08-19 10:12</div>
           <p style="margin-bottom: 6px">
             제안했던 <strong>지면 4개(럭키휠 · 방치 골드 · 앨범 완성 · 데코 완성)가
             2026-08-14 배포</strong>됐습니다(커밋 <code>86b3384d</code>, 14:54 KST).
@@ -63,6 +63,13 @@
             SPEC-035 개정 노트가 "완주율 60%대로 하락할 수 있다"고 미리 적어둔 구간입니다.
             이에 맞춰 본문·각주에 남아 있던 <b>"프리로드 재고 동일 적용"</b> 서술도
             걷어냈습니다(8/10부터 사실이 아님).
+          </p>
+          <p style="margin-bottom: 6px">
+            <b>노출률 하락의 근본 원인은 클라가 아닙니다</b> — 인트로 프리로드 실패의
+            <strong>87%가 <code>ADS_NO_FILL</code></strong>(FB 광고 물량 부족)이고,
+            프리로드 성공률은 <strong>65.7%</strong>입니다. 지면별 격차도 지면 문제가
+            아니라 <b>믹스 효과(85%)</b>였습니다.
+            <a href="#share-latest" style="color: var(--sol); font-weight: 700">↓ 원인 분해</a>
           </p>
           <p style="margin-top: 6px">
             이전 갱신(08-14 09:57): 솔리테어 15일 창 재집계 ·
@@ -959,16 +966,139 @@
             <b>노출률 하락은 예고된 것</b> — SPEC-035 개정 노트(<code>80500828</code>)가
             "실패 집계 위치가 프리로드 단계에서 노출 단계로 이동해 4020이 늘고 완주율은
             60%대로 하락할 수 있다"고 미리 적어뒀고, 실측이 그 구간에 들어왔습니다
-            (전체 74.0%, <code>switch_cancel</code> 59.6%). 다만 <b>원인 확정은
-            아직입니다</b> — <code>4020</code>의 <code>error_code</code>를 분해해
-            <code>ADS_NOT_LOADED</code> 비중을 봐야 확정됩니다.<br />
+            (전체 74.0%, <code>switch_cancel</code> 59.6%). 근본 원인은 아래
+            <b>노출률을 가르는 것</b>에서 확정했습니다 — <b>클라 문제가 아닙니다</b>.<br />
             <b>확인 필요</b> ① 신규 4지면은 08-14 14:54 배포라 유효 창이 <b>4.4일</b>뿐입니다
             — 비중이 구조적으로 과소 집계됩니다. ② 럭키휠 41.3%는 시도 46회 모수라
             <b>통계적 의미가 없습니다</b>. ③ 시도 71,478 중 노출(52,868)과 실패(17,536)를
             뺀 <b>1,074회(1.5%)</b>는 <code>4000</code> 이후 <code>4010</code>/<code>4020</code>이
             둘 다 없는 건입니다 — 세션 종료·로그 유실 어느 쪽인지 미확인. ④ 노출량 2.4배에
             <b>DAU 증가분이 섞여</b> 있습니다 — 판당 노출·유저당 노출로 분리해야 합니다.
-            ⑤ <code>app</code> 컬럼이 테이블에 없어 <b>prod/dev 분리가 불가</b>합니다.
+            ⑤ <code>app</code> 컬럼이 테이블에 없어 <b>prod/dev 분리가 불가</b>합니다 —
+            KR이 유저 13명에 프리로드 요청 667건(유저당 51회)으로 잡히는 게 그 실증입니다.
+          </p>
+
+          <!-- ===== 노출률 원인 분해 ===== -->
+          <div class="doc-meta" style="margin: 20px 0 8px">
+            <span class="tag">노출률을 가르는 것 — 원인 분해</span>
+            <span class="tag">기존 4지면 · 같은 창</span>
+          </div>
+
+          <p class="why" style="margin: 0 0 10px">
+            <b>지면이 원인이 아니었습니다.</b> <code>since_last_sec</code>(직전 광고 이후
+            경과 초, <code>ADPlayer.buildJudgeLogData</code>가 4000·4010·4020에 함께 싣는
+            필드)로 갈라보면 4개 지면이 <b>전부 같은 모양</b>입니다.
+          </p>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>직전 광고 이후 경과</th>
+                  <th style="text-align: right">시도</th>
+                  <th style="text-align: right">실노출</th>
+                  <th style="text-align: right">노출률</th>
+                  <th style="text-align: right">전체 손실 중 비중</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="node">
+                    광고 이력 없음<span class="slotname">lastAdTime = 0</span>
+                  </td>
+                  <td class="num">21,134</td>
+                  <td class="num">5,589</td>
+                  <td class="num"><span style="color: var(--bad)">26.4%</span></td>
+                  <td class="num"><span style="color: var(--bad)">83.8%</span></td>
+                </tr>
+                <tr>
+                  <td class="node">~60초</td>
+                  <td class="num">13,671</td>
+                  <td class="num">13,343</td>
+                  <td class="num"><span style="color: var(--ok)">97.6%</span></td>
+                  <td class="num">1.8%</td>
+                </tr>
+                <tr>
+                  <td class="node">60~180초</td>
+                  <td class="num">30,141</td>
+                  <td class="num">29,181</td>
+                  <td class="num"><span style="color: var(--ok)">96.8%</span></td>
+                  <td class="num">5.2%</td>
+                </tr>
+                <tr>
+                  <td class="node">180~600초</td>
+                  <td class="num">4,426</td>
+                  <td class="num">3,893</td>
+                  <td class="num">88.0%</td>
+                  <td class="num">2.9%</td>
+                </tr>
+                <tr>
+                  <td class="node">600초 초과</td>
+                  <td class="num">1,958</td>
+                  <td class="num">777</td>
+                  <td class="num"><span style="color: var(--bad)">39.7%</span></td>
+                  <td class="num">6.4%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="why" style="margin-top: 10px">
+            <b>지면별 격차의 85%는 믹스 효과입니다(심프슨 역설).</b>
+            <code>lastAdTime=0</code> 비중이 <code>switch_cancel</code> 45.1% vs
+            <code>game_over</code> 26.6%로 크게 다릅니다. 버킷 안에서 보면 두 지면은
+            사실상 같습니다(60~180초: 95.7% vs 97.0%). 믹스를 서로 바꿔 표준화하면
+            <code>switch_cancel</code>은 <b>74.5%</b>(game_over 실제 76.5%),
+            <code>game_over</code>는 <b>62.1%</b>(switch_cancel 실제 59.6%)가 되어
+            16.9pt 격차 중 약 <b>14.4pt가 설명</b>됩니다. 즉
+            <b>"전환 거절 지면이 유독 나쁘다"는 해석은 틀렸습니다</b> — 그 지면에
+            실패 유저의 시도가 더 많이 쌓이는 것입니다(판 시작마다 트리거되므로).
+          </p>
+
+          <div class="note" style="--acc: var(--bad); margin-top: 14px">
+            <div class="note-title" style="color: var(--bad)">근본 원인 — FB 광고 물량 부족(ADS_NO_FILL), 클라 문제 아님</div>
+            <p>
+              인트로 프리로드(<code>BaseIntro.ts:1362</code> →
+              <code>preloadADs()</code>)의 성공률이 <b>65.7%</b>(성공 11,271 / 실패 5,874)이고,
+              실패의 <b>87.0%가 <code>ADS_NO_FILL</code></b>(5,109건 · 1,391명)입니다.
+              나머지는 <code>ADS_FREQUENT_LOAD</code> 459 ·
+              <code>CLIENT_UNSUPPORTED_OPERATION</code> 179 · <code>UNKNOWN</code> 103 ·
+              <code>NETWORK_FAILURE</code> 24.
+              <b><code>ADS_NO_FILL</code>은 FB가 "붙일 광고가 없다"고 응답한 것</b>이라
+              프리로드 타이밍 · 게이트 순서 · 재고 관리로 고칠 수 있는 문제가 아닙니다.
+            </p>
+            <p style="margin-top: 8px">
+              <code>lastAdTime=0</code> 버킷이 26.4%인 이유도 이것으로 설명됩니다.
+              <code>ADPlayer.commitShown()</code>은 <b>노출 성공 시에만</b>
+              <code>lastAdTime</code>을 갱신하므로, 광고가 안 붙는 유저는 그 버킷에서
+              나오지 못하고 실패만 누적합니다(<code>game_over</code>의 해당 버킷은
+              유저 1,451명에 시도 15,366건 = 유저당 10.6회). 즉 이 버킷은
+              <b>시점 구간이 아니라 "광고가 안 붙는 유저" 세그먼트</b>입니다.
+              <b>확인 필요</b> — 자기강화 루프 자체는 버킷별 유저 수 집계로 확정해야 합니다.
+            </p>
+            <p style="margin-top: 8px">
+              <b>국가별로 갈리는데 방향이 상식과 반대입니다.</b> 프리로드 성공률이
+              AU 27.8% · FR 47.5% · GB 55.0% · DE 58.0% · CA 61.4% · US 67.1%인데,
+              BR 96.6% · PL 91.1% · SE 90.3% · PH 80.8%입니다. <b>영어권 고단가 시장이
+              오히려 나쁘고</b>, 절대 손실도 US 1,660 · FR 748 · CA 611 · GB 494 ·
+              DE 397 = <b>NO_FILL의 76.5%가 서구 5개국</b>에 몰려 있습니다.
+              eCPM · 요청 빈도 · 지역 가설 모두 데이터로 반증됐고(SE는 유저당 20.6회
+              요청에 90.3%, IN은 1.7회에 64.5%), <b>클라 로그로는 더 좁힐 수 없습니다</b> —
+              FB Audience Network의 국가별 fill rate와 대조해야 합니다.
+            </p>
+          </div>
+
+          <p class="why" style="margin-top: 10px">
+            <b>그래서 노출률은 개선 KPI가 아닙니다.</b> 74%는 FB 인벤토리 상태를 재는
+            숫자이고 클라 작업으로 움직이지 않습니다. SPEC-035가 "판정 지표는 완주율이 아니라
+            <b>절대 노출량 · 판당 IT 노출 · IT 매출</b>"이라고 못 박아둔 게 맞았습니다.
+            클라에서 회수 가능한 몫은 <code>ADS_FREQUENT_LOAD</code> 459건(51명)과
+            <code>CLIENT_UNSUPPORTED_OPERATION</code> 179건(70명) 정도로,
+            총 노출 대비 1% 미만입니다.<br />
+            <b>계측 구멍</b> — 재생 직후 재프리로드(<code>tryShowInterstitialAD</code> 콜백의
+            <code>loadIntersticial()</code>, <code>{type: 지면}</code>으로 4080/4090 발화)
+            로그가 <b>0건</b>입니다. 60초 이내 노출률이 97.6%니 재고는 실제로 채워지고 있어
+            <b>동작이 아니라 로그가 비어 있는 것</b>으로 보이지만, 원인 미확인입니다.
           </p>
 
         </div>
