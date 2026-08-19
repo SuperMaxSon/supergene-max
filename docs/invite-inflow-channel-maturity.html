@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>토너 초대 — 시도는 2배, 유입률은 절반</title>
+    <meta
+      name="description"
+      content="토너 초대 시도/DAU가 퍼블마의 2배인데 시도당 유입은 절반인 이유. 발신 구현은 코드·성공률 모두 동일해서 기각됐고, 남은 가설은 친구 그래프 성숙도다. 그 가설을 확정하려면 어떤 데이터가 더 필요한지까지 정리한다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#sum">결론</a>
+        <a class="nav-back" href="#settled">① 확정된 것</a>
+        <a class="nav-back" href="#hypo">② 남은 가설</a>
+        <a class="nav-back" href="#need">③ 필요한 데이터</a>
+        <a class="nav-back" href="#counter">④ 경쟁 가설</a>
+        <a class="nav-back" href="#open">⑤ 미해결</a>
+        <a class="nav-back" href="#sql">쿼리</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 바이럴</div>
+        <h1 class="doc-title">토너 초대 — 시도는 2배, 유입률은 절반</h1>
+        <p class="doc-lede">
+          토너 초대 시도/DAU가 <b>1.79</b>로 퍼블마(<b>0.896</b>)의 정확히 2배입니다.
+          그런데 시도당 유입은 <b>1.14% vs 2.55%</b>로 절반입니다.
+          "노출을 과하게 태우고 산출은 못 얻는다"로 읽히지만,
+          <b>발신 구현은 코드도 성공률도 퍼블마와 같다는 것이 확인</b>돼서 품질 결함 가설은 기각됐습니다.
+          남은 가설은 <b>친구 그래프 성숙도(채널 나이)</b> 하나이고, 지금 근거는 하루치 표본뿐입니다.<br />
+          이 문서는 <b>확정된 사실과 아직 가설인 것을 분리</b>하고,
+          그 가설을 확정하거나 깨려면 <b>어떤 데이터를 더 뽑아야 하는지</b>를 판정 기준까지 붙여 정리합니다.
+          <b>액션 문서가 아닙니다</b> — 노출을 줄일지 말지는 ③이 채워진 뒤에 결정합니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--warn)">가설 검증 중 · 표본 하루치</span>
+          <span class="tag">BigQuery 실측 2026-08-16 · 구간 지표 8/14~17(#450)</span>
+          <span class="tag">코드 실측: solitaire-tripeaks · block-blast(퍼블마) main</span>
+          <span class="tag">v1.0 · 2026-08-19 09:54 작성</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="sum">
+        <h2 class="doc-h2">
+          결론
+          <span class="doc-h2-sub">확정 3 · 가설 1</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">2.0<span class="stat-unit">배</span></div>
+            <div class="stat-name">초대 시도/DAU</div>
+            <div class="stat-sub">1.79 vs 퍼블마 0.896 · 확정</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">95.0<span class="stat-unit">%</span></div>
+            <div class="stat-name">초대 호출성공률</div>
+            <div class="stat-sub">퍼블마 96.7% · 발신 정상</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">1.14<span class="stat-unit">%</span></div>
+            <div class="stat-name">초대 유입률(유입÷시도)</div>
+            <div class="stat-sub">퍼블마 2.55% · 절반</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">53.3<span class="stat-unit">%</span></div>
+            <div class="stat-name">초대 유입 중 신규 비율</div>
+            <div class="stat-sub">퍼블마 21.8% · 표본 15명</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">확정 ① — 지표 정의 문제는 없습니다</div>
+            <p>
+              <code>3460</code>은 전 지면 공용 로그라 지면 혼입 의심이 있었지만,
+              퍼블마 8/16 분해 결과 <code>tournament_invite</code> 11,202 · <code>invite_mail</code> 18 ·
+              <code>invite_leaderboard</code> 1이었고 <b>11,202가 41 통합 페이지 값과 정확히 일치</b>합니다.
+              양쪽 모두 <code>position</code>을 enum <b>이름 문자열</b>로 기록하므로 필터도 동일하게 걸립니다.
+              → 2.0배는 측정 아티팩트가 아닙니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">확정 ② — 판을 많이 깨서 생긴 격차도 아닙니다</div>
+            <p>
+              판수/유저-일은 <b>우리 11.6 vs 퍼블마 12.4</b>로 <b>퍼블마가 더 많습니다.</b>
+              격차는 전부 판당 발화율입니다 — 소셜 슬롯 <b>판당 0.315 vs 0.139</b>(2.3배).
+              원인은 발화 트리거 범위입니다: 우리는 <b>모든 판 클리어 × 클리어 시점 컨텍스트</b>,
+              퍼블마는 <b>토너 배틀 상대 격파 × 판 시작 시점 토너 컨텍스트</b>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">확정 ③ — 발신 품질은 퍼블마와 같습니다</div>
+            <p>
+              호출성공률 95.0% vs 96.7%(1.7%p 차)이고, 초대 페이로드 7필드·이미지 소스·문구·CTA가
+              코드 수준에서 동일합니다. <b>41 통합이 지목한 "초대 페이로드·이미지 용의"는 기각</b>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">가설 — 남은 설명은 채널 나이 하나</div>
+            <p>
+              퍼블마 초대 유입의 <b>78%가 기존 유저 재유입</b>인데 우리는 <b>절반이 신규</b>입니다.
+              퍼블마 초대는 이미 게임을 가진 친구를 다시 부르는 <b>성숙한 재유입 채널</b>이고,
+              우리 초대는 설치·튜토리얼을 거쳐야 하는 <b>획득 채널</b>이라 시도당 전환이 낮다 — 는 가설입니다.
+              <b>맞다면 유입률 1.14%는 결함이 아니라 정상이고, 노출을 깎을 근거가 약해집니다.</b>
+              단 지금 근거는 하루치 15명이라 ③의 데이터 없이는 확정할 수 없습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="settled">
+        <h2 class="doc-h2">
+          ① 확정된 것
+          <span class="doc-h2-sub">발신은 결백 — 수치와 코드 양쪽</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 34%">항목</th>
+                <th style="width: 22%; text-align: right; color: var(--sol)">솔리테어</th>
+                <th style="width: 22%; text-align: right; color: var(--pbm)">퍼블마</th>
+                <th style="width: 22%">읽는 방향</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>초대 시도/DAU</td>
+                <td style="text-align: right"><b>1.79</b></td>
+                <td style="text-align: right">0.896</td>
+                <td>우리가 2.0배</td>
+              </tr>
+              <tr>
+                <td>판수/유저-일</td>
+                <td style="text-align: right">11.6</td>
+                <td style="text-align: right"><b>12.4</b></td>
+                <td>퍼블마가 더 많음 → 판수 가설 기각</td>
+              </tr>
+              <tr>
+                <td>판당 소셜 슬롯(공유+초대)</td>
+                <td style="text-align: right"><b>0.315</b></td>
+                <td style="text-align: right">0.139</td>
+                <td>격차의 실체 = 2.3배</td>
+              </tr>
+              <tr>
+                <td>초대 호출성공률 (3470÷3460)</td>
+                <td style="text-align: right">95.0%</td>
+                <td style="text-align: right">96.7%</td>
+                <td>차이 없음 → 전송은 정상</td>
+              </tr>
+              <tr>
+                <td>초대 유입률 (유입÷시도)</td>
+                <td style="text-align: right"><b>1.14%</b></td>
+                <td style="text-align: right">2.55%</td>
+                <td>격차는 전송 이후에서 발생</td>
+              </tr>
+              <tr>
+                <td>초대 유입/DAU</td>
+                <td style="text-align: right"><b>0.020</b></td>
+                <td style="text-align: right">0.023</td>
+                <td>노출 2배인데 산출은 더 낮음</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표의 분모</div>
+            <p>
+              우리 값은 41 통합 <code>era_cmp.e3</code>(8/14~17 · #450 구간 통산), 퍼블마는
+              <code>pubma_inv</code>(8/10~19)입니다. 호출성공률만 양쪽 8/16 하루 실측입니다.
+              판수/유저-일은 41 통합의 <code>n</code>이 <b>비율의 분모</b>라는 것을 먼저 검증하고 계산했습니다 —
+              <code>sh_rate_lk</code>의 n 6,321이 <code>sh_vol</code> 1.7756 × 유저-일 3,560과 일치합니다.
+              같은 값을 <code>era_cmp</code>로 독립 계산해도 11.14로 정합합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">발신 코드 대조 — 다른 곳이 사실상 없습니다</div>
+            <p>
+              <code>entryPointData</code> 7필드(<code>player</code>/<code>feed:"INVITE"</code>/<code>social:"TOURNAMENT_INVITE"</code>/<code>timestamp</code>/<code>version</code>/<code>ad_parent</code>/<code>is_invite</code>),
+              이미지 소스(<code>loadInviteMessage()</code> — 양쪽 다 <b>전용 토너 이미지가 아니라 공용 초대 이미지</b>),
+              <code>text</code>(<code>T_P2P_INVITE_TITLE_1~3</code> 랜덤), <code>cta</code>, <code>initialData</code>가 모두 동일합니다.
+              유일한 차이는 우리 <code>inviteAsync</code>가 XML 오버레이 분기에서
+              <code>imageOverlayPath</code>/<code>pathToCSS</code>를 넣지 않는 것인데,
+              <b>초대 호출부 전부가 <code>overlayXmlFilename=null</code>이라 죽은 분기</b>입니다(지표 영향 0).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="hypo">
+        <h2 class="doc-h2">
+          ② 남은 가설 — 친구 그래프 성숙도
+          <span class="doc-h2-sub">지금 있는 근거는 하루치 하나뿐</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">2026-08-16 초대 유입</th>
+                <th style="text-align: right">유입세션</th>
+                <th style="text-align: right">유입유저</th>
+                <th style="text-align: right">그중 신규</th>
+                <th style="text-align: right">신규비율</th>
+                <th style="text-align: right">세션/유저</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="color: var(--pbm)"><b>퍼블마</b></td>
+                <td style="text-align: right">549</td>
+                <td style="text-align: right">229</td>
+                <td style="text-align: right">50</td>
+                <td style="text-align: right"><b>21.8%</b></td>
+                <td style="text-align: right">2.40</td>
+              </tr>
+              <tr>
+                <td style="color: var(--sol)"><b>솔리테어</b></td>
+                <td style="text-align: right">26</td>
+                <td style="text-align: right">15</td>
+                <td style="text-align: right">8</td>
+                <td style="text-align: right"><b>53.3%</b></td>
+                <td style="text-align: right">1.73</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 표를 이렇게 읽는 이유</div>
+            <p>
+              절대값은 DAU 규모(우리 ~900/일 vs 퍼블마 ~11,300/일)가 달라서 비교 대상이 아닙니다.
+              읽어야 하는 건 <b>구성비</b>입니다. 퍼블마는 초대로 들어온 사람의 78%가 이미 게임을 가진 유저이고,
+              하루에 <b>2.4번</b> 초대 링크로 재진입합니다 — 초대가 <b>재유입(리텐션) 채널</b>로 작동한다는 뜻입니다.
+              우리는 절반이 신규이고 재진입도 1.73번입니다 — 아직 <b>획득 채널</b>입니다.
+              획득은 설치·튜토리얼 단계가 끼기 때문에 <b>같은 발신 품질로도 시도당 전환이 낮게 나오는 것이 정상</b>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">이 근거만으로는 부족합니다</div>
+            <p>
+              우리 표본은 <b>유입유저 15명 · 신규 8명</b>입니다. 신규비율 53.3%의 신뢰구간이 ±25%p 수준이라
+              퍼블마 21.8%와의 차이는 방향만 신뢰할 수 있습니다.
+              게다가 "신규 비율이 높다"는 것은 가설의 <b>결과</b>이지 <b>원인(그래프가 얇다)의 직접 측정이 아닙니다</b>.
+              원인을 직접 재는 지표는 ③의 D1입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">가설과 어긋나 보이는 데이터도 있습니다</div>
+            <p>
+              메세지 성공/DAU는 우리 <b>0.182</b>인데 퍼블마는 <b>0.014</b>입니다 — 그래프가 얇다면서 P2P 발신은 13배입니다.
+              단 발신량은 지면 설계가 정하는 값이고, 같은 지표에서 코지 <b>0.671</b> · 마종 <b>0.517</b>과 비교하면
+              우리는 여전히 낮은 편입니다. 이 텐션은 D4(발신자 친구 수 × 전환)로 정리해야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="need">
+        <h2 class="doc-h2">
+          ③ 이 가설을 확정하려면 필요한 데이터
+          <span class="doc-h2-sub">D1이 가장 직접적 · 전부 기존 로그로 가능</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">#</th>
+                <th style="width: 26%">무엇을 보나</th>
+                <th style="width: 22%">근거 로그 · 컬럼</th>
+                <th style="width: 30%">판정 기준</th>
+                <th style="width: 16%">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>D1</b></td>
+                <td>
+                  <b>친구 수 분포</b><br />
+                  p50 · p90 · 친구 0명 비율 (우리 vs 퍼블마)
+                </td>
+                <td>
+                  <code>6000_FRIEND_COUNT</code>의 <code>friend_count</code><br />
+                  <span class="tag">양쪽 모두 보유</span>
+                </td>
+                <td>
+                  우리 p50가 퍼블마보다 유의하게 낮고 0명 비율이 높으면 <b>가설 지지</b>.
+                  비슷하면 <b>가설 붕괴</b> → 원인은 수신 경로로 이동
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">미측정</span></td>
+              </tr>
+              <tr>
+                <td><b>D2</b></td>
+                <td>초대 유입 신규:기존 <b>7일</b> 재측정</td>
+                <td><code>entrypoint_now.payload.social</code> + <code>join_time</code></td>
+                <td>7일 합산에서도 우리 신규비율이 퍼블마보다 2배 이상이면 ②의 표본 문제 해소</td>
+                <td><span class="pill" style="--acc: var(--warn)">1일치만 있음</span></td>
+              </tr>
+              <tr>
+                <td><b>D3</b></td>
+                <td>우리 초대 유입 중 <b>기존 유저 비율의 주차별 추세</b></td>
+                <td>같은 조합, <code>log_date</code> 주 단위</td>
+                <td>
+                  가설이 맞으면 <b>시간이 갈수록 기존 비율이 올라야</b> 합니다.
+                  정체하면 그래프가 안 자라는 것 → 별개 문제
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">미측정</span></td>
+              </tr>
+              <tr>
+                <td><b>D4</b></td>
+                <td>
+                  <b>발신자 친구 수 × 초대 전환</b><br />
+                  (같은 게임 안에서)
+                </td>
+                <td><code>6000</code> ⋈ <code>3460</code>/<code>3470</code> (player_id)</td>
+                <td>
+                  친구 많은 발신자의 초대가 전환이 높으면 <b>가설의 인과가 확인</b>됩니다.
+                  게임 간 비교가 아니라 게임 내 비교라 <b>규모 교란이 제거</b>됩니다
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">미측정</span></td>
+              </tr>
+              <tr>
+                <td><b>D5</b></td>
+                <td>초대 수신 신규 코호트 <b>D1 · D7 잔존</b></td>
+                <td><code>entrypoint_join.payload.social</code></td>
+                <td>
+                  잔존이 일반 신규 수준이면 <b>획득 채널로서 가치 있음</b> → 노출 유지 근거.
+                  현저히 낮으면 초대 유입이 허수
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">미측정</span></td>
+              </tr>
+              <tr>
+                <td><b>D6</b></td>
+                <td>채널 나이 대조 — 게임 규모 · 초대 지면 도입 시점</td>
+                <td>DAU, 각 리포 커밋 이력</td>
+                <td>
+                  참고값입니다. 우리 ~900 DAU vs 퍼블마 ~11,300, 퍼블마 초대 지면은 2026.2 구현.
+                  <b>단독으로는 근거가 못 됩니다</b>
+                </td>
+                <td><span class="pill" style="--acc: var(--ok)">확보</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">우선순위는 D1 → D4 → D2입니다</div>
+            <p>
+              <b>D1</b>은 가설의 원인을 직접 재는 유일한 지표이고, <code>6000_FRIEND_COUNT</code>가
+              <b>우리와 퍼블마 양쪽에 같은 이벤트·같은 필드로 이미 들어가 있어서</b>
+              (양쪽 다 인트로에서 세션당 1회) 추가 개발 없이 바로 비교됩니다.
+              <b>D4</b>는 게임 간 규모 차이를 빼고 인과를 보는 설계라 D1 다음으로 셉니다.
+              <b>D2</b>는 새 사실을 주는 게 아니라 이미 있는 관측의 표본을 키우는 일입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">용량 주의 — <code>data</code>와 <code>entrypoint_now</code>가 비용의 전부입니다</div>
+            <p>
+              BigQuery는 <b>참조 컬럼 × 스캔 파티션</b>으로 과금합니다. <code>event</code> 필터는 바이트를 줄여주지 않습니다.
+              그래서 D1(<code>data</code> 필요)과 D2·D3·D5(<code>entrypoint_*</code> 필요)는
+              <b>먼저 1일 파티션으로 모양을 보고</b> 필요할 때만 7일로 늘립니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="counter">
+        <h2 class="doc-h2">
+          ④ 경쟁 가설 — 이것들을 못 깨면 ②는 확정이 아닙니다
+          <span class="doc-h2-sub">채널 나이 말고 유입률을 반토막 낼 수 있는 경로</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 8%">#</th>
+                <th style="width: 30%">가설</th>
+                <th style="width: 34%">근거 / 의심 지점</th>
+                <th style="width: 28%">깨는 방법</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>C1</b></td>
+                <td><b>수신자 진입 실패</b> — 초대로 들어온 세션이 인트로에서 이탈</td>
+                <td>
+                  초대 페이로드의 <code>social</code>이 <code>"TOURNAMENT"</code>를 부분 포함해서
+                  <code>FacebookPlatform.ts:743</code>의 <code>getTournamentAsync()</code> 대기를 탑니다(열려 있는 F-4).
+                  인트로가 길어져 첫 로그 전에 이탈하면 유입 세션이 아예 안 잡힙니다
+                </td>
+                <td>초대 유입 세션의 로딩 단계 도달률·완주율을 <b>다른 유입 경로와 대조</b></td>
+              </tr>
+              <tr>
+                <td><b>C2</b></td>
+                <td><b>귀속 부분 누락</b> — 유입인데 초대로 안 세어짐</td>
+                <td>
+                  초대 페이로드에 <code>tournament_id</code>가 없습니다(퍼블마 정렬).
+                  <code>social</code> 부분 일치로 집계하는 대시보드가 있으면 토너 공유 유입과 섞입니다
+                </td>
+                <td>
+                  <code>social</code> 값 분포를 정확 매칭으로 분해해 <code>TOURNAMENT</code>와
+                  <code>TOURNAMENT_INVITE</code>가 갈리는지 확인
+                </td>
+              </tr>
+              <tr>
+                <td><b>C3</b></td>
+                <td><b>노출 피로</b> — 많이 보내서 수신자가 무시</td>
+                <td>우리 판당 소셜 슬롯이 벤치 4종 중 최고(0.315)입니다</td>
+                <td>발신자당 초대 횟수 구간별 전환율 — <b>역상관이면 피로 확인</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">이미 기각된 가설 2개는 다시 올리지 않습니다</div>
+            <p>
+              <b>초대 페이로드·이미지·문구 결함</b>(코드 동일 + 호출성공률 95.0%)과
+              <b>지면 혼입 측정 오류</b>(<code>position</code> 필터 검증 완료)는 근거를 갖고 기각됐습니다.
+              41 통합 페이지의 "낮으면 초대 페이로드 용의" 주석은 이 문서 기준으로 낡았습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="open">
+        <h2 class="doc-h2">
+          ⑤ 미해결
+          <span class="doc-h2-sub">인용할 때 조심할 것</span>
+        </h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">41 통합의 <code>inv_in</code> 정의가 우리 쿼리와 다릅니다</div>
+            <p>
+              8/16 퍼블마 초대 유입을 "player_id + logincount_total 고유 세션"으로 세면 <b>549</b>인데
+              41 통합 <code>pubma_inv_daily</code>의 <code>inv_in</code>은 <b>257</b>입니다.
+              유입유저 229와도 맞지 않아 세션·유저 어느 정의도 아닙니다.
+              <b>유입률 1.14% vs 2.55%는 양쪽에 같은 정의를 적용한 값이라 비교로는 유효</b>하지만,
+              "하루 몇 건 유입"이라는 <b>절대값은 정의가 확정되기 전까지 인용하지 않습니다.</b>
+              → 41 페이지 작성 쿼리 확인 필요.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">클리어의 2/3에서 슬롯이 안 뜨는 이유를 모릅니다</div>
+            <p>
+              판당 소셜 슬롯 0.315는 <b>클리어 3번 중 2번은 아무것도 안 뜬다</b>는 뜻입니다.
+              그게 60초 쿨다운인지 "토너 컨텍스트가 아님"인지 <b>구분할 로그가 없습니다</b>(게이트 미노출 계측 갭).
+              그래서 <b>쿨다운을 올려서 노출을 줄이겠다는 계획은 효과를 예측할 수 없습니다.</b>
+              게이트별 미노출 로그를 먼저 추가하면 이 구분이 바로 끝납니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 수치는 BigQuery 실측(8/16 하루 · 구간 지표는 41 통합 <code>era_cmp</code> 8/14~17)이고,
+          코드 대조는 solitaire-tripeaks와 block-blast(퍼블마) main 브랜치 직접 비교입니다.
+          <b>추정으로 표시한 것</b>: 채널 성숙도 가설 전체(②), C1~C3의 영향 크기.
+          <b>측정하지 않은 것</b>: D1~D5 전부, 우리 판 간격 분포.
+        </div>
+      </section>
+
+      <section class="doc-section" id="sql">
+        <h2 class="doc-h2">
+          쿼리
+          <span class="doc-h2-sub">그대로 실행 가능 · 1일 파티션 기준</span>
+        </h2>
+
+        <details class="fold">
+          <summary>D1 — 친구 수 분포 (우리 vs 퍼블마)</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>WITH f AS (
+  SELECT '솔' AS g, SAFE_CAST(JSON_VALUE(data, '$.friend_count') AS INT64) AS fc
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date = '2026-08-16' AND event = '6000_FRIEND_COUNT'
+  UNION ALL
+  SELECT '퍼블마', SAFE_CAST(JSON_VALUE(data, '$.friend_count') AS INT64)
+  FROM `game-log-359704.raw.puzzle_block_master`
+  WHERE log_date = '2026-08-16' AND event = '6000_FRIEND_COUNT'
+)
+SELECT
+  g                                             AS `게임`,
+  COUNT(*)                                      AS `세션`,
+  ROUND(COUNTIF(fc = 0) * 100.0 / COUNT(*), 1)  AS `친구0명_pct`,
+  APPROX_QUANTILES(fc, 100)[OFFSET(50)]         AS `p50`,
+  APPROX_QUANTILES(fc, 100)[OFFSET(90)]         AS `p90`,
+  ROUND(AVG(fc), 1)                             AS `평균_참고`
+FROM f WHERE fc IS NOT NULL GROUP BY 1</pre></div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--validate)">
+                <div class="note-title">평균이 아니라 p50과 0명 비율로 봅니다</div>
+                <p>
+                  친구 수는 헤비 테일이라 평균이 소수 유저에 끌려갑니다.
+                  채널이 자랄 수 있는지는 <b>중간값</b>과 <b>초대할 친구가 아예 없는 유저 비율</b>이 결정합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>D2 · D3 — 초대 유입 신규:기존 (7일 · 주차 추세)</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>WITH x AS (
+  SELECT '솔' AS g, log_date, player_id, logincount_total, DATE(join_time) AS join_date
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date BETWEEN '2026-08-12' AND '2026-08-18'
+    AND JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT_INVITE'
+  UNION ALL
+  SELECT '퍼블마', log_date, player_id, logincount_total, DATE(join_time)
+  FROM `game-log-359704.raw.puzzle_block_master`
+  WHERE log_date BETWEEN '2026-08-12' AND '2026-08-18'
+    AND JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT_INVITE'
+)
+SELECT
+  g                                                                          AS `게임`,
+  COUNT(DISTINCT CONCAT(CAST(player_id AS STRING),'_',CAST(logincount_total AS STRING))) AS `유입세션`,
+  COUNT(DISTINCT player_id)                                                  AS `유입유저`,
+  COUNT(DISTINCT IF(join_date = log_date, player_id, NULL))                  AS `그중신규`,
+  ROUND(SAFE_DIVIDE(COUNT(DISTINCT IF(join_date = log_date, player_id, NULL)),
+                    COUNT(DISTINCT player_id)) * 100, 1)                     AS `신규비율_pct`
+FROM x GROUP BY 1
+-- D3은 위 GROUP BY에 log_date를 추가하고 솔만 남겨 주차 추세로 봅니다</pre></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>D4 — 발신자 친구 수 × 초대 전환 (게임 내 비교)</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>WITH fc AS (
+  SELECT player_id, MAX(SAFE_CAST(JSON_VALUE(data, '$.friend_count') AS INT64)) AS friends
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date = '2026-08-16' AND event = '6000_FRIEND_COUNT'
+  GROUP BY 1
+),
+inv AS (
+  SELECT player_id,
+         COUNTIF(event = '3460_MSG_P2P_INVITE')         AS try_cnt,
+         COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS') AS ok_cnt
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date = '2026-08-16'
+    AND event IN ('3460_MSG_P2P_INVITE', '3470_MSG_P2P_INVITE_SUCCESS')
+    AND JSON_VALUE(data, '$.position') = 'tournament_invite'
+  GROUP BY 1
+)
+SELECT
+  CASE WHEN f.friends = 0 THEN '0명'
+       WHEN f.friends BETWEEN 1 AND 4 THEN '1~4명'
+       WHEN f.friends BETWEEN 5 AND 19 THEN '5~19명'
+       ELSE '20명+' END                                  AS `친구수_구간`,
+  COUNT(DISTINCT i.player_id)                            AS `발신자`,
+  SUM(i.try_cnt)                                         AS `시도`,
+  SUM(i.ok_cnt)                                          AS `호출성공`,
+  ROUND(SAFE_DIVIDE(SUM(i.ok_cnt), SUM(i.try_cnt)) * 100, 1) AS `호출성공률_pct`
+FROM inv i JOIN fc f USING (player_id)
+GROUP BY 1 ORDER BY 1</pre></div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--warn)">
+                <div class="note-title">전환은 발신자에 붙지 않습니다</div>
+                <p>
+                  유입은 <b>수신자 쪽 이벤트</b>라 발신자 player_id로 직접 이을 수 없습니다
+                  (초대 페이로드에 <code>tournament_id</code>가 없어 초대↔유입 1:1 연결이 불가).
+                  그래서 D4는 <b>호출성공률과 시도 분포</b>까지만 봅니다 —
+                  친구 0명 유저가 초대를 얼마나 태우고 있는지가 이 표의 핵심입니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>참고 — 퍼블마 3460 지면 분해 (정의 검증에 쓴 쿼리)</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>SELECT
+  IFNULL(JSON_VALUE(data, '$.position'), '(position 없음)') AS `지면`,
+  COUNT(*)                                                  AS `초대시도`
+FROM `game-log-359704.raw.puzzle_block_master`
+WHERE log_date = '2026-08-16'
+  AND event = '3460_MSG_P2P_INVITE'
+GROUP BY 1 ORDER BY 2 DESC
+-- 결과: tournament_invite 11,202 · invite_mail 18 · invite_leaderboard 1</pre></div>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
