@@ -400,6 +400,25 @@
   .wf-cap b { color: var(--ink-2); }
   .wf-lg { border-bottom: 1px dashed var(--ink-2); }
 
+  /* 3단 본문 : 메소드명 + 한 줄 동작 */
+  .f-text code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; font-weight: 700; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 3px; padding: 0 4px;
+  }
+  .f-d { display: block; font-style: normal; margin-top: 3px; color: var(--ink-2); }
+  .b-sum code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 700; color: var(--ink-2);
+  }
+  .f-raw {
+    margin-top: 12px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--surface-2); padding: 8px 11px;
+  }
+  .f-raw summary { font-size: 10.5px; font-weight: 750; color: var(--muted); cursor: pointer; }
+  .f-raw p { margin: 7px 0 0; font-size: 10.5px; line-height: 1.65; color: var(--ink-2); word-break: keep-all; }
+
   /* ---- 3단: 호출 사슬 플로우 ---- */
   .f-flow { display: flex; flex-direction: column; margin-top: 2px; }
   .f-step {
@@ -512,6 +531,190 @@
 (function () {
   "use strict";
 
+  /* 메소드 → 한 줄 동작. 대외 공유용이라 내부 가드 · 로그 · 갱신은 적지 않는다.
+     사슬 원문은 3단 아래 "원문" 에 그대로 남겨 둔다. */
+  const DESC = {
+    "buildMissionInfos": "현재 미션 진행도를 모은다",
+    "buyItem": "서버에 아이템 구매를 요청한다",
+    "captureScreen": "현재 화면을 이미지로 만든다",
+    "changeWeeklyState": "보고 있는 주차를 바꾼다",
+    "claimIdleGold": "방치 골드를 서버에서 수령한다",
+    "claimRvGold": "광고 보상 골드를 서버에서 수령한다",
+    "close": "지면을 닫고 호출한 쪽으로 돌아간다",
+    "collectAndProceed": "보상을 확정하고 다음 흐름으로 넘긴다",
+    "forceSubscribeBotAsync": "플랫폼 채널 구독을 요청한다",
+    "getEntryDataFriend": "친구 대전 진입 정보를 읽는다",
+    "getEventInfos": "진행 중인 이벤트 정보를 받아온다",
+    "getNextStage": "다음에 플레이할 판 번호를 정한다",
+    "getPendingPreLevelGuides": "판 시작 전에 띄울 안내가 남았는지 본다",
+    "hasForceDeco": "먼저 꾸며야 하는 상태인지 본다",
+    "hideBubbleView": "말풍선을 닫는다",
+    "hideDecoViews": "로비 화면 지면을 띄운다",
+    "invalidateCache": "캐시를 지워 다음에 새로 받게 한다",
+    "isFeatureLocked": "그 컨텐츠가 아직 잠겨 있는지 본다",
+    "isPaymentsAvailable": "결제가 가능한 환경인지 본다",
+    "loadSelectedDeckKeyNumber": "선택한 덱을 읽어온다",
+    "moveToNext": "다음에 보여줄 지면을 고른다",
+    "onChangeBGM": "배경음을 켜고 끈다",
+    "onChangeSFX": "효과음을 켜고 끈다",
+    "onChangeVibration": "진동을 켜고 끈다",
+    "onClaimIdleGoldSuccess": "수령한 골드를 화면에 반영한다",
+    "onClaimItems": "받은 아이템을 반영한다",
+    "onClickAdExtend": "광고를 보고 추격 제한 시간을 늘린다",
+    "onClickAddMultiple": "배팅 배수를 올리거나 내린다",
+    "onClickAlbumTab": "앨범 · 덱 탭을 바꾼다",
+    "onClickArrowLeft": "토너먼트 목록 페이지를 넘긴다",
+    "onClickBack": "한 단계 이전으로 돌아간다",
+    "onClickBackground": "열려 있는 말풍선만 닫고 지면은 유지한다",
+    "onClickBoosterSlot": "그 부스터 슬롯을 켜고 끈다",
+    "onClickBubbleView": "보상 말풍선을 열거나 닫는다",
+    "onClickButton": "아이템을 쓰거나, 없으면 구매로 넘긴다",
+    "onClickBuyItem": "골드 또는 실제 결제로 상품을 산다",
+    "onClickCardMilestone": "이벤트 정보를 받아 카드 마일스톤 팝업을 연다",
+    "onClickChangeButton": "그 미션을 다른 미션으로 바꾼다",
+    "onClickClaim": "그 날짜의 출석 보상을 받는다",
+    "onClickClaimAll": "받을 수 있는 우편을 한 번에 수령한다",
+    "onClickClaimButton": "완료한 미션의 보상을 받는다",
+    "onClickClaimDaySeven": "7일차 보상을 받는다",
+    "onClickClearRanking": "이벤트 정보를 받아 클리어 랭킹 팝업을 연다",
+    "onClickClose": "지면을 닫는다",
+    "onClickCoin": "재화 표시를 눌러 상점으로 보낸다",
+    "onClickCollect": "보상을 받고 다음 판으로 넘어간다",
+    "onClickCollectDouble": "광고를 보고 보상을 두 배로 받는다",
+    "onClickCollection": "앨범이 열려 있으면 컬렉션을 연다",
+    "onClickCreate": "새 토너먼트를 만든다",
+    "onClickCurrent": "현재 도시로 이동한다",
+    "onClickDailyTask": "일일 미션을 갱신한 뒤 미션 팝업을 연다",
+    "onClickDailyWheel": "전면 광고를 거친 뒤 룰렛을 연다",
+    "onClickDismiss": "튜토리얼 현재 단계를 넘긴다",
+    "onClickEndLevel": "현재 진행도를 담아 그만두기 팝업을 띄운다",
+    "onClickEnterStage": "판을 만들고 인게임으로 들어간다",
+    "onClickFriendInvite": "친구 초대 창을 띄운다",
+    "onClickFriendsInvite": "친구 초대 창을 띄운다",
+    "onClickFullHammer": "해머를 가득 채운다",
+    "onClickGiftButton": "그 친구에게 선물 메시지를 보낸다",
+    "onClickGlobal": "세계 · 친구 탭을 바꾼다",
+    "onClickGoButton": "그 미션을 수행할 지면으로 이동한다",
+    "onClickGoldRushBooster": "골드 러시 부스터를 켜고 끈다",
+    "onClickGoldenTicketBooster": "골든 티켓 부스터를 켜고 끈다",
+    "onClickGrandFireworksBooster": "그 부스터를 켜고 끈다",
+    "onClickHammer": "해머가 충분하면 새 지역, 부족하면 해머 부족 팝업을 띄운다",
+    "onClickHideDecoView": "꾸미기 화면을 닫고 로비로 돌아간다",
+    "onClickIAP_A": "그 슬롯의 상품으로 특별 오퍼 팝업을 띄운다",
+    "onClickIdleGold": "쌓인 방치 골드를 서버에서 받고 전면 광고를 띄운다",
+    "onClickInbox": "우편함을 연다",
+    "onClickInfo": "추격 이벤트 안내 팝업을 연다",
+    "onClickItem": "그 항목을 선택한다",
+    "onClickJoin": "그 토너먼트에 참가한다",
+    "onClickLeaderboard": "잠금이 아니면 리더보드를 연다",
+    "onClickLeave": "로비로 나가는 콜백을 실행한다",
+    "onClickLobby": "보상을 받고 로비로 돌아간다",
+    "onClickMetaCityList": "도시 목록 팝업을 연다",
+    "onClickMilestoneReward": "미션 게이지 구간 보상을 받는다",
+    "onClickMinusMultiple": "배팅 배수를 내린다",
+    "onClickOpenShop": "상점을 연다",
+    "onClickOption": "인게임 설정 팝업을 연다",
+    "onClickPlay": "다음 판 정보를 받아 프리게임 팝업을 띄운다",
+    "onClickPopup": "출석 안내를 띄운다",
+    "onClickPurchase": "플랫폼 결제창을 띄운다",
+    "onClickQuit": "판을 포기하고 로비로 나간다",
+    "onClickRefresh": "우편 목록을 다시 받아온다",
+    "onClickResume": "팝업을 닫고 판을 이어서 한다",
+    "onClickRetry": "같은 판을 다시 시작한다",
+    "onClickRewardBox": "보상 상자 연출을 재생한다",
+    "onClickRvFreeGold": "보상형 광고를 보여주고 성공하면 무료 골드를 지급한다",
+    "onClickSetting": "설정 팝업을 연다",
+    "onClickShare": "화면을 캡처해 공유 팝업을 띄운다",
+    "onClickShop": "결제 가능 여부를 보고 상점을 연다",
+    "onClickShowDecoView": "로비를 꾸미기 화면으로 전환한다",
+    "onClickStreakBubble": "연승 안내 말풍선을 잠깐 띄운다",
+    "onClickTossLogin": "토스 채널 구독을 요청하고 재화를 다시 읽는다",
+    "onClickTournament": "잠금이 아니면 토너먼트 목록을 연다",
+    "onClickUpgrade": "서버에 도시 업그레이드를 요청한다",
+    "onClickViewButton": "그 도시를 미리 본다",
+    "onClickWatchAd": "광고를 보여주고 성공하면 골드를 채운다",
+    "onClickWinningMilestone": "연승 마일스톤 팝업을 연다",
+    "onClickWorldWeeklyDown": "다음 주차 순위로 넘긴다",
+    "onClickWorldWeeklyTab": "세계 주차 탭으로 바꾼다",
+    "onClickWorldWeeklyUp": "이전 주차 순위로 넘긴다",
+    "onClickX1Multiple": "배팅 배수를 고른다",
+    "onMetaCityObjectClicked": "누른 꾸미기 오브젝트를 처리한다",
+    "onRetryRequested": "재시도 요청을 받아 판을 다시 만든다",
+    "openPopup": "로비 팝업을 열고 닫힐 때 로비를 되살린다",
+    "openSpecialOfferPopup": "특별 오퍼 팝업을 띄운다",
+    "playStreakGoldCoinSequence": "골드 코인 연출을 재생한다",
+    "playStreakStarSequence": "연승 별 연출을 재생한다",
+    "preloadIngameAssets": "인게임 리소스를 미리 로드한다",
+    "preloadLobbyBundlesPriority": "로비에 필요한 번들을 우선 로드한다",
+    "preloadLobbyPopups": "자주 여는 로비 팝업을 미리 만들어 둔다",
+    "purchaseAsync": "플랫폼 결제를 진행한다",
+    "recordPreGameState": "판 시작 시점 상태를 기록한다",
+    "refreshDailyTaskIfNeeded": "날짜가 바뀌었으면 미션을 새로 뽑는다",
+    "refreshPlayCost": "선택에 맞춰 입장 비용을 다시 계산한다",
+    "refreshShopItemVisibility": "조건에 맞는 상품만 남긴다",
+    "refreshWeeklySection": "그 주차 순위 목록을 다시 그린다",
+    "restartImmediatelyForRetry": "판을 즉시 다시 시작한다",
+    "runPostGameFlow": "판이 끝난 뒤 뜰 팝업들을 순서대로 처리한다",
+    "sendGameEnd": "판 결과를 서버에 보낸다",
+    "setVolume": "실제 볼륨에 반영한다",
+    "shouldIntroDirectEntry": "인트로에서 인게임으로 직행할 상황인지 판단한다",
+    "showBubbleView": "말풍선을 띄운다",
+    "showDecoViews": "꾸미기 화면 지면을 띄운다",
+    "showLockedToast": "잠금 안내 토스트를 띄운다",
+    "showPopupChargeGold": "골드 충전 지면을 띄운다",
+    "showPopupCollection": "컬렉션 지면을 띄운다",
+    "showPopupCompleteLevel": "결과 지면을 띄운다",
+    "showPopupDailyGift": "출석 보상 지면을 띄운다",
+    "showPopupDailyTask": "일일 미션 지면을 띄운다",
+    "showPopupDailyWheel": "룰렛 지면을 띄운다",
+    "showPopupDecoShare": "꾸미기 공유 지면을 띄운다",
+    "showPopupError": "오류 안내 지면을 띄운다",
+    "showPopupEventCardMilestone": "카드 마일스톤 지면을 띄운다",
+    "showPopupEventClearRanking": "클리어 랭킹 지면을 띄운다",
+    "showPopupEventShadowChase": "추격 이벤트 지면을 띄운다",
+    "showPopupEventShadowChaseInfo": "추격 안내 지면을 띄운다",
+    "showPopupEventWinningMilestone": "연승 마일스톤 지면을 띄운다",
+    "showPopupGameEntry": "프리게임 지면을 띄운다",
+    "showPopupGameEntryForRetry": "재시도용 프리게임 지면을 띄운다",
+    "showPopupLeaderboard": "리더보드 지면을 띄운다",
+    "showPopupMail": "우편함 지면을 띄운다",
+    "showPopupMetaCityList": "도시 목록 지면을 띄운다",
+    "showPopupNeedHammer": "해머 부족 안내 지면을 띄운다",
+    "showPopupNewArea": "새 지역 지면을 띄운다",
+    "showPopupQuitLevel": "그만두기 확인 지면을 띄운다",
+    "showPopupRewardClaim": "보상 수령 지면을 띄운다",
+    "showPopupSetting": "설정 지면을 띄운다",
+    "showPopupSettingInGame": "인게임 설정 지면을 띄운다",
+    "showPopupSettingLanguage": "언어 선택 지면을 띄운다",
+    "showPopupShop": "상점 지면을 띄운다",
+    "showPopupSpecialOffer": "특별 오퍼 지면을 띄운다",
+    "showPopupToastError": "안내 토스트 지면을 띄운다",
+    "showPopupTournament": "토너먼트 지면을 띄운다",
+    "showPopupTutorial": "튜토리얼 지면을 띄운다",
+    "showStolenCut": "고양이가 보상을 훔쳐가는 컷을 재생한다",
+    "showViewGame": "인게임 지면을 띄운다",
+    "showViewGameWithFriend": "친구 대전 인게임 지면을 띄운다",
+    "showViewGameWithTournament": "토너먼트 인게임 지면을 띄운다",
+    "showViewLobby": "로비 지면을 띄운다",
+    "showViewSoloGame": "혼자 하기 인게임 지면을 띄운다",
+    "startFreeCoinCooldown": "무료 골드 쿨타임을 시작한다",
+    "startGame": "서버에 판 생성을 요청한다",
+    "storageSave": "설정값을 저장한다",
+    "successBuyShopItem": "구매 성공을 반영한다",
+    "switchCity": "보고 있는 도시를 바꾼다",
+    "switchToContextSolo": "혼자 하기 컨텍스트로 되돌린다",
+    "tryContextSwitch": "친구 대전용 컨텍스트로 바꾼다",
+    "tryShowInterstitialAD": "전면 광고를 시도한다",
+    "tryShowRewardAD": "보상형 광고를 시도한다",
+    "trySwitchToJoinedTournament": "이미 참가한 토너먼트 컨텍스트로 옮긴다",
+    "undoCard": "마지막 카드 한 장을 되돌린다",
+    "upcastEvent": "부모 지면에 이벤트를 올려보낸다",
+    "updateItems": "보유 재화를 다시 읽어 표시한다",
+    "updateTossLogin": "토스 로그인 표시를 갱신한다",
+    "upgradeMetaCity": "도시 단계를 올린다",
+    "useItem": "서버에 아이템 사용을 요청한다",
+    "viewCompletedCity": "완성된 도시를 보여준다"
+  };
   /* ── 프리팹 실측 UI ──────────────────────────────────────────
      assets 하위 프리팹 · 씬의 cc.Button 을 파싱해 1280x720 가로 화면
      좌표로 정규화했다. x/y = 버튼 중심(0~1, y 는 위에서 아래), w/hh = 크기,
@@ -1581,6 +1784,50 @@
     return String(chain).split("→").map(function (x) { return x.trim(); }).filter(Boolean);
   };
 
+  /* 사슬 한 칸을 "메소드명() · 한 줄 동작" 으로 줄인다.
+     대외 공유용이라 괄호 안 인자 · 가드 설명 · 로그는 화면에 올리지 않는다. */
+  const METH = /([A-Za-z_][A-Za-z0-9_$]*)\s*\(/g;
+  const methodsOf = function (text) {
+    METH.lastIndex = 0;
+    const out = [];
+    let m;
+    while ((m = METH.exec(String(text)))) out.push(m[1]);
+    return out;
+  };
+  const brief = function (text, label) {
+    const ms = methodsOf(text);
+    for (let i = ms.length - 1; i >= 0; i--) {
+      if (DESC[ms[i]]) return { m: ms[i], d: DESC[ms[i]] };
+    }
+    const t = String(text).replace(/\s+/g, " ").trim();
+    const cut = t.length > 44 ? t.slice(0, 43) + "…" : t;
+    if (ms.length) {
+      /* 사전에 없으면 진입 메소드를 쓰고, 설명이 그 서명을 되풀이할 뿐이면 비운다 */
+      const m0 = ms[0];
+      const dup = t.replace(/^[A-Za-z_$][A-Za-z0-9_$.]*\s*/, "").indexOf("(") === 0
+        || t.indexOf(m0) === 0 || t.indexOf("." + m0) > -1;
+      return { m: m0, d: dup ? "" : cut };
+    }
+    /* 스텝에 메소드 표기가 없으면 행 이름에서 찾는다 (openPopup(showFn) 같은 경우) */
+    if (label) {
+      const lm = methodsOf(label);
+      if (lm.length) return { m: lm[0], d: DESC[lm[0]] || cut };
+    }
+    return { m: "", d: cut };
+  };
+  /* 대외용 흐름에서 뺄 칸 — 로그 · 갱신 · 연출처럼 큰 틀에 영향이 없는 것 */
+  const bigSteps = function (steps) {
+    /* 사전에 한 줄 설명이 있는 칸(= 큰 틀에서 의미 있는 호출)과 판정 칸만 남긴다.
+       로그 · 갱신 · 연출 호출은 대외 공유용 흐름에서 뺀다. */
+    const keep = steps.filter(function (st, i) {
+      if (i === 0 || i === steps.length - 1) return true;
+      if (stepType(st) === "gate") return true;
+      return methodsOf(st).some(function (m) { return DESC[m]; });
+    });
+    if (keep.length <= 4) return keep;
+    return [keep[0], keep[1], keep[keep.length - 2], keep[keep.length - 1]];
+  };
+
   const stepType = function (text) {
     if (/tryShow(Reward|Interstitial)AD|ADPlayer/.test(text)) return "ad";
     if (/BaseNetworkManager|claim[A-Z]|buyItem|purchaseAsync|sendGameEnd|getEventInfos|loadStageList|invalidateCache|upgradeMetaCity|forceSubscribeBotAsync/.test(text)) return "net";
@@ -2168,6 +2415,7 @@
         + '<div class="g-tree">';
       sec.rows.forEach(function (r, ri) {
         const steps = splitChain(r[1]);
+        const bf = brief(steps[0] || r[1], r[0]);
         const ty = stepType(steps[steps.length - 1] || r[1]);
         const jid = jumpFor(r[1]);
         const to = jid && jid !== t.id ? byId[jid] : null;
@@ -2175,8 +2423,9 @@
           + '<button class="g-node n-' + ty + '" data-sec="' + si + '" data-row="' + ri + '">'
           + '<span class="b-n">' + (ri + 1) + '</span>'
           + '<span class="b-main"><span class="b-k">' + esc(r[0]) + '</span>'
-          + '<span class="b-sum">' + esc(steps[0]) + (steps.length > 1 ? " …" : "") + '</span></span>'
-          + '<span class="b-go">' + steps.length + '단계 ▸</span>'
+          + '<span class="b-sum">' + (bf.m ? '<code>' + esc(bf.m) + '()</code> ' : '')
+          + esc(bf.d) + '</span></span>'
+          + '<span class="b-go">흐름 ▸</span>'
           + '</button>'
           + (to
               ? '<span class="g-arrow">→</span>'
@@ -2205,25 +2454,32 @@
     let h = '<div class="g-root" style="--cc: ' + cc + '">'
       + '<div class="r-cat">' + esc(sec.h) + '</div>'
       + '<div class="r-title">' + esc(row[0]) + '</div>'
-      + '<div class="r-ko">' + esc(n.title) + ' · ' + steps.length + '단계</div></div>';
+      + '<div class="r-ko">' + esc(n.title) + '</div></div>';
 
-    h += '<div class="g-lane"><div class="g-lane-h">호출 사슬 <em>위에서 아래로</em></div><div class="f-flow">';
-    steps.forEach(function (st, i) {
+    const flow = bigSteps(steps);
+    h += '<div class="g-lane"><div class="g-lane-h">큰 틀 흐름 <em>위에서 아래로</em></div><div class="f-flow">';
+    flow.forEach(function (st, i) {
       const ty = stepType(st);
       const jid = jumpFor(st);
       const to = jid && jid !== t.id ? byId[jid] : null;
-      const isEnd = i === steps.length - 1;
-      if (i > 0) h += '<div class="f-link"><b>' + (stepType(steps[i - 1]) === "gate" ? "통과하면" : "다음") + '</b></div>';
+      const isEnd = i === flow.length - 1;
+      const bf = brief(st, row[0]);
+      if (i > 0) h += '<div class="f-link"><b>' + (stepType(flow[i - 1]) === "gate" ? "통과하면" : "다음") + '</b></div>';
       h += '<div class="f-step st-' + ty + (ty === "gate" ? " is-gate" : "") + (isEnd ? " is-end" : "")
         + (to ? " can" : "") + '"' + (to ? ' data-jump="' + to.id + '" style="--tc: var(--c-' + to.cat + ')"' : '') + '>'
         + '<span class="f-n">' + (i + 1).toString().padStart(2, "0") + '</span>'
         + '<span class="f-body">'
         + '<span class="f-type">' + TYPENAME[ty] + (isEnd ? " · 도착" : "") + '</span>'
-        + '<span class="f-text">' + esc(st) + '</span>'
+        + '<span class="f-text">' + (bf.m ? '<code>' + esc(bf.m) + '()</code>' : '')
+        + (bf.d ? '<em class="f-d">' + esc(bf.d) + '</em>' : '') + '</span>'
         + (to ? '<span class="f-open"><i></i>' + esc(shortTitle(to)) + ' 다이어그램 열기 ▸</span>' : '')
         + '</span></div>';
     });
     h += '</div></div>';
+
+    /* 원문 사슬은 지우지 않고 접어 둔다 — 개발자가 확인할 때 필요하다 */
+    h += '<details class="f-raw"><summary>원문 사슬 ' + steps.length + '단계 (개발용)</summary>'
+      + '<p>' + esc(row[1]) + '</p></details>';
 
     h += '<div class="f-legend">'
       + '<span><i style="background:var(--t-gate)"></i>게이트 · 판정</span>'
@@ -2234,7 +2490,8 @@
       + '</div>';
 
     h += '<div class="f-note"><div class="t">단계 구분 기준</div>'
-      + '<p>점선 = 통과해야 넘어가는 게이트 · 두꺼운 마지막 상자 = 도착. 유형은 메소드명으로 자동 분류하므로 '
+      + '<p>큰 틀만 보여줍니다 — 로그 · 갱신처럼 흐름을 바꾸지 않는 호출은 뺐고, 길면 앞뒤 2칸으로 줄였습니다. '
+      + '점선 = 통과해야 넘어가는 게이트 · 두꺼운 마지막 상자 = 도착. 유형은 메소드명으로 자동 분류하므로 '
       + '분기 조건은 파일에서 최종 확인하세요.</p></div>';
 
     bodyEl.innerHTML = h;

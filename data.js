@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-20 13:05",
+  updated: "2026-08-20 14:00",
 };
 
 const SECTIONS = [
@@ -119,11 +119,11 @@ const SECTIONS = [
       },
       {
         title: "전체 지면 플로우 맵 — UI + 로직 3단",
-        desc: "프리팹 실좌표로 그린 가로 화면 와이어프레임에서 버튼을 눌러 호출 사슬까지 파고듭니다.",
+        desc: "프리팹 실좌표로 그린 가로 와이어프레임에서 버튼을 눌러, 어떤 메소드가 무슨 일을 하는지 한 줄로 봅니다.",
         url: "docs/solitaire-flow-map.html",
         status: "완료",
-        version: "v6.1",
-        updated: "2026-08-20 13:05",
+        version: "v6.2",
+        updated: "2026-08-20 14:00",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "인터랙티브"],
       },
@@ -168,7 +168,7 @@ const SECTIONS = [
         desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",
         url: "docs/qa-issue-code-audit.html",
         status: "Live",
-        version: "v6.1",
+        version: "v6.2",
         updated: "2026-08-19 10:07",
         pinned: true,
         tags: ["QA", "트래커", "상시"],
