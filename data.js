@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-20 10:56",
+  updated: "2026-08-20 11:31",
 };
 
 const SECTIONS = [
@@ -125,7 +125,7 @@ const SECTIONS = [
         version: "v5.0",
         updated: "2026-08-20 10:56",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "UI", "인터랙티브"],
+        tags: ["레퍼런스", "플로우", "인터랙티브"],
       },
     ],
   },
@@ -133,18 +133,8 @@ const SECTIONS = [
     id: "validate",
     label: "검증",
     accent: "validate",
-    desc: "수정 전/후 검증 · QA 가이드",
+    desc: "수정 전/후 결과 대조",
     cards: [
-      {
-        title: "QA 이슈 트래커",
-        desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",
-        url: "docs/qa-issue-code-audit.html",
-        status: "Live",
-        version: "v6.1",
-        updated: "2026-08-19 10:07",
-        pinned: true,
-        tags: ["QA", "트래커", "상시"],
-      },
       {
         title: "토너먼트 공유 실패 — 수정 전/후",
         desc: "거절 두 원인의 전후 비교. 점수 없음은 8.3%→0.4%, 광고 충돌은 5.1%→4.0%.",
@@ -165,8 +155,26 @@ const SECTIONS = [
         pinned: false,
         tags: ["토너먼트", "생성", "전후비교"],
       },
+    ],
+  },
+  {
+    id: "qa",
+    label: "QA",
+    accent: "plan",
+    desc: "테스트 순서 · 케이스 · 이슈 트래커",
+    cards: [
       {
-        title: "토너먼트 참가 · 전환 다이얼로그 1회 — QA 가이드",
+        title: "QA 이슈 트래커",
+        desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",
+        url: "docs/qa-issue-code-audit.html",
+        status: "Live",
+        version: "v6.1",
+        updated: "2026-08-19 10:07",
+        pinned: true,
+        tags: ["QA", "트래커", "상시"],
+      },
+      {
+        title: "토너먼트 참가 · 전환 다이얼로그 1회",
         desc: "전환 다이얼로그를 Play 1회로 줄이고 참가 불가 토너를 목록에서 뺀 수정의 QA 순서.",
         url: "docs/tournament-join-context-qa.html",
         status: "완료",
@@ -176,7 +184,7 @@ const SECTIONS = [
         tags: ["QA", "토너먼트", "참가"],
       },
       {
-        title: "토너먼트 만들기 복구 · 솔로 전환 대기 — QA 가이드",
+        title: "토너먼트 만들기 복구 · 솔로 전환 대기",
         desc: "끊긴 채 만들어진 토너를 성공 처리하고 솔로 대기를 30초→2초로 줄인 수정의 QA 순서.",
         url: "docs/tournament-create-recovery-qa.html",
         status: "완료",
@@ -186,7 +194,7 @@ const SECTIONS = [
         tags: ["QA", "토너먼트", "네트워크오류"],
       },
       {
-        title: "인게임 재도전 — QA 가이드",
+        title: "인게임 재도전",
         desc: "나가기 팝업 Retry 버튼 QA 순서 26케이스. v3.0에서 정산 시점과 복귀 지점이 바뀌었다.",
         url: "docs/ingame-retry-qa-flow.html",
         status: "완료",
@@ -196,7 +204,7 @@ const SECTIONS = [
         tags: ["QA", "재도전", "정산"],
       },
       {
-        title: "나가기 종료 처리 순서 변경 — QA 가이드",
+        title: "나가기 종료 처리 순서 변경",
         desc: "종료 알림을 전면광고보다 먼저 보내도록 바꾼 수정의 QA 순서. 광고 중 앱 종료가 핵심.",
         url: "docs/quit-gameend-order-qa.html",
         status: "완료",
@@ -206,7 +214,7 @@ const SECTIONS = [
         tags: ["QA", "나가기", "전면광고"],
       },
       {
-        title: "SPEC-038 토너 초대 토글 — QA 가이드",
+        title: "SPEC-038 토너 초대 토글",
         desc: "토너 판을 깰 때 공유와 초대가 번갈아 뜨는 기능의 QA 순서. 안 뜨는 게 정상인 경우 포함.",
         url: "docs/spec-038-qa-flow.html",
         status: "완료",
