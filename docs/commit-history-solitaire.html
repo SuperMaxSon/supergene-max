@@ -6,7 +6,7 @@
     <title>솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나 (07-13 ~ 08-19)</title>
     <meta
       name="description"
-      content="커밋 문구로 훑고, 필요한 것만 펼쳐 왜 그렇게 고쳤는지 확인하는 목록. 146건 diff 전량 실측."
+      content="커밋 문구로 훑고, 필요한 것만 펼쳐 왜 그렇게 고쳤는지 확인하는 목록. 148건 diff 전량 실측."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light5" />
@@ -37,10 +37,10 @@
         </p>
         <div class="doc-meta">
           <span class="tag">solitaire-tripeaks-client</span>
-          <span class="tag">2026-07-13 ~ 08-19 · 146건</span>
+          <span class="tag">2026-07-13 ~ 08-19 · 148건</span>
           <span class="tag">git diff 전량 실측</span>
           <span class="tag">영역 필터 · 주제 묶음 13개(88건)</span>
-          <span class="tag">v6.3 · 마지막 갱신 2026-08-19 13:54</span>
+          <span class="tag">v6.3 · 2026-08-20</span>
         </div>
       </div>
     </header>
@@ -58,7 +58,7 @@
             type="search"
             autocomplete="off"
             spellcheck="false"
-            placeholder="146건에서 검색 — 커밋 문구 · 해시 · 파일명 · 사유"
+            placeholder="148건에서 검색 — 커밋 문구 · 해시 · 파일명 · 사유"
             aria-label="커밋 필터"
           />
           <span class="ch-kbd">/</span>
@@ -67,7 +67,7 @@
         <button class="ch-mode" type="button" aria-pressed="true" title="같은 날 같은 주제 커밋을 하나로 묶습니다">
           묶어 보기
         </button>
-        <span class="ch-count">146건</span>
+        <span class="ch-count">148건</span>
       </div>
 
       <!-- 행 = details.ch. 닫힌 상태에서 「작성자 → 커밋 문구 → 해시」가 한 줄.
@@ -98,8 +98,54 @@
       </div>
 
       <section class="doc-section" id="w34">
-        <h2 class="doc-h2">8/17 ~ 8/19 <span class="doc-h2-sub">10건</span></h2>
+        <h2 class="doc-h2">8/17 ~ 8/19 <span class="doc-h2-sub">12건</span></h2>
         <div class="ch-list">
+          <details class="ch" data-area="인게임" style="--acc: var(--sol)">
+            <summary>
+              <span class="ch-who">Max</span>
+              <span class="ch-what">로비 난이도 버튼이 실제 진입 난이도와 다르게 표시되던 문제 수정</span>
+              <span class="ch-id">08-19 · 09a24b2b</span>
+            </summary>
+            <div class="ch-body">
+              <dl>
+                <dt>언제</dt>
+                <dd>2026-08-19 16:45</dd>
+                <dt>어디서</dt>
+                <dd><code>StageSelector.ts</code> · <code>LobbyMainUIVIew.ts</code></dd>
+                <dt>무엇을</dt>
+                <dd>표시용 tier를 <code>getDisplayDifficultyTier()</code>로 분리해 <b>entryStage가 허용하는 tier로 clamp한 값</b>을 로비 버튼이 쓰게 했다. clamp 로직은 <code>clampTierToStage()</code>로 추출</dd>
+                <dt class="k-why">왜</dt>
+                <dd class="k-why">로비 버튼은 <code>getNextDifficulty()</code> 원본을, 실제 진입은 <code>getNextStage()</code>에서 clamp된 값을 써서 <b>표시와 진입 난이도가 갈렸다</b> — 특정 티어만 허용하는 맵으로 복귀했을 때 드러난다</dd>
+                <dt>어떻게</dt>
+                <dd><code>getDisplayDifficultyTier()</code>는 <code>entryStageId</code>가 남아 있으면 <code>clampTierToStage(entryStageId, tier)</code>를 거친다. 튜토리얼 맵이나 <code>difficultys</code> 정보가 없는 맵은 원본을 그대로 반환. <code>_forcedTierForNextGame</code> 주석도 초기화 시점(판 종료 또는 다음 <code>getNextStage</code>)에 맞춰 정정</dd>
+                <dt>주의</dt>
+                <dd><b>표시용 경로만</b> clamp한다 — 실제 진입 clamp는 기존 <code>getNextStage()</code> 안에 그대로 있다</dd>
+              </dl>
+            </div>
+          </details>
+          <details class="ch" data-area="인게임" style="--acc: var(--sol)">
+            <summary>
+              <span class="ch-who">Max</span>
+              <span class="ch-what">dynamic_level 카운터 갱신 조건 정정 (승리·실패·포기 기준)</span>
+              <span class="ch-id">08-19 · 25976336</span>
+            </summary>
+            <div class="ch-body">
+              <dl>
+                <dt>언제</dt>
+                <dd>2026-08-19 16:45</dd>
+                <dt>어디서</dt>
+                <dd><code>ViewGame.ts</code></dd>
+                <dt>무엇을</dt>
+                <dd>패배를 <b>덱을 소진한 채 끝난 판</b>으로 한정(<code>isFailCounted</code>)하고, <code>fail_streak</code>(30003) · <code>fail_spiral</code>(30009)는 그 경우만 증가, <code>hard_cooldown</code>(30004)은 끝까지 한 판만 갱신, <code>super_hard_guarantee</code>(30006) · <code>hard_guarantee</code>(30007)는 <b>클리어 시점에만</b> 갱신하게 바꿨다. 진입 시점 초기화 블록 2개는 제거</dd>
+                <dt class="k-why">왜</dt>
+                <dd class="k-why">포기 · 이탈로 끝낸 판까지 패배로 세어 <b>덱이 남은 판을 그만둬도 fail 카운터가 쌓였다</b>. 30006 · 30007은 진입 시점 초기화 + 승리 시 증가로 <b>한 판에 두 번 손대는 구조</b>였다</dd>
+                <dt>어떻게</dt>
+                <dd><code>isFailCounted = !isWin && isDeckExhausted()</code> · <code>isSettled = isWin || isFailCounted</code> 두 게이트로 정리했다. 30004는 <code>isSettled</code>일 때만 (Hard 이상 증가 / Normal 이하 초기화), 아니면 값 유지. 30006은 클리어 시 Super Hard면 0 그 외 +1, 패배 시 유지. 30007도 같은 형태로 Hard 이상이면 0</dd>
+                <dt>주의</dt>
+                <dd>포기는 어느 카운터도 건드리지 않는다 — 값을 그대로 유지한다</dd>
+              </dl>
+            </div>
+          </details>
           <details class="ch" data-area="소셜" data-group="08-19·토너 다이얼로그·광고 순서" style="--acc: var(--coz)">
             <summary>
               <span class="ch-who">Max</span>
@@ -138,7 +184,7 @@
                 <dt>무엇을</dt>
                 <dd>판 시작 시 <code>DataManager.setContextPopupActionOnIngameResult(null)</code>로 예약을 비운다</dd>
                 <dt class="k-why">왜</dt>
-                <dd class="k-why">결과창을 거치지 않고 판을 벗어나면(강종·이탈) 예약이 그대로 남아, <b>다음 판 결과창에서 이전 판의 공유/생성 다이얼로그가 발사됐다</b></dd>
+                <dd class="k-why">결과창을 거치지 않고 판을 벗어나면(강종 · 이탈) 예약이 그대로 남아, <b>다음 판 결과창에서 이전 판의 공유/생성 다이얼로그가 발사됐다</b></dd>
                 <dt>어떻게</dt>
                 <dd><code>gameStartTime</code> 초기화와 같은 지점(판 시작 초기화 구간)에서 예약을 폐기한다</dd>
               </dl>
@@ -161,7 +207,7 @@
                 <dt class="k-why">왜</dt>
                 <dd class="k-why">전환이 <b>다이얼로그 락을 들고 있는 동안</b> 광고를 부르면 광고가 <code>PENDING_REQUEST</code>로 막혔다</dd>
                 <dt>어떻게</dt>
-                <dd>조인 전환·게임시작 전환 두 경로 모두 await로 직렬화하고, <code>returnToSoloIfNeeded()</code>도 <code>async</code>로 바꿨다</dd>
+                <dd>조인 전환 · 게임시작 전환 두 경로 모두 await로 직렬화하고, <code>returnToSoloIfNeeded()</code>도 <code>async</code>로 바꿨다</dd>
                 <dt>주의</dt>
                 <dd>P2P THREAD는 기존대로 SOLO 복귀를 건너뛴다(진행 중인 친구 대전을 끊지 않는다)</dd>
               </dl>
@@ -3260,8 +3306,8 @@
       <div class="ch-empty">일치하는 커밋이 없습니다. 키워드를 줄여보세요.</div>
 
       <div class="foot">
-        <b>확인 범위</b> <code>solitaire-tripeaks-client</code> main 브랜치, Max 작성 커밋 146건
-        (2026-07-13 ~ 08-19, 머지 커밋 3건 제외)의 diff 전량. <b>마지막 갱신</b> 2026-08-19 13:54.
+        <b>확인 범위</b> <code>solitaire-tripeaks-client</code> main 브랜치, Max 작성 커밋 148건
+        (2026-07-13 ~ 08-19, 머지 커밋 3건 제외)의 diff 전량.
         <b>미확인</b> 유저 리포트·지표 악화 등 코드 밖 동기, prefab·meta·anim 단독 변경 커밋의 사유.
         원본은 프로젝트 저장소의 <code>_ignore/commit-history.md</code>이며,
         신규 커밋은 그쪽에 먼저 추가한 뒤 이 페이지에 반영합니다.

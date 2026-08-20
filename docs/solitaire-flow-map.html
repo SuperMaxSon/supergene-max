@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>솔리테어 전체 지면 플로우 맵</title>
+    <meta
+      name="description"
+      content="솔리테어 트라이픽스의 인트로 진입부터 로비·프리게임·인게임·결과·사후 플로우까지 전 지면을 드래그·확대로 훑는 인터랙티브 맵. 지면마다 버튼 → 호출 메소드를 코드 실측으로 붙였다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#map">맵</a>
+        <a class="nav-back" href="#trunk">주 흐름</a>
+        <a class="nav-back" href="#entry">진입 분기</a>
+        <a class="nav-back" href="#buttons">버튼 → 메소드</a>
+        <a class="nav-back" href="#post">결과 후 플로우</a>
+        <a class="nav-back" href="#scope">확인 범위</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 코드 레퍼런스</div>
+        <h1 class="doc-title">솔리테어 전체 지면 플로우 맵</h1>
+        <p class="doc-lede">
+          인트로 진입부터 로비 · 프리게임 · 인게임 · 결과 · 사후 플로우까지
+          <b>모든 지면을 한 장에 올린 맵</b>입니다. 지면마다
+          <b>어떤 버튼이 어떤 메소드를 부르는지</b>를 코드에서 그대로 뽑아 붙였기 때문에,
+          맵에 적힌 메소드명으로 바로 검색해서 코드로 내려갈 수 있습니다.
+          화면에 다 안 들어오므로 <b>드래그로 옮기고 휠로 확대</b>하며 보는 방식입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--sol)">솔리테어</span>
+          <span class="tag">main 브랜치 코드 실측</span>
+          <span class="tag">기준 커밋 09a24b2b</span>
+          <span class="tag">지면 노드 42 · 흐름 57</span>
+          <span class="tag">마지막 갱신 2026-08-20 09:43</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="map">
+        <h2 class="doc-h2">맵 <span class="doc-h2-sub">드래그로 이동 · 휠로 확대 · 카드 클릭으로 메소드 상세</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--sol)">
+            <div class="stat-num">42<span class="stat-unit">개</span></div>
+            <div class="stat-name">맵에 올린 지면 노드</div>
+            <div class="stat-sub">View 3 · Popup 49 중 저빈도는 묶음 처리</div>
+          </div>
+          <div class="stat" style="--acc: var(--analysis)">
+            <div class="stat-num">57<span class="stat-unit">개</span></div>
+            <div class="stat-name">지면 사이 흐름(화살표)</div>
+            <div class="stat-sub">화살표마다 호출 메소드 표기</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">182<span class="stat-unit">개</span></div>
+            <div class="stat-name">실측한 onClick 핸들러</div>
+            <div class="stat-sub">assets/script/game 전수</div>
+          </div>
+          <div class="stat" style="--acc: var(--balance)">
+            <div class="stat-num">46<span class="stat-unit">개</span></div>
+            <div class="stat-name">ViewCreator 활성 show 메소드</div>
+            <div class="stat-sub">주석 처리된 것 제외</div>
+          </div>
+        </div>
+
+        <!-- 맵은 팬/줌이 필요한 인터랙티브 화면이라 style.css 컴포넌트로 만들 수 없다.
+             디자인 시스템을 건드리지 않기 위해 자립 파일(flow-map-canvas.html)로 두고
+             여기서는 프레임만 올린다. 테두리·라운드·배경은 .table-scroll 이 그대로 준다. -->
+        <div class="table-scroll" style="padding: 0">
+          <iframe
+            src="flow-map-canvas.html"
+            title="솔리테어 전체 지면 플로우 인터랙티브 맵"
+            loading="lazy"
+            style="display: block; width: 100%; height: 76vh; min-height: 520px; border: 0"
+          ></iframe>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 맵을 보는 법</div>
+            <p>
+              <strong>위에서 아래로</strong> 읽습니다. 맨 위가 인트로, 가운데 굵은 축이
+              로비 → 프리게임 → 인게임 → 결과이고, 좌우로 붙은 카드가 그 지면에서 열리는 팝업입니다.
+              <strong>초록 점선</strong>은 되돌아오는 흐름(로비 복귀 · 인게임 복귀)이고,
+              <strong>파란 실선</strong>은 인트로에서 인게임으로 바로 꽂히는 직행 경로입니다.
+              카드를 누르면 연결된 화살표만 남고 나머지는 흐려지며, 오른쪽에 그 지면의
+              버튼 → 메소드 전체 목록과 앞뒤 흐름이 열립니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">맵이 표현하지 않는 것</div>
+            <p>
+              <code>PopupError</code> · <code>PopupAdBreak</code> · 토스트처럼
+              <strong>어디서든 뜨는 전역 팝업</strong>은 화살표를 다 그으면 읽을 수 없어져서
+              “공통 시스템 팝업” 한 장으로 묶고 연결선을 생략했습니다.
+              스크롤 아이템(<code>ShopItem</code> · <code>PopupCollectionDeckItem</code> 등)도
+              부모 팝업 카드 안의 문자열로만 들어가 있습니다.
+              즉 이 맵은 <strong>주 흐름 그래프</strong>이고, 전역 호출 관계도는 아닙니다.
+            </p>
+          </div>
+        </div>
+
+        <p class="foot">
+          맵만 크게 보려면 <a href="flow-map-canvas.html" target="_blank" rel="noopener">새 창에서 열기</a>.
+          모바일에서는 두 손가락 확대가 됩니다.
+        </p>
+      </section>
+
+      <section class="doc-section" id="trunk">
+        <h2 class="doc-h2">주 흐름 <span class="doc-h2-sub">가운데 굵은 축 6단계</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">단계</th>
+                <th style="width: 20%">지면</th>
+                <th style="width: 30%">여기로 들어오는 계기</th>
+                <th>다음으로 넘기는 메소드</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>①</td>
+                <td><code>BaseIntro</code><br /><span class="tag">intro.fire</span></td>
+                <td>앱 시작. <code>onLoad()</code> → <code>start()</code> 로 로그인 · 데이터 · 프리로드</td>
+                <td><code>moveToNext()</code></td>
+              </tr>
+              <tr>
+                <td>②</td>
+                <td><code>ViewLobby</code> + <code>LobbyMainUIVIew</code></td>
+                <td>진입 라우터 기본 경로 · 결과창에서 복귀 · 인게임 설정 나가기</td>
+                <td><code>LobbyMainUIVIew.onClickPlay()</code> → <code>ViewCreator.showPopupGameEntry()</code></td>
+              </tr>
+              <tr>
+                <td>③</td>
+                <td><code>PopupGameEntry</code></td>
+                <td>로비 PLAY · 해머 부족 팝업 · 이벤트 팝업 [플레이] · 재시도</td>
+                <td><code>onClickEnterStage()</code> → <code>startGame()</code></td>
+              </tr>
+              <tr>
+                <td>④</td>
+                <td><code>ViewGame</code> + <code>StageView</code>/<code>StageViewModel</code></td>
+                <td>프리게임 시작 · 인트로 직행 4종 · 재시도</td>
+                <td>클리어 <code>endGame(star, gold)</code> / 포기 <code>onClickEndLevel()</code></td>
+              </tr>
+              <tr>
+                <td>⑤</td>
+                <td><code>PopupCompleteLevel</code> / <code>PopupQuitLevel</code></td>
+                <td><code>endGame()</code> 의 <code>sendGameEnd()</code> 응답 후 / 포기 버튼</td>
+                <td><code>ViewCreator.showViewLobby(rewardData)</code> 또는 다음판 직행</td>
+              </tr>
+              <tr>
+                <td>⑥</td>
+                <td><code>SessionFlowManager.runPostGameFlow()</code></td>
+                <td><code>ViewLobby.onShowEnd()</code> 가 로비 표시 직후 호출</td>
+                <td>보상 · 출석 · 이벤트 · 튜토리얼 팝업 직렬 실행 → 로비 조작 해제</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              한 판의 사이클은 <strong>②→③→④→⑤→⑥→②</strong> 로 닫힙니다.
+              여기서 <strong>③과 ⑥은 건너뛸 수 있는 단계</strong>입니다 — 레벨 1~2와 하루 1회 직행은 ③을 생략하고,
+              결과창 [받기]로 다음판에 직행하면 ②·⑥을 거치지 않습니다.
+              버그가 “결과창 다음에 안 뜨는” 종류일 때 ⑥을 건너뛰는 경로에 걸린 게 아닌지부터 보는 게 빠릅니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="entry">
+        <h2 class="doc-h2">진입 분기 <span class="doc-h2-sub"><code>BaseIntro.moveToNext()</code> — 위에서 먼저 걸린 것 하나만 실행</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">순서</th>
+                <th style="width: 24%">조건</th>
+                <th style="width: 20%">도착 지면</th>
+                <th>호출</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>①</td>
+                <td>entryData.social 에 <code>SOCIAL_TOURNAMENT</code></td>
+                <td>인게임 (토너먼트)</td>
+                <td><code>SceneManager.showViewGameWithTournament(stage_id, direct_entry, contextId, null, null, sendJoinMission=true)</code></td>
+              </tr>
+              <tr>
+                <td>②</td>
+                <td>entryData.friend 가 내 ID와 다름</td>
+                <td>인게임 (P2P)</td>
+                <td><code>SceneManager.showViewGameWithFriend("", direct_entry, friendId)</code></td>
+              </tr>
+              <tr>
+                <td>③</td>
+                <td>플레이어 레벨 ≤ 2</td>
+                <td>인게임 (솔로) — 로비 · 프리게임 스킵</td>
+                <td><code>selectDefaultDeckKeyNumber()</code> → <code>showViewSoloGame(stage_id, direct_entry)</code></td>
+              </tr>
+              <tr>
+                <td>④</td>
+                <td><code>lastGameStartInfo.expiredAt</code> 가 아직 유효</td>
+                <td>인게임 (직전 판 복귀)</td>
+                <td><code>ViewCreator.showViewGame(stageId, …, gameId, …, resumeDifficultyTierKeyNumber)</code></td>
+              </tr>
+              <tr>
+                <td>⑤</td>
+                <td><code>shouldIntroDirectEntry()</code> 통과</td>
+                <td>인게임 (하루 1회 직행)</td>
+                <td>프리게임 팝업 없이 인게임</td>
+              </tr>
+              <tr>
+                <td>⑥</td>
+                <td>위 어느 것도 아님</td>
+                <td>로비</td>
+                <td><code>SceneManager.instance.showViewLobby()</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">⑤의 게이트가 4개라는 점</div>
+            <p>
+              하루 1회 직행은 <code>PopupGameEntry.wasShown</code> ·
+              <code>DataManager.const.isQuickNextLoopActive</code> ·
+              <code>canUseDailyDirectEntry</code> ·
+              <code>TutorialManager.getPendingPreLevelGuides()</code> <strong>네 개를 모두 통과</strong>해야 열립니다.
+              “직행이 안 걸린다”는 제보가 오면 이 넷 중 어디서 막혔는지를 먼저 갈라야 하고,
+              특히 <strong>프리게임 팝업에서만 진행되는 튜토리얼이 남아 있으면 의도적으로 막힙니다</strong>.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">④ 복귀 경로의 난이도 티어</div>
+            <p>
+              복귀 세션은 클라 난이도 로직(<code>dynamicLevel</code> ·
+              <code>getCurrentDifficultyTierKeyNumber</code>)을 <strong>쓰지 않고</strong>
+              <code>game-start</code> 시점에 서버가 기록한 티어를 그대로 씁니다.
+              재로그인 사이에 티어가 바뀌면 같은 <code>gameId</code> 의 판이 다른 난이도로 재구성되고
+              <code>game-end</code> 티어도 세션과 어긋나기 때문입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="buttons">
+        <h2 class="doc-h2">버튼 → 호출 메소드 <span class="doc-h2-sub">맵 카드를 눌러도 같은 내용이 열린다</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">지면</th>
+                <th style="width: 14%">버튼</th>
+                <th>호출 사슬</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="4"><code>LobbyMainUIVIew</code><br /><span class="tag">로비 메인</span></td>
+                <td>PLAY</td>
+                <td><code>onClickPlay()</code> → <code>hasForceDeco()</code> 가드 → <code>logShadowChaseActivate()</code> → <code>getNextStage()</code> → <code>showPopupGameEntry()</code></td>
+              </tr>
+              <tr>
+                <td>방치 골드</td>
+                <td><code>onClickIdleGold()</code> → <code>claimIdleGold()</code> → <code>ADPlayer.tryShowInterstitialAD(idle_gold)</code></td>
+              </tr>
+              <tr>
+                <td>무료 골드</td>
+                <td><code>onClickRvFreeGold()</code> → <code>tryShowRewardAD(lobby_free_gold)</code> → <code>claimRvGold("lobby")</code></td>
+              </tr>
+              <tr>
+                <td>꾸미기</td>
+                <td><code>onClickShowDecoView()</code> → <code>upcastEvent(LOBBY_SHOW_DECO_VIEW)</code> → <code>ViewLobby.showDecoViews()</code></td>
+              </tr>
+
+              <tr>
+                <td rowspan="3"><code>ViewLobby</code><br /><span class="tag">로비 본체</span></td>
+                <td>상점</td>
+                <td><code>onClickShop()</code> → <code>isPaymentsAvailable()</code> 가드 → <code>showPopupShop()</code></td>
+              </tr>
+              <tr>
+                <td>토너먼트</td>
+                <td><code>onClickTournament()</code> → <code>showPopupTournament()</code> → <code>onJoinTournament</code> → <code>showViewGameWithTournament()</code></td>
+              </tr>
+              <tr>
+                <td>해머</td>
+                <td><code>onClickHammer()</code> → 전 도시 완성 <code>showPopupNewArea()</code> / 여유 있음 <code>T_HAMMER_FULL</code> 토스트 / 그 외 <code>showPopupNeedHammer()</code></td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>PopupGameEntry</code><br /><span class="tag">프리게임</span></td>
+                <td>시작</td>
+                <td><code>onClickEnterStage()</code> → <code>getGoldCostForMultiple() + getBoosterGoldCost()</code> → 충분하면 <code>startGame()</code></td>
+              </tr>
+              <tr>
+                <td>골드 부족</td>
+                <td>RV 남음 <code>showPopupChargeGold()</code> / 소진 <code>showPopupShop()</code> 강제</td>
+              </tr>
+
+              <tr>
+                <td rowspan="4"><code>ViewGame</code><br /><span class="tag">인게임</span></td>
+                <td>카드 탭</td>
+                <td><code>StageView.onClickCard(card)</code> → <code>canSelectCard()</code> → <code>StageViewModel.clickCard()</code> → <code>completeCurrentTurn()</code> → <code>checkGameOver()</code></td>
+              </tr>
+              <tr>
+                <td>부스터</td>
+                <td><code>onClickUndo()</code> / <code>onClickPlus()</code> / <code>onClickWild()</code> / <code>onClickFireworks()</code></td>
+              </tr>
+              <tr>
+                <td>옵션</td>
+                <td><code>onClickOption()</code> → <code>showPopupSettingInGame(onClickLeave)</code></td>
+              </tr>
+              <tr>
+                <td>종료</td>
+                <td><code>onClickEndLevel()</code> → <code>getQuitLevelRewardData()</code> → <code>buildMissionInfos(0, false)</code> → <code>showPopupQuitLevel()</code></td>
+              </tr>
+
+              <tr>
+                <td rowspan="3"><code>PopupCompleteLevel</code><br /><span class="tag">클리어 결과</span></td>
+                <td>받기</td>
+                <td><code>onClickCollect()</code> → <code>collectAndProceed(false)</code> → <code>consumeContextPopupBeforeAD()</code> → <code>playClaimThenProceed()</code></td>
+              </tr>
+              <tr>
+                <td>2배 받기</td>
+                <td><code>onClickCollectDouble()</code> → <code>ADPlayer.tryShowRewardAD()</code></td>
+              </tr>
+              <tr>
+                <td>홈</td>
+                <td><code>onClickLobby()</code> → <code>collectAndProceed(true)</code> → <code>showViewLobby(rewardData)</code></td>
+              </tr>
+
+              <tr>
+                <td rowspan="3"><code>PopupQuitLevel</code><br /><span class="tag">포기 · 실패</span></td>
+                <td>계속하기</td>
+                <td><code>onClickBack()</code> → <code>close()</code> → <code>onHideEnd</code> 에서 <code>gameplayStart()</code></td>
+              </tr>
+              <tr>
+                <td>그만두기</td>
+                <td><code>onClickQuit()</code> → <code>commitQuitGameEnd()</code> → <code>showBushView()</code> → <code>switchToContextSolo()</code> → <code>showViewLobby(undefined, true)</code></td>
+              </tr>
+              <tr>
+                <td>다시하기</td>
+                <td><code>onClickRetry()</code> → <code>ViewGame.onRetryRequested()</code> → <code>finishCurrentGameAsFail()</code> → <code>restartImmediatelyForRetry()</code> 또는 <code>showPopupGameEntryForRetry()</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>로비에서 열리는 팝업 12종 — 진입 메소드 전체</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 26%">팝업</th>
+                    <th style="width: 20%">여는 버튼</th>
+                    <th>진입 메소드 · 선행 조건</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>PopupShop</code></td>
+                    <td>상점</td>
+                    <td><code>showPopupShop()</code> — <code>isPaymentsAvailable()</code> 실패 시 진입 자체를 차단</td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupLeaderboard</code></td>
+                    <td>리더보드</td>
+                    <td><code>showPopupLeaderboard()</code> — <code>isFeatureLocked("content_leaderboard")</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupTournament</code></td>
+                    <td>토너먼트</td>
+                    <td><code>showPopupTournament()</code> — <code>isFeatureLocked("content_tournament")</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupCollection</code></td>
+                    <td>컬렉션</td>
+                    <td><code>showPopupCollection()</code> — <code>ConstKeyNumber.IS_ALBUM_COLLECTION_OPEN</code> 이 0이면 <code>T_COMING_SOON</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupMail</code></td>
+                    <td>우편</td>
+                    <td><code>showPopupMail()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupDailyTask</code></td>
+                    <td>일일 미션</td>
+                    <td><code>refreshDailyTaskIfNeeded()</code> → <code>showPopupDailyTask()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupMiniGameWheel</code></td>
+                    <td>룰렛</td>
+                    <td>1회차만 <code>tryShowInterstitialAD(daily_wheel)</code> → <code>showPopupDailyWheel()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupSpecialOffer</code></td>
+                    <td>IAP A/B/C</td>
+                    <td><code>openSpecialOfferPopup(product)</code> → <code>markProductSeen()</code> → <code>showPopupSpecialOffer()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupNeedHammer</code></td>
+                    <td>해머</td>
+                    <td><code>showPopupNeedHammer()</code> → 팝업 안 [플레이] 가 다시 <code>showPopupGameEntry()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupEventCardMilestone</code></td>
+                    <td>카드 마일스톤</td>
+                    <td><code>getEventInfos()</code> → <code>showPopupEventCardMilestone(isBlack)</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupEventWinningMilestone</code></td>
+                    <td>연승 마일스톤</td>
+                    <td><code>showPopupEventWinningMilestone()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupEventClearRanking</code></td>
+                    <td>클리어 랭킹</td>
+                    <td><code>getEventInfos()</code> → <code>showPopupEventClearRanking()</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--validate)">
+                <div class="note-title">공통 진입 경로가 하나라는 점</div>
+                <p>
+                  이 12종은 전부 <code>LobbyMainUIVIew.openPopup(showFn)</code> 을 지나갑니다.
+                  이 안에 <strong>중복 오픈 가드</strong>와 <strong>팝업 닫힘 시 로비 재표시</strong>가 들어 있어서,
+                  “연타하면 로비가 숨은 채로 굳는다” 류의 증상은 개별 팝업이 아니라
+                  이 한 곳을 우회했는지부터 확인하는 편이 빠릅니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>꾸미기 · 메타시티 — 버튼과 메소드</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 26%">주체</th>
+                    <th style="width: 18%">버튼</th>
+                    <th>호출</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td rowspan="4"><code>LobbyDecoUIView</code></td>
+                    <td>도시 목록</td>
+                    <td><code>onClickMetaCityList()</code> → <code>showPopupMetaCityList(onSelect, onView)</code> → <code>ON_SELECT_META_CITY</code> / <code>ON_VIEW_META_CITY</code></td>
+                  </tr>
+                  <tr>
+                    <td>공유</td>
+                    <td><code>onClickShare()</code> → <code>resetZoom()</code> → <code>captureScreen()</code> → <code>doShare()</code> → <code>showPopupDecoShare()</code></td>
+                  </tr>
+                  <tr>
+                    <td>뒤로</td>
+                    <td><code>onClickHideDecoView()</code> → <code>LOBBY_HIDE_DECO_VIEW</code> → <code>ViewLobby.hideDecoViews()</code></td>
+                  </tr>
+                  <tr>
+                    <td>오브젝트 탭</td>
+                    <td><code>onMetaCityObjectClicked(event)</code> → 확대 · 업그레이드 대상 지정</td>
+                  </tr>
+                  <tr>
+                    <td><code>LobbyMetaCityUpgradeView</code></td>
+                    <td>업그레이드</td>
+                    <td><code>onClickUpgrade()</code> → <code>BaseNetworkManager.upgradeMetaCity()</code> → <code>MetaCityObjectView.playUpgradeWithEffects()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>PopupMetaCityList</code></td>
+                    <td>현재 · 감상</td>
+                    <td><code>onClickCurrent()</code> → <code>ViewLobby.switchCity()</code> / <code>PopupMetaCityListItem.onClickViewButton()</code> → <code>viewCompletedCity()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>ViewLobby</code></td>
+                    <td>(자동)</td>
+                    <td>도시 완성 시 <code>showCityCompleteRewardAndList()</code> → <code>showPopupNewArea()</code>, 강제 꾸미기 <code>enterDecoViewAndWait()</code>, 자동 꾸미기 <code>autoDecoAndStay()</code> → <code>autoUpgradeDecoOnce()</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="doc-section" id="post">
+        <h2 class="doc-h2">결과 후 플로우 <span class="doc-h2-sub"><code>SessionFlowManager.runPostGameFlow(isWin)</code> — 직렬 9단계</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">순서</th>
+                <th style="width: 30%">메소드</th>
+                <th>여는 것</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>①</td><td><code>runWinFlow()</code> / <code>runFailFlow()</code></td><td>승 · 패별 후속 처리</td></tr>
+              <tr><td>②</td><td><code>showMilestoneRewardPopupsIfNeeded()</code></td><td><code>showPopupRewardClaim(data)</code> → <code>syncMilestoneRewardedKeysToCurrent()</code></td></tr>
+              <tr><td>③</td><td><code>runShadowChaseFlow()</code></td><td><code>showShadowChaseChestIfNeeded()</code> → <code>showPopupEventShadowChase()</code> → <code>playShadowChaseLobbyFx()</code></td></tr>
+              <tr><td>④</td><td><code>showAttendanceIfNeeded()</code></td><td><code>showPopupDailyGift()</code> → <code>showDailyCheckTutorialIfNeeded()</code></td></tr>
+              <tr><td>⑤</td><td><code>enterForceDecoIfNeeded()</code></td><td><code>ViewLobby.enterDecoViewAndWait()</code> — 강제 꾸미기</td></tr>
+              <tr><td>⑥</td><td><code>showLobbyTutorialGuidesIfNeeded()</code></td><td><code>executeLobbyGuideAction(contentId)</code> → <code>showPopupTutorial(guide, targetNode)</code></td></tr>
+              <tr><td>⑦</td><td><code>showFirstActiveEventPopup()</code></td><td>진행 중인 첫 이벤트 팝업 → <code>setPlayHandler(popup)</code></td></tr>
+              <tr><td>⑧</td><td><code>showHammerReadyGuideIfNeeded()</code></td><td>해머 보유 안내 → 데코 유도</td></tr>
+              <tr><td>⑨</td><td><code>showPreLevelPopup()</code></td><td><code>showPopupGameEntry()</code> — 다음판</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">순서가 곧 사양이라는 점</div>
+            <p>
+              이 9단계는 <strong>직렬로 한 개씩 끝나야 다음이 뜹니다</strong>.
+              그래서 “보상 팝업이 안 뜬다 / 두 개가 겹친다” 류는 대개 개별 팝업의 버그가 아니라
+              <strong>앞 단계가 대기를 풀지 않았거나 순서를 건너뛴</strong> 문제입니다.
+              판 시작 시점의 <code>recordPreGameState()</code> 스냅샷과 대조해서 ②의
+              <code>getNewlyRewardedMilestoneKeyNumbers()</code> 가 무엇을 새로 봤는지 보는 게 출발점입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">재화 표기가 앞질러 가지 않게 하는 장치</div>
+            <p>
+              <code>ViewLobby</code> 는 이 플로우 동안 <code>_skipTopCoinRefresh</code> 로 즉발 갱신을 막고,
+              <code>getPendingShadowChaseChestTotals()</code> · <code>getPendingMilestoneRewardTotals()</code> 로
+              <strong>아직 연출하지 않은 보상분을 빼서</strong> TopCoin 을 세팁니다.
+              여기를 건드리면 “보상 연출 전에 숫자가 먼저 올라가 있는” 증상이 납니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="scope">
+        <h2 class="doc-h2">확인 범위</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">항목</th>
+                <th style="width: 14%">근거</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>지면 목록</td>
+                <td><span class="pill" style="--acc: var(--ok)">실측</span></td>
+                <td><code>View*.ts</code> 3개 · <code>Popup*.ts</code> 49개 전수 스캔 (<code>assets/script</code>, common 기반 클래스 제외)</td>
+              </tr>
+              <tr>
+                <td>버튼 → 메소드</td>
+                <td><span class="pill" style="--acc: var(--ok)">실측</span></td>
+                <td><code>assets/script/game</code> 의 <code>onClick*</code> 핸들러 182개를 grep 으로 전수 수집 후 주요 사슬만 본문 게재</td>
+              </tr>
+              <tr>
+                <td>흐름(화살표)</td>
+                <td><span class="pill" style="--acc: var(--ok)">실측</span></td>
+                <td><code>ViewCreator</code> · <code>SceneManager</code> · <code>SessionFlowManager</code> 호출부를 읽어 연결. 57개</td>
+              </tr>
+              <tr>
+                <td>Inspector 연결</td>
+                <td><span class="pill" style="--acc: var(--warn)">미확인</span></td>
+                <td>버튼 이벤트는 프리팹 Inspector 에서 연결되므로, 코드에 핸들러가 있어도 <strong>실제로 어느 버튼에 걸렸는지는 프리팹을 열어야 확정</strong>됩니다. 표의 “버튼” 열은 메소드명과 주변 로직에서 읽은 것입니다.</td>
+              </tr>
+              <tr>
+                <td>전역 팝업 연결선</td>
+                <td><span class="pill" style="--acc: var(--warn)">생략</span></td>
+                <td><code>PopupError</code> · <code>PopupAdBreak</code> · 토스트는 호출 지점이 수십 곳이라 맵에서 화살표를 생략</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="foot">
+          <b>갱신 기준</b> 지면이 새로 생기거나 진입 경로가 바뀔 때만 고칩니다.
+          수치 문서가 아니라 <b>코드 레퍼런스</b>이므로 라이브 데이터와는 무관합니다.
+        </p>
+      </section>
+    </main>
+
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>

@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solitaire TriPeaks 지면 플로우 맵</title>
+    <meta name="description" content="솔리테어 트라이픽스 전 지면과 버튼별 호출 메소드를 드래그·확대로 훑는 인터랙티브 맵. 상위 문서 docs/solitaire-flow-map.html 에 임베드된다." />
+    <meta name="color-scheme" content="light" />
+  </head>
+  <body>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --grid: #e4e8ef;
+    --surface: #ffffff;
+    --surface-2: #f1f3f7;
+    --ink: #16192a;
+    --ink-2: #3c4258;
+    --muted: #5a6178;
+    --line: #dfe3ea;
+    --shadow: rgba(20, 25, 45, .1);
+
+    --c-entry: #0e7490;
+    --c-lobby: #1f9e4a;
+    --c-game: #1d4ed8;
+    --c-result: #a8801a;
+    --c-event: #6d28d9;
+    --c-commerce: #dc2626;
+    --c-system: #5a6178;
+
+    --font-ui: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+  }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  #stage.dragging { cursor: grabbing; }
+
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+  #wires { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+
+  .wire { fill: none; stroke: var(--line); stroke-width: 1.6; }
+  .wire.trunk { stroke: var(--ink-2); stroke-width: 2.3; }
+  .wire.back { stroke: var(--c-lobby); stroke-dasharray: 8 6; stroke-width: 1.8; }
+  .wire.branch { stroke: var(--c-entry); stroke-width: 1.8; }
+
+  .wlabel {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+  .wlabel.strong { fill: var(--ink-2); font-size: 11.5px; }
+
+  #wires.focused .wire { opacity: .09; }
+  #wires.focused .wlabel { opacity: .06; }
+  #wires.focused .wire.hot { opacity: 1; stroke-width: 2.6; }
+  #wires.focused .wlabel.hot { opacity: 1; }
+
+  .node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--cc);
+    border-radius: 3px;
+    padding: 10px 12px 12px;
+    box-shadow: 0 1px 2px var(--shadow);
+    cursor: pointer;
+    transition: box-shadow .14s ease, opacity .14s ease;
+  }
+  .node:hover { box-shadow: 0 5px 16px var(--shadow); }
+  .node:focus-visible { outline: 2px solid var(--cc); outline-offset: 2px; }
+  .node.selected { box-shadow: 0 0 0 2px var(--cc), 0 6px 18px var(--shadow); }
+  #world.focused .node { opacity: .26; }
+  #world.focused .node.hot { opacity: 1; }
+
+  .n-head { display: flex; align-items: baseline; gap: 8px; }
+  .n-cat { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--cc); font-weight: 700; white-space: nowrap; }
+  .n-kind { margin-left: auto; font-size: 9.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 2px; padding: 0 4px; white-space: nowrap; }
+  .n-title { font-size: 15px; font-weight: 650; letter-spacing: -.01em; line-height: 1.25; }
+  .n-ko { font-size: 11.5px; color: var(--ink-2); margin-top: -3px; }
+  .n-file { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); word-break: break-all; }
+
+  .n-acts { list-style: none; margin: 4px 0 0; padding: 6px 0 0; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 5px; }
+  .n-acts li { display: flex; flex-direction: column; gap: 1px; }
+  .n-acts .k { font-size: 10.5px; font-weight: 600; color: var(--ink-2); }
+  .n-acts code { font-family: var(--font-mono); font-size: 10px; color: var(--muted); line-height: 1.35; word-break: break-word; }
+  .n-more { font-size: 10px; color: var(--cc); font-weight: 600; }
+
+  .cat-entry { --cc: var(--c-entry); }
+  .cat-lobby { --cc: var(--c-lobby); }
+  .cat-game { --cc: var(--c-game); }
+  .cat-result { --cc: var(--c-result); }
+  .cat-event { --cc: var(--c-event); }
+  .cat-commerce { --cc: var(--c-commerce); }
+  .cat-system { --cc: var(--c-system); }
+
+  .node.gate { border-top-width: 1px; border-left: 3px solid var(--cc); background: var(--surface-2); }
+
+  .panel {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+
+  #head { top: 14px; left: 14px; padding: 12px 14px; max-width: 336px; }
+  #head h1 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+  #head p { margin: 4px 0 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  #head b { color: var(--ink-2); font-weight: 650; }
+  #legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+  #legend span { font-size: 10px; color: var(--ink-2); display: flex; align-items: center; gap: 5px; }
+  #legend i { width: 9px; height: 9px; border-radius: 1px; display: block; }
+
+  #tools { top: 14px; right: 14px; display: flex; gap: 4px; padding: 6px; z-index: 3; }
+  #tools button {
+    font-family: inherit; font-size: 11px; font-weight: 600;
+    color: var(--ink-2); background: transparent;
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: 5px 9px; cursor: pointer; min-width: 30px;
+  }
+  #tools button:hover { background: var(--surface-2); color: var(--ink); }
+  #tools button:focus-visible { outline: 2px solid var(--c-lobby); outline-offset: 1px; }
+  #zoomval { font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: flex; align-items: center; padding: 0 6px; font-variant-numeric: tabular-nums; }
+
+  #hint { bottom: 14px; left: 50%; transform: translateX(-50%); padding: 7px 14px; font-size: 11px; color: var(--muted); display: flex; gap: 14px; white-space: nowrap; }
+  #hint b { color: var(--ink-2); font-weight: 600; }
+
+  #mini { bottom: 14px; left: 14px; width: 214px; height: 168px; padding: 6px; cursor: crosshair; }
+  #mini-in { position: relative; width: 100%; height: 100%; }
+  #mini .mn { position: absolute; border-radius: 1px; opacity: .5; }
+  #mini-vp { position: absolute; border: 1.5px solid var(--c-lobby); background: color-mix(in srgb, var(--c-lobby) 12%, transparent); border-radius: 1px; }
+
+  #insp {
+    top: 72px; right: 14px; bottom: 14px; width: 376px;
+    display: none; flex-direction: column; padding: 0; overflow: hidden; z-index: 2;
+  }
+  #insp.open { display: flex; }
+  #insp-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--line); position: relative; }
+  #insp-cat { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--cc); }
+  #insp-title { margin: 5px 0 0; font-size: 18px; font-weight: 680; letter-spacing: -.015em; padding-right: 30px; }
+  #insp-ko { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+  #insp-file { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 7px; word-break: break-all; }
+  #insp-close {
+    position: absolute; top: 12px; right: 12px;
+    width: 26px; height: 26px; border-radius: 3px;
+    border: 1px solid var(--line); background: transparent;
+    color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer;
+  }
+  #insp-close:hover { color: var(--ink); background: var(--surface-2); }
+  #insp-body { overflow-y: auto; padding: 4px 18px 22px; }
+  #insp-body h3 {
+    font-size: 10px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+    margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line);
+  }
+  .row { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-bottom: 1px dotted var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .rk { font-size: 11.5px; font-weight: 650; color: var(--ink); }
+  .row .rv { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); line-height: 1.45; word-break: break-word; }
+  .goto { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .goto button {
+    font-family: inherit; font-size: 10.5px; color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 2px; padding: 4px 8px; cursor: pointer;
+  }
+  .goto button:hover { border-color: var(--cc); color: var(--ink); }
+
+  @media (max-width: 900px) {
+    #mini, #hint { display: none; }
+    #insp { width: auto; left: 14px; top: auto; height: 48vh; }
+    #head { max-width: 210px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .node { transition: none; } }
+</style>
+
+<div id="stage">
+  <div id="world">
+    <svg id="wires" aria-hidden="true">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="context-stroke"></path>
+        </marker>
+      </defs>
+      <g id="wire-g"></g>
+      <g id="wlabel-g"></g>
+    </svg>
+    <div id="nodes"></div>
+  </div>
+</div>
+
+<div id="head" class="panel">
+  <h1>지면 플로우 맵 · 범례</h1>
+  <p>드래그로 이동, 휠로 확대·축소. <b>카드를 클릭</b>하면 그 지면의 버튼 → 호출 메소드 전체와 앞뒤 흐름이 오른쪽에 열린다.</p>
+  <div id="legend">
+    <span><i style="background:var(--c-entry)"></i>진입 · 라우팅</span>
+    <span><i style="background:var(--c-lobby)"></i>로비 · 데코</span>
+    <span><i style="background:var(--c-game)"></i>인게임</span>
+    <span><i style="background:var(--c-result)"></i>결과 · 보상</span>
+    <span><i style="background:var(--c-event)"></i>이벤트 · 미션</span>
+    <span><i style="background:var(--c-commerce)"></i>상점 · 소셜</span>
+    <span><i style="background:var(--c-system)"></i>시스템 · 공통</span>
+  </div>
+</div>
+
+<div id="tools" class="panel">
+  <button id="b-out" title="축소">−</button>
+  <div id="zoomval">100%</div>
+  <button id="b-in" title="확대">+</button>
+  <button id="b-fit">전체</button>
+  <button id="b-top">시작점</button>
+</div>
+
+<div id="mini" class="panel"><div id="mini-in"><div id="mini-vp"></div></div></div>
+
+<div id="hint" class="panel">
+  <span><b>드래그</b> 이동</span>
+  <span><b>휠</b> 확대·축소</span>
+  <span><b>카드 클릭</b> 메소드 상세</span>
+  <span><b>Esc</b> 선택 해제</span>
+</div>
+
+<aside id="insp" class="panel">
+  <div id="insp-head">
+    <div id="insp-cat"></div>
+    <h2 id="insp-title"></h2>
+    <div id="insp-ko"></div>
+    <div id="insp-file"></div>
+    <button id="insp-close" title="닫기">×</button>
+  </div>
+  <div id="insp-body"></div>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+
+  const N = [
+    /* ================= 진입 ================= */
+    {
+      id: "intro", cat: "entry", kind: "Scene", x: 1520, y: 40, w: 420,
+      title: "intro.fire / BaseIntro", ko: "인트로 · 로딩 지면",
+      file: "assets/script/Base/BaseIntro.ts",
+      acts: [
+        ["씬 진입", "onLoad() → 플랫폼 판별 · initSentry()"],
+        ["부팅", "start() → login() · loadGameData() · loadEntryData() · preloadResources()"],
+        ["로딩 완료", "SceneManager.logLoadComplete() → moveToNext()"]
+      ],
+      detail: [
+        { h: "라이프사이클", rows: [
+          ["onLoad()", "플랫폼 타입 확정(facebook / toss / crazygames / msn / youtube / tiktok), initSentry(), DebugPanel 연결"],
+          ["start()", "AsyncProcess 로 부팅 태스크 실행 — login(), loadConnectData(), loadGameData(), loadSettings(), setSignedPlayerInfo(), waitFriendList(), loadEntryData(), preloadResources()"],
+          ["retrySkippedOptionalTasks()", "선택 태스크(친구 목록 · 골드 리더보드 등) 실패분 재시도"],
+          ["preloadLobbyBundlesPriority()", "로비 번들 + 현재/다음 도시 배경 우선 프리로드, preloadLobbyPopups()"],
+          ["moveToNext()", "진입 데이터로 다음 지면 결정 — 옆의 진입 라우터 카드 참조"]
+        ]},
+        { h: "직행 판정", rows: [
+          ["shouldIntroDirectEntry()", "PopupGameEntry.wasShown / DataManager.const.isQuickNextLoopActive / canUseDailyDirectEntry / TutorialManager.getPendingPreLevelGuides() 전부 통과해야 하루 1회 인게임 직행"],
+          ["reloadGame()", "치명 오류 복구용 전체 리로드"]
+        ]}
+      ]
+    },
+    {
+      id: "router", cat: "entry", kind: "분기", gate: true, x: 1470, y: 288, w: 520,
+      title: "BaseIntro.moveToNext()", ko: "진입 라우터",
+      file: "Base/BaseIntro.ts:947",
+      acts: [
+        ["선행", "loadStageList() → applyStageData() · updateCurrentP2PPlayerId()"],
+        ["기준", "entryData.social / entryData.friend / lastGameStartInfo / playerLevel"]
+      ],
+      detail: [
+        { h: "분기 순서 (위에서 먼저 걸린 것 실행)", rows: [
+          ["① 토너먼트", "social 에 SOCIAL_TOURNAMENT 포함 → SceneManager.showViewGameWithTournament(stage_id, direct_entry, contextId, null, null, sendJoinMission=true)"],
+          ["② P2P 친구", "BasePlatform.startData.getEntryDataFriend() ≠ 내 ID → SceneManager.showViewGameWithFriend(\"\", direct_entry, friendId)"],
+          ["③ 레벨 1~2", "level ≤ 2 → DataManager.selectDefaultDeckKeyNumber() → showViewSoloGame(nextStage.stage_id, direct_entry). 로비 프리로드는 5초 뒤 지연 실행"],
+          ["④ 세션 복귀", "lastGameStartInfo.expiredAt > DataManager.getTime() → ViewCreator.showViewGame(stageId, useFireworks, useGoldenTicket, betMultiplier, gameId, …, resumeDifficultyTierKeyNumber)"],
+          ["⑤ 일일 직행", "shouldIntroDirectEntry() 통과 → 프리게임 팝업 없이 인게임 직행"],
+          ["⑥ 기본", "SceneManager.instance.showViewLobby() → ViewLobby"]
+        ]},
+        { h: "테스트 경로", rows: [
+          ["LocalTestDataGetter.getStartScene()", "\"lobby\" 지정 시 ensureLobbyBgReady() 후 곧바로 로비"]
+        ]}
+      ]
+    },
+    {
+      id: "e_tour", cat: "entry", kind: "직행", x: 300, y: 470, w: 300,
+      title: "토너먼트 직행", ko: "FB 토너먼트 링크 진입",
+      file: "game/SceneManager.ts:346",
+      acts: [["진입", "showViewGameWithTournament(stageId, direct_entry, contextId)"], ["합류", "trySwitchToJoinedTournament()"]]
+    },
+    {
+      id: "e_p2p", cat: "entry", kind: "직행", x: 680, y: 470, w: 300,
+      title: "P2P 친구 직행", ko: "친구 대결 링크 진입",
+      file: "game/SceneManager.ts:378",
+      acts: [["진입", "showViewGameWithFriend(stageId, direct_entry, friendId)"], ["폴백", "BasePlatform.switchToContextSolo()"]]
+    },
+    {
+      id: "e_solo", cat: "entry", kind: "직행", x: 3760, y: 300, w: 300,
+      title: "솔로 직행", ko: "레벨 1~2 · 하루 1회 직행",
+      file: "game/SceneManager.ts:416",
+      acts: [["진입", "showViewSoloGame(stageId, direct_entry)"], ["지연", "preloadLobbyBundlesPriority() (+5s)"]]
+    },
+    {
+      id: "e_resume", cat: "entry", kind: "복귀", x: 3760, y: 480, w: 300,
+      title: "세션 복귀", ko: "진행 중이던 판으로 복귀",
+      file: "Base/BaseIntro.ts:1030",
+      acts: [["진입", "ViewCreator.showViewGame(stageId, …, gameId, …, resumeTier)"], ["주의", "game-start 재호출 없음 · 서버 기록 티어 사용"]]
+    },
+
+    /* ================= 로비 ================= */
+    {
+      id: "lobby", cat: "lobby", kind: "View", x: 1470, y: 700, w: 520,
+      title: "ViewLobby", ko: "로비 (메인 지면)",
+      file: "assets/script/game/lobby/ViewLobby.ts",
+      acts: [
+        ["표시 완료", "onShowEnd() → playPendingRewardClaim() → SessionFlowManager.runPostGameFlow(isWin)"],
+        ["상점", "onClickShop() → isPaymentsAvailable() → ViewCreator.showPopupShop()"],
+        ["리더보드", "onClickLeaderboard() → showPopupLeaderboard()"],
+        ["토너먼트", "onClickTournament() → showPopupTournament()"],
+        ["해머", "onClickHammer() → showPopupNewArea() / showPopupNeedHammer()"]
+      ],
+      more: "+ 컬렉션 · 룰렛 · 설정 · Toss 로그인",
+      detail: [
+        { h: "라이프사이클", rows: [
+          ["onShowStart()", "TopCoin 초기화, 이벤트 버튼 갱신, 도시 프리팹 준비"],
+          ["onShowEnd()", "① playPendingRewardClaim(rewardData) 재화 정산 연출 ② SessionFlowManager.runPostGameFlow(isWin, …) ③ 레벨 3 유저 PopupGameEntry 자동 노출 ④ tryCreateShortcutAsync() ⑤ showIdleGoldBubbleIfNeeded()"],
+          ["loadAreaPrefab(cityKeyNumber)", "현재 도시 프리팹 로드 · ViewCreator.preloadLobbyPopups() · resourcePreloader.preloadMetaCityListBg()"],
+          ["switchCity() / viewCompletedCity() / exitViewMode()", "도시 전환 · 완성 도시 감상 모드"],
+          ["showCityCompleteRewardAndList()", "도시 완성 → 보상 연출 → PopupNewArea"],
+          ["refreshView() / onHideStart() / onHideEnd()", "재화 갱신 · 정리"]
+        ]},
+        { h: "버튼 → 메소드", rows: [
+          ["상점", "onClickShop() → BasePlatform.isPaymentsAvailable() 가드(PAYMENT_NOT_AVAILABLE 토스트) → ViewCreator.showPopupShop()"],
+          ["리더보드", "onClickLeaderboard() → mainView.isFeatureLocked(\"content_leaderboard\") → mainView.openPopup(showPopupLeaderboard)"],
+          ["토너먼트", "onClickTournament() → showPopupTournament() → popup.onJoinTournament → invalidateCache('tournament') → SceneManager.showViewGameWithTournament()"],
+          ["컬렉션", "onClickCollection() → ConstKeyNumber.IS_ALBUM_COLLECTION_OPEN 확인 → showPopupCollection()"],
+          ["해머", "onClickHammer() → 전 도시 완성이면 showPopupNewArea(), needsMoreHammer() 아니면 T_HAMMER_FULL 토스트, 그 외 showPopupNeedHammer()"],
+          ["룰렛", "onClickDailyWheel() → ADPlayer.tryShowInterstitialAD(daily_wheel) → showPopupDailyWheel()"],
+          ["설정", "onClickSettings() / onClickOption() → ViewCreator.showPopupSetting()"],
+          ["코인 · 티켓", "onClickCoin() / onClickTicket() → onClaimItems(ItemGathringInfo[]) 획득 연출"],
+          ["Toss 로그인", "onClickTossLogin() → BasePlatform.forceSubscribeBotAsync() → TopCoin 갱신"]
+        ]},
+        { h: "데코 · 메타시티 연동", rows: [
+          ["showDecoViews() / hideDecoViews()", "LOBBY_SHOW_DECO_VIEW · LOBBY_HIDE_DECO_VIEW 커스텀 이벤트 수신"],
+          ["enterDecoViewAndWait() / autoDecoAndStay() / autoUpgradeDecoOnce()", "강제 꾸미기 · 자동 꾸미기"],
+          ["onMetaCityZoomInStarted() / onMetaCityZoomOutStarted()", "도시 줌 연출 동기화"],
+          ["tryBeginFirstDecoTutorial() → showFirstDecoTutorialPopup()", "첫 데코 튜토리얼"]
+        ]}
+      ]
+    },
+    {
+      id: "lobbymain", cat: "lobby", kind: "Component", x: 2120, y: 700, w: 360,
+      title: "LobbyMainUIVIew", ko: "로비 메인 UI (버튼 묶음)",
+      file: "game/lobby/LobbyMainUIVIew.ts",
+      acts: [
+        ["PLAY", "onClickPlay() → getNextStage() → showPopupGameEntry()"],
+        ["방치 골드", "onClickIdleGold() → claimIdleGold() → tryShowInterstitialAD(idle_gold)"],
+        ["무료 골드", "onClickRvFreeGold() → tryShowRewardAD(lobby_free_gold) → claimRvGold(\"lobby\")"],
+        ["꾸미기", "onClickShowDecoView() → upcastEvent(LOBBY_SHOW_DECO_VIEW)"]
+      ],
+      more: "+ 우편 · 일일미션 · 룰렛 · IAP A/B/C · 이벤트 3종",
+      detail: [
+        { h: "게임 시작", rows: [
+          ["PLAY", "onClickPlay() → DataManager.hasForceDeco() 가드(T_FINISH_DECO_FIRST 토스트) → SessionFlowManager.logShadowChaseActivate() → DataManager.getNextStage() → updateDifficultyButtons() → level ≤ 2 면 SceneManager.showViewSoloGame(), 그 외 ViewCreator.showPopupGameEntry(stageId, onClose)"],
+          ["openPopup(showFn)", "모든 로비 팝업 공통 진입 — 중복 오픈 가드 + 팝업 닫힘 시(onHideEnded) 로비 재표시"],
+          ["openPopupAndWait(popup)", "사후 플로우에서 팝업 닫힘까지 대기"]
+        ]},
+        { h: "재화 · 광고", rows: [
+          ["방치 골드", "onClickIdleGold() → BaseNetworkManager.claimIdleGold() → ADPlayer.tryShowInterstitialAD(idle_gold) → onClaimIdleGoldSuccess(amount, startNode)"],
+          ["무료 골드(RV)", "onClickRvFreeGold() → ADPlayer.tryShowRewardAD(lobby_free_gold) → BaseNetworkManager.claimRvGold(\"lobby\") → DataManager.updateItems()"],
+          ["IAP A/B/C", "onClickIAP_A() / onClickIAP_B() / onClickIAP_C() → openSpecialOfferPopup(product) → SpecialOfferManager.markProductSeen() → ViewCreator.showPopupSpecialOffer()"]
+        ]},
+        { h: "지면 이동", rows: [
+          ["우편", "onClickInbox() → ViewCreator.showPopupMail()"],
+          ["설정", "onClickSetting() → ViewCreator.showPopupSetting()"],
+          ["일일 미션", "onClickDailyTask() → DataManager.refreshDailyTaskIfNeeded() → showPopupDailyTask()"],
+          ["룰렛", "onClickDailyWheel() → tryShowInterstitialAD(daily_wheel) → showPopupDailyWheel()"],
+          ["카드 마일스톤", "onClickCardMilestone() → BaseNetworkManager.getEventInfos() → showPopupEventCardMilestone(isBlack)"],
+          ["연승 마일스톤", "onClickWinningMilestone() → showPopupEventWinningMilestone()"],
+          ["클리어 랭킹", "onClickClearRanking() → getEventInfos() → showPopupEventClearRanking()"],
+          ["꾸미기", "onClickShowDecoView() → upcastEvent(LOBBY_SHOW_DECO_VIEW) → ViewLobby.showDecoViews()"]
+        ]},
+        { h: "잠금 · 공통", rows: [
+          ["isFeatureLocked(contentId)", "미해금 컨텐츠는 showLockedToast(contentId) 로 차단 (content_daily_wheel, content_leaderboard, content_collection …)"],
+          ["setPlayHandler(popup)", "이벤트 팝업의 [플레이] → getNextStage() → showPopupGameEntry() / showViewSoloGame()"],
+          ["showComingSoonToast(nextStartAt)", "미진행 이벤트 버튼 → 남은 시간 토스트"]
+        ]}
+      ]
+    },
+
+    /* ================= 데코 · 메타시티 ================= */
+    {
+      id: "deco", cat: "lobby", kind: "Component", x: 1060, y: 940, w: 340,
+      title: "LobbyDecoUIView", ko: "꾸미기 지면 (데코 뷰)",
+      file: "game/lobby/LobbyDecoUIView.ts",
+      acts: [
+        ["도시 목록", "onClickMetaCityList() → showPopupMetaCityList()"],
+        ["공유", "onClickShare() → captureScreen() → showPopupDecoShare()"],
+        ["뒤로", "onClickHideDecoView() → LOBBY_HIDE_DECO_VIEW"]
+      ],
+      detail: [
+        { h: "버튼 → 메소드", rows: [
+          ["도시 목록", "onClickMetaCityList() → ViewCreator.showPopupMetaCityList(onSelect, onView) → upcastEvent(ON_SELECT_META_CITY / ON_VIEW_META_CITY)"],
+          ["공유", "onClickShare() → metaCityView.resetZoom() → captureScreen() → doShare() → ViewCreator.showPopupDecoShare(base64, …)"],
+          ["뒤로가기", "onClickHideDecoView() → upcastEvent(LOBBY_HIDE_DECO_VIEW) → ViewLobby.hideDecoViews()"],
+          ["배경 탭", "onClickBackground() → rewardView.hideBubbleView()"],
+          ["오브젝트 탭", "onMetaCityObjectClicked(event) → 해당 데코 확대 · 업그레이드 대상 지정"]
+        ]},
+        { h: "도시 완성", rows: [
+          ["captureCompletedCityScreen()", "완성 도시 스크린샷"],
+          ["showCompletedCitySharePopup(cityOrder, base64, …)", "완성 공유 팝업 → onShareComplete"],
+          ["hideDisableOnUpgrade() / showDisableOnUpgrade()", "업그레이드 중 입력 차단"]
+        ]}
+      ]
+    },
+    {
+      id: "upgrade", cat: "lobby", kind: "Component", x: 1060, y: 1210, w: 340,
+      title: "LobbyMetaCityUpgradeView", ko: "데코 업그레이드",
+      file: "game/lobby/LobbyMetaCityUpgradeView.ts",
+      acts: [
+        ["업그레이드", "onClickUpgrade() → BaseNetworkManager.upgradeMetaCity()"],
+        ["연출", "MetaCityObjectView.playViewModeUpgrade()"],
+        ["가드", "canAffordNextUpgrade() / isBusy() / isMaxTier(keyNumber)"]
+      ],
+      detail: [
+        { h: "메소드", rows: [
+          ["onClickUpgrade()", "해머 잔량 확인 → upgradeMetaCity() 요청 → setUpgrading(true) → 완료 후 updateUI(keyNumber)"],
+          ["MetaCityObjectView", "init() / playUpgradeWithEffects() / playCompleteAnimation() / refreshRedDot() / showMagnifyingView()"],
+          ["MetaCityManager", "도시·데코 데이터 및 업그레이드 상태 관리"]
+        ]}
+      ]
+    },
+    {
+      id: "p_citylist", cat: "lobby", kind: "Popup", x: 680, y: 1210, w: 340,
+      title: "PopupMetaCityList", ko: "도시 목록",
+      file: "game/popup/MetaCityList/PopupMetaCityList.ts",
+      acts: [
+        ["현재 도시", "onClickCurrent() → ViewLobby.switchCity(keyNumber)"],
+        ["감상", "PopupMetaCityListItem.onClickViewButton() → viewCompletedCity()"],
+        ["닫기", "onClickClose() / onClickBackground()"]
+      ]
+    },
+    {
+      id: "p_decoshare", cat: "commerce", kind: "Popup", x: 680, y: 940, w: 340,
+      title: "PopupDecoShare", ko: "도시 공유",
+      file: "game/popup/PopupDecoShare.ts",
+      acts: [["공유", "onClickShare() → BasePlatform 공유 API (feed / message)"], ["닫기", "onClickClose() → onShareComplete"]]
+    },
+    {
+      id: "p_newarea", cat: "lobby", kind: "Popup", x: 300, y: 940, w: 340,
+      title: "PopupNewArea", ko: "신규 지역 안내",
+      file: "game/popup/PopupNewArea.ts",
+      acts: [["진입", "ViewCreator.showPopupNewArea()"], ["호출 지점", "ViewLobby.onClickHammer() 전 도시 완성 시 · showCityCompleteRewardAndList()"]]
+    },
+
+    /* ================= 로비 팝업 그리드 ================= */
+    {
+      id: "p_shop", cat: "commerce", kind: "Popup", x: 2620, y: 700, w: 330,
+      title: "PopupShop", ko: "상점",
+      file: "game/popup/PopupShop.ts",
+      acts: [
+        ["구매", "ShopItem.onClickBuyItem() → purchaseAsync() / 골드 구매"],
+        ["성공", "successBuyShopItem() → showPopupPurchaseToastSpecialDeal()"],
+        ["구성", "setShopData() → reorderNodesByShopOrder()"]
+      ],
+      detail: [
+        { h: "버튼 → 메소드", rows: [
+          ["아이템 구매", "ShopItem.onClickBuyItem() → 유료면 BasePlatform.purchaseAsync(productId), 골드/무료면 서버 구매 API"],
+          ["구매 완료", "PopupShop.successBuyShopItem(item, obj, isSuccess) → DataManager.updateItems() → ItemReceiveView 연출"],
+          ["무료 코인", "ShopItem.startFreeCoinCooldown() / startFreeCoinCooldownAfterClaim() 쿨다운 표기"],
+          ["노출 제어", "refreshShopItemVisibility() / isGlobalLimitReached() / isFreeCoinAmountZero()"]
+        ]},
+        { h: "진입 지점", rows: [
+          ["로비", "ViewLobby.onClickShop()"],
+          ["프리게임", "PopupGameEntry.onClickOpenShop() · 골드 부족 + RV 소진 시 강제 노출"],
+          ["인게임", "ViewGame.onClickOpenShop()"],
+          ["결과창", "PopupCompleteLevel.onClickShop()"]
+        ]}
+      ]
+    },
+    {
+      id: "p_leader", cat: "commerce", kind: "Popup", x: 2960, y: 700, w: 330,
+      title: "PopupLeaderboard", ko: "리더보드",
+      file: "game/popup/PopupLeaderboard.ts",
+      acts: [
+        ["탭", "onClickGlobal() / onClickFriends()"],
+        ["기간", "onClickWorldWeeklyTab() / onClickWorldAlltimeTab() / onClickFriendsWeeklyTab() / onClickFriendsAlltimeTab()"],
+        ["초대", "onClickFriendsInvite()"]
+      ]
+    },
+    {
+      id: "p_tour", cat: "commerce", kind: "Popup", x: 3300, y: 700, w: 330,
+      title: "PopupTournament", ko: "토너먼트",
+      file: "game/popup/Tournament/PopupTournament.ts",
+      acts: [
+        ["참가", "TournamentItem.onClickJoin() → onJoinTournament"],
+        ["생성", "TournamentItem.onClickCreate() → onCreateTournament"],
+        ["페이지", "onClickArrowLeft() / onClickArrowRight()"]
+      ],
+      detail: [
+        { h: "버튼 → 메소드", rows: [
+          ["참가", "onClickJoin() → ViewLobby 가 연결한 popup.onJoinTournament → invalidateCache('tournament' / 'goldLeaderboard') → DataManager.setKnownTournamentRank() → SceneManager.showViewGameWithTournament(stageId, lobby, contextId, …, tournamentId)"],
+          ["생성", "onClickCreate() → popup.onCreateTournament → DataManager.getMapSelector().getNextStage() → 토너먼트 컨텍스트 생성 후 인게임"],
+          ["닫기", "onClickClose()"]
+        ]}
+      ]
+    },
+    {
+      id: "p_collect", cat: "commerce", kind: "Popup", x: 2620, y: 900, w: 330,
+      title: "PopupCollection", ko: "컬렉션 (앨범 · 덱)",
+      file: "game/popup/Collection/PopupCollection.ts",
+      acts: [
+        ["탭", "onClickAlbumTab() / onClickDeckTab()"],
+        ["덱 선택", "PopupCollectionDeckItem.onClickItem()"],
+        ["덱 해금", "PopupCollectionDeckItem.onClickUnlock()"]
+      ],
+      detail: [
+        { h: "버튼 → 메소드", rows: [
+          ["앨범 조각", "PopupCollectionAlbumPieceItem.onClickItem() → PopupCollectionAlbumDetail 표시"],
+          ["앨범 아이템", "PopupCollectionAlbumItem.onClickItem()"],
+          ["덱 아이템", "onClickItem() → 선택 덱 갱신 / onClickUnlock() → 해금 요청 / onClickLockNode() → 잠금 안내"],
+          ["뒤로", "AlbumCollectionPanel.onClickBack() · PopupCollectionAlbumDetail.onClickBack()"],
+          ["관련 데이터", "DataManager.loadSelectedDeckKeyNumber() / loadClaimedDeckIds()"]
+        ]}
+      ]
+    },
+    {
+      id: "p_mail", cat: "commerce", kind: "Popup", x: 2960, y: 900, w: 330,
+      title: "PopupMail", ko: "우편함",
+      file: "game/popup/popupmail/PopupMail.ts",
+      acts: [
+        ["전체 수령", "onClickClaimAll() / onClickClaimAllDisabled()"],
+        ["새로고침", "onClickRefresh()"],
+        ["친구 초대", "onClickFriendInvite()"]
+      ]
+    },
+    {
+      id: "p_task", cat: "event", kind: "Popup", x: 3300, y: 900, w: 330,
+      title: "PopupDailyTask", ko: "일일 미션",
+      file: "game/popup/DailyTask/PopupDailyTask.ts",
+      acts: [
+        ["이동", "PopupDailyTaskItem.onClickGoButton()"],
+        ["수령", "PopupDailyTaskItem.onClickClaimButton()"],
+        ["교체", "PopupDailyTaskItem.onClickChangeButton()"]
+      ],
+      detail: [
+        { h: "버튼 → 메소드", rows: [
+          ["마일스톤 보상", "PopupDailyTask.onClickMilestoneReward(event, customEventData)"],
+          ["미션 이동", "PopupDailyTaskItem.onClickGoButton() → 해당 컨텐츠 지면으로 이동"],
+          ["배경 탭", "onClickBackground() → 닫기"],
+          ["갱신", "DataManager.needsDailyTaskRefresh → refreshDailyTaskIfNeeded()"]
+        ]}
+      ]
+    },
+    {
+      id: "p_wheel", cat: "event", kind: "Popup", x: 2620, y: 1100, w: 330,
+      title: "PopupMiniGameWheel", ko: "데일리 룰렛",
+      file: "game/lobby/popup/PopupMiniGameWheel.ts",
+      acts: [
+        ["1회차", "onClickPlay() → startGame(eventTarget)"],
+        ["2회차+", "ADPlayer.tryShowRewardAD(daily_wheel) → startGame()"],
+        ["닫기", "onClickClose()"]
+      ]
+    },
+    {
+      id: "p_offer", cat: "commerce", kind: "Popup", x: 2960, y: 1100, w: 330,
+      title: "PopupSpecialOffer", ko: "스페셜 오퍼 (IAP)",
+      file: "game/popup/Shop/PopupSpecialOffer.ts",
+      acts: [
+        ["구매", "onClickPurchase() → BasePlatform.purchaseAsync()"],
+        ["진입", "LobbyMainUIVIew.openSpecialOfferPopup(product)"],
+        ["닫기", "onClickClose() → SpecialOfferCloseAction"]
+      ]
+    },
+    {
+      id: "p_needhammer", cat: "lobby", kind: "Popup", x: 3300, y: 1100, w: 330,
+      title: "PopupNeedHammer", ko: "해머 부족 안내",
+      file: "game/popup/PopupNeedHammer.ts",
+      acts: [
+        ["플레이", "onClickPlay() → close() → getNextStage() → showPopupGameEntry()"],
+        ["레벨 1~2", "SceneManager.showViewSoloGame(stageId, lobby)"],
+        ["닫기", "onClickClose()"]
+      ]
+    },
+    {
+      id: "p_ev_card", cat: "event", kind: "Popup", x: 2620, y: 1300, w: 330,
+      title: "PopupEventCardMilestone", ko: "카드 마일스톤 (흑 · 적)",
+      file: "game/popup/EventPopup/PopupEventCardMilestone.ts",
+      acts: [
+        ["플레이", "onClickPlay() → setPlayHandler → showPopupGameEntry()"],
+        ["공유", "onClickShare()"],
+        ["보상", "PopupEventCardMilestoneItem → showPopupRewardClaim()"]
+      ]
+    },
+    {
+      id: "p_ev_win", cat: "event", kind: "Popup", x: 2960, y: 1300, w: 330,
+      title: "PopupEventWinningMilestone", ko: "연승 마일스톤",
+      file: "game/popup/EventPopup/PopupEventWinningMilestone.ts",
+      acts: [["플레이", "onClickPlay() → showPopupGameEntry()"], ["공유", "onClickShare()"]]
+    },
+    {
+      id: "p_ev_rank", cat: "event", kind: "Popup", x: 3300, y: 1300, w: 330,
+      title: "PopupEventClearRanking", ko: "클리어 랭킹 레이스",
+      file: "game/popup/EventPopup/PopupEventClearRanking.ts",
+      acts: [["플레이", "onClickPlay() → showPopupGameEntry()"], ["공유", "onClickShare()"], ["랭킹", "PopupEventClearRankingItem"]]
+    },
+
+    /* ================= 프리게임 ================= */
+    {
+      id: "entrypopup", cat: "game", kind: "Popup", x: 1470, y: 1180, w: 520,
+      title: "PopupGameEntry", ko: "프리게임 (배팅 · 부스터)",
+      file: "game/popup/PopupGameEntry.ts",
+      acts: [
+        ["시작", "onClickEnterStage() → startGame() → showViewSoloGame() / showViewGame()"],
+        ["배팅", "onClickX1Multiple() / onClickX2Multiple() / onClickX4Multiple() / onClickAddMultiple() / onClickMinusMultiple()"],
+        ["부스터", "onClickGrandFireworksBooster() / onClickGoldenTicketBooster() / onClickGoldRushBooster() / onClickBoosterSlot(i)"],
+        ["골드 부족", "showPopupChargeGold() 또는 showPopupShop() 강제"]
+      ],
+      more: "+ 상점 · 친구 초대 · 해머 채우기 · 재시도 전용 진입",
+      detail: [
+        { h: "게임 시작", rows: [
+          ["onClickEnterStage()", "isStartingGame 가드 → goldCost = getGoldCostForMultiple(multiple) + getBoosterGoldCost() → 잔액 충분하면 startGame()"],
+          ["골드 부족", "PreLevelGoldShortage 로그 → RV 횟수 남으면 ViewCreator.showPopupChargeGold(onWatchAdComplete, onCloseToShop), 소진이면 ViewCreator.showPopupShop() 강제"],
+          ["startGame()", "game-start 요청 → 배팅 · 부스터 반영 → 인게임 진입"],
+          ["preloadIngameAssets()", "덱 뒷면 · 배경 · ViewGame 사전 로드 (프리레벨 팝업 미사용 시 ViewLobby.onShowEnd 가 대신 호출)"]
+        ]},
+        { h: "버튼 → 메소드", rows: [
+          ["배팅 x1 / x2 / x4", "onClickX1Multiple() / onClickX2Multiple() / onClickX4Multiple() → refreshPlayCost()"],
+          ["배팅 ±", "onClickAddMultiple() / onClickMinusMultiple()"],
+          ["부스터 슬롯", "onClickBoosterSlot(slotIndex) → 보유 / 구매 판정"],
+          ["대형 불꽃", "onClickGrandFireworksBooster()"],
+          ["골든 티켓", "onClickGoldenTicketBooster()"],
+          ["골드 러시", "onClickGoldRushBooster()"],
+          ["해머 채우기", "onClickFullHammer()"],
+          ["상점", "onClickOpenShop() → showPopupShop() → onHideEnded 에서 refreshGoldAndLevel() · refreshPlayCost()"],
+          ["친구 초대", "onClickFriendInvite() → 컨텍스트 초대"],
+          ["닫기", "onClickClose()"]
+        ]},
+        { h: "재시도 전용", rows: [
+          ["ViewCreator.showPopupGameEntryForRetry(stageId, retryContext)", "PopupQuitLevel [다시하기] 경로에서 부스터 · 배팅 재선택"]
+        ]}
+      ]
+    },
+    {
+      id: "p_charge", cat: "commerce", kind: "Popup", x: 2120, y: 1180, w: 330,
+      title: "PopupChargeGold", ko: "골드 충전 (RV)",
+      file: "game/popup/ingame/PopupChargeGold.ts",
+      acts: [
+        ["광고 시청", "onClickWatchAd() → ADPlayer.tryShowRewardAD() → claimRvGold(\"popup\")"],
+        ["복귀", "onWatchAdComplete → refreshGoldAndLevel() → startGame()"],
+        ["닫기", "onClickClose() → onCloseToShop → showPopupShop()"]
+      ]
+    },
+
+    /* ================= 인게임 ================= */
+    {
+      id: "viewgame", cat: "game", kind: "View", x: 1470, y: 1640, w: 520,
+      title: "ViewGame", ko: "인게임 (트라이픽스 보드)",
+      file: "assets/script/game/ingame/ViewGame.ts",
+      acts: [
+        ["준비", "prepareGame() → initGame() → startGameAnimation() · SessionFlowManager.recordPreGameState()"],
+        ["부스터", "onClickUndo() / onClickPlus() / onClickWild() / onClickFireworks()"],
+        ["옵션", "onClickOption() → ViewCreator.showPopupSettingInGame(onClickLeave)"],
+        ["포기", "onClickEndLevel() → buildMissionInfos(0, false) → showPopupQuitLevel()"],
+        ["클리어", "endGame(star, gold) → sendGameEnd() → showPopupCompleteLevel()"]
+      ],
+      more: "+ 상점 · 보상 상자 · 덱 소진 · 연승 연출",
+      detail: [
+        { h: "라이프사이클", rows: [
+          ["prepareGame(stageId, useFireworks, useGoldenTicket, multipleValue, gameId, goldCost, difficultyTierKeyNumber, logPosition)", "판 구성 · 난이도 티어 확정 · SessionFlowManager.recordPreGameState() · resetDynamicLevelCountersOnEntry()"],
+          ["initGame() → startGameAnimation()", "카드 배치 · 시작 연출 · checkAndShowFirstAppearGuides()"],
+          ["onShowStart() / onHideStart()", "키 입력 · 레터박스(applyTossSideSafeArea) · BGM · 난이도별 배경(updateBgByDifficulty)"],
+          ["endGame(star, gold)", "callRegistTournament(baseGold × multiple) → sendGameEnd(star, gold) → DataManager.updateItems / updateEventInfos / updateCollectionAlbumInfo → ViewCreator.showPopupCompleteLevel(...)"],
+          ["onDeckExhausted()", "덱 소진 → 실패 경로"]
+        ]},
+        { h: "보드 조작", rows: [
+          ["필드 카드 탭", "StageView.onClickCard(card) → canSelectCard() 판정 → StageViewModel.clickCard(card) → completeCurrentTurn() → checkGameOver()"],
+          ["덱 카드 탭", "StageViewModel.clickDrawCard() / flipDrawCard()"],
+          ["첫 터치", "BaseLogManager.log(LogType.PlayFirstTouch)"],
+          ["기믹 안내", "showGimmickBubble(cardType, cardNode) / hideGimmickBubble() / showConditionGuides()"]
+        ]},
+        { h: "아이템 버튼 → 메소드", rows: [
+          ["Undo", "onClickUndo(tryType, undoButtonView, useItemResponse) → StageViewModel.popLastTurnAndRestore()"],
+          ["카드 추가(Plus)", "onClickPlus(tryType, buttonView, useItemResponse)"],
+          ["와일드", "onClickWild(...) → StageViewModel.useWildItemAndSetAsFrontCard()"],
+          ["불꽃", "onClickFireworks(...) → 필드 일괄 제거 연출"],
+          ["사용 판정", "canUseUndo() / canUsePlus() / canUseWild() / canUseFireworks() → updateAllItemButtonStates()"],
+          ["상점", "onClickOpenShop() → ViewCreator.showPopupShop()"],
+          ["보상 상자", "onClickRewardBox() → playStreakStarSequence() / playStreakGoldCoinSequence()"]
+        ]},
+        { h: "이탈 · 종료", rows: [
+          ["onClickOption()", "ViewCreator.showPopupSettingInGame(onClickLeave) — 콜백에서 GameplaySettingLeave 로그 후 로비 이동"],
+          ["onClickEndLevel()", "getQuitLevelRewardData() → buildMissionInfos(0, false) → ViewCreator.showPopupQuitLevel(onCommitQuit, onConfirmQuit, rewardData, logData, onRetryRequest)"],
+          ["onRetryRequested()", "finishCurrentGameAsFail() → restartImmediatelyForRetry() 또는 showPopupGameEntryForRetry()"],
+          ["commitQuitGameEnd(missionInfos)", "포기 확정 시 game-end 커밋"],
+          ["getDynamicLevelInfosToUpsert(isWin)", "승리 · 실패 · 포기 기준으로 dynamic_level 카운터 갱신"]
+        ]}
+      ]
+    },
+    {
+      id: "stage", cat: "game", kind: "Model / VM", x: 2120, y: 1640, w: 400,
+      title: "StageView · StageViewModel · StageModel", ko: "보드 로직 (MVVM)",
+      file: "game/ingame/StageView.ts · StageViewModel.ts",
+      acts: [
+        ["카드 탭", "StageView.onClickCard(card) → StageViewModel.clickCard(card)"],
+        ["턴", "completeCurrentTurn() / popLastTurnAndRestore()"],
+        ["종료 판정", "checkGameOver() · getRemainingFieldCardCount()"],
+        ["보상 계산", "getLevelCompletionRewardData() / getQuitLevelRewardData()"]
+      ],
+      detail: [
+        { h: "핵심 메소드", rows: [
+          ["convertRandomCards(difficultyTier, positions, drawCardCount, existingDrawCards, useFireworks, useGoldenTicket, skipGimmick)", "티어별 카드 · 기믹 구성"],
+          ["clickCard(card) / clickDrawCard() / flipDrawCard()", "매칭 · 덱 넘김"],
+          ["completeCurrentTurn() / completeSpecificTurn(turn) / popLastTurnAndRestore()", "턴 커밋 · Undo"],
+          ["useWildItemAndSetAsFrontCard() / restorePreviousFrontCard()", "와일드 카드 처리"],
+          ["checkGameOver() / simulateAutoClear() / simulateGreedyAutoClear() / getSolveSequence()", "종료 판정 · 자동 해법 시뮬레이션"],
+          ["기믹 카드", "StageModel.isPlusCard / isLinkedCard / isKeyLockCard / isGrandFireworksCard / findLinkedCard / findKeyLockCardPair"],
+          ["집계", "getTotalClearedCardCount() / getMaxComboCount() / getTotalComboGold() / getClickedFireworksCardCount()"]
+        ]}
+      ]
+    },
+    {
+      id: "p_ingameset", cat: "system", kind: "Popup", x: 2560, y: 1640, w: 340,
+      title: "PopupSettingInGame", ko: "설정 (인게임 · 로비 공용)",
+      file: "game/popup/ingame/PopupSettingInGame.ts",
+      acts: [
+        ["나가기", "onClickQuit() → onClickLeave?.() → 로비 이동"],
+        ["이어하기", "onClickResume()"],
+        ["언어", "onClickLanguage() → showPopupSettingLanguage()"],
+        ["기타", "onClickHowToPlay() / onClickOpenURL() / onClickCopyUserId() / onClickTossLogin()"]
+      ]
+    },
+    {
+      id: "p_lang", cat: "system", kind: "Popup", x: 2940, y: 1640, w: 340,
+      title: "PopupSettingLanguage", ko: "언어 설정",
+      file: "game/popup/SettingLanguage/PopupSettingLanguage.ts",
+      acts: [
+        ["언어 선택", "SettingLanguageItem.onClickItem()"],
+        ["확인", "onClickOK() → Localization 적용 · 폰트 교체"],
+        ["닫기", "onClickClose()"]
+      ]
+    },
+    {
+      id: "p_switch", cat: "commerce", kind: "Popup", x: 2120, y: 1880, w: 340,
+      title: "PopupSwitchContext", ko: "컨텍스트 전환 (P2P · 토너먼트)",
+      file: "game/popup/PopupSwitchContext.ts",
+      acts: [
+        ["P2P", "ViewCreator.showPopupSwitchContextP2P(friendId, contextId, position)"],
+        ["토너먼트", "showPopupSwitchContextTournament(tournamentId, contextId, type, position)"],
+        ["실행", "SceneManager.tryContextSwitch() / trySwitchToJoinedTournament()"]
+      ],
+      detail: [
+        { h: "메소드", rows: [
+          ["SceneManager.tryContextSwitch()", "전환 추천 노출 → 수락 시 컨텍스트 전환, 거절 시 SOLO 전환 완료 후 전환 거절 광고"],
+          ["ContextSwitchExposure", "노출 · 차단 카운트 집계 (countBlockedClear)"],
+          ["호출 지점", "PopupCompleteLevel.consumeContextPopupBeforeAD() · Quick Next Loop 다음판 진입 전"]
+        ]}
+      ]
+    },
+
+    /* ================= 결과 ================= */
+    {
+      id: "p_complete", cat: "result", kind: "Popup", x: 1470, y: 2080, w: 520,
+      title: "PopupCompleteLevel", ko: "클리어 결과창",
+      file: "game/popup/ingame/PopupCompleteLevel.ts",
+      acts: [
+        ["받기", "onClickCollect() → collectAndProceed(false)"],
+        ["2배 받기", "onClickCollectDouble() → ADPlayer.tryShowRewardAD()"],
+        ["홈", "onClickLobby() → collectAndProceed(true) → showViewLobby(rewardData)"],
+        ["다음판 직행", "SceneManager.showViewSoloGame(nextStage.stage_id, result)"],
+        ["소셜", "onClickInvite() / onClickShare() / onClickShareClose()"]
+      ],
+      detail: [
+        { h: "보상 수령 흐름", rows: [
+          ["collectAndProceed(goHome)", "GameSound.stopBGM() → FinishResultClaim 로그 → consumeContextPopupBeforeAD() (예약된 토너먼트 다이얼로그 선처리) → playClaimThenProceed(rewardData)"],
+          ["다음판 직행 조건", "!goHome && !DataManager.hasForceDeco() && (const.isQuickNextLoopActive || playerLevel === 2) → SceneManager.showViewSoloGame(nextStage.stage_id, result). Quick Next Loop 이면 그 앞에 SceneManager.tryContextSwitch()"],
+          ["로비 복귀", "그 외 → ViewGame.close() → DataManager.needShowDailyGift = true → ViewCreator.showViewLobby(rewardDataToLobby)"]
+        ]},
+        { h: "버튼 → 메소드", rows: [
+          ["받기 / 다음판", "onClickCollect() → collectAndProceed(false)"],
+          ["2배 받기", "onClickCollectDouble() → 보상형 광고 성공 시 보상 2배"],
+          ["홈", "onClickLobby() → collectAndProceed(true)"],
+          ["친구 초대", "onClickInvite() → 컨텍스트 초대"],
+          ["공유", "onClickShare() / onClickShareClose()"],
+          ["상점", "onClickShop() → ViewCreator.showPopupShop()"],
+          ["닫기", "onClickClose()"]
+        ]}
+      ]
+    },
+    {
+      id: "p_quit", cat: "result", kind: "Popup", x: 830, y: 2080, w: 480,
+      title: "PopupQuitLevel", ko: "포기 · 실패 결과창",
+      file: "game/popup/ingame/PopupQuitLevel.ts",
+      acts: [
+        ["계속하기", "onClickBack() → close() → 인게임 복귀"],
+        ["그만두기", "onClickQuit() → onCommitQuit → commitQuitGameEnd() → 전면광고 → 로비"],
+        ["다시하기", "onClickRetry() → onRetryRequest → ViewGame.onRetryRequested()"]
+      ],
+      detail: [
+        { h: "버튼 → 메소드", rows: [
+          ["계속하기", "onClickBack() → GameplayEndSureNo 로그 → close() (onHideEnd 에서 BasePlatform.gameplayStart())"],
+          ["그만두기", "onClickQuit() → GameplayEndSureYes 로그 → onCommitQuit: GameplayFinish(result=fail) + GameplayComboReward 로그 후 ViewGame.commitQuitGameEnd(quitMissionInfos) → onConfirmQuit: postTournamentScoreSilently() · DataManager.onStagePlayEnd() → SceneManager.showBushView() → switchToContextSolo() → ViewCreator.showViewLobby(undefined, true)"],
+          ["다시하기", "onClickRetry() → GameplayEndSureRetry 로그(is_deck_exhausted 포함) → onRetryRequest → ViewGame.onRetryRequested()"]
+        ]}
+      ]
+    },
+    {
+      id: "retry", cat: "game", kind: "분기", gate: true, x: 2120, y: 2080, w: 330,
+      title: "ViewGame.onRetryRequested()", ko: "재시도 라우팅",
+      file: "game/ingame/ViewGame.ts:2085",
+      acts: [
+        ["실패 확정", "finishCurrentGameAsFail()"],
+        ["즉시 재시작", "restartImmediatelyForRetry(stageId, isDeckExhausted, tier)"],
+        ["팝업 경유", "ViewCreator.showPopupGameEntryForRetry(stageId, retryContext)"]
+      ],
+      detail: [
+        { h: "분기", rows: [
+          ["finishCurrentGameAsFail()", "현재 판을 실패로 마감 (game-end 커밋)"],
+          ["resolveRetryDifficultyTier(isDeckExhausted, inheritedTier)", "재시도 판의 난이도 티어 결정"],
+          ["restartImmediatelyForRetry(stageId, isDeckExhausted, inheritedTier)", "부스터 재선택 없이 즉시 재시작"],
+          ["restartForRetry(params)", "PopupGameEntryForRetry 결과로 재시작"],
+          ["exitToLobbyAfterRetryFailure() / exitToLobbyAfterRetryCancel() / exitToLobbyFromRetry()", "재시도 실패 · 취소 시 로비 복귀"]
+        ]}
+      ]
+    },
+
+    /* ================= 사후 플로우 ================= */
+    {
+      id: "session", cat: "system", kind: "Manager", x: 1390, y: 2500, w: 680,
+      title: "SessionFlowManager.runPostGameFlow(isWin)", ko: "결과 후 로비 플로우 오케스트레이터",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["승 · 패 분기", "runWinFlow() / runFailFlow()"],
+        ["마일스톤 보상", "showMilestoneRewardPopupsIfNeeded() → showPopupRewardClaim()"],
+        ["냥이추격전", "runShadowChaseFlow() → showShadowChaseChestIfNeeded() → showPopupEventShadowChase()"],
+        ["출석", "showAttendanceIfNeeded() → ViewCreator.showPopupDailyGift()"],
+        ["튜토리얼 · 다음판", "showLobbyTutorialGuidesIfNeeded() → showPreLevelPopup() → showPopupGameEntry()"]
+      ],
+      detail: [
+        { h: "실행 순서", rows: [
+          ["recordPreGameState()", "판 시작 시 ViewGame.prepareGame() 이 호출 — 도시 · 마일스톤 스냅샷 확보"],
+          ["runPostGameFlow(isWin, onLobbyClose, getTargetNode, …)", "ViewLobby.onShowEnd() 에서 호출. 아래 순서로 팝업 · 연출을 직렬 실행"],
+          ["① runWinFlow() / runFailFlow()", "승리 · 실패별 후속 처리"],
+          ["② showMilestoneRewardPopupsIfNeeded()", "getNewlyRewardedMilestoneKeyNumbers() → ViewCreator.showPopupRewardClaim(data) → syncMilestoneRewardedKeysToCurrent()"],
+          ["③ runShadowChaseFlow()", "refreshShadowChaseState() → showShadowChaseChestIfNeeded() → runShadowChaseCycleStart() → showShadowChasePopupIfNeeded() → playShadowChaseLobbyFx()"],
+          ["④ showAttendanceIfNeeded()", "ViewCreator.showPopupDailyGift() → showDailyCheckTutorialIfNeeded() → closeDailyCheckTutorial()"],
+          ["⑤ enterForceDecoIfNeeded()", "강제 꾸미기 → ViewLobby.enterDecoViewAndWait()"],
+          ["⑥ showLobbyTutorialGuidesIfNeeded()", "executeLobbyGuideAction(contentId) → ViewCreator.showPopupTutorial(guide, targetNode) · getNodeNameByContentId()"],
+          ["⑦ showFirstActiveEventPopup()", "진행 중인 첫 이벤트 팝업 → setPlayHandler(popup)"],
+          ["⑧ showHammerReadyGuideIfNeeded()", "해머 보유 안내 → 데코 유도"],
+          ["⑨ showPreLevelPopup()", "다음판 프리게임 팝업 노출"]
+        ]},
+        { h: "냥이추격전 (160005)", rows: [
+          ["observeShadowChaseActivation() / isShadowChaseActivatedThisGame()", "이번 판 발동 여부 확정 — 결과창 태그가 게이트를 읽기 전에 호출"],
+          ["logShadowChaseActivate() / logShadowChaseExpiredIfNeeded()", "발동 · 만료 로그"],
+          ["getPendingShadowChaseChestTotals() / getPendingMilestoneRewardTotals()", "아직 연출하지 않은 보상 총량 (TopCoin 선반영 방지)"]
+        ]}
+      ]
+    },
+    {
+      id: "p_reward", cat: "result", kind: "Popup", x: 300, y: 2900, w: 330,
+      title: "PopupRewardClaim", ko: "보상 수령 연출",
+      file: "game/popup/EventPopup/PopupRewardClaim.ts",
+      acts: [
+        ["일반", "ViewCreator.showPopupRewardClaim(data)"],
+        ["도시", "showPopupRewardClaimCity(data)"],
+        ["냥이추격전", "showPopupRewardClaimShadowChase(data)"],
+        ["닫기", "onClickBackground()"]
+      ]
+    },
+    {
+      id: "p_gift", cat: "event", kind: "Popup", x: 660, y: 2900, w: 330,
+      title: "PopupDailyGift", ko: "출석 보상",
+      file: "game/popup/dailyGift/PopupDailyGift.ts",
+      acts: [
+        ["수령", "PopupDailyGiftItem.onClickClaim()"],
+        ["7일차", "onClickClaimDaySeven()"],
+        ["기타", "onClickPopup() / onClickSevenDayBubbleView() / PopupDailyGiftItem.onClickEvent()"]
+      ]
+    },
+    {
+      id: "p_shadow", cat: "event", kind: "Popup", x: 1020, y: 2900, w: 330,
+      title: "PopupEventShadowChase", ko: "냥이추격전",
+      file: "game/popup/EventPopup/PopupEventShadowChase.ts",
+      acts: [
+        ["진입", "ViewCreator.showPopupEventShadowChase()"],
+        ["안내", "showPopupEventShadowChaseInfo()"],
+        ["체스트", "ShadowChestOpener.onClickClaim()"]
+      ]
+    },
+    {
+      id: "p_tutorial", cat: "system", kind: "Popup", x: 1900, y: 2900, w: 330,
+      title: "PopupTutorial", ko: "튜토리얼 가이드",
+      file: "game/popup/PopupTutorial.ts",
+      acts: [
+        ["진입", "showPopupTutorial(guide, targetNode, skipTweenStop)"],
+        ["진행", "onClickTarget() → 지목 대상 실행"],
+        ["넘기기", "onClickDismiss()"]
+      ]
+    },
+    {
+      id: "p_common", cat: "system", kind: "Popup 묶음", x: 2260, y: 2900, w: 350,
+      title: "공통 시스템 팝업", ko: "오류 · 토스트 · 광고",
+      file: "common/view/ViewCreator.ts",
+      acts: [
+        ["오류", "showPopupError() / showPopupErrorDefault() / showPopupErrorRestart() / showPopupToastError()"],
+        ["광고", "showPopupAdBreak(onClose)"],
+        ["토스트", "showPopupPurchaseToastSpecialDeal()"]
+      ]
+    },
+    {
+      id: "p_misc", cat: "system", kind: "기타 지면", x: 2640, y: 2900, w: 350,
+      title: "기타 지면", ko: "저빈도 지면 묶음",
+      file: "assets/script/game/*",
+      acts: [
+        ["ViewInbox", "onTabActivated() → loadInboxData() · InboxItem.onClickClaim() / onClickPlay()"],
+        ["PopupWelcomeBonus", "onClickClaimButton()"],
+        ["PopupSelectPhoto", "onClickSelectItem(i) → onClickPlay()"],
+        ["PopupPrivacyPolicy", "onClickClose()"]
+      ],
+      detail: [
+        { h: "지면 목록", rows: [
+          ["ViewInbox", "game/inbox/ViewInbox.ts — 탭형 우편 · 알림 지면. onTabActivated() → loadInboxData() → updateInboxList(); InboxItem.onClickClaim() → playClaimAnimation() → removeInboxItem(); InboxItem.onClickPlay() → onItemPlay()"],
+          ["PopupWelcomeBonus", "game/popup/PopupWelcomeBonus.ts — onClickClaimButton()"],
+          ["PopupSelectPhoto", "game/popup/PopupSelectPhoto.ts — onClickSelectItem(itemIndex) → onClickPlay()"],
+          ["PopupPrivacyPolicy", "game/popup/PopupPrivacyPolicy.ts — onClickClose()"],
+          ["PopupMiniGame", "game/lobby/popup/PopupMiniGame.ts — onClickSkipCoinEffect()"],
+          ["PopupTossDailyPromotion", "game/popup/Toss/PopupTossDailyPromotion.ts — onClickReceiveDailyStreak() / onClickClose()"],
+          ["PopupDefault", "game/popup/PopupDefault.ts — onClickOK() / onClickClose()"]
+        ]}
+      ]
+    }
+  ];
+
+  const E = [
+    { a: "intro", b: "router", ad: "b", bd: "t", label: "moveToNext()", kind: "trunk" },
+
+    { a: "router", b: "e_tour", ad: "l", aoff: -16, bd: "t", label: "social = tournament", kind: "branch" },
+    { a: "router", b: "e_p2p", ad: "l", aoff: 16, bd: "t", label: "entryData.friend", kind: "branch" },
+    { a: "router", b: "e_solo", ad: "r", aoff: -16, bd: "l", mid: 3700, label: "level ≤ 2 · 일일 직행", kind: "branch" },
+    { a: "router", b: "e_resume", ad: "r", aoff: 16, bd: "l", mid: 3640, label: "lastGameStartInfo 유효", kind: "branch" },
+    { a: "router", b: "lobby", ad: "b", bd: "t", label: "기본 경로 · showViewLobby()", kind: "trunk" },
+
+    { a: "e_tour", b: "viewgame", ad: "b", bd: "l", boff: -45, via: [{ x: 450, y: 720 }, { x: 250, y: 720 }], label: "showViewGameWithTournament()" },
+    { a: "e_p2p", b: "viewgame", ad: "b", bd: "l", boff: 5, via: [{ x: 830, y: 690 }, { x: 190, y: 690 }], label: "showViewGameWithFriend()" },
+    { a: "e_solo", b: "viewgame", ad: "l", bd: "r", boff: -55, via: [{ x: 4160, y: 375 }, { x: 4160, y: 1540 }, { x: 2050, y: 1540 }], label: "showViewSoloGame()" },
+    { a: "e_resume", b: "viewgame", ad: "l", bd: "r", boff: -8, via: [{ x: 4230, y: 555 }, { x: 4230, y: 1580 }, { x: 2010, y: 1580 }], label: "showViewGame(gameId)" },
+
+    { a: "lobby", b: "lobbymain", ad: "r", bd: "l", label: "자식 UI" },
+    { a: "lobby", b: "deco", ad: "l", bd: "t", label: "showDecoViews()" },
+    { a: "deco", b: "lobby", ad: "t", boff: 0, bd: "l", aoff: -60, mid: 1435, label: "hideDecoViews()", kind: "back" },
+    { a: "deco", b: "upgrade", ad: "b", bd: "t", label: "오브젝트 선택" },
+    { a: "deco", b: "p_decoshare", ad: "l", bd: "r", label: "onClickShare()" },
+    { a: "deco", b: "p_citylist", ad: "b", aoff: -90, bd: "t", mid: 1170, label: "onClickMetaCityList()" },
+    { a: "p_decoshare", b: "p_newarea", ad: "l", bd: "r", label: "도시 완성 시" },
+
+    { a: "lobbymain", b: "p_shop", ad: "r", bd: "l", mid: 2550, label: "showPopupShop()" },
+    { a: "lobbymain", b: "p_leader", ad: "r", bd: "t", label: "showPopupLeaderboard()" },
+    { a: "lobbymain", b: "p_tour", ad: "r", bd: "t", label: "showPopupTournament()" },
+    { a: "lobbymain", b: "p_collect", ad: "r", bd: "l", mid: 2550, label: "showPopupCollection()" },
+    { a: "lobbymain", b: "p_mail", ad: "r", bd: "t", label: "showPopupMail()" },
+    { a: "lobbymain", b: "p_task", ad: "r", bd: "t", label: "showPopupDailyTask()" },
+    { a: "lobbymain", b: "p_wheel", ad: "r", bd: "l", mid: 2550, label: "showPopupDailyWheel()" },
+    { a: "lobbymain", b: "p_offer", ad: "r", bd: "t", label: "showPopupSpecialOffer()" },
+    { a: "lobbymain", b: "p_needhammer", ad: "r", bd: "t", label: "showPopupNeedHammer()" },
+    { a: "lobbymain", b: "p_ev_card", ad: "r", bd: "l", mid: 2550, label: "showPopupEventCardMilestone()" },
+    { a: "lobbymain", b: "p_ev_win", ad: "r", bd: "t", label: "showPopupEventWinningMilestone()" },
+    { a: "lobbymain", b: "p_ev_rank", ad: "r", bd: "t", label: "showPopupEventClearRanking()" },
+
+    { a: "p_tour", b: "viewgame", ad: "r", bd: "r", boff: 50, via: [{ x: 4100, y: 865 }, { x: 4100, y: 1610 }, { x: 2090, y: 1610 }], label: "onJoinTournament" },
+    { a: "p_needhammer", b: "entrypopup", ad: "r", bd: "r", boff: 0, via: [{ x: 4040, y: 1175 }, { x: 4040, y: 1490 }, { x: 2065, y: 1490 }], label: "onClickPlay()" },
+    { a: "p_ev_card", b: "entrypopup", ad: "l", bd: "r", boff: 45, via: [{ x: 2560, y: 1440 }, { x: 2030, y: 1440 }], label: "onPlay → 프리게임" },
+
+    { a: "lobby", b: "entrypopup", ad: "b", bd: "t", label: "onClickPlay() → showPopupGameEntry()", kind: "trunk" },
+    { a: "entrypopup", b: "viewgame", ad: "b", bd: "t", label: "onClickEnterStage() → startGame()", kind: "trunk" },
+    { a: "entrypopup", b: "p_charge", ad: "r", boff: 0, aoff: -45, bd: "l", label: "골드 부족" },
+    { a: "entrypopup", b: "p_shop", ad: "r", aoff: -90, bd: "b", mid: 2540, label: "onClickOpenShop()" },
+
+    { a: "viewgame", b: "stage", ad: "r", aoff: -50, bd: "l", label: "카드 탭 → onClickCard()" },
+    { a: "viewgame", b: "p_ingameset", ad: "r", aoff: 55, bd: "l", mid: 2530, label: "onClickOption()" },
+    { a: "p_ingameset", b: "p_lang", ad: "r", bd: "l", label: "onClickLanguage()" },
+    { a: "p_ingameset", b: "lobby", ad: "t", bd: "b", boff: 90, via: [{ x: 2730, y: 1520 }, { x: 2015, y: 1520 }, { x: 2015, y: 1105 }], label: "onClickQuit() → onClickLeave", kind: "back" },
+    { a: "viewgame", b: "p_switch", ad: "b", aoff: 150, bd: "l", label: "tryContextSwitch()" },
+    { a: "viewgame", b: "p_quit", ad: "b", aoff: -110, bd: "t", mid: 1968, label: "onClickEndLevel()" },
+    { a: "viewgame", b: "p_complete", ad: "b", bd: "t", label: "endGame(star, gold)", kind: "trunk" },
+
+    { a: "p_quit", b: "viewgame", ad: "t", aoff: 90, bd: "b", boff: 75, mid: 2036, label: "onClickBack()", kind: "back" },
+    { a: "p_quit", b: "retry", ad: "r", bd: "l", mid: 2060, label: "onClickRetry()" },
+    { a: "retry", b: "viewgame", ad: "t", bd: "b", boff: 190, mid: 2004, label: "restartImmediatelyForRetry()", kind: "back" },
+
+    { a: "p_quit", b: "session", ad: "b", bd: "l", aoff: -60, boff: 45, label: "onClickQuit() → showViewLobby(_, true)" },
+    { a: "p_complete", b: "session", ad: "b", bd: "t", label: "showViewLobby(rewardData)", kind: "trunk" },
+    { a: "p_complete", b: "viewgame", ad: "l", bd: "b", boff: -75, via: [{ x: 1385, y: 2230 }, { x: 1385, y: 1994 }], label: "다음판 직행 · showViewSoloGame(result)", kind: "back" },
+
+    { a: "session", b: "lobby", ad: "l", aoff: -45, bd: "t", boff: -90, via: [{ x: 150, y: 2605 }, { x: 150, y: 655 }, { x: 1640, y: 655 }], label: "runPostGameFlow() 완료 → 로비 조작 해제", kind: "back" },
+    { a: "session", b: "p_reward", ad: "b", aoff: -230, bd: "t", mid: 2860 },
+    { a: "session", b: "p_gift", ad: "b", aoff: -120, bd: "t", mid: 2870 },
+    { a: "session", b: "p_shadow", ad: "b", aoff: -20, bd: "t", mid: 2880 },
+    { a: "session", b: "p_tutorial", ad: "b", aoff: 90, bd: "t", mid: 2880 },
+    { a: "session", b: "p_common", ad: "b", aoff: 180, bd: "t", mid: 2870 },
+    { a: "session", b: "p_misc", ad: "b", aoff: 260, bd: "t", mid: 2860 },
+    { a: "session", b: "entrypopup", ad: "r", bd: "r", boff: 90, via: [{ x: 2100, y: 2650 }], label: "showPreLevelPopup()" }
+  ];
+
+  const CATNAME = {
+    entry: "진입 · 라우팅", lobby: "로비 · 데코", game: "인게임",
+    result: "결과 · 보상", event: "이벤트 · 미션", commerce: "상점 · 소셜", system: "시스템 · 공통"
+  };
+
+  const stage = document.getElementById("stage");
+  const world = document.getElementById("world");
+  const svg = document.getElementById("wires");
+  const wireG = document.getElementById("wire-g");
+  const labelG = document.getElementById("wlabel-g");
+  const nodeLayer = document.getElementById("nodes");
+  const byId = {};
+  N.forEach(function (n) { byId[n.id] = n; });
+
+  const esc = function (s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+
+  N.forEach(function (n) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "node cat-" + n.cat + (n.gate ? " gate" : "");
+    el.style.left = n.x + "px";
+    el.style.top = n.y + "px";
+    el.style.width = n.w + "px";
+    el.dataset.id = n.id;
+
+    let html = '<div class="n-head"><span class="n-cat">' + esc(CATNAME[n.cat]) + '</span>'
+      + '<span class="n-kind">' + esc(n.kind) + '</span></div>'
+      + '<div class="n-title">' + esc(n.title) + '</div>'
+      + '<div class="n-ko">' + esc(n.ko) + '</div>'
+      + '<div class="n-file">' + esc(n.file) + '</div>';
+    if (n.acts && n.acts.length) {
+      html += '<ul class="n-acts">';
+      n.acts.forEach(function (a) {
+        html += '<li><span class="k">' + esc(a[0]) + '</span><code>' + esc(a[1]) + '</code></li>';
+      });
+      html += "</ul>";
+    }
+    if (n.more) { html += '<div class="n-more">' + esc(n.more) + "</div>"; }
+    el.innerHTML = html;
+    nodeLayer.appendChild(el);
+    n.el = el;
+  });
+
+  let WW = 0, WH = 0;
+  const measure = function () {
+    let maxX = 0, maxY = 0;
+    N.forEach(function (n) {
+      n.h = n.el.offsetHeight;
+      maxX = Math.max(maxX, n.x + n.w);
+      maxY = Math.max(maxY, n.y + n.h);
+    });
+    WW = maxX + 380;
+    WH = maxY + 160;
+    world.style.width = WW + "px";
+    world.style.height = WH + "px";
+    svg.setAttribute("width", WW);
+    svg.setAttribute("height", WH);
+    svg.setAttribute("viewBox", "0 0 " + WW + " " + WH);
+  };
+
+  const anchor = function (n, d, off) {
+    const o = off || 0;
+    if (d === "t") return { x: n.x + n.w / 2 + o, y: n.y, ax: "v" };
+    if (d === "b") return { x: n.x + n.w / 2 + o, y: n.y + n.h, ax: "v" };
+    if (d === "l") return { x: n.x, y: n.y + n.h / 2 + o, ax: "h" };
+    return { x: n.x + n.w, y: n.y + n.h / 2 + o, ax: "h" };
+  };
+
+  const simpleRoute = function (p, q, mid) {
+    const pts = [];
+    if (p.ax === "v" && q.ax === "v") {
+      if (Math.abs(p.x - q.x) > 1) {
+        const my = mid != null ? mid : (p.y + q.y) / 2;
+        pts.push({ x: p.x, y: my }, { x: q.x, y: my });
+      }
+    } else if (p.ax === "h" && q.ax === "h") {
+      if (Math.abs(p.y - q.y) > 1) {
+        const mx = mid != null ? mid : (p.x + q.x) / 2;
+        pts.push({ x: mx, y: p.y }, { x: mx, y: q.y });
+      }
+    } else if (p.ax === "v") {
+      pts.push({ x: p.x, y: q.y });
+    } else {
+      pts.push({ x: q.x, y: p.y });
+    }
+    return pts;
+  };
+
+  const buildPoints = function (p, q, e) {
+    let pts = [{ x: p.x, y: p.y }];
+    if (e.via && e.via.length) {
+      const v0 = e.via[0];
+      if (p.ax === "v" && Math.abs(v0.x - p.x) > 1) pts.push({ x: p.x, y: v0.y });
+      if (p.ax === "h" && Math.abs(v0.y - p.y) > 1) pts.push({ x: v0.x, y: p.y });
+      e.via.forEach(function (v) { pts.push({ x: v.x, y: v.y }); });
+      const last = e.via[e.via.length - 1];
+      if (q.ax === "v" && Math.abs(last.x - q.x) > 1) pts.push({ x: q.x, y: last.y });
+      if (q.ax === "h" && Math.abs(last.y - q.y) > 1) pts.push({ x: last.x, y: q.y });
+    } else {
+      pts = pts.concat(simpleRoute(p, q, e.mid));
+    }
+    pts.push({ x: q.x, y: q.y });
+
+    const out = [];
+    pts.forEach(function (pt) {
+      const prev = out[out.length - 1];
+      if (!prev || Math.abs(prev.x - pt.x) > 0.5 || Math.abs(prev.y - pt.y) > 0.5) out.push(pt);
+    });
+    return out;
+  };
+
+  const roundPath = function (pts, r) {
+    if (pts.length < 3) {
+      return "M " + pts[0].x + " " + pts[0].y + " L " + pts[pts.length - 1].x + " " + pts[pts.length - 1].y;
+    }
+    let d = "M " + pts[0].x + " " + pts[0].y;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+      const d1 = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const d2 = Math.hypot(c.x - b.x, c.y - b.y) || 1;
+      const rr = Math.max(0, Math.min(r, d1 / 2, d2 / 2));
+      const p1 = { x: b.x - ((b.x - a.x) / d1) * rr, y: b.y - ((b.y - a.y) / d1) * rr };
+      const p2 = { x: b.x + ((c.x - b.x) / d2) * rr, y: b.y + ((c.y - b.y) / d2) * rr };
+      d += " L " + p1.x + " " + p1.y + " Q " + b.x + " " + b.y + " " + p2.x + " " + p2.y;
+    }
+    const last = pts[pts.length - 1];
+    d += " L " + last.x + " " + last.y;
+    return d;
+  };
+
+  const drawWires = function () {
+    wireG.innerHTML = "";
+    labelG.innerHTML = "";
+    E.forEach(function (e) {
+      const a = byId[e.a], b = byId[e.b];
+      if (!a || !b) return;
+      const p = anchor(a, e.ad, e.aoff);
+      const q = anchor(b, e.bd, e.boff);
+      const pts = buildPoints(p, q, e);
+
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", roundPath(pts, 14));
+      path.setAttribute("class", "wire" + (e.kind ? " " + e.kind : ""));
+      path.setAttribute("marker-end", "url(#ah)");
+      wireG.appendChild(path);
+      e.path = path;
+
+      if (!e.label) { e.lbl = null; return; }
+      let best = 0, bl = -1;
+      for (let k = 0; k < pts.length - 1; k++) {
+        const L = Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
+        if (L > bl) { bl = L; best = k; }
+      }
+      const s = pts[best], t = pts[best + 1];
+      const horiz = Math.abs(t.y - s.y) < 1;
+      const tx2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      tx2.setAttribute("x", horiz ? (s.x + t.x) / 2 : (s.x + t.x) / 2 + 7);
+      tx2.setAttribute("y", (s.y + t.y) / 2 + (horiz ? -6 : -2));
+      tx2.setAttribute("text-anchor", horiz ? "middle" : "start");
+      tx2.setAttribute("class", "wlabel" + (e.kind === "trunk" ? " strong" : ""));
+      tx2.textContent = e.label;
+      labelG.appendChild(tx2);
+      e.lbl = tx2;
+    });
+  };
+
+  /* 미니맵 */
+  const mini = document.getElementById("mini");
+  const miniIn = document.getElementById("mini-in");
+  const miniVp = document.getElementById("mini-vp");
+  let mScale = 1;
+
+  const buildMini = function () {
+    Array.prototype.slice.call(miniIn.querySelectorAll(".mn")).forEach(function (d) { d.remove(); });
+    const r = miniIn.getBoundingClientRect();
+    if (!r.width) return;
+    mScale = Math.min(r.width / WW, r.height / WH);
+    N.forEach(function (n) {
+      const d = document.createElement("div");
+      d.className = "mn";
+      d.style.left = (n.x * mScale) + "px";
+      d.style.top = (n.y * mScale) + "px";
+      d.style.width = Math.max(2, n.w * mScale) + "px";
+      d.style.height = Math.max(2, n.h * mScale) + "px";
+      d.style.background = "var(--c-" + n.cat + ")";
+      miniIn.appendChild(d);
+    });
+  };
+
+  /* 트랜스폼 */
+  let tx = 0, ty = 0, sc = 1;
+  const MIN = 0.14, MAX = 2.2;
+  const zoomLabel = document.getElementById("zoomval");
+
+  const apply = function () {
+    world.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sc + ")";
+    zoomLabel.textContent = Math.round(sc * 100) + "%";
+    stage.style.backgroundSize = (48 * sc) + "px " + (48 * sc) + "px";
+    stage.style.backgroundPosition = tx + "px " + ty + "px";
+    miniVp.style.left = (-tx / sc * mScale) + "px";
+    miniVp.style.top = (-ty / sc * mScale) + "px";
+    miniVp.style.width = (stage.clientWidth / sc * mScale) + "px";
+    miniVp.style.height = (stage.clientHeight / sc * mScale) + "px";
+  };
+
+  const clampScale = function (s) { return Math.max(MIN, Math.min(MAX, s)); };
+
+  const fitAll = function () {
+    const pad = 56;
+    sc = clampScale(Math.min((stage.clientWidth - pad * 2) / WW, (stage.clientHeight - pad * 2) / WH));
+    tx = (stage.clientWidth - WW * sc) / 2;
+    ty = (stage.clientHeight - WH * sc) / 2;
+    apply();
+  };
+
+  const goTop = function () {
+    sc = clampScale(0.72);
+    const n = byId.intro;
+    tx = stage.clientWidth / 2 - (n.x + n.w / 2) * sc;
+    ty = 120 - n.y * sc;
+    apply();
+  };
+
+  const centerOn = function (n) {
+    const pad = document.getElementById("insp").classList.contains("open") && window.innerWidth > 900 ? 400 : 0;
+    tx = (stage.clientWidth - pad) / 2 - (n.x + n.w / 2) * sc;
+    ty = stage.clientHeight / 2 - (n.y + n.h / 2) * sc;
+    apply();
+  };
+
+  /* 팬 · 줌 */
+  let dragging = false, moved = 0, lx = 0, ly = 0, pinchDist = 0;
+  const pointers = new Map();
+
+  stage.addEventListener("pointerdown", function (ev) {
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size > 1) { dragging = false; return; }
+    dragging = true; moved = 0; lx = ev.clientX; ly = ev.clientY;
+    stage.classList.add("dragging");
+    try { stage.setPointerCapture(ev.pointerId); } catch (err) { /* noop */ }
+  });
+
+  stage.addEventListener("pointermove", function (ev) {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+
+    if (pointers.size === 2) {
+      const pp = Array.from(pointers.values());
+      const d = Math.hypot(pp[0].x - pp[1].x, pp[0].y - pp[1].y);
+      const cx = (pp[0].x + pp[1].x) / 2, cy = (pp[0].y + pp[1].y) / 2;
+      if (pinchDist) {
+        const ns = clampScale(sc * (d / pinchDist));
+        const k = ns / sc;
+        tx = cx - (cx - tx) * k;
+        ty = cy - (cy - ty) * k;
+        sc = ns;
+        apply();
+      }
+      pinchDist = d;
+      return;
+    }
+    if (!dragging) return;
+    const dx = ev.clientX - lx, dy = ev.clientY - ly;
+    moved += Math.abs(dx) + Math.abs(dy);
+    tx += dx; ty += dy; lx = ev.clientX; ly = ev.clientY;
+    apply();
+  });
+
+  const endPointer = function (ev) {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinchDist = 0;
+    if (pointers.size === 0) { dragging = false; stage.classList.remove("dragging"); }
+  };
+  stage.addEventListener("pointerup", endPointer);
+  stage.addEventListener("pointercancel", endPointer);
+
+  stage.addEventListener("wheel", function (ev) {
+    ev.preventDefault();
+    const ns = clampScale(sc * Math.pow(0.9988, ev.deltaY * (ev.deltaMode === 1 ? 18 : 1)));
+    const k = ns / sc;
+    tx = ev.clientX - (ev.clientX - tx) * k;
+    ty = ev.clientY - (ev.clientY - ty) * k;
+    sc = ns;
+    apply();
+  }, { passive: false });
+
+  const zoomBtn = function (dir) {
+    const ns = clampScale(sc * (dir > 0 ? 1.25 : 0.8));
+    const cx = stage.clientWidth / 2, cy = stage.clientHeight / 2;
+    const k = ns / sc;
+    tx = cx - (cx - tx) * k;
+    ty = cy - (cy - ty) * k;
+    sc = ns;
+    apply();
+  };
+  document.getElementById("b-in").addEventListener("click", function () { zoomBtn(1); });
+  document.getElementById("b-out").addEventListener("click", function () { zoomBtn(-1); });
+  document.getElementById("b-fit").addEventListener("click", fitAll);
+  document.getElementById("b-top").addEventListener("click", goTop);
+
+  mini.addEventListener("pointerdown", function (ev) {
+    ev.stopPropagation();
+    const r = miniIn.getBoundingClientRect();
+    tx = stage.clientWidth / 2 - ((ev.clientX - r.left) / mScale) * sc;
+    ty = stage.clientHeight / 2 - ((ev.clientY - r.top) / mScale) * sc;
+    apply();
+  });
+
+  /* 인스펙터 */
+  const insp = document.getElementById("insp");
+  const iCat = document.getElementById("insp-cat");
+  const iTitle = document.getElementById("insp-title");
+  const iKo = document.getElementById("insp-ko");
+  const iFile = document.getElementById("insp-file");
+  const iBody = document.getElementById("insp-body");
+  let selected = null;
+
+  const clearFocus = function () {
+    selected = null;
+    insp.classList.remove("open");
+    world.classList.remove("focused");
+    svg.classList.remove("focused");
+    N.forEach(function (n) { n.el.classList.remove("hot", "selected"); });
+    E.forEach(function (e) {
+      if (e.path) e.path.classList.remove("hot");
+      if (e.lbl) e.lbl.classList.remove("hot");
+    });
+  };
+
+  const select = function (id, recenter) {
+    const n = byId[id];
+    if (!n) return;
+    clearFocus();
+    selected = id;
+    world.classList.add("focused");
+    svg.classList.add("focused");
+    n.el.classList.add("hot", "selected");
+
+    const ins = [], outs = [];
+    E.forEach(function (e) {
+      if (e.a !== id && e.b !== id) return;
+      if (e.path) e.path.classList.add("hot");
+      if (e.lbl) e.lbl.classList.add("hot");
+      const other = e.a === id ? e.b : e.a;
+      if (byId[other]) byId[other].el.classList.add("hot");
+      (e.a === id ? outs : ins).push(e);
+    });
+
+    insp.classList.add("open");
+    insp.style.setProperty("--cc", "var(--c-" + n.cat + ")");
+    iCat.textContent = CATNAME[n.cat] + " · " + n.kind;
+    iTitle.textContent = n.title;
+    iKo.textContent = n.ko;
+    iFile.textContent = n.file;
+
+    let html = "";
+    if (n.detail && n.detail.length) {
+      n.detail.forEach(function (sec) {
+        html += "<h3>" + esc(sec.h) + "</h3>";
+        sec.rows.forEach(function (r) {
+          html += '<div class="row"><span class="rk">' + esc(r[0]) + '</span><span class="rv">' + esc(r[1]) + "</span></div>";
+        });
+      });
+    } else if (n.acts) {
+      html += "<h3>버튼 → 호출 메소드</h3>";
+      n.acts.forEach(function (a) {
+        html += '<div class="row"><span class="rk">' + esc(a[0]) + '</span><span class="rv">' + esc(a[1]) + "</span></div>";
+      });
+    }
+
+    if (outs.length) {
+      html += "<h3>나가는 흐름 (" + outs.length + ")</h3>";
+      outs.forEach(function (e) {
+        html += '<div class="row"><span class="rk">→ ' + esc(byId[e.b].title) + '</span>'
+          + (e.label ? '<span class="rv">' + esc(e.label) + "</span>" : "")
+          + '<span class="goto"><button data-go="' + e.b + '">이 지면 보기</button></span></div>';
+      });
+    }
+    if (ins.length) {
+      html += "<h3>들어오는 흐름 (" + ins.length + ")</h3>";
+      ins.forEach(function (e) {
+        html += '<div class="row"><span class="rk">← ' + esc(byId[e.a].title) + '</span>'
+          + (e.label ? '<span class="rv">' + esc(e.label) + "</span>" : "")
+          + '<span class="goto"><button data-go="' + e.a + '">이 지면 보기</button></span></div>';
+      });
+    }
+    iBody.innerHTML = html;
+    iBody.scrollTop = 0;
+    if (recenter !== false) centerOn(n);
+  };
+
+  nodeLayer.addEventListener("click", function (ev) {
+    const el = ev.target.closest(".node");
+    if (!el || moved > 6) return;
+    select(el.dataset.id, el.dataset.id !== selected);
+  });
+
+  iBody.addEventListener("click", function (ev) {
+    const b = ev.target.closest("button[data-go]");
+    if (b) select(b.dataset.go, true);
+  });
+
+  document.getElementById("insp-close").addEventListener("click", clearFocus);
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { clearFocus(); return; }
+    const step = 100;
+    if (ev.key === "ArrowLeft") { tx += step; apply(); }
+    else if (ev.key === "ArrowRight") { tx -= step; apply(); }
+    else if (ev.key === "ArrowUp") { ty += step; apply(); }
+    else if (ev.key === "ArrowDown") { ty -= step; apply(); }
+  });
+
+  const boot = function () {
+    measure();
+    drawWires();
+    buildMini();
+    goTop();
+  };
+  boot();
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { measure(); drawWires(); buildMini(); apply(); });
+  }
+  window.addEventListener("resize", function () { buildMini(); apply(); });
+})();
+</script>
+  </body>
+</html>
