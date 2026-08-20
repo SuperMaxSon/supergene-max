@@ -2208,6 +2208,15 @@
     n.el = el;
   });
 
+  /* 화살표 라벨은 짧아야 카드 사이에 들어간다. 사슬이면 도착 메소드만, 인자는 버린다.
+     원문은 <title> 로 남겨 마우스를 올리면 보인다. */
+  const shortLabel = function (txt) {
+    let v = String(txt);
+    if (v.indexOf("→") > -1) v = v.split("→").pop().trim();   /* 사슬이면 도착만 */
+    v = v.replace(/\([^)]*\)/g, "");                          /* 인자 · 빈 괄호 제거 */
+    return v.trim();
+  };
+
   /* ============ 월드 크기 · 배선 ============ */
   let WW = 0, WH = 0;
   const measure = function () {
@@ -2302,7 +2311,7 @@
   const drawWires = function () {
     wireG.innerHTML = "";
     labelG.innerHTML = "";
-    const taken = [];   /* 이미 자리 잡은 라벨 상자 */
+    const pend = [];   /* 라벨 후보 (2패스로 배치) */
     E.forEach(function (e) {
       const a = byId[e.a], b = byId[e.b];
       if (!a || !b) return;
@@ -2318,71 +2327,94 @@
       e.path = path;
 
       if (!e.label) { e.lbl = null; return; }
-      /* 가장 긴 구간을 고르고, 그 안에서 카드 · 다른 라벨과 겹치지 않는 지점에 앉힌다.
-         (라벨이 카드에 걸리면 잘려 보인다) */
+      /* 가장 긴 구간을 고른다. 실제 자리는 아래 2패스에서 폭을 재고 정한다. */
       let best = 0, bl = -1;
       for (let k = 0; k < pts.length - 1; k++) {
         const L = Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
         if (L > bl) { bl = L; best = k; }
       }
-      const s = pts[best], t = pts[best + 1];
+      pend.push({ e: e, s: pts[best], t: pts[best + 1] });
+    });
+
+    /* ── 라벨 배치 ────────────────────────────────────────────────
+       폭을 글자 수로 추정하면 한글(모노스페이스에서 2배 폭)이 섞일 때 크게 어긋나
+       카드 위에 얹혀 잘린 것처럼 보인다. 그래서 먼저 그려 실제 폭을 재고 자리를 정한다. */
+    const taken = [];
+    pend.forEach(function (q) {
+      const e = q.e, s = q.s, t = q.t;
       const horiz = Math.abs(t.y - s.y) < 1;
       const strong = e.kind === "trunk";
-      const tw = e.label.length * (strong ? 6.9 : 6.3);
+      const tx2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      tx2.setAttribute("class", "wlabel" + (strong ? " strong" : ""));
+      tx2.setAttribute("text-anchor", horiz ? "middle" : "start");
+      tx2.textContent = shortLabel(e.label);
+      if (tx2.textContent !== e.label) {
+        const ti = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        ti.textContent = e.label;
+        tx2.appendChild(ti);
+      }
+      labelG.appendChild(tx2);
+
+      /* 실측 → 안 되면(테스트 환경) 한글 2배 폭으로 추정 */
+      let tw = 0;
+      try { tw = tx2.getComputedTextLength(); } catch (err) { tw = 0; }
+      if (!tw) {
+        const cw = strong ? 6.9 : 6.3;
+        let u = 0;
+        const str = tx2.textContent;
+        for (let i = 0; i < str.length; i++) {
+          u += /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7A3\u3000-\u303F\uFF00-\uFFEF]/.test(str[i]) ? 2 : 1;
+        }
+        tw = u * cw;
+      }
       const th = strong ? 13 : 12;
-      /* f = 구간 내 위치, d = 선에 수직인 밀어내기. 둘을 조합해 빈 자리를 찾는다. */
-      const spot = function (f, d) {
+
+      const spot = function (f, dd) {
         const cx = s.x + (t.x - s.x) * f, cy = s.y + (t.y - s.y) * f;
         if (horiz) {
-          const y = cy - 6 + d;
-          return { x: cx, y: y, l: cx - tw / 2, r: cx + tw / 2, tp: y - th, bt: y + 3 };
+          const y = cy - 6 + dd;
+          return { x: cx, y: y, l: cx - tw / 2, r: cx + tw / 2, tp: y - th, bt: y + 3, d: dd };
         }
-        const x = cx + 7 + (d < 0 ? d - tw : d);
+        const x = cx + 7 + (dd < 0 ? dd - tw : dd);
         const y = cy - 2;
-        return { x: x, y: y, l: x, r: x + tw, tp: y - th, bt: y + 3 };
+        return { x: x, y: y, l: x, r: x + tw, tp: y - th, bt: y + 3, d: dd };
       };
-      const clash = function (q) {
+      const clash = function (r) {
         for (let i = 0; i < N.length; i++) {
           const nd = N[i];
-          if (q.r > nd.x - 4 && q.l < nd.x + nd.w + 4 && q.bt > nd.y - 4 && q.tp < nd.y + (nd.h || 120) + 4) return true;
+          if (r.r > nd.x - 5 && r.l < nd.x + nd.w + 5
+           && r.bt > nd.y - 5 && r.tp < nd.y + (nd.h || 130) + 5) return true;
         }
         for (let i = 0; i < taken.length; i++) {
           const o = taken[i];
-          if (q.r > o.l - 3 && q.l < o.r + 3 && q.bt > o.tp - 2 && q.tp < o.bt + 2) return true;
+          if (r.r > o.l - 4 && r.l < o.r + 4 && r.bt > o.tp - 3 && r.tp < o.bt + 3) return true;
         }
         return false;
       };
       let put = null;
-      const fs2 = [0.5, 0.36, 0.64, 0.24, 0.76, 0.14, 0.86];
-      const ds = [0, -15, 15, -30, 30, -45, 45];
-      for (let a2 = 0; a2 < ds.length && !put; a2++) {
+      const fs2 = [0.5, 0.44, 0.56, 0.36, 0.64, 0.3, 0.7, 0.24, 0.76, 0.18, 0.82, 0.12, 0.88, 0.07, 0.93];
+      const ds = [0, -16, 16, -30, 30, -44, 44, -58, 58, -72, 72, -88, 88];
+      for (let k = 0; k < ds.length && !put; k++) {
         for (let i = 0; i < fs2.length; i++) {
-          const q = spot(fs2[i], ds[a2]);
-          if (!clash(q)) { put = q; put.d = ds[a2]; break; }
+          const r = spot(fs2[i], ds[k]);
+          if (!clash(r)) { put = r; break; }
         }
       }
       if (!put) put = spot(0.5, 0);
       taken.push(put);
-      /* 많이 밀어낸 라벨은 어느 선의 것인지 알 수 있게 지시선을 붙인다 */
-      if (Math.abs(put.d || 0) >= 25) {
-        const f0 = 0.5;
-        const ax = s.x + (t.x - s.x) * f0, ay = s.y + (t.y - s.y) * f0;
+      tx2.setAttribute("x", put.x);
+      tx2.setAttribute("y", put.y);
+      tx2.setAttribute("data-d", put.d);
+      if (Math.abs(put.d) >= 25) {
+        const ax = (s.x + t.x) / 2, ay = (s.y + t.y) / 2;
         const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
         ln.setAttribute("x1", horiz ? put.x : (put.d < 0 ? put.r : put.l));
         ln.setAttribute("y1", horiz ? (put.d < 0 ? put.bt : put.tp) : put.y - 4);
         ln.setAttribute("x2", ax);
         ln.setAttribute("y2", ay);
         ln.setAttribute("class", "wlead");
-        labelG.appendChild(ln);
+        labelG.insertBefore(ln, labelG.firstChild);
       }
-      const tx2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      tx2.setAttribute("x", put.x);
-      tx2.setAttribute("y", put.y);
-      tx2.setAttribute("text-anchor", horiz ? "middle" : "start");
-      tx2.setAttribute("data-d", put.d || 0);
-      tx2.setAttribute("class", "wlabel" + (e.kind === "trunk" ? " strong" : ""));
-      tx2.textContent = e.label;
-      labelG.appendChild(tx2);
       e.lbl = tx2;
     });
   };
