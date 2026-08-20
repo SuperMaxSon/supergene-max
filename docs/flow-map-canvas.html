@@ -117,18 +117,17 @@
   #world.focused .node.hot { opacity: 1; }
 
   .node { position: absolute; }
+  /* 카드 우측 초소형 화면 개념도 — 16:9 가로, 점 하나가 프리팹 버튼 하나 */
   .n-wf {
     position: absolute; top: 8px; right: 9px;
-    width: 26px; height: 38px;
+    width: 40px; height: 22.5px;
     border: 1px solid var(--line); border-radius: 2px;
-    background: var(--surface-2);
-    display: flex; flex-direction: column; justify-content: space-between;
-    padding: 2px; gap: 2px; pointer-events: none;
+    background: var(--surface-2); pointer-events: none;
   }
-  .n-wf i { display: flex; gap: 1.5px; justify-content: center; min-height: 3px; }
-  .n-wf i u { width: 3px; height: 3px; border-radius: .5px; background: var(--cc); opacity: .55; display: block; }
-  .n-wf i.mid { flex: 1; align-items: center; }
-  .n-wf i.mid u { width: 8px; height: 8px; border-radius: 2px; opacity: .75; }
+  .n-wf u {
+    position: absolute; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
+    border-radius: 50%; background: var(--cc); opacity: .6; display: block;
+  }
 
   .n-head { display: flex; align-items: center; gap: 7px; padding-right: 32px; }
   .n-cat { font-size: 9px; letter-spacing: .09em; text-transform: uppercase; color: var(--cc); font-weight: 800; white-space: nowrap; }
@@ -345,48 +344,55 @@
   .io-more { font-size: 9.5px; color: var(--faint); font-weight: 650; }
   .io .g-to { max-width: 100%; }
 
-  /* 2단 본문 = 왼쪽 UI 와이어프레임 · 오른쪽 로직 가지. 좁으면 위아래로 떨어진다. */
-  .two { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 22px; align-items: start; margin-top: 14px; }
-  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+  /* 2단 본문 = 왼쪽 UI 와이어프레임 · 오른쪽 로직 가지. 좁으면 위아래로 떨어진다.
+     프리팹 버튼이 없는 지면은 .one 으로 로직만 전폭 표시한다. */
+  .two { display: grid; grid-template-columns: minmax(340px, 46%) 1fr; gap: 22px; align-items: start; margin-top: 14px; }
+  .one { margin-top: 14px; }
+  @media (max-width: 980px) { .two { grid-template-columns: 1fr; } }
 
   .wf-wrap { position: sticky; top: 0; }
+  /* 게임은 가로 모드다 — 디자인 해상도 1280x720 그대로 16:9 */
   .wf {
-    border: 2px solid var(--line); border-radius: 12px;
-    background: var(--surface-2);
-    aspect-ratio: 9 / 15;
-    display: grid; grid-template-rows: auto 1fr auto;
-    gap: 6px; padding: 8px;
-    overflow: hidden;
+    position: relative; aspect-ratio: 16 / 9;
+    border: 2px solid var(--line); border-radius: 10px;
+    background: var(--surface-2); overflow: hidden;
   }
-  .wf-bar { display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; min-height: 20px; }
-  .wf-bar.b { align-content: flex-end; }
-  .wf-mid { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 5px; align-items: center; min-height: 0; }
-  .wf-side { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
-  .wf-center { display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; min-width: 0; }
-  .wf-zone {
-    font-size: 8px; letter-spacing: .06em; text-transform: uppercase;
-    color: var(--faint); font-weight: 800; width: 100%;
+  /* 720x720 같은 패널 루트 프리팹의 실제 패널 범위 */
+  .wf-panel {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    border: 1px dashed var(--line); border-radius: 8px; background: var(--surface);
   }
-  .wf-bar .wf-zone { flex: 0 0 100%; }
-
   .wf-btn {
-    font-family: inherit; font-size: 9.5px; font-weight: 700; line-height: 1.2;
+    position: absolute; transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit; font-size: 8.5px; font-weight: 750; line-height: 1.15;
     color: var(--ink); background: var(--surface);
-    border: 1px solid var(--line); border-left: 3px solid var(--nc, var(--line));
-    border-radius: 4px; padding: 4px 6px; cursor: pointer;
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    text-align: left;
+    border: 1px solid var(--nc, var(--line)); border-radius: 3px;
+    padding: 1px 2px; cursor: pointer; text-align: center;
   }
-  .wf-btn:hover { border-color: var(--cc); box-shadow: 0 1px 5px var(--shadow); }
-  .wf-btn:focus-visible { outline: 2px solid var(--cc); outline-offset: 1px; }
-  .wf-btn.big { font-size: 11px; padding: 7px 12px; font-weight: 780; }
-  .wf-list {
-    border: 1px dashed var(--line); border-radius: 4px;
-    padding: 5px 6px; width: 100%;
-    display: flex; flex-direction: column; gap: 3px;
+  /* 상자는 실제 크기, 글자는 넘쳐도 읽히게 둔다 */
+  .wf-btn span {
+    white-space: nowrap; background: var(--surface);
+    padding: 0 1px; border-radius: 2px;
   }
-  .wf-cap { margin-top: 7px; font-size: 10px; color: var(--muted); line-height: 1.5; }
+  .wf-btn.off { border-style: dashed; opacity: .74; }
+  .wf-btn.big { font-size: 10px; font-weight: 800; }
+  .wf-btn:hover { z-index: 9; border-color: var(--cc); box-shadow: 0 1px 6px var(--shadow); }
+  .wf-btn:hover span { background: var(--surface); }
+  .wf-btn:focus-visible { z-index: 9; outline: 2px solid var(--cc); outline-offset: 1px; }
+  /* 화면 전체를 덮는 터치 영역 (배경 터치 · 수령 터치 · dim) */
+  .wf-full {
+    position: absolute; left: 4px; top: 4px; right: 4px; bottom: 4px;
+    display: flex; align-items: flex-start; justify-content: flex-end; gap: 4px;
+    font-family: inherit; font-size: 9px; font-weight: 750; color: var(--muted);
+    background: transparent; border: 1px dashed var(--line); border-radius: 7px;
+    padding: 4px 6px; cursor: pointer;
+  }
+  .wf-full em { font-style: normal; font-size: 8px; color: var(--faint); letter-spacing: .05em; }
+  .wf-full:hover { border-color: var(--cc); color: var(--ink); }
+  .wf-cap { margin-top: 7px; font-size: 10px; color: var(--muted); line-height: 1.55; }
   .wf-cap b { color: var(--ink-2); }
+  .wf-lg { border-bottom: 1px dashed var(--ink-2); }
 
   /* ---- 3단: 호출 사슬 플로우 ---- */
   .f-flow { display: flex; flex-direction: column; margin-top: 2px; }
@@ -500,6 +506,286 @@
 (function () {
   "use strict";
 
+  /* ── 프리팹 실측 UI ──────────────────────────────────────────
+     assets 하위 프리팹 · 씬의 cc.Button 을 파싱해 1280x720 가로 화면
+     좌표로 정규화했다. x/y = 버튼 중심(0~1, y 는 위에서 아래), w/hh = 크기,
+     a = 프리팹 저장 시점의 _active, stk = 같은 자리에 겹친 순서.
+     회전은 무시하고, 화면 밖(스크롤 컨텐츠)과 좌표가 겹치는 중복은 걸렀다. */
+  const PF = {
+    lobby: { src: "ViewLobby.prefab", panel: null, btns: [
+      { h: "onClickBackground", n: "blockInputLayer", t: "", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
+      { h: "onClickShop", n: "SHOPBUTTON", t: "9,999,999", x: 0.1047, y: 0.0611, w: 0.1875, hh: 0.1111, a: 1 },
+      { h: "onClickHammer", n: "hammer", t: "999", x: 0.2812, y: 0.0611, w: 0.1562, hh: 0.1111, a: 1 }
+    ] },
+    lobbymain: { src: "ViewLobby.prefab", panel: null, btns: [
+      { h: "onClickIdleGold", n: "IDLEGOLDBUTTON", t: "3000", x: 0.8203, y: 0.8917, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickPlay", n: "LOBBYPLAYBUTTON", t: "323", x: 0.9352, y: 0.8917, w: 0.1172, hh: 0.2083, a: 1 },
+      { h: "onClickDailyTask", n: "DAILYTASK", t: "00:00:00", x: 0.0547, y: 0.2167, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickCardMilestone", n: "box", t: "", x: 0.0547, y: 0.3833, w: 0.0828, hh: 0.15, a: 1 },
+      { h: "onClickWinningMilestone", n: "box", t: "", x: 0.0547, y: 0.55, w: 0.0828, hh: 0.15, a: 1 },
+      { h: "onClickClearRanking", n: "box", t: "", x: 0.0547, y: 0.7167, w: 0.0828, hh: 0.15, a: 1 },
+      { h: "onClickRvFreeGold", n: "box", t: "", x: 0.9453, y: 0.2167, w: 0.0828, hh: 0.15, a: 1 },
+      { h: "onClickDailyWheel", n: "Icon", t: "", x: 0.9453, y: 0.3667, w: 0.0766, hh: 0.1361, a: 1 },
+      { h: "onClickIAP_A", n: "daily_IAP01", t: "00:00:00", x: 0.9453, y: 0.5389, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickIAP_B", n: "daily_IAP02", t: "00:00:00", x: 0.9453, y: 0.7, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickIAP_C", n: "daily_IAP03", t: "00:00:00", x: 0.9453, y: 0.8611, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickSetting", n: "box", t: "", x: 0.9578, y: 0.0694, w: 0.0578, hh: 0.1007, a: 1 },
+      { h: "onClickInbox", n: "box", t: "", x: 0.8938, y: 0.0694, w: 0.0578, hh: 0.1007, a: 1 },
+      { h: "onClickShowDecoView", n: "DECOBUTTON", t: "32/42", x: 0.0828, y: 0.9083, w: 0.1469, hh: 0.1611, a: 1 },
+      { h: "onClickLeaderboard", n: "box", t: "", x: 0.2, y: 0.9222, w: 0.0781, hh: 0.1361, a: 1 },
+      { h: "onClickTournament", n: "box", t: "", x: 0.2828, y: 0.9222, w: 0.0781, hh: 0.1361, a: 0, stk: 1 },
+      { h: "onClickCollection", n: "box", t: "", x: 0.2828, y: 0.9222, w: 0.0781, hh: 0.1361, a: 1 },
+      { h: "onClickTossLogin", n: "toss", t: "!", x: 0.3656, y: 0.9222, w: 0.0781, hh: 0.1389, a: 1 }
+    ] },
+    deco: { src: "ViewLobby.prefab", panel: null, btns: [
+      { h: "onClickBubbleView", n: "gauge_box", t: "", x: 0.8047, y: 0.1042, w: 0.3078, hh: 0.0806, a: 0 },
+      { h: "onClickBubbleView", n: "reward_Icon", t: "", x: 0.9609, y: 0.0944, w: 0.0626, hh: 0.1197, a: 0 },
+      { h: "onClickMetaCityList", n: "box", t: "", x: 0.9313, y: 0.8861, w: 0.1219, hh: 0.2051, a: 0 },
+      { h: "onClickHideDecoView", n: "btn_back", t: "", x: 0.05, y: 0.9167, w: 0.0781, hh: 0.1389, a: 0 },
+      { h: "onClickShare", n: "btn_camera", t: "", x: 0.1406, y: 0.9167, w: 0.0781, hh: 0.1389, a: 0 }
+    ] },
+    upgrade: { src: "ViewLobby.prefab", panel: null, btns: [
+      { h: "onClickUpgrade", n: "btn", t: "", x: 0.5969, y: 0.9306, w: 0.1898, hh: 0.12, a: 0, stk: 1 },
+      { h: "", n: "btn", t: "", x: 0.5969, y: 0.9306, w: 0.1898, hh: 0.12, a: 0 }
+    ] },
+    p_citylist: { src: "PopupMetaCityList.prefab", panel: null, btns: [
+      { h: "onClickBackground", n: "backgroundNode", t: "", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
+      { h: "close", n: "btn_back", t: "", x: 0.05, y: 0.8472, w: 0.0781, hh: 0.1389, a: 1 },
+      { h: "close", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 1 },
+      { h: "close", n: "close_toss", t: "", x: 0.825, y: 0.075, w: 0.0578, hh: 0.1056, a: 1 }
+    ] },
+    p_decoshare: { src: "PopupDecoShare.prefab", panel: null, btns: [
+      { h: "onClickShare", n: "btn", t: "", x: 0.5, y: 0.8833, w: 0.2519, hh: 0.1386, a: 1 },
+      { h: "onClickClose", n: "close", t: "", x: 0.8313, y: 0.1444, w: 0.0578, hh: 0.1056, a: 1 }
+    ] },
+    p_newarea: { src: "PopupNewArea.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "close", n: "close", t: "", x: 0.7, y: 0.1694, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "close", n: "btn", t: "", x: 0.5, y: 0.7375, w: 0.2344, hh: 0.1333, a: 1 }
+    ] },
+    p_shop: { src: "PopupShop.prefab", panel: null, btns: [
+      { h: "onClickBuyItem", n: "btn", t: "", x: 0.1469, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
+      { h: "onClickBuyItem", n: "btn", t: "", x: 0.3922, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
+      { h: "onClickBuyItem", n: "btn", t: "", x: 0.6375, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
+      { h: "onClickBuyItem", n: "btn", t: "", x: 0.8828, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
+      { h: "close", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 },
+      { h: "close", n: "close_toss", t: "", x: 0.825, y: 0.075, w: 0.0602, hh: 0.1097, a: 1 }
+    ] },
+    p_leader: { src: "PopupLeaderBoard.prefab", panel: null, btns: [
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.4111, w: 0.0418, hh: 0.08, a: 1 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.5194, w: 0.0418, hh: 0.08, a: 1 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.6278, w: 0.0418, hh: 0.08, a: 1 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.7361, w: 0.0418, hh: 0.08, a: 1 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.8444, w: 0.0418, hh: 0.08, a: 1 },
+      { h: "onClickWorldWeeklyUp", n: "arrow", t: "", x: 0.3203, y: 0.3472, w: 0.0404, hh: 0.0688, a: 1 },
+      { h: "onClickWorldWeeklyDown", n: "arrow", t: "", x: 0.3203, y: 0.9139, w: 0.0395, hh: 0.0626, a: 1 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.4111, w: 0.0418, hh: 0.08, a: 0 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.5194, w: 0.0418, hh: 0.08, a: 0 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.6278, w: 0.0418, hh: 0.08, a: 0 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.7361, w: 0.0418, hh: 0.08, a: 0 },
+      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.8444, w: 0.0418, hh: 0.08, a: 0 },
+      { h: "onClickFriendsWeeklyUp", n: "arrow", t: "", x: 0.3203, y: 0.3472, w: 0.0404, hh: 0.0688, a: 0, stk: 1 },
+      { h: "onClickFriendsWeeklyDown", n: "arrow", t: "", x: 0.3203, y: 0.9139, w: 0.0395, hh: 0.0626, a: 0, stk: 1 },
+      { h: "onClickGlobal", n: "btn", t: "", x: 0.4116, y: 0.225, w: 0.1777, hh: 0.0871, a: 0 },
+      { h: "onClickClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0578, hh: 0.1056, a: 0 }
+    ] },
+    p_tour: { src: "PopupTournament.prefab", panel: null, btns: [
+      { h: "onClickJoin", n: "btn", t: "", x: 0.357, y: 0.8083, w: 0.1925, hh: 0.1174, a: 1 },
+      { h: "onClickCreate", n: "btn", t: "", x: 0.357, y: 0.6944, w: 0.1925, hh: 0.1174, a: 0 },
+      { h: "onClickJoin", n: "btn", t: "", x: 0.643, y: 0.8083, w: 0.1925, hh: 0.1174, a: 1 },
+      { h: "onClickCreate", n: "btn", t: "", x: 0.643, y: 0.6944, w: 0.1925, hh: 0.1174, a: 0 },
+      { h: "onClickArrowRight", n: "box", t: "", x: 0.8313, y: 0.5, w: 0.075, hh: 0.1333, a: 1 },
+      { h: "onClickArrowLeft", n: "box", t: "", x: 0.1688, y: 0.5, w: 0.075, hh: 0.1333, a: 1 },
+      { h: "onClickClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 },
+      { h: "onClickClose", n: "close_toss", t: "", x: 0.8234, y: 0.1444, w: 0.0602, hh: 0.1097, a: 1 }
+    ] },
+    p_collect: { src: "PopupCollection.prefab", panel: null, btns: [
+      { h: "close", n: "close", t: "", x: 0.8984, y: 0.0944, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickBack", n: "btn_back", t: "", x: 0.1688, y: 0.8778, w: 0.0594, hh: 0.1056, a: 0 },
+      { h: "onClickItem", n: "1", t: "20", x: 0.3125, y: 0.334, w: 0.1281, hh: 0.1819, a: 1 },
+      { h: "onClickItem", n: "2", t: "20", x: 0.4273, y: 0.334, w: 0.1492, hh: 0.1819, a: 1 },
+      { h: "onClickItem", n: "3", t: "20", x: 0.552, y: 0.334, w: 0.1492, hh: 0.1819, a: 1 },
+      { h: "onClickItem", n: "4", t: "20", x: 0.677, y: 0.334, w: 0.1492, hh: 0.1819, a: 1 },
+      { h: "onClickItem", n: "6", t: "20", x: 0.4379, y: 0.4896, w: 0.1281, hh: 0.2208, a: 1 },
+      { h: "onClickItem", n: "7", t: "20", x: 0.552, y: 0.4896, w: 0.1492, hh: 0.2208, a: 1 },
+      { h: "onClickItem", n: "8", t: "20", x: 0.677, y: 0.4903, w: 0.1492, hh: 0.2208, a: 1 },
+      { h: "onClickItem", n: "10", t: "20", x: 0.4379, y: 0.6632, w: 0.1281, hh: 0.2208, a: 1 },
+      { h: "onClickItem", n: "11", t: "20", x: 0.552, y: 0.6632, w: 0.1492, hh: 0.2208, a: 1 },
+      { h: "onClickItem", n: "12", t: "20", x: 0.677, y: 0.6632, w: 0.1492, hh: 0.2208, a: 1 },
+      { h: "onClickBack", n: "all_puzzle", t: "All\nPuzzle", x: 0.1906, y: 0.8583, w: 0.0781, hh: 0.1389, a: 1 },
+      { h: "onClickAlbumTab", n: "album", t: "Album", x: 0.0867, y: 0.2014, w: 0.125, hh: 0.1389, a: 1 },
+      { h: "onClickDeckTab", n: "deck", t: "Deck", x: 0.0867, y: 0.3403, w: 0.125, hh: 0.1389, a: 1 }
+    ] },
+    p_mail: { src: "PopupMail.prefab", panel: null, btns: [
+      { h: "onClickFriendInvite", n: "btn", t: "", x: 0.7172, y: 0.2835, w: 0.1477, hh: 0.0933, a: 1 },
+      { h: "onClickClaimAll", n: "btn", t: "", x: 0.3859, y: 0.9, w: 0.2281, hh: 0.1333, a: 1 },
+      { h: "onClickClaimAllDisabled", n: "btn", t: "", x: 0.3859, y: 0.9, w: 0.2281, hh: 0.1333, a: 1, stk: 1 },
+      { h: "onClickRefresh", n: "btn", t: "", x: 0.6141, y: 0.9, w: 0.2281, hh: 0.1333, a: 1 },
+      { h: "close", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 },
+      { h: "close", n: "close_toss", t: "", x: 0.8234, y: 0.1778, w: 0.0602, hh: 0.1097, a: 1 }
+    ] },
+    p_task: { src: "PopupDailyTask.prefab", panel: null, btns: [
+      { h: "onClickBackground", n: "dim", t: "", x: 0.5, y: 0.5, w: 2.3438, hh: 4.1667, a: 1 },
+      { h: "close", n: "close", t: "", x: 0.8344, y: 0.0944, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickMilestoneReward", n: "gift01", t: "", x: 0.3867, y: 0.2556, w: 0.0398, hh: 0.0762, a: 1 },
+      { h: "onClickMilestoneReward", n: "gift02", t: "", x: 0.5961, y: 0.2556, w: 0.0455, hh: 0.0871, a: 1 },
+      { h: "onClickMilestoneReward", n: "gift03", t: "", x: 0.7914, y: 0.2556, w: 0.0499, hh: 0.0964, a: 1 },
+      { h: "onClickChangeButton", n: "btn", t: "", x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
+      { h: "onClickGoButton", n: "btn", t: "", x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 1, stk: 1 },
+      { h: "onClickClaimButton", n: "btn", t: "", x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 0, stk: 2 },
+      { h: "onClickChangeButton", n: "btn", t: "", x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
+      { h: "onClickGoButton", n: "btn", t: "", x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 1, stk: 1 },
+      { h: "onClickClaimButton", n: "btn", t: "", x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 0, stk: 2 },
+      { h: "onClickChangeButton", n: "btn", t: "", x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
+      { h: "onClickGoButton", n: "btn", t: "", x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 1, stk: 1 },
+      { h: "onClickClaimButton", n: "btn", t: "", x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 0, stk: 2 }
+    ] },
+    p_wheel: { src: "PopupDailyWheel.prefab", panel: null, btns: [
+      { h: "onClickPlay", n: "btn", t: "", x: 0.5, y: 0.9167, w: 0.2437, hh: 0.1386, a: 1 },
+      { h: "onClickClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickClose", n: "close_toss", t: "", x: 0.825, y: 0.075, w: 0.0578, hh: 0.1056, a: 0 }
+    ] },
+    p_offer: { src: "PopupSpecialOffer.prefab", panel: null, btns: [
+      { h: "onClickPurchase", n: "btn", t: "", x: 0.675, y: 0.7778, w: 0.2205, hh: 0.1281, a: 1 },
+      { h: "onClickClose", n: "close", t: "", x: 0.8609, y: 0.1417, w: 0.0602, hh: 0.1097, a: 1 }
+    ] },
+    p_needhammer: { src: "PopupNeedHammer.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "onClickClose", n: "close", t: "", x: 0.7234, y: 0.1833, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickPlay", n: "btn", t: "", x: 0.5, y: 0.6956, w: 0.2664, hh: 0.1467, a: 1 }
+    ] },
+    p_ev_card: { src: "PopupEventCardMilestone.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "close", n: "close", t: "", x: 0.8859, y: 0.1347, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickPlay", n: "btn", t: "", x: 0.3109, y: 0.7319, w: 0.2664, hh: 0.1467, a: 1 },
+      { h: "onClickShare", n: "btn_share", t: "", x: 0.05, y: 0.0778, w: 0.0703, hh: 0.125, a: 1 }
+    ] },
+    p_ev_win: { src: "PopupEventWinningMilestone.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "close", n: "close", t: "", x: 0.8703, y: 0.1347, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickPlay", n: "btn", t: "", x: 0.5, y: 0.7661, w: 0.2664, hh: 0.1467, a: 1 },
+      { h: "onClickShare", n: "btn_share", t: "", x: 0.05, y: 0.0778, w: 0.0703, hh: 0.125, a: 1 }
+    ] },
+    p_ev_rank: { src: "PopupEventClearRanking.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "onClickPlay", n: "btn", t: "", x: 0.2906, y: 0.7708, w: 0.2664, hh: 0.1467, a: 1 },
+      { h: "close", n: "close", t: "", x: 0.8938, y: 0.1347, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickShare", n: "btn_share", t: "", x: 0.05, y: 0.0778, w: 0.0703, hh: 0.125, a: 1 }
+    ] },
+    entrypopup: { src: "PopupGameEntry.prefab", panel: null, btns: [
+      { h: "onClickFriendInvite", n: "btn", t: "", x: 0.1531, y: 0.6833, w: 0.1487, hh: 0.0907, a: 1 },
+      { h: "onClickAdExtend", n: "bubble", t: "", x: 0.8781, y: 0.8444, w: 0.0547, hh: 0.1083, a: 1 },
+      { h: "onClickInfo", n: "info", t: "!", x: 0.8828, y: 0.6917, w: 0.0325, hh: 0.0519, a: 1 },
+      { h: "close", n: "close", t: "", x: 0.7, y: 0.0792, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickEnterStage", n: "btn", t: "Play", x: 0.5, y: 0.7903, w: 0.2188, hh: 0.1333, a: 1 },
+      { h: "onClickGrandFireworksBooster", n: "BOOSTER1", t: "3", x: 0.3922, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickGoldenTicketBooster", n: "BOOSTER2", t: "3", x: 0.5, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickGoldRushBooster", n: "BOOSTER3", t: "", x: 0.6078, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickGoldenTicketBooster", n: "booster3", t: "3", x: 0.6078, y: 0.6153, w: 0.0938, hh: 0.1667, a: 0, stk: 1 },
+      { h: "onClickMinusMultiple", n: "box", t: "", x: 0.4062, y: 0.4097, w: 0.05, hh: 0.0889, a: 1 },
+      { h: "onClickAddMultiple", n: "box", t: "", x: 0.5938, y: 0.4097, w: 0.05, hh: 0.0889, a: 1 },
+      { h: "onClickFullHammer", n: "item01", t: "Full", x: 0.4352, y: 0.2819, w: 0.0433, hh: 0.0878, a: 1 },
+      { h: "onClickOpenShop", n: "box", t: "", x: 0.1141, y: 0.0611, w: 0.1719, hh: 0.0736, a: 1 }
+    ] },
+    p_charge: { src: "PopupChargeGold.prefab", panel: null, btns: [
+      { h: "onClickClose", n: "close", t: "", x: 0.7234, y: 0.1708, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickWatchAd", n: "btn", t: "", x: 0.5, y: 0.6831, w: 0.275, hh: 0.1467, a: 1 }
+    ] },
+    viewgame: { src: "ViewGame.prefab", panel: null, btns: [
+      { h: "onClickButton", n: "FIRECRACKER", t: "99.K", x: 0.8453, y: 0.8792, w: 0.0813, hh: 0.2014, a: 1 },
+      { h: "onClickOpenShop", n: "coin", t: "9,999,999", x: 0.0969, y: 0.0626, w: 0.1953, hh: 0.1389, a: 1 },
+      { h: "onClickEndLevel", n: "btn", t: "", x: 0.25, y: 0.9056, w: 0.1031, hh: 0.1497, a: 1 },
+      { h: "onClickButton", n: "plusCardItem", t: "+5", x: 0.4461, y: 0.8792, w: 0.0969, hh: 0.2083, a: 0 },
+      { h: "onClickRewardBox", n: "rewarboxTouch", t: "", x: 0.0798, y: 0.7864, w: 0.1406, hh: 0.375, a: 1 },
+      { h: "", n: "WildCardView", t: "", x: 0.6641, y: 0.4375, w: 0.0941, hh: 0.2294, a: 0 },
+      { h: "", n: "WildCardView", t: "", x: 0.3359, y: 0.4375, w: 0.0941, hh: 0.2294, a: 0 },
+      { h: "", n: "WildCardView", t: "", x: 0.5, y: 0.4375, w: 0.0941, hh: 0.2294, a: 0 },
+      { h: "onClickOption", n: "box", t: "", x: 0.9523, y: 0.0696, w: 0.0578, hh: 0.1007, a: 1 },
+      { h: "onClickStreakBubble", n: "INGAMESTREAK", t: "", x: 0.7789, y: 0.0639, w: 0.2656, hh: 0.0861, a: 1 },
+      { h: "onClickButton", n: "WildCardBuyItem", t: "16", x: 0.9437, y: 0.8792, w: 0.0813, hh: 0.2014, a: 1 },
+      { h: "onClickButton", n: "btn_back", t: "", x: 0.6969, y: 0.8944, w: 0.0703, hh: 0.125, a: 1 }
+    ] },
+    p_ingameset: { src: "PopupSettingInGame.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "onClickResume", n: "close", t: "", x: 0.7, y: 0.1708, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onChangeSFX", n: "sound", t: "", x: 0.3875, y: 0.375, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onChangeBGM", n: "music", t: "", x: 0.5, y: 0.375, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onChangeVibration", n: "vibration", t: "", x: 0.6125, y: 0.375, w: 0.0938, hh: 0.1667, a: 1 },
+      { h: "onClickQuit", n: "btn", t: "", x: 0.5, y: 0.7083, w: 0.2031, hh: 0.1333, a: 1 },
+      { h: "onClickResume", n: "btn", t: "", x: 0.5, y: 0.5667, w: 0.2344, hh: 0.1333, a: 1 }
+    ] },
+    p_lang: { src: "PopupSettingLanguage.prefab", panel: null, btns: [
+      { h: "onClickClose", n: "close", t: "", x: 0.7312, y: 0.1431, w: 0.0578, hh: 0.1056, a: 1 }
+    ] },
+    p_complete: { src: "PopupCompleteLevel.prefab", panel: null, btns: [
+      { h: "onClickCollect", n: "btn", t: "", x: 0.3535, y: 0.7639, w: 0.2422, hh: 0.1333, a: 1 },
+      { h: "onClickCollectDouble", n: "btn", t: "", x: 0.6035, y: 0.7639, w: 0.2422, hh: 0.1333, a: 1 },
+      { h: "onClickLobby", n: "box", t: "", x: 0.7715, y: 0.7639, w: 0.0703, hh: 0.1225, a: 1 },
+      { h: "onClickAdExtend", n: "bubble", t: "+5m", x: 0.9656, y: 0.8389, w: 0.0547, hh: 0.0972, a: 1 },
+      { h: "onClickInfo", n: "info", t: "!", x: 0.9703, y: 0.6861, w: 0.0325, hh: 0.0519, a: 1 },
+      { h: "onClickShare", n: "btn", t: "", x: 0.5, y: 0.8528, w: 0.2664, hh: 0.1467, a: 0 },
+      { h: "onClickShareClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 }
+    ] },
+    p_quit: { src: "PopupQuitLevel.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+      { h: "onClickClose", n: "close", t: "", x: 0.7, y: 0.1278, w: 0.0578, hh: 0.1056, a: 1 },
+      { h: "onClickQuit", n: "btn", t: "", x: 0.5969, y: 0.6278, w: 0.1909, hh: 0.1253, a: 1 },
+      { h: "onClickBack", n: "btn", t: "", x: 0.4031, y: 0.6278, w: 0.1909, hh: 0.1253, a: 1 },
+      { h: "onClickRetry", n: "btn", t: "", x: 0.5, y: 0.7847, w: 0.2484, hh: 0.1414, a: 1 }
+    ] },
+    p_reward: { src: "PopupRewardClaim.prefab", panel: null, btns: [
+      { h: "", n: "PopupRewardClaim", t: "Daily Tasks Gift!", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
+      { h: "onClickBackground", n: "claimButton", t: "", x: 0.5, y: 0.5, w: 1.5625, hh: 1.3889, a: 1, stk: 1 }
+    ] },
+    p_gift: { src: "PopupDailyGift.prefab", panel: null, btns: [
+      { h: "onClickPopup", n: "dim", t: "", x: 0.5, y: 0.5, w: 2.3438, hh: 4.1667, a: 1 },
+      { h: "onClickClaim", n: "btn_add", t: "", x: 0.2625, y: 0.4979, w: 0.1139, hh: 0.0719, a: 1 },
+      { h: "onClickClaim", n: "btn_add", t: "", x: 0.4078, y: 0.4979, w: 0.1139, hh: 0.0719, a: 1 },
+      { h: "onClickClaim", n: "btn_add", t: "", x: 0.5531, y: 0.4979, w: 0.1139, hh: 0.0719, a: 1 },
+      { h: "onClickClaim", n: "btn_add", t: "", x: 0.2625, y: 0.8063, w: 0.1139, hh: 0.0719, a: 1 },
+      { h: "onClickClaim", n: "btn_add", t: "", x: 0.4078, y: 0.8063, w: 0.1139, hh: 0.0719, a: 1 },
+      { h: "onClickClaim", n: "btn_add", t: "", x: 0.5531, y: 0.8063, w: 0.1139, hh: 0.0719, a: 1 },
+      { h: "onClickClaimDaySeven", n: "btn_add", t: "", x: 0.7188, y: 0.7939, w: 0.1477, hh: 0.0933, a: 1 },
+      { h: "onClickSevenDayBubbleView", n: "btn", t: "", x: 0.7782, y: 0.4028, w: 0.0312, hh: 0.0567, a: 1 }
+    ] },
+    p_shadow: { src: "PopupEventShadowChase.prefab", panel: null, btns: [
+      { h: "showStolenCut", n: "claimButton", t: "", x: 0.5, y: 0.5, w: 1.5625, hh: 1.3889, a: 1 },
+      { h: "onClickClose", n: "btn_ok", t: "OK", x: 0.5, y: 0.6194, w: 0.2266, hh: 0.1333, a: 0 }
+    ] },
+    p_tutorial: { src: "PopupTutorial.prefab", panel: null, btns: [
+      { h: "onClickDismiss", n: "dim", t: "", x: 0.5, y: 0.5, w: 6.25, hh: 11.1111, a: 1 }
+    ] },
+  };
+
+  /* 프리팹에는 있는데 손으로 적은 로직 표에 없던 버튼 — 실제 구현을 읽어 채운 사슬.
+     키가 "지면id:핸들러" 면 그 지면 전용, 핸들러만 있으면 공통이다. */
+  const EXTRA = {
+    "close": ["닫기", "ViewBase.close(event) → isClose 가드 → createdFromManager 면 ViewManager.blockInputEvent() → onClose(event) 콜백 1회 실행 → show(false) → 호출한 지면 복귀"],
+    "lobby:onClickBackground": ["배경 터치", "onClickBackground() → rewardView.hideBubbleView() — 말풍선만 닫고 지면은 유지 (LobbyDecoUIView.ts:279)"],
+    "lobbymain:onClickLeaderboard": ["리더보드", "onClickLeaderboard() → lockButton 가드 → mainView.isFeatureLocked(\"content_leaderboard\") 면 showLockedToast() 로 차단 → mainView.openPopup() → ViewCreator.showPopupLeaderboard() → lockButton 해제 (ViewLobby.ts:2188)"],
+    "lobbymain:onClickTournament": ["토너먼트", "onClickTournament() → lockButton 가드 → isFeatureLocked(\"content_tournament\") 차단 → openPopup() → ViewCreator.showPopupTournament() → popup.onJoinTournament 시 close() → mainView.show(true) → BaseNetworkManager.invalidateCache('tournament') (ViewLobby.ts:2202)"],
+    "lobbymain:onClickCollection": ["컬렉션(앨범)", "onClickCollection() → isFeatureLocked(\"content_collection\") 차단 → ConstKeyNumber.IS_ALBUM_COLLECTION_OPEN 이 1 이 아니면 FX_UI_LOCKED_TAP + T_COMING_SOON 토스트 → openPopup() → ViewCreator.showPopupCollection() (ViewLobby.ts:2328)"],
+    "lobbymain:onClickTossLogin": ["토스 로그인", "onClickTossLogin() → freezeLogin · DataManager.tossLoggined 가드 → BasePlatform.forceSubscribeBotAsync(platformType) → tossLoggined = true → isValid 확인 → topCoin.init(골드, 해머, 티켓) → updateTossLogin() (ViewLobby.ts:2119)"],
+    "deco:onClickBubbleView": ["보상 말풍선", "onClickBubbleView() → bubbleView.isShown() 이면 hideBubbleView(), 아니면 showBubbleView() — 토글 (DecoRewardView.ts:164)"],
+    "p_citylist:onClickBackground": ["배경 터치", "onClickBackground() → hideAllBubbles() → cachedItems 각 항목 hideBubble() (PopupMetaCityList.ts:186)"],
+    "p_citylist:onClickClose": ["닫기", "onClickClose() → BaseLogManager.log(BtnCityListClose) → hide() (PopupMetaCityList.ts:181)"],
+    "p_task:onClickBackground": ["배경 터치", "onClickBackground() → 열려 있는 말풍선 닫기 (PopupDailyTask.ts:725)"],
+    "p_leader:onClickGiftButton": ["친구 선물", "onClickGiftButton() → rankInfo · isGiftProcessing 가드 → BaseLogManager.log(LeaderboardFriendGiftTry, {friend_id, gift_type:\"message\"}) → updateGiftButtonState(friendId) → 플랫폼이 facebook 이 아니면 중단 (LeaderboardRankItem.ts:177)"],
+    "p_leader:onClickWorldWeeklyUp": ["세계 주차 ▲", "onClickWorldWeeklyUp() → changeWeeklyState(true, \"up\") → 주차 이동 → refreshWeeklySection(true) (PopupLeaderboard.ts:550)"],
+    "p_leader:onClickWorldWeeklyDown": ["세계 주차 ▼", "onClickWorldWeeklyDown() → changeWeeklyState(true, \"down\") → refreshWeeklySection(true)"],
+    "p_leader:onClickFriendsWeeklyUp": ["친구 주차 ▲", "onClickFriendsWeeklyUp() → changeWeeklyState(false, \"up\") → isFriendsWeeklyPageMode() 면 friendsWeeklyPageIndex 조정 → refreshWeeklySection(false)"],
+    "p_leader:onClickFriendsWeeklyDown": ["친구 주차 ▼", "onClickFriendsWeeklyDown() → changeWeeklyState(false, \"down\") → refreshWeeklySection(false)"],
+    "p_leader:onClickClose": ["닫기", "onClickClose() → close() (PopupLeaderboard.ts:546)"],
+    "onClickInfo": ["추격 안내", "onClickInfo() → IS_SHADOW_CHASE_ENABLED 가드 → ViewCreator.showPopupEventShadowChaseInfo() (EventShadowChaseTag.ts:362)"],
+    "onClickAdExtend": ["추격 연장(RV)", "onClickAdExtend() → isExtending 가드 → logAdExtend(WATCH_START) → ADPlayer.tryShowRewardAD(shadow_chase_extend) → 실패면 showAdFailed(error) (EventShadowChaseTag.ts:369)"],
+    "viewgame:onClickButton": ["인게임 아이템", "onClickButton() → isProcessing · isHiding 가드 → isUseAvailableFunction() 실패 시 FX_UI_LOCKED_TAP → 상태 Active 면 onClickActive(), InactivePaid/InactiveFree 면 onClickInactivePaid() (IngameItemButtonView.ts:368)"],
+    "viewgame:onClickStreakBubble": ["연승 말풍선", "onClickStreakBubble() → 버블 노드·애니 확인 → unschedule(hideBubble) → streakBubbleNode.active = true → animation.play(ANIM_BUBBLE_SHOW) → scheduleOnce(hideBubble, BUBBLE_DISPLAY_DURATION) (IngameStreak.ts:478)"],
+    "viewgame:": ["와일드 카드 슬롯", "프리팹에 cc.Button 은 있지만 clickEvents 가 비어 있다 — 클릭 처리는 WildCardView / StageView 코드에서 등록한다 (기본 비활성, 획득 시 노출)"],
+    "p_ingameset:onChangeSFX": ["효과음 토글", "onChangeSFX() → YouTube 음소거 방어 가드 → sfx.isSelected() 반전 → BasePlatform.storageSave(OMG_SFX_ON) → updateSFX(select) → GameSound.setVolume(플랫폼 음소거 AND 사용자 설정, audioType.sfx)"],
+    "p_ingameset:onChangeBGM": ["배경음 토글", "onChangeBGM() → YouTube 음소거 방어 가드 → bgm.isSelected() 반전 → BasePlatform.storageSave(OMG_BGM_ON) → updateBGM(select) → GameSound.setVolume(..., audioType.bgm)"],
+    "p_ingameset:onChangeVibration": ["진동 토글", "onChangeVibration() → vibration.isSelected() 반전 → BasePlatform.storageSave(OMG_VIBRATION_ON) → updateVibration(select) → BaseLogManager.log(BtnSettingVibration, {position, status})"],
+    "p_quit:onClickClose": ["닫기", "onClickClose() → onClickBack() — 그만두기 팝업은 닫기와 뒤로가 같은 경로 (PopupQuitLevel.ts:207)"],
+    "p_shadow:onClickClose": ["확인(OK)", "onClickClose() → close() — 연출이 끝난 뒤 활성화된다 (PopupEventShadowChase.ts:95)"],
+    "p_shadow:showStolenCut": ["도둑 컷 연출", "showStolenCut() → _isStolenCutShown 1회 가드 → claimButtonNode · tapToClaimNode 숨김 → catRootNode 애니 재생 — 버튼이 아니라 코드에서 부르는 연출 진입점 (PopupEventShadowChase.ts:63)"],
+    "p_reward:onClickBackground": ["화면 터치 → 수령", "onClickBackground() — claimButton 이 화면 전체를 덮는다. 어디를 눌러도 보상 수령으로 이어진다"],
+    "p_tutorial:onClickDismiss": ["튜토리얼 진행", "onClickDismiss() → dim 전체 터치 → 현재 단계 종료 후 다음 단계 노출"]
+  };
+
+  /* 프리팹 노드 이름이 btn/box 처럼 무의미할 때 쓰는 사람용 이름 */
+  const BTNNAME = {"SHOPBUTTON": "상점", "hammer": "해머", "IDLEGOLDBUTTON": "방치 골드", "LOBBYPLAYBUTTON": "PLAY", "DAILYTASK": "일일 미션", "DECOBUTTON": "꾸미기", "LEADERBOARDBUTTON": "리더보드", "ALBUM": "컬렉션", "tournament": "토너먼트", "toss": "토스 로그인", "set": "설정", "inbox": "우편", "free_coin": "무료 골드", "daily_wheel": "룰렛", "daily_IAP01": "IAP A", "daily_IAP02": "IAP B", "daily_IAP03": "IAP C", "FIRECRACKER": "불꽃", "plusCardItem": "플러스 카드", "WildCardBuyItem": "와일드 카드", "btn_back": "뒤로", "coin": "재화 · 상점", "rewarboxTouch": "보상 상자", "INGAMESTREAK": "연승 말풍선", "WildCardView": "와일드 카드 슬롯", "BOOSTER1": "대형 불꽃", "BOOSTER2": "골든 티켓", "BOOSTER3": "골드 러시", "item01": "해머 채우기", "close": "닫기", "close_toss": "닫기", "btn_camera": "촬영 · 공유", "dim": "전체 터치", "claimButton": "수령 터치", "backgroundNode": "배경", "blockInputLayer": "배경", "bubble": "추격 연장", "info": "추격 안내", "box": "버튼", "btn": "버튼", "add": "홈으로", "offbtn": "시작(비활성)", "UPGRADE_BUTTON": "업그레이드", "all_city": "도시 목록", "gauge_box": "도시 게이지", "reward_Icon": "게이지 보상", "btn_ok": "확인"};
   const N = [
     /* ================= 진입 ================= */
     {
@@ -1321,59 +1607,117 @@
     return null;
   };
 
-  /* 지면의 섹션 묶음. detail 이 있으면 그대로, 없으면 acts 를 한 섹션으로. */
-  const sectionsOf = function (n) {
+  /* ── UI : 프리팹 실측 ────────────────────────────────────────
+     버튼 위치는 추정하지 않는다. PF(프리팹 파싱 결과)의 좌표를 그대로 쓴다.
+     각 버튼의 핸들러명으로 로직 표의 행을 찾아 붙이고, 표에 없던 버튼은
+     EXTRA 의 사슬을 담은 섹션을 하나 덧붙여 3단까지 이어지게 한다. */
+
+  /* 섹션 묶음은 노드당 한 번만 만든다 (프리팹 추가 버튼 섹션이 붙는다) */
+  const SEC_CACHE = {};
+  const baseSections = function (n) {
     if (n.detail && n.detail.length) return n.detail;
     return [{ h: "버튼 → 호출 메소드", rows: (n.acts || []).map(function (a) { return [a[0], a[1]]; }) }];
+  };
+
+  const extraOf = function (id, h) {
+    return EXTRA[id + ":" + h] || EXTRA[h] || null;
+  };
+
+  /* 프리팹 노드 이름 · 라벨 문자열에서 사람이 읽을 이름을 고른다.
+     숫자만 있는 라벨(재화 표시 등)은 버튼 이름이 아니므로 버린다. */
+  const nameOf = function (b) {
+    const t = (b.t || "").trim();
+    if (t && !/^[\d,.:%\s+x/-]*$/.test(t) && t.length <= 14) return t;
+    if (BTNNAME[b.n] && BTNNAME[b.n] !== "버튼") return BTNNAME[b.n];
+    if (b.h) return b.h.replace(/^on(Click|Change)/, "");
+    return BTNNAME[b.n] || b.n || "버튼";
+  };
+
+  const sectionsOf = function (n) {
+    if (SEC_CACHE[n.id]) return SEC_CACHE[n.id];
+    const secs = baseSections(n).slice();
+    const pf = PF[n.id];
+    if (pf) {
+      const add = [];
+      pf.btns.forEach(function (b) {
+        b._sec = -1;
+        const re = b.h
+          ? new RegExp("\\b" + b.h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\(")
+          : null;
+        if (re) {
+          for (let si = 0; si < secs.length; si++) {
+            const rows = secs[si].rows;
+            for (let ri = 0; ri < rows.length; ri++) {
+              if (re.test(rows[ri][1])) { b._sec = si; b._row = ri; b._label = rows[ri][0]; return; }
+            }
+          }
+        }
+        /* detail 에 없어도 acts(카드 요약)에 있으면 그 사슬을 쓴다 */
+        let row = null;
+        if (re && n.acts) {
+          for (let i = 0; i < n.acts.length; i++) {
+            if (re.test(n.acts[i][1])) { row = [n.acts[i][0], n.acts[i][1]]; break; }
+          }
+        }
+        if (!row) {
+          const ex = extraOf(n.id, b.h);
+          row = ex ? [ex[0], ex[1]]
+                   : [nameOf(b), b.h
+                        ? b.h + "() — 프리팹에서 확인된 핸들러. 로직 표에는 아직 정리되지 않았다."
+                        : "클릭 이벤트가 비어 있다 — 코드에서 등록하거나 연출 전용 터치 영역이다."];
+        }
+        add.push({ b: b, row: row });
+      });
+      if (add.length) {
+        secs.push({ h: "프리팹 실측 · 표 밖 버튼", rows: add.map(function (a) { return a.row; }) });
+        const si = secs.length - 1;
+        add.forEach(function (a, i) { a.b._sec = si; a.b._row = i; a.b._label = a.row[0]; });
+      }
+    }
+    SEC_CACHE[n.id] = secs;
+    return secs;
   };
   const rowCountOf = function (n) {
     return sectionsOf(n).reduce(function (s, sec) { return s + sec.rows.length; }, 0);
   };
 
-  /* ── UI 배치 추정 ─────────────────────────────────────────────
-     실제 프리팹 좌표가 아니라 섹션 성격과 버튼 이름으로 위치를 가늠한다.
-     섹션이 UI 조작이 아니면(라이프사이클 · 분기 · 메모) 와이어프레임에 올리지 않는다. */
-  /* 라이프사이클·분기 설명 섹션은 통째로 제외한다. */
-  const NON_UI_SEC = /라이프사이클|실행 순서|분기|메모|진입 지점|지면 목록|구분 기준|순서|핵심 메소드|관련/;
-  /* 순서가 곧 우선순위다. 앞 규칙이 먹으면 뒤는 보지 않는다.
-     예: "덱 카드 탭"은 보드 제스처(중앙)이지, 하단의 "덱" 탭이 아니다. */
-  const SKIP = /완료|성공|실패|갱신|구성|판정|가드|첫 터치|기준|연출|합류|폴백|지연|주의|호출 지점|관련|잠금 처리|공통|메모|순서|사용 가능|주체/;
-  const ZONE = [
-    [/카드 탭|덱 카드|덱 넘김|필드 카드/, "center"],
-    [/기믹|오브젝트|조각|아이템 구매|덱 아이템|앨범|랭킹 항목|미션 이동|스크롤|^랭킹$/, "list"],
-    [/닫기|취소|뒤로|배경/, "top"],
-    [/설정|옵션|언어|방법|정보|안내/, "top"],
-    [/코인|티켓|해머 채우기|재화/, "top"],
-    [/탭$/, "top"],
-    [/상점|우편|일일 미션|컬렉션|룰렛|꾸미기|도시 목록|리더보드|토너먼트|덱/, "bottom"],
-    [/이벤트|마일스톤|클리어 랭킹|추격|출석|방치|무료|RV|해머/, "left"],
-    [/IAP|오퍼|배팅|부스터|불꽃|골든|골드 러시|슬롯/, "right"],
-    [/친구|초대|공유|전환|P2P|토너/, "right"],
-    [/PLAY|시작|플레이|받기|수령|홈|계속|그만|다시|재시도|구매|스핀|업그레이드|시청|확인|참가|생성|해금|교체|새로고침|나가기|이어하기|선택|보상 상자|Undo|와일드|플러스|카드 추가/, "center"]
-  ];
-  const zoneOf = function (label) {
-    if (/\(\)|\(\w/.test(label)) return null;   /* 메소드명 형태는 버튼이 아니다 */
-    if (SKIP.test(label)) return null;             /* 콜백 · 판정 · 연출 설명 행 */
-    for (let i = 0; i < ZONE.length; i++) { if (ZONE[i][0].test(label)) return ZONE[i][1]; }
-    return null;
-  };
-  const BIG = /PLAY|시작|플레이|받기|수령|그만|다시|계속|구매|스핀/;
+  const BIG = /PLAY|시작|플레이|받기|수령|그만|다시|계속|구매|스핀|참가/;
 
-  /* 지면의 UI 버튼 목록 (와이어프레임 · 카드 개념도 공용) */
+  /* 지면의 UI 버튼 = 프리팹 버튼 그대로. 좌표·크기까지 함께 넘긴다. */
   const uiButtons = function (n) {
-    const out = [];
-    sectionsOf(n).forEach(function (sec, si) {
-      if (NON_UI_SEC.test(sec.h)) return;
-      sec.rows.forEach(function (r, ri) {
-        const z = zoneOf(r[0]);
-        if (!z) return;
-        const steps = splitChain(r[1]);
-        out.push({
-          label: r[0], sec: si, row: ri, steps: steps.length,
-          zone: z, type: stepType(steps[steps.length - 1] || r[1]),
-          big: BIG.test(r[0])
-        });
-      });
+    const pf = PF[n.id];
+    if (!pf) return [];
+    sectionsOf(n);   /* _sec/_row 채우기 */
+    const secs = SEC_CACHE[n.id];
+    const out = pf.btns.map(function (b) {
+      const row = secs[b._sec] ? secs[b._sec].rows[b._row] : null;
+      const steps = row ? splitChain(row[1]) : [""];
+      return {
+        label: b._label || nameOf(b), sec: b._sec, row: b._row, steps: steps.length,
+        type: stepType(steps[steps.length - 1] || ""), big: BIG.test(b._label || ""),
+        x: b.x, y: b.y, w: b.w, h: b.hh, on: b.a === 1, stk: b.stk || 0,
+        handler: b.h, node: b.n, full: b.w >= 0.9 && b.hh >= 0.9
+      };
+    });
+    /* 한 로직 행에 버튼이 여러 개 붙는 경우(IAP A/B/C, 인게임 아이템 4종)
+       라벨이 똑같아지므로 프리팹 노드 이름으로 갈라준다. */
+    const count = function (arr) {
+      const c = {};
+      arr.forEach(function (x) { c[x.label] = (c[x.label] || 0) + 1; });
+      return c;
+    };
+    let seen = count(out);
+    out.forEach(function (x) {                       /* 1차: 프리팹 노드 이름으로 갈라본다 */
+      if (seen[x.label] < 2) return;
+      const alt = BTNNAME[x.node];
+      if (alt && alt !== "버튼" && alt !== x.label) x.label = alt;
+    });
+    seen = count(out);                               /* 2차: 그래도 남은 동명만 번호를 붙인다 */
+    const used = {};
+    out.forEach(function (x) {
+      if (seen[x.label] < 2) return;
+      used[x.label] = (used[x.label] || 0) + 1;
+      x.label = x.label + " " + used[x.label];
     });
     return out;
   };
@@ -1387,20 +1731,16 @@
   const byId = {};
   N.forEach(function (n) { byId[n.id] = n; });
 
-  /* 카드 우측의 초소형 화면 개념도 — 상단/중앙/하단에 버튼이 몇 개 있는지만 점으로 */
+  /* 카드 우측의 초소형 화면 개념도 — 프리팹 실좌표를 그대로 점으로 찍는다 (16:9) */
   const wfGlyph = function (n) {
     const b = uiButtons(n);
-    const cnt = function (z) { return b.filter(function (x) { return x.zone === z; }).length; };
-    const dots = function (k) {
-      let o = "";
-      for (let i = 0; i < Math.min(k, 4); i++) o += "<u></u>";
-      return o;
-    };
-    return '<span class="n-wf">'
-      + '<i>' + dots(cnt("top")) + '</i>'
-      + '<i class="mid">' + dots(cnt("center") + cnt("left") + cnt("right") + cnt("list")) + '</i>'
-      + '<i>' + dots(cnt("bottom")) + '</i>'
-      + '</span>';
+    if (!b.length) return "";
+    let o = '<span class="n-wf">';
+    b.slice(0, 20).forEach(function (x) {
+      if (x.full) return;
+      o += '<u style="left:' + (x.x * 100).toFixed(1) + '%;top:' + (x.y * 100).toFixed(1) + '%"></u>';
+    });
+    return o + '</span>';
   };
 
   /* ============ L1 카드 ============ */
@@ -1739,41 +2079,41 @@
     return n.title.replace(/\s*·.*$/, "").replace(/\(.*\)/, "").trim().slice(0, 22);
   };
 
-  /* ── 2단 UI 와이어프레임 : 버튼을 추정 위치에 올리고, 누르면 3단 로직으로 ── */
+  /* ── 2단 UI 와이어프레임 : 프리팹 좌표를 1280x720 가로 틀에 그대로 올린다 ── */
   const wireframe = function (n, cc) {
     const b = uiButtons(n);
-    const pick = function (z) { return b.filter(function (x) { return x.zone === z; }); };
-    const btn = function (x) {
-      return '<button class="wf-btn n-' + x.type + (x.big ? " big" : "") + '"'
-        + ' data-sec="' + x.sec + '" data-row="' + x.row + '"'
-        + ' title="' + esc(x.label) + ' · ' + x.steps + '단계">' + esc(x.label) + '</button>';
-    };
-    const zoneLabel = function (txt) { return '<span class="wf-zone">' + txt + '</span>'; };
+    if (!b.length) return "";                 /* 프리팹 버튼이 없으면 와이어프레임 자체를 두지 않는다 */
+    const pf = PF[n.id];
 
-    if (!b.length) {
-      return '<div class="wf" style="--cc: ' + cc + '"><div class="wf-bar"></div>'
-        + '<div class="wf-mid"><div></div><div class="wf-center">'
-        + '<span class="wf-zone">UI 조작 없음</span></div><div></div></div>'
-        + '<div class="wf-bar b"></div></div>'
-        + '<div class="wf-cap">이 지면은 <b>버튼이 아니라 흐름·연출로만</b> 동작합니다. 오른쪽 로직 가지를 보세요.</div>';
+    const full = b.filter(function (x) { return x.full; });
+    const spot = b.filter(function (x) { return !x.full; });
+
+    let o = '<div class="wf-wrap"><div class="wf" style="--cc: ' + cc + '">';
+    if (pf.panel) {
+      o += '<span class="wf-panel" style="width:' + (pf.panel.w * 100).toFixed(1)
+        + '%;height:' + (pf.panel.h * 100).toFixed(1) + '%"></span>';
     }
-
-    const list = pick("list");
-    let o = '<div class="wf" style="--cc: ' + cc + '">';
-    o += '<div class="wf-bar">' + zoneLabel("상단") + pick("top").map(btn).join("") + '</div>';
-    o += '<div class="wf-mid">'
-      + '<div class="wf-side">' + pick("left").map(btn).join("") + '</div>'
-      + '<div class="wf-center">'
-      + pick("center").map(btn).join("")
-      + (list.length ? '<div class="wf-list">' + zoneLabel("목록 항목") + list.map(btn).join("") + '</div>' : "")
-      + '</div>'
-      + '<div class="wf-side">' + pick("right").map(btn).join("") + '</div>'
-      + '</div>';
-    o += '<div class="wf-bar b">' + zoneLabel("하단") + pick("bottom").map(btn).join("") + '</div>';
+    full.forEach(function (x) {
+      o += '<button class="wf-full" data-sec="' + x.sec + '" data-row="' + x.row + '"'
+        + ' title="' + esc(x.node + " · " + (x.handler || "핸들러 없음")) + '">'
+        + esc(x.label) + ' <em>화면 전체</em></button>';
+    });
+    spot.forEach(function (x) {
+      const w = Math.max(x.w * 100, 6.2), h = Math.max(x.h * 100, 8.5);
+      o += '<button class="wf-btn n-' + x.type + (x.big ? " big" : "") + (x.on ? "" : " off")
+        + '" data-sec="' + x.sec + '" data-row="' + x.row + '"'
+        + ' style="left:' + (x.x * 100).toFixed(2) + '%;top:' + (x.y * 100).toFixed(2) + '%;'
+        + 'width:' + w.toFixed(2) + '%;min-height:' + h.toFixed(2) + '%'
+        + (x.stk ? ';margin-left:' + (x.stk * 7) + 'px;margin-top:' + (x.stk * 7) + 'px' : '') + '"'
+        + ' title="' + esc(x.node + " · " + (x.handler || "핸들러 없음") + " · " + x.steps + "단계"
+            + (x.on ? "" : " · 프리팹 저장 시점 비활성")) + '">'
+        + '<span>' + esc(x.label) + '</span></button>';
+    });
     o += '</div>';
-    o += '<div class="wf-cap"><b>대략적 배치</b>입니다 — 실제 프리팹 좌표가 아니라 버튼 이름·역할로 추정한 위치입니다. '
-      + '버튼을 누르면 그 버튼의 <b>호출 사슬</b>이 열립니다.</div>';
-    return o;
+    o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b> 실측 · 1280&times;720 가로 · 버튼 '
+      + b.length + '개<br>회전은 무시했고, 스크롤 안쪽 반복 항목과 좌표가 겹치는 중복은 한 개로 접었습니다. '
+      + '<span class="wf-lg">점선</span>은 프리팹 저장 시점 비활성(런타임 조건부 노출).</div>';
+    return o + '</div>';
   };
 
   /* ---- 2단 : 지면 다이어그램 (흐름 밴드 + 가지 트리) ---- */
@@ -1817,8 +2157,9 @@
       + side(outs, "out", "r")
       + '</div>';
 
-    /* 왼쪽 = UI 와이어프레임, 오른쪽 = 로직 가지 */
-    h += '<div class="two"><div class="wf-wrap">' + wireframe(n, cc) + '</div><div>';
+    /* 왼쪽 = UI 와이어프레임, 오른쪽 = 로직 가지. 프리팹 버튼이 없는 지면은 로직만 전폭으로. */
+    const wf = wireframe(n, cc);
+    h += wf ? '<div class="two">' + wf + '<div>' : '<div class="one"><div>';
     h += '<div class="g-lanes">';
     secs.forEach(function (sec, si) {
       h += '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
@@ -1959,7 +2300,7 @@
   bodyEl.addEventListener("click", function (ev) {
     const jump = ev.target.closest("[data-jump]");
     if (jump) { openScreen(jump.dataset.jump, {}); return; }
-    const node = ev.target.closest(".g-node, .wf-btn");
+    const node = ev.target.closest(".g-node, .wf-btn, .wf-full");
     if (node) openChain(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10));
   });
 

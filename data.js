@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-20 11:31",
+  updated: "2026-08-20 12:20",
 };
 
 const SECTIONS = [
@@ -119,13 +119,13 @@ const SECTIONS = [
       },
       {
         title: "전체 지면 플로우 맵 — UI + 로직 3단",
-        desc: "겉에서 안으로 파고드는 다이어그램. 오픈맵 → 지면 UI 와이어프레임 → 버튼별 호출 사슬.",
+        desc: "프리팹 실좌표로 그린 가로 화면 와이어프레임에서 버튼을 눌러 호출 사슬까지 파고듭니다.",
         url: "docs/solitaire-flow-map.html",
         status: "완료",
-        version: "v5.0",
-        updated: "2026-08-20 10:56",
+        version: "v6.0",
+        updated: "2026-08-20 12:20",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "인터랙티브"],
+        tags: ["레퍼런스", "플로우", "UI", "인터랙티브"],
       },
     ],
   },
