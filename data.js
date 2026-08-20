@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-20 16:50",
+  updated: "2026-08-20 17:30",
 };
 
 const SECTIONS = [
@@ -62,7 +62,7 @@ const SECTIONS = [
         desc: "공유 격차의 100%가 수락률이고 발사는 1.22배 더 많다. 생성은 모바일만 붕괴.",
         url: "docs/tournament-share-rate.html",
         status: "진행중",
-        version: "v8.0",
+        version: "v8.1",
         updated: "2026-08-18 18:20",
         pinned: false,
         tags: ["축3", "토너먼트", "수락률"],
@@ -122,8 +122,8 @@ const SECTIONS = [
         desc: "프리팹 실좌표 가로 와이어프레임에서 버튼을 누르면 그 자리에서 호출 흐름이 펼쳐집니다. 두 단 구조.",
         url: "docs/solitaire-flow-map.html",
         status: "완료",
-        version: "v8.0",
-        updated: "2026-08-20 16:50",
+        version: "v8.1",
+        updated: "2026-08-20 17:30",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "인터랙티브"],
       },
@@ -168,7 +168,7 @@ const SECTIONS = [
         desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",
         url: "docs/qa-issue-code-audit.html",
         status: "Live",
-        version: "v8.0",
+        version: "v8.1",
         updated: "2026-08-19 10:07",
         pinned: true,
         tags: ["QA", "트래커", "상시"],
@@ -236,7 +236,7 @@ const SECTIONS = [
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~08-18 Max 커밋 141건 diff 전량 실측.",
         url: "docs/commit-history-solitaire.html",
         status: "진행중",
-        version: "v8.0",
+        version: "v8.1",
         updated: "2026-08-19 12:32",
         pinned: false,
         tags: ["커밋", "작업기록", "diff실측"],

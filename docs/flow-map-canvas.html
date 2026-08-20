@@ -196,8 +196,8 @@
   #dock {
     position: fixed; z-index: 8;
     left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: min(1760px, 96vw);
-    height: min(1040px, 94vh);
+    width: min(2240px, 97vw);
+    height: min(1200px, 95vh);
     display: none; flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--line);
@@ -238,7 +238,7 @@
   #crumb .cur { color: var(--ink); font-weight: 750; white-space: nowrap; }
   #crumb .lv { flex: 0 0 auto; margin-left: auto; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px; font-weight: 700; }
 
-  #dock-body { overflow-y: auto; padding: 16px 22px 26px; flex: 1; }
+  #dock-body { overflow-y: auto; padding: 16px 26px 30px; flex: 1; }
 
   /* ---- 공통: 탭 안 다이어그램 ---- */
   .g-root {
@@ -322,11 +322,12 @@
   .n-nav { --nc: var(--t-nav); }
   .n-call { --nc: var(--t-call); }
 
-  /* 폭이 50%면 레인을 2열로 펴서 스크롤 대신 한눈에 담는다. */
-  @media (min-width: 1000px) {
-    .g-lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; align-items: start; }
-    .g-lanes > .g-lane.wide { grid-column: 1 / -1; }
+  /* 폭이 남는 만큼 레인 열을 늘린다 (2열 고정이면 넓은 화면에서 공간이 남는다). */
+  .g-lanes {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 4px 24px; align-items: start;
   }
+  .g-lanes > .g-lane.wide { grid-column: 1 / -1; }
 
   /* 상단 흐름 밴드 : 들어오는 지면 → 현재 → 나가는 지면 (글 대신 도형으로 문맥 제시) */
   .io {
@@ -350,11 +351,11 @@
 
   /* 2단 본문 = 왼쪽 UI 와이어프레임 · 오른쪽 로직 가지. 좁으면 위아래로 떨어진다.
      프리팹 버튼이 없는 지면은 .one 으로 로직만 전폭 표시한다. */
-  .two { display: grid; grid-template-columns: minmax(520px, 54%) 1fr; gap: 26px; align-items: start; margin-top: 14px; }
+  .two { display: grid; grid-template-columns: minmax(440px, 34%) 1fr; gap: 28px; align-items: start; margin-top: 14px; }
   .one { margin-top: 14px; }
-  @media (max-width: 1180px) { .two { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } }
 
-  .wf-wrap { position: sticky; top: 0; }
+  .wf-wrap { position: sticky; top: 0; max-width: 880px; }
   /* 게임은 가로 모드다 — 디자인 해상도 1280x720 그대로 16:9 */
   .wf {
     position: relative; aspect-ratio: 16 / 9;
@@ -474,7 +475,7 @@
   }
   .g-inner summary { font-size: 11px; font-weight: 750; color: var(--muted); cursor: pointer; }
   .g-inner[open] summary { margin-bottom: 10px; }
-  .g-inner .g-lanes { grid-template-columns: 1fr 1fr; }
+  .g-inner .g-lanes { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
 
   .f-raw {
     margin-top: 12px; border: 1px solid var(--line); border-radius: 7px;
@@ -2536,77 +2537,35 @@
             : x.node + " · " + (x.handler || "핸들러 없음")) + '">'
         + esc(x.label) + ' <em>화면 전체</em></button>';
     });
-    /* 상자는 실측 크기 그대로. 라벨은 겹치지 않는 것만 안에 쓴다.
-       큰 버튼부터 자리를 잡고, 이미 놓인 라벨과 부딪히면 번호로 내려 범례에서 이름을 준다.
-       프레임 실제 크기는 브라우저가 정하므로 팝업 기준(약 900x506px)으로 계산한다. */
-    const FW = 900, FH = 506;
-    const labelBox = function (x) {
-      const len = (x.label || "").length + (x.alt ? 2 : 0);
-      const lw = Math.min(132, Math.max(len * 7.2, 22));
-      const lh = len * 7.2 > 132 ? 30 : 17;
-      return {
-        w: Math.max(x.w * FW, lw) / FW * 100,
-        h: Math.max(x.h * FH, lh) / FH * 100
-      };
-    };
-    /* 자리 다툼 우선순위 : 이 지면 담당 > 주요 행동(PLAY · 받기 류) > 큰 버튼 */
-    const rank = function (x) {
-      return (x.ctx ? 0 : 4) + (x.big ? 2 : 0);
-    };
-    const order = spot.slice().sort(function (a, b) {
-      return (rank(b) - rank(a)) || ((b.w * b.h) - (a.w * a.h));
-    });
-    const placed = [];
-    order.forEach(function (x) {
-      const lb = labelBox(x);
-      const hit = placed.some(function (q) {
-        return Math.abs(q.x - x.x) * FW < (q.lb.w + lb.w) / 200 * FW - 2
-            && Math.abs(q.y - x.y) * FH < (q.lb.h + lb.h) / 200 * FH - 2;
-      });
-      x._named = !hit;
-      if (!hit) placed.push({ x: x.x, y: x.y, lb: lb });
-    });
-
-    const key = [];
+    /* 상자는 실측 크기 그대로. 라벨은 일단 전부 쓰고, 렌더 후 실제 프레임 크기를 재서
+       겹치는 것만 번호로 내린다(fitLabels). 프레임 폭이 창 크기에 따라 변하므로 고정 계산은 못 쓴다. */
     spot.forEach(function (x) {
       const w = Math.max(x.w * 100, 3.2), h = Math.max(x.h * 100, 5.0);
-      let num = 0;
-      if (!x._named) { key.push(x); num = key.length; }
       const tip = x.ctx && byId[x.ctx]
         ? "이 버튼은 " + byId[x.ctx].title + " 담당 — 눌러서 그 지면으로"
         : x.node + " · " + (x.handler || "핸들러 없음") + " · " + x.steps + "단계"
         + (x.on ? "" : " · 프리팹 저장 시점 비활성")
-        + (x.moved ? " · 위치는 코드가 런타임에 정함" : "")
-        + (x.alt ? "\n같은 자리 변형: " + x.alt.join(", ") : "");
+        + (x.moved ? " · 위치는 코드가 런타임에 정함" : "");
       o += '<button class="wf-btn n-' + x.type + (x.big ? " big" : "") + (x.on ? "" : " off")
-        + (x.moved ? " mv" : "") + (x.ctx ? " ctx" : "") + (x._named ? "" : " tiny") + '"'
+        + (x.moved ? " mv" : "") + (x.ctx ? " ctx" : "") + '"'
         + (x.ctx ? ' data-jump="' + x.ctx + '"' : ' data-sec="' + x.sec + '" data-row="' + x.row + '"')
+        + ' data-lbl="' + esc(x.label) + '" data-rank="' + ((x.ctx ? 0 : 4) + (x.big ? 2 : 0)) + '"'
+        + (x.alt ? ' data-alt="' + x.alt.length + '"' : '') + (x.moved ? ' data-mv="1"' : '')
         + ' style="left:' + (x.x * 100).toFixed(2) + '%;top:' + (x.y * 100).toFixed(2) + '%;'
         + 'width:' + w.toFixed(2) + '%;height:' + h.toFixed(2) + '%"'
-        + ' title="' + esc((x._named ? "" : x.label + " · ") + tip) + '">'
-        + (x._named
-            ? '<span>' + esc(x.label) + (x.alt ? '<i class="wf-alt">+' + x.alt.length + '</i>' : '')
-              + (x.moved ? '<i class="wf-mv">?</i>' : '') + '</span>'
-            : '<b class="wf-num">' + num + '</b>')
-        + '</button>';
+        + ' title="' + esc(x.label + " · " + tip) + '">'
+        + '<span>' + esc(x.label) + (x.alt ? '<i class="wf-alt">+' + x.alt.length + '</i>' : '')
+        + (x.moved ? '<i class="wf-mv">?</i>' : '') + '</span></button>';
     });
     o += '</div>';
-    if (key.length) {
-      o += '<div class="wf-key"><span class="wf-key-h">번호로 표시한 버튼 — 자리가 좁아 이름을 안에 못 넣은 것</span>';
-      key.forEach(function (x, i) {
-        o += '<button class="wf-key-i' + (x.on ? "" : " off") + (x.ctx ? " ctx" : "") + '"'
-          + (x.ctx ? ' data-jump="' + x.ctx + '"' : ' data-sec="' + x.sec + '" data-row="' + x.row + '"')
-          + '><b>' + (i + 1) + '</b><span>' + esc(x.label) + '</span>'
-          + (x.handler ? '<code>' + esc(x.handler) + '()</code>' : '') + '</button>';
-      });
-      o += '</div>';
-    }
+    o += '<div class="wf-key" hidden><span class="wf-key-h">번호로 표시한 버튼 — 자리가 좁아 이름을 안에 못 넣은 것</span></div>';
     const ctxN = b.filter(function (x) { return x.ctx; }).length;
     const folded = b.reduce(function (n, x) { return n + (x.alt ? x.alt.length : 0); }, 0);
     const movedN = b.filter(function (x) { return x.moved; }).length;
     o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b> 실측 · 1280&times;720 가로 · 버튼 ' + b.length + '개'
       + (ctxN ? ' · 이 중 <b>' + ctxN + '개</b>는 같은 프리팹의 다른 구역 담당 (흐린 버튼 — 눌러서 그 지면으로)' : '')
       + (folded ? ' · <b>+n</b> 은 같은 자리에 겹친 상태별 변형 ' + folded + '개' : '')
+      + ' · <span class="wf-cnt"></span>'
       + (pf.parked ? ' · 에디터에서 옆으로 빼둔 배타 패널 ' + pf.parked + '개 제외' : '')
       + (movedN ? ' · <b>?</b> 는 코드가 런타임에 위치를 정해 <b>좌표를 믿을 수 없는</b> 버튼 ' + movedN + '개' : '')
       + '<br>회전 · <code>cc.Widget</code> 정렬은 계산하지 않고 프리팹에 저장된 좌표를 씁니다. '
@@ -2704,8 +2663,60 @@
     }
 
     bodyEl.innerHTML = h;
+    fitLabels();
     crumbEl.innerHTML = '<span class="cur">' + esc(shortTitle(n)) + '</span>'
       + '<span class="lv">UI + 로직</span>';
+  };
+
+  /* 렌더 후 실제 프레임 크기를 재서 라벨 겹침을 없앤다.
+     담당 구역 > 주요 행동 > 큰 버튼 순으로 자리를 잡고, 부딪히는 것은 번호로 내린다. */
+  const fitLabels = function () {
+    const frame = bodyEl.querySelector(".wf");
+    if (!frame) return;
+    const FW = frame.clientWidth || 900;
+    const FH = frame.clientHeight || Math.round(FW * 9 / 16);
+    const keyBox = bodyEl.querySelector(".wf-key");
+    const btns = Array.from(frame.querySelectorAll(".wf-btn"));
+    const info = btns.map(function (el) {
+      const st = el.style;
+      const lbl = el.dataset.lbl || "";
+      const len = lbl.length + (el.dataset.alt ? 2 : 0);
+      const bw = parseFloat(st.width) / 100 * FW, bh = parseFloat(st.height) / 100 * FH;
+      const lw = Math.min(140, Math.max(len * 7.4, 22));
+      const lh = len * 7.4 > 140 ? 30 : 17;
+      return {
+        el: el, lbl: lbl,
+        x: parseFloat(st.left) / 100 * FW, y: parseFloat(st.top) / 100 * FH,
+        w: Math.max(bw, lw), h: Math.max(bh, lh),
+        rank: parseInt(el.dataset.rank || "0", 10), area: bw * bh
+      };
+    });
+    info.slice().sort(function (a2, b2) {
+      return (b2.rank - a2.rank) || (b2.area - a2.area);
+    }).forEach(function (q) {
+      const hit = info.some(function (o) {
+        return o.ok && Math.abs(o.x - q.x) < (o.w + q.w) / 2 - 2
+                    && Math.abs(o.y - q.y) < (o.h + q.h) / 2 - 2;
+      });
+      q.ok = !hit;
+    });
+    let n = 0;
+    info.forEach(function (q) {
+      if (q.ok) return;
+      n += 1;
+      q.el.classList.add("tiny");
+      q.el.innerHTML = '<b class="wf-num">' + n + '</b>';
+      const item = document.createElement("button");
+      item.className = "wf-key-i" + (q.el.classList.contains("off") ? " off" : "")
+        + (q.el.classList.contains("ctx") ? " ctx" : "");
+      if (q.el.dataset.jump) item.dataset.jump = q.el.dataset.jump;
+      else { item.dataset.sec = q.el.dataset.sec; item.dataset.row = q.el.dataset.row; }
+      item.innerHTML = '<b>' + n + '</b><span>' + esc(q.lbl) + '</span>';
+      keyBox.appendChild(item);
+    });
+    if (n) keyBox.removeAttribute("hidden");
+    const cnt = bodyEl.querySelector(".wf-cnt");
+    if (cnt) cnt.textContent = "이름 " + (info.length - n) + "개는 그림 안 · " + n + "개는 번호";
   };
 
   /* ---- 가지 셀 안에 펼쳐지는 흐름 (예전 3단을 그 자리로 옮긴 것) ---- */
@@ -2812,6 +2823,14 @@
     if (!node) return;
     const fromUI = !node.classList.contains("g-node");
     openCell(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10), fromUI);
+  });
+
+  /* 프레임 폭이 바뀌면 라벨 배치가 달라지므로 다시 그린다 */
+  let reflow = null;
+  window.addEventListener("resize", function () {
+    if (!cur()) return;
+    clearTimeout(reflow);
+    reflow = setTimeout(renderBody, 160);
   });
 
   backBtn.addEventListener("click", goBack);
