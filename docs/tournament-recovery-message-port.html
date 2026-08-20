@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>토너먼트 생성 복구 판정 정규화 — 다른 프로젝트 이식</title>
+    <meta
+      name="description"
+      content="FB가 토너먼트를 만들어놓고 NETWORK_FAILURE를 던지는 케이스의 복구 조건이 에러 메시지 정확 일치라서 iOS가 빠지던 문제. 솔리테어에서 고친 지점과 다른 프로젝트의 같은 지점 목록."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#cause">원인</a>
+        <a class="nav-back" href="#solitaire">솔리테어 수정 지점</a>
+        <a class="nav-back" href="#projects">프로젝트별 지점</a>
+        <a class="nav-back" href="#caution">이식 전 주의</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">도구 · 배포 · 이식 가이드</div>
+        <h1 class="doc-title">토너먼트 생성 복구 판정 정규화 — 다른 프로젝트 이식</h1>
+        <p class="doc-lede">
+          페이스북이 토너먼트를 <b>실제로 만들어놓고</b> <code>NETWORK_FAILURE</code>를 던지는 경우가 있습니다.
+          모든 프로젝트가 이걸 되살리는 로직을 갖고 있는데, 진입 조건이 <b>에러 메시지 정확 일치</b>라서
+          <b>메시지 끝에 마침표를 붙여 보내는 iOS</b>가 조건 밖으로 빠졌습니다.
+          이식할 것은 <strong>비교 전에 끝 마침표를 떼는 것 하나</strong>입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--ok)">솔리테어 반영 완료</span>
+          <span class="tag">솔리테어 커밋 a4c8ca49</span>
+          <span class="tag">각 리포 main 코드 실측</span>
+          <span class="tag">마지막 갱신 2026-08-20 10:05</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="cause">
+        <h2 class="doc-h2">원인 <span class="doc-h2-sub">마침표 한 글자로 복구 판정이 갈렸다</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">78<span class="stat-unit">%</span></div>
+            <div class="stat-name">iOS 실패가 조건 밖</div>
+            <div class="stat-sub">65건 중 51건 · 08-14~17</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">1<span class="stat-unit">줄</span></div>
+            <div class="stat-name">이식할 코드</div>
+            <div class="stat-sub">비교 전 끝 마침표 제거</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">11<span class="stat-unit">곳</span></div>
+            <div class="stat-name">같은 문구를 비교하는 지점</div>
+            <div class="stat-sub">코지 3 · 블블 6 · 코인 1 · 퍼블마 1</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">0<span class="stat-unit">건</span></div>
+            <div class="stat-name">복구 성공 실측</div>
+            <div class="stat-sub">솔리테어 · 수정 전후 모두</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 14%">OS</th>
+                <th>에러 메시지</th>
+                <th style="text-align: right; width: 12%">건수</th>
+                <th style="width: 22%">기존 판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Android</td>
+                <td><code>An unexpected error occurred</code></td>
+                <td style="text-align: right">599</td>
+                <td><span class="pill" style="--acc: var(--ok)">일치 · 복구 시도</span></td>
+              </tr>
+              <tr>
+                <td>iOS</td>
+                <td><code>An unexpected error occurred<b>.</b></code></td>
+                <td style="text-align: right">51</td>
+                <td><span class="pill" style="--acc: var(--bad)">불일치 · 그냥 버림</span></td>
+              </tr>
+              <tr>
+                <td>iOS</td>
+                <td><code>An unexpected error occurred</code></td>
+                <td style="text-align: right">14</td>
+                <td><span class="pill" style="--acc: var(--ok)">일치 · 복구 시도</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              솔리테어 08-14~17 실측입니다. 같은 상황·같은 에러인데 <b>iOS만 문장 끝에 마침표가 붙어</b> 옵니다.
+              복구 조건이 <code>error.message === "An unexpected error occurred"</code>라서,
+              마침표가 붙은 51건은 <strong>FB에 이미 만들어진 토너먼트를 조회조차 하지 않고 버렸습니다.</strong>
+              조건을 넓히는 방향의 변경이므로 <b>기존에 통과하던 Android 599건의 동작은 바뀌지 않습니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">우리만의 문제가 아닙니다</div>
+            <p>
+              포팅 원본(코지타일즈)부터 <b>같은 정확 일치 비교</b>를 쓰고 있고, 그걸 물려받은 프로젝트 전부가 동일합니다.
+              즉 <b>어느 프로젝트든 iOS 복구 누락분이 그대로 남아 있습니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="solitaire">
+        <h2 class="doc-h2">솔리테어 수정 지점 <span class="doc-h2-sub">커밋 a4c8ca49 · 파일 3개</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">파일</th>
+                <th>무엇을 고쳤나</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Base/FacebookPlatform.ts</code></td>
+                <td>
+                  <b>헬퍼 2개 신설</b> — <code>isRecoverableCreateFailure()</code>(문구 정규화 비교),
+                  <code>matchTournamentByRandomKey()</code>(payload 파싱 <code>try/catch</code>)
+                </td>
+              </tr>
+              <tr>
+                <td><code>Base/FacebookPlatform.ts</code></td>
+                <td>
+                  <code>createTournament</code> catch — 중복 선언된 문자열 상수 제거 후 헬퍼 호출로 교체,
+                  복구 조회 결과를 <code>recover</code>·<code>listSize</code>로 호출부에 전달
+                </td>
+              </tr>
+              <tr>
+                <td><code>Base/FacebookPlatform.ts</code></td>
+                <td>
+                  <code>handleTournamentCreate</code> 실패 분기 — 같은 비교를 하던 <b>두 번째 지점</b>도 헬퍼 호출로 통합,
+                  실패 로그(<code>3120</code>)에 계측 2필드 추가
+                </td>
+              </tr>
+              <tr>
+                <td><code>game/lobby/ViewLobby.ts</code></td>
+                <td>로비 경로 <code>3120</code> payload에 <code>recover</code>·<code>list_size</code> 추가</td>
+              </tr>
+              <tr>
+                <td><code>Base/BasePlatform.ts</code></td>
+                <td>콜백 error 타입에 <b>옵셔널</b> 필드 2개 — 기존 호출부 무영향</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="doc-lede" style="margin-top: 18px">핵심은 이 헬퍼 하나입니다.</p>
+
+        <div class="table-scroll"><pre>/** 생성 실패가 "FB에는 만들어졌을 수 있는" NETWORK_FAILURE인지. iOS는 같은 메시지가 끝에 마침표를 달고 온다. */
+private isRecoverableCreateFailure(error: { code: string; message: string }): boolean {
+    if (error?.code !== "NETWORK_FAILURE") {
+        return false;
+    }
+    return (error.message ?? "").trim().replace(/\.+$/, "") === "An unexpected error occurred";
+}</pre></div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">왜 헬퍼로 묶었나 — 상수 중복이 재발 원인</div>
+            <p>
+              솔리테어도 같은 문자열 상수를 <b>두 곳에서 각자 선언해 각자 비교</b>하고 있었습니다.
+              한 곳만 정규화하면 다른 곳에서 같은 결함이 다시 살아납니다. 그래서
+              <strong>선언과 비교를 헬퍼 1개로 수렴</strong>시키고 비교 지점들이 그것을 호출하게 했습니다.
+              <code>trim()</code> → 마침표 제거 <b>순서</b>도 지켜야 합니다(뒤 공백이 붙어 오는 케이스가 있습니다).
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">선행 정리 — 복구에 성공했을 때의 로그</div>
+            <p>
+              이 수정 전에 커밋 <code>6065577c</code>로 로그를 먼저 정리했습니다. 복구로 살린 건인데
+              <b>실패 로그가 이미 찍혀 있으면</b> 생성 1회에 실패+성공이 동시에 남습니다(<code>if (!tournament)</code> 가드).
+              그리고 복구분 성공 로그에 <code>recovered: "1"</code>을 실어야 <b>복구가 실제로 몇 건을 살렸는지</b> 나중에 셀 수 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">채택하지 않은 대안</div>
+            <p>
+              <code>code === "NETWORK_FAILURE"</code>만 보고 메시지 비교를 없애는 방안. 조건이 필요 이상으로 넓어지고
+              <b>다른 프로젝트와 판정 기준이 갈라져서</b> 문구 정규화를 택했습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="projects">
+        <h2 class="doc-h2">프로젝트별 같은 지점 <span class="doc-h2-sub">각 리포 main 실측 · 총 11곳</span></h2>
+
+        <p class="doc-lede" style="margin-bottom: 14px">
+          자기 프로젝트에서 <code>rg -n "An unexpected error occurred" --type ts assets/script</code>를 돌리면
+          비교 지점이 전부 나옵니다. 아래는 그 결과입니다.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 14%">프로젝트</th>
+                <th style="width: 34%">파일 : 라인</th>
+                <th>현재 상태</th>
+                <th style="width: 14%">조치</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>코인매치</b></td>
+                <td><code>common/FBContext.ts:1846</code></td>
+                <td>복구 조회 O · 찾았을 때만 성공 로그 <b>(형태 온전)</b></td>
+                <td><span class="pill" style="--acc: var(--ok)">정규화만</span></td>
+              </tr>
+              <tr>
+                <td><b>퍼블마</b></td>
+                <td><code>game/GameManager.ts:2301</code></td>
+                <td>복구 조회 O · 찾았을 때만 <code>4300_..._SUCCESS</code></td>
+                <td><span class="pill" style="--acc: var(--ok)">정규화만</span></td>
+              </tr>
+              <tr>
+                <td><b>코지타일즈</b></td>
+                <td><code>common/Fbi.ts:1379</code></td>
+                <td><code>createTournament</code> catch · 복구 조회 O</td>
+                <td><span class="pill" style="--acc: var(--ok)">정규화</span></td>
+              </tr>
+              <tr>
+                <td><b>코지타일즈</b></td>
+                <td><code>game/cozy/ViewCozyTile.ts:2471</code></td>
+                <td>공유 실패 → <b>추천 컨텍스트 차단</b> 판정 (복구 아님)</td>
+                <td><span class="pill" style="--acc: var(--warn)">정책 확인</span></td>
+              </tr>
+              <tr>
+                <td><b>코지타일즈</b></td>
+                <td><code>game/cozy/ViewCozyTile.ts:2673</code></td>
+                <td>생성 실패 → <b>추천 컨텍스트 차단</b> 판정 (복구 아님)</td>
+                <td><span class="pill" style="--acc: var(--warn)">정책 확인</span></td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>common/Fbi.ts:1231</code></td>
+                <td>복구 조회 O · <b>결과 미사용(dead)</b> · 성공 로그 무조건</td>
+                <td><span class="pill" style="--acc: var(--bad)">로그 동반</span></td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>common/Fbi.ts:1278</code></td>
+                <td>복구 결과 사용 O · 성공 로그 무조건</td>
+                <td><span class="pill" style="--acc: var(--bad)">로그 동반</span></td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>popup/PopupTournament/PopupTournament.ts:109</code></td>
+                <td><b>복구 조회 없이 성공 로그만</b></td>
+                <td><span class="pill" style="--acc: var(--bad)">로그 동반</span></td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>ingame/TournamentBattleView.ts:420</code></td>
+                <td>복구 조회 O · 찾았을 때만 성공 로그 <b>(이 레포의 기준선)</b></td>
+                <td><span class="pill" style="--acc: var(--ok)">정규화</span></td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>ingame/ViewGame.ts:1846</code></td>
+                <td>복구 결과 사용 O · 성공 로그 무조건</td>
+                <td><span class="pill" style="--acc: var(--bad)">로그 동반</span></td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>ingame/ViewGame.ts:1965</code></td>
+                <td>복구 조회 O · <b>결과 미사용(dead)</b></td>
+                <td><span class="pill" style="--acc: var(--bad)">로그 동반</span></td>
+              </tr>
+              <tr class="is-dead">
+                <td><b>마종</b></td>
+                <td><code>common/Fbi.ts:1202</code> 및 호출부 3곳</td>
+                <td>메시지 비교 자체가 없음 — <b>복구 로직 미보유</b></td>
+                <td><span class="tag">해당 없음</span></td>
+              </tr>
+              <tr class="is-dead">
+                <td><b>스페이스블라스트</b></td>
+                <td>—</td>
+                <td><code>NETWORK_FAILURE</code> 참조 없음</td>
+                <td><span class="tag">해당 없음</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">코지 2곳은 성격이 다릅니다 — 복구가 아니라 차단</div>
+            <p>
+              <code>ViewCozyTile</code>의 두 지점은 같은 문구를 비교하지만 하는 일이 <b>추천 컨텍스트 차단</b>입니다.
+              정규화하면 iOS에서 <strong>차단이 더 자주 걸리는 방향</strong>으로 움직입니다(= 추천 노출 감소).
+              유저 노출에 영향이 있으니 <b>차단 정책 담당자 확인 후</b> 결정하고, 복구(<code>Fbi.ts</code>) 쪽만 먼저 가도 됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">블블은 정규화만 하면 악화됩니다</div>
+            <p>
+              6지점 중 4곳이 <b>조회 결과를 보지 않고 성공 로그를 찍고</b>, 2곳은 찾아놓고 쓰지 않습니다.
+              여기서 진입 건수만 늘리면 <strong>가짜 성공 로그가 늘어나고, dead 지점은 정규화 효과가 0</strong>입니다.
+              <code>TournamentBattleView:420</code>이 그 레포 안의 온전한 형태이니 나머지를 거기에 맞추는 편이 리뷰가 쉽습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">권장 순서</div>
+            <p>
+              <b>코인매치 → 퍼블마</b>(각 1지점, 형태 온전 — 여기서 패치 형태를 확정) →
+              <b>코지 복구 1지점</b>(차단 2지점은 별건) → <b>블블</b>(6지점 + 로그 정리 동반, 별도 계획서 권장).
+              마종은 복구 로직 자체가 없어 <b>새로 넣을지</b>의 판단이고, 아래 이유로 지금은 권하지 않습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="caution">
+        <h2 class="doc-h2">이식 전 주의 <span class="doc-h2-sub">기대치와 측정</span></h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">수락률 상승을 기대치로 잡지 마세요</div>
+            <p>
+              솔리테어에서 <b>복구 성공 건수는 수정 전후 모두 사실상 0</b>입니다. 조건을 이미 통과했던
+              Android 599건에서도 0이었습니다. 즉 <b>"FB가 실제로는 안 만들었다"</b>는 가설이 아직 배제되지 않았습니다.
+              이번 수정의 실질 성과는 <strong>특정 기기 구제 + 재발 감지 장치 확보</strong>로 읽는 것이 정확합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">계측을 같은 빌드에 태우세요</div>
+            <p>
+              정규화만 내보내면 <b>효과를 측정할 방법이 없습니다.</b> 솔리테어는 실패 로그 payload에
+              <code>recover</code>(<code>hit</code> / <code>nomatch</code> / <code>empty</code> / <code>skip</code> /
+              <code>error</code>) + <code>list_size</code> 2필드를 더했습니다. 프리폼 payload를 쓰는 프로젝트면
+              <b>신규 로그코드 없이 필드 추가로 끝납니다</b>(로그표 갱신은 필요).
+              <strong><code>skip</code> 비중이 iOS에서 급감하는지</strong>가 이 수정의 직접 지표입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">배포 후 확인 3가지</div>
+            <p>
+              ① iOS <code>skip</code> 비중 급감 · ② 복구 성공(<code>recovered=1</code>) 건수가
+              <code>recover=hit</code> 건수와 일치(불일치분 = 서버 등록 실패) ·
+              ③ 성공/실패 로그가 <b>생성 1회당 1건</b>인지(이중 기록 회귀 확인).
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">복구 로직이 없는 프로젝트(마종)에 새로 넣는 건 보류</div>
+            <p>
+              복구 성공이 아직 실측되지 않았고, 넣으면 실패 경로에 네트워크 왕복(<code>getTournamentsAsync</code>)이
+              하나 늘어 결과창 흐름이 그만큼 지연됩니다. 계측이 붙은 프로젝트에서
+              <code>recover=hit</code>이 실제로 나오는 것을 확인한 다음에 판단하는 편이 안전합니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 지점 목록은 각 리포 <code>main</code> 브랜치에서
+          <code>An unexpected error occurred</code> 문자열을 전수 검색한 2026-08-20 시점 실측입니다(라인 번호는 그 시점 기준).
+          <b>건수 근거</b> 솔리테어 08-14~17 <code>3120_TOURNAMENT_CREATE_FAIL</code>의 <code>error_message</code> 기준이며,
+          다른 프로젝트의 iOS 누락 규모는 <b>측정하지 않았습니다</b> — 코드가 동일하므로 같은 성격의 누락이 있다는 것까지가 확인된 범위입니다.
+          <b>솔리테어 결과</b> 빌드 <code>458</code>에서 못 살린 건 0 · 문구 불일치 폐기 0. 단 <code>456</code>에서도
+          못 살린 건이 0이었으므로 개선 폭 자체는 이 지표로 증명되지 않습니다.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
