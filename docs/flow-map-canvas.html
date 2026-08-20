@@ -1464,18 +1464,20 @@
     apply();
   };
 
-  let dragging = false, moved = 0, lx = 0, ly = 0, pinchDist = 0;
+  let dragging = false, moved = 0, lx = 0, ly = 0, pinchDist = 0, downNode = null;
   const pointers = new Map();
 
   stage.addEventListener("pointerdown", function (ev) {
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-    if (pointers.size > 1) { dragging = false; return; }
+    if (pointers.size > 1) { dragging = false; downNode = null; return; }
     dragging = true; moved = 0; lx = ev.clientX; ly = ev.clientY;
+    downNode = ev.target && ev.target.closest ? ev.target.closest(".node") : null;
     stage.classList.add("dragging");
-    try { stage.setPointerCapture(ev.pointerId); } catch (err) { /* noop */ }
+    /* setPointerCapture 를 걸면 click 이 #stage 로 재지정돼 노드 클릭이 죽는다.
+       캡처 대신 window 에서 move/up 을 받고, 노드 활성화는 pointerup 에서 직접 판정한다. */
   });
 
-  stage.addEventListener("pointermove", function (ev) {
+  window.addEventListener("pointermove", function (ev) {
     if (!pointers.has(ev.pointerId)) return;
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
 
@@ -1501,13 +1503,18 @@
     apply();
   });
 
-  const endPointer = function (ev) {
+  const endPointer = function (ev, cancelled) {
     pointers.delete(ev.pointerId);
     if (pointers.size < 2) pinchDist = 0;
-    if (pointers.size === 0) { dragging = false; stage.classList.remove("dragging"); }
+    if (pointers.size > 0) return;
+    dragging = false;
+    stage.classList.remove("dragging");
+    const hit = downNode;
+    downNode = null;
+    if (!cancelled && hit && moved <= 6) openTab(hit.dataset.id, true);
   };
-  stage.addEventListener("pointerup", endPointer);
-  stage.addEventListener("pointercancel", endPointer);
+  window.addEventListener("pointerup", function (ev) { endPointer(ev, false); });
+  window.addEventListener("pointercancel", function (ev) { endPointer(ev, true); });
 
   stage.addEventListener("wheel", function (ev) {
     ev.preventDefault();
@@ -1745,10 +1752,11 @@
     highlight(null);
   };
 
+  /* 키보드 활성화(Enter · Space)는 detail 0 의 click 으로 온다. 포인터 클릭은 pointerup 이 처리. */
   nodeLayer.addEventListener("click", function (ev) {
+    if (ev.detail !== 0) return;
     const el = ev.target.closest(".node");
-    if (!el || moved > 6) return;
-    openTab(el.dataset.id, true);
+    if (el) openTab(el.dataset.id, true);
   });
 
   tabsEl.addEventListener("click", function (ev) {
@@ -1798,6 +1806,18 @@
   });
 
   /* ============ 부팅 ============ */
+  /* 문서에 임베드된 경우엔 새 탭으로 크게 여는 버튼을 붙인다. */
+  if (window.self !== window.top) {
+    const full = document.createElement("button");
+    full.id = "b-full";
+    full.textContent = "크게 보기";
+    full.title = "새 탭에서 맵만 열기";
+    full.addEventListener("click", function () {
+      window.open(window.location.href, "_blank", "noopener");
+    });
+    document.getElementById("tools").appendChild(full);
+  }
+
   const boot = function () {
     measure();
     drawWires();
