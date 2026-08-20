@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-20 14:00",
+  updated: "2026-08-20 15:10",
 };
 
 const SECTIONS = [
@@ -122,8 +122,8 @@ const SECTIONS = [
         desc: "프리팹 실좌표로 그린 가로 와이어프레임에서 버튼을 눌러, 어떤 메소드가 무슨 일을 하는지 한 줄로 봅니다.",
         url: "docs/solitaire-flow-map.html",
         status: "완료",
-        version: "v6.2",
-        updated: "2026-08-20 14:00",
+        version: "v7.0",
+        updated: "2026-08-20 15:10",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "인터랙티브"],
       },
@@ -168,7 +168,7 @@ const SECTIONS = [
         desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",
         url: "docs/qa-issue-code-audit.html",
         status: "Live",
-        version: "v6.2",
+        version: "v7.0",
         updated: "2026-08-19 10:07",
         pinned: true,
         tags: ["QA", "트래커", "상시"],
@@ -236,7 +236,7 @@ const SECTIONS = [
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~08-18 Max 커밋 141건 diff 전량 실측.",
         url: "docs/commit-history-solitaire.html",
         status: "진행중",
-        version: "v6.2",
+        version: "v7.0",
         updated: "2026-08-19 12:32",
         pinned: false,
         tags: ["커밋", "작업기록", "diff실측"],
