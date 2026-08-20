@@ -43,7 +43,7 @@ const SECTIONS = [
         url: "docs/ua-ad-nru-first-touch.html",
         status: "완료",
         version: "v1.0",
-        updated: "2026-08-20 18:44",
+        updated: "2026-08-20 18:52",
         pinned: false,
         tags: ["UA", "NRU", "BigQuery", "크로스프로젝트"],
       },
