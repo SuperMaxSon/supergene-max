@@ -18,6 +18,7 @@
         <a class="nav-back" href="#verdict">결론</a>
         <a class="nav-back" href="#issue1">점수 미등록</a>
         <a class="nav-back" href="#issue2">광고 락 충돌</a>
+        <a class="nav-back" href="#fb">FB 문의</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -36,7 +37,7 @@
           <span class="pill" style="--acc: var(--ok)">점수 미등록 해결</span>
           <span class="pill" style="--acc: var(--warn)">락 충돌 부분 개선</span>
           <span class="tag">solitaire_city_journey · 3200 / 3220</span>
-          <span class="tag">마지막 갱신 2026-08-20 09:48</span>
+          <span class="tag">마지막 갱신 2026-08-20 09:49</span>
         </div>
       </div>
     </header>
@@ -288,6 +289,75 @@
           <b>호출 빈도 제한</b> 점수 등록 호출이 4.4배로 늘었지만
           <code>3320_TOURNAMENT_POST_FAIL</code>은 <b>08-19 이후 0건</b>입니다 — 제한에 걸린 흔적이 없습니다.
           등록량이 더 늘면 다시 확인이 필요합니다.
+        </div>
+      </section>
+
+      <section class="doc-section" id="fb">
+        <h2 class="doc-h2">FB 문의 <span class="doc-h2-sub">광고 호출이 끝나지 않는 세션</span></h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">무슨 일이 일어나는가</div>
+            <p>
+              전면 광고 호출(<code>showAsync</code>)이 <strong>성공도 실패도 돌려주지 않은 채 남습니다.</strong>
+              그 뒤로는 같은 세션의 모든 페이스북 UI 호출이
+              <code>PENDING_REQUEST — locking message: showadasync</code>로 거절되고,
+              <b>세션이 끝날 때까지 복구되지 않습니다.</b> 5명에게 117건, 별도 3명에게 36건이 몰려 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">우리 쪽 문제가 아니라고 보는 근거 3개</div>
+            <p>
+              ① 우리는 <code>showAsync</code>의 <b>성공·실패 양쪽에서</b> 내부 상태를 되돌립니다 —
+              SDK가 어느 쪽으로든 응답하면 정상 복귀합니다.
+              ② 광고 재고 부족(<code>ADS_NOT_LOADED</code>)과 유저 취소(<code>USER_INPUT</code>)는
+              별도 코드로 <b>정상 수신되고 있습니다.</b> 즉 "에러가 안 온다"가 아니라 <b>이 케이스만 아무것도 오지 않습니다.</b>
+              ③ 5초가 지나도 광고가 보이지 않으면 유저를 계속 막아둘 수 없어 화면만 풀어주는데,
+              페이스북 쪽 락은 그대로 유지됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">확인하고 싶은 것</div>
+            <p>
+              ① <code>showAsync</code>가 응답하지 않고 남는 <b>알려진 조건</b>이 있는지 (특정 OS·앱 버전·네트워크 전환 등)<br />
+              ② 클라이언트에서 <b>락 상태를 조회하거나 해제할 수 있는 API</b>가 있는지<br />
+              ③ 없다면, 일정 시간 뒤 <b>SDK가 실패로 응답하게</b> 할 수 있는지
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>영문 제출본 초안 펼치기</summary>
+          <div class="fold-body">
+            <p>
+              <b>Issue</b> <code>showAsync()</code> on an interstitial ad instance never settles — neither
+              resolves nor rejects. After that, every FB UI call in the same session is rejected with
+              <code>PENDING_REQUEST — There is currently a pending request for locking message: showadasync</code>.
+              The lock is never released for the rest of the session.
+            </p>
+            <p>
+              <b>Scale</b> Build 458, 2026-08-19~20: 5 players hit 117 blocked interstitial calls
+              (avg 23 per player), 3 players hit 36 blocked tournament creates (avg 12). Players with
+              1–2 occurrences are explained by normal timing overlap; the 20+ per session group is not.
+            </p>
+            <p>
+              <b>Our handling</b> We restore internal state in both <code>then</code> and <code>catch</code>
+              of <code>showAsync()</code>, so a settle in either direction recovers us.
+              <code>ADS_NOT_LOADED</code> and <code>USER_INPUT</code> arrive normally as distinct codes —
+              only this case delivers nothing. After 5 seconds without a visible ad we unblock our UI,
+              but the FB lock remains held.
+            </p>
+            <p>
+              <b>Questions</b> (1) Are there known conditions where <code>showAsync()</code> never settles?
+              (2) Is there any client API to query or release the lock?
+              (3) If not, can the SDK reject after a timeout?
+            </p>
+          </div>
+        </details>
+
+        <div class="foot">
+          <b>제출 전 채울 것</b> 대상 <code>player_id</code>·발생 시각·기기 목록입니다.
+          <code>os</code> 컬럼은 현재 조회 권한이 없어 OS 분해가 빠져 있습니다 — 권한을 받으면 함께 첨부합니다.
         </div>
       </section>
     </main>
