@@ -21,7 +21,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-20 09:43",
+  updated: "2026-08-20 09:49",
 };
 
 const SECTIONS = [
