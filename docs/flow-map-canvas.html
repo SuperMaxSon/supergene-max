@@ -458,6 +458,16 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 10px; font-weight: 700; color: var(--ink-2);
   }
+  /* 가지 셀 = 한 줄 요약 + 눌러서 펼치는 흐름 (3단을 이 자리로 합쳤다) */
+  .g-branch > .g-row { display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
+  .b-flow { display: none; margin: 8px 0 4px 27px; }
+  .g-branch.open > .b-flow { display: block; }
+  .g-branch.open .b-go { color: var(--muted); }
+  .g-branch.open .b-go::after { content: ""; }
+  .g-branch.flash > .g-row .g-node { border-color: var(--cc); box-shadow: 0 0 0 2px var(--cc); }
+  .b-flow .f-flow { margin-top: 0; }
+  .b-flow .f-step { font-size: 11px; }
+
   .g-inner {
     margin-top: 14px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--surface-2); padding: 10px 13px;
@@ -2664,19 +2674,22 @@
         const ty = stepType(steps[steps.length - 1] || r[1]);
         const jid = jumpFor(r[1]);
         const to = jid && jid !== t.id ? byId[jid] : null;
-        o += '<div class="g-branch">'
+        o += '<div class="g-branch" data-key="' + si + '-' + ri + '">'
+          + '<div class="g-row">'
           + '<button class="g-node n-' + ty + '" data-sec="' + si + '" data-row="' + ri + '">'
           + '<span class="b-n">' + (ri + 1) + '</span>'
           + '<span class="b-main"><span class="b-k">' + esc(r[0]) + '</span>'
           + '<span class="b-sum">' + (bf.m ? '<code>' + esc(bf.m) + '()</code> ' : '')
           + esc(bf.d) + '</span></span>'
-          + '<span class="b-go">흐름 ▸</span>'
+          + '<span class="b-go">흐름 ▾</span>'
           + '</button>'
           + (to
               ? '<span class="g-arrow">→</span>'
                 + '<button class="g-to" data-jump="' + to.id + '" style="--tc: var(--c-' + to.cat + ')" title="' + esc(to.title) + '">'
                 + '<i></i><span>' + esc(shortTitle(to)) + '</span></button>'
               : '')
+          + '</div>'
+          + '<div class="b-flow">' + chainHTML(t.id, r, cc) + '</div>'
           + '</div>';
       });
       return o + '</div></div>';
@@ -2692,28 +2705,18 @@
 
     bodyEl.innerHTML = h;
     crumbEl.innerHTML = '<span class="cur">' + esc(shortTitle(n)) + '</span>'
-      + '<span class="lv">2단 · UI + 로직</span>';
+      + '<span class="lv">UI + 로직</span>';
   };
 
-  /* ---- 3단 : 호출 사슬 플로우 다이어그램 ---- */
-  const renderChain = function (t) {
-    const n = byId[t.id];
-    const sec = sectionsOf(n)[t.view.sec];
-    const row = sec.rows[t.view.row];
+  /* ---- 가지 셀 안에 펼쳐지는 흐름 (예전 3단을 그 자리로 옮긴 것) ---- */
+  const chainHTML = function (nid, row, cc) {
     const steps = splitChain(row[1]);
-    const cc = "var(--c-" + n.cat + ")";
-
-    let h = '<div class="g-root" style="--cc: ' + cc + '">'
-      + '<div class="r-cat">' + esc(sec.h) + '</div>'
-      + '<div class="r-title">' + esc(row[0]) + '</div>'
-      + '<div class="r-ko">' + esc(n.title) + '</div></div>';
-
     const flow = bigSteps(steps);
-    h += '<div class="g-lane"><div class="g-lane-h">큰 틀 흐름 <em>위에서 아래로</em></div><div class="f-flow">';
+    let h = '<div class="f-flow">';
     flow.forEach(function (st, i) {
       const ty = stepType(st);
       const jid = jumpFor(st);
-      const to = jid && jid !== t.id ? byId[jid] : null;
+      const to = jid && jid !== nid ? byId[jid] : null;
       const isEnd = i === flow.length - 1;
       const bf = brief(st, row[0]);
       if (i > 0) h += '<div class="f-link"><b>' + (stepType(flow[i - 1]) === "gate" ? "통과하면" : "다음") + '</b></div>';
@@ -2727,29 +2730,12 @@
         + (to ? '<span class="f-open"><i></i>' + esc(shortTitle(to)) + ' 다이어그램 열기 ▸</span>' : '')
         + '</span></div>';
     });
-    h += '</div></div>';
-
-    /* 원문 사슬은 지우지 않고 접어 둔다 — 개발자가 확인할 때 필요하다 */
-    h += '<details class="f-raw"><summary>원문 사슬 ' + steps.length + '단계 (개발용)</summary>'
-      + '<p>' + esc(row[1]) + '</p></details>';
-
-    h += '<div class="f-legend">'
-      + '<span><i style="background:var(--t-gate)"></i>게이트 · 판정</span>'
-      + '<span><i style="background:var(--t-net)"></i>서버 호출</span>'
-      + '<span><i style="background:var(--t-ad)"></i>광고</span>'
-      + '<span><i style="background:var(--t-nav)"></i>지면 이동</span>'
-      + '<span><i style="background:var(--t-call)"></i>호출</span>'
-      + '</div>';
-
-    h += '<div class="f-note"><div class="t">단계 구분 기준</div>'
-      + '<p>큰 틀만 보여줍니다 — 로그 · 갱신처럼 흐름을 바꾸지 않는 호출은 뺐고, 길면 앞뒤 2칸으로 줄였습니다. '
-      + '점선 = 통과해야 넘어가는 게이트 · 두꺼운 마지막 상자 = 도착. 유형은 메소드명으로 자동 분류하므로 '
-      + '분기 조건은 파일에서 최종 확인하세요.</p></div>';
-
-    bodyEl.innerHTML = h;
-    crumbEl.innerHTML = '<span class="step">' + esc(shortTitle(n)) + '</span>'
-      + '<span class="sep">›</span><span class="cur">' + esc(row[0]) + '</span>'
-      + '<span class="lv">3단 · 호출 사슬</span>';
+    h += '</div>';
+    if (steps.length > flow.length) {
+      h += '<details class="f-raw"><summary>원문 사슬 ' + steps.length + '단계 (개발용)</summary>'
+        + '<p>' + esc(row[1]) + '</p></details>';
+    }
+    return h;
   };
 
   const veil = document.getElementById("veil");
@@ -2766,9 +2752,10 @@
     }
     dock.classList.add("open");
     veil.classList.add("open");
-    backBtn.textContent = stack.length > 1 ? "← 뒤로" : "← 맵으로";
-    if (t.view) renderChain(t); else renderScreen(t);
+    backBtn.textContent = stack.length > 1 ? "← 이전 지면" : "← 맵으로";
+    renderScreen(t);
     bodyEl.scrollTop = 0;
+    if (t.view) openCell(t.view.sec, t.view.row, true);
     highlight(t.id);
   };
 
@@ -2781,11 +2768,22 @@
     if (o.recenter !== false) centerOn(byId[id]);
   };
 
-  const openChain = function (sec, row) {
+  /* 가지 셀을 그 자리에서 펼친다. 화면 이동이 없으니 뒤로가기도 필요 없다. */
+  const openCell = function (sec, row, scroll) {
     const t = cur();
     if (!t) return;
-    stack.push({ id: t.id, view: { sec: sec, row: row } });
-    renderBody();
+    const br = bodyEl.querySelector('.g-branch[data-key="' + sec + '-' + row + '"]');
+    if (!br) return;
+    const was = br.classList.contains("open");
+    if (was && !scroll) { br.classList.remove("open"); t.view = null; return; }
+    br.classList.add("open");
+    t.view = { sec: sec, row: row };
+    /* 내부 동작 섹션 안이면 그 접힘도 같이 연다 */
+    const det = br.closest("details");
+    if (det) det.open = true;
+    if (scroll && br.scrollIntoView) br.scrollIntoView({ block: "center" });
+    bodyEl.querySelectorAll(".g-branch.flash").forEach(function (e) { e.classList.remove("flash"); });
+    br.classList.add("flash");
   };
 
   const goBack = function () {
@@ -2811,7 +2809,9 @@
     const jump = ev.target.closest("[data-jump]");
     if (jump) { openScreen(jump.dataset.jump, {}); return; }
     const node = ev.target.closest(".g-node, .wf-btn, .wf-full, .wf-key-i");
-    if (node) openChain(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10));
+    if (!node) return;
+    const fromUI = !node.classList.contains("g-node");
+    openCell(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10), fromUI);
   });
 
   backBtn.addEventListener("click", goBack);
