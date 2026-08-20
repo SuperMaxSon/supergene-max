@@ -116,9 +116,23 @@
   #world.focused .node { opacity: .24; }
   #world.focused .node.hot { opacity: 1; }
 
-  .n-head { display: flex; align-items: center; gap: 7px; }
+  .node { position: absolute; }
+  .n-wf {
+    position: absolute; top: 8px; right: 9px;
+    width: 26px; height: 38px;
+    border: 1px solid var(--line); border-radius: 2px;
+    background: var(--surface-2);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 2px; gap: 2px; pointer-events: none;
+  }
+  .n-wf i { display: flex; gap: 1.5px; justify-content: center; min-height: 3px; }
+  .n-wf i u { width: 3px; height: 3px; border-radius: .5px; background: var(--cc); opacity: .55; display: block; }
+  .n-wf i.mid { flex: 1; align-items: center; }
+  .n-wf i.mid u { width: 8px; height: 8px; border-radius: 2px; opacity: .75; }
+
+  .n-head { display: flex; align-items: center; gap: 7px; padding-right: 32px; }
   .n-cat { font-size: 9px; letter-spacing: .09em; text-transform: uppercase; color: var(--cc); font-weight: 800; white-space: nowrap; }
-  .n-kind { margin-left: auto; font-size: 9px; color: var(--faint); border: 1px solid var(--line); border-radius: 2px; padding: 0 4px; white-space: nowrap; }
+  .n-kind { font-size: 9px; color: var(--faint); border: 1px solid var(--line); border-radius: 2px; padding: 0 4px; white-space: nowrap; }
   .n-title { font-size: 14.5px; font-weight: 650; letter-spacing: -.012em; line-height: 1.25; }
   .n-ko { font-size: 11px; color: var(--ink-2); margin-top: -2px; }
   .n-lead { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); line-height: 1.35; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 2px; }
@@ -330,6 +344,49 @@
   .io-none { font-size: 10px; color: var(--faint); }
   .io-more { font-size: 9.5px; color: var(--faint); font-weight: 650; }
   .io .g-to { max-width: 100%; }
+
+  /* 2단 본문 = 왼쪽 UI 와이어프레임 · 오른쪽 로직 가지. 좁으면 위아래로 떨어진다. */
+  .two { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 22px; align-items: start; margin-top: 14px; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+
+  .wf-wrap { position: sticky; top: 0; }
+  .wf {
+    border: 2px solid var(--line); border-radius: 12px;
+    background: var(--surface-2);
+    aspect-ratio: 9 / 15;
+    display: grid; grid-template-rows: auto 1fr auto;
+    gap: 6px; padding: 8px;
+    overflow: hidden;
+  }
+  .wf-bar { display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; min-height: 20px; }
+  .wf-bar.b { align-content: flex-end; }
+  .wf-mid { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 5px; align-items: center; min-height: 0; }
+  .wf-side { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+  .wf-center { display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; min-width: 0; }
+  .wf-zone {
+    font-size: 8px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--faint); font-weight: 800; width: 100%;
+  }
+  .wf-bar .wf-zone { flex: 0 0 100%; }
+
+  .wf-btn {
+    font-family: inherit; font-size: 9.5px; font-weight: 700; line-height: 1.2;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-left: 3px solid var(--nc, var(--line));
+    border-radius: 4px; padding: 4px 6px; cursor: pointer;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-align: left;
+  }
+  .wf-btn:hover { border-color: var(--cc); box-shadow: 0 1px 5px var(--shadow); }
+  .wf-btn:focus-visible { outline: 2px solid var(--cc); outline-offset: 1px; }
+  .wf-btn.big { font-size: 11px; padding: 7px 12px; font-weight: 780; }
+  .wf-list {
+    border: 1px dashed var(--line); border-radius: 4px;
+    padding: 5px 6px; width: 100%;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .wf-cap { margin-top: 7px; font-size: 10px; color: var(--muted); line-height: 1.5; }
+  .wf-cap b { color: var(--ink-2); }
 
   /* ---- 3단: 호출 사슬 플로우 ---- */
   .f-flow { display: flex; flex-direction: column; margin-top: 2px; }
@@ -632,7 +689,7 @@
       ],
       detail: [
         { h: "메소드", rows: [
-          ["onClickUpgrade()", "해머 잔량 확인 → upgradeMetaCity() 요청 → setUpgrading(true) → 완료 후 updateUI(keyNumber)"],
+          ["업그레이드", "onClickUpgrade() → 해머 잔량 확인 → BaseNetworkManager.upgradeMetaCity() → setUpgrading(true) → updateUI(keyNumber)"],
           ["MetaCityObjectView", "init() / playUpgradeWithEffects() / playCompleteAnimation() / refreshRedDot() / showMagnifyingView()"],
           ["MetaCityManager", "도시·데코 데이터 및 업그레이드 상태 관리"]
         ]}
@@ -1273,6 +1330,54 @@
     return sectionsOf(n).reduce(function (s, sec) { return s + sec.rows.length; }, 0);
   };
 
+  /* ── UI 배치 추정 ─────────────────────────────────────────────
+     실제 프리팹 좌표가 아니라 섹션 성격과 버튼 이름으로 위치를 가늠한다.
+     섹션이 UI 조작이 아니면(라이프사이클 · 분기 · 메모) 와이어프레임에 올리지 않는다. */
+  /* 라이프사이클·분기 설명 섹션은 통째로 제외한다. */
+  const NON_UI_SEC = /라이프사이클|실행 순서|분기|메모|진입 지점|지면 목록|구분 기준|순서|핵심 메소드|관련/;
+  /* 순서가 곧 우선순위다. 앞 규칙이 먹으면 뒤는 보지 않는다.
+     예: "덱 카드 탭"은 보드 제스처(중앙)이지, 하단의 "덱" 탭이 아니다. */
+  const SKIP = /완료|성공|실패|갱신|구성|판정|가드|첫 터치|기준|연출|합류|폴백|지연|주의|호출 지점|관련|잠금 처리|공통|메모|순서|사용 가능|주체/;
+  const ZONE = [
+    [/카드 탭|덱 카드|덱 넘김|필드 카드/, "center"],
+    [/기믹|오브젝트|조각|아이템 구매|덱 아이템|앨범|랭킹 항목|미션 이동|스크롤|^랭킹$/, "list"],
+    [/닫기|취소|뒤로|배경/, "top"],
+    [/설정|옵션|언어|방법|정보|안내/, "top"],
+    [/코인|티켓|해머 채우기|재화/, "top"],
+    [/탭$/, "top"],
+    [/상점|우편|일일 미션|컬렉션|룰렛|꾸미기|도시 목록|리더보드|토너먼트|덱/, "bottom"],
+    [/이벤트|마일스톤|클리어 랭킹|추격|출석|방치|무료|RV|해머/, "left"],
+    [/IAP|오퍼|배팅|부스터|불꽃|골든|골드 러시|슬롯/, "right"],
+    [/친구|초대|공유|전환|P2P|토너/, "right"],
+    [/PLAY|시작|플레이|받기|수령|홈|계속|그만|다시|재시도|구매|스핀|업그레이드|시청|확인|참가|생성|해금|교체|새로고침|나가기|이어하기|선택|보상 상자|Undo|와일드|플러스|카드 추가/, "center"]
+  ];
+  const zoneOf = function (label) {
+    if (/\(\)|\(\w/.test(label)) return null;   /* 메소드명 형태는 버튼이 아니다 */
+    if (SKIP.test(label)) return null;             /* 콜백 · 판정 · 연출 설명 행 */
+    for (let i = 0; i < ZONE.length; i++) { if (ZONE[i][0].test(label)) return ZONE[i][1]; }
+    return null;
+  };
+  const BIG = /PLAY|시작|플레이|받기|수령|그만|다시|계속|구매|스핀/;
+
+  /* 지면의 UI 버튼 목록 (와이어프레임 · 카드 개념도 공용) */
+  const uiButtons = function (n) {
+    const out = [];
+    sectionsOf(n).forEach(function (sec, si) {
+      if (NON_UI_SEC.test(sec.h)) return;
+      sec.rows.forEach(function (r, ri) {
+        const z = zoneOf(r[0]);
+        if (!z) return;
+        const steps = splitChain(r[1]);
+        out.push({
+          label: r[0], sec: si, row: ri, steps: steps.length,
+          zone: z, type: stepType(steps[steps.length - 1] || r[1]),
+          big: BIG.test(r[0])
+        });
+      });
+    });
+    return out;
+  };
+
   const stage = document.getElementById("stage");
   const world = document.getElementById("world");
   const svg = document.getElementById("wires");
@@ -1281,6 +1386,22 @@
   const nodeLayer = document.getElementById("nodes");
   const byId = {};
   N.forEach(function (n) { byId[n.id] = n; });
+
+  /* 카드 우측의 초소형 화면 개념도 — 상단/중앙/하단에 버튼이 몇 개 있는지만 점으로 */
+  const wfGlyph = function (n) {
+    const b = uiButtons(n);
+    const cnt = function (z) { return b.filter(function (x) { return x.zone === z; }).length; };
+    const dots = function (k) {
+      let o = "";
+      for (let i = 0; i < Math.min(k, 4); i++) o += "<u></u>";
+      return o;
+    };
+    return '<span class="n-wf">'
+      + '<i>' + dots(cnt("top")) + '</i>'
+      + '<i class="mid">' + dots(cnt("center") + cnt("left") + cnt("right") + cnt("list")) + '</i>'
+      + '<i>' + dots(cnt("bottom")) + '</i>'
+      + '</span>';
+  };
 
   /* ============ L1 카드 ============ */
   N.forEach(function (n) {
@@ -1299,7 +1420,8 @@
       + '<div class="n-title">' + esc(n.title) + '</div>'
       + '<div class="n-ko">' + esc(n.ko) + '</div>'
       + (lead ? '<div class="n-lead">' + esc(lead[0]) + ' · ' + esc(lead[1]) + '</div>' : '')
-      + '<div class="n-foot"><span class="n-dot"></span>' + rowCountOf(n) + '개 항목 · 열어보기</div>';
+      + '<div class="n-foot"><span class="n-dot"></span>UI ' + uiButtons(n).length + ' · 항목 ' + rowCountOf(n) + '</div>'
+      + wfGlyph(n);
     nodeLayer.appendChild(el);
     n.el = el;
   });
@@ -1617,6 +1739,43 @@
     return n.title.replace(/\s*·.*$/, "").replace(/\(.*\)/, "").trim().slice(0, 22);
   };
 
+  /* ── 2단 UI 와이어프레임 : 버튼을 추정 위치에 올리고, 누르면 3단 로직으로 ── */
+  const wireframe = function (n, cc) {
+    const b = uiButtons(n);
+    const pick = function (z) { return b.filter(function (x) { return x.zone === z; }); };
+    const btn = function (x) {
+      return '<button class="wf-btn n-' + x.type + (x.big ? " big" : "") + '"'
+        + ' data-sec="' + x.sec + '" data-row="' + x.row + '"'
+        + ' title="' + esc(x.label) + ' · ' + x.steps + '단계">' + esc(x.label) + '</button>';
+    };
+    const zoneLabel = function (txt) { return '<span class="wf-zone">' + txt + '</span>'; };
+
+    if (!b.length) {
+      return '<div class="wf" style="--cc: ' + cc + '"><div class="wf-bar"></div>'
+        + '<div class="wf-mid"><div></div><div class="wf-center">'
+        + '<span class="wf-zone">UI 조작 없음</span></div><div></div></div>'
+        + '<div class="wf-bar b"></div></div>'
+        + '<div class="wf-cap">이 지면은 <b>버튼이 아니라 흐름·연출로만</b> 동작합니다. 오른쪽 로직 가지를 보세요.</div>';
+    }
+
+    const list = pick("list");
+    let o = '<div class="wf" style="--cc: ' + cc + '">';
+    o += '<div class="wf-bar">' + zoneLabel("상단") + pick("top").map(btn).join("") + '</div>';
+    o += '<div class="wf-mid">'
+      + '<div class="wf-side">' + pick("left").map(btn).join("") + '</div>'
+      + '<div class="wf-center">'
+      + pick("center").map(btn).join("")
+      + (list.length ? '<div class="wf-list">' + zoneLabel("목록 항목") + list.map(btn).join("") + '</div>' : "")
+      + '</div>'
+      + '<div class="wf-side">' + pick("right").map(btn).join("") + '</div>'
+      + '</div>';
+    o += '<div class="wf-bar b">' + zoneLabel("하단") + pick("bottom").map(btn).join("") + '</div>';
+    o += '</div>';
+    o += '<div class="wf-cap"><b>대략적 배치</b>입니다 — 실제 프리팹 좌표가 아니라 버튼 이름·역할로 추정한 위치입니다. '
+      + '버튼을 누르면 그 버튼의 <b>호출 사슬</b>이 열립니다.</div>';
+    return o;
+  };
+
   /* ---- 2단 : 지면 다이어그램 (흐름 밴드 + 가지 트리) ---- */
   const renderScreen = function (t) {
     const n = byId[t.id];
@@ -1658,7 +1817,8 @@
       + side(outs, "out", "r")
       + '</div>';
 
-    /* 섹션마다 가지 묶음. 폭이 넓으면 2열로 펴진다. */
+    /* 왼쪽 = UI 와이어프레임, 오른쪽 = 로직 가지 */
+    h += '<div class="two"><div class="wf-wrap">' + wireframe(n, cc) + '</div><div>';
     h += '<div class="g-lanes">';
     secs.forEach(function (sec, si) {
       h += '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
@@ -1685,11 +1845,11 @@
       });
       h += '</div></div>';
     });
-    h += '</div>';
+    h += '</div></div></div>';
 
     bodyEl.innerHTML = h;
     crumbEl.innerHTML = '<span class="cur">' + esc(shortTitle(n)) + '</span>'
-      + '<span class="lv">2단 · 지면 다이어그램</span>';
+      + '<span class="lv">2단 · UI + 로직</span>';
   };
 
   /* ---- 3단 : 호출 사슬 플로우 다이어그램 ---- */
@@ -1799,7 +1959,7 @@
   bodyEl.addEventListener("click", function (ev) {
     const jump = ev.target.closest("[data-jump]");
     if (jump) { openScreen(jump.dataset.jump, {}); return; }
-    const node = ev.target.closest(".g-node");
+    const node = ev.target.closest(".g-node, .wf-btn");
     if (node) openChain(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10));
   });
 

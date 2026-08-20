@@ -70,6 +70,9 @@
   }
 
   SECTIONS.forEach(function (sec) {
+    // 카드가 없는 섹션은 제목 · nav pill 둘 다 그리지 않는다.
+    if (!sec.cards || !sec.cards.length) return;
+
     var pill = el("button", "nav-pill", sec.label);
     pill.style.setProperty("--acc", "var(--" + sec.accent + ")");
     pill.dataset.target = sec.id;
