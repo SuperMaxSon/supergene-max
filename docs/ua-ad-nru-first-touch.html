@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>광고 유입 NRU 첫터치율 저하 — 원인 규명</title>
+    <meta
+      name="description"
+      content="솔리테어 광고 유입 NRU의 첫터치·첫매치가 붕괴한 원인 조사. 업데이트·빌드·클라이언트 결함은 전부 배제됐고 유입 의도로 좁혀졌다. 캠페인 1개·Android 단일 지면."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#verdict">결론</a>
+        <a class="nav-back" href="#ledger">가설 검증</a>
+        <a class="nav-back" href="#control">대조군</a>
+        <a class="nav-back" href="#excluded">배제된 원인</a>
+        <a class="nav-back" href="#cross">타 프로젝트</a>
+        <a class="nav-back" href="#campaign">캠페인·지면</a>
+        <a class="nav-back" href="#action">조치</a>
+        <a class="nav-back" href="#open">미결</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · UA</div>
+        <h1 class="doc-title">광고 유입 NRU 첫터치율 저하 — 원인 규명</h1>
+        <p class="doc-lede">
+          08-19 광고 송출 이후 광고 유입 NRU의 첫 터치·첫 매치가 비광고 대비 크게 낮게 집계됐습니다.
+          <b>최근 업데이트·빌드·클라이언트 입력 결함은 전부 배제</b>됐고,
+          같은 조건의 대조군 두 개(<code>feed</code>·<code>game_switch</code>)와 비교해
+          <b>유입 의도</b>로 좁혀졌습니다. 다만 캠페인이 1개·Android 단일 지면이라
+          <b>소재인지 타겟팅인지는 BigQuery 안에서 분리할 수 없습니다.</b>
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--ok)">업데이트·빌드 배제</span>
+          <span class="pill" style="--acc: var(--ok)">클라 결함 배제</span>
+          <span class="pill" style="--acc: var(--warn)">소재 / 타겟팅 미분리</span>
+          <span class="tag">BigQuery 실측 + 코드 실측</span>
+          <span class="tag">08-14~20 · US · is_dev 제외</span>
+          <span class="tag">마지막 갱신 2026-08-20 18:10</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- 결론을 먼저 숫자로 못박고, 이후 섹션이 그 근거를 하나씩 해체하는 구조 -->
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          결론
+          <span class="doc-h2-sub">격차는 실재하고, 원인은 클라이언트가 아니다</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">7.3<span class="stat-unit">%</span></div>
+            <div class="stat-name">광고 유입 첫터치</div>
+            <div class="stat-sub">2,908 유저-일</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">45.9<span class="stat-unit">%</span></div>
+            <div class="stat-name">피드 유입 첫터치</div>
+            <div class="stat-sub">같은 조건 대조군</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">70.7<span class="stat-unit">%</span></div>
+            <div class="stat-name">게임전환 유입 첫터치</div>
+            <div class="stat-sub">같은 조건 대조군</div>
+          </div>
+          <div class="stat" style="--acc: var(--analysis)">
+            <div class="stat-num">43.7<span class="stat-unit">%</span></div>
+            <div class="stat-name">실패 터치가 화면 끝</div>
+            <div class="stat-sub">우측 48px 이내</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40%">항목</th>
+                <th style="width: 16%">판정</th>
+                <th>근거</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>최근 업데이트·빌드가 원인</td>
+                <td><span class="pill" style="--acc: var(--ok)">배제</span></td>
+                <td>빌드 3종에서 값 동일, 같은 날·같은 빌드 통제에서도 격차 유지</td>
+              </tr>
+              <tr>
+                <td>격차 자체가 실재하는가</td>
+                <td><span class="pill" style="--acc: var(--bad)">실재</span></td>
+                <td>오염 제거 코호트에서 6~10배</td>
+              </tr>
+              <tr>
+                <td>지표 정의 결함(첫터치 이벤트)</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>NRU 전용 지표에서 격차가 더 큼</td>
+              </tr>
+              <tr>
+                <td>코호트 인공물(베테랑 혼입)</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>레벨1 첫 판 + 광고 미시청 컷에서도 유지</td>
+              </tr>
+              <tr>
+                <td>NRU 여부 / 외부 유입 여부</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>같은 조건 대조군이 45.9% · 70.7%</td>
+              </tr>
+              <tr>
+                <td>클라이언트 입력 결함</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>스크린샷 정상 + 실패 터치가 카드 영역이 아님</td>
+              </tr>
+              <tr>
+                <td><b>남는 원인</b></td>
+                <td><span class="pill" style="--acc: var(--warn)">유입 의도</span></td>
+                <td>캠페인 1개·Android 단일 지면 — 소재/타겟팅 미분리</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              위에서 아래로 <b>의심 순서대로 하나씩 떨어뜨린 기록</b>입니다.
+              앞의 여섯 줄은 모두 "이것 때문일 것"이라고 세웠다가 데이터로 기각된 항목이고,
+              마지막 줄만 살아남았습니다. 살아남은 것도 <b>확정이 아니라 "남은 것"</b>입니다 —
+              캠페인이 1개라 내부 대조가 불가능해 소재와 타겟팅을 가르지 못했습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 가설 대장: 무엇을 의심해 어떤 쿼리로 확인했고 결과가 무엇이었나. 한 줄씩만. -->
+      <section class="doc-section" id="ledger">
+        <h2 class="doc-h2">
+          가설 검증
+          <span class="doc-h2-sub">세운 가설 · 확인 방법 · 결과</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">가설</th>
+                <th style="width: 34%">확인 방법</th>
+                <th style="width: 11%">결과</th>
+                <th>핵심 수치</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>최근 업데이트·빌드가 원인</td>
+                <td>빌드별 · 날짜별 분해</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>빌드 3종 동일 7.7 / 6.8 / 8.1</td>
+              </tr>
+              <tr>
+                <td>광고 전용 진입·입력 분기가 있다</td>
+                <td>코드 <code>entryPoint</code> 분기 전수</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>7곳 전부 광고키·로그·숏컷 판정</td>
+              </tr>
+              <tr>
+                <td>첫터치 이벤트가 NRU 입력을 못 잡는다</td>
+                <td>NRU 전용 지표로 재집계</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>격차가 더 큼 10.3배 · 8.8배</td>
+              </tr>
+              <tr>
+                <td>비교군이 베테랑이라 높게 나온다</td>
+                <td>전면광고 노출량으로 혼입 판별 → 레벨1·광고미시청 컷</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>정제 후에도 6~10배</td>
+              </tr>
+              <tr>
+                <td>딜 연출 중이라 눌렀는데 안 먹혔다</td>
+                <td>터치 좌표 2D 분포</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>중앙(카드) 구간 임계 미달</td>
+              </tr>
+              <tr>
+                <td>팝업·오버레이가 화면을 덮었다</td>
+                <td>터치 시점 스크린샷 확인</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>화면 정상</td>
+              </tr>
+              <tr>
+                <td>레터박스 여백을 누르고 있다</td>
+                <td>화면비 구간별 분해</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>여백 0 구간에서도 35.2%</td>
+              </tr>
+              <tr>
+                <td>Android 고유 결함이다</td>
+                <td>OS별 분해</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>광고가 Android 단일 지면</td>
+              </tr>
+              <tr>
+                <td>신규·외부 유입이라 원래 어렵다</td>
+                <td>피드 · 게임전환 대조군</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>45.9% · 70.7% vs 광고 7.3%</td>
+              </tr>
+              <tr>
+                <td>타 프로젝트 광고도 같은 모양이다</td>
+                <td>4개 게임 완료율 비교</td>
+                <td><span class="pill" style="--acc: var(--ok)">기각</span></td>
+                <td>벤치 1.22~1.45 · 솔 0.34</td>
+              </tr>
+              <tr>
+                <td>특정 소재만 나쁘다</td>
+                <td>캠페인 · 소재별 분해</td>
+                <td><span class="pill" style="--acc: var(--warn)">판별 불가</span></td>
+                <td>캠페인 1개 · 소재 2개, 대조군 없음</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              위 10개는 <b>모두 "이것 때문일 것"이라고 세웠다가 데이터로 떨어진 가설</b>입니다.
+              마지막 줄만 기각되지 않았는데, <b>확정된 것이 아니라 확인할 수단이 없어서</b> 남았습니다 —
+              캠페인이 1개라 소재와 타겟팅을 가를 대조군이 존재하지 않습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="control">
+        <h2 class="doc-h2">
+          대조군
+          <span class="doc-h2-sub">조건을 완전히 맞추고 클릭 의도만 다르게</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 20%">유입 경로</th>
+                <th style="text-align: right">세션</th>
+                <th style="text-align: right">터치 발생</th>
+                <th style="text-align: right">첫터치</th>
+                <th style="text-align: right">NRU 첫매치</th>
+                <th style="text-align: right">판 완료</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill" style="--acc: var(--bad)">광고</span></td>
+                <td style="text-align: right"><b>2,908</b></td>
+                <td style="text-align: right">49.2%</td>
+                <td style="text-align: right"><b>7.3%</b></td>
+                <td style="text-align: right">4.7%</td>
+                <td style="text-align: right">4.2%</td>
+              </tr>
+              <tr>
+                <td>인게임 메뉴</td>
+                <td style="text-align: right">466</td>
+                <td style="text-align: right">75.8%</td>
+                <td style="text-align: right"><b>58.2%</b></td>
+                <td style="text-align: right">54.7%</td>
+                <td style="text-align: right">52.1%</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--ok)">게임전환</span></td>
+                <td style="text-align: right">140</td>
+                <td style="text-align: right">76.4%</td>
+                <td style="text-align: right"><b>70.7%</b></td>
+                <td style="text-align: right">68.6%</td>
+                <td style="text-align: right">65.7%</td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--ok)">피드</span></td>
+                <td style="text-align: right">37</td>
+                <td style="text-align: right">64.9%</td>
+                <td style="text-align: right"><b>45.9%</b></td>
+                <td style="text-align: right">43.2%</td>
+                <td style="text-align: right">37.8%</td>
+              </tr>
+              <tr>
+                <td>알림</td>
+                <td style="text-align: right">69</td>
+                <td style="text-align: right">29.0%</td>
+                <td style="text-align: right">11.6%</td>
+                <td style="text-align: right">8.7%</td>
+                <td style="text-align: right">8.7%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">왜 이 표가 결정적인가</div>
+            <p>
+              전 행이 <b>레벨1 첫 판 · 광고 미시청 세션 · 같은 빌드</b>로 통제됐습니다.
+              특히 <b>피드</b>와 <b>게임전환</b>은 광고와 마찬가지로 <b>게임 밖에서 들어온 신규 유저</b>입니다 —
+              조건이 전부 같고 <b>다른 것은 클릭이 의도적이었다는 점 하나뿐</b>입니다.
+              그런데 45.9% · 70.7%로 광고의 <b>6~10배</b>입니다.
+            </p>
+            <p>
+              따라서 "신규 유저라서 어렵다"도, "외부에서 들어와서 그렇다"도 원인이 아닙니다.
+              <strong>클릭 의도가 원인입니다.</strong>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">표본 주의</div>
+            <p>
+              피드 37 · 게임전환 140 · 알림 69 유저-일로 대조군 표본이 작습니다.
+              배수는 흔들릴 수 있지만 <b>방향은 5개 빌드에서 일관</b>했습니다.
+              광고 쪽은 2,908로 충분합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="excluded">
+        <h2 class="doc-h2">
+          배제된 원인
+          <span class="doc-h2-sub">세웠다가 떨어뜨린 가설들</span>
+        </h2>
+
+        <h3 style="margin: 22px 0 10px; font-size: 15px">업데이트·빌드 — 3회 독립 확인</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 34%">확인 방식</th>
+                <th>결과</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>빌드별 광고 첫터치</td>
+                <td><code>456</code> 7.7% · <code>458</code> 6.8% · <code>461</code> 8.1% — <b>동일</b></td>
+              </tr>
+              <tr>
+                <td>같은 날·같은 빌드 통제</td>
+                <td>08-19 <code>456</code>: 광고 8.8% vs 비광고 67.5% — <b>격차 유지</b></td>
+              </tr>
+              <tr>
+                <td>코드 경로 검토</td>
+                <td>NRU 첫 세션 경로를 바꾼 커밋 없음. 인게임 직행 반영도 NRU는 앞단 레벨 분기에서 <code>return</code>돼 신규 코드에 <b>도달하지 않음</b></td>
+              </tr>
+              <tr>
+                <td>광고 전용 진입 경로</td>
+                <td><code>entryPoint</code> 분기 7곳 전수 확인 — 광고 placement 키 3 · 로그 파라미터 2 · 봇메시지·숏컷 판정 2. <b>씬·첫 화면·입력을 바꾸는 분기 없음</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">진입 경로를 실제로 가르는 것</div>
+            <p>
+              씬 분기는 <code>entryPoint</code>가 아니라 <b>딥링크</b>(토너먼트 ID·친구 ID)가 결정합니다.
+              광고 유입은 둘 다 없어 일반 솔로 경로로 들어오고, 거기서 갈리는 것은
+              <b>광고 여부가 아니라 레벨</b>(<code>level &lt;= 2</code> 인게임 직행)입니다.
+              광고 유저에게만 다른 것은 <b>보상형 광고 프리로드 시점</b> 하나뿐이며 입력 경로와 무관합니다.
+            </p>
+          </div>
+        </div>
+
+        <h3 style="margin: 26px 0 10px; font-size: 15px">클라이언트 입력 결함 — 좌표가 기각시켰다</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 26%">터치 위치</th>
+                <th style="text-align: right">첫터치 실패 세션</th>
+                <th style="text-align: right">첫터치 성공 세션</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>우측 끝 48px 이내</td>
+                <td style="text-align: right"><b>43.7%</b></td>
+                <td style="text-align: right">9.8%</td>
+              </tr>
+              <tr>
+                <td>화면 우측 98% 이상</td>
+                <td style="text-align: right"><b>28.1%</b></td>
+                <td style="text-align: right">5.9%</td>
+              </tr>
+              <tr>
+                <td>좌측 끝 48px 이내</td>
+                <td style="text-align: right">4.4%</td>
+                <td style="text-align: right">2.1%</td>
+              </tr>
+              <tr>
+                <td>화면 중앙(카드 영역)</td>
+                <td style="text-align: right"><span class="pill" style="--acc: var(--bad)">임계 미달</span></td>
+                <td style="text-align: right"><b>밀집</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 표가 뒤집은 것</div>
+            <p>
+              처음 세운 가설은 <b>카드 배치 연출이 끝나야 입력이 열리는 구간(딜 연출 1.3~1.8초)에
+              유저가 눌렀는데 안 먹혔다</b>는 것이었습니다. 좌표를 보니 아니었습니다 —
+              성공 세션의 터치는 화면 중앙(카드 피라미드)에 밀집하는데,
+              실패 세션은 <b>중앙 구간이 임계치조차 넘지 못하고 화면 테두리에만 몰립니다.</b>
+              최다 지점은 <b>우상단 코너</b>(닫기 버튼 통상 위치)였습니다.
+            </p>
+            <p>
+              즉 <strong>"카드를 눌렀는데 안 먹혔다"가 아니라 "카드를 안 눌렀다"</strong>입니다.
+              4회 이상 누른 세션에서도 마찬가지였고, 스크린샷을 확인한 결과 <b>화면도 정상</b>이었습니다.
+              가로 모드에서 내비바가 숨은 상태라 <b>뒤로가기를 찾아 화면 끝을 반복 터치하는 행동</b>과 일치합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">그래도 코드에 실재하는 결함 — 별건</div>
+            <p>
+              카드 배치 연출이 전부 끝나야 입력이 열리는 구조와, 튜토리얼 팝업의 모달 배리어는
+              <b>코드에 실재합니다</b>(2026-07 실측: 눌렀는데 로그 0건 세션 22.6%).
+              <b>이번 격차의 원인은 아니지만</b> 별건으로 처리합니다.
+            </p>
+          </div>
+        </div>
+
+        <h3 style="margin: 26px 0 10px; font-size: 15px">지표 정의 결함 — NRU 전용 지표에서 격차가 더 컸다</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 34%">지표</th>
+                <th style="text-align: right">광고</th>
+                <th style="text-align: right">인게임 메뉴</th>
+                <th style="text-align: right">배수</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>첫터치 <code>9990</code></td>
+                <td style="text-align: right">7.4%</td>
+                <td style="text-align: right">50.4%</td>
+                <td style="text-align: right">6.8배</td>
+              </tr>
+              <tr>
+                <td>NRU 첫매치 <code>2150</code></td>
+                <td style="text-align: right">4.2%</td>
+                <td style="text-align: right">43.3%</td>
+                <td style="text-align: right"><b>10.3배</b></td>
+              </tr>
+              <tr>
+                <td>첫매치 <code>2130</code></td>
+                <td style="text-align: right">5.4%</td>
+                <td style="text-align: right">47.5%</td>
+                <td style="text-align: right"><b>8.8배</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">왜 정의 결함이 아닌가</div>
+            <p>
+              "솔의 첫터치 이벤트가 NRU 입력을 못 잡아서 낮게 나온다"는 설명이 있었습니다.
+              그런데 <b>NRU를 잡도록 만든 지표에서 격차가 오히려 더 큽니다.</b>
+              정의 결함은 <b>게임 간 비교</b>만 설명하고, 같은 게임 안의 유입 경로 격차는 설명하지 못합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="cross">
+        <h2 class="doc-h2">
+          타 프로젝트
+          <span class="doc-h2-sub">벤치는 광고 유입이 오히려 더 좋다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">프로젝트</th>
+                <th style="text-align: right">광고 완료율</th>
+                <th style="text-align: right">메뉴 완료율</th>
+                <th style="text-align: right">광고÷메뉴</th>
+                <th style="text-align: right">인게임 도달 비</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-p="mah">
+                <td>마종</td>
+                <td style="text-align: right">55.6%</td>
+                <td style="text-align: right">39.2%</td>
+                <td style="text-align: right"><span class="pill" style="--acc: var(--ok)">1.42</span></td>
+                <td style="text-align: right">1.11</td>
+              </tr>
+              <tr data-p="coz">
+                <td>코지</td>
+                <td style="text-align: right">29.0%</td>
+                <td style="text-align: right">23.7%</td>
+                <td style="text-align: right"><span class="pill" style="--acc: var(--ok)">1.22</span></td>
+                <td style="text-align: right">0.95</td>
+              </tr>
+              <tr data-p="pbm">
+                <td>퍼블마</td>
+                <td style="text-align: right">28.3%</td>
+                <td style="text-align: right">19.5%</td>
+                <td style="text-align: right"><span class="pill" style="--acc: var(--ok)">1.45</span></td>
+                <td style="text-align: right">0.98</td>
+              </tr>
+              <tr data-p="sol">
+                <td><b>솔리테어</b></td>
+                <td style="text-align: right"><b>12.1%</b></td>
+                <td style="text-align: right">36.1%</td>
+                <td style="text-align: right"><span class="pill" style="--acc: var(--bad)">0.34</span></td>
+                <td style="text-align: right">0.99</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">질문을 뒤집어야 합니다</div>
+            <p>
+              "벤치는 왜 광고가 더 좋은가"가 아니라 <strong>"솔 광고만 왜 절대값이 무너져 있는가"</strong>가
+              정확한 질문입니다. <b>솔의 메뉴 유입은 36.1%로 4개 중 2위</b>로 정상입니다.
+              문제는 광고 12.1% — 다음으로 낮은 퍼블마 28.3%의 <b>절반 이하</b>이고,
+              자기 게임 메뉴의 <b>1/3</b>입니다.
+            </p>
+            <p>
+              벤치에서 광고가 메뉴보다 높은 이유는 두 가지가 겹칩니다 —
+              <b>인게임 메뉴가 낮은 기준선</b>(코지 23.7 · 퍼블마 19.5. 목록을 훑다 무심코 탭하는 브라우징 유입)이고,
+              <b>FB 광고 최적화가 학습되면 실제로 작동</b>합니다.
+              그런데 솔은 메뉴가 정상이므로 첫 번째는 해당 없고, 두 번째라면 광고가 더 낮을 이유가 없습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">왜 "완료율"로 비교했나</div>
+            <p>
+              <b>첫터치 이벤트는 게임마다 다른 것을 잽니다</b> —
+              솔 <code>9990</code>(유효 카드 탭) · 코지 <code>2115</code> · 마종 <code>9995</code>(튜토리얼 한정) · 퍼블마 <code>2109</code>.
+              특히 마종 <code>9995</code>는 게임 시작의 <b>1.7%</b>에만 발생해 이것으로 비교하면 순위가 뒤집힙니다.
+            </p>
+            <p>
+              반면 <b>게임 시작</b>과 <b>판 완료</b>는 <b>이벤트 코드가 4개 게임 모두 동일</b>합니다.
+              그래서 정의 무관 비교가 가능한 유일한 축입니다.
+              첫매치로 봐도 같은 결론입니다(코지 1.20 · 마종 1.24 · <b>솔 0.40</b>).
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">인게임 도달 비가 전 게임 1.0인 것의 의미</div>
+            <p>
+              광고 유입은 <b>어디서나 인게임에 정상 도달</b>합니다(솔 0.99).
+              문제는 도달이 아니라 <strong>들어온 뒤</strong>입니다. 솔은 도달 93.1% → 완료 12.1%로
+              낙차가 <b>-81pt</b>, 다른 게임의 1.5~4배입니다.
+              (퍼블마는 도달 자체가 47.8%로 낮지만 광고÷메뉴가 1.0이라 <b>광고 문제가 아닌 게임 전반 문제</b>입니다)
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="campaign">
+        <h2 class="doc-h2">
+          캠페인·지면
+          <span class="doc-h2-sub">여기서 BigQuery로 더 캘 수 없다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">캠페인</th>
+                <th style="width: 22%">소재(adset)</th>
+                <th>OS</th>
+                <th style="text-align: right">유저일</th>
+                <th style="text-align: right">인게임 도달</th>
+                <th style="text-align: right">첫매치</th>
+                <th style="text-align: right">판 완료</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>…379486</code></td>
+                <td><code>…477286</code></td>
+                <td>Android</td>
+                <td style="text-align: right">57</td>
+                <td style="text-align: right">100.0%</td>
+                <td style="text-align: right">19.3%</td>
+                <td style="text-align: right">14.0%</td>
+              </tr>
+              <tr>
+                <td><code>…379486</code></td>
+                <td><code>…379686</code></td>
+                <td>Android</td>
+                <td style="text-align: right">50</td>
+                <td style="text-align: right">94.0%</td>
+                <td style="text-align: right">20.0%</td>
+                <td style="text-align: right">14.0%</td>
+              </tr>
+              <tr class="is-dead">
+                <td>정보 없음</td>
+                <td>정보 없음</td>
+                <td>Android</td>
+                <td style="text-align: right">10</td>
+                <td style="text-align: right">90.0%</td>
+                <td style="text-align: right">0.0%</td>
+                <td style="text-align: right">0.0%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">두 소재 수치가 같은 것을 "소재 문제 아님"으로 읽으면 안 됩니다</div>
+            <p>
+              19.3 vs 20.0, 14.0 vs 14.0으로 사실상 동일합니다. 하지만 <b>캠페인이 1개, 소재가 2개뿐</b>입니다.
+              <strong>컨셉이 다른 대조 소재가 존재하지 않아 소재 가설은 기각도 확정도 불가능합니다.</strong>
+              대조군을 만들어야 알 수 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">Android 단일 지면 — 앞선 해석 정정</div>
+            <p>
+              임계를 5까지 낮춰도 <b>iOS·Windows 행이 하나도 없습니다.</b>
+              조사 중간에 "실패가 Android에 몰린다"고 본 것은 <b>기기 요인이 아니라 광고 배분 때문</b>이었습니다 —
+              iOS 광고 NRU가 존재하지 않아 OS 비교가 원리적으로 불가능했습니다.
+              우측 끝이 시스템 내비게이션 영역이라는 메커니즘 해석은 유효하고,
+              <b>"Android 고유 결함"이라는 뉘앙스만 철회</b>합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="action">
+        <h2 class="doc-h2">
+          조치
+          <span class="doc-h2-sub">클라이언트 작업이 아니라 UA 실행</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 28%">조치</th>
+                <th style="width: 14%">담당</th>
+                <th>목적</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>컨셉 다른 소재 추가 투입 → A/B</b></td>
+                <td><span class="pill" style="--acc: var(--deploy)">UA</span></td>
+                <td>소재 요인 분리. 현재 캠페인 1개·소재 2개로 대조군이 없어 원인 규명 불가</td>
+              </tr>
+              <tr>
+                <td><b>iOS 지면 테스트 투입</b></td>
+                <td><span class="pill" style="--acc: var(--deploy)">UA</span></td>
+                <td>지면·OS 요인 분리. 현재 Android 단일</td>
+              </tr>
+              <tr>
+                <td>벤치 캠페인 설정과 대조</td>
+                <td><span class="pill" style="--acc: var(--deploy)">UA</span></td>
+                <td>캠페인 수·목표·타겟 비교. 광고 계정에서만 확인 가능하며 BigQuery로는 불가</td>
+              </tr>
+              <tr>
+                <td>지표 교체</td>
+                <td><span class="pill" style="--acc: var(--analysis)">분석</span></td>
+                <td>첫터치율은 유입 품질 지표로 재배치. 게임 지표는 <code>2150</code>·<code>2130</code>으로</td>
+              </tr>
+              <tr>
+                <td>계측 보강</td>
+                <td><span class="pill" style="--acc: var(--validate)">클라</span></td>
+                <td>현재는 "안 눌렀다"와 "눌렀는데 안 먹혔다"가 로그에서 구분되지 않음</td>
+              </tr>
+              <tr>
+                <td>딜 연출 입력 대기 · 튜토리얼 배리어</td>
+                <td><span class="pill" style="--acc: var(--validate)">클라</span></td>
+                <td><b>별건.</b> 이번 격차의 원인은 아니지만 코드에 실재(실측 22.6%)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section" id="open">
+        <h2 class="doc-h2">
+          미결
+          <span class="doc-h2-sub">이 문서가 답하지 못한 것</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 32%">항목</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>상단 퍼널 로그인 구간</td>
+                <td>광고는 인트로 완료 → 로그인 완료에서 <b>-13.0pt</b>(메뉴 -7.5pt). 저의도 이탈로 일부 설명되지만 서버 로그인 실패·지연 여부는 미분해</td>
+              </tr>
+              <tr>
+                <td>미규명 터치 56%</td>
+                <td>실패 터치의 절반가량이 화면 끝도, 카드 영역도 아닌 위치. 규명 안 됨</td>
+              </tr>
+              <tr>
+                <td>터치 로그 자체의 편향</td>
+                <td>터치 로그 리스너가 특정 선행 이벤트 뒤에 붙으므로, 그 발생 시점이 유입별로 다르면 "터치 발생률"도 일부 편향</td>
+              </tr>
+              <tr>
+                <td>소재 vs 타겟팅</td>
+                <td>캠페인 1개라 내부 대조 불가. <b>UA에서 대조군을 만들어야 판별 가능</b></td>
+              </tr>
+              <tr>
+                <td>대조군 표본</td>
+                <td>피드 37 · 게임전환 140 유저-일. 방향은 일관하나 배수는 흔들림</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 솔리테어 08-14~20 · 타 프로젝트 08-18~20 · 국가 US · <code>is_dev</code> 제외 ·
+          단위는 유저-일 · 코호트는 레벨1 첫 판 + 전면광고 미시청 세션.
+          코드 근거는 각 리포 <code>main</code> 브랜치 실측.
+          <b>척도 주의</b> 솔 내부 표(세션 유입 경로 기준)와 타 프로젝트 표(가입 경로 기준)는
+          <b>척도가 달라 절대값을 교차 비교할 수 없습니다</b> — 같은 게임에서 정의만 바꿔도 비율이 2.7배 벌어졌습니다.
+          각 표는 <b>표 안에서만</b> 비교합니다.
+          <b>조사 중 정정한 것</b> 딜 연출 입력 대기 가설(좌표로 기각) · 비교군 베테랑 가설(기각) ·
+          터치 횟수 지표(세션 길이 검열로 무효) · Android 고유 결함(광고 배분 탓) ·
+          벤치 테이블 파티션 판단(뷰였음) · 퍼블마 이벤트명.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>

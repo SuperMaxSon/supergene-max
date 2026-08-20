@@ -38,6 +38,16 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
+        title: "광고 유입 NRU 첫터치 — 원인 규명",
+        desc: "업데이트·빌드·클라 결함 전부 배제. 같은 조건 대조군이 45.9%·70.7%인데 광고만 7.3%. 남은 원인은 유입 의도.",
+        url: "docs/ua-ad-nru-first-touch.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-08-20 18:10",
+        pinned: false,
+        tags: ["UA", "NRU", "BigQuery", "크로스프로젝트"],
+      },
+      {
         title: "주간 KPI 3축 — 분석 입구",
         desc: "광고 노출 · 플레이 횟수 · 공유 3축을 전주 대비 숫자로만 본다. 매주 갱신되는 분석 입구.",
         url: "docs/weekly-kpi.html",
