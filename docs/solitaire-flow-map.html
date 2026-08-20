@@ -43,7 +43,7 @@
           <span class="tag">main 브랜치 코드 실측</span>
           <span class="tag">기준 커밋 09a24b2b</span>
           <span class="tag">지면 노드 42 · 흐름 57 · 프리팹 실측 UI</span>
-          <span class="tag">마지막 갱신 2026-08-20 12:10</span>
+          <span class="tag">마지막 갱신 2026-08-20 13:05</span>
         </div>
       </div>
     </header>
@@ -64,14 +64,14 @@
             <div class="stat-sub">화살표마다 호출 메소드 표기</div>
           </div>
           <div class="stat" style="--acc: var(--validate)">
-            <div class="stat-num">176<span class="stat-unit">개</span></div>
+            <div class="stat-num">158<span class="stat-unit">개</span></div>
             <div class="stat-name">프리팹에서 뽑은 실좌표 버튼</div>
-            <div class="stat-sub">프리팹 · 씬 30개 파싱 · 30지면</div>
+            <div class="stat-sub">원시 213개 중 중복 · 배타 정리 후</div>
           </div>
           <div class="stat" style="--acc: var(--balance)">
-            <div class="stat-num">300<span class="stat-unit">개</span></div>
+            <div class="stat-num">287<span class="stat-unit">개</span></div>
             <div class="stat-name">2단 로직 가지</div>
-            <div class="stat-sub">가지 · 버튼 전부 3단까지 · 최장 8단계</div>
+            <div class="stat-sub">가지 · 버튼 전부 3단까지 · 최장 7단계</div>
           </div>
         </div>
 
@@ -107,8 +107,15 @@
               버튼 위치는 추정이 아니라 <strong>프리팹(.prefab) · 씬(.fire)의 cc.Button 을 파싱한 실좌표</strong>입니다 —
               게임이 가로 모드이므로 틀도 디자인 해상도 그대로 <strong>1280&times;720 (16:9)</strong>이고,
               부모 노드의 위치 · 스케일을 누적해 화면 좌표로 환산했습니다. 회전은 무시했고,
-              잠금 오버레이(lockNode)와 스크롤 안쪽 반복 항목, 좌표가 겹치는 중복은 한 개로 접었습니다.
-              점선 버튼은 프리팹 저장 시점에 비활성(런타임 조건부 노출)인 것이고,
+              프리팹은 <strong>화면에 동시에 뜨지 않는 것까지 다 들고 있으므로</strong> 그대로 그리면 실제와 어긋납니다.
+              그래서 ① 잠금 오버레이(lockNode) ② 화면 밖 스크롤 컨텐츠
+              ③ 같은 자리에 겹친 상태별 변형(<code>btn</code> / <code>btn copy</code>, 미션의 교체 · 이동 · 수령)은 한 개로 접고
+              <code>+n</code> 으로 개수만 표시하며 ④ 에디터에서 옆으로 빼둔 배타 패널
+              (리더보드의 <code>friend</code> · <code>alltime</code> 열 등)은 제외했습니다 —
+              원시 <code>cc.Button</code> 213개에서 잠금막 11 · 화면 밖 7 · 배타 패널 15 · 겹침 16을 정리한 결과가 158개입니다.
+              점선 버튼은 프리팹 저장 시점에 비활성(런타임 조건부 노출)인 것,
+              점선 두 줄 + <code>?</code> 는 <strong>코드가 런타임에 위치를 정해 좌표를 믿을 수 없는</strong> 버튼입니다
+              (<code>EventShadowChaseTag/SlotOffset</code> — <code>setPosition</code> 으로 슬롯 y 를 지정).
               프리팹에 버튼이 없는 지면(진입 분기 · 라우터 · 세션 등 12개)은 와이어프레임 없이 로직만 전폭으로 보여줍니다.
               가지 하나가 버튼 · 라이프사이클 단계 하나이고,
               가지 끝의 둥근 노드가 그 버튼이 도달하는 지면입니다. 가지의 왼쪽 색 띠가 성격(게이트 · 서버 · 광고 · 이동)이고,
@@ -617,11 +624,20 @@
                   리더보드 친구 선물 · 주차 이동, 설정 3종 토글, 토스 로그인, 추격 연장 · 안내, 공통 닫기 경로 등입니다.</td>
               </tr>
               <tr>
+                <td>좌표 계산 검증</td>
+                <td><span class="pill" style="--acc: var(--ok)">대조 완료</span></td>
+                <td>프리팹 제작자가 붙인 노드 이름(<code>top_left</code> · <code>bot_right</code> · <code>RightBottom</code> 등)을 정답지로 삼아
+                  계산 좌표와 대조했습니다 — <strong>이름 대조 201건 중 196건 일치</strong>. 불일치 5건은 모두
+                  <code>Top</code> 컨테이너 안에서 <code>y</code> 를 400~500px 끌어내린 노드거나
+                  코드가 위치를 정하는 <code>SlotOffset</code> 이었고, 직접 열어 확인했습니다.</td>
+              </tr>
+              <tr>
                 <td>Widget 정렬 · 런타임 배치</td>
                 <td><span class="pill" style="--acc: var(--warn)">한계</span></td>
                 <td><code>cc.Widget</code> 정렬이나 <code>cc.Layout</code> 은 계산하지 않고 프리팹에 <strong>저장된 좌표를 그대로</strong> 씁니다.
-                  에디터에서 정렬이 이미 반영돼 있으면 맞지만, 코드가 런타임에 옮기는 노드는 어긋날 수 있습니다.
-                  루트 크기가 0 인 프리팹(<code>PopupSettingLanguage</code>)은 화면 중앙 정렬로 가정했습니다.</td>
+                  에디터에서 정렬이 이미 반영돼 있으면 맞지만, 코드가 런타임에 옮기는 노드는 어긋납니다.
+                  루트 크기가 0 인 프리팹(<code>PopupSettingLanguage</code>)은 화면 중앙 정렬로 가정했고,
+                  이 지면의 좌표는 <strong>신뢰도가 낮습니다</strong>.</td>
               </tr>
               <tr>
                 <td>런타임 생성 항목</td>

@@ -376,6 +376,12 @@
     padding: 0 1px; border-radius: 2px;
   }
   .wf-btn.off { border-style: dashed; opacity: .74; }
+  .wf-btn.mv { border-style: dotted; border-width: 2px; }
+  .wf-alt, .wf-mv {
+    font-style: normal; font-size: 7.5px; font-weight: 800; margin-left: 2px;
+    color: var(--cc); vertical-align: super;
+  }
+  .wf-mv { color: var(--c-warnmark, #b26a00); }
   .wf-btn.big { font-size: 10px; font-weight: 800; }
   .wf-btn:hover { z-index: 9; border-color: var(--cc); box-shadow: 0 1px 6px var(--shadow); }
   .wf-btn:hover span { background: var(--surface); }
@@ -509,15 +515,18 @@
   /* ── 프리팹 실측 UI ──────────────────────────────────────────
      assets 하위 프리팹 · 씬의 cc.Button 을 파싱해 1280x720 가로 화면
      좌표로 정규화했다. x/y = 버튼 중심(0~1, y 는 위에서 아래), w/hh = 크기,
-     a = 프리팹 저장 시점의 _active, stk = 같은 자리에 겹친 순서.
-     회전은 무시하고, 화면 밖(스크롤 컨텐츠)과 좌표가 겹치는 중복은 걸렀다. */
+     a = 프리팹 저장 시점의 _active, L = 경로로 확정한 이름,
+     mv = 코드가 런타임에 위치를 정하는 노드(위치 미확정),
+     alt = 같은 자리에 겹쳐 있어 접은 상태별 변형.
+     회전은 무시했고, 화면 밖 스크롤 컨텐츠 · 잠금 오버레이 ·
+     에디터에서 옆으로 빼둔 배타 패널은 제외했다. */
   const PF = {
-    lobby: { src: "ViewLobby.prefab", panel: null, btns: [
+    lobby: { src: "ViewLobby.prefab", panel: null, parked: 0, btns: [
       { h: "onClickBackground", n: "blockInputLayer", t: "", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
       { h: "onClickShop", n: "SHOPBUTTON", t: "9,999,999", x: 0.1047, y: 0.0611, w: 0.1875, hh: 0.1111, a: 1 },
       { h: "onClickHammer", n: "hammer", t: "999", x: 0.2812, y: 0.0611, w: 0.1562, hh: 0.1111, a: 1 }
     ] },
-    lobbymain: { src: "ViewLobby.prefab", panel: null, btns: [
+    lobbymain: { src: "ViewLobby.prefab", panel: null, parked: 0, btns: [
       { h: "onClickIdleGold", n: "IDLEGOLDBUTTON", t: "3000", x: 0.8203, y: 0.8917, w: 0.0938, hh: 0.1667, a: 1 },
       { h: "onClickPlay", n: "LOBBYPLAYBUTTON", t: "323", x: 0.9352, y: 0.8917, w: 0.1172, hh: 0.2083, a: 1 },
       { h: "onClickDailyTask", n: "DAILYTASK", t: "00:00:00", x: 0.0547, y: 0.2167, w: 0.0938, hh: 0.1667, a: 1 },
@@ -533,36 +542,34 @@
       { h: "onClickInbox", n: "box", t: "", x: 0.8938, y: 0.0694, w: 0.0578, hh: 0.1007, a: 1 },
       { h: "onClickShowDecoView", n: "DECOBUTTON", t: "32/42", x: 0.0828, y: 0.9083, w: 0.1469, hh: 0.1611, a: 1 },
       { h: "onClickLeaderboard", n: "box", t: "", x: 0.2, y: 0.9222, w: 0.0781, hh: 0.1361, a: 1 },
-      { h: "onClickTournament", n: "box", t: "", x: 0.2828, y: 0.9222, w: 0.0781, hh: 0.1361, a: 0, stk: 1 },
-      { h: "onClickCollection", n: "box", t: "", x: 0.2828, y: 0.9222, w: 0.0781, hh: 0.1361, a: 1 },
+      { h: "onClickCollection", n: "box", t: "", alt: ["onClickTournament · box (비활성)"], x: 0.2828, y: 0.9222, w: 0.0781, hh: 0.1361, a: 1 },
       { h: "onClickTossLogin", n: "toss", t: "!", x: 0.3656, y: 0.9222, w: 0.0781, hh: 0.1389, a: 1 }
     ] },
-    deco: { src: "ViewLobby.prefab", panel: null, btns: [
+    deco: { src: "ViewLobby.prefab", panel: null, parked: 0, btns: [
       { h: "onClickBubbleView", n: "gauge_box", t: "", x: 0.8047, y: 0.1042, w: 0.3078, hh: 0.0806, a: 0 },
       { h: "onClickBubbleView", n: "reward_Icon", t: "", x: 0.9609, y: 0.0944, w: 0.0626, hh: 0.1197, a: 0 },
       { h: "onClickMetaCityList", n: "box", t: "", x: 0.9313, y: 0.8861, w: 0.1219, hh: 0.2051, a: 0 },
-      { h: "onClickHideDecoView", n: "btn_back", t: "", x: 0.05, y: 0.9167, w: 0.0781, hh: 0.1389, a: 0 },
+      { h: "onClickHideDecoView", n: "btn_back", t: "", L: "꾸미기 나가기", x: 0.05, y: 0.9167, w: 0.0781, hh: 0.1389, a: 0 },
       { h: "onClickShare", n: "btn_camera", t: "", x: 0.1406, y: 0.9167, w: 0.0781, hh: 0.1389, a: 0 }
     ] },
-    upgrade: { src: "ViewLobby.prefab", panel: null, btns: [
-      { h: "onClickUpgrade", n: "btn", t: "", x: 0.5969, y: 0.9306, w: 0.1898, hh: 0.12, a: 0, stk: 1 },
-      { h: "", n: "btn", t: "", x: 0.5969, y: 0.9306, w: 0.1898, hh: 0.12, a: 0 }
+    upgrade: { src: "ViewLobby.prefab", panel: null, parked: 0, btns: [
+      { h: "onClickUpgrade", n: "btn", t: "", alt: ["(핸들러 없음) · btn (비활성)"], x: 0.5969, y: 0.9306, w: 0.1898, hh: 0.12, a: 0 }
     ] },
-    p_citylist: { src: "PopupMetaCityList.prefab", panel: null, btns: [
-      { h: "onClickBackground", n: "backgroundNode", t: "", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
-      { h: "close", n: "btn_back", t: "", x: 0.05, y: 0.8472, w: 0.0781, hh: 0.1389, a: 1 },
+    p_citylist: { src: "PopupMetaCityList.prefab", panel: null, parked: 0, btns: [
+      { h: "onClickBackground", n: "backgroundNode", t: "", alt: ["onClickBackground · BlockInputLayer"], x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
+      { h: "close", n: "btn_back", t: "", L: "뒤로", x: 0.05, y: 0.8472, w: 0.0781, hh: 0.1389, a: 1 },
       { h: "close", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 1 },
       { h: "close", n: "close_toss", t: "", x: 0.825, y: 0.075, w: 0.0578, hh: 0.1056, a: 1 }
     ] },
-    p_decoshare: { src: "PopupDecoShare.prefab", panel: null, btns: [
+    p_decoshare: { src: "PopupDecoShare.prefab", panel: null, parked: 0, btns: [
       { h: "onClickShare", n: "btn", t: "", x: 0.5, y: 0.8833, w: 0.2519, hh: 0.1386, a: 1 },
       { h: "onClickClose", n: "close", t: "", x: 0.8313, y: 0.1444, w: 0.0578, hh: 0.1056, a: 1 }
     ] },
-    p_newarea: { src: "PopupNewArea.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_newarea: { src: "PopupNewArea.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "close", n: "close", t: "", x: 0.7, y: 0.1694, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "close", n: "btn", t: "", x: 0.5, y: 0.7375, w: 0.2344, hh: 0.1333, a: 1 }
     ] },
-    p_shop: { src: "PopupShop.prefab", panel: null, btns: [
+    p_shop: { src: "PopupShop.prefab", panel: null, parked: 0, btns: [
       { h: "onClickBuyItem", n: "btn", t: "", x: 0.1469, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
       { h: "onClickBuyItem", n: "btn", t: "", x: 0.3922, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
       { h: "onClickBuyItem", n: "btn", t: "", x: 0.6375, y: 0.8472, w: 0.1864, hh: 0.1119, a: 1 },
@@ -570,25 +577,18 @@
       { h: "close", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 },
       { h: "close", n: "close_toss", t: "", x: 0.825, y: 0.075, w: 0.0602, hh: 0.1097, a: 1 }
     ] },
-    p_leader: { src: "PopupLeaderBoard.prefab", panel: null, btns: [
+    p_leader: { src: "PopupLeaderBoard.prefab", panel: null, parked: 15, btns: [
       { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.4111, w: 0.0418, hh: 0.08, a: 1 },
       { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.5194, w: 0.0418, hh: 0.08, a: 1 },
       { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.6278, w: 0.0418, hh: 0.08, a: 1 },
       { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.7361, w: 0.0418, hh: 0.08, a: 1 },
       { h: "onClickGiftButton", n: "box", t: "", x: 0.4484, y: 0.8444, w: 0.0418, hh: 0.08, a: 1 },
-      { h: "onClickWorldWeeklyUp", n: "arrow", t: "", x: 0.3203, y: 0.3472, w: 0.0404, hh: 0.0688, a: 1 },
-      { h: "onClickWorldWeeklyDown", n: "arrow", t: "", x: 0.3203, y: 0.9139, w: 0.0395, hh: 0.0626, a: 1 },
-      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.4111, w: 0.0418, hh: 0.08, a: 0 },
-      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.5194, w: 0.0418, hh: 0.08, a: 0 },
-      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.6278, w: 0.0418, hh: 0.08, a: 0 },
-      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.7361, w: 0.0418, hh: 0.08, a: 0 },
-      { h: "onClickGiftButton", n: "box", t: "", x: 0.8078, y: 0.8444, w: 0.0418, hh: 0.08, a: 0 },
-      { h: "onClickFriendsWeeklyUp", n: "arrow", t: "", x: 0.3203, y: 0.3472, w: 0.0404, hh: 0.0688, a: 0, stk: 1 },
-      { h: "onClickFriendsWeeklyDown", n: "arrow", t: "", x: 0.3203, y: 0.9139, w: 0.0395, hh: 0.0626, a: 0, stk: 1 },
+      { h: "onClickWorldWeeklyUp", n: "arrow", t: "", alt: ["onClickFriendsWeeklyUp · arrow (비활성)"], x: 0.3203, y: 0.3472, w: 0.0404, hh: 0.0688, a: 1 },
+      { h: "onClickWorldWeeklyDown", n: "arrow", t: "", alt: ["onClickFriendsWeeklyDown · arrow (비활성)"], x: 0.3203, y: 0.9139, w: 0.0395, hh: 0.0626, a: 1 },
       { h: "onClickGlobal", n: "btn", t: "", x: 0.4116, y: 0.225, w: 0.1777, hh: 0.0871, a: 0 },
       { h: "onClickClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0578, hh: 0.1056, a: 0 }
     ] },
-    p_tour: { src: "PopupTournament.prefab", panel: null, btns: [
+    p_tour: { src: "PopupTournament.prefab", panel: null, parked: 0, btns: [
       { h: "onClickJoin", n: "btn", t: "", x: 0.357, y: 0.8083, w: 0.1925, hh: 0.1174, a: 1 },
       { h: "onClickCreate", n: "btn", t: "", x: 0.357, y: 0.6944, w: 0.1925, hh: 0.1174, a: 0 },
       { h: "onClickJoin", n: "btn", t: "", x: 0.643, y: 0.8083, w: 0.1925, hh: 0.1174, a: 1 },
@@ -598,9 +598,9 @@
       { h: "onClickClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 },
       { h: "onClickClose", n: "close_toss", t: "", x: 0.8234, y: 0.1444, w: 0.0602, hh: 0.1097, a: 1 }
     ] },
-    p_collect: { src: "PopupCollection.prefab", panel: null, btns: [
+    p_collect: { src: "PopupCollection.prefab", panel: null, parked: 0, btns: [
       { h: "close", n: "close", t: "", x: 0.8984, y: 0.0944, w: 0.0578, hh: 0.1056, a: 1 },
-      { h: "onClickBack", n: "btn_back", t: "", x: 0.1688, y: 0.8778, w: 0.0594, hh: 0.1056, a: 0 },
+      { h: "onClickBack", n: "btn_back", t: "", L: "뒤로", x: 0.1688, y: 0.8778, w: 0.0594, hh: 0.1056, a: 0 },
       { h: "onClickItem", n: "1", t: "20", x: 0.3125, y: 0.334, w: 0.1281, hh: 0.1819, a: 1 },
       { h: "onClickItem", n: "2", t: "20", x: 0.4273, y: 0.334, w: 0.1492, hh: 0.1819, a: 1 },
       { h: "onClickItem", n: "3", t: "20", x: 0.552, y: 0.334, w: 0.1492, hh: 0.1819, a: 1 },
@@ -611,85 +611,77 @@
       { h: "onClickItem", n: "10", t: "20", x: 0.4379, y: 0.6632, w: 0.1281, hh: 0.2208, a: 1 },
       { h: "onClickItem", n: "11", t: "20", x: 0.552, y: 0.6632, w: 0.1492, hh: 0.2208, a: 1 },
       { h: "onClickItem", n: "12", t: "20", x: 0.677, y: 0.6632, w: 0.1492, hh: 0.2208, a: 1 },
-      { h: "onClickBack", n: "all_puzzle", t: "All\nPuzzle", x: 0.1906, y: 0.8583, w: 0.0781, hh: 0.1389, a: 1 },
+      { h: "onClickBack", n: "all_puzzle", t: "All\nPuzzle", L: "전체 퍼즐 보기", x: 0.1906, y: 0.8583, w: 0.0781, hh: 0.1389, a: 1 },
       { h: "onClickAlbumTab", n: "album", t: "Album", x: 0.0867, y: 0.2014, w: 0.125, hh: 0.1389, a: 1 },
       { h: "onClickDeckTab", n: "deck", t: "Deck", x: 0.0867, y: 0.3403, w: 0.125, hh: 0.1389, a: 1 }
     ] },
-    p_mail: { src: "PopupMail.prefab", panel: null, btns: [
+    p_mail: { src: "PopupMail.prefab", panel: null, parked: 0, btns: [
       { h: "onClickFriendInvite", n: "btn", t: "", x: 0.7172, y: 0.2835, w: 0.1477, hh: 0.0933, a: 1 },
-      { h: "onClickClaimAll", n: "btn", t: "", x: 0.3859, y: 0.9, w: 0.2281, hh: 0.1333, a: 1 },
-      { h: "onClickClaimAllDisabled", n: "btn", t: "", x: 0.3859, y: 0.9, w: 0.2281, hh: 0.1333, a: 1, stk: 1 },
+      { h: "onClickClaimAll", n: "btn", t: "", alt: ["onClickClaimAllDisabled · btn"], x: 0.3859, y: 0.9, w: 0.2281, hh: 0.1333, a: 1 },
       { h: "onClickRefresh", n: "btn", t: "", x: 0.6141, y: 0.9, w: 0.2281, hh: 0.1333, a: 1 },
       { h: "close", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 },
       { h: "close", n: "close_toss", t: "", x: 0.8234, y: 0.1778, w: 0.0602, hh: 0.1097, a: 1 }
     ] },
-    p_task: { src: "PopupDailyTask.prefab", panel: null, btns: [
+    p_task: { src: "PopupDailyTask.prefab", panel: null, parked: 0, btns: [
       { h: "onClickBackground", n: "dim", t: "", x: 0.5, y: 0.5, w: 2.3438, hh: 4.1667, a: 1 },
       { h: "close", n: "close", t: "", x: 0.8344, y: 0.0944, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickMilestoneReward", n: "gift01", t: "", x: 0.3867, y: 0.2556, w: 0.0398, hh: 0.0762, a: 1 },
       { h: "onClickMilestoneReward", n: "gift02", t: "", x: 0.5961, y: 0.2556, w: 0.0455, hh: 0.0871, a: 1 },
       { h: "onClickMilestoneReward", n: "gift03", t: "", x: 0.7914, y: 0.2556, w: 0.0499, hh: 0.0964, a: 1 },
-      { h: "onClickChangeButton", n: "btn", t: "", x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
-      { h: "onClickGoButton", n: "btn", t: "", x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 1, stk: 1 },
-      { h: "onClickClaimButton", n: "btn", t: "", x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 0, stk: 2 },
-      { h: "onClickChangeButton", n: "btn", t: "", x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
-      { h: "onClickGoButton", n: "btn", t: "", x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 1, stk: 1 },
-      { h: "onClickClaimButton", n: "btn", t: "", x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 0, stk: 2 },
-      { h: "onClickChangeButton", n: "btn", t: "", x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
-      { h: "onClickGoButton", n: "btn", t: "", x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 1, stk: 1 },
-      { h: "onClickClaimButton", n: "btn", t: "", x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 0, stk: 2 }
+      { h: "onClickChangeButton", n: "btn", t: "", L: "미션 교체", alt: ["onClickGoButton · btn", "onClickClaimButton · btn (비활성)"], x: 0.282, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
+      { h: "onClickChangeButton", n: "btn", t: "", L: "미션 교체", alt: ["onClickGoButton · btn", "onClickClaimButton · btn (비활성)"], x: 0.5, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 },
+      { h: "onClickChangeButton", n: "btn", t: "", L: "미션 교체", alt: ["onClickGoButton · btn", "onClickClaimButton · btn (비활성)"], x: 0.718, y: 0.825, w: 0.1812, hh: 0.1067, a: 1 }
     ] },
-    p_wheel: { src: "PopupDailyWheel.prefab", panel: null, btns: [
+    p_wheel: { src: "PopupDailyWheel.prefab", panel: null, parked: 0, btns: [
       { h: "onClickPlay", n: "btn", t: "", x: 0.5, y: 0.9167, w: 0.2437, hh: 0.1386, a: 1 },
       { h: "onClickClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickClose", n: "close_toss", t: "", x: 0.825, y: 0.075, w: 0.0578, hh: 0.1056, a: 0 }
     ] },
-    p_offer: { src: "PopupSpecialOffer.prefab", panel: null, btns: [
+    p_offer: { src: "PopupSpecialOffer.prefab", panel: null, parked: 0, btns: [
       { h: "onClickPurchase", n: "btn", t: "", x: 0.675, y: 0.7778, w: 0.2205, hh: 0.1281, a: 1 },
       { h: "onClickClose", n: "close", t: "", x: 0.8609, y: 0.1417, w: 0.0602, hh: 0.1097, a: 1 }
     ] },
-    p_needhammer: { src: "PopupNeedHammer.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_needhammer: { src: "PopupNeedHammer.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "onClickClose", n: "close", t: "", x: 0.7234, y: 0.1833, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickPlay", n: "btn", t: "", x: 0.5, y: 0.6956, w: 0.2664, hh: 0.1467, a: 1 }
     ] },
-    p_ev_card: { src: "PopupEventCardMilestone.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_ev_card: { src: "PopupEventCardMilestone.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "close", n: "close", t: "", x: 0.8859, y: 0.1347, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickPlay", n: "btn", t: "", x: 0.3109, y: 0.7319, w: 0.2664, hh: 0.1467, a: 1 },
       { h: "onClickShare", n: "btn_share", t: "", x: 0.05, y: 0.0778, w: 0.0703, hh: 0.125, a: 1 }
     ] },
-    p_ev_win: { src: "PopupEventWinningMilestone.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_ev_win: { src: "PopupEventWinningMilestone.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "close", n: "close", t: "", x: 0.8703, y: 0.1347, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickPlay", n: "btn", t: "", x: 0.5, y: 0.7661, w: 0.2664, hh: 0.1467, a: 1 },
       { h: "onClickShare", n: "btn_share", t: "", x: 0.05, y: 0.0778, w: 0.0703, hh: 0.125, a: 1 }
     ] },
-    p_ev_rank: { src: "PopupEventClearRanking.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_ev_rank: { src: "PopupEventClearRanking.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "onClickPlay", n: "btn", t: "", x: 0.2906, y: 0.7708, w: 0.2664, hh: 0.1467, a: 1 },
       { h: "close", n: "close", t: "", x: 0.8938, y: 0.1347, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickShare", n: "btn_share", t: "", x: 0.05, y: 0.0778, w: 0.0703, hh: 0.125, a: 1 }
     ] },
-    entrypopup: { src: "PopupGameEntry.prefab", panel: null, btns: [
+    entrypopup: { src: "PopupGameEntry.prefab", panel: null, parked: 0, btns: [
       { h: "onClickFriendInvite", n: "btn", t: "", x: 0.1531, y: 0.6833, w: 0.1487, hh: 0.0907, a: 1 },
-      { h: "onClickAdExtend", n: "bubble", t: "", x: 0.8781, y: 0.8444, w: 0.0547, hh: 0.1083, a: 1 },
-      { h: "onClickInfo", n: "info", t: "!", x: 0.8828, y: 0.6917, w: 0.0325, hh: 0.0519, a: 1 },
+      { h: "onClickAdExtend", n: "bubble", t: "", mv: 1, x: 0.8781, y: 0.8444, w: 0.0547, hh: 0.1083, a: 1 },
+      { h: "onClickInfo", n: "info", t: "!", mv: 1, x: 0.8828, y: 0.6917, w: 0.0325, hh: 0.0519, a: 1 },
       { h: "close", n: "close", t: "", x: 0.7, y: 0.0792, w: 0.0578, hh: 0.1056, a: 1 },
-      { h: "onClickEnterStage", n: "btn", t: "Play", x: 0.5, y: 0.7903, w: 0.2188, hh: 0.1333, a: 1 },
+      { h: "onClickEnterStage", n: "btn", t: "Play", alt: ["onClickEnterStage · offbtn (비활성)"], x: 0.5, y: 0.7903, w: 0.2188, hh: 0.1333, a: 1 },
       { h: "onClickGrandFireworksBooster", n: "BOOSTER1", t: "3", x: 0.3922, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
       { h: "onClickGoldenTicketBooster", n: "BOOSTER2", t: "3", x: 0.5, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
-      { h: "onClickGoldRushBooster", n: "BOOSTER3", t: "", x: 0.6078, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
-      { h: "onClickGoldenTicketBooster", n: "booster3", t: "3", x: 0.6078, y: 0.6153, w: 0.0938, hh: 0.1667, a: 0, stk: 1 },
+      { h: "onClickGoldRushBooster", n: "BOOSTER3", t: "", alt: ["onClickGoldenTicketBooster · booster3 (비활성)"], x: 0.6078, y: 0.6153, w: 0.0938, hh: 0.1667, a: 1 },
       { h: "onClickMinusMultiple", n: "box", t: "", x: 0.4062, y: 0.4097, w: 0.05, hh: 0.0889, a: 1 },
       { h: "onClickAddMultiple", n: "box", t: "", x: 0.5938, y: 0.4097, w: 0.05, hh: 0.0889, a: 1 },
       { h: "onClickFullHammer", n: "item01", t: "Full", x: 0.4352, y: 0.2819, w: 0.0433, hh: 0.0878, a: 1 },
       { h: "onClickOpenShop", n: "box", t: "", x: 0.1141, y: 0.0611, w: 0.1719, hh: 0.0736, a: 1 }
     ] },
-    p_charge: { src: "PopupChargeGold.prefab", panel: null, btns: [
+    p_charge: { src: "PopupChargeGold.prefab", panel: null, parked: 0, btns: [
       { h: "onClickClose", n: "close", t: "", x: 0.7234, y: 0.1708, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickWatchAd", n: "btn", t: "", x: 0.5, y: 0.6831, w: 0.275, hh: 0.1467, a: 1 }
     ] },
-    viewgame: { src: "ViewGame.prefab", panel: null, btns: [
+    viewgame: { src: "ViewGame.prefab", panel: null, parked: 0, btns: [
       { h: "onClickButton", n: "FIRECRACKER", t: "99.K", x: 0.8453, y: 0.8792, w: 0.0813, hh: 0.2014, a: 1 },
       { h: "onClickOpenShop", n: "coin", t: "9,999,999", x: 0.0969, y: 0.0626, w: 0.1953, hh: 0.1389, a: 1 },
-      { h: "onClickEndLevel", n: "btn", t: "", x: 0.25, y: 0.9056, w: 0.1031, hh: 0.1497, a: 1 },
+      { h: "onClickEndLevel", n: "btn", t: "", L: "그만두기", x: 0.25, y: 0.9056, w: 0.1031, hh: 0.1497, a: 1 },
       { h: "onClickButton", n: "plusCardItem", t: "+5", x: 0.4461, y: 0.8792, w: 0.0969, hh: 0.2083, a: 0 },
       { h: "onClickRewardBox", n: "rewarboxTouch", t: "", x: 0.0798, y: 0.7864, w: 0.1406, hh: 0.375, a: 1 },
       { h: "", n: "WildCardView", t: "", x: 0.6641, y: 0.4375, w: 0.0941, hh: 0.2294, a: 0 },
@@ -698,9 +690,9 @@
       { h: "onClickOption", n: "box", t: "", x: 0.9523, y: 0.0696, w: 0.0578, hh: 0.1007, a: 1 },
       { h: "onClickStreakBubble", n: "INGAMESTREAK", t: "", x: 0.7789, y: 0.0639, w: 0.2656, hh: 0.0861, a: 1 },
       { h: "onClickButton", n: "WildCardBuyItem", t: "16", x: 0.9437, y: 0.8792, w: 0.0813, hh: 0.2014, a: 1 },
-      { h: "onClickButton", n: "btn_back", t: "", x: 0.6969, y: 0.8944, w: 0.0703, hh: 0.125, a: 1 }
+      { h: "onClickButton", n: "btn_back", t: "", L: "Undo", x: 0.6969, y: 0.8944, w: 0.0703, hh: 0.125, a: 1 }
     ] },
-    p_ingameset: { src: "PopupSettingInGame.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_ingameset: { src: "PopupSettingInGame.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "onClickResume", n: "close", t: "", x: 0.7, y: 0.1708, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onChangeSFX", n: "sound", t: "", x: 0.3875, y: 0.375, w: 0.0938, hh: 0.1667, a: 1 },
       { h: "onChangeBGM", n: "music", t: "", x: 0.5, y: 0.375, w: 0.0938, hh: 0.1667, a: 1 },
@@ -708,29 +700,28 @@
       { h: "onClickQuit", n: "btn", t: "", x: 0.5, y: 0.7083, w: 0.2031, hh: 0.1333, a: 1 },
       { h: "onClickResume", n: "btn", t: "", x: 0.5, y: 0.5667, w: 0.2344, hh: 0.1333, a: 1 }
     ] },
-    p_lang: { src: "PopupSettingLanguage.prefab", panel: null, btns: [
+    p_lang: { src: "PopupSettingLanguage.prefab", panel: null, parked: 0, btns: [
       { h: "onClickClose", n: "close", t: "", x: 0.7312, y: 0.1431, w: 0.0578, hh: 0.1056, a: 1 }
     ] },
-    p_complete: { src: "PopupCompleteLevel.prefab", panel: null, btns: [
+    p_complete: { src: "PopupCompleteLevel.prefab", panel: null, parked: 0, btns: [
       { h: "onClickCollect", n: "btn", t: "", x: 0.3535, y: 0.7639, w: 0.2422, hh: 0.1333, a: 1 },
       { h: "onClickCollectDouble", n: "btn", t: "", x: 0.6035, y: 0.7639, w: 0.2422, hh: 0.1333, a: 1 },
-      { h: "onClickLobby", n: "box", t: "", x: 0.7715, y: 0.7639, w: 0.0703, hh: 0.1225, a: 1 },
-      { h: "onClickAdExtend", n: "bubble", t: "+5m", x: 0.9656, y: 0.8389, w: 0.0547, hh: 0.0972, a: 1 },
-      { h: "onClickInfo", n: "info", t: "!", x: 0.9703, y: 0.6861, w: 0.0325, hh: 0.0519, a: 1 },
+      { h: "onClickLobby", n: "box", t: "", alt: ["onClickLobby · add"], x: 0.7715, y: 0.7639, w: 0.0703, hh: 0.1225, a: 1 },
+      { h: "onClickAdExtend", n: "bubble", t: "+5m", mv: 1, x: 0.9656, y: 0.8389, w: 0.0547, hh: 0.0972, a: 1 },
+      { h: "onClickInfo", n: "info", t: "!", mv: 1, x: 0.9703, y: 0.6861, w: 0.0325, hh: 0.0519, a: 1 },
       { h: "onClickShare", n: "btn", t: "", x: 0.5, y: 0.8528, w: 0.2664, hh: 0.1467, a: 0 },
       { h: "onClickShareClose", n: "close", t: "", x: 0.9578, y: 0.075, w: 0.0602, hh: 0.1097, a: 0 }
     ] },
-    p_quit: { src: "PopupQuitLevel.prefab", panel: {"w": 0.5625, "h": 1.0}, btns: [
+    p_quit: { src: "PopupQuitLevel.prefab", panel: {"w": 0.5625, "h": 1.0}, parked: 0, btns: [
       { h: "onClickClose", n: "close", t: "", x: 0.7, y: 0.1278, w: 0.0578, hh: 0.1056, a: 1 },
       { h: "onClickQuit", n: "btn", t: "", x: 0.5969, y: 0.6278, w: 0.1909, hh: 0.1253, a: 1 },
       { h: "onClickBack", n: "btn", t: "", x: 0.4031, y: 0.6278, w: 0.1909, hh: 0.1253, a: 1 },
       { h: "onClickRetry", n: "btn", t: "", x: 0.5, y: 0.7847, w: 0.2484, hh: 0.1414, a: 1 }
     ] },
-    p_reward: { src: "PopupRewardClaim.prefab", panel: null, btns: [
-      { h: "", n: "PopupRewardClaim", t: "Daily Tasks Gift!", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 1 },
-      { h: "onClickBackground", n: "claimButton", t: "", x: 0.5, y: 0.5, w: 1.5625, hh: 1.3889, a: 1, stk: 1 }
+    p_reward: { src: "PopupRewardClaim.prefab", panel: null, parked: 0, btns: [
+      { h: "onClickBackground", n: "claimButton", t: "", alt: ["(핸들러 없음) · PopupRewardClaim"], x: 0.5, y: 0.5, w: 1.5625, hh: 1.3889, a: 1 }
     ] },
-    p_gift: { src: "PopupDailyGift.prefab", panel: null, btns: [
+    p_gift: { src: "PopupDailyGift.prefab", panel: null, parked: 0, btns: [
       { h: "onClickPopup", n: "dim", t: "", x: 0.5, y: 0.5, w: 2.3438, hh: 4.1667, a: 1 },
       { h: "onClickClaim", n: "btn_add", t: "", x: 0.2625, y: 0.4979, w: 0.1139, hh: 0.0719, a: 1 },
       { h: "onClickClaim", n: "btn_add", t: "", x: 0.4078, y: 0.4979, w: 0.1139, hh: 0.0719, a: 1 },
@@ -741,11 +732,11 @@
       { h: "onClickClaimDaySeven", n: "btn_add", t: "", x: 0.7188, y: 0.7939, w: 0.1477, hh: 0.0933, a: 1 },
       { h: "onClickSevenDayBubbleView", n: "btn", t: "", x: 0.7782, y: 0.4028, w: 0.0312, hh: 0.0567, a: 1 }
     ] },
-    p_shadow: { src: "PopupEventShadowChase.prefab", panel: null, btns: [
+    p_shadow: { src: "PopupEventShadowChase.prefab", panel: null, parked: 0, btns: [
       { h: "showStolenCut", n: "claimButton", t: "", x: 0.5, y: 0.5, w: 1.5625, hh: 1.3889, a: 1 },
       { h: "onClickClose", n: "btn_ok", t: "OK", x: 0.5, y: 0.6194, w: 0.2266, hh: 0.1333, a: 0 }
     ] },
-    p_tutorial: { src: "PopupTutorial.prefab", panel: null, btns: [
+    p_tutorial: { src: "PopupTutorial.prefab", panel: null, parked: 0, btns: [
       { h: "onClickDismiss", n: "dim", t: "", x: 0.5, y: 0.5, w: 6.25, hh: 11.1111, a: 1 }
     ] },
   };
@@ -785,7 +776,7 @@
   };
 
   /* 프리팹 노드 이름이 btn/box 처럼 무의미할 때 쓰는 사람용 이름 */
-  const BTNNAME = {"SHOPBUTTON": "상점", "hammer": "해머", "IDLEGOLDBUTTON": "방치 골드", "LOBBYPLAYBUTTON": "PLAY", "DAILYTASK": "일일 미션", "DECOBUTTON": "꾸미기", "LEADERBOARDBUTTON": "리더보드", "ALBUM": "컬렉션", "tournament": "토너먼트", "toss": "토스 로그인", "set": "설정", "inbox": "우편", "free_coin": "무료 골드", "daily_wheel": "룰렛", "daily_IAP01": "IAP A", "daily_IAP02": "IAP B", "daily_IAP03": "IAP C", "FIRECRACKER": "불꽃", "plusCardItem": "플러스 카드", "WildCardBuyItem": "와일드 카드", "btn_back": "뒤로", "coin": "재화 · 상점", "rewarboxTouch": "보상 상자", "INGAMESTREAK": "연승 말풍선", "WildCardView": "와일드 카드 슬롯", "BOOSTER1": "대형 불꽃", "BOOSTER2": "골든 티켓", "BOOSTER3": "골드 러시", "item01": "해머 채우기", "close": "닫기", "close_toss": "닫기", "btn_camera": "촬영 · 공유", "dim": "전체 터치", "claimButton": "수령 터치", "backgroundNode": "배경", "blockInputLayer": "배경", "bubble": "추격 연장", "info": "추격 안내", "box": "버튼", "btn": "버튼", "add": "홈으로", "offbtn": "시작(비활성)", "UPGRADE_BUTTON": "업그레이드", "all_city": "도시 목록", "gauge_box": "도시 게이지", "reward_Icon": "게이지 보상", "btn_ok": "확인"};
+  const BTNNAME = {"SHOPBUTTON": "상점", "hammer": "해머", "IDLEGOLDBUTTON": "방치 골드", "LOBBYPLAYBUTTON": "PLAY", "DAILYTASK": "일일 미션", "DECOBUTTON": "꾸미기", "LEADERBOARDBUTTON": "리더보드", "ALBUM": "컬렉션", "tournament": "토너먼트", "toss": "토스 로그인", "set": "설정", "inbox": "우편", "free_coin": "무료 골드", "daily_wheel": "룰렛", "daily_IAP01": "IAP A", "daily_IAP02": "IAP B", "daily_IAP03": "IAP C", "FIRECRACKER": "불꽃", "plusCardItem": "플러스 카드", "WildCardBuyItem": "와일드 카드", "coin": "재화 · 상점", "rewarboxTouch": "보상 상자", "INGAMESTREAK": "연승 말풍선", "WildCardView": "와일드 카드 슬롯", "BOOSTER1": "대형 불꽃", "BOOSTER2": "골든 티켓", "BOOSTER3": "골드 러시", "item01": "해머 채우기", "close": "닫기", "close_toss": "닫기", "btn_camera": "촬영 · 공유", "dim": "전체 터치", "claimButton": "수령 터치", "backgroundNode": "배경", "blockInputLayer": "배경", "bubble": "추격 연장", "info": "추격 안내", "box": "버튼", "btn": "버튼", "add": "홈으로", "offbtn": "시작(비활성)", "UPGRADE_BUTTON": "업그레이드", "all_city": "도시 목록", "gauge_box": "도시 게이지", "reward_Icon": "게이지 보상", "btn_ok": "확인"};
   const N = [
     /* ================= 진입 ================= */
     {
@@ -1626,6 +1617,7 @@
   /* 프리팹 노드 이름 · 라벨 문자열에서 사람이 읽을 이름을 고른다.
      숫자만 있는 라벨(재화 표시 등)은 버튼 이름이 아니므로 버린다. */
   const nameOf = function (b) {
+    if (b.L) return b.L;                 /* 경로로 확정한 이름이 가장 정확하다 */
     const t = (b.t || "").trim();
     if (t && !/^[\d,.:%\s+x/-]*$/.test(t) && t.length <= 14) return t;
     if (BTNNAME[b.n] && BTNNAME[b.n] !== "버튼") return BTNNAME[b.n];
@@ -1648,7 +1640,7 @@
           for (let si = 0; si < secs.length; si++) {
             const rows = secs[si].rows;
             for (let ri = 0; ri < rows.length; ri++) {
-              if (re.test(rows[ri][1])) { b._sec = si; b._row = ri; b._label = rows[ri][0]; return; }
+              if (re.test(rows[ri][1])) { b._sec = si; b._row = ri; b._label = b.L || rows[ri][0]; return; }
             }
           }
         }
@@ -1671,7 +1663,7 @@
       if (add.length) {
         secs.push({ h: "프리팹 실측 · 표 밖 버튼", rows: add.map(function (a) { return a.row; }) });
         const si = secs.length - 1;
-        add.forEach(function (a, i) { a.b._sec = si; a.b._row = i; a.b._label = a.row[0]; });
+        add.forEach(function (a, i) { a.b._sec = si; a.b._row = i; a.b._label = a.b.L || a.row[0]; });
       }
     }
     SEC_CACHE[n.id] = secs;
@@ -1695,7 +1687,8 @@
       return {
         label: b._label || nameOf(b), sec: b._sec, row: b._row, steps: steps.length,
         type: stepType(steps[steps.length - 1] || ""), big: BIG.test(b._label || ""),
-        x: b.x, y: b.y, w: b.w, h: b.hh, on: b.a === 1, stk: b.stk || 0,
+        x: b.x, y: b.y, w: b.w, h: b.hh, on: b.a === 1,
+        moved: b.mv === 1, alt: b.alt || null,
         handler: b.h, node: b.n, full: b.w >= 0.9 && b.hh >= 0.9
       };
     });
@@ -2100,18 +2093,26 @@
     });
     spot.forEach(function (x) {
       const w = Math.max(x.w * 100, 6.2), h = Math.max(x.h * 100, 8.5);
+      const tip = x.node + " · " + (x.handler || "핸들러 없음") + " · " + x.steps + "단계"
+        + (x.on ? "" : " · 프리팹 저장 시점 비활성")
+        + (x.moved ? " · 위치는 코드가 런타임에 정함" : "")
+        + (x.alt ? "\n같은 자리 변형: " + x.alt.join(", ") : "");
       o += '<button class="wf-btn n-' + x.type + (x.big ? " big" : "") + (x.on ? "" : " off")
-        + '" data-sec="' + x.sec + '" data-row="' + x.row + '"'
+        + (x.moved ? " mv" : "") + '" data-sec="' + x.sec + '" data-row="' + x.row + '"'
         + ' style="left:' + (x.x * 100).toFixed(2) + '%;top:' + (x.y * 100).toFixed(2) + '%;'
-        + 'width:' + w.toFixed(2) + '%;min-height:' + h.toFixed(2) + '%'
-        + (x.stk ? ';margin-left:' + (x.stk * 7) + 'px;margin-top:' + (x.stk * 7) + 'px' : '') + '"'
-        + ' title="' + esc(x.node + " · " + (x.handler || "핸들러 없음") + " · " + x.steps + "단계"
-            + (x.on ? "" : " · 프리팹 저장 시점 비활성")) + '">'
-        + '<span>' + esc(x.label) + '</span></button>';
+        + 'width:' + w.toFixed(2) + '%;min-height:' + h.toFixed(2) + '%"'
+        + ' title="' + esc(tip) + '">'
+        + '<span>' + esc(x.label) + (x.alt ? '<i class="wf-alt">+' + x.alt.length + '</i>' : '')
+        + (x.moved ? '<i class="wf-mv">?</i>' : '') + '</span></button>';
     });
     o += '</div>';
-    o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b> 실측 · 1280&times;720 가로 · 버튼 '
-      + b.length + '개<br>회전은 무시했고, 스크롤 안쪽 반복 항목과 좌표가 겹치는 중복은 한 개로 접었습니다. '
+    const folded = b.reduce(function (n, x) { return n + (x.alt ? x.alt.length : 0); }, 0);
+    const movedN = b.filter(function (x) { return x.moved; }).length;
+    o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b> 실측 · 1280&times;720 가로 · 버튼 ' + b.length + '개'
+      + (folded ? ' · <b>+n</b> 은 같은 자리에 겹친 상태별 변형 ' + folded + '개' : '')
+      + (pf.parked ? ' · 에디터에서 옆으로 빼둔 배타 패널 ' + pf.parked + '개 제외' : '')
+      + (movedN ? ' · <b>?</b> 는 코드가 런타임에 위치를 정해 <b>좌표를 믿을 수 없는</b> 버튼 ' + movedN + '개' : '')
+      + '<br>회전 · <code>cc.Widget</code> 정렬은 계산하지 않고 프리팹에 저장된 좌표를 씁니다. '
       + '<span class="wf-lg">점선</span>은 프리팹 저장 시점 비활성(런타임 조건부 노출).</div>';
     return o + '</div>';
   };
