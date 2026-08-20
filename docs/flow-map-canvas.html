@@ -232,9 +232,10 @@
   #d-close:hover { color: var(--ink); background: var(--surface); }
 
   #crumb { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow: hidden; font-size: 11px; }
-  #crumb .step { color: var(--muted); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-node { align-items: flex-start; }
+  #crumb .step { color: var(--muted); font-weight: 600; white-space: nowrap; }
   #crumb .sep { color: var(--faint); flex: 0 0 auto; }
-  #crumb .cur { color: var(--ink); font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #crumb .cur { color: var(--ink); font-weight: 750; white-space: nowrap; }
   #crumb .lv { flex: 0 0 auto; margin-left: auto; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px; font-weight: 700; }
 
   #dock-body { overflow-y: auto; padding: 16px 22px 26px; flex: 1; }
@@ -296,8 +297,11 @@
   }
   .g-node:hover .b-n { border-color: var(--cc); color: var(--cc); }
   .g-node .b-main { min-width: 0; }
-  .g-node .b-k { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
-  .g-node .b-sum { font-family: var(--font-mono); font-size: 10px; color: var(--muted); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-node .b-k { font-size: 12.5px; font-weight: 700; line-height: 1.35; word-break: keep-all; }
+  .g-node .b-sum {
+    font-size: 11px; color: var(--ink-2); line-height: 1.5; margin-top: 3px;
+    white-space: normal; word-break: keep-all; overflow-wrap: anywhere;
+  }
   .g-node .b-go { font-size: 9.5px; font-weight: 750; color: var(--cc); white-space: nowrap; }
 
   /* 가지 끝 도착 노드 */
@@ -305,11 +309,11 @@
     display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
     font-family: inherit; font-size: 10px; font-weight: 700; color: var(--ink-2);
     background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
-    padding: 4px 9px 4px 7px; cursor: pointer; max-width: 150px;
+    padding: 4px 9px 4px 7px; cursor: pointer; max-width: 100%;
   }
   .g-to:hover { border-color: var(--tc); color: var(--ink); background: var(--surface); }
   .g-to i { width: 7px; height: 7px; border-radius: 2px; background: var(--tc); flex: 0 0 auto; }
-  .g-to span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-to span { white-space: normal; word-break: keep-all; text-align: left; }
   .g-arrow { flex: 0 0 auto; color: var(--faint); font-size: 11px; }
 
   .n-gate { --nc: var(--t-gate); }
@@ -420,7 +424,7 @@
     color: var(--faint); font-weight: 800;
   }
   .wf-key-i {
-    display: inline-flex; align-items: center; gap: 5px;
+    display: inline-flex; align-items: center; gap: 5px; word-break: keep-all;
     font-family: inherit; font-size: 10.5px; font-weight: 700; color: var(--ink);
     background: var(--surface); border: 1px solid var(--line);
     border-radius: 5px; padding: 3px 7px 3px 4px; cursor: pointer;
@@ -454,6 +458,14 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 10px; font-weight: 700; color: var(--ink-2);
   }
+  .g-inner {
+    margin-top: 14px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface-2); padding: 10px 13px;
+  }
+  .g-inner summary { font-size: 11px; font-weight: 750; color: var(--muted); cursor: pointer; }
+  .g-inner[open] summary { margin-bottom: 10px; }
+  .g-inner .g-lanes { grid-template-columns: 1fr 1fr; }
+
   .f-raw {
     margin-top: 12px; border: 1px solid var(--line); border-radius: 7px;
     background: var(--surface-2); padding: 8px 11px;
@@ -2038,6 +2050,7 @@
       const add = [];
       pf.btns.forEach(function (b) {
         b._sec = -1;
+        if (b.ctx) return;          /* 담당 노드의 표에만 둔다 (중복 제거) */
         const re = b.h
           ? new RegExp("\\b" + b.h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\(")
           : null;
@@ -2488,7 +2501,7 @@
   const cur = function () { return stack.length ? stack[stack.length - 1] : null; };
 
   const shortTitle = function (n) {
-    return n.title.replace(/\s*·.*$/, "").replace(/\(.*\)/, "").trim().slice(0, 22);
+    return n.title.replace(/\s*·.*$/, "").replace(/\(.*\)/, "").trim();
   };
 
   /* ── 2단 UI 와이어프레임 : 프리팹 좌표를 1280x720 가로 틀에 그대로 올린다 ── */
@@ -2506,8 +2519,11 @@
         + '%;height:' + (pf.panel.h * 100).toFixed(1) + '%"></span>';
     }
     full.forEach(function (x) {
-      o += '<button class="wf-full" data-sec="' + x.sec + '" data-row="' + x.row + '"'
-        + ' title="' + esc(x.node + " · " + (x.handler || "핸들러 없음")) + '">'
+      o += '<button class="wf-full' + (x.ctx ? " ctx" : "") + '"'
+        + (x.ctx ? ' data-jump="' + x.ctx + '"' : ' data-sec="' + x.sec + '" data-row="' + x.row + '"')
+        + ' title="' + esc(x.ctx && byId[x.ctx]
+            ? byId[x.ctx].title + " 담당 — 눌러서 그 지면으로"
+            : x.node + " · " + (x.handler || "핸들러 없음")) + '">'
         + esc(x.label) + ' <em>화면 전체</em></button>';
     });
     /* 상자는 실측 크기 그대로. 라벨은 겹치지 않는 것만 안에 쓴다.
@@ -2632,9 +2648,14 @@
     /* 왼쪽 = UI 와이어프레임, 오른쪽 = 로직 가지. 프리팹 버튼이 없는 지면은 로직만 전폭으로. */
     const wf = wireframe(n, cc);
     h += wf ? '<div class="two">' + wf + '<div>' : '<div class="one"><div>';
-    h += '<div class="g-lanes">';
-    secs.forEach(function (sec, si) {
-      h += '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
+    /* 대외용 기본 화면은 "버튼"만 둔다. 라이프사이클 · 분기 · 메모 같은 내부 설명은 접어서 뒤로. */
+    const INTERNAL = /라이프사이클|실행 순서|분기|메모|진입 지점|지면 목록|구분 기준|핵심 메소드|테스트 경로|직행 판정|잠금 · 공통/;
+    const open = [], inner = [];
+    secs.forEach(function (sec, si) { (INTERNAL.test(sec.h) ? inner : open).push([sec, si]); });
+
+    const lane = function (pair) {
+      const sec = pair[0], si = pair[1];
+      let o = '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
         + '<div class="g-lane-h">' + esc(sec.h) + ' <em>' + sec.rows.length + '</em></div>'
         + '<div class="g-tree">';
       sec.rows.forEach(function (r, ri) {
@@ -2643,7 +2664,7 @@
         const ty = stepType(steps[steps.length - 1] || r[1]);
         const jid = jumpFor(r[1]);
         const to = jid && jid !== t.id ? byId[jid] : null;
-        h += '<div class="g-branch">'
+        o += '<div class="g-branch">'
           + '<button class="g-node n-' + ty + '" data-sec="' + si + '" data-row="' + ri + '">'
           + '<span class="b-n">' + (ri + 1) + '</span>'
           + '<span class="b-main"><span class="b-k">' + esc(r[0]) + '</span>'
@@ -2658,9 +2679,16 @@
               : '')
           + '</div>';
       });
-      h += '</div></div>';
-    });
-    h += '</div></div></div>';
+      return o + '</div></div>';
+    };
+
+    h += '<div class="g-lanes">' + open.map(lane).join("") + '</div>';
+    h += '</div></div>';
+    if (inner.length) {
+      const cnt = inner.reduce(function (a2, p) { return a2 + p[0].rows.length; }, 0);
+      h += '<details class="g-inner"><summary>내부 동작 · 분기 ' + cnt + '개 (개발용)</summary>'
+        + '<div class="g-lanes">' + inner.map(lane).join("") + '</div></details>';
+    }
 
     bodyEl.innerHTML = h;
     crumbEl.innerHTML = '<span class="cur">' + esc(shortTitle(n)) + '</span>'
