@@ -32,8 +32,9 @@
         <div class="doc-eyebrow">분석 · 코드 레퍼런스</div>
         <h1 class="doc-title">솔리테어 전체 지면 플로우 맵</h1>
         <p class="doc-lede">
-          <b>두 단</b>입니다. <b>1단</b> 오픈맵으로 어느 지면이 어느 흐름에 있는지 봅니다 —
-          지면 43개 중 <b>주 흐름 17개만 카드</b>이고, 그 지면에서 열리는 팝업 26개는 카드 안의 <b>칩</b>입니다.
+          <b>두 단</b>입니다. <b>1단</b> 오픈맵으로 어느 지면이 어느 흐름에 있는지 봅니다.
+          맵은 <b>글줄처럼 3띠로 접혀</b> 왼쪽→오른쪽으로 읽고 줄이 끝나면 아래로 내려갑니다 —
+          지면 49개 중 <b>주 흐름 17개만 카드</b>이고, 그 지면에서 열리는 팝업 32개는 카드 안의 <b>칩</b>입니다.
           칩을 눌러도 카드와 똑같은 지면 팝업이 열립니다.
           <b>2단</b> 지면을 누르면 큰 팝업에 <b>그 지면의 UI 와이어프레임</b>(프리팹을 직접 파싱해 실제 버튼 좌표를
           1280&times;720 가로 화면에 올린 그림)과 그 옆에 <b>버튼별 한 줄 요약</b>이 함께 뜹니다.
@@ -53,7 +54,8 @@
           <span class="tag">기준 커밋 09a24b2b</span>
           <span class="tag">카드 17 + 칩 32 · 흐름 29 · 2단 구조</span>
           <span class="tag">와이어프레임 커버 85% · cc.Widget 정렬 반영</span>
-          <span class="tag">마지막 갱신 2026-08-21 17:10</span>
+          <span class="tag">맵 종횡비 1.80 (16:9 정렬)</span>
+          <span class="tag">마지막 갱신 2026-08-21 18:05</span>
         </div>
       </div>
     </header>
@@ -65,8 +67,8 @@
         <div class="stat-row">
           <div class="stat" style="--acc: var(--sol)">
             <div class="stat-num">17<span class="stat-unit">장</span></div>
-            <div class="stat-name">맵 카드 (+ 칩 26개)</div>
-            <div class="stat-sub">지면 43개는 그대로 · 팝업을 칩으로 내렸다</div>
+            <div class="stat-name">맵 카드 (+ 칩 32개)</div>
+            <div class="stat-sub">지면 49개 · 팝업은 칩으로 · 월드 2760&times;1530 (1.80)</div>
           </div>
           <div class="stat" style="--acc: var(--analysis)">
             <div class="stat-num">29<span class="stat-unit">개</span></div>
@@ -110,6 +112,24 @@
         </div>
 
         <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">맵을 글줄처럼 접은 이유</div>
+            <p>
+              흐름을 위에서 아래로 한 줄로 세우면 월드가 <strong>1300&times;2400(종횡비 0.54)</strong> 이 됩니다.
+              화면은 16:9(1.78) 이니 맞춰 넣으면 <strong>가로를 30% 만 쓰고 70% 가 빈 여백</strong>이 됩니다.
+              그래서 흐름 단계를 열로 묶고 목표 폭을 넘으면 다음 띠로 내리는 <strong>글줄 접기</strong>로 바꿨습니다 —
+              <strong>2760&times;1530(종횡비 1.80)</strong> 이 되어 화면을 꽉 씁니다.
+              띠 1은 진입 · 분기 · 로비, 띠 2는 프리게임 · 인게임 · 결과 · 결과 후 플로우,
+              띠 3은 전역 시스템입니다. 짧은 띠는 열 사이를 벌려 그 줄 오른쪽이 비지 않게 했습니다.
+            </p>
+            <p>
+              배선도 같이 고쳤습니다. 예전에는 꺾임점(<code>via</code>)과 붙는 면을 데이터에 손으로 박아 뒀는데
+              그건 <strong>세로 배치 전용</strong>이라 배치를 바꾸면 선이 카드를 관통했습니다.
+              지금은 좌표에서 후보 경로를 만들고 <strong>카드를 안 지나는 첫 후보</strong>를 고릅니다.
+              통로는 띠 사이 가로 통로(줄바꿈 선이 지나감)와 월드 좌우·상하 여백(같은 띠에서 되돌아가는 선)입니다.
+              힌트 81개를 데이터에서 걷어냈고, 앞으로 배치를 바꿔도 배선이 따라옵니다.
+            </p>
+          </div>
           <div class="note" style="--acc: var(--validate)">
             <div class="note-title">두 단의 도형 문법</div>
             <p>
@@ -795,7 +815,9 @@
               <tr>
                 <td>흐름(화살표)</td>
                 <td><span class="pill" style="--acc: var(--ok)">실측</span></td>
-                <td><code>ViewCreator</code> · <code>SceneManager</code> · <code>SessionFlowManager</code> 호출부를 읽어 연결. 57개</td>
+                <td><code>ViewCreator</code> · <code>SceneManager</code> · <code>SessionFlowManager</code> 호출부를 읽어 연결. 29개
+                  (팝업 열기는 화살표가 아니라 칩 소속으로 표현). 선이 지나는 길은 데이터가 아니라
+                  <strong>카드 좌표에서 자동 산출</strong>합니다 — 카드 관통 0건을 테스트로 확인합니다.</td>
               </tr>
               <tr>
                 <td>Inspector 연결 · 버튼 좌표</td>
