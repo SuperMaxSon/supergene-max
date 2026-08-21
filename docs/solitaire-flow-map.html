@@ -20,6 +20,8 @@
         <a class="nav-back" href="#entry">진입 분기</a>
         <a class="nav-back" href="#buttons">버튼 → 메소드</a>
         <a class="nav-back" href="#post">결과 후 플로우</a>
+        <a class="nav-back" href="#context">컨텍스트 분기</a>
+        <a class="nav-back" href="#fb">FB 지면</a>
         <a class="nav-back" href="#scope">확인 범위</a>
         <span class="nav-spacer"></span>
       </div>
@@ -40,13 +42,18 @@
           내부 가드 · 로그 · 갱신 호출은 큰 틀을 흐리므로 뺐고, 원문 사슬은 펼친 흐름 아래 접어 두었습니다.
           팝업 안 지면 칩으로 다른 지면을 계속 타고 들어갈 수 있고, 그때만 <b>왼쪽 위 뒤로가기</b>가 이전 지면으로 되돌립니다.
           팝업은 화면의 97%까지 쓰고, 오른쪽 요약 열은 폭이 남는 만큼 <b>2~4열</b>로 늘어납니다.
+          와이어프레임은 버튼만 그리지 않고 <b>패널 · 타이틀 · 재화바 · 리스트 · 아이콘까지</b> 함께 올려
+          실제 화면과 대조할 수 있게 했습니다 (<code>cc.Widget</code> 정렬 반영).
+          지면으로 표현되지 않는 두 축은 맵 밖 별도 문서로 뺐습니다 —
+          툴바의 <b>컨텍스트</b>는 SOLO · P2P · 토너먼트 상태 기계, <b>FB 지면</b>은 FB 가 직접 그리는 화면 15종입니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">main 브랜치 코드 실측</span>
           <span class="tag">기준 커밋 09a24b2b</span>
-          <span class="tag">카드 17 + 칩 26 · 흐름 29 · 2단 구조</span>
-          <span class="tag">마지막 갱신 2026-08-21 09:40</span>
+          <span class="tag">카드 17 + 칩 32 · 흐름 29 · 2단 구조</span>
+          <span class="tag">와이어프레임 커버 85% · cc.Widget 정렬 반영</span>
+          <span class="tag">마지막 갱신 2026-08-21 17:10</span>
         </div>
       </div>
     </header>
@@ -67,14 +74,19 @@
             <div class="stat-sub">화면 전환만 · 팝업 열기는 칩 소속으로</div>
           </div>
           <div class="stat" style="--acc: var(--validate)">
-            <div class="stat-num">165<span class="stat-unit">개</span></div>
-            <div class="stat-name">프리팹에서 뽑은 실좌표 버튼</div>
-            <div class="stat-sub">이름은 화면 폭에 맞춰 실측 배치 후 표시</div>
+            <div class="stat-num">1,575<span class="stat-unit">개</span></div>
+            <div class="stat-name">프리팹에서 뽑은 화면 요소</div>
+            <div class="stat-sub">버튼 165 + 라벨 · 이미지 · 리스트 1,410 · 활성 요소의 85%</div>
           </div>
           <div class="stat" style="--acc: var(--balance)">
             <div class="stat-num">183<span class="stat-unit">개</span></div>
             <div class="stat-name">메소드 → 한 줄 동작 사전</div>
             <div class="stat-sub">요약 셀 232개 노출 · 내부 65개는 접힘</div>
+          </div>
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">15<span class="stat-unit">종</span></div>
+            <div class="stat-name">FB 가 그리는 지면</div>
+            <div class="stat-sub">다이얼로그 10 · 조용히 처리 5 · 맵 밖 별도 문서</div>
           </div>
         </div>
 
@@ -610,6 +622,151 @@
         </div>
       </section>
 
+      <!-- 컨텍스트는 지면이 아니라 상태다. 맵의 화살표로는 표현이 안 되므로 별도 섹션으로 뺐다. -->
+      <section class="doc-section" id="context">
+        <h2 class="doc-h2">컨텍스트 분기 <span class="doc-h2-sub">같은 지면 · 같은 버튼이 상태에 따라 다르게 동작한다</span></h2>
+
+        <div class="note" style="--acc: var(--warn)">
+          <div class="note-title">P2P 와 토너먼트는 컨텍스트 타입이 똑같습니다</div>
+          <p>
+            <code>getContextType()</code> 은 세 상태를 <strong>두 값</strong>으로만 돌려줍니다 —
+            솔로는 <code>"SOLO"</code>(또는 빈 문자열)지만 <strong>P2P 와 토너먼트가 둘 다 <code>"THREAD"</code></strong> 입니다.
+            갈라내려면 <code>DataManager.currentP2PPlayerId</code> 를 같이 봐야 합니다 —
+            있으면 P2P, 없으면 토너먼트입니다.
+            코드 3곳(<code>SceneManager.ts:555</code> · <code>PopupGameEntry.ts:1116</code> · <code>ViewGame.ts:2391</code>)에
+            <strong>똑같은 경고 주석</strong>이 각각 붙어 있습니다. 세 곳이 같은 함정을 따로 막고 있다는 뜻입니다.
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">상태</th>
+                <th style="width: 20%"><code>getContextType()</code></th>
+                <th>판별 조건</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>솔로</strong></td><td><code>"SOLO"</code> 또는 <code>""</code></td><td>기본 상태. 전환 거절 · 미노출 · 팝업 닫기 때 여기로 돌아옵니다</td></tr>
+              <tr><td><strong>P2P</strong> (친구 대전)</td><td><code>"THREAD"</code></td><td><code>currentP2PPlayerId != null</code></td></tr>
+              <tr><td><strong>토너먼트</strong></td><td><code>"THREAD"</code></td><td><code>currentP2PPlayerId == null</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="section-desc">
+          전환 수락 후 경로도 갈립니다. <strong>토너먼트</strong>는 <code>onTournamentSwitchComplete()</code> 로
+          로비를 거쳐 프리게임 팝업까지 가지만(레벨 ≤ 2 는 SOLO 로 끊고 인게임 직행),
+          <strong>P2P</strong> 는 <code>onP2PSwitchComplete()</code> 로 <strong>로비를 안 거치고 바로 인게임</strong>입니다.
+          거절하면 둘 다 SOLO 로 복귀하고, P2P 는 <code>updateFriendship(friendId, false)</code> 가 추가로 나갑니다.
+        </p>
+
+        <h2 class="doc-h2">전환 팝업이 뜨는 구좌 3개 <span class="doc-h2-sub">게이트와 거절 처리가 다르다</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 18%">구좌</th>
+                <th style="width: 16%">노출 게이트</th>
+                <th>어디서 · 거절하면</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>game_start</code><br><span class="tag">판 시작</span></td>
+                <td><strong>있음</strong> (4조건)</td>
+                <td><code>SceneManager.tryContextSwitch()</code> — 거절하면 <strong>전면 광고</strong>(<code>switch_cancel</code>)를 거친 뒤 판을 시작합니다</td>
+              </tr>
+              <tr>
+                <td><code>entry</code><br><span class="tag">페이로드 직행</span></td>
+                <td>없음</td>
+                <td><code>showViewGameWithTournament()</code> · <code>showViewGameWithFriend()</code> — 거절하면 SOLO 복귀 후 그대로 진행합니다</td>
+              </tr>
+              <tr>
+                <td><code>leaderboard</code><br><span class="tag">리더보드 선택</span></td>
+                <td>없음</td>
+                <td><code>LeaderboardRankItem</code> — 유저가 친구를 직접 고른 경우라 게이트가 없습니다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="section-desc">
+          노출 로그는 <strong>3050 노출 · 3051 수락 · 3052 닫기</strong>이고 <code>position</code> 필드에 위 구좌 id 가 실립니다.
+          판 시작 게이트 4조건은 ① 누적 완료 판수 ≥ <code>ctx_popup_min_plays</code>(FTUE 보호)
+          ② 세션 노출 &lt; <code>ctx_popup_per_session</code>(0 이면 무제한)
+          ③ 추천 대상 존재 — 타입 A 친구만 / B 친구우선 / C 토너먼트우선(기본) / D 교차, 후보는 <strong>세션 내 1회 소모</strong>
+          ④ 슬로우 전환이 아닐 것. 하나라도 불충족이면 미노출이고, 그때는 이전 컨텍스트를 물고 있지 않도록 SOLO 로 복귀합니다
+          (<strong>단 P2P THREAD 는 예외로 유지</strong> — 진행 중인 친구 대전을 끊지 않습니다).
+        </p>
+
+        <h2 class="doc-h2">컨텍스트를 건드리는 지면 <span class="doc-h2-sub"><code>switchToContextSolo()</code> 호출부 14곳</span></h2>
+        <p class="section-desc">
+          <code>switchToContextSolo()</code> 호출부가 <strong>14곳</strong>입니다 —
+          결과 후 플로우 5(<code>SceneManager</code>) · 인게임 3(<code>ViewGame</code>) · 토너먼트 팝업 3 ·
+          프리게임 팝업 1 · 로비 1 · 리더보드 1. 맵에서는 이 지면 카드에 <code>CTX</code> 배지가 붙고, 눌러서 상태 기계로 넘어갑니다.
+        </p>
+        <p class="section-desc">
+          클리어 정산도 컨텍스트로 갈립니다. <code>ViewGame.callRegistTournament()</code> 이 FB 컨텍스트를
+          <code>solo</code> / <code>p2p</code> / <code>tournament</code> 로 접어 <code>handleFacebookShare()</code> 의
+          <code>switch</code> 로 넘기는데, <strong><code>solo</code> 는 토너먼트를 새로 만들고</strong>
+          (연속 거절 상한 <code>tournament_create_reject_limit</code>, 시트 10106),
+          <strong><code>p2p</code> · <code>tournament</code> 는 기존 점수를 갱신하고 공유</strong>합니다.
+          P2P 는 <code>postScoreAsync</code> 가 무효라 <code>currentP2PPlayerId == null</code> 가드로 걸러냅니다 —
+          안 걸러내면 3300/3310 에 <strong>가짜 성공</strong>이 남습니다.
+        </p>
+      </section>
+
+      <!-- FB 가 그리는 화면은 우리 프리팹이 아니라 게임 위에 덮인다. 프리팹 파싱으로는 절대 안 나온다. -->
+      <section class="doc-section" id="fb">
+        <h2 class="doc-h2">FB 지면 <span class="doc-h2-sub">FB 가 직접 그리는 화면 15종</span></h2>
+        <p class="section-desc">
+          아래는 <strong>우리 프리팹이 아닙니다</strong>. FB 가 게임 위에 덮어 그리므로 와이어프레임에는 나오지 않습니다.
+          <strong>다이얼로그 10종</strong>은 유저에게 보이고 <strong>살아있는 유저 제스처 안에서만</strong> 열 수 있습니다.
+          나머지 5종은 화면 없이 조용히 처리되므로 제스처가 필요 없습니다 —
+          그래서 클리어 정산처럼 제스처가 없는 시점에는 조용한 쪽만 즉시 실행되고,
+          다이얼로그는 <code>deferContextPopupActionUntilUserGesture()</code> 로 <strong>다음 클릭까지 미뤄집니다</strong>.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">FB 호출</th>
+                <th style="width: 16%">무슨 화면</th>
+                <th>언제 · 어느 조건</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="3"><strong>컨텍스트</strong></td></tr>
+              <tr><td><code>context.createAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>친구와 대화방 만들기</td><td>전환 팝업에서 수락 — <code>PopupSwitchContext</code> P2P 모드 · 유저 제스처 안에서만</td></tr>
+              <tr><td><code>context.chooseAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>친구 선택 목록</td><td>플랫폼 래퍼만 보유 — <strong>게임 코드에서 직접 부르는 곳은 없습니다</strong></td></tr>
+              <tr><td><code>context.switchAsync(id)</code></td><td>화면 없음</td><td>전환 수락 · 토너먼트 참여. 느리면 8960 타임아웃으로 기록되고 그 채널은 이후 차단됩니다</td></tr>
+              <tr><td><code>context.switchAsync("SOLO")</code></td><td>화면 없음</td><td>거절 · 미노출 · 팝업 닫기 (14지점). <strong>살아있는 유저 제스처 안에서만 콜백이 옵니다</strong></td></tr>
+              <tr><td colspan="3"><strong>토너먼트</strong></td></tr>
+              <tr><td><code>tournament.createAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>토너먼트 생성</td><td>SOLO 로 판을 클리어했을 때. 연속 거절 상한 미초과 + 유저 제스처 필요</td></tr>
+              <tr><td><code>tournament.shareAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>토너먼트 공유</td><td>P2P · 토너먼트 컨텍스트로 클리어. <code>getTournamentAsync()</code> 로 현재 토너먼트가 있어야 합니다</td></tr>
+              <tr><td><code>tournament.joinAsync</code></td><td>화면 없음</td><td>프리게임 팝업 Play (<code>joinTarget</code> 이 있을 때). 전환을 1회만 하도록 여기서 처리합니다</td></tr>
+              <tr><td><code>tournament.postScoreAsync</code></td><td>화면 없음</td><td>이탈 · 로비 복귀 등. <code>THREAD</code> 이고 <code>currentP2PPlayerId == null</code> 일 때만 (P2P 는 무효)</td></tr>
+              <tr><td colspan="3"><strong>공유 · 초대</strong></td></tr>
+              <tr><td><code>shareAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>피드 공유</td><td>5지면 — 도시 완성(<code>PopupDecoShare</code>) · 클리어(<code>PopupCompleteLevel</code>) · 연승 · 카드 마일스톤 · 클리어 랭킹</td></tr>
+              <tr><td><code>inviteAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>친구 초대</td><td>3지면 — 우편(<code>PopupMail:546</code>) · 프리게임(<code>PopupGameEntry:1635</code>) · 클리어(<code>PopupCompleteLevel:702</code>)</td></tr>
+              <tr><td><code>updateAsync</code></td><td>화면 없음</td><td>P2P 초대 메시지 등. 현재 컨텍스트 안에만 올라갑니다</td></tr>
+              <tr><td colspan="3"><strong>플레이어</strong></td></tr>
+              <tr><td><code>player.subscribeBotAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>봇 구독</td><td>로비(<code>ViewLobby:2130</code>) · 인게임 설정(<code>PopupSettingInGame:355</code>) 의 로그인 버튼</td></tr>
+              <tr><td><code>createShortcutAsync</code> <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>홈 화면에 추가</td><td>결과 후 플로우의 <strong>마지막</strong>(팝업 중 가장 후순위). facebook + <code>ShortcutTryAmount &lt; 3</code> + <code>canCreateShortcutAsync()</code></td></tr>
+              <tr><td colspan="3"><strong>광고</strong></td></tr>
+              <tr><td>전면 광고 <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>FB 전면 광고</td><td><strong>9구좌</strong> — <code>game_over</code> · <code>game_play</code> · <code>game_quit</code> · <code>game_retry</code> · <code>idle_gold</code> · <code>daily_wheel</code> · <code>album_complete</code> · <code>city_complete</code> · <code>switch_cancel</code></td></tr>
+              <tr><td>보상형 광고 <span class="pill" style="--acc: var(--sol)">다이얼로그</span></td><td>FB 보상형 광고</td><td><strong>8구좌</strong> — <code>shop</code> · <code>free_coin</code> · <code>lobby_free_gold</code> · <code>daily_wheel</code> · <code>daily_gift_missed</code> · <code>daily_change_task</code> · <code>ingame_reward_double</code> · <code>shadow_chase_extend</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="section-desc">
+          <code>assets/script/Base/FacebookPlatform.ts</code> 가 FB API 를 감싸고, 게임 코드는
+          <code>BasePlatform.instance</code> 를 통해서만 부릅니다. 그래서 플랫폼별 구현
+          (<code>TossPlatform</code> · <code>MSNPlatform</code> · <code>CrazyGamePlatform</code> · <code>YouTubePlatform</code>)이
+          같은 자리를 각각 다르게 채우는데, <strong>이 표는 facebook 기준</strong>입니다.
+        </p>
+      </section>
+
       <section class="doc-section" id="scope">
         <h2 class="doc-h2">확인 범위</h2>
 
@@ -643,7 +800,7 @@
               <tr>
                 <td>Inspector 연결 · 버튼 좌표</td>
                 <td><span class="pill" style="--acc: var(--ok)">실측</span></td>
-                <td>띄우는 프리팹은 추측하지 않고 <code>ViewCreator</code> 의 <code>ViewManager.load("프리팹명", 번들)</code> 호출을 코드에서 추출해 노드마다 대조했습니다 — 이 과정에서 <strong>로비 설정이 인게임 설정과 다른 프리팹</strong>(<code>PopupSetting.prefab</code> · 언어 · 개인정보 · ID 복사가 있고 나가기 · 이어하기가 없음)임을 확인해 노드를 분리했습니다. 프리팹 · 씬 31개를 직접 파싱해 <code>cc.Button</code> 165개의 <code>clickEvents.handler</code> 와
+                <td>띄우는 프리팹은 추측하지 않고 <code>ViewCreator</code> 의 <code>ViewManager.load("프리팹명", 번들)</code> 호출을 코드에서 추출해 노드마다 대조했습니다 — 이 과정에서 <strong>로비 설정이 인게임 설정과 다른 프리팹</strong>(<code>PopupSetting.prefab</code> · 언어 · 개인정보 · ID 복사가 있고 나가기 · 이어하기가 없음)임을 확인해 노드를 분리했습니다. 프리팹 · 씬 <strong>39개</strong>를 직접 파싱해 화면 요소 <strong>1,575개</strong>(버튼 165 · 라벨 · 이미지 · 리스트 · 게이지 · 연출)의 <code>clickEvents.handler</code> 와
                   <code>_trs</code> · <code>_contentSize</code> · <code>_anchorPoint</code> 를 읽었습니다. 부모 노드의 위치 · 스케일을 누적해
                   <strong>1280&times;720 가로 화면 좌표</strong>로 환산한 값이 와이어프레임 위치입니다.
                   이 과정에서 손으로 적은 표에 <strong>없던 버튼 70개(22지면)</strong>를 발견해 실제 구현을 읽고 사슬을 채워 넣었습니다 —
@@ -658,19 +815,53 @@
                   코드가 위치를 정하는 <code>SlotOffset</code> 이었고, 직접 열어 확인했습니다.</td>
               </tr>
               <tr>
-                <td>Widget 정렬 · 런타임 배치</td>
-                <td><span class="pill" style="--acc: var(--warn)">한계</span></td>
-                <td><code>cc.Widget</code> 정렬이나 <code>cc.Layout</code> 은 계산하지 않고 프리팹에 <strong>저장된 좌표를 그대로</strong> 씁니다.
-                  에디터에서 정렬이 이미 반영돼 있으면 맞지만, 코드가 런타임에 옮기는 노드는 어긋납니다.
-                  루트 크기가 0 인 프리팹(<code>PopupSettingLanguage</code>)은 화면 중앙 정렬로 가정했고,
-                  이 지면의 좌표는 <strong>신뢰도가 낮습니다</strong>.</td>
+                <td>Widget 정렬</td>
+                <td><span class="pill" style="--acc: var(--ok)">반영</span></td>
+                <td><code>cc.Widget</code> 의 <code>_alignFlags</code> · 여백 · 스트레치를 부모 사각형에서 다시 계산해 반영합니다.
+                  이걸 안 하면 부모가 Widget 정렬인 요소가 전부 화면 밖으로 밀립니다 —
+                  <strong>로비의 활성 요소 147개 중 127개가 그랬습니다</strong>. 지금은 로비 요소 147개가 모두 화면 안에 들어옵니다.
+                  <code>_target</code> 이 부모가 아닌 다른 노드를 가리키는 Widget 은 재현하지 않습니다(해당 사례 0건).
+                  <code>cc.Layout</code> 은 여전히 계산하지 않고, 회전도 무시합니다.</td>
+              </tr>
+              <tr>
+                <td>공통 헤더</td>
+                <td><span class="pill" style="--acc: var(--ok)">복원</span></td>
+                <td>골드 · 티켓 헤더는 <strong>어느 팝업 프리팹에도 없고</strong> <code>intro.fire</code> 의
+                  <code>PersistRootNode/ViewManager/Header</code> 에만 있습니다. 씬 루트의 <code>Canvas</code> 서브트리만 걷던 이전 파서는
+                  이 형제 노드를 통째로 잃어 <strong>43개 지면 전부가 헤더를 못 그렸습니다</strong>.
+                  지금은 모든 지면 위에 파란 띠로 얹습니다. <code>HeaderLayer</code> 가 화면 위 +124px 에 파킹돼 있어
+                  (부모 <code>Header</code> 의 <code>cc.Mask</code> 로 잘리는 슬라이드 인 시작 프레임) 그 이동값은 0 으로 되돌렸습니다.</td>
               </tr>
               <tr>
                 <td>런타임 생성 항목</td>
                 <td><span class="pill" style="--acc: var(--warn)">일부 누락</span></td>
-                <td>스크롤 목록 항목처럼 <strong>코드가 별도 프리팹을 인스턴스화</strong>하는 버튼은 그 지면 프리팹에 없어 빠집니다
-                  (예: 상점의 아이템 패키지, 언어 목록). 화면 밖 스크롤 컨텐츠도 걸렀습니다.
-                  <code>PopupSwitchContext</code> · <code>StageView</code> 는 <code>cc.Button</code> 이 0개라 와이어프레임이 없습니다.</td>
+                <td>스크롤 목록 항목처럼 <strong>코드가 별도 프리팹을 인스턴스화</strong>하는 셀은 그 지면 프리팹에 없어 빠집니다.
+                  파서를 고쳐도 안 나오는 부분이라 해당 7지면(<code>PopupSettingLanguage</code> 언어 버튼 ·
+                  <code>PopupShop</code> 상품 셀 · <code>PopupLeaderBoard</code> 랭킹 행 · <code>PopupMail</code> 우편 항목 ·
+                  <code>PopupCollection</code> 앨범 카드 · <code>PopupMetaCityList</code> 도시 행 · <code>PopupDailyTask</code> 미션 행)의
+                  캡션에 <strong>“코드가 런타임에 만듭니다”라고 명시</strong>했습니다. 화면 밖 스크롤 컨텐츠도 걸렀습니다.
+                  <code>PopupSwitchContext</code> 는 <code>cc.Button</code> 이 0개지만 라벨 · 이미지가 있어 이제 와이어프레임이 나옵니다.
+                  <code>StageView</code> 는 노드 3개짜리 로직 컨테이너라 그릴 것이 없는 게 맞습니다.</td>
+              </tr>
+              <tr>
+                <td>컨텍스트 분기 · FB 지면</td>
+                <td><span class="pill" style="--acc: var(--warn)">손 정리</span></td>
+                <td>이 두 문서는 <strong>기계 파싱이 아니라 코드를 읽어 손으로 정리</strong>했습니다 —
+                  <code>getContextType()</code> 사용처, <code>switchToContextSolo()</code> 호출부 14곳,
+                  <code>ContextSwitchExposure</code> · <code>ContextRecommender</code> 판정, <code>handleFacebookShare()</code> 의 <code>switch</code>,
+                  <code>FacebookPlatform</code> 의 FB API 호출부를 대조했습니다.
+                  항목마다 <strong>파일:줄</strong> 을 붙여 대조할 수 있게 했지만,
+                  <strong>코드가 바뀌면 자동으로 따라오지 않습니다</strong>.</td>
+              </tr>
+              <tr>
+                <td>맵에 없는 show 메소드</td>
+                <td><span class="pill" style="--acc: var(--warn)">일부 미확인</span></td>
+                <td><code>ViewCreator</code> 의 show 메소드 51개 중 프리팹이 실재하는 6지면
+                  (<code>PopupError</code> · <code>PopupToastError</code> · <code>PopupToastItemPackage</code> ·
+                  <code>PopupPrivacyPolicy</code> · <code>PopupEventShadowChaseInfo</code> · <code>PopupTossDailyPromotion</code>)을
+                  이번에 칩으로 추가했습니다. 나머지 11개(<code>PopupDefault</code> · <code>PopupAdBreak</code> ·
+                  <code>PopupWelcomeBonus</code> · <code>PopupSelectPhoto</code> · <code>PopupLeave</code> 등)는
+                  <strong>같은 이름의 프리팹 파일이 없습니다</strong> — 다른 프리팹을 파라미터로 재사용하는 것으로 보이나 <strong>확인 필요</strong>합니다.</td>
               </tr>
               <tr>
                 <td>전역 팝업 연결선</td>
