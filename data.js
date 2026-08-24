@@ -243,11 +243,11 @@ const SECTIONS = [
     cards: [
       {
         title: "아트 리소스 인계 · 이미지 관리 (네이티브→웹)",
-        desc: "신규 머지 프로젝트 웹 착수 전 필독. 병목은 GPU가 아니라 CPU 디코드 40%, brotli는 PNG에 안 먹힌다(−1.59%). 오픈형·단편형 모두 급소는 조망 화면.",
+        desc: "신규 머지 프로젝트 웹 착수 전 필독. 세로 720×1280 · 배경 720×1559. 병목은 GPU가 아니라 CPU 디코드 40%, brotli는 PNG에 안 먹힌다(−1.59%). 급소는 조망 화면.",
         url: "docs/art-resource-handoff.html",
         status: "진행중",
-        version: "v1.0",
-        updated: "2026-08-24 09:09",
+        version: "v1.1",
+        updated: "2026-08-24 09:20",
         pinned: false,
         tags: ["아트", "리소스", "인계규격", "머지"],
       },
