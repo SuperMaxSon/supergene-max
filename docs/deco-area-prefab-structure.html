@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>데코 영역 아트 리소스 트리 — 이전 프로젝트 사례</title>
+    <meta
+      name="description"
+      content="이전 네이티브 프로젝트에서 데코 영역 아트 리소스를 어떤 트리로 공유받았는지. 오브젝트마다 상태(state)가 여러 개라 상태별로 리소스를 대응시켜야 했던 구조."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#tree">프리팹 트리</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">레퍼런스 · 아트 파이프라인 · 임시</div>
+        <h1 class="doc-title">데코 영역 아트 리소스 트리</h1>
+        <p class="doc-lede">
+          <b>이전 네이티브 프로젝트에서 데코 영역 아트 리소스를 이런 트리로 공유받았다</b>는 사례입니다.
+          그렇게 받은 이유는 하나 — <b>오브젝트마다 상태(state)가 여러 개고, 각 상태에 리소스를 대응시켜야</b> 했기 때문입니다.
+          망가진 것 → 고쳐진 것, 5단 성장, 완성 디자인 3종 택1이 전부 같은 형태로 흡수됩니다.
+          <span style="color: var(--text-faint)">신규 웹 프로젝트에 그대로 쓰자는 제안이 아니라, 왜 이 형태가 됐는지 공유가 목적입니다.</span>
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--analysis)">이전 프로젝트 사례</span>
+          <span class="pill" style="--acc: var(--warn)">임시 — 아트 인계 문서에 합칠 예정</span>
+          <span class="tag">상태별 대응이 이유</span>
+          <span class="tag">마지막 갱신 2026-08-24 14:00</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- §2 트리. 오브젝트 유형이 4가지라 트리 하나로는 "내 케이스가 어느 것인지"를
+           아트가 판단할 수 없다. 영역 루트 1개 + 유형별 샘플 4개로 쪼갠다.
+           <pre> 를 유지하는 이유: 표로 쪼개봤으나 트리 형태가 한눈에 들어오는 쪽이 읽혔다.
+           대신 색을 얹어 §3 이름 규칙 표와 1:1 대응시킨다. 인라인 style 은 기존 토큰
+           지정에만 쓰고 새 색은 만들지 않는다 (.legend 가 이미 currentColor 방식). -->
+      <section class="doc-section" id="tree">
+        <h2 class="doc-h2">
+          프리팹 트리
+          <span class="doc-h2-sub">영역 1개 = 프리팹 1개 = 로딩 단위 = 아틀라스 단위</span>
+        </h2>
+
+        <p style="font-size: 13px; color: var(--text-dim); margin: 6px 0 0">
+          <b>이 트리가 된 이유는 상태별 대응입니다.</b>
+          (<code>s</code> = state · 진행 단계와 선택 분기를 모두 포함하는 상태)
+          오브젝트 하나가 여러 상태를 가지고, 상태마다 이미지 장수·연출이 달라서
+          <b>상태를 노드로 만들고 그 안에 리소스를 넣는 형태</b>가 됐습니다.
+          <b>오브젝트 유형이 여러 가지라 트리 하나로는 부족합니다.</b>
+          영역 루트 조립도 1개와 유형별 샘플 4개를 함께 둡니다 —
+          유형이 달라도 <b>구조는 전부 같다</b>는 게 요점입니다.
+          데코 스타일로 보면 <b>배치형 · 수리형 · 건설형 · 선택형</b> 네 가지입니다.
+          <b>구조는 네 유형이 전부 같습니다</b>: 오브젝트 → 상태 노드 → 이미지·앵커.
+        </p>
+        <div class="legend">
+          <span style="color: var(--deploy)">필수 · 변경 금지 — 오브젝트 · 상태 (세이브 키 · 값)</span>
+          <span style="color: var(--validate)">필수 — 순서 · 앵커</span>
+          <span style="color: var(--analysis)">컴포넌트</span>
+          <span style="color: var(--balance)">이미지 리소스</span>
+          <span style="color: var(--text-faint)">구조선 · 설명</span>
+
+        </div>
+
+        <h3 class="doc-h2-sub">영역 루트 — 조립도</h3>
+        <div class="table-scroll">
+          <pre>
+<b>area_01</b>                           <span style="color: var(--analysis)">[DecoArea, cc.Animation]</span>
+<span style="color: var(--text-faint)">├── </span><b>BG</b>                            <span style="color: var(--text-dim)">배경 Sprite 720×1559 + 그라데이션 자식</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>object</b></span>                        <span style="color: var(--text-dim)">이 하위 노드 순서가 곧 깊이 정렬 순서</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--deploy)"><b>o0010</b></span>                     <span style="color: var(--text-dim)">오브젝트 — 분수</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--deploy)"><b>o0020</b></span>                     <span style="color: var(--text-dim)">오브젝트 — 벤치</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--deploy)"><b>o0030</b></span>                     <span style="color: var(--text-dim)">오브젝트 — 저택</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--deploy)"><b>o0040</b></span>                     <span style="color: var(--text-dim)">오브젝트 — 카페</span>
+<span style="color: var(--text-faint)">└── </span><span style="color: var(--plan)"><b>all_clear_effect</b></span>              <span style="color: var(--analysis)">[cc.Animation]</span><span style="color: var(--text-dim)"> 영역 전체 완성 연출 (영역 단위라 여기)</span></pre>
+
+        </div>
+
+        <h3 class="doc-h2-sub">오브젝트 공통 틀 — 네 샘플이 전부 이 형태입니다</h3>
+        <div class="table-scroll">
+          <pre>
+<span style="color: var(--deploy)"><b>o####</b></span>                             <span style="color: var(--analysis)">[DecoObject]</span><span style="color: var(--text-dim)">  오브젝트 = 미션이 붙는 단위 · 이름이 세이브 키</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_talk</b></span>                   <span style="color: var(--text-dim)">말풍선 · 미션 아이콘 생성 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_cam</b></span>                    <span style="color: var(--text-dim)">카메라 이동 목표 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s0</b></span>                            <span style="color: var(--text-dim)">초기 상태 컨테이너 — 진입 연출 없음</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--balance)"><b>(스프라이트 0~n장)</b></span>        <span style="color: var(--text-dim)">이 상태의 이미지 리소스 (없으면 0장)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s1</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  상태 컨테이너 — 진입 연출 재생</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 n장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">└── </span><span style="color: var(--deploy)"><b>s2 s3 ...</b></span>                     <span style="color: var(--text-dim)">이후 상태 — s1과 동일 구성 · 분기는 s2_a s2_b s2_c</span></pre>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 26%">구성</th>
+                <th style="width: 24%">항상 있는 것</th>
+                <th>오브젝트마다 다른 것</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>anchor_talk</code></td><td><b>오브젝트에 1개</b></td><td>— 상태별로 두지 않는다</td></tr>
+              <tr><td><code>anchor_cam</code></td><td><b>오브젝트에 1개</b></td><td>— 상태별로 두지 않는다</td></tr>
+              <tr><td><code>effect</code></td><td><b>상태마다 1개</b> — 빈 노드<br />(<code>s0</code> 제외)</td><td>연출은 공용 프리팹 · 종류는 테이블 <code>fx</code></td></tr>
+              <tr><td><code>s0</code></td><td><b>필수</b></td><td>스프라이트 <b>0~n장</b> (빈 자리면 0장)</td></tr>
+              <tr><td><code>s1</code> 이후 상태</td><td><b>1개 이상</b></td><td><b>개수 자유</b> · 분기 유무</td></tr>
+              <tr><td>스프라이트</td><td>—</td><td><b>장수 자유</b> · 파츠 이름 자유</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">샘플 A~D는 두 가지만 다릅니다</div>
+            <p><b>상태 개수</b>와 <b>상태별 스프라이트 장수</b>뿐입니다. 앵커 2종과 <code>s0</code> 필수는 네 샘플 모두 같습니다.</p>
+          </div>
+        </div>
+
+        <h3 class="doc-h2-sub">샘플 A — <b>배치형</b> · 상태 1개 (없던 게 생김)</h3>
+        <div class="table-scroll">
+          <svg viewBox="0 0 286 158" width="286" height="158" role="img" style="display:block">
+            <g transform="translate(0,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="none" stroke="var(--text-faint)" stroke-width="1.4" stroke-dasharray="4 3"/><text x="70" y="62" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">s0 · 0장</text><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s0</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">빈 상태</text></g><path d="M130 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M143 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(140,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="44.0,83.0 70.0,96.0 70.0,103.0 44.0,90.0" fill="var(--analysis)" opacity="0.26"/><polygon points="70.0,96.0 96.0,83.0 96.0,90.0 70.0,103.0" fill="var(--analysis)" opacity="0.16"/><polygon points="44.0,83.0 70.0,70.0 96.0,83.0 70.0,96.0" fill="var(--analysis)" opacity="0.42"/><polygon points="55.0,74.0 70.0,81.5 70.0,90.5 55.0,83.0" fill="var(--analysis)" opacity="0.22"/><polygon points="70.0,81.5 85.0,74.0 85.0,83.0 70.0,90.5" fill="var(--analysis)" opacity="0.14"/><polygon points="55.0,74.0 70.0,66.5 85.0,74.0 70.0,81.5" fill="var(--analysis)" opacity="0.34"/><rect x="67" y="62" width="6" height="12" rx="2" fill="var(--analysis)" opacity="0.55"/><path d="M70 62 C60 52 63 44 70 40 C77 44 80 52 70 62 Z" fill="var(--analysis)" opacity="0.62"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s1</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">분수 등장</text></g>
+          </svg>
+        </div>
+
+        <div class="table-scroll">
+          <pre>
+<span style="color: var(--deploy)"><b>o0010</b></span>                             <span style="color: var(--analysis)">[DecoObject]</span><span style="color: var(--text-dim)">  분수 — 아무것도 없이 시작해서 생김</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_talk</b></span>                   <span style="color: var(--text-dim)">말풍선 · 미션 아이콘 생성 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_cam</b></span>                    <span style="color: var(--text-dim)">카메라 이동 목표 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s0</b></span>                            <span style="color: var(--text-dim)">빈 상태 — 그릴 게 없어도 노드는 만든다</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--balance)"><b>(스프라이트 0장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">└── </span><span style="color: var(--deploy)"><b>s1</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  완성 — 분수 등장</span>
+<span style="color: var(--text-faint)">    ├── </span><span style="color: var(--balance)"><b>(스프라이트 2장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">    └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span></pre>
+
+        </div>
+
+        <h3 class="doc-h2-sub">샘플 B — <b>수리형</b> · s0 → s1 (망가진 걸 고침)</h3>
+        <div class="table-scroll">
+          <svg viewBox="0 0 286 158" width="286" height="158" role="img" style="display:block">
+            <g transform="translate(0,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><g opacity="0.5"><polygon points="46.0,86.0 66.0,76.0 74.0,80.0 54.0,90.0" fill="var(--text-faint)" opacity="0.85"/><polygon points="78.0,90.0 92.0,83.0 98.0,86.0 84.0,93.0" fill="var(--text-faint)" opacity="0.6"/></g><text x="70" y="62" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">부서짐</text><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s0</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">초기 표시</text></g><path d="M130 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M143 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(140,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="52.0,85.0 56.0,87.0 56.0,96.0 52.0,94.0" fill="var(--balance)" opacity="0.24"/><polygon points="56.0,87.0 60.0,85.0 60.0,94.0 56.0,96.0" fill="var(--balance)" opacity="0.16"/><polygon points="52.0,85.0 56.0,83.0 60.0,85.0 56.0,87.0" fill="var(--balance)" opacity="0.3"/><polygon points="80.0,77.0 84.0,79.0 84.0,88.0 80.0,86.0" fill="var(--balance)" opacity="0.24"/><polygon points="84.0,79.0 88.0,77.0 88.0,86.0 84.0,88.0" fill="var(--balance)" opacity="0.16"/><polygon points="80.0,77.0 84.0,75.0 88.0,77.0 84.0,79.0" fill="var(--balance)" opacity="0.3"/><polygon points="48.0,77.0 70.0,88.0 70.0,92.0 48.0,81.0" fill="var(--balance)" opacity="0.34"/><polygon points="70.0,88.0 92.0,77.0 92.0,81.0 70.0,92.0" fill="var(--balance)" opacity="0.2"/><polygon points="48.0,77.0 70.0,66.0 92.0,77.0 70.0,88.0" fill="var(--balance)" opacity="0.55"/><polygon points="48.0,77.0 70.0,66.0 70.0,53.0 48.0,64.0" fill="var(--balance)" opacity="0.42"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s1</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">교체</text></g>
+          </svg>
+        </div>
+
+        <div class="table-scroll">
+          <pre>
+<span style="color: var(--deploy)"><b>o0020</b></span>                             <span style="color: var(--analysis)">[DecoObject]</span><span style="color: var(--text-dim)">  벤치 — 망가진 것에서 고쳐진 것으로 교체</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_talk</b></span>                   <span style="color: var(--text-dim)">말풍선 · 미션 아이콘 생성 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_cam</b></span>                    <span style="color: var(--text-dim)">카메라 이동 목표 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s0</b></span>                            <span style="color: var(--text-dim)">부서진 벤치 — 초기 표시, 진입 연출 없음</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--balance)"><b>(스프라이트 1장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">└── </span><span style="color: var(--deploy)"><b>s1</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  고쳐진 벤치 — 교체 연출</span>
+<span style="color: var(--text-faint)">    ├── </span><span style="color: var(--balance)"><b>(스프라이트 3장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">    └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span></pre>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title"><code>s0</code>는 <b>항상 만듭니다</b> — 그릴 게 없어도</div>
+            <p>샘플 A(분수)는 초기에 아무것도 없지만 <code>s0</code>를 <b>스프라이트 0장</b>으로 만듭니다. "노드를 만들지 않는다"로 두면 <b>예외 케이스가 하나 생기고</b>, 빈 노드 1개 비용은 사실상 0입니다.</p>
+          </div>
+        </div>
+
+
+        <h3 class="doc-h2-sub">샘플 C — <b>건설형</b> · s0 → s5 (단계적으로 자람)</h3>
+        <div class="table-scroll">
+          <svg viewBox="0 0 846 158" width="846" height="158" role="img" style="display:block">
+            <g transform="translate(0,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="none" stroke="var(--text-faint)" stroke-width="1.4" stroke-dasharray="4 3"/><text x="70" y="62" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">s0 · 0장</text><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s0</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">빈 터</text></g><path d="M130 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M143 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(140,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="44.0,84.0 70.0,97.0 70.0,103.0 44.0,90.0" fill="var(--validate)" opacity="0.24"/><polygon points="70.0,97.0 96.0,84.0 96.0,90.0 70.0,103.0" fill="var(--validate)" opacity="0.16"/><polygon points="44.0,84.0 70.0,71.0 96.0,84.0 70.0,97.0" fill="var(--validate)" opacity="0.34"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s1</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">기초</text></g><path d="M270 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M283 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(280,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="44.0,84.0 70.0,97.0 70.0,103.0 44.0,90.0" fill="var(--validate)" opacity="0.24"/><polygon points="70.0,97.0 96.0,84.0 96.0,90.0 70.0,103.0" fill="var(--validate)" opacity="0.16"/><polygon points="44.0,84.0 70.0,71.0 96.0,84.0 70.0,97.0" fill="var(--validate)" opacity="0.34"/><polygon points="49.0,65.0 70.0,75.5 70.0,94.5 49.0,84.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,75.5 91.0,65.0 91.0,84.0 70.0,94.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,65.0 70.0,54.5 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.52"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s2</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">1층</text></g><path d="M410 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M423 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(420,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="44.0,84.0 70.0,97.0 70.0,103.0 44.0,90.0" fill="var(--validate)" opacity="0.24"/><polygon points="70.0,97.0 96.0,84.0 96.0,90.0 70.0,103.0" fill="var(--validate)" opacity="0.16"/><polygon points="44.0,84.0 70.0,71.0 96.0,84.0 70.0,97.0" fill="var(--validate)" opacity="0.34"/><polygon points="49.0,65.0 70.0,75.5 70.0,94.5 49.0,84.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,75.5 91.0,65.0 91.0,84.0 70.0,94.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,65.0 70.0,54.5 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.52"/><polygon points="49.0,48.0 70.0,58.5 70.0,75.5 49.0,65.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,58.5 91.0,48.0 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,48.0 70.0,37.5 91.0,48.0 70.0,58.5" fill="var(--validate)" opacity="0.52"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s3</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">2층</text></g><path d="M550 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M563 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(560,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="44.0,84.0 70.0,97.0 70.0,103.0 44.0,90.0" fill="var(--validate)" opacity="0.24"/><polygon points="70.0,97.0 96.0,84.0 96.0,90.0 70.0,103.0" fill="var(--validate)" opacity="0.16"/><polygon points="44.0,84.0 70.0,71.0 96.0,84.0 70.0,97.0" fill="var(--validate)" opacity="0.34"/><polygon points="49.0,65.0 70.0,75.5 70.0,94.5 49.0,84.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,75.5 91.0,65.0 91.0,84.0 70.0,94.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,65.0 70.0,54.5 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.52"/><polygon points="49.0,48.0 70.0,58.5 70.0,75.5 49.0,65.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,58.5 91.0,48.0 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,48.0 70.0,37.5 91.0,48.0 70.0,58.5" fill="var(--validate)" opacity="0.52"/><polygon points="49.0,48.0 70.0,58.5 70.0,33.0" fill="var(--validate)" opacity="0.46"/><polygon points="70.0,58.5 91.0,48.0 70.0,33.0" fill="var(--validate)" opacity="0.3"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s4</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">지붕</text></g><path d="M690 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M703 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(700,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="44.0,84.0 70.0,97.0 70.0,103.0 44.0,90.0" fill="var(--validate)" opacity="0.24"/><polygon points="70.0,97.0 96.0,84.0 96.0,90.0 70.0,103.0" fill="var(--validate)" opacity="0.16"/><polygon points="44.0,84.0 70.0,71.0 96.0,84.0 70.0,97.0" fill="var(--validate)" opacity="0.34"/><polygon points="49.0,65.0 70.0,75.5 70.0,94.5 49.0,84.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,75.5 91.0,65.0 91.0,84.0 70.0,94.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,65.0 70.0,54.5 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.52"/><polygon points="49.0,48.0 70.0,58.5 70.0,75.5 49.0,65.0" fill="var(--validate)" opacity="0.33"/><polygon points="70.0,58.5 91.0,48.0 91.0,65.0 70.0,75.5" fill="var(--validate)" opacity="0.2"/><polygon points="49.0,48.0 70.0,37.5 91.0,48.0 70.0,58.5" fill="var(--validate)" opacity="0.52"/><polygon points="49.0,48.0 70.0,58.5 70.0,33.0" fill="var(--validate)" opacity="0.46"/><polygon points="70.0,58.5 91.0,48.0 70.0,33.0" fill="var(--validate)" opacity="0.3"/><polygon points="56.0,74.0 66.0,69.0 66.0,78.0 56.0,83.0" fill="var(--surface)" stroke="var(--validate)" stroke-width="1"/><polygon points="74.0,69.0 84.0,74.0 84.0,83.0 74.0,78.0" fill="var(--surface)" stroke="var(--validate)" stroke-width="1"/><polygon points="58.0,55.0 67.0,50.0 67.0,59.0 58.0,64.0" fill="var(--surface)" stroke="var(--validate)" stroke-width="1"/><circle cx="70" cy="29" r="3.4" fill="var(--warn)"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s5</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">완성</text></g>
+          </svg>
+        </div>
+
+        <div class="table-scroll">
+          <pre>
+<span style="color: var(--deploy)"><b>o0030</b></span>                             <span style="color: var(--analysis)">[DecoObject]</span><span style="color: var(--text-dim)">  저택 — 5단 성장</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_talk</b></span>                   <span style="color: var(--text-dim)">말풍선 · 미션 아이콘 생성 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_cam</b></span>                    <span style="color: var(--text-dim)">카메라 이동 목표 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s0</b></span>                            <span style="color: var(--text-dim)">빈 터 — 스프라이트 0장</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--balance)"><b>(스프라이트 0장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s1</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  기초 공사</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 n장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s2</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  1층</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 n장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s3</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  2층</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 n장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s4</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  지붕</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 n장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">└── </span><span style="color: var(--deploy)"><b>s5</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  완성 — 창문·장식</span>
+<span style="color: var(--text-faint)">    ├── </span><span style="color: var(--balance)"><b>(스프라이트 n장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">    └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span></pre>
+
+        </div>
+
+        <h3 class="doc-h2-sub">샘플 D — <b>선택형</b> · 다단계 + 완성 디자인 3종 택 1</h3>
+        <div class="table-scroll">
+          <svg viewBox="0 0 706 160" width="706" height="160" role="img" style="display:block">
+            <g transform="translate(0,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><g opacity="0.5"><polygon points="51.0,76.0 64.0,82.5 64.0,96.5 51.0,90.0" fill="var(--text-faint)" opacity="0.5"/><polygon points="64.0,82.5 77.0,76.0 77.0,90.0 64.0,96.5" fill="var(--text-faint)" opacity="0.35"/><polygon points="51.0,76.0 64.0,69.5 77.0,76.0 64.0,82.5" fill="var(--text-faint)" opacity="0.7"/><polygon points="84.0,88.0 98.0,81.0 102.0,84.0 88.0,91.0" fill="var(--text-faint)" opacity="0.6"/></g><text x="70" y="58" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">부서짐</text><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s0</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">부서진 카페</text></g><path d="M130 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M143 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(140,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><g fill="none" stroke="var(--text-faint)" stroke-width="1.5" stroke-dasharray="3 2.5"><polygon points="49.0,90.0 70.0,100.5 91.0,90.0 70.0,79.5"/><polygon points="49.0,64.0 70.0,74.5 91.0,64.0 70.0,53.5"/><line x1="49" y1="90" x2="49" y2="64"/><line x1="91" y1="90" x2="91" y2="64"/><line x1="70" y1="100" x2="70" y2="74"/></g><text x="70" y="46" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">골조</text><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s1</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">골조</text></g><path d="M270 60 h14" stroke="var(--text-faint)" stroke-width="1.6"/><path d="M283 56 l5 4 -5 4" fill="none" stroke="var(--text-faint)" stroke-width="1.6"/><g transform="translate(280,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="49.0,66.0 70.0,76.5 70.0,100.5 49.0,90.0" fill="var(--deploy)" opacity="0.34"/><polygon points="70.0,76.5 91.0,66.0 91.0,90.0 70.0,100.5" fill="var(--deploy)" opacity="0.2"/><polygon points="49.0,66.0 70.0,55.5 91.0,66.0 70.0,76.5" fill="var(--deploy)" opacity="0.55"/><polygon points="49.0,66.0 70.0,76.5 70.0,52.0" fill="var(--deploy)" opacity="0.46"/><polygon points="70.0,76.5 91.0,66.0 70.0,52.0" fill="var(--deploy)" opacity="0.3"/><polygon points="56.0,86.0 66.0,81.0 66.0,91.0 56.0,96.0" fill="var(--surface)" stroke="var(--deploy)" stroke-width="1"/><polygon points="75.0,81.0 85.0,86.0 85.0,98.0 75.0,103.0" fill="var(--surface)" stroke="var(--deploy)" stroke-width="1"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s2_a</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">장미 카페</text></g><g transform="translate(420,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="49.0,66.0 70.0,76.5 70.0,100.5 49.0,90.0" fill="var(--balance)" opacity="0.34"/><polygon points="70.0,76.5 91.0,66.0 91.0,90.0 70.0,100.5" fill="var(--balance)" opacity="0.2"/><polygon points="49.0,66.0 70.0,55.5 91.0,66.0 70.0,76.5" fill="var(--balance)" opacity="0.55"/><polygon points="49.0,66.0 70.0,76.5 70.0,52.0" fill="var(--balance)" opacity="0.46"/><polygon points="70.0,76.5 91.0,66.0 70.0,52.0" fill="var(--balance)" opacity="0.3"/><polygon points="56.0,86.0 66.0,81.0 66.0,91.0 56.0,96.0" fill="var(--surface)" stroke="var(--balance)" stroke-width="1"/><polygon points="75.0,81.0 85.0,86.0 85.0,98.0 75.0,103.0" fill="var(--surface)" stroke="var(--balance)" stroke-width="1"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s2_b</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">석조 카페</text></g><g transform="translate(560,0)"><rect x="4" y="4" width="132" height="112" rx="8" fill="var(--surface)" stroke="var(--border)"/><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="49.0,66.0 70.0,76.5 70.0,100.5 49.0,90.0" fill="var(--plan)" opacity="0.34"/><polygon points="70.0,76.5 91.0,66.0 91.0,90.0 70.0,100.5" fill="var(--plan)" opacity="0.2"/><polygon points="49.0,66.0 70.0,55.5 91.0,66.0 70.0,76.5" fill="var(--plan)" opacity="0.55"/><polygon points="49.0,66.0 70.0,76.5 70.0,52.0" fill="var(--plan)" opacity="0.46"/><polygon points="70.0,76.5 91.0,66.0 70.0,52.0" fill="var(--plan)" opacity="0.3"/><polygon points="56.0,86.0 66.0,81.0 66.0,91.0 56.0,96.0" fill="var(--surface)" stroke="var(--plan)" stroke-width="1"/><polygon points="75.0,81.0 85.0,86.0 85.0,98.0 75.0,103.0" fill="var(--surface)" stroke="var(--plan)" stroke-width="1"/><text x="70" y="131" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--deploy)">s2_c</text><text x="70" y="146" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">목조 카페</text></g><g stroke="var(--text-faint)" stroke-width="1.4" fill="none"><path d="M300 12 h380"/><path d="M300 12 v6"/><path d="M680 12 v6"/></g><text x="490" y="9" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text-dim)">택 1</text>
+          </svg>
+        </div>
+
+        <div class="table-scroll">
+          <pre>
+<span style="color: var(--deploy)"><b>o0040</b></span>                             <span style="color: var(--analysis)">[DecoObject]</span><span style="color: var(--text-dim)">  카페 — 다단계 + 최종 디자인 3종 중 택 1</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_talk</b></span>                   <span style="color: var(--text-dim)">말풍선 · 미션 아이콘 생성 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--validate)"><b>anchor_cam</b></span>                    <span style="color: var(--text-dim)">카메라 이동 목표 좌표 (오브젝트당 1개)</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s0</b></span>                            <span style="color: var(--text-dim)">부서진 카페 — 초기 표시</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--balance)"><b>(스프라이트 2장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s1</b></span>                            <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  골조 공사</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 3장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s2_a</b></span>                          <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  완성 · 장미 카페</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 4장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">├── </span><span style="color: var(--deploy)"><b>s2_b</b></span>                          <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  완성 · 석조 카페 — s2_a와 동일 구성</span>
+<span style="color: var(--text-faint)">│   ├── </span><span style="color: var(--balance)"><b>(스프라이트 4장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">│   └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span>
+<span style="color: var(--text-faint)">└── </span><span style="color: var(--deploy)"><b>s2_c</b></span>                          <span style="color: var(--analysis)">[cc.Animation, AnimationResetter]</span><span style="color: var(--text-dim)">  완성 · 목조 카페 — s2_a와 동일 구성</span>
+<span style="color: var(--text-faint)">    ├── </span><span style="color: var(--balance)"><b>(스프라이트 4장)</b></span>          <span style="color: var(--text-dim)">이 상태의 이미지 리소스</span>
+<span style="color: var(--text-faint)">    └── </span><span style="color: var(--plan)"><b>effect</b></span>                    <span style="color: var(--text-dim)">진입 연출 — 이름 고정 · 하위는 아트 자유</span></pre>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title"><code>s2_a</code> · <code>s2_b</code> · <code>s2_c</code>는 구조상 <code>s1</code>과 완전히 같습니다</div>
+            <p>"선택"이라는 개념이 <b>프리팹에는 존재하지 않습니다.</b> 진행 데이터에서 <code>s1</code>에서 나가는 경로가 3개라는 사실만이 선택을 만듭니다.</p>
+          </div>
+        </div>
+
+
+        <h3 class="doc-h2-sub">앵커 2종</h3>
+        <div class="table-scroll">
+          <svg viewBox="0 0 520 296" width="520" height="296" role="img" style="display:block">
+            <rect x="4" y="4" width="512" height="260" rx="8" fill="var(--surface)" stroke="var(--border)"/><rect x="98" y="158" width="124" height="76" rx="6" fill="none" stroke="var(--plan)" stroke-width="1.4" stroke-dasharray="4 3"/><text x="160" y="151" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--plan)">s1 · 상태 노드</text><text x="160" y="250" text-anchor="middle" font-size="10.5" fill="var(--plan)">effect 는 이 안에 — 좌표 = 이펙트 노드 위치</text><g transform="translate(60,120)"><polygon points="38.0,90.0 70.0,74.0 102.0,90.0 70.0,106.0" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.2"/><polygon points="49.0,66.0 70.0,76.5 70.0,100.5 49.0,90.0" fill="var(--deploy)" opacity="0.34"/><polygon points="70.0,76.5 91.0,66.0 91.0,90.0 70.0,100.5" fill="var(--deploy)" opacity="0.2"/><polygon points="49.0,66.0 70.0,55.5 91.0,66.0 70.0,76.5" fill="var(--deploy)" opacity="0.55"/><polygon points="49.0,66.0 70.0,76.5 70.0,52.0" fill="var(--deploy)" opacity="0.46"/><polygon points="70.0,76.5 91.0,66.0 70.0,52.0" fill="var(--deploy)" opacity="0.3"/></g><circle cx="130" cy="158" r="4" fill="var(--validate)"/><path d="M138 158 H236 V70 H262" fill="none" stroke="var(--validate)" stroke-width="1.2" stroke-dasharray="3 3"/><text x="268" y="74" font-size="12" font-weight="700" fill="var(--validate)">anchor_talk</text><text x="268" y="89" font-size="10.5" fill="var(--text-dim)">말풍선 · 미션 아이콘 생성 좌표</text><path d="M122 210 h16 M130 202 v16" stroke="var(--validate)" stroke-width="1.6"/><circle cx="130" cy="210" r="4.5" fill="none" stroke="var(--validate)" stroke-width="1.6"/><path d="M138 210 H236 V178 H262" fill="none" stroke="var(--validate)" stroke-width="1.2" stroke-dasharray="3 3"/><text x="268" y="182" font-size="12" font-weight="700" fill="var(--validate)">anchor_cam</text><text x="268" y="197" font-size="10.5" fill="var(--text-dim)">카메라 이동 목표 좌표</text><text x="24" y="288" font-size="10.5" fill="var(--text-faint)">접지 타일 중심 = 피벗 기준. 앵커 2종은 오브젝트에 하나씩 두고 상태별로 대응시키지 않는다.</text>
+          </svg>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">앵커</th>
+                <th style="width: 16%">붙는 위치</th>
+                <th style="width: 26%">용도</th>
+                <th>왜 아트가 줘야 하나</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>anchor_talk</code></td>
+                <td><b>오브젝트에 1개</b></td>
+                <td><b>말풍선 · 미션 아이콘 생성 좌표</b><br />"여기에 할 일이 있다" 표시가 뜨는 지점</td>
+                <td>오브젝트 <b>상단</b> 기준. 바운딩박스로 계산하면 투명 여백 때문에 틀어짐</td>
+              </tr>
+              <tr>
+                <td><code>anchor_cam</code></td>
+                <td><b>오브젝트에 1개</b></td>
+                <td><b>카메라 이동 목표 좌표</b><br />이 오브젝트를 보여줄 때 화면 중앙에 둘 지점</td>
+                <td>"이 오브젝트를 보여줄 때 화면 중앙에 둘 지점". 주변 여백 구도 판단이 들어가 계산 불가</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- §4 이름. 알파벳/단어 논쟁을 닫기 위한 표. -->
+      <div class="foot">
+        <b>확인 범위</b>
+        이전 프로젝트 트리는 <b>기억에 기반한 재구성</b>이며 코드 실측이 아닙니다.
+        노드 이름은 실제 값을 쓸 수 없어 설명용 표기(<code>o0010</code> · <code>s0</code>)로 바꿔 적었습니다.
+        도식은 구조를 보여주기 위한 것이고 실제 아트가 아닙니다.
+        용량·성능 수치는 이 문서에 없습니다 — <a href="art-resource-handoff.html">아트 인계 · 이미지 관리</a> 문서를 참고하세요.
+        <b>이 페이지는 임시</b>이며 정리 후 해당 문서로 합칩니다.
+      </div>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>

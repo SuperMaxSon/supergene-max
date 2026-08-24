@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-24 15:44",
+  updated: "2026-08-24 15:49",
 };
 
 const SECTIONS = [
@@ -133,7 +133,7 @@ const SECTIONS = [
         url: "docs/solitaire-flow-map.html",
         status: "완료",
         version: "v10.1",
-        updated: "2026-08-24 15:44",
+        updated: "2026-08-24 15:49",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "컨텍스트", "인터랙티브"],
       },
@@ -150,8 +150,8 @@ const SECTIONS = [
         desc: "조인 진입 판의 중복 지면을 없앤 8/20 배포가 바이럴에 득이었는지 실이었는지.",
         url: "docs/switch-surface-dedupe-viral.html",
         status: "진행중",
-        version: "v1.0",
-        updated: "2026-08-24 15:44",
+        version: "v1.1",
+        updated: "2026-08-24 15:49",
         pinned: false,
         tags: ["컨텍스트전환", "바이럴", "전후비교"],
       },
