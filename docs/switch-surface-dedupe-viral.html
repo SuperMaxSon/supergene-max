@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>전환 지면 중복 제거 — 바이럴 검증</title>
+    <meta
+      name="description"
+      content="토너먼트 조인 진입 판에서 전환 지면이 두 번 뜨던 것을 1회로 정리한 8/20 배포의 바이럴 영향. 중복은 완전히 사라졌고 바이럴은 잠정 개선."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#verdict">결론</a>
+        <a class="nav-back" href="#dedupe">중복 해소</a>
+        <a class="nav-back" href="#viral">바이럴 지표</a>
+        <a class="nav-back" href="#success">성공률</a>
+        <a class="nav-back" href="#limit">한계 · 다음</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · 컨텍스트 전환</div>
+        <h1 class="doc-title">전환 지면 중복 제거 — 바이럴 검증</h1>
+        <p class="doc-lede">
+          토너먼트 조인으로 진입한 판에서 프리게임 <b>Play</b>를 누르면 전환 지면이 한 번 더 뜨던 것을
+          1회로 정리했습니다(<code>11f4808b</code>, 8/20 배포). 아래는 그 전후 바이럴 비교입니다.
+          <code>country='US'</code> · 유저-일 단위 · 조인 미진입 유저를 대조군으로 시점 효과를 뺐습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--ok)">중복 해소 확인</span>
+          <span class="pill" style="--acc: var(--warn)">바이럴 개선 잠정</span>
+          <span class="tag">BigQuery 실측</span>
+          <span class="tag">RU 표본 19~24명</span>
+          <span class="tag">2026-08-24 15:44 갱신</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          결론
+          <span class="doc-h2-sub">RU 기준 · NRU는 표본 4~13으로 판단 불가</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">70.7 → 0.0<span class="stat-unit">%</span></div>
+            <div class="stat-name">판 내 중복 노출률</div>
+            <div class="stat-sub">완전 해소</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">+23.1<span class="stat-unit">%p</span></div>
+            <div class="stat-name">토너 포스트 시도</div>
+            <div class="stat-sub">대조군 보정 후</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">−4.9<span class="stat-unit">%p</span></div>
+            <div class="stat-name">토너 공유 성공률</div>
+            <div class="stat-sub">악화 후보 · 미확정</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">23<span class="stat-unit">유저일</span></div>
+            <div class="stat-name">배포 후 표본</div>
+            <div class="stat-sub">3일치뿐 · 8/27 재측정</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 문서를 읽는 법</div>
+            <p>
+              배포 전 구간에 <b>8/19 배포</b>(조인 전환 실패 수정)가 섞여 있어, 전후 차이를 그대로
+              이번 수정 효과로 읽을 수 없습니다. 그래서 <b>조인 진입이 없는 유저</b>를 대조군으로 두고
+              <code>(처치 변화) − (대조 변화)</code>로 봅니다. 대조군도 같이 움직였으면 이번 수정 덕이 아닙니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="dedupe">
+        <h2 class="doc-h2">
+          1. 중복 해소
+          <span class="doc-h2-sub">배포가 실제로 먹었나</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 12%">세그</th>
+                <th style="width: 24%">구간</th>
+                <th style="text-align: right">entry 지면 노출</th>
+                <th style="text-align: right">중복 발생</th>
+                <th style="text-align: right">중복률</th>
+                <th style="text-align: right">지면 간격 p50</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>RU</td>
+                <td>8/13~19 <span class="tag">중복</span></td>
+                <td style="text-align: right">75</td>
+                <td style="text-align: right">53</td>
+                <td style="text-align: right">70.7%</td>
+                <td style="text-align: right">5초</td>
+              </tr>
+              <tr>
+                <td>RU</td>
+                <td>8/21~23 <span class="tag">단일</span></td>
+                <td style="text-align: right">63</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right"><b>0.0%</b></td>
+                <td style="text-align: right">—</td>
+              </tr>
+              <tr>
+                <td>NRU</td>
+                <td>8/13~19 <span class="tag">중복</span></td>
+                <td style="text-align: right">19</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right">21.1%</td>
+                <td style="text-align: right">4초</td>
+              </tr>
+              <tr>
+                <td>NRU</td>
+                <td>8/21~23 <span class="tag">단일</span></td>
+                <td style="text-align: right">8</td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right"><b>0.0%</b></td>
+                <td style="text-align: right">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">판정식</div>
+            <p>
+              <code>3050(position='entry')</code> 이후 <b>다음 판 시작(2100) 전에</b>
+              <code>3050(position='game_start')</code>이 끼면 중복입니다. 간격 p50 4~5초는
+              "지면 → 프리게임 팝업 → Play" 소요와 맞아, 판정식이 실제 흐름을 잡고 있다는 방증입니다.
+              NRU가 21%로 낮은 것은 누적 판수 게이트(<code>ctx_popup_min_plays</code>) 때문에
+              <code>game_start</code> 지면 자체가 덜 뜨기 때문입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="viral">
+        <h2 class="doc-h2">
+          2. 바이럴 지표
+          <span class="doc-h2-sub">RU · 그날 한 번이라도 시도한 유저-일 비율(%p)</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">지표</th>
+                <th style="text-align: right">중복 → 단일</th>
+                <th style="text-align: right">대조군</th>
+                <th style="text-align: right">보정 후</th>
+                <th style="width: 22%">판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>토너 포스트 <code>3300</code></td>
+                <td style="text-align: right">14.3 → 34.8 <b>(+20.5)</b></td>
+                <td style="text-align: right">11.1 → 8.5 (−2.6)</td>
+                <td style="text-align: right"><b>+23.1</b></td>
+                <td><span class="pill" style="--acc: var(--ok)">개선 유력</span></td>
+              </tr>
+              <tr>
+                <td>피드 공유 <code>3500</code></td>
+                <td style="text-align: right">7.1 → 26.1 <b>(+19.0)</b></td>
+                <td style="text-align: right">5.5 → 3.4 (−2.1)</td>
+                <td style="text-align: right"><b>+21.1</b></td>
+                <td><span class="pill" style="--acc: var(--ok)">개선 유력</span></td>
+              </tr>
+              <tr>
+                <td>초대 <code>3460</code></td>
+                <td style="text-align: right">78.6 → 87.0 (+8.4)</td>
+                <td style="text-align: right">45.7 → 27.7 (−18.0)</td>
+                <td style="text-align: right">+26.4</td>
+                <td><span class="pill" style="--acc: var(--warn)">천장 효과 의심</span></td>
+              </tr>
+              <tr>
+                <td>전환 수락 <code>3051</code></td>
+                <td style="text-align: right">96.4 → 95.7 (−0.7)</td>
+                <td style="text-align: right">58.2 → 41.0 (−17.2)</td>
+                <td style="text-align: right">+16.5</td>
+                <td><span class="pill" style="--acc: var(--warn)">천장 효과 의심</span></td>
+              </tr>
+              <tr>
+                <td>토너 생성 <code>3100</code></td>
+                <td style="text-align: right">96.4 → 91.3 (−5.1)</td>
+                <td style="text-align: right">61.4 → 46.1 (−15.3)</td>
+                <td style="text-align: right">+10.2</td>
+                <td><span class="pill" style="--acc: var(--warn)">천장 효과 의심</span></td>
+              </tr>
+              <tr>
+                <td>토너 공유 <code>3200</code></td>
+                <td style="text-align: right">96.4 → 91.3 (−5.1)</td>
+                <td style="text-align: right">45.3 → 30.6 (−14.7)</td>
+                <td style="text-align: right">+9.6</td>
+                <td><span class="pill" style="--acc: var(--warn)">천장 효과 의심</span></td>
+              </tr>
+              <tr>
+                <td>P2P 메시지 <code>3400</code></td>
+                <td style="text-align: right">28.6 → 30.4 (+1.8)</td>
+                <td style="text-align: right">11.7 → 16.3 (+4.6)</td>
+                <td style="text-align: right">−2.8</td>
+                <td><span class="pill" style="--acc: var(--warn)">변화 없음</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">위 두 줄만 신뢰도가 높은 이유</div>
+            <p>
+              토너 포스트(14→35)와 피드 공유(7→26)는 <b>천장에서 먼 값</b>에서 올랐고 대조군은 내려갔습니다.
+              특히 <code>3300</code>은 이번 수정의 직접 타깃입니다 — 조인한 토너먼트 컨텍스트를 안 뺏기니
+              점수 등록이 살아난 것과 정합합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">나머지 +값을 그대로 믿을 수 없는 이유</div>
+            <p>
+              초대·전환수락·토너생성·토너공유는 배포 전에 이미 <b>78~96%</b>라 더 오를 자리가 없습니다.
+              대조군만 −15~18%p 내려가서 보정값이 플러스로 나온 것으로, 효과가 아니라
+              <b>천장 효과 + 대조군 구성 변화</b>일 가능성이 큽니다(대조군 전 지표 일제 하락 = 3일 창의 유저 구성 차이로 추정).
+            </p>
+          </div>
+        </div>
+
+        <h2 class="doc-h2">
+          같은 기간 내부 대조
+          <span class="doc-h2-sub">시점 효과를 배제한 방증</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 28%">지표 (nonzero %)</th>
+                <th style="text-align: right">중복 O · 8/13~19</th>
+                <th style="text-align: right">중복 X · 8/13~19</th>
+                <th style="text-align: right">중복 X · 8/21~23</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>토너 포스트</td>
+                <td style="text-align: right">14.3</td>
+                <td style="text-align: right">23.1</td>
+                <td style="text-align: right"><b>34.8</b></td>
+              </tr>
+              <tr>
+                <td>피드 공유</td>
+                <td style="text-align: right">7.1</td>
+                <td style="text-align: right">23.1</td>
+                <td style="text-align: right"><b>26.1</b></td>
+              </tr>
+              <tr>
+                <td>유저-일 수</td>
+                <td style="text-align: right">28</td>
+                <td style="text-align: right">13</td>
+                <td style="text-align: right">23</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">왜 이게 방증인가</div>
+            <p>
+              가운데 열은 <b>같은 기간·같은 빌드</b>인데 중복이 안 걸린 유저-일입니다.
+              중복 여부만으로 지표가 갈렸다는 뜻이라, 8/19 배포나 요일 같은 시점 요인으로는 설명되지 않습니다.
+              단 이 그룹은 판수 p50이 16판(중복 O는 25판)으로 <b>덜 논 유저</b>라 셀렉션이 섞여 있습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="success">
+        <h2 class="doc-h2">
+          3. 성공률
+          <span class="doc-h2-sub">시도 대비 성공 · RU</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">지표</th>
+                <th style="text-align: right">중복 → 단일</th>
+                <th style="text-align: right">대조군</th>
+                <th style="text-align: right">보정 후</th>
+                <th style="width: 22%">판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>토너 공유 성공률</td>
+                <td style="text-align: right">8.5% → <b>2.9%</b></td>
+                <td style="text-align: right">10.2 → 9.5</td>
+                <td style="text-align: right"><b>−4.9%p</b></td>
+                <td><span class="pill" style="--acc: var(--bad)">악화 후보</span></td>
+              </tr>
+              <tr>
+                <td>토너 생성 성공률</td>
+                <td style="text-align: right">2.2% → 2.2%</td>
+                <td style="text-align: right">2.3 → 8.0</td>
+                <td style="text-align: right">−5.7%p</td>
+                <td><span class="pill" style="--acc: var(--warn)">확인 필요</span></td>
+              </tr>
+              <tr>
+                <td>초대 성공률</td>
+                <td style="text-align: right">99.5% → 98.6%</td>
+                <td style="text-align: right">95.5 → 95.6</td>
+                <td style="text-align: right">−1.0%p</td>
+                <td><span class="pill" style="--acc: var(--ok)">변화 없음</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">토너 공유 성공률을 확정하지 못하는 이유</div>
+            <p>
+              시도 비율은 유지인데 성공만 1/3로 떨어졌습니다. 다만 같은 기간 중복 없던 그룹은
+              <b>26.0%</b>라 세 값이 2.9 / 8.5 / 26.0으로 흩어져 있어, 표본 노이즈인지 실제 회귀인지
+              지금 데이터로는 가를 수 없습니다. <code>3220_TOURNAMENT_SHARE_FAIL</code>의
+              <code>error_code</code> 분해를 별도로 진행합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="limit">
+        <h2 class="doc-h2">
+          4. 한계 · 다음
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 26%">항목</th>
+                <th>내용</th>
+                <th style="width: 22%">조치</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>표본</td>
+                <td>배포 후 조인 코호트 23 유저-일 / 19명. 5%p 차이는 노이즈에 묻힘</td>
+                <td>8/27 이후 7일로 재측정</td>
+              </tr>
+              <tr>
+                <td>전 구간 오염</td>
+                <td>8/19 배포(조인 전환 실패 수정)가 8/13~19 창에 섞임</td>
+                <td>대조군 보정으로 완화 · 완전 제거 불가</td>
+              </tr>
+              <tr>
+                <td>후 구간 확장 제약</td>
+                <td>8/24 배포로 P2P 메시지가 판 종료 → 판 시작으로 이동</td>
+                <td>재측정 시 <code>3400/3410</code> 제외</td>
+              </tr>
+              <tr>
+                <td>코호트 특성</td>
+                <td>조인 진입자는 판수 p50 25~30판(일반 2~4판) — 소셜 헤비 유저</td>
+                <td>대조군을 시점 보정에만 사용</td>
+              </tr>
+              <tr>
+                <td>NRU</td>
+                <td>코호트 4~13 유저-일. 해석 불가</td>
+                <td>재측정 후 재검토</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>원본 코호트 표 펼치기 (Q8 · 채널별)</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>코호트</th>
+                    <th>세그</th>
+                    <th style="text-align: right">유저일</th>
+                    <th style="text-align: right">인원</th>
+                    <th style="text-align: right">판수 p50</th>
+                    <th style="text-align: right">토너공유 nz</th>
+                    <th style="text-align: right">토너포스트 nz</th>
+                    <th style="text-align: right">메시지 nz</th>
+                    <th style="text-align: right">초대 nz</th>
+                    <th style="text-align: right">피드 nz</th>
+                    <th style="text-align: right">토너생성 nz</th>
+                    <th style="text-align: right">전환수락 nz</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>중복 O (8/13~19)</td>
+                    <td>RU</td>
+                    <td style="text-align: right">28</td>
+                    <td style="text-align: right">24</td>
+                    <td style="text-align: right">25</td>
+                    <td style="text-align: right">96.4</td>
+                    <td style="text-align: right">14.3</td>
+                    <td style="text-align: right">28.6</td>
+                    <td style="text-align: right">78.6</td>
+                    <td style="text-align: right">7.1</td>
+                    <td style="text-align: right">96.4</td>
+                    <td style="text-align: right">96.4</td>
+                  </tr>
+                  <tr>
+                    <td>중복 X (8/13~19)</td>
+                    <td>RU</td>
+                    <td style="text-align: right">13</td>
+                    <td style="text-align: right">13</td>
+                    <td style="text-align: right">16</td>
+                    <td style="text-align: right">76.9</td>
+                    <td style="text-align: right">23.1</td>
+                    <td style="text-align: right">23.1</td>
+                    <td style="text-align: right">76.9</td>
+                    <td style="text-align: right">23.1</td>
+                    <td style="text-align: right">84.6</td>
+                    <td style="text-align: right">100.0</td>
+                  </tr>
+                  <tr>
+                    <td>중복 X (8/21~23)</td>
+                    <td>RU</td>
+                    <td style="text-align: right">23</td>
+                    <td style="text-align: right">19</td>
+                    <td style="text-align: right">30</td>
+                    <td style="text-align: right">91.3</td>
+                    <td style="text-align: right">34.8</td>
+                    <td style="text-align: right">30.4</td>
+                    <td style="text-align: right">87.0</td>
+                    <td style="text-align: right">26.1</td>
+                    <td style="text-align: right">91.3</td>
+                    <td style="text-align: right">95.7</td>
+                  </tr>
+                  <tr>
+                    <td>대조군 (8/13~19)</td>
+                    <td>RU</td>
+                    <td style="text-align: right">1,544</td>
+                    <td style="text-align: right">731</td>
+                    <td style="text-align: right">4</td>
+                    <td style="text-align: right">45.3</td>
+                    <td style="text-align: right">11.1</td>
+                    <td style="text-align: right">11.7</td>
+                    <td style="text-align: right">45.7</td>
+                    <td style="text-align: right">5.5</td>
+                    <td style="text-align: right">61.4</td>
+                    <td style="text-align: right">58.2</td>
+                  </tr>
+                  <tr>
+                    <td>대조군 (8/21~23)</td>
+                    <td>RU</td>
+                    <td style="text-align: right">1,200</td>
+                    <td style="text-align: right">807</td>
+                    <td style="text-align: right">2</td>
+                    <td style="text-align: right">30.6</td>
+                    <td style="text-align: right">8.5</td>
+                    <td style="text-align: right">16.3</td>
+                    <td style="text-align: right">27.7</td>
+                    <td style="text-align: right">3.4</td>
+                    <td style="text-align: right">46.1</td>
+                    <td style="text-align: right">41.0</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>중복 O (8/13~19)</td>
+                    <td>NRU</td>
+                    <td style="text-align: right">4</td>
+                    <td style="text-align: right">4</td>
+                    <td style="text-align: right">11</td>
+                    <td style="text-align: right">50.0</td>
+                    <td style="text-align: right">25.0</td>
+                    <td style="text-align: right">50.0</td>
+                    <td style="text-align: right">75.0</td>
+                    <td style="text-align: right">75.0</td>
+                    <td style="text-align: right">100.0</td>
+                    <td style="text-align: right">100.0</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>중복 X (8/13~19)</td>
+                    <td>NRU</td>
+                    <td style="text-align: right">13</td>
+                    <td style="text-align: right">13</td>
+                    <td style="text-align: right">16</td>
+                    <td style="text-align: right">38.5</td>
+                    <td style="text-align: right">15.4</td>
+                    <td style="text-align: right">0.0</td>
+                    <td style="text-align: right">30.8</td>
+                    <td style="text-align: right">0.0</td>
+                    <td style="text-align: right">100.0</td>
+                    <td style="text-align: right">92.3</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>중복 X (8/21~23)</td>
+                    <td>NRU</td>
+                    <td style="text-align: right">8</td>
+                    <td style="text-align: right">8</td>
+                    <td style="text-align: right">8</td>
+                    <td style="text-align: right">87.5</td>
+                    <td style="text-align: right">87.5</td>
+                    <td style="text-align: right">12.5</td>
+                    <td style="text-align: right">25.0</td>
+                    <td style="text-align: right">12.5</td>
+                    <td style="text-align: right">100.0</td>
+                    <td style="text-align: right">100.0</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>대조군 (8/13~19)</td>
+                    <td>NRU</td>
+                    <td style="text-align: right">2,416</td>
+                    <td style="text-align: right">2,412</td>
+                    <td style="text-align: right">1</td>
+                    <td style="text-align: right">1.8</td>
+                    <td style="text-align: right">0.5</td>
+                    <td style="text-align: right">1.0</td>
+                    <td style="text-align: right">1.7</td>
+                    <td style="text-align: right">1.3</td>
+                    <td style="text-align: right">18.0</td>
+                    <td style="text-align: right">3.0</td>
+                  </tr>
+                  <tr class="is-dead">
+                    <td>대조군 (8/21~23)</td>
+                    <td>NRU</td>
+                    <td style="text-align: right">3,234</td>
+                    <td style="text-align: right">3,233</td>
+                    <td style="text-align: right">1</td>
+                    <td style="text-align: right">1.1</td>
+                    <td style="text-align: right">1.0</td>
+                    <td style="text-align: right">0.6</td>
+                    <td style="text-align: right">0.9</td>
+                    <td style="text-align: right">0.4</td>
+                    <td style="text-align: right">7.8</td>
+                    <td style="text-align: right">1.5</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--validate)">
+                <div class="note-title">nz = nonzero %</div>
+                <p>
+                  그날 해당 액션을 <b>한 번이라도</b> 한 유저-일 비율입니다. 액션 수 중앙값(p50)은
+                  대부분 0으로 깔려 비교가 불가능하고, 평균은 표본이 작아 헤비 유저 몇 명에 끌립니다.
+                  그래서 이 비율을 주지표로 씁니다. 흐린 행(NRU)은 표본 미달로 해석 대상이 아닙니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div class="foot">
+          <b>확인 범위</b> <code>game-log-359704.raw.solitaire_city_journey</code> ·
+          <code>country='US'</code> · <code>is_dev</code> 제외 · 유저-일 단위 ·
+          NRU 판정은 <code>MIN(logincount_total) &le; 1</code>.
+          8/20은 prod 머지가 15:14라 혼재 구간으로 제외했습니다.
+          코드 근거는 <code>SceneManager.showViewGameWithTournament</code> ·
+          <code>ContextSwitchExposure.buildLogData</code>.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
