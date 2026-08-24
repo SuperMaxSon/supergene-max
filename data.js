@@ -242,6 +242,16 @@ const SECTIONS = [
     desc: "작업 기록 · 이식 가이드 · 사내 툴",
     cards: [
       {
+        title: "아트 리소스 인계 · 이미지 관리 (네이티브→웹)",
+        desc: "신규 머지 프로젝트 웹 착수 전 필독. 병목은 GPU가 아니라 CPU 디코드 40%, brotli는 PNG에 안 먹힌다(−1.59%). 오픈형·단편형 모두 급소는 조망 화면.",
+        url: "docs/art-resource-handoff.html",
+        status: "진행중",
+        version: "v1.0",
+        updated: "2026-08-24 09:09",
+        pinned: false,
+        tags: ["아트", "리소스", "인계규격", "머지"],
+      },
+      {
         title: "솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나",
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~08-18 Max 커밋 141건 diff 전량 실측.",
         url: "docs/commit-history-solitaire.html",
