@@ -322,12 +322,17 @@
     content: ""; position: absolute; left: 10px; top: 0; bottom: 20px;
     width: 1px; background: var(--line);
   }
-  .g-branch { position: relative; display: flex; align-items: center; gap: 7px; margin: 6px 0; }
-  .g-branch::before {
+  /* v2 — 세로로 쌓는다. 가로 플렉스로 두면 펼친 .b-flow 가 형제 아이템이 되어
+     글자 폭(236px)으로 쪼그라들고, 가로가 남는데 세로로 기어간다. */
+  .g-branch { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: 6px 0; }
+  /* 팔꿈치 선을 칸(.g-branch) 이 아니라 첫 줄(.g-row) 에 건다 —
+     세로 플렉스가 되면서 칸 높이가 펼친 내용만큼 늘어나므로, 칸 기준 50% 는 아래로 밀린다.
+     줄에 걸면 JS 측정 없이 항상 그 줄 한가운데에 맞는다. */
+  .g-branch > .g-row::before {
     content: ""; position: absolute; left: -16px; top: 50%;
     width: 12px; height: 1px; background: var(--line);
   }
-  .g-branch::after {
+  .g-branch > .g-row::after {
     content: ""; position: absolute; left: -5px; top: 50%;
     transform: translateY(-50%);
     border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
@@ -623,8 +628,9 @@
     font-size: 10px; font-weight: 700; color: var(--ink-2);
   }
   /* 가지 셀 = 한 줄 요약 + 눌러서 펼치는 흐름 (3단을 이 자리로 합쳤다) */
-  .g-branch > .g-row { display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
-  .b-flow { display: none; margin: 8px 0 4px 27px; }
+  .g-branch > .g-row { position: relative; display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
+  /* v2 — 펼친 흐름은 칸 전폭을 쓴다 (v1 은 팝업 폭의 11% 밖에 못 썼다) */
+  .b-flow { display: none; width: 100%; margin: 9px 0 6px; }
   .g-branch.open > .b-flow { display: block; }
   .g-branch.open .b-go { color: var(--muted); }
   .g-branch.open .b-go::after { content: ""; }
@@ -632,13 +638,19 @@
   .b-flow .f-flow { margin-top: 0; }
   .b-flow .f-step { font-size: 11px; }
 
-  .g-inner {
+  /* v2 — 기본 노출에서 뺀 것들. 숨긴 게 아니라 접은 것이므로 제목에 개수를 적는다. */
+  .g-more, .g-inner {
     margin-top: 14px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--surface-2); padding: 10px 13px;
   }
+  .g-more { border-left: 3px solid var(--line); }
+  .g-more > summary { font-size: 11.5px; font-weight: 750; color: var(--ink-2); cursor: pointer; }
+  .g-more[open] > summary { margin-bottom: 10px; }
+  .g-more > summary::marker { color: var(--faint); }
   .g-inner summary { font-size: 11px; font-weight: 750; color: var(--muted); cursor: pointer; }
   .g-inner[open] summary { margin-bottom: 10px; }
-  .g-inner .g-lanes { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+  /* v2 — 접힘 안도 잘게 쪼개면 같은 문제가 반복된다. 열을 넓게 잡아 2~3열로. */
+  .g-more .g-lanes, .g-inner .g-lanes { grid-template-columns: repeat(auto-fill, minmax(660px, 1fr)); }
 
   .f-raw {
     margin-top: 12px; border: 1px solid var(--line); border-radius: 7px;
@@ -648,8 +660,11 @@
   .f-raw p { margin: 7px 0 0; font-size: 10.5px; line-height: 1.65; color: var(--ink-2); word-break: keep-all; }
 
   /* ---- 3단: 호출 사슬 플로우 ---- */
-  .f-flow { display: flex; flex-direction: column; margin-top: 2px; }
+  /* v2 — 단계를 가로로 흘린다. 폭이 남으면 옆으로, 모자라면 다음 줄로 접힌다.
+     세로로만 쌓으면 가로가 남는데 세로로 길어진다. */
+  .f-flow { display: flex; flex-wrap: wrap; align-items: stretch; margin-top: 2px; }
   .f-step {
+    flex: 1 1 250px; min-width: 0; max-width: 560px;   /* 한 단계뿐일 때 화면 끝까지 늘어나지 않게 */
     display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start;
     border: 1px solid var(--line); border-left: 4px solid var(--st);
     border-radius: 5px; background: var(--surface); padding: 9px 11px;
@@ -669,15 +684,16 @@
   .f-open { display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; font-size: 10px; font-weight: 750; color: var(--tc); }
   .f-open i { width: 7px; height: 7px; border-radius: 2px; background: var(--tc); }
 
-  /* 단계 사이 연결선 + 화살촉 */
-  .f-link { position: relative; height: 26px; margin-left: 12px; }
-  .f-link::before { content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 18px; background: var(--line); }
+  /* 단계 사이 연결선 + 화살촉 (v2 — 가로 배치라 선도 가로로 눕는다) */
+  .f-link { position: relative; flex: 0 0 26px; align-self: center; height: 14px; margin: 0; }
+  .f-link::before { content: ""; position: absolute; left: 3px; top: 50%; width: 15px; height: 1px; background: var(--line); }
   .f-link::after {
-    content: ""; position: absolute; left: -3.5px; top: 17px;
-    border-left: 4px solid transparent; border-right: 4px solid transparent;
-    border-top: 6px solid var(--line);
+    content: ""; position: absolute; left: 17px; top: 50%; transform: translateY(-50%);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--line);
   }
-  .f-link b { position: absolute; left: 14px; top: 2px; font-size: 9.5px; font-weight: 650; color: var(--faint); }
+  /* "다음 / 통과하면" 글자는 뺀다 — 게이트는 이미 점선 테두리와 f-type 이 말해 준다 (텍스트 최소화) */
+  .f-link b { display: none; }
 
   .f-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
   .f-legend span { display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--muted); }
@@ -2843,7 +2859,7 @@ const EXTRA = {
 
   const N = [
     {
-      id: "p_common", chips: ["p_setting", "p_privacy", "p_error", "p_toast", "p_toasterr", "p_adbreak", "p_adblock"], cat: "system", kind: "묶음", gate: true, x: 1580, y: 1333, w: 520,
+      id: "p_common", chips: ["p_setting", "p_privacy", "p_error", "p_toast", "p_toasterr", "p_adbreak", "p_adblock"], cat: "system", kind: "묶음", gate: true, x: 1820, y: 1667, w: 520,
       title: "공통 팝업", ko: "공통 팝업 묶음",
       file: "assets/script/common/view/ViewCreator.ts",
       acts: [
@@ -2863,7 +2879,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "intro", cat: "entry", kind: "Scene", x: 70, y: 251, w: 300,
+      id: "intro", cat: "entry", kind: "Scene", x: 70, y: 279, w: 300,
       title: "intro.fire / Intro", ko: "인트로 · 부팅 지면",
       file: "assets/script/game/Intro.ts:145",
       acts: [
@@ -2907,7 +2923,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "router", cat: "entry", kind: "분기", gate: true, x: 70, y: 355, w: 300,
+      id: "router", cat: "entry", kind: "분기", gate: true, x: 70, y: 411, w: 300,
       title: "Intro.moveToGame(startType)", ko: "진입 라우터",
       file: "assets/script/game/Intro.ts:739",
       acts: [
@@ -2947,7 +2963,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "e_tour", cat: "entry", kind: "직행", x: 500, y: 146, w: 300,
+      id: "e_tour", cat: "entry", kind: "직행", x: 580, y: 146, w: 300,
       title: "토너먼트 링크 진입", ko: "FB 토너먼트 진입",
       file: "assets/script/common/FBContext.ts:304",
       acts: [
@@ -2966,7 +2982,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "e_async", cat: "entry", kind: "직행", x: 500, y: 250, w: 300,
+      id: "e_async", cat: "entry", kind: "직행", x: 580, y: 278, w: 300,
       title: "Intro.asyncPvp()", ko: "비동기 PvP 진입",
       file: "assets/script/game/Intro.ts:837",
       acts: [
@@ -2992,7 +3008,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "e_ugc", cat: "entry", kind: "직행", x: 500, y: 354, w: 300,
+      id: "e_ugc", cat: "entry", kind: "직행", x: 580, y: 410, w: 300,
       title: "Intro.ugcGame()", ko: "UGC 스테이지 진입",
       file: "assets/script/game/Intro.ts:783",
       acts: [
@@ -3016,7 +3032,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "e_minigame", cat: "entry", kind: "직행", x: 500, y: 458, w: 300,
+      id: "e_minigame", cat: "entry", kind: "직행", x: 580, y: 542, w: 300,
       title: "IntroStartType.introStart()", ko: "미니게임 진입",
       file: "assets/script/game/IntroStartType.ts:25",
       acts: [
@@ -3037,7 +3053,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "lobby", chips: ["p_sidemenu", "p_otherprof", "p_tournament", "p_bonusgame", "p_crossmis"], cat: "lobby", kind: "View", x: 930, y: 274, w: 520,
+      id: "lobby", chips: ["p_sidemenu", "p_otherprof", "p_tournament", "p_bonusgame", "p_crossmis"], cat: "lobby", kind: "View", x: 1090, y: 316, w: 520,
       title: "ViewLobbyRanking", ko: "로비 · 랭킹",
       file: "assets/script/game/lobby/ViewLobbyRanking.ts",
       acts: [
@@ -3080,7 +3096,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "profile", cat: "lobby", kind: "View", x: 1642, y: 514, w: 300,
+      id: "profile", cat: "lobby", kind: "View", x: 1882, y: 598, w: 300,
       title: "ViewUserProfile", ko: "내 프로필",
       file: "assets/script/game/lobby/ViewUserProfile.ts",
       acts: [
@@ -3109,7 +3125,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "shop", chips: ["p_freecoin", "p_hottime", "p_specgift", "p_starter"], cat: "lobby", kind: "View", x: 1580, y: 90, w: 424,
+      id: "shop", chips: ["p_freecoin", "p_hottime", "p_specgift", "p_starter"], cat: "lobby", kind: "View", x: 1820, y: 90, w: 424,
       title: "ViewShop", ko: "상점",
       file: "assets/script/game/shop/ViewShop.ts",
       acts: [
@@ -3145,7 +3161,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "ranking", chips: ["p_shareRank"], cat: "lobby", kind: "View", x: 1642, y: 250, w: 300,
+      id: "ranking", chips: ["p_shareRank"], cat: "lobby", kind: "View", x: 1882, y: 278, w: 300,
       title: "ViewRanking", ko: "랭킹",
       file: "assets/script/game/ranking/ViewRanking.ts",
       acts: [
@@ -3180,7 +3196,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "mail", cat: "lobby", kind: "View", x: 1642, y: 410, w: 300,
+      id: "mail", cat: "lobby", kind: "View", x: 1882, y: 466, w: 300,
       title: "ViewMail", ko: "우편함",
       file: "assets/script/game/mail/ViewMail.ts",
       acts: [
@@ -3292,7 +3308,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "viewgame", chips: ["p_ingameset", "p_extramove", "p_freeboost", "p_tourstart", "p_endwin"], cat: "game", kind: "View", x: 70, y: 772, w: 520,
+      id: "viewgame", chips: ["p_ingameset", "p_extramove", "p_freeboost", "p_tourstart", "p_endwin"], cat: "game", kind: "View", x: 70, y: 946, w: 520,
       title: "ViewGame", ko: "인게임 (메인 판)",
       file: "assets/script/game/ingame/ViewGame.ts",
       acts: [
@@ -3341,7 +3357,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "stage", cat: "game", kind: "로직", gate: true, x: 180, y: 932, w: 300,
+      id: "stage", cat: "game", kind: "로직", gate: true, x: 180, y: 1134, w: 300,
       title: "StageView / StageModel", ko: "보드 · 매칭 로직",
       file: "assets/script/game/ingame/view/StageView.ts",
       acts: [
@@ -3387,7 +3403,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "ugcgame", chips: ["p_settingugc", "p_ugcshare"], cat: "game", kind: "View", x: 734, y: 722, w: 300,
+      id: "ugcgame", chips: ["p_settingugc", "p_ugcshare"], cat: "game", kind: "View", x: 814, y: 896, w: 300,
       title: "ViewGameUGC (ViewGame.initUGCGameView)", ko: "UGC 스테이지 플레이",
       file: "assets/script/game/ingame/ViewGame.ts:588",
       acts: [
@@ -3417,7 +3433,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "picgame", chips: ["p_settingasy", "p_tutorial", "p_asyncres"], cat: "game", kind: "View", x: 720, y: 900, w: 328,
+      id: "picgame", chips: ["p_settingasy", "p_tutorial", "p_asyncres"], cat: "game", kind: "View", x: 800, y: 1102, w: 328,
       title: "ViewGamePIC", ko: "비동기 PvP 턴제 판",
       file: "assets/script/game/async/PIC/ViewGamePIC.ts",
       acts: [
@@ -3568,7 +3584,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "p_coinclaim", chips: ["p_getcoin"], cat: "result", kind: "Popup", x: 1178, y: 814, w: 300,
+      id: "p_coinclaim", chips: ["p_getcoin"], cat: "result", kind: "Popup", x: 1338, y: 1002, w: 300,
       title: "PopupCoinClaim (PopupBigCoinClaim)", ko: "결과 · 코인 수령",
       file: "assets/script/game/popup/PopupCoinClaim.ts",
       acts: [
@@ -3609,7 +3625,7 @@ const EXTRA = {
       ]
     },
     {
-      id: "session", chips: ["p_tourresult", "p_updrew", "p_welcome", "p_crosspromo"], cat: "result", kind: "로직", gate: true, x: 1608, y: 815, w: 424,
+      id: "session", chips: ["p_tourresult", "p_updrew", "p_welcome", "p_crosspromo"], cat: "result", kind: "로직", gate: true, x: 1848, y: 1003, w: 424,
       title: "GameEndFlowEnumerator → SceneManager.toLobby()", ko: "판 종료 후 순서",
       file: "assets/script/game/SceneManager.ts:170",
       acts: [
@@ -3782,7 +3798,7 @@ const EXTRA = {
       ]
     },
 {
-  id: "merge", chips: ["p_itemindex", "p_gemunlock", "p_mergelow", "p_autofree", "p_hottime"], cat: "meta", kind: "View", x: 70, y: 1264, w: 520,
+  id: "merge", chips: ["p_itemindex", "p_gemunlock", "p_mergelow", "p_autofree", "p_hottime"], cat: "meta", kind: "View", x: 70, y: 1584, w: 520,
   title: "ViewMergeGem", ko: "젬 머지 (핵심 메타)",
   file: "assets/script/game/mergeGem/ViewMergeGem.ts",
   acts: [
@@ -3820,7 +3836,7 @@ const EXTRA = {
   ]
 },
 {
-  id: "gacha", chips: ["p_playgacha", "p_gacharesult", "p_gachacoin"], cat: "meta", kind: "View", x: 166, y: 1424, w: 328,
+  id: "gacha", chips: ["p_playgacha", "p_gacharesult", "p_gachacoin"], cat: "meta", kind: "View", x: 166, y: 1772, w: 328,
   title: "ViewGacha", ko: "가챠 (젬 뽑기)",
   file: "assets/script/game/gacha/ViewGacha.ts",
   acts: [
@@ -3856,7 +3872,7 @@ const EXTRA = {
   ]
 },
 {
-  id: "raid", cat: "meta", kind: "View", x: 720, y: 1188, w: 300,
+  id: "raid", cat: "meta", kind: "View", x: 800, y: 1480, w: 300,
   title: "ViewRaid", ko: "친구 약탈",
   file: "assets/script/game/raid/ViewRaid.ts",
   acts: [
@@ -3885,7 +3901,7 @@ const EXTRA = {
   ]
 },
 {
-  id: "ugc", cat: "meta", kind: "View", x: 720, y: 1292, w: 300,
+  id: "ugc", cat: "meta", kind: "View", x: 800, y: 1612, w: 300,
   title: "ViewUGC", ko: "UGC 스테이지 목록",
   file: "assets/script/game/UGC/ViewUGC.ts",
   acts: [
@@ -3913,7 +3929,7 @@ const EXTRA = {
   ]
 },
 {
-  id: "asyncpage", chips: ["p_asyncstat"], cat: "meta", kind: "View", x: 720, y: 1500, w: 300,
+  id: "asyncpage", chips: ["p_asyncstat"], cat: "meta", kind: "View", x: 800, y: 1876, w: 300,
   title: "ViewAsyncPage", ko: "턴제 비동기 대전",
   file: "assets/script/game/async/ViewAsyncPage.ts",
   acts: [
@@ -4297,7 +4313,7 @@ const EXTRA = {
   ]
 },
     {
-      id: "switchctx", cat: "system", kind: "View", x: 1150, y: 1372, w: 300,
+      id: "switchctx", cat: "system", kind: "View", x: 1310, y: 1706, w: 300,
       title: "ViewSwitchContext", ko: "컨텍스트 전환",
       file: "assets/script/game/ingame/view/ViewSwitchContext.ts",
       acts: [
@@ -4536,7 +4552,7 @@ const EXTRA = {
       ]
     },
 {
-  id: "ugcedit", cat: "meta", kind: "View", x: 720, y: 1396, w: 300,
+  id: "ugcedit", cat: "meta", kind: "View", x: 800, y: 1744, w: 300,
   title: "UGCMapEditor", ko: "UGC 맵 에디터 (PC 전용)",
   file: "assets/script/game/UGC/UGCMapEditor.ts",
   acts: [
@@ -5068,7 +5084,9 @@ const EXTRA = {
     const out = [];
     rows.forEach(function (n) {
       const last = out[out.length - 1];
-      if (last && n.y < last.bot + 60) {
+      /* 임계값은 열 안 카드 간격(GAP_Y)보다 크고 띠 간격(BAND_Y)보다 작아야 한다.
+         v2 에서 GAP_Y 를 74 로 올렸으므로 60 으로 두면 한 열이 여러 띠로 쪼개져 배선이 무너진다. */
+      if (last && n.y < last.bot + 150) {
         last.bot = Math.max(last.bot, n.y + n.h);
         last.top = Math.min(last.top, n.y);
       } else {
@@ -5675,9 +5693,8 @@ const EXTRA = {
     const open = [], inner = [];
     secs.forEach(function (sec, si) { (INTERNAL.test(sec.h) ? inner : open).push([sec, si]); });
 
-    const lane = function (pair) {
-      const sec = pair[0], si = pair[1];
-      let o = '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
+    const lane = function (sec, si, forceWide) {
+      let o = '<div class="g-lane' + (forceWide || sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
         + '<div class="g-lane-h">' + esc(sec.h) + ' <em>' + sec.rows.length + '</em></div>'
         + '<div class="g-tree">';
       sec.rows.forEach(function (r, ri) {
@@ -5707,12 +5724,34 @@ const EXTRA = {
       return o + '</div></div>';
     };
 
-    h += '<div class="g-lanes">' + open.map(lane).join("") + '</div>';
+    /* v2 — 기본 노출은 "주요 이동 경로" 하나뿐이다.
+       이 맵의 목적은 전반 프로세스 이해지 메소드 카탈로그가 아니다. 버튼 전량과 내부 동작은
+       접어서 뒤로 보내고, 검색으로 찾아 들어왔을 때만 openCell() 이 그 접힘을 열어 준다.
+       노드의 acts 가 성격상 정확히 "어떤 지면이 열리고 어떤 메소드를 불러 어떻게 된다" 이므로 그대로 쓴다. */
+    const MAIN_CAP = 5;
+    let mainSec = null, mainKey = "acts", consumed = -1;
+    if (n.acts && n.acts.length) {
+      mainSec = { h: "주요 이동 경로", rows: n.acts.slice(0, MAIN_CAP).map(function (a) { return [a[0], a[1]]; }) };
+    } else if (open.length) {
+      /* acts 가 없는 지면(칩 일부)은 첫 섹션을 대신 쓴다. 전부 들어가면 접힘에서 뺀다. */
+      mainSec = { h: open[0][0].h, rows: open[0][0].rows.slice(0, MAIN_CAP) };
+      mainKey = open[0][1];
+      if (open[0][0].rows.length <= MAIN_CAP) consumed = open[0][1];
+    }
+    /* 주요 이동 경로는 행이 적어도 전폭으로 둔다 — g-lanes 그리드가 380px 열로 쪼개면 v1 과 같은 꼴이 된다 */
+    if (mainSec && mainSec.rows.length) h += '<div class="g-lanes">' + lane(mainSec, mainKey, true) + '</div>';
+
+    const rest = open.filter(function (p) { return p[1] !== consumed; });
+    if (rest.length) {
+      const cnt = rest.reduce(function (a2, p) { return a2 + p[0].rows.length; }, 0);
+      h += '<details class="g-more"><summary>버튼 · 호출 메소드 전체 ' + cnt + '개</summary>'
+        + '<div class="g-lanes">' + rest.map(function (p) { return lane(p[0], p[1]); }).join("") + '</div></details>';
+    }
     h += '</div></div>';
     if (inner.length) {
       const cnt = inner.reduce(function (a2, p) { return a2 + p[0].rows.length; }, 0);
       h += '<details class="g-inner"><summary>내부 동작 · 분기 ' + cnt + '개 (개발용)</summary>'
-        + '<div class="g-lanes">' + inner.map(lane).join("") + '</div></details>';
+        + '<div class="g-lanes">' + inner.map(function (p) { return lane(p[0], p[1]); }).join("") + '</div></details>';
     }
 
     bodyEl.innerHTML = h;
@@ -6107,7 +6146,9 @@ const EXTRA = {
     const node = ev.target.closest(".g-node, .wf-btn, .wf-full, .wf-key-i");
     if (!node) return;
     const fromUI = !node.classList.contains("g-node");
-    openCell(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10), fromUI);
+    /* 주요 이동 경로 레인의 sec 키는 숫자가 아니라 "acts" 다 — parseInt 로 밀면 NaN 이 되어 안 열린다 */
+    const sv = node.dataset.sec;
+    openCell(/^\d+$/.test(sv) ? parseInt(sv, 10) : sv, parseInt(node.dataset.row, 10), fromUI);
   });
 
   /* 프레임 폭이 바뀌면 라벨 배치가 달라지므로 다시 그린다 */

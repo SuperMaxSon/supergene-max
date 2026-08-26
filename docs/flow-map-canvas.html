@@ -319,12 +319,16 @@
     content: ""; position: absolute; left: 10px; top: 0; bottom: 20px;
     width: 1px; background: var(--line);
   }
-  .g-branch { position: relative; display: flex; align-items: center; gap: 7px; margin: 6px 0; }
-  .g-branch::before {
+  /* v2 — 세로로 쌓는다. 가로 플렉스로 두면 펼친 .b-flow 가 형제 아이템이 되어
+     글자 폭(233px)으로 쪼그라들고, 가로가 남는데 세로로 기어간다. */
+  .g-branch { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: 6px 0; }
+  /* 팔꿈치 선을 칸(.g-branch) 이 아니라 첫 줄(.g-row) 에 건다 —
+     세로 플렉스가 되면서 칸 높이가 펼친 내용만큼 늘어나므로, 칸 기준 50% 는 아래로 밀린다. */
+  .g-branch > .g-row::before {
     content: ""; position: absolute; left: -16px; top: 50%;
     width: 12px; height: 1px; background: var(--line);
   }
-  .g-branch::after {
+  .g-branch > .g-row::after {
     content: ""; position: absolute; left: -5px; top: 50%;
     transform: translateY(-50%);
     border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
@@ -617,8 +621,9 @@
     font-size: 10px; font-weight: 700; color: var(--ink-2);
   }
   /* 가지 셀 = 한 줄 요약 + 눌러서 펼치는 흐름 (3단을 이 자리로 합쳤다) */
-  .g-branch > .g-row { display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
-  .b-flow { display: none; margin: 8px 0 4px 27px; }
+  .g-branch > .g-row { position: relative; display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
+  /* v2 — 펼친 흐름은 칸 전폭을 쓴다 (v1 은 팝업 폭의 10% 밖에 못 썼다) */
+  .b-flow { display: none; width: 100%; margin: 9px 0 6px; }
   .g-branch.open > .b-flow { display: block; }
   .g-branch.open .b-go { color: var(--muted); }
   .g-branch.open .b-go::after { content: ""; }
@@ -626,13 +631,19 @@
   .b-flow .f-flow { margin-top: 0; }
   .b-flow .f-step { font-size: 11px; }
 
-  .g-inner {
+  /* v2 — 기본 노출에서 뺀 것들. 숨긴 게 아니라 접은 것이므로 제목에 개수를 적는다. */
+  .g-more, .g-inner {
     margin-top: 14px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--surface-2); padding: 10px 13px;
   }
+  .g-more { border-left: 3px solid var(--line); }
+  .g-more > summary { font-size: 11.5px; font-weight: 750; color: var(--ink-2); cursor: pointer; }
+  .g-more[open] > summary { margin-bottom: 10px; }
+  .g-more > summary::marker { color: var(--faint); }
   .g-inner summary { font-size: 11px; font-weight: 750; color: var(--muted); cursor: pointer; }
   .g-inner[open] summary { margin-bottom: 10px; }
-  .g-inner .g-lanes { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+  /* v2 — 접힘 안도 잘게 쪼개면 같은 문제가 반복된다. 열을 넓게 잡아 2~3열로. */
+  .g-more .g-lanes, .g-inner .g-lanes { grid-template-columns: repeat(auto-fill, minmax(660px, 1fr)); }
 
   .f-raw {
     margin-top: 12px; border: 1px solid var(--line); border-radius: 7px;
@@ -642,8 +653,10 @@
   .f-raw p { margin: 7px 0 0; font-size: 10.5px; line-height: 1.65; color: var(--ink-2); word-break: keep-all; }
 
   /* ---- 3단: 호출 사슬 플로우 ---- */
-  .f-flow { display: flex; flex-direction: column; margin-top: 2px; }
+  /* v2 — 단계를 가로로 흘린다. 폭이 남으면 옆으로, 모자라면 다음 줄로 접힌다. */
+  .f-flow { display: flex; flex-wrap: wrap; align-items: stretch; margin-top: 2px; }
   .f-step {
+    flex: 1 1 250px; min-width: 0; max-width: 560px;
     display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start;
     border: 1px solid var(--line); border-left: 4px solid var(--st);
     border-radius: 5px; background: var(--surface); padding: 9px 11px;
@@ -664,14 +677,15 @@
   .f-open i { width: 7px; height: 7px; border-radius: 2px; background: var(--tc); }
 
   /* 단계 사이 연결선 + 화살촉 */
-  .f-link { position: relative; height: 26px; margin-left: 12px; }
-  .f-link::before { content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 18px; background: var(--line); }
+  .f-link { position: relative; flex: 0 0 26px; align-self: center; height: 14px; margin: 0; }
+  .f-link::before { content: ""; position: absolute; left: 3px; top: 50%; width: 15px; height: 1px; background: var(--line); }
   .f-link::after {
-    content: ""; position: absolute; left: -3.5px; top: 17px;
-    border-left: 4px solid transparent; border-right: 4px solid transparent;
-    border-top: 6px solid var(--line);
+    content: ""; position: absolute; left: 17px; top: 50%; transform: translateY(-50%);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--line);
   }
-  .f-link b { position: absolute; left: 14px; top: 2px; font-size: 9.5px; font-weight: 650; color: var(--faint); }
+  /* "다음 / 통과하면" 글자는 뺀다 — 게이트는 이미 점선 테두리와 f-type 이 말해 준다 (텍스트 최소화) */
+  .f-link b { display: none; }
 
   .f-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
   .f-legend span { display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--muted); }
@@ -2739,7 +2753,7 @@
      칩을 눌러도 카드와 똑같은 지면 팝업이 열린다 — 정보는 그대로다. */
   const N = [
     {
-      id: "intro", cat: "entry", kind: "Scene", x: 70, y: 246, w: 460,
+      id: "intro", cat: "entry", kind: "Scene", x: 70, y: 223, w: 460,
       title: "intro.fire / BaseIntro", ko: "인트로 · 로딩 지면",
       file: "assets/script/Base/BaseIntro.ts",
       acts: [
@@ -2762,7 +2776,7 @@
       ]
     },
     {
-      id: "router", cat: "entry", kind: "분기", gate: true, x: 70, y: 402, w: 460,
+      id: "router", cat: "entry", kind: "분기", gate: true, x: 70, y: 355, w: 460,
       title: "BaseIntro.moveToNext()", ko: "진입 라우터",
       file: "Base/BaseIntro.ts:947",
       acts: [
@@ -2784,31 +2798,31 @@
       ]
     },
     {
-      id: "e_tour", cat: "entry", kind: "직행", x: 660, y: 90, w: 280,
+      id: "e_tour", cat: "entry", kind: "직행", x: 1080, y: 90, w: 280,
       title: "토너먼트 직행", ko: "FB 토너먼트 링크 진입",
       file: "game/SceneManager.ts:346",
       acts: [["진입", "showViewGameWithTournament(stageId, direct_entry, contextId)"], ["합류", "trySwitchToJoinedTournament()"]]
     },
     {
-      id: "e_p2p", cat: "entry", kind: "직행", x: 660, y: 246, w: 280,
+      id: "e_p2p", cat: "entry", kind: "직행", x: 1080, y: 222, w: 280,
       title: "P2P 친구 직행", ko: "친구 대결 링크 진입",
       file: "game/SceneManager.ts:378",
       acts: [["진입", "showViewGameWithFriend(stageId, direct_entry, friendId)"], ["폴백", "BasePlatform.switchToContextSolo()"]]
     },
     {
-      id: "e_solo", cat: "entry", kind: "직행", x: 660, y: 402, w: 280,
+      id: "e_solo", cat: "entry", kind: "직행", x: 1080, y: 354, w: 280,
       title: "솔로 직행", ko: "레벨 1~2 · 하루 1회 직행",
       file: "game/SceneManager.ts:416",
       acts: [["진입", "showViewSoloGame(stageId, direct_entry)"], ["지연", "preloadLobbyBundlesPriority() (+5s)"]]
     },
     {
-      id: "e_resume", cat: "entry", kind: "복귀", x: 660, y: 558, w: 280,
+      id: "e_resume", cat: "entry", kind: "복귀", x: 1080, y: 486, w: 280,
       title: "세션 복귀", ko: "진행 중이던 판으로 복귀",
       file: "Base/BaseIntro.ts:1030",
       acts: [["진입", "ViewCreator.showViewGame(stageId, …, gameId, …, resumeTier)"], ["주의", "game-start 재호출 없음 · 서버 기록 티어 사용"]]
     },
     {
-      id: "lobby", chips: ["lobbymain", "deco", "upgrade", "p_shop", "p_leader", "p_tour", "p_collect", "p_mail", "p_task", "p_wheel", "p_offer", "p_needhammer", "p_setting", "p_ev_card", "p_ev_win", "p_ev_rank", "p_citylist", "p_decoshare", "p_newarea"], cat: "lobby", kind: "View", x: 1070, y: 254, w: 1180,
+      id: "lobby", chips: ["lobbymain", "deco", "upgrade", "p_shop", "p_leader", "p_tour", "p_collect", "p_mail", "p_task", "p_wheel", "p_offer", "p_needhammer", "p_setting", "p_ev_card", "p_ev_win", "p_ev_rank", "p_citylist", "p_decoshare", "p_newarea"], cat: "lobby", kind: "View", x: 1910, y: 224, w: 1180,
       title: "ViewLobby", ko: "로비 (메인 지면)",
       file: "assets/script/game/lobby/ViewLobby.ts",
       acts: [
@@ -2848,7 +2862,7 @@
       ]
     },
     {
-      id: "entrypopup", chips: ["p_charge", "p_shop"], cat: "game", kind: "Popup", x: 70, y: 954, w: 560,
+      id: "entrypopup", chips: ["p_charge", "p_shop"], cat: "game", kind: "Popup", x: 70, y: 887, w: 560,
       title: "PopupGameEntry", ko: "프리게임 (배팅 · 부스터)",
       file: "game/popup/PopupGameEntry.ts",
       acts: [
@@ -2883,7 +2897,7 @@
       ]
     },
     {
-      id: "viewgame", chips: ["p_ingameset", "p_lang"], cat: "game", kind: "View", x: 760, y: 876, w: 560,
+      id: "viewgame", chips: ["p_ingameset", "p_lang"], cat: "game", kind: "View", x: 870, y: 812, w: 560,
       title: "ViewGame", ko: "인게임 (트라이픽스 보드)",
       file: "assets/script/game/ingame/ViewGame.ts",
       acts: [
@@ -2927,7 +2941,7 @@
       ]
     },
     {
-      id: "stage", cat: "game", kind: "Model / VM", x: 870, y: 1072, w: 340,
+      id: "stage", cat: "game", kind: "Model / VM", x: 980, y: 1000, w: 340,
       title: "StageView · StageViewModel · StageModel", ko: "보드 로직 (MVVM)",
       file: "game/ingame/StageView.ts · StageViewModel.ts",
       acts: [
@@ -2949,7 +2963,7 @@
       ]
     },
     {
-      id: "p_complete", cat: "result", kind: "Popup", x: 1450, y: 818, w: 420,
+      id: "p_complete", cat: "result", kind: "Popup", x: 1670, y: 784, w: 420,
       title: "PopupCompleteLevel", ko: "클리어 결과창",
       file: "game/popup/ingame/PopupCompleteLevel.ts",
       acts: [
@@ -2977,7 +2991,7 @@
       ]
     },
     {
-      id: "p_quit", cat: "result", kind: "Popup", x: 1460, y: 974, w: 400,
+      id: "p_quit", cat: "result", kind: "Popup", x: 1680, y: 916, w: 400,
       title: "PopupQuitLevel", ko: "포기 · 실패 결과창",
       file: "game/popup/ingame/PopupQuitLevel.ts",
       acts: [
@@ -2994,7 +3008,7 @@
       ]
     },
     {
-      id: "retry", cat: "game", kind: "분기", gate: true, x: 1500, y: 1130, w: 320,
+      id: "retry", cat: "game", kind: "분기", gate: true, x: 1720, y: 1048, w: 320,
       title: "ViewGame.onRetryRequested()", ko: "재시도 라우팅",
       file: "game/ingame/ViewGame.ts:2085",
       acts: [
@@ -3013,7 +3027,7 @@
       ]
     },
     {
-      id: "session", chips: ["p_reward", "p_gift", "p_shadow", "p_tutorial"], cat: "system", kind: "Manager", x: 2000, y: 944, w: 760,
+      id: "session", chips: ["p_reward", "p_gift", "p_shadow", "p_tutorial"], cat: "system", kind: "Manager", x: 2330, y: 887, w: 760,
       title: "SessionFlowManager.runPostGameFlow(isWin)", ko: "결과 후 로비 플로우 오케스트레이터",
       file: "assets/script/game/SessionFlowManager.ts",
       acts: [
@@ -3045,7 +3059,7 @@
       ]
     },
     {
-      id: "p_switch", cat: "commerce", kind: "Popup", x: 70, y: 1405, w: 340,
+      id: "p_switch", cat: "commerce", kind: "Popup", x: 70, y: 1372, w: 340,
       title: "PopupSwitchContext", ko: "컨텍스트 전환 (P2P · 토너먼트)",
       file: "game/popup/PopupSwitchContext.ts",
       acts: [
@@ -3062,7 +3076,7 @@
       ]
     },
     {
-      id: "p_common", cat: "system", kind: "Popup 묶음", x: 1225, y: 1390, w: 360,
+      id: "p_common", cat: "system", kind: "Popup 묶음", x: 1390, y: 1344, w: 360,
       title: "공통 시스템 팝업", ko: "오류 · 토스트 · 광고",
       chips: ["p_error", "p_toasterr", "p_toastpkg"],
       file: "common/view/ViewCreator.ts",
@@ -3125,7 +3139,7 @@
       ]
     },
     {
-      id: "p_misc", cat: "system", kind: "기타 지면", x: 2400, y: 1390, w: 360,
+      id: "p_misc", cat: "system", kind: "기타 지면", x: 2730, y: 1344, w: 360,
       title: "기타 지면", ko: "저빈도 지면 묶음",
       chips: ["p_privacy", "p_shadowinfo", "p_tosspromo"],
       file: "assets/script/game/*",
@@ -3936,7 +3950,9 @@
     const out = [];
     rows.forEach(function (n) {
       const last = out[out.length - 1];
-      if (last && n.y < last.bot + 60) {
+      /* 임계값은 열 안 카드 간격(GAP_Y)보다 크고 띠 간격(BAND_Y)보다 작아야 한다.
+         v2 에서 GAP_Y 를 74 로 올렸으므로 60 으로 두면 한 열이 여러 띠로 쪼개져 배선이 무너진다. */
+      if (last && n.y < last.bot + 150) {
         last.bot = Math.max(last.bot, n.y + n.h);
         last.top = Math.min(last.top, n.y);
       } else {
@@ -4533,9 +4549,8 @@
     const open = [], inner = [];
     secs.forEach(function (sec, si) { (INTERNAL.test(sec.h) ? inner : open).push([sec, si]); });
 
-    const lane = function (pair) {
-      const sec = pair[0], si = pair[1];
-      let o = '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
+    const lane = function (sec, si, forceWide) {
+      let o = '<div class="g-lane' + (forceWide || sec.rows.length >= 8 ? " wide" : "") + '" style="--cc: ' + cc + '">'
         + '<div class="g-lane-h">' + esc(sec.h) + ' <em>' + sec.rows.length + '</em></div>'
         + '<div class="g-tree">';
       sec.rows.forEach(function (r, ri) {
@@ -4565,12 +4580,33 @@
       return o + '</div></div>';
     };
 
-    h += '<div class="g-lanes">' + open.map(lane).join("") + '</div>';
+    /* v2 — 기본 노출은 "주요 이동 경로" 하나뿐이다.
+       이 맵의 목적은 전반 프로세스 이해지 메소드 카탈로그가 아니다. 버튼 전량과 내부 동작은
+       접어서 뒤로 보내고, 검색으로 찾아 들어왔을 때만 openCell() 이 그 접힘을 열어 준다. */
+    const MAIN_CAP = 5;
+    let mainSec = null, mainKey = "acts", consumed = -1;
+    if (n.acts && n.acts.length) {
+      mainSec = { h: "주요 이동 경로", rows: n.acts.slice(0, MAIN_CAP).map(function (a) { return [a[0], a[1]]; }) };
+    } else if (open.length) {
+      /* acts 가 없는 지면(칩 다수)은 첫 섹션을 대신 쓴다. 전부 들어가면 접힘에서 뺀다. */
+      mainSec = { h: open[0][0].h, rows: open[0][0].rows.slice(0, MAIN_CAP) };
+      mainKey = open[0][1];
+      if (open[0][0].rows.length <= MAIN_CAP) consumed = open[0][1];
+    }
+    /* 주요 이동 경로는 행이 적어도 전폭으로 둔다 — g-lanes 그리드가 좁은 열로 쪼개면 v1 과 같은 꼴이 된다 */
+    if (mainSec && mainSec.rows.length) h += '<div class="g-lanes">' + lane(mainSec, mainKey, true) + '</div>';
+
+    const rest = open.filter(function (p) { return p[1] !== consumed; });
+    if (rest.length) {
+      const cnt = rest.reduce(function (a2, p) { return a2 + p[0].rows.length; }, 0);
+      h += '<details class="g-more"><summary>버튼 · 호출 메소드 전체 ' + cnt + '개</summary>'
+        + '<div class="g-lanes">' + rest.map(function (p) { return lane(p[0], p[1]); }).join("") + '</div></details>';
+    }
     h += '</div></div>';
     if (inner.length) {
       const cnt = inner.reduce(function (a2, p) { return a2 + p[0].rows.length; }, 0);
       h += '<details class="g-inner"><summary>내부 동작 · 분기 ' + cnt + '개 (개발용)</summary>'
-        + '<div class="g-lanes">' + inner.map(lane).join("") + '</div></details>';
+        + '<div class="g-lanes">' + inner.map(function (p) { return lane(p[0], p[1]); }).join("") + '</div></details>';
     }
 
     bodyEl.innerHTML = h;
@@ -4904,7 +4940,9 @@
     const node = ev.target.closest(".g-node, .wf-btn, .wf-full, .wf-key-i");
     if (!node) return;
     const fromUI = !node.classList.contains("g-node");
-    openCell(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10), fromUI);
+    /* 주요 이동 경로 레인의 sec 키는 숫자가 아니라 "acts" 다 — parseInt 로 밀면 NaN 이 되어 안 열린다 */
+    const sv = node.dataset.sec;
+    openCell(/^\d+$/.test(sv) ? parseInt(sv, 10) : sv, parseInt(node.dataset.row, 10), fromUI);
   });
 
   /* 프레임 폭이 바뀌면 라벨 배치가 달라지므로 다시 그린다 */
