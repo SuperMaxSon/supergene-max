@@ -70,8 +70,13 @@
   }
 
   SECTIONS.forEach(function (sec) {
-    // 카드가 없는 섹션은 제목 · nav pill 둘 다 그리지 않는다.
-    if (!sec.cards || !sec.cards.length) return;
+    // share:false 는 설정탭에서 숨긴 카드다. 플래그가 없으면 노출(기존 카드 무손상).
+    var cards = (sec.cards || []).filter(function (c) {
+      return c.share !== false;
+    });
+
+    // 보일 카드가 없는 섹션은 제목 · nav pill 둘 다 그리지 않는다.
+    if (!cards.length) return;
 
     var pill = el("button", "nav-pill", sec.label);
     pill.style.setProperty("--acc", "var(--" + sec.accent + ")");
@@ -92,7 +97,7 @@
     s.appendChild(head);
 
     var list = el("div", "cards");
-    (sec.cards || []).forEach(function (c) {
+    cards.forEach(function (c) {
       list.appendChild(buildCard(c, sec.accent));
     });
     s.appendChild(list);

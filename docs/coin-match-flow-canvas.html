@@ -121,10 +121,11 @@
   #world.focused .node.hot { opacity: 1; }
 
   .node { position: absolute; }
-  /* 카드 우측 초소형 화면 개념도 — 16:9 가로, 점 하나가 프리팹 버튼 하나 */
+  /* 카드 우측 초소형 화면 개념도 — 9:16 세로, 점 하나가 프리팹 버튼 하나.
+     좌표를 세로 화면 기준으로 찍으므로 상자도 세로여야 점 배치가 안 뭉개진다. */
   .n-wf {
     position: absolute; top: 8px; right: 9px;
-    width: 40px; height: 22.5px;
+    width: 24px; height: 42.7px;
     border: 1px solid var(--line); border-radius: 2px;
     background: var(--surface-2); pointer-events: none;
   }
@@ -383,6 +384,8 @@
   @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } }
 
   .wf-wrap { position: sticky; top: 0; max-width: 420px; }
+  /* UGC 모드처럼 가로 화면인 지면은 세로 틀보다 넓게 써야 읽힌다 */
+  .wf-wrap.wide { max-width: 760px; }
   /* 게임은 세로 모드다 — 디자인 해상도 720x1280 그대로 9:16
      (intro.fire 의 cc.Canvas._designResolution · fitWidth) */
   .wf {
@@ -739,6 +742,11 @@
 
 /* 메소드 -> 한 줄 동작. 대외 공유용이라 내부 가드 · 로그 · 갱신은 적지 않는다. */
 const DESC = {
+  /* UGC 지면을 실제 해상도(2290x1280)로 다시 재면서 드러난 버튼들 */
+  "onClickBackToMain": "UGC 를 빠져나와 로비(튜토리얼이면 판)로 돌아간다",
+  "onClickMain": "미션 종류 목록을 펼치고 접는다",
+  "onClickSave": "만든 스테이지를 검증하고 서버에 저장한다",
+  "onClick": "그 색을 쓸지 말지 토글한다",
   "blockInput": "입력 차단 레이어를 켜고 끈다",
   "captureScreenShotRect": "머지 화면 일부를 이미지로 찍는다",
   "close": "지면을 닫고 호출한 쪽으로 돌아간다",
@@ -759,6 +767,7 @@ const DESC = {
   "isPaymentsAvailable": "결제가 가능한 환경인지 본다",
   "modifyMergeAll": "보드의 젬을 실제로 합쳐 준다",
   "moveToMerge": "가챠에서 머지 지면으로 넘어간다",
+  "onBtnClick": "편집기에서 그 블록 항목을 고른다",
   "onBtnClose": "랭킹 지면을 닫고 로비로 돌아간다",
   "onBtnInviteItem": "페이스북 친구 초대 창을 띄운다",
   "onBtnPrivacy": "개인정보 처리방침 지면을 띄운다",
@@ -770,8 +779,11 @@ const DESC = {
   "onClaimBooster": "받은 부스터가 날아가는 연출을 준다",
   "onClaimCoin": "코인이 상단으로 날아가는 연출을 준다",
   "onClaimGem": "젬이 상단으로 날아가는 연출을 준다",
+  "onClickAdBlockInfo": "광고 차단 안내 팝업을 띄운다",
+  "onClickAgree": "UGC 약관에 동의하고 저장한다",
   "onClickAsync": "턴 대전 상대 목록을 불러와 띄운다",
   "onClickBack": "이전 지면으로 돌아간다",
+  "onClickBackToGame": "UGC를 그만두고 게임으로 돌아간다",
   "onClickBooster": "누른 부스터 아이템을 사용한다",
   "onClickCategory": "탭을 바꾸고 해당 목록으로 넘긴다",
   "onClickClaim": "얻은 보상을 수령한다",
@@ -779,18 +791,26 @@ const DESC = {
   "onClickClaimX2": "광고를 보고 보상을 두 배로 받는다",
   "onClickClose": "지면을 닫는다",
   "onClickCloseButton": "프로필 지면을 닫는다",
+  "onClickClosePolicy": "약관 본문을 닫고 안내로 돌아간다",
   "onClickCoin": "상점을 열거나 무료 코인 팝업을 띄운다",
   "onClickContinue": "전면 광고를 거쳐 상대 목록으로 돌아간다",
   "onClickCopyUserId": "유저 ID를 클립보드에 복사한다",
   "onClickCreateNew": "새 UGC 스테이지를 만들고 편집기를 연다",
+  "onClickCrossPromotionMission": "크로스 프로모션 미션 팝업을 띄운다",
+  "onClickDelete": "만든 스테이지 삭제를 확정한다",
+  "onClickDislike": "그 UGC 스테이지에 싫어요를 준다",
   "onClickDoubleClaim": "광고를 보고 보상을 두 배로 받는다",
+  "onClickDrawSkip": "뽑기 연출을 건너뛰고 결과를 한 번에 본다",
   "onClickDrawX1": "가챠를 한 번 뽑는다",
   "onClickDrawX10": "가챠를 열 번 뽑는다",
   "onClickEdit": "UGC 스테이지 편집기를 연다",
+  "onClickEditButton": "프로필 편집 팝업을 띄운다",
+  "onClickEditProfile": "프로필 편집을 열려 하나 지금은 막혀 있다",
   "onClickFreeCoin": "광고를 보고 무료 코인을 받는다",
   "onClickFreeGem": "광고를 보고 무료 젬을 받는다",
   "onClickFreeUse": "광고를 보고 자동 머지를 한 번 쓴다",
   "onClickGacha": "가챠 지면으로 넘어간다",
+  "onClickGachaTicketClaim": "얻은 가챠 티켓을 연출과 함께 받는다",
   "onClickGem": "머지 지면으로 넘어간다",
   "onClickGet": "광고를 보고 무료 코인을 받는다",
   "onClickGo": "크로스 프로모션 대상 게임으로 넘어간다",
@@ -800,7 +820,9 @@ const DESC = {
   "onClickInfo": "안내 문구를 띄운다",
   "onClickInventory": "다음 젬을 보드에 꺼내 놓는다",
   "onClickInviteFriend": "페이스북 친구 초대 창을 띄운다",
+  "onClickItem": "드롭다운에서 고른 항목으로 값을 바꾼다",
   "onClickLeave": "인게임을 닫고 로비로 나간다",
+  "onClickLike": "그 UGC 스테이지에 좋아요를 준다",
   "onClickMailInbox": "우편함 지면을 띄운다",
   "onClickMatch": "다음 판을 시작한다",
   "onClickMerge": "머지 지면으로 넘어간다",
@@ -820,8 +842,12 @@ const DESC = {
   "onClickRestart": "방금 판을 처음부터 다시 시작한다",
   "onClickSetting": "설정 팝업을 띄운다",
   "onClickShare": "화면을 찍어 피드에 공유한다",
+  "onClickSkip": "보너스 타임 연출을 건너뛴다",
+  "onClickSkipCoinEffect": "코인이 날아가는 연출을 건너뛴다",
   "onClickTabButton": "UGC 탭을 바꿔 해당 목록을 보여준다",
   "onClickTournament": "토너먼트 목록 팝업을 띄운다",
+  "onClickTutorialClear": "튜토리얼 판 보상을 받고 다음으로 넘긴다",
+  "onClickUGCPolicy": "UGC 약관 본문을 펼쳐 보여준다",
   "onClickUserPhoto": "그 사람의 프로필 지면을 띄운다",
   "onClickWheelRecordLog": "레이드 기록 탭을 봤다고 남긴다",
   "onClickNewMatch": "상대와 대화방 전환을 거쳐 판을 연다",
@@ -884,6 +910,11 @@ const DESC = {
 
 /* 프리팹 노드 이름이 btn/box 처럼 무의미할 때 쓰는 사람용 이름 */
 const BTNNAME = {
+
+  "setting": "설정",
+  "btn_search": "탭 전환",
+  "checker": "색 사용 여부",
+  "\bBtn": "미션 종류 펼치기",
   "btn": "버튼",
   "Btn": "버튼",
   "box": "버튼",
@@ -932,7 +963,14 @@ const BTNNAME = {
   "BGM": "배경음",
   "SFX": "효과음",
   "Vibration": "진동",
-  "AutoSkip": "자동 스킵"
+  "AutoSkip": "자동 스킵",
+  "hide": "안내 닫기 터치",
+  "mask": "크로스 미션",
+  "Skip": "코인 연출 스킵",
+  "continue_btn": "다음 결과 보기",
+  "BTN_EditUserProfile": "프로필 편집",
+  "BTN_EditUserProfileIcon": "프로필 사진 편집",
+  "Button": "보너스 타임 스킵"
 };
 
 /* 핸들러가 없거나 이름만으로 동작을 알 수 없는 버튼의 호출 사슬.
@@ -941,14 +979,14 @@ const EXTRA = {
   "close": ["닫기", "ViewBase.close(event) → isClose 가드 → createdFromManager 면 ViewManager.blockInputEvent() → onClose(event) 콜백 1회 → show(false) → 호출한 지면 복귀 (ViewBase.ts:75)"],
   "p_bonusgame:": ["START", "프리팹 clickEvents 는 비어 있다 — MinigameButton.setPlayButton(target) 이 cc.Component.EventHandler 를 만들어 PopupRewardGame.onClickPlay 를 런타임에 붙인다 (MinigameButton.ts:182)"],
   "gacha:show": ["안내", "BaseView.show(true) → 안내 토스트 노출 + ViewGacha.onClickInfo() → logGachaIconInfo() — 한 버튼에 clickEvents 두 개가 붙어 있다 (BaseView.ts:115 · ViewGacha.ts:671)"],
-  "lobby:onClickMatch": ["PLAY", "onClickMatch() → blockInput(true) → DataManager.updateMatchEntry(lobby) → FBContext.getNextGameContext() → 국가 ContextType 별로 PvP · 토너먼트 우선 분기 → toMainGame() (ViewLobbyRanking.ts:672 → FBContext.ts:884)"],
+  "lobby:onClickMatch": ["PLAY", "onClickMatch() → blockInput(true) → DataManager.updateMatchEntry(lobby) → FBContext.getNextGameContext() → countryData.ContextType 별로 A=PvP 우선 / B=토너먼트 우선 / C=Shuffle 세 갈래로 갈리며 기본값은 \"C\" 다 → toMainGame() (ViewLobbyRanking.ts:672 → FBContext.ts:884)"],
   "lobby:onClickMerge": ["머지", "onClickMerge() → blockInput(true) → SceneManager.toMerge() → 낮은 젬 자동 합치기 요청 + 젬 스프라이트 로드 → ViewCreator.showViewMergeGem() (ViewLobbyRanking.ts:598 → SceneManager.ts:655)"],
   "lobby:onClickTournament": ["토너먼트", "onClickTournament() → logBtnMenuTournaments() → ViewCreator.showPopupTournament() → 닫히면 blockInput(false), 실패하면 showPopupErrorDefault() (ViewLobbyRanking.ts:680)"],
   "lobby:onClickCoin": ["코인 · 상점", "TopCoin.onClickCoin() → isDirection 가드 → Fbi.isPaymentsAvailable() 면 ViewCreator.showViewShop(), 아니면 logBtnLobbyCoin() 후 showPopupFreeCoin(FREE_COIN_AMOUNT) (TopCoin.ts:330)"],
   "lobby:onClickGem": ["젬 · 머지", "TopCoin.onClickGem() → isDirection 가드 → SceneManager.toMerge() (TopCoin.ts:324)"],
   "asyncpage:onClickRandomMatch": ["NEW GAME", "onClickRandomMatch() → FBContext.getNextAsyncFriend(friendIds) 로 아직 안 붙은 상대 선택 → 있으면 onClickNewMatch(next,false) → ViewCreator.showViewSwitchContext() → startNewGame(), 없으면 randomGame() (ViewAsyncPage.ts:364)"],
   "asyncpage:onClickRandomMatchWithSolo": ["바로 시작", "onClickRandomMatchWithSolo() → onClickNewMatch(next,true) → 전환 취소되면 tryShowInterstitialAD(turn_context_switch_cancel) 후 randomGame() 으로 랜덤 상대 진행 (ViewAsyncPage.ts:380 → :396)"],
-  "merge:onClickGoMatch": ["PLAY", "onClickGoMatch() → 튜토리얼이면 손 연출 정리 → logMergePlaySuccess() → sendGemStatusDirectly() 로 젬 배치 저장 → updateStageEntry(merge_play) → FBContext.getNextGameContext() (ViewMergeGem.ts:1604)"],
+  "merge:onClickGoMatch": ["PLAY", "onClickGoMatch() → 튜토리얼이면 손 연출 정리 → logMergePlaySuccess() → sendGemStatusDirectly() 로 젬 배치 저장 → updateStageEntry(merge_play) → 튜토리얼이면 FBContext.playSessionFirstStageOnTutorial(), 아니면 FBContext.getNextGameContext() (ViewMergeGem.ts:1604 → 1635-1640)"],
   "merge:onClickMergeAll": ["자동 머지", "onClickMergeAll() → canMergeAll() 아니면 T_NO_GEMS 토스트 → 시간제 아이템 있으면 바로 modifyMergeAll(), AUTO_MERGE_TICKET 있으면 requestUseItem() 후 합치기, 둘 다 없으면 PopupAutoFreeMerge 노출 (ViewMergeGem.ts:1294)"],
   "merge:onClickFreeGem": ["무료 젬", "onClickFreeGem() → logMergeFreeGems() → DataManager.useRVTicket(free_gem) → 스킵권 없으면 보상형 광고 → 성공 시 requestGetFreeGem() 으로 서버 지급 (ViewMergeGem.ts:1756)"],
   "merge:onClickShare": ["공유", "onClickShare() → captureScreenShotRect() 로 보드 캡처 → entryPointData(feed: gem_share) 구성 → FBContext.shareGem(base64, data) → 페이스북 피드 공유 (ViewMergeGem.ts:1540)"],
@@ -961,7 +999,7 @@ const EXTRA = {
   "gacha:onClickBack": ["닫기", "onClickBack() → 튜토리얼이면 playSessionFirstStageOnTutorial() 로 첫 판 진입, 아니면 ViewLobbyRanking 을 미리 로드하고 close() + Fbi.setIsMergeOrGacha(false) (ViewGacha.ts:644)"],
   "p_coinclaim:onClickClaim": ["PLAY NEXT", "onClickClaim() → clickable 가드 → showContextPopupOnIngameResultIfNeeded() → 국가 ResultClaim_IT 이 1 이면 tryShowInterstitialAD(finish_claim) → updateStageEntry(finish_playnext) → requestGetPlayEndReward() (PopupCoinClaim.ts:629)"],
   "p_coinclaim:onClickClaimX2": ["보상 2배", "onClickClaimX2() → playEndError 면 T_NO_ADS 토스트로 대체 → updateStageEntry(finish_double_claim) → useRVTicket(finish_reward_double) → 성공 시 2배 보상 수령 (PopupCoinClaim.ts:540)"],
-  "p_coinclaim:onClickRestart": ["다시하기", "onClickRestart() → DataManager.addRetryCount() → updateStageEntry(finish_retry) → clearContextPopupOnIngameResult() → 같은 판 재진입 (PopupCoinClaim.ts:671)"],
+  "p_coinclaim:onClickRestart": ["다시하기", "onClickRestart() → DataManager.addRetryCount() → updateStageEntry(finish_retry) → clearContextPopupOnIngameResult() → LogManager.logFinishRetry(false, '', 0, 0) → requestGetPlayEndReward(PopupCoinClaim.onRestart) 로 재시도해도 보상은 수령하고 같은 판 재진입 (PopupCoinClaim.ts:671 → 709-710)"],
   "p_coinclaim:onClickClose": ["닫기", "onClickClose() → logFinishExit() → ResultClaim_IT 이 1 이면 전면 광고 → updateStageEntry(finish_playnext) → requestGetPlayEndReward(onClickClose) 로 보상만 챙기고 종료 (PopupCoinClaim.ts:713)"],
   "p_coinclaim:onClickMerge": ["머지로", "onClickMerge() → logFinishMerge() → directionTopCoin.hide() → SceneManager.toMerge(StartType.IngameResult) → 머지 닫힐 때 인게임 배경으로 되돌린다 (PopupCoinClaim.ts:749)"],
   "p_tournament:onClickPlay": ["토너먼트 참가", "PopupTournamentItem.onClickPlay() → updateStageEntry(tournaments) → ViewLobbyRanking.setResetOnEnable(true) → FBContext.createTournamentViewOnTournaments() → 성공하면 PopupTournament.playHide() (PopupTournamentItem.ts:160)"],
@@ -1011,7 +1049,10 @@ const EXTRA = {
      회전은 무시했고, 프리팹 저장 시점 비활성 장식 · 화면 밖 스크롤 컨텐츠 ·
      잠금 오버레이 · 에디터에서 옆으로 빼둔 배타 패널은 제외했다.
      목록 셀을 코드가 런타임에 만드는 지면은 runtime 에 그 사실을 적었다.
-     같은 지면의 프리팹 변형(플랫폼별 · 프로모션 기간용 등)은 var 에 적었다. */
+     같은 지면의 프리팹 변형(플랫폼별 · 프로모션 기간용 등)은 var 에 적었다.
+     ar/cw/ch 는 그 지면만 설계 해상도가 다를 때만 붙는다 — UGC 모드는
+     cc.Canvas.designResolution 이 2290x1280 로 바뀐다.
+     sub 는 별도 프리팹이 아니라 그 프리팹 안의 노드를 뽑아 온 지면이다. */
   const PF = {
     asyncpage: { src: "ViewAsyncPage.prefab", panel: null, parked: 0, folded: 14, nested: 0, runtime: "비동기 대전 상대 목록", boxes: [
       { k: "i", n: "box", x: 0.5, y: 0.6669, w: 1.0, hh: 1.25 },
@@ -1103,7 +1144,10 @@ const EXTRA = {
       { k: "l", n: "Text ", t: "10 Draw", x: 0.7278, y: 0.8709, w: 0.3611, hh: 0.0391 },
       { k: "i", n: "box", x: 0.7278, y: 0.9076, w: 0.3194, hh: 0.0336 },
       { k: "l", n: "text", t: "30", x: 0.7361, y: 0.906, w: 0.0676, hh: 0.0441 },
-      { k: "b", h: "show", n: "btn", x: 0.8944, y: 0.1093, w: 0.0875, hh: 0.0492 }
+      { k: "b", h: "show", n: "btn", x: 0.8944, y: 0.1093, w: 0.0875, hh: 0.0492 },
+      { k: "b", h: "hide", n: "hide", x: 0.5, y: 0.3906, w: 4.1667, hh: 2.3438, a: 0 },
+      { k: "b", h: "close", n: "dim", x: 0.5, y: 0.5, w: 1.0278, hh: 2.0, a: 0 },
+      { k: "b", h: "onClickGachaTicketClaim", n: "btn", t: "Claim", x: 0.5, y: 0.7297, w: 0.625, hh: 0.082, a: 0 }
     ] },
     intro: { src: "intro.fire", panel: null, parked: 0, folded: 0, nested: 0, boxes: [
       { k: "i", n: "WebBackground", x: 0.5, y: 0.5, w: 3.1597, hh: 1.0 },
@@ -1146,6 +1190,7 @@ const EXTRA = {
       { k: "l", n: "text", t: "Global", x: 0.3458, y: 0.2158, w: 0.2083, hh: 0.0391 },
       { k: "b", h: "onClickCategory", n: "btn", x: 0.6542, y: 0.2181, w: 0.2975, hh: 0.0577 },
       { k: "l", n: "text", t: "Friends", x: 0.6542, y: 0.2158, w: 0.2083, hh: 0.0391 },
+      { k: "b", h: "onSkipScrollAnimation", n: "BlockInputNode", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 0 },
       { k: "i", n: "ray_01", x: 0.0793, y: 0.9371, w: 0.314, hh: 0.1663 },
       { k: "i", n: "Icon", x: 0.0813, y: 0.9368, w: 0.1649, hh: 0.103 },
       { k: "l", n: "text", t: "MERGE", x: 0.0821, y: 0.9712, w: 0.165, hh: 0.0297 },
@@ -1167,7 +1212,8 @@ const EXTRA = {
       { k: "l", n: "lbCoin", t: "1,200,000", x: 0.6989, y: 0.002, w: 0.2451, hh: 0.0312 },
       { k: "l", n: "lbGem", t: "+30%", x: 0.3736, y: 0.0, w: 0.1389, hh: 0.0312 },
       { k: "b", h: "onClickCoin", n: "BtnFreeCoin", x: 0.6608, y: -0.0013, w: 0.3472, hh: 0.0547 },
-      { k: "b", h: "onClickGem", n: "BtnGem", x: 0.3097, y: -0.0013, w: 0.2778, hh: 0.0547 }
+      { k: "b", h: "onClickGem", n: "BtnGem", x: 0.3097, y: -0.0013, w: 0.2778, hh: 0.0547 },
+      { k: "b", h: "onClickCrossPromotionMission", n: "mask", x: 0.8917, y: 0.8391, w: 0.1375, hh: 0.0773, a: 0 }
     ] },
     mail: { src: "ViewMail.prefab", panel: null, parked: 0, folded: 0, nested: 1, runtime: "우편 항목", boxes: [
       { k: "b", h: "close", n: "dim", x: 0.5, y: 0.5, w: 1.0278, hh: 1.5625 },
@@ -1189,6 +1235,7 @@ const EXTRA = {
       { k: "i", n: "Icon_coin ", x: 0.5175, y: 0.0377, w: 0.0917, hh: 0.0523 },
       { k: "l", n: "get_coin", t: "1,200,000", x: 0.7039, y: 0.0356, w: 0.275, hh: 0.0312 },
       { k: "b", h: "close", n: "btn_pop_close", x: 0.9313, y: 0.2027, w: 0.1306, hh: 0.0734 },
+      { k: "b", h: "onClickClaimAll", n: "btn", x: 0.5, y: 0.8735, w: 0.49, hh: 0.0807, a: 0 },
       { k: "i", n: "btn", x: 0.5, y: 0.8735, w: 0.49, hh: 0.0807 },
       { k: "l", n: "Text ", t: "Claim All", x: 0.5, y: 0.8704, w: 0.4083, hh: 0.0391 }
     ] },
@@ -1223,6 +1270,7 @@ const EXTRA = {
       { k: "i", n: "bubble", x: 0.8631, y: 0.0957, w: 0.1187, hh: 0.0334 },
       { k: "l", n: "count", t: "Claim", x: 0.8631, y: 0.0914, w: 0.0924, hh: 0.0309 },
       { k: "l", n: "alram", t: "!", x: 0.9322, y: 0.1108, w: 0.0169, hh: 0.0384 },
+      { k: "b", h: "hide", n: "hide", x: 0.5, y: 0.5344, w: 1.0278, hh: 2.3438, a: 0 },
       { k: "b", h: "onClickFreeGem", n: "Free_gem", t: "x8", x: 0.8861, y: 0.2321, w: 0.1319, hh: 0.0928 },
       { k: "i", n: "gembox03", x: 0.8861, y: 0.2334, w: 0.1139, hh: 0.0641 },
       { k: "i", n: "bubble", x: 0.8631, y: 0.1987, w: 0.1187, hh: 0.0334 },
@@ -1415,7 +1463,8 @@ const EXTRA = {
       { k: "l", n: "LbDesc", t: "SHARE", x: 0.5, y: 0.7902, w: 0.4306, hh: 0.0391 },
       { k: "l", n: "BtnNoThanks", t: "T_NO_THANKS", x: 0.5, y: 0.8952, w: 0.5278, hh: 0.0391 },
       { k: "i", n: "gradation", x: 0.51, y: 0.9715, w: 1.25, hh: 0.1172 },
-      { k: "i", n: "coin", rep: 6, x: 0.9999, y: 0.9559, w: 0.2762, hh: 0.1287 }
+      { k: "i", n: "coin", rep: 6, x: 0.9999, y: 0.9559, w: 0.2762, hh: 0.1287 },
+      { k: "b", h: "onClickSkipCoinEffect", n: "Skip", x: 0.5014, y: 0.5, w: 1.0, hh: 2.0, a: 0 }
     ] },
     p_coinclaim: { src: "PopupBigCoinClaim.prefab", panel: {"w": 2.0, "h": 2.0}, parked: 3, folded: 11, nested: 1, boxes: [
       { k: "i", n: "BlockLayer", x: 0.5, y: 0.5, w: 1.0, hh: 2.0 },
@@ -1436,6 +1485,7 @@ const EXTRA = {
       { k: "i", n: "Icon", x: 0.6453, y: 0.4858, w: 0.1021, hh: 0.0638 },
       { k: "i", n: "epic", x: 0.3639, y: 0.4123, w: 0.3472, hh: 0.0945 },
       { k: "i", n: "win", x: 0.6493, y: 0.4123, w: 0.3208, hh: 0.093 },
+      { k: "b", h: "onClickTutorialClear", n: "btn", x: 0.5, y: 0.6769, w: 0.6283, hh: 0.0833, a: 0 },
       { k: "b", h: "onClickClaimX2", n: "btn", x: 0.5, y: 0.6714, w: 0.6283, hh: 0.0833 },
       { k: "i", n: "Icon", x: 0.2674, y: 0.6671, w: 0.0711, hh: 0.0431 },
       { k: "l", n: "Text ", t: "Double Claims", x: 0.5062, y: 0.6683, w: 0.4028, hh: 0.0391 },
@@ -1457,7 +1507,9 @@ const EXTRA = {
       { k: "i", n: "Icon", x: 0.2258, y: 0.2248, w: 0.1225, hh: 0.0765 },
       { k: "l", n: "text", t: "x100", x: 0.2258, y: 0.2509, w: 0.0944, hh: 0.0441 },
       { k: "l", n: "count", t: "00:00:00", x: 0.2258, y: 0.2769, w: 0.1236, hh: 0.0492 },
-      { k: "l", n: "1st", t: "1st", x: 0.1781, y: 0.1944, w: 0.0685, hh: 0.0539 }
+      { k: "l", n: "1st", t: "1st", x: 0.1781, y: 0.1944, w: 0.0685, hh: 0.0539 },
+      { k: "b", h: "onClickClose", n: "Close", x: 0.8879, y: 0.1652, w: 0.1667, hh: 0.0938, a: 0 },
+      { k: "b", h: "onClickMerge", n: "Btn", x: 0.1057, y: 0.9366, w: 0.1715, hh: 0.0965, a: 0 }
     ] },
     p_crossmis: { src: "PopupCrossPromotionMission.prefab", panel: null, parked: 0, folded: 0, nested: 1, boxes: [
       { k: "b", h: "close", n: "dim", x: 0.5, y: 0.5, w: 4.1667, hh: 2.3438 },
@@ -1567,6 +1619,7 @@ const EXTRA = {
     ] },
     p_gachacoin: { src: "PopupGachaGetCoin.prefab", panel: null, parked: 0, folded: 0, nested: 0, boxes: [
       { k: "i", n: "dim", x: 0.5, y: 0.5037, w: 1.0278, hh: 2.3438 },
+      { k: "b", h: "onClickPurchase", n: "originBtn", x: 0.7083, y: 0.4414, w: 0.2917, hh: 0.0703, a: 0 },
       { k: "i", n: "pop_box", x: 0.5, y: 0.4891, w: 0.8861, hh: 0.4477 },
       { k: "i", n: "deco", x: 0.5, y: 0.5145, w: 0.8722, hh: 0.0187 },
       { k: "i", n: "deco", x: 0.5, y: 0.4837, w: 0.8722, hh: 0.0125 },
@@ -1594,6 +1647,7 @@ const EXTRA = {
     ] },
     p_gacharesult: { src: "PopupGachaResult.prefab", panel: null, parked: 0, folded: 0, nested: 2, runtime: "가챠 결과 셀", boxes: [
       { k: "i", n: "BlockLayer", x: 0.5, y: 0.5, w: 4.1667, hh: 2.3438 },
+      { k: "b", h: "onClickContinue", n: "continue_btn", x: 0.5, y: 0.5, w: 1.0, hh: 2.3438, a: 0 },
       { k: "i", n: "gacha_ball", x: 0.5, y: 0.5349, w: 0.3986, hh: 0.2164 },
       { k: "i", n: "cacha_ball_effect", x: 0.5, y: 0.5349, w: 0.4819, hh: 0.2633 },
       { k: "i", n: "gacha_ball_back", x: 0.5754, y: 0.5338, w: 0.0986, hh: 0.043 },
@@ -1612,6 +1666,11 @@ const EXTRA = {
       { k: "i", n: "gem", x: 0.5, y: 0.2723, w: 0.1933, hh: 0.1207 },
       { k: "l", n: "text", t: "x3", x: 0.5019, y: 0.3067, w: 0.1775, hh: 0.0666 },
       { k: "l", n: "Item_name", t: "Item Name", x: 0.5069, y: 0.1653, w: 0.3094, hh: 0.0441 },
+      { k: "b", h: "onClickDrawSkip", n: "btn", x: 0.8833, y: 0.0359, w: 0.2778, hh: 0.0781, a: 0 },
+      { k: "b", h: "onClickMerge", n: "btn", t: "GO TO MERGE", x: 0.5, y: 0.5906, w: 0.4861, hh: 0.0781, a: 0 },
+      { k: "b", h: "onClickShare", n: "btn_share", x: 0.8861, y: 0.6859, w: 0.0899, hh: 0.0505, a: 0 },
+      { k: "b", h: "onClickDrawX10", n: "btn", x: 0.7164, y: 0.7922, w: 0.4181, hh: 0.1105, a: 0 },
+      { k: "b", h: "onClickDrawX1", n: "btn", x: 0.2836, y: 0.7945, w: 0.4181, hh: 0.1105, a: 0 },
       { k: "i", n: "share_area", x: 0.5, y: 0.3953, w: 1.0, hh: 0.6094 }
     ] },
     p_gemunlock: { src: "PopupGemUnlocked.prefab", panel: null, parked: 0, folded: 0, nested: 2, boxes: [
@@ -1754,6 +1813,7 @@ const EXTRA = {
       { k: "i", n: "box", x: 0.5, y: 0.542, w: 0.8528, hh: 0.6031 },
       { k: "i", n: "photo", x: 0.1806, y: 0.3075, w: 0.1281, hh: 0.072 },
       { k: "i", n: "photoFrame", x: 0.1806, y: 0.3075, w: 0.155, hh: 0.0844 },
+      { k: "b", h: "onClickEditButton", n: "editProfileButton", t: "button", x: 0.1007, y: 0.2573, w: 0.1139, hh: 0.0641, a: 0 },
       { k: "l", n: "Username", x: 0.5528, y: 0.2806, w: 0.5556, hh: 0.0394 },
       { k: "i", n: "GemDisp_1", x: 0.4278, y: 0.3238, w: 0.2944, hh: 0.0406 },
       { k: "i", n: "icon", x: 0.3111, y: 0.3223, w: 0.1124, hh: 0.0702 },
@@ -1761,6 +1821,8 @@ const EXTRA = {
       { k: "i", n: "CoinDisp_1", x: 0.7444, y: 0.3238, w: 0.2944, hh: 0.0406 },
       { k: "i", n: "icon", x: 0.6278, y: 0.323, w: 0.0881, hh: 0.0502 },
       { k: "l", n: "CoinNumber", x: 0.7708, y: 0.3238, w: 0.1972, hh: 0.0312 },
+      { k: "b", h: "onClickEditProfile", n: "BTN_EditUserProfile", x: 0.8472, y: 0.2727, w: 0.0911, hh: 0.0512, a: 0 },
+      { k: "b", h: "onClickPlay", n: "btn", x: 0.5, y: 0.7672, w: 0.5778, hh: 0.0833, a: 0 },
       { k: "i", n: "pop_title_deco01", x: 0.5097, y: 0.1271, w: 0.7833, hh: 0.1789 },
       { k: "i", n: "pop_title_box", x: 0.5, y: 0.1808, w: 0.6083, hh: 0.0773 },
       { k: "i", n: "pop_title_deco02", x: 0.4988, y: 0.1306, w: 0.1278, hh: 0.0516 },
@@ -1852,6 +1914,7 @@ const EXTRA = {
       { k: "i", n: "btn", x: 0.6646, y: 0.5217, w: 0.0861, hh: 0.0484 },
       { k: "l", n: "Type", t: "T_AUTO SKIP", x: 0.3446, y: 0.5223, w: 0.3472, hh: 0.0391 },
       { k: "l", n: "Type", t: "T_LANGUAGET", x: 0.3446, y: 0.6035, w: 0.3472, hh: 0.0391 },
+      { k: "b", h: "onClickItem", n: "item", t: "English", x: 0.6861, y: 0.6511, w: 0.3028, hh: 0.0469, a: 0 },
       { k: "b", h: "onClickOpen", n: "box", alt: ["onClickOpen · blockInput (비활성)"], x: 0.6864, y: 0.6027, w: 0.3222, hh: 0.0547 },
       { k: "b", h: "onClickOpen", n: "btn", x: 0.7971, y: 0.6032, w: 0.0744, hh: 0.0406 },
       { k: "l", n: "text_language", x: 0.6507, y: 0.6023, w: 0.2083, hh: 0.0391 }
@@ -2242,6 +2305,7 @@ const EXTRA = {
       { k: "i", n: "UserInfoDispHeader", x: 0.5, y: 0.2771, w: 0.875, hh: 0.1469 },
       { k: "i", n: "photo", x: 0.1806, y: 0.2838, w: 0.1281, hh: 0.072 },
       { k: "i", n: "photoFrame", x: 0.1806, y: 0.2838, w: 0.155, hh: 0.0844 },
+      { k: "b", h: "onClickEditButton", n: "editProfileButton", t: "button", x: 0.1007, y: 0.2336, w: 0.1139, hh: 0.0641, a: 0 },
       { k: "l", n: "Username", x: 0.5528, y: 0.2569, w: 0.5556, hh: 0.0394 },
       { k: "i", n: "RankDisp_1", x: 0.4278, y: 0.3001, w: 0.2944, hh: 0.0406 },
       { k: "i", n: "icon", x: 0.3111, y: 0.2985, w: 0.1124, hh: 0.0702 },
@@ -2249,6 +2313,8 @@ const EXTRA = {
       { k: "i", n: "CoinDisp_1", x: 0.7444, y: 0.3001, w: 0.2944, hh: 0.0406 },
       { k: "i", n: "icon", x: 0.6278, y: 0.2993, w: 0.0881, hh: 0.0502 },
       { k: "l", n: "CoinNumber", x: 0.7708, y: 0.3001, w: 0.1972, hh: 0.0312 },
+      { k: "b", h: "onClickEditProfile", n: "BTN_EditUserProfile", x: 0.8472, y: 0.2489, w: 0.0911, hh: 0.0512, a: 0 },
+      { k: "b", h: "onClickEditProfile", n: "BTN_EditUserProfileIcon", x: 0.1785, y: 0.2708, w: 0.1556, hh: 0.0875, a: 0 },
       { k: "i", n: "TabButtonGroup", x: 0.5, y: 0.4002, w: 0.875, hh: 0.0781 },
       { k: "b", h: "onClickCategory", n: "PlayRecordButton", t: "Play Record", x: 0.3019, y: 0.4025, w: 0.4028, hh: 0.0641 },
       { k: "l", n: "text", t: "Play Record", x: 0.3024, y: 0.4009, w: 0.2917, hh: 0.0391 },
@@ -2367,6 +2433,7 @@ const EXTRA = {
       { k: "i", n: "bg", x: 0.5, y: 0.1117, w: 1.0, hh: 0.2234 },
       { k: "i", n: "npc", x: 0.5131, y: 0.1285, w: 0.5306, hh: 0.1897 },
       { k: "i", n: "bg", x: 0.5, y: 0.2409, w: 1.0, hh: 0.0391 },
+      { k: "b", h: "onClickAdBlockInfo", n: "btn", x: 0.1297, y: 0.174, w: 0.1667, hh: 0.0938, a: 0 },
       { k: "i", n: "touch", x: 0.5, y: 0.6562, w: 1.0, hh: 0.8891 },
       { k: "b", h: "onClickPurchase", n: "box", x: 0.5, y: 0.4641, w: 0.8917, hh: 0.2367 },
       { k: "l", n: "cost", t: "$0.00", x: 0.6168, y: 0.543, w: 0.2003, hh: 0.0492 },
@@ -2451,65 +2518,141 @@ const EXTRA = {
       { k: "l", n: "text ", t: "Compete the rankings with fr", x: 0.5, y: 0.8516, w: 0.9028, hh: 0.1328 },
       { k: "i", n: "arrow", x: 0.5, y: 0.7422, w: 0.1268, hh: 0.0638 }
     ] },
-    ugc: { src: "ViewUGC.prefab", panel: {"w": 3.1806, "h": 1.0}, parked: 0, folded: 0, nested: 3, runtime: "UGC 스테이지 목록", boxes: [
-      { k: "i", n: "bg", x: 0.5, y: 0.5, w: 3.1806, hh: 1.0 },
-      { k: "b", h: "onClickTabButton", n: "btn02", t: "MOST POPULAR", x: 0.5, y: 0.1609, w: 0.5417, hh: 0.0758 },
-      { k: "l", n: "text", t: "MOST POPULAR", x: 0.5, y: 0.1562, w: 0.4722, hh: 0.0391 },
-      { k: "l", n: "title", t: "USER CREATED LEVELS", x: 0.5, y: 0.0703, w: 1.0285, hh: 0.0788 },
-      { k: "b", h: "onClickPrev", n: "btn", x: 0.3272, y: 0.9375, w: 0.0861, hh: 0.0484 },
-      { k: "l", n: "count", t: "1", x: 0.4286, y: 0.9375, w: 0.0833, hh: 0.0788 },
-      { k: "l", n: "count", t: "/", x: 0.5, y: 0.9375, w: 0.0262, hh: 0.0394 },
-      { k: "l", n: "count", t: "1", x: 0.5714, y: 0.9375, w: 0.0833, hh: 0.0788 },
-      { k: "l", n: "count", t: "1", x: 0.4286, y: 0.9375, w: 0.0833, hh: 0.0788 },
-      { k: "l", n: "count", t: "/", x: 0.5, y: 0.9375, w: 0.0262, hh: 0.0394 },
-      { k: "l", n: "count", t: "1", x: 0.5714, y: 0.9375, w: 0.0833, hh: 0.0788 },
-      { k: "b", h: "onClickCreateNew", n: "create_btn", t: "+", x: 0.5, y: 0.282, w: 2.0944, hh: 0.1094 },
-      { k: "l", n: "text", t: "+", x: 0.2186, y: 0.2805, w: 0.0539, hh: 0.0394 },
-      { k: "l", n: "text", t: "Create New", x: 0.5339, y: 0.2805, w: 0.5488, hh: 0.0591 },
-      { k: "s", n: "ScrollView", x: 0.5, y: 0.677, w: 2.7778, hh: 0.6445 }
+    ugc: { src: "ViewUGC.prefab", panel: null, parked: 0, folded: 0, nested: 5, runtime: "UGC 스테이지 목록", ar: 1.7891, cw: 2290, ch: 1280, boxes: [
+      { k: "i", n: "bg", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
+      { k: "b", h: "onClickBackToMain", n: "back_button", t: "BACK TO GAME", x: 0.1013, y: 0.043, w: 0.1747, hh: 0.0625 },
+      { k: "l", n: "text", t: "BACK TO GAME", x: 0.1165, y: 0.043, w: 0.1431, hh: 0.0394 },
+      { k: "b", h: "onClickSetting", n: "setting", x: 0.969, y: 0.0539, w: 0.0332, hh: 0.0594 },
+      { k: "i", n: "box", x: 0.8511, y: 0.0539, w: 0.1965, hh: 0.0594 },
+      { k: "l", n: "placeholder", x: 0.7998, y: 0.0541, w: 0.0599, hh: 0.1019 },
+      { k: "b", h: "onClickTabButton", n: "btn_search", x: 0.9314, y: 0.0539, w: 0.0349, hh: 0.0625 },
+      { k: "b", h: "onClickTabButton", n: "btn01", t: "NEW", x: 0.3262, y: 0.1609, w: 0.1703, hh: 0.0758 },
+      { k: "l", n: "text", t: "NEW", x: 0.3262, y: 0.1562, w: 0.1485, hh: 0.0391 },
+      { k: "b", h: "onClickTabButton", n: "btn02", t: "MOST POPULAR", x: 0.5, y: 0.1609, w: 0.1703, hh: 0.0758 },
+      { k: "l", n: "text", t: "MOST POPULAR", x: 0.5, y: 0.1562, w: 0.1485, hh: 0.0391 },
+      { k: "b", h: "onClickTabButton", n: "btn03", t: "MY LEVELS", x: 0.6738, y: 0.1609, w: 0.1703, hh: 0.0758 },
+      { k: "l", n: "text", t: "MY LEVELS", x: 0.6738, y: 0.1562, w: 0.1485, hh: 0.0391 },
+      { k: "l", n: "title", t: "USER CREATED LEVELS", x: 0.5, y: 0.0703, w: 0.3234, hh: 0.0788 },
+      { k: "b", h: "onClickPrev", n: "btn", x: 0.4457, y: 0.9375, w: 0.0271, hh: 0.0484 },
+      { k: "l", n: "count", t: "1", x: 0.4776, y: 0.9375, w: 0.0262, hh: 0.0788 },
+      { k: "l", n: "count", t: "1", x: 0.5224, y: 0.9375, w: 0.0262, hh: 0.0788 },
+      { k: "l", n: "count", t: "1", x: 0.4776, y: 0.9375, w: 0.0262, hh: 0.0788 },
+      { k: "l", n: "count", t: "1", x: 0.5224, y: 0.9375, w: 0.0262, hh: 0.0788 },
+      { k: "b", h: "onClickCreateNew", n: "create_btn", t: "+", x: 0.5, y: 0.282, w: 0.6585, hh: 0.1094 },
+      { k: "l", n: "text", t: "+", x: 0.4115, y: 0.2805, w: 0.0169, hh: 0.0394 },
+      { k: "l", n: "text", t: "Create New", x: 0.5107, y: 0.2805, w: 0.1725, hh: 0.0591 },
+      { k: "s", n: "ScrollView", x: 0.5, y: 0.677, w: 0.8734, hh: 0.6445 },
+      { k: "i", n: "bg", x: 0.8699, y: 0.675, w: 0.0061, hh: 0.6344 },
+      { k: "b", h: "onClickBack", n: "back_button ", t: "MY LEVELS", x: 0.0808, y: 0.043, w: 0.131, hh: 0.0781, a: 0 },
+      { k: "b", h: "onBtnClick", n: "none", t: "NONE", x: 0.4415, y: 0.8916, w: 0.0437, hh: 0.0781, a: 0 },
+      { k: "b", h: "onBtnClick", n: "empty", t: "EMPTY", x: 0.5, y: 0.8916, w: 0.0437, hh: 0.0781, a: 0 },
+      { k: "b", h: "onBtnClick", n: "clear", t: "CLEAR", x: 0.5585, y: 0.8916, w: 0.0437, hh: 0.0781, a: 0 },
+      { k: "b", h: "onClick", n: "checker", x: 0.7373, y: 0.5302, w: 0.0218, hh: 0.0859, a: 0 },
+      { k: "b", h: "onClick", n: "checker", x: 0.7745, y: 0.5302, w: 0.0218, hh: 0.0859, a: 0 },
+      { k: "b", h: "onClick", n: "checker", x: 0.8116, y: 0.5302, w: 0.0218, hh: 0.0859, a: 0 },
+      { k: "b", h: "onClick", n: "checker", x: 0.8487, y: 0.5302, w: 0.0218, hh: 0.0859, a: 0 },
+      { k: "b", h: "onClick", n: "checker", x: 0.8858, y: 0.5302, w: 0.0218, hh: 0.0859, a: 0 },
+      { k: "b", h: "onClick", n: "checker", x: 0.9229, y: 0.5302, w: 0.0218, hh: 0.0859, a: 0 },
+      { k: "b", h: "onClickMain", n: "\bBtn", x: 0.769, y: 0.3348, w: 0.0306, hh: 0.0547, a: 0 },
+      { k: "b", h: "onClickPlay", n: "btn_test", t: "TEST", x: 0.9052, y: 0.7656, w: 0.1585, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickSave", n: "btn_save", t: "SAVE", x: 0.9052, y: 0.85, w: 0.1585, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickDelete", n: "btn_delete", t: "DELETE", x: 0.9052, y: 0.9344, w: 0.1585, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickOK", n: "btn", t: "OK", x: 0.5, y: 0.5781, w: 0.1397, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickClose", n: "btn_close", alt: ["onClickOK · btn_close (비활성)"], x: 0.61, y: 0.3551, w: 0.0153, hh: 0.0273, a: 0 },
+      { k: "b", h: "onClickClose", n: "btn", t: "CLOSE", x: 0.441, y: 0.5781, w: 0.1092, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickDelete", n: "btn copy", t: "DELETE", L: "비활성 상태 버튼", x: 0.559, y: 0.5781, w: 0.1092, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickClosePolicy", n: "btn_close", x: 0.6537, y: 0.1484, w: 0.0153, hh: 0.0273, a: 0 },
+      { k: "b", h: "onClickClosePolicy", n: "btn copy", t: "CLOSE", L: "비활성 상태 버튼", x: 0.5, y: 0.7895, w: 0.1397, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickBackToGame", n: "btn_close", x: 0.6515, y: 0.2789, w: 0.0153, hh: 0.0273, a: 0 },
+      { k: "b", h: "onClickUGCPolicy", n: "text", t: "UGC Policy", x: 0.5, y: 0.5596, w: 0.2358, hh: 0.0469, a: 0 },
+      { k: "b", h: "onClickAgree", n: "btn", t: "AGREE", x: 0.576, y: 0.6531, w: 0.1485, hh: 0.0758, a: 0 },
+      { k: "b", h: "onClickBackToGame", n: "btn", t: "BACK TO GAME", x: 0.424, y: 0.6531, w: 0.1485, hh: 0.0758, a: 0 }
     ] },
-    ugcgame: { src: "ViewGameUGC.prefab", panel: {"w": 3.1806, "h": 1.0}, parked: 0, folded: 11, nested: 1, runtime: "보드 블록 (UGC 스테이지 데이터)", boxes: [
-      { k: "i", n: "origin", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
-      { k: "i", n: "blur", x: 0.5, y: 0.5, w: 1.0, hh: 1.2188 },
-      { k: "i", n: "background", x: 0.5, y: 0.2039, w: 0.2533, hh: 0.1425 },
-      { k: "i", n: "monimap_box", x: 0.5, y: 0.2039, w: 0.2586, hh: 0.1455 },
-      { k: "i", n: "box", x: 0.1819, y: 0.2037, w: 0.3147, hh: 0.147 },
-      { k: "l", n: "moves", t: "MOVES", x: 0.1838, y: 0.175, w: 0.1867, hh: 0.045 },
-      { k: "l", n: "moves_count", t: "40", x: 0.1819, y: 0.2153, w: 0.155, hh: 0.0593 },
-      { k: "i", n: "box", x: 0.8122, y: 0.2037, w: 0.3147, hh: 0.147 },
-      { k: "i", n: "ray", x: 0.8143, y: 0.2112, w: 0.2936, hh: 0.1666 },
-      { k: "i", n: "Sprite", x: 0.8139, y: 0.2173, w: 0.111, hh: 0.0653 },
-      { k: "i", n: "Sprite copy", rep: 4, x: 0.8139, y: 0.2173, w: 0.1629, hh: 0.0877 },
-      { k: "l", n: "Goal", t: "0", x: 0.8583, y: 0.2371, w: 0.0467, hh: 0.0593 },
-      { k: "l", n: "goals", t: "GOALS", x: 0.814, y: 0.175, w: 0.1867, hh: 0.045 },
-      { k: "i", n: "bg", x: 0.4981, y: 0.0262, w: 1.0139, hh: 0.1562 },
-      { k: "i", n: "tournamentBg", x: 0.5, y: 0.0492, w: 1.001, hh: 0.0995 },
-      { k: "i", n: "Profile photo_mask  ", x: 0.1042, y: 0.05, w: 0.1065, hh: 0.0544 },
-      { k: "i", n: "photo", x: 0.1042, y: 0.05, w: 0.1082, hh: 0.0609 },
-      { k: "i", n: "Profile photo_box02 ", x: 0.1033, y: 0.0505, w: 0.1524, hh: 0.083 },
-      { k: "i", n: "profile_light", x: 0.1015, y: 0.0491, w: 0.2933, hh: 0.1623 },
-      { k: "i", n: "line", x: 0.4975, y: 0.1078, w: 2.7778, hh: 0.0187 },
-      { k: "i", n: "Profile photo_mask ", x: 0.7826, y: 0.0512, w: 0.0813, hh: 0.0415 },
-      { k: "i", n: "photo", x: 0.7826, y: 0.0512, w: 0.0825, hh: 0.0464 },
-      { k: "i", n: "Profile photo_box02 ", x: 0.7826, y: 0.0512, w: 0.1163, hh: 0.0633 },
-      { k: "l", n: "grade", t: "16th", x: 0.7826, y: 0.0202, w: 0.0775, hh: 0.0618 },
-      { k: "i", n: "ship", x: 0.7842, y: 0.0751, w: 0.1292, hh: 0.0336 },
-      { k: "l", n: "socre", t: "50,000", x: 0.8017, y: 0.0856, w: 0.1722, hh: 0.0539 },
-      { k: "i", n: "Profile photo_mask ", x: 0.3414, y: 0.0515, w: 0.0903, hh: 0.0461 },
-      { k: "i", n: "photo", x: 0.3414, y: 0.0515, w: 0.0917, hh: 0.0516 },
-      { k: "i", n: "Profile photo_box02 ", x: 0.3414, y: 0.0515, w: 0.1292, hh: 0.0703 },
-      { k: "i", n: "profile_light", x: 0.3386, y: 0.0511, w: 0.2486, hh: 0.1375 },
-      { k: "i", n: "ship", x: 0.3506, y: 0.0795, w: 0.1611, hh: 0.0352 },
-      { k: "l", n: "grade", t: "17th", x: 0.0785, y: 0.0227, w: 0.1212, hh: 0.0539 },
-      { k: "b", h: "onClickSetting", n: "button", x: 0.925, y: 0.957, w: 0.1119, hh: 0.0615 },
-      { k: "i", n: "box", x: 0.0939, y: 0.9484, w: 0.1487, hh: 0.087 },
-      { k: "i", n: "btn", x: 0.0917, y: 0.9781, w: 0.1575, hh: 0.0346 },
-      { k: "l", n: "count", t: "3/3", x: 0.1028, y: 0.9766, w: 0.0546, hh: 0.0394 },
-      { k: "l", n: "count", t: "3/3", x: 0.1, y: 0.9766, w: 0.0546, hh: 0.0394 },
-      { k: "b", h: "onClickBooster", n: "Btn", x: 0.0939, y: 0.9499, w: 0.1487, hh: 0.087 },
-      { k: "i", n: "Coin_03", rep: 5, x: 0.5064, y: 0.505, w: 0.1125, hh: 0.0633 },
-      { k: "i", n: "bling_01", rep: 5, x: 0.5146, y: 0.5059, w: 0.1511, hh: 0.085 },
-      { k: "i", n: "bling_01", x: 0.5, y: 0.5195, w: 0.0889, hh: 0.05 }
+    ugcedit: { src: "ViewUGC.prefab", panel: null, parked: 0, folded: 0, nested: 6, ar: 1.7891, cw: 2290, ch: 1280, sub: "UGCMapEditor", boxes: [
+      { k: "i", n: "bg", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
+      { k: "b", h: "onClickSetting", n: "setting", x: 0.969, y: 0.0539, w: 0.0332, hh: 0.0594 },
+      { k: "l", n: "title", t: "LEVEL CREATOR", x: 0.5, y: 0.0703, w: 0.2286, hh: 0.0788 },
+      { k: "b", h: "onClickBack", n: "back_button ", t: "MY LEVELS", x: 0.0808, y: 0.043, w: 0.131, hh: 0.0781 },
+      { k: "l", n: "text", t: "MY LEVELS", x: 0.0957, y: 0.043, w: 0.1014, hh: 0.0394 },
+      { k: "b", h: "onBtnClick", n: "none", t: "NONE", x: 0.4415, y: 0.8916, w: 0.0437, hh: 0.0781 },
+      { k: "l", n: "text", t: "NONE", x: 0.4415, y: 0.9463, w: 0.0313, hh: 0.0394 },
+      { k: "b", h: "onBtnClick", n: "empty", t: "EMPTY", x: 0.5, y: 0.8916, w: 0.0437, hh: 0.0781 },
+      { k: "l", n: "text", t: "EMPTY", x: 0.5, y: 0.9463, w: 0.0349, hh: 0.0394 },
+      { k: "b", h: "onBtnClick", n: "clear", t: "CLEAR", x: 0.5585, y: 0.8916, w: 0.0437, hh: 0.0781 },
+      { k: "l", n: "text", t: "CLEAR", x: 0.5585, y: 0.9463, w: 0.0326, hh: 0.0394 },
+      { k: "l", n: "text", t: "Blocks", x: 0.089, y: 0.1562, w: 0.0536, hh: 0.0394 },
+      { k: "l", n: "text", t: "Color Limit", x: 0.7612, y: 0.4416, w: 0.091, hh: 0.0394 },
+      { k: "i", n: "box", x: 0.8297, y: 0.5309, w: 0.2323, hh: 0.1273 },
+      { k: "b", h: "onClick", n: "checker", x: 0.7373, y: 0.5302, w: 0.0218, hh: 0.0859 },
+      { k: "b", h: "onClick", n: "checker", x: 0.7745, y: 0.5302, w: 0.0218, hh: 0.0859 },
+      { k: "b", h: "onClick", n: "checker", x: 0.8116, y: 0.5302, w: 0.0218, hh: 0.0859 },
+      { k: "b", h: "onClick", n: "checker", x: 0.8487, y: 0.5302, w: 0.0218, hh: 0.0859 },
+      { k: "b", h: "onClick", n: "checker", x: 0.8858, y: 0.5302, w: 0.0218, hh: 0.0859 },
+      { k: "b", h: "onClick", n: "checker", x: 0.9229, y: 0.5302, w: 0.0218, hh: 0.0859 },
+      { k: "i", n: "outline", x: 0.5, y: 0.4844, w: 0.379, hh: 0.6781 },
+      { k: "i", n: "box", x: 0.7856, y: 0.2109, w: 0.145, hh: 0.0625 },
+      { k: "i", n: "box", x: 0.7856, y: 0.2109, w: 0.1485, hh: 0.0688 },
+      { k: "l", n: "count", t: "Moves", x: 0.7914, y: 0.2125, w: 0.1441, hh: 0.0688 },
+      { k: "l", n: "text", t: "Moves", x: 0.7402, y: 0.1562, w: 0.0532, hh: 0.0394 },
+      { k: "l", n: "text", t: "Goal", x: 0.7322, y: 0.2812, w: 0.0374, hh: 0.0394 },
+      { k: "i", n: "box", x: 0.7491, y: 0.3348, w: 0.0721, hh: 0.0625 },
+      { k: "i", n: "box", x: 0.7491, y: 0.3348, w: 0.0755, hh: 0.0688 },
+      { k: "b", h: "onClickMain", n: "\bBtn", x: 0.769, y: 0.3348, w: 0.0306, hh: 0.0547 },
+      { k: "i", n: "box", x: 0.8241, y: 0.3348, w: 0.0677, hh: 0.0625 },
+      { k: "i", n: "box", x: 0.8245, y: 0.3348, w: 0.0712, hh: 0.0688 },
+      { k: "l", n: "count", t: "Goal", x: 0.8264, y: 0.3348, w: 0.0611, hh: 0.0625 },
+      { k: "b", h: "onClickPlay", n: "btn_test", t: "TEST", x: 0.9052, y: 0.7656, w: 0.1585, hh: 0.0758 },
+      { k: "l", n: "text", t: "TEST", x: 0.9052, y: 0.7617, w: 0.1354, hh: 0.0469 },
+      { k: "b", h: "onClickSave", n: "btn_save", t: "SAVE", x: 0.9052, y: 0.85, w: 0.1585, hh: 0.0758 },
+      { k: "l", n: "text", t: "SAVE", x: 0.9052, y: 0.8461, w: 0.1362, hh: 0.0469 },
+      { k: "b", h: "onClickDelete", n: "btn_delete", t: "DELETE", x: 0.9052, y: 0.9344, w: 0.1585, hh: 0.0758 },
+      { k: "l", n: "text", t: "DELETE", x: 0.9155, y: 0.9305, w: 0.1135, hh: 0.0591 },
+      { k: "l", n: "text", t: "LEVEL ID :", x: 0.0569, y: 0.9492, w: 0.0681, hh: 0.0394 }
+    ] },
+    ugcgame: { src: "ViewGameUGC.prefab", panel: null, parked: 3, folded: 7, nested: 1, runtime: "보드 블록 (UGC 스테이지 데이터)", ar: 1.7891, cw: 2290, ch: 1280, boxes: [
+      { k: "i", n: "origin", x: 0.5, y: 0.5, w: 0.3144, hh: 1.0 },
+      { k: "i", n: "blur", x: 0.5, y: 0.5, w: 0.3144, hh: 1.2188 },
+      { k: "i", n: "background", x: 0.5, y: 0.2039, w: 0.0797, hh: 0.1425 },
+      { k: "i", n: "monimap_box", x: 0.5, y: 0.2039, w: 0.0813, hh: 0.1455 },
+      { k: "i", n: "box", x: 0.4, y: 0.2037, w: 0.099, hh: 0.147 },
+      { k: "l", n: "moves", t: "MOVES", x: 0.4006, y: 0.175, w: 0.0587, hh: 0.045 },
+      { k: "l", n: "moves_count", t: "40", x: 0.4, y: 0.2153, w: 0.0487, hh: 0.0593 },
+      { k: "i", n: "box", x: 0.5982, y: 0.2037, w: 0.099, hh: 0.147 },
+      { k: "i", n: "ray", x: 0.5988, y: 0.2112, w: 0.0923, hh: 0.1666 },
+      { k: "i", n: "Sprite copy", rep: 4, x: 0.5987, y: 0.2173, w: 0.0512, hh: 0.0877 },
+      { k: "l", n: "Goal", t: "0", x: 0.6127, y: 0.2371, w: 0.0147, hh: 0.0593 },
+      { k: "l", n: "goals", t: "GOALS", x: 0.5987, y: 0.175, w: 0.0587, hh: 0.045 },
+      { k: "i", n: "bg", x: 0.4994, y: 0.0262, w: 0.3188, hh: 0.1562 },
+      { k: "i", n: "tournamentBg", x: 0.5, y: 0.0492, w: 0.3147, hh: 0.0995 },
+      { k: "l", n: "User name", t: "User name", x: 0.2534, y: 0.0341, w: 0.0679, hh: 0.0618 },
+      { k: "i", n: "profile_light", x: 0.3093, y: 0.0488, w: 0.0782, hh: 0.1375 },
+      { k: "l", n: "rank", t: "4th", x: 0.3097, y: 0.0789, w: 0.0258, hh: 0.0618 },
+      { k: "l", n: "User name", t: "User name", x: 0.7465, y: 0.0341, w: 0.0679, hh: 0.0618 },
+      { k: "l", n: "rank", t: "3rd", x: 0.6907, y: 0.0789, w: 0.027, hh: 0.0618 },
+      { k: "i", n: "Profile photo_box02 ", x: 0.3753, y: 0.0505, w: 0.0479, hh: 0.083 },
+      { k: "i", n: "profile_light", x: 0.3747, y: 0.0491, w: 0.0922, hh: 0.1623 },
+      { k: "i", n: "line", x: 0.4992, y: 0.1078, w: 0.8734, hh: 0.0187 },
+      { k: "l", n: "grade", t: "16th", x: 0.5889, y: 0.0202, w: 0.0244, hh: 0.0618 },
+      { k: "l", n: "socre", t: "50,000", x: 0.5948, y: 0.0856, w: 0.0541, hh: 0.0539 },
+      { k: "i", n: "profile_light", x: 0.4493, y: 0.0511, w: 0.0782, hh: 0.1375 },
+      { k: "i", n: "wave", x: 0.7795, y: 0.0944, w: 0.8734, hh: 0.0203 },
+      { k: "i", n: "line", x: 0.7795, y: 0.107, w: 0.8734, hh: 0.0187 },
+      { k: "l", n: "grade", t: "17th", x: 0.3675, y: 0.0227, w: 0.0381, hh: 0.0539 },
+      { k: "b", h: "onClickSetting", n: "button", x: 0.6336, y: 0.957, w: 0.0352, hh: 0.0615 },
+      { k: "i", n: "box", x: 0.3723, y: 0.9484, w: 0.0468, hh: 0.087 },
+      { k: "l", n: "count", t: "3/3", x: 0.3751, y: 0.9766, w: 0.0172, hh: 0.0394 },
+      { k: "l", n: "count", t: "3/3", x: 0.3742, y: 0.9766, w: 0.0172, hh: 0.0394 },
+      { k: "b", h: "onClickBooster", n: "Btn", x: 0.3723, y: 0.9499, w: 0.0468, hh: 0.087 },
+      { k: "b", h: "onClickSkip", n: "Button", x: 0.5, y: 0.8906, w: 1.31, hh: 2.3438, a: 0 },
+      { k: "i", n: "bling_01", rep: 5, x: 0.5046, y: 0.5059, w: 0.0475, hh: 0.085 },
+      { k: "i", n: "bg", x: 0.1714, y: 0.5, w: 0.3428, hh: 1.0 },
+      { k: "i", n: "bg copy", x: 0.8286, y: 0.5, w: 0.3428, hh: 1.0 },
+      { k: "l", n: "text", t: "LEVEL ID :", x: 0.0569, y: 0.9492, w: 0.0681, hh: 0.0394 },
+      { k: "b", h: "close", n: "btn_close", x: 0.5969, y: 0.3785, w: 0.0153, hh: 0.0273, a: 0 },
+      { k: "b", h: "onClickDislike", n: "Icon", x: 0.5445, y: 0.4898, w: 0.0524, hh: 0.0938, a: 0 },
+      { k: "b", h: "onClickLike", n: "Icon", x: 0.4555, y: 0.4898, w: 0.0524, hh: 0.0938, a: 0 },
+      { k: "b", h: "onClickLeave", n: "back_button", t: "BACK", x: 0.0524, y: 0.043, w: 0.0873, hh: 0.0625 },
+      { k: "l", n: "text", t: "BACK", x: 0.0704, y: 0.043, w: 0.0508, hh: 0.0394 }
     ] },
     viewgame: { src: "ViewGame.prefab", panel: null, parked: 3, folded: 11, nested: 1, runtime: "보드 블록 · 부스터 연출", boxes: [
       { k: "i", n: "origin", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
@@ -2538,6 +2681,7 @@ const EXTRA = {
       { k: "l", n: "count", t: "3/3", x: 0.1028, y: 0.9766, w: 0.0546, hh: 0.0394 },
       { k: "l", n: "count", t: "3/3", x: 0.1, y: 0.9766, w: 0.0546, hh: 0.0394 },
       { k: "b", h: "onClickBooster", n: "Btn", x: 0.0917, y: 0.95, w: 0.1535, hh: 0.089 },
+      { k: "b", h: "onClickSkip", n: "Button", x: 0.5, y: 0.8906, w: 4.1667, hh: 2.3438, a: 0 },
       { k: "i", n: "Coin_03", rep: 5, x: 0.5064, y: 0.505, w: 0.1125, hh: 0.0633 },
       { k: "i", n: "bling_01", rep: 5, x: 0.5146, y: 0.5059, w: 0.1511, hh: 0.085 },
       { k: "i", n: "bling_01", x: 0.5, y: 0.5195, w: 0.0889, hh: 0.05 }
@@ -2659,7 +2803,7 @@ const EXTRA = {
 
   const N = [
     {
-      id: "p_common", chips: ["p_setting", "p_privacy", "p_error", "p_toast", "p_toasterr", "p_adbreak", "p_adblock"], cat: "system", kind: "묶음", gate: true, x: 1580, y: 1281, w: 520,
+      id: "p_common", chips: ["p_setting", "p_privacy", "p_error", "p_toast", "p_toasterr", "p_adbreak", "p_adblock"], cat: "system", kind: "묶음", gate: true, x: 1580, y: 1333, w: 520,
       title: "공통 팝업", ko: "공통 팝업 묶음",
       file: "assets/script/common/view/ViewCreator.ts",
       acts: [
@@ -2695,6 +2839,7 @@ const EXTRA = {
           ["bundle", "루트 태스크. CCres.loadBundle() 로 메인 번들을 받는다"],
           ["bundle → objectPool", "preloadResources() → PoolManager.preloadMaker(\"common\") 로 공용 풀을 미리 만든다"],
           ["bundle → popupHeader", "PopupManager.instance.setHeader() 로 팝업 헤더 레이어를 준비한다"],
+          ["fbStart", "루트 태스크 자체가 통째로 주석 처리돼 있어 Fbi.startGame() 은 여기서 호출되지 않는다 (Intro.ts:186-190)"],
           ["fbStart → fbSignedPlayerInfo", "setSignedPlayerInfo() 로 서명된 플레이어 정보를 확보한다"],
           ["fbStart → fbFriend", "waitFriendList() 로 FB 친구 목록을 기다린다"],
           ["fbStart → fbEntryPoint", "Fbi.loadEntryPoint() 로 진입 경로(entryPoint) 를 확정한다"],
@@ -2728,7 +2873,7 @@ const EXTRA = {
       acts: [
         ["판정", "FBContext.getStartType() 이 entryPoint 와 entryData.social 로 StartType 을 결정한다"],
         ["미니게임 가로채기", "entryData.start_type 이 있으면 IntroStartType.introStart(entryData, next) 가 먼저 끼어들고, 끝난 뒤 next() 로 원래 분기를 이어간다"],
-        ["분기", "next() 의 switch 문이 StartType 열 개 중 하나를 실행한다"]
+        ["분기", "next() 의 switch 문이 StartType 아홉 개(MainGame, Lobby, MonsterGame, UGC, UGCGame, AsyncGame, AsyncPage, Gacha, MergeGem) 중 하나를 실행한다 (Intro.ts:57-67)"]
       ],
       more: "entryData 나 start_type 이 없으면 introStart 를 건너뛰고 곧바로 next() 를 부른다",
       detail: [
@@ -3160,19 +3305,19 @@ const EXTRA = {
       title: "StageView / StageModel", ko: "보드 · 매칭 로직",
       file: "assets/script/game/ingame/view/StageView.ts",
       acts: [
-        ["구성", "Stage.prefab 은 화면 요소 없이 StageView 만 얹은 로직 컨테이너다. ViewGame 이 인스턴스화해 보드 노드 아래 붙인다"],
+        ["구성", "Stage.prefab 은 tilemap · tileLayer · blockLayer · jellyLayer · lockerLayer · bossLayer · coinLayer · effectLayer 가 순서대로 쌓인 노드 27개짜리 레이어 골격이다. ViewGame 이 인스턴스화해 보드 노드 아래 붙인다"],
         ["틱 루프", "GameBase.startTick() 이 requestAnimationFrame 으로 1000/30ms 고정 틱을 돌린다"],
         ["입력", "onSwap(from, to) → canSwap 검사 → swap() → moveCount 감소 → 파괴 연쇄 재생"],
-        ["종료", "checkGameEnd() 에서 미션 완료면 보너스 타임, 아니면 finishGame() → onShowResult"]
+        ["종료", "modifyMoveEnded() (StageView.ts:1153-1161) 가 checkGameEnd() 를 보고 미션 완료면 보너스 타임, 아니면 modifyTileMapBreakEnded() → onMoveEnded(score, combo) 로 넘긴다. finishGame() 은 ViewGame 쪽에서 추가 이동 팝업이 소진된 뒤 부른다 (ViewGame.ts:1099)"]
       ],
       detail: [
         { h: "구조", rows: [
-          ["assets/bundle/game/Stage.prefab", "화면 요소가 없는 로직 컨테이너 프리팹. ViewGame.resetMainStage() 가 cc.instantiate 로 만들어 mainStagePositionAdjustNode 아래에 붙인다"],
+          ["assets/bundle/game/Stage.prefab", "노드 27개짜리 레이어 골격 프리팹. tilemap · tileLayer · goldBarLayer · jellyLayer · blockLayer · tileMapMask(cc.Mask) · lockerLayer · bossLayer · coinLayer · effectLayer · blockInputEvents 등이 겹겹이 들어 있다. 다만 레이어 노드의 contentSize 가 전부 0x0 이라 (예외는 UI_tutorial_hand 스프라이트와 3000x3000 blockInputEvents 뿐) 프리팹 자체에는 그릴 화면 요소가 없고 타일 · 블록 · 젤리는 코드가 런타임에 채운다. ViewGame.resetMainStage() 가 cc.instantiate 로 만들어 mainStagePositionAdjustNode 아래에 붙인다"],
           ["StageView (view)", "GameBase 를 상속한 컨트롤러. 틱 · 입력 · 파괴 연출 · 미션 갱신을 잇고 ViewGame 이 건 콜백을 호출한다"],
           ["StageModel (model)", "tileMap · blockTables · missions · comboCounter 를 들고 있다. 직렬화(serialize / deserialize)로 보드 상태를 주고받는다"],
           ["TileMapModel", "타일 · 블록 격자. swap · canSwap · shuffle 과 함께 onBreakForMissions · onSwapForMissions 로 미션 카운터를 갱신한다"],
           ["BlockLogic / IBreakingLogic", "매칭과 연쇄 파괴를 시퀀스(logicSequence)로 만들어 준다. StageView 는 이를 한 스텝씩 재생만 한다"],
-          ["BoosterLogic", "Beam · PirateHook · Cross · Cannon 각각의 BreakingLogic. isBoosterEnable(tileMap) 으로 지금 쓸 수 있는지 판단한다"],
+          ["BoosterLogic", "Beam · PirateHook · Cross · Cannon 각각의 BreakingLogic. 사용 가능 판정은 각 로직 클래스의 static isBoosterEnable(tileMap) (BoosterLogic.ts:48 · 70 · 100 · 124) 이 하고, 바깥 진입점은 BoosterLogic.isBoosterEnabled(type) (:188) → StageView.isBoosterEnabled(type) (StageView.ts:1379) 다"],
           ["BonusTimeLogic", "미션 완료 후 남은 이동 수를 하이퍼 블록으로 교환해 순서대로 터뜨리는 로직"],
           ["MissionModel / MissionCounter", "미션 종류는 Score · Block · Swap · Jelly · Locker · Boss · GoldBar (GameTypes.ts:65)"],
           ["BoosterType", "PirateHook · Cross · Cannon · Beam · RV_SKIP_TICKET · GACHA_TICKET · AUTO_MERGE_TICKET (GameTypes.ts:69)"]
@@ -3180,8 +3325,8 @@ const EXTRA = {
         { h: "한 턴의 흐름", rows: [
           ["initGame(name, data, randomSeed, mute, crossEffectLayer, mode, logList, …)", "이동 수 · 미션 · 시드를 세팅하고 SeededRandom 을 만든다. 모드는 NORMAL / REPLAY / COOP"],
           ["onReadyGame()", "미션 UI 초기화 후 리플레이면 onReadyReplay(), 이어붙일 로그가 있으면 skipActionsPIC() 로 앞선 턴을 먼저 소화한다"],
-          ["startTick()", "매 틱마다 유저 입력 큐(onProcessInputList)와 예약 함수(onReservedList)를 처리하고 onUpdateTick(++tickIndex) 을 부른다"],
-          ["onSwap(from, to)", "부스터가 입력 대기 중이면 그쪽으로 소비한다. canSwap 이 false 면 실패 연출을 재생하고 힌트 손가락을 띄운다"],
+          ["startTick()", "private 메소드다. requestAnimationFrame 콜백마다 modeStatus?.isAbleToInput() 일 때 유저 입력 큐(onProcessInputList)를 한 번 비우고, 그다음 while 틱 루프 안에서는 예약 함수(onReservedList)와 onUpdateTick(++tickIndex) 만 돌린다 (GameBase.ts:190-247)"],
+          ["onSwap(from, to)", "좌표 유효성 · isBlockByRod · isMovable 가드를 먼저 보고(:689-695), 부스터가 입력 대기 중이면 그쪽으로 소비한다(:698-701). canSwap 이 false 면 swapBackAnimation() → waitForNextInput() 으로 되돌리면서 hasMissedSwap 을 세우고 updateLastSwapMissedPlayCount() 로 기록만 남긴다(:704-716)"],
           ["swap(from, to)", "tileMap.swap 후 --moveCount, ++usedMoves. 이어서 파괴 연쇄가 시작된다"],
           ["playBreakingLogic(logic)", "playLogicNextStep() 으로 시퀀스를 한 스텝씩 재생한다. 스킵 중이면 연출을 건너뛰고 결과만 반영한다"],
           ["modifyTileMapBreakEnded()", "콤보를 리셋하고 onMoveEnded(score, combo) 를 호출한다. 게임이 안 끝났으면 waitForNextInput() 으로 다음 입력을 받는다"],
@@ -3193,7 +3338,7 @@ const EXTRA = {
           ["modifyGameEndMissionCleared()", "bonusTimeOn() → playNextBonusTimeLogic() 으로 보너스 타임을 시작한다"],
           ["bonusTimeOn()", "new BonusTimeLogic(tileMap, randomInt, moveCount). 남은 이동 수만큼 하이퍼 블록을 만들어 소비한다"],
           ["addBonusLogicEvent(logic)", "하이퍼 생성 연출마다 --moveCount 와 onDecreaseMove() 를 걸어 이동 수가 눈에 보이게 줄어들도록 한다"],
-          ["increaseBonusTimePhase()", "보너스 누적 파괴 수가 5000 · 10000 을 넘으면 블록 색 제한을 1씩 올려 난도를 낮춘다"],
+          ["increaseBonusTimePhase()", "블록 색 제한을 1씩 올려 난도를 낮춘다. 임계 비교는 increaseBonusTimeBreakCount() (:1215-1222) 가 맡아, 보너스 누적 파괴 수가 5000 · 10000 단계를 넘고 색 제한이 Object.keys(BlockType).length * 0.5 미만일 때만 이 메소드를 부른다"],
           ["skipBonusTime()", "onSkipBonusTime() 으로 tilemapView 를 MockTileMapView 로 갈아끼우고 isSimulating 을 세운 뒤 남은 틱을 즉시 전부 계산한다"],
           ["finishGame()", "입력을 막는다. 미션 클리어 토스트가 아직 안 나왔으면 shouldShowResultAfterComplete 로 종료를 미룬다"],
           ["onFinishGame()", "onLogicFinished(result) 로 최종 점수를 알린 뒤, 시뮬레이션 중이었으면 실제 보드를 셔플 연출로 되돌리고 showResult() 를 호출한다"],
@@ -3243,7 +3388,7 @@ const EXTRA = {
       ],
       detail: [
         { h: "구조 · 진입", rows: [
-          ["진입 지점", "Intro.ts:883 · 933 · 955 (딥링크 · 랜덤 매칭), ViewAsyncPage.ts:278 · 308 (비동기 대전 목록)"],
+          ["진입 지점", "Intro.ts:933 · 955 (딥링크 · 랜덤 매칭), ViewAsyncPage.ts:278 · 308 (비동기 대전 목록). Intro.ts:883 도 같은 호출이지만 asyncPvpGame() 안 if(CC_PREVIEW) 블록(:869)이라 에디터 프리뷰 전용이다"],
           ["initGameView(friendId, gameName, randomSeed, gameDetail, firstPlayerId, logData, matchNumber)", "로그 첫 줄이 INFO 면 그 값을 maxHp 로 쓰고, 없으면 ASYNC_MAX_HP 를 쓴다"],
           ["isLeftFirst", "firstPlayerId 가 내 ID 인지로 좌 · 우 자리를 정하고 picUI.init(friendId, isLeftFirst, maxHp) 에 넘긴다"],
           ["보드 모드", "mainStage.initGame(..., this.playMode, this.logData, false). 턴제라 COOP 모드로 돌아 checkGameEnd() 가 스스로 판을 끝내지 않는다"],
@@ -3259,7 +3404,7 @@ const EXTRA = {
           ["시간 초과", "remainedTime 이 0 이면 reservedSkip 여부에 따라 즉시 스킵하거나, 콤보가 남아 있으면 4초 뒤 endTurn() 을 예약한다"],
           ["endTurn()", "currentTurn 이 1 이면 requestAsyncPVPMakeNewMatch(친구, 스테이지, 시드, 랜덤 여부, 데미지, 로그), 그 외에는 requestAsyncPVPFinishTurn(..., false)"],
           ["showResult()", "picUI.players 양쪽 calculatedHP 를 비교해 승 · 패 · 무를 정하고 picUI.result() 연출 후 requestAsyncPVPFinishTurn(..., true) 을 보낸다"],
-          ["getEndLogs()", "이번 턴 입력 로그 뒤에 스킵 로그를 붙이고, 첫 턴이면 첫 줄에 ASYNC_MAX_HP 를 심어 상대가 같은 조건으로 재생하게 한다"]
+          ["getEndLogs()", "이번 턴 입력 로그 뒤에 스킵 로그를 붙인 뒤, 첫 턴이면 0번 로그의 event 를 ASYNC_MAX_HP 로 덮어써 상대가 같은 조건으로 재생하게 하고, 첫 턴이 아니면 그 첫 줄을 shift() 로 버린다 (ViewGamePIC.ts:1032-1035)"]
         ]},
         { h: "나가기", rows: [
           ["onClickSetting()", "ViewCreator.showPopupSettingAsyncGame(). 일반 판과 달리 재시도 항목이 없고 나가기만 있다"],
@@ -3390,17 +3535,17 @@ const EXTRA = {
         ["열기", "GameEndFlowEnumerator.showPopupCoinClaim() → ViewCreator.showPopupCoinClaim(점수, 평균, 누적 판 수, 미니게임 진행도, 보상, gemDiff, 에러, onClose, …)"],
         ["수령", "onClickClaim() → 지연 컨텍스트 처리 → 전면 광고 → requestGetPlayEndReward(onClaim) → 코인 · 보석 연출 후 close"],
         ["2배 수령", "onClickClaimX2() → useRVTicket(finish_reward_double) → requestGetPlayEndAdReward()"],
-        ["재시도", "onClickRestart() → addRetryCount() → updateStageEntry(finish_retry) → close(onRestart)"],
+        ["재시도", "onClickRestart() → addRetryCount() → updateStageEntry(finish_retry) → logFinishRetry() → requestGetPlayEndReward(onRestart). 재시도로 나가도 보상 수령은 그대로 한다"],
         ["머지", "onClickMerge() → SceneManager.toMerge(ViewMergeGem.StartType.IngameResult)"]
       ],
       detail: [
         { h: "표시 데이터 (setData)", rows: [
           ["점수 · 코인", "코인 핫타임(getCoinHotTimeRemainTime() > 0)이 남아 있으면 표시 점수를 2배로 올려 보여준다"],
           ["winLevel", "getWinLevel(meanScore, score). 평균 대비 1.1 / 1.5 / 2배를 경계로 0~3 등급을 매기고 등급 스프라이트와 연출을 고른다"],
-          ["보석", "gemDiff.diff > 0 이면 ndGem 을 켜고 gemSpriteManager.getAsync(gemDiff.level) 로 아이콘을, lbGemAmount 에 개수를 채운다"],
+          ["보석", "ndGem 을 켜는 조건만 gemDiff.diff > 0 이고(:404), gemSpriteManager.getAsync(gemDiff.level) 아이콘과 lbGemAmount 개수 채우기는 gemDiff 가 있기만 하면 도는 별도 분기다(:419-423)"],
           ["재시도 버튼", "DataManager.isAvailableRetry() (직전 판이 목표 미달이었거나 1등이 아니었을 때) 로 재시도 있는 레이아웃과 없는 레이아웃 중 하나만 켠다"],
           ["토너먼트 보상 미리보기", "rank <= 3 이고 tournamentSize · tournamentEndTime 이 있고 현재 컨텍스트가 Tournament 일 때만 tournamentRewardPreview 를 띄운다"],
-          ["튜토리얼", "isTutorial(-1) 이면 일반 버튼 대신 tutorialButton 하나만 노출하고, 문구는 T_CLAIM / T_GO_MERGE / T_PLAY_NEXT 중에서 고른다"],
+          ["튜토리얼", "setData 가 아니라 onShowStart() (:217-224) 에서 판정한다. isTutorial(-1) 이면 일반 버튼 대신 tutorialButton 하나만 노출하고, 문구는 T_CLAIM / T_GO_MERGE / T_PLAY_NEXT 중에서 고른다"],
           ["stepView", "minigameProgress 로 미니게임까지 남은 눈금을 채우고 onShowEnd 에서 한 칸 채워지는 연출을 재생한다"],
           ["로그", "logFinishMonsterReward(..., score, receivedCoin, gem) 를 setData 시점에 남긴다"]
         ]},
@@ -3408,11 +3553,11 @@ const EXTRA = {
           ["onClickClaim()", "showContextPopupOnIngameResultIfNeeded() 후, countryData.ResultClaim_IT === 1 이고 스킵 플래그가 없으면 finish_claim 전면 광고 → requestGetPlayEndReward(onClaim)"],
           ["누적 3판", "수령 시 totalPlayCount >= 3 이면 setShowInterstitialAdAfterThreePlays(true) 로 이후 전면 광고를 연다"],
           ["onClickClaimX2()", "useRVTicket(finish_reward_double) 성공 시 requestGetPlayEndAdReward() 로 코인과 보석을 더해 onClaimX2 로 닫는다"],
-          ["onClickRestart()", "PopupCoinClaim.onRestart 로 닫는다. GameEndFlowEnumerator 가 이 값만 보고 viewGame.retry(true) 로 되돌린다"],
+          ["onClickRestart()", "logFinishRetry() 후 requestGetPlayEndReward(PopupCoinClaim.onRestart) (:709-710) 로 보상까지 받고 onRestart 로 닫는다. GameEndFlowEnumerator 가 이 값만 보고 viewGame.retry(true) 로 되돌린다"],
           ["onClickClose()", "logFinishExit() 후 onClickClaim 과 같은 정산 경로를 타고 onClickClose 로 닫는다"],
           ["onClickTutorialClear()", "머지 튜토리얼 차례면 onClaim, 아니면 onNextTutorial 로 닫아 다음 튜토리얼 판으로 잇는다"],
           ["onClickMerge()", "toMerge(IngameResult). 머지 뷰가 닫히면 웹 배경을 WBG_INGAME_0 으로 되돌리고 상단 재화 표시를 다시 켠다"],
-          ["claim(isCoin, isX2, event)", "코인 · 보석 연출을 SceneManager.directionTopCoin 의 각 노드로 날리고, 모든 연출이 끝난 뒤에야 close(event) 를 호출한다"],
+          ["claim(isCoin, isX2, event)", "코인 · 보석 연출을 SceneManager.directionTopCoin 의 각 노드로 날린다. 완료 카운트(itemsCount)는 코인 연출만 세고 보석 연출 onClaimGem() 은 카운트를 올리지도 완료 콜백을 넘기지도 않아서(:467-504), 보석 연출이 남아 있어도 코인 연출이 끝나면 close(event) 가 나간다"],
           ["play-end 에러", "playEndError 가 있으면 모든 버튼이 보상 요청 없이 조용히 close() 하고, 2배 버튼만 T_NO_ADS 토스트를 띄운 뒤 다시 눌리게 둔다"]
         ]},
         { h: "지연 컨텍스트 팝업", rows: [
@@ -3443,7 +3588,7 @@ const EXTRA = {
           ["modifyClaimEndEvent()", "playEndError 가 있거나 닫힘 이벤트가 onRestart 가 아니면 viewGame.close(\"Lobby\"), onRestart 면 viewGame.retry(true)"],
           ["머지 · 가챠 자동 진입", "goToMerge() / goToGacha() 는 코드에 남아 있으나 modifyClaimEndEvent 안의 호출부가 전부 주석 처리돼 지금은 항상 로비로 간다. 머지는 결과 팝업의 머지 버튼으로만 들어간다"],
           ["modifyOnTutorial()", "updateDontCheckLobby(true) 로 로비 복귀를 잠그고 context.getNextTutorialGame(false) 로 다음 튜토리얼 판을 바로 잇는다"],
-          ["UGC 판", "UGCStageEnmerator 는 이 체인을 타지 않는다. 평가 팝업만 거쳐 곧장 close() 한다"]
+          ["UGC 판", "UGCStageEndFlowEnmerator (GameEndFlowEnumerator.ts:274) 는 이 체인을 타지 않는다. 평가 팝업만 거쳐 곧장 close() 한다"]
         ]},
         { h: "② 로비 복귀 게이트", rows: [
           ["호출 지점", "ViewManager.removeView() (ViewManager.ts:486) 와 PopupManager.close() (PopupManager.ts:172). 뷰나 팝업이 스택에서 빠질 때마다 checkToLobby() 가 불린다"],
@@ -3461,7 +3606,7 @@ const EXTRA = {
           ["④ 토너먼트 결과", "checkTournamentData 가 처음일 때만 showPopupTournamentResult(). 받을 보상이 없으면 null 이 돌아와 다음 단계로 넘어간다"],
           ["잠금", "여기까지 아무것도 안 걸렸으면 checkLobbyData = false 로 이 블록 전체를 세션 1회로 잠근다"],
           ["⑤ 다음 판 준비", "ViewGame 이 없으면 ViewManager.load(\"ViewGame\") 로 미리 올리고 checkShortCut() → createShortcut() 을 시도한다"],
-          ["⑥ 로비 갱신", "view.handleOnEnable() · isRankChanged() 이면 setData() 로 랭킹 재구성 · setWaitTutorial(false) · checkAndShowTutorialGacha()"],
+          ["⑥ 로비 갱신", "view.handleOnEnable() · isRankChanged() 이고 view.isShowEnd 이면 setShouldWaitScrollAnimation(false) 후 setData() 로 랭킹 재구성 (SceneManager.ts:270-279) · setWaitTutorial(false) · checkAndShowTutorialGacha() — 이 마지막 호출은 메소드 첫 줄이 무조건 return 이라 아무것도 하지 않는 죽은 코드다 (ViewLobbyRanking.ts:378-380)"],
           ["빠져 있는 것들", "스타터팩(firstPopStarterPack) · 데일리 보너스 · 친구 초대 이벤트 · 리워드 캘린더는 호출부가 전부 주석 처리돼 현재 순서에 들어 있지 않다"],
           ["다음 판 프리로드", "createViewGame() 이 끝나면 preloadViewsAfterIngameFlow() 가 PopupBigCoinClaim → (가챠 튜토리얼 여부에 따라) ViewGacha / ViewMergeGem → ViewLobbyRanking 순으로 미리 로드해 둔다"]
         ]}
@@ -3597,15 +3742,15 @@ const EXTRA = {
       ]
     },
 {
-  id: "merge", chips: ["p_itemindex", "p_gemunlock", "p_mergelow", "p_autofree", "p_hottime"], cat: "meta", kind: "View", x: 70, y: 1212, w: 520,
+  id: "merge", chips: ["p_itemindex", "p_gemunlock", "p_mergelow", "p_autofree", "p_hottime"], cat: "meta", kind: "View", x: 70, y: 1264, w: 520,
   title: "ViewMergeGem", ko: "젬 머지 (핵심 메타)",
   file: "assets/script/game/mergeGem/ViewMergeGem.ts",
   acts: [
-    ["진입", "SceneManager.toMerge() → requestMergeLowestGem() → ViewCreator.showViewMergeGem(gemStatus, gemDiffList, isTutorial, startType)"],
+    ["진입", "SceneManager.toMerge() → gemStatus.hasLowerLevelGems(getRewardGemLevel(maxGemLevel)) 일 때만 requestMergeLowestGem() 을 태우고 아니면 gemDiffList 가 undefined 다 → ViewCreator.showViewMergeGem(gemStatus, gemDiffList, isTutorial, startType) (SceneManager.ts:668)"],
     ["젬 꺼내기", "onClickInventory() → mergeUseCase.getCurrentPlaceTargetGemLevel() → placeNewGem(level, getRandomEmptyIndex())"],
     ["합성", "드래그 후 onTouchEnded() → canMerge(from, to) → merge() → playMergeTween() → 레벨 오르면 modifyOnNewGemUnlocked()"],
     ["오토 머지", "onClickMergeAll() → canMergeAll() 확인 → 시간제 아이템 / AUTO_MERGE_TICKET / IAP 팝업 / RV 4단 분기"],
-    ["플레이", "onClickGoMatch() → sendGemStatusDirectly() → updateStageEntry(merge_play) → context.getNextGameContext()"]
+    ["플레이", "onClickGoMatch() → sendGemStatusDirectly() → updateStageEntry(merge_play) → 튜토리얼이면 context.playSessionFirstStageOnTutorial(), 아니면 context.getNextGameContext() (ViewMergeGem.ts:1635-1640)"]
   ],
   detail: [
     { h: "젬 레벨 · 합성 규칙 (MergeGemUseCase.ts · GemStatusProcessor.ts)", rows: [
@@ -3617,7 +3762,7 @@ const EXTRA = {
       ["mergeAll()", "레벨 0부터 훑으며 amount % 2 만 남기고 floor(amount / 2) 를 다음 레벨로 올린다. 그 뒤 높은 레벨부터 그리드를 다시 채운다 (MergeGemUseCase.ts:121)"]
     ]},
     { h: "오토 머지 4단 분기 (onClickMergeAll · ViewMergeGem.ts:1294)", rows: [
-      ["가드", "canClickMergeAll 플래그 + canMergeAll() 실패 시 T_NO_GEMS 토스트. autoMergeAvailableLevel 미만이면 버튼 자체가 잠김"],
+      ["가드", "canClickMergeAll 플래그 + canMergeAll() 실패 시 T_NO_GEMS 토스트. maxGemLevel 이 autoMergeAvailableLevel 미만이면 버튼을 잠그는 로직이 있으나(:597-598) 그 값이 0 으로 하드코딩돼 있어(:258) 실제로는 잠기지 않는다"],
       ["① 시간제", "getFreeMergeRemainTime() > 0 이면 즉시 modifyMergeAll()"],
       ["② 티켓", "AUTO_MERGE_TICKET 보유 시 requestUseItem(AUTO_MERGE_TICKET, 1) → isChanged 확인 → modifyMergeAll()"],
       ["③ 결제", "isPaymentsAvailable() 이면 showPopupAutoFreeMerge() → onFreeUseSuccess 는 modifyMergeAll(), IAP 성공은 playClaimAutoMergeAnimation()"],
@@ -3626,16 +3771,16 @@ const EXTRA = {
     { h: "그 밖의 지면 동작", rows: [
       ["setData()", "processor 를 복제해 쓰고 GemStatusAutoSender 를 새로 만든다. isTutorial 은 getMaxGemLevel() <= 1 (ViewMergeGem.ts:564)"],
       ["서버 동기화", "GemStatusAutoSender.updateAndSend() 가 합성마다 상태를 보내고, 버전 불일치 응답이 오면 onReceiveResponseVersionMismatched() 가 T_MERGE_RENEW 토스트 후 그리드를 새로 그린다 (ViewMergeGem.ts:1884 · 630)"],
-      ["무료 젬", "onClickFreeGem() → useRVTicket(free_gem) → requestGetFreeGem(freeGemGainCount). 지급량은 FREE_GEM_AMOUNT [4, 6, 8, 10, 12] 중 n번째 (ViewMergeGem.ts:1747)"],
+      ["무료 젬", "onClickFreeGem() → useRVTicket(free_gem) 성공 시 statusAutoSender.isSendingMessage() 면 setEventOnceReceivedSenderMessage() 로 전송 완료 콜백에 requestGetFreeGem() 을 걸어 두고, 아니면 바로 부른다(:1778-1784). 지급량은 FREE_GEM_AMOUNT [4, 6, 8, 10, 12] 중 n번째 (ViewMergeGem.ts:1747)"],
       ["가챠 이동", "인벤이 비면(State.Empty) showPopupPlayGacha() → onOK 에서 SceneManager.toGacha(). 상단 아이콘은 onClickGacha() (ViewMergeGem.ts:1426 · 1704)"],
       ["컬렉션", "onClickIndex() → showPopupItemIndex(maxGemLevel, claimableRewardLevels, onReceiveRewards). 수령 가능 레벨은 requestGetClaimableGemCollectionLevels() 로 받는다"],
       ["공유", "onClickShare() → captureScreenShotRect() → context.shareGem(base64, entryPointData) (feed: gem_share)"],
-      ["나가기", "onClickBack() → statusAutoSender.stopUpdate() → sendGemStatusDirectly() → ViewLobbyRanking 준비 후 close()"]
+      ["나가기", "onClickBack() → statusAutoSender.stopUpdate() → sendGemStatusDirectly() → 비튜토리얼 경로에서만 ViewLobbyRanking 을 준비하고 Fbi.setIsMergeOrGacha(false) 를 부른다(:1249). 마지막에 튜토리얼이면 close() 대신 playSessionFirstStageOnTutorial() 로 빠진다 (ViewMergeGem.ts:1255-1259)"]
     ]}
   ]
 },
 {
-  id: "gacha", chips: ["p_playgacha", "p_gacharesult", "p_gachacoin"], cat: "meta", kind: "View", x: 166, y: 1372, w: 328,
+  id: "gacha", chips: ["p_playgacha", "p_gacharesult", "p_gachacoin"], cat: "meta", kind: "View", x: 166, y: 1424, w: 328,
   title: "ViewGacha", ko: "가챠 (젬 뽑기)",
   file: "assets/script/game/gacha/ViewGacha.ts",
   acts: [
@@ -3658,7 +3803,7 @@ const EXTRA = {
       ["상품 해석", "gachaProductIdList 를 getGachaProduct(3, id) 로 풀어 GACHA_TICKET / COIN / GEM 별로 획득량을 합산한다"],
       ["코인 보정", "획득 코인은 DataManager.getMultipliedGemBonusCoin() 을 거쳐 젬 보너스가 곱해진다"],
       ["연출", "playGacha() 가 티켓/코인 프로젝타일 → gachaMachine.playDraw() → loadPopupGachaResult() 순으로 진행"],
-      ["전면 광고", "누적 드로우 getDrawCount() 가 3 이상이면 tryShowInterstitialAD(three_draws) 를 끼우고 카운트를 0으로 되돌린다"],
+      ["전면 광고", "누적 드로우 getDrawCount() 가 3 이상이면 tryShowInterstitialAD(three_draws) 를 끼우고, 광고가 성공했을 때만 setDrawCount(0) 으로 되돌린다(:586-592). 그리고 분기와 무관하게 setDrawCount(getDrawCount() + products.length) 로 이번 드로우 수가 다시 더해진다 (ViewGacha.ts:601)"],
       ["튜토리얼", "drawX1Tutorial() 은 requestGachaDrawTutorial() 을 쓰고 setShowGachaTutorial(false) 로 표시를 끈다"]
     ]},
     { h: "화면 요소", rows: [
@@ -3728,7 +3873,7 @@ const EXTRA = {
   ]
 },
 {
-  id: "asyncpage", chips: ["p_asyncstat"], cat: "meta", kind: "View", x: 720, y: 1396, w: 300,
+  id: "asyncpage", chips: ["p_asyncstat"], cat: "meta", kind: "View", x: 720, y: 1500, w: 300,
   title: "ViewAsyncPage", ko: "턴제 비동기 대전",
   file: "assets/script/game/async/ViewAsyncPage.ts",
   acts: [
@@ -3744,13 +3889,13 @@ const EXTRA = {
       ["match.state 1", "상대 턴 — thierTurns (ndThierTurn 섹션)"],
       ["match.state 2", "내 턴 — myTurns (ndMyTurn 섹션, 목록 맨 위)"],
       ["match.state 3", "종료 — results"],
-      ["정렬", "myTurns → noDatas → results → thierTurns 순으로 이어 붙인다. 친구는 switchSuccessCount / switchStartCount 비율로 먼저 정렬"],
+      ["정렬", "메인 setData() 목록은 myTurns → results → thierTurns 순으로 이어 붙이고 noDatas 가 없다(:638-640). myTurns → noDatas → results → thierTurns 순은 setFriendInfo() 의 친구 스크롤 목록에만 해당한다(:208-211). 친구는 switchSuccessCount / switchStartCount 비율로 먼저 정렬"],
       ["초대 항목", "isIOSMessenger() 가 아니면 목록 끝에 isInvite 항목을 하나 더 붙인다"]
     ]},
     { h: "매치 시작 · 보상", rows: [
       ["startNewGame()", "getPICGameNames() 중 하나를 뽑아 requestAsyncPVPGetStartData(nextGame, isRandom). 응답의 randomOpponentId 를 randomMatchInfo 에 캐시한다"],
       ["startOngoingMatch()", "matchNumber 가 없으면 내 턴이고 타임오버가 아닌 매치 중 secsForAutoEnd 가 가장 작은 것을 고른다. 없으면 startNewGame() 으로 폴백"],
-      ["리플레이 오류", "showViewGameAsync() 결과 view.isReplayError() 이면 clear() 후 ViewGamePIC 을 스택에서 빼고 logDebugAsyncReplayError()"],
+      ["리플레이 오류", "showViewGameAsync() 결과 view.isReplayError() 이면 errorReplayFriend Set 에 없는 상대일 때만 한 번 logDebugAsyncReplayError() 를 남기고, 그 다음에 clear() 후 ViewGamePIC 을 스택에서 뺀다 (ViewAsyncPage.ts:310-320)"],
       ["컨텍스트 전환", "showViewSwitchContext(complete, cancel). SAME_CONTEXT 에러는 성공으로 간주하고, 랜덤 진입에서 취소되면 tryShowInterstitialAD(turn_context_switch_cancel) 후 randomGame()"],
       ["코인 보상", "calcAsyncPvpCoinReward(isLose, playerTotal, totalEndCount, maxGemLevel) — 패배면 0, 승리면 공격량에 젬 코인 보너스가 곱해진다"],
       ["onHideEnd()", "viewGamePIC 이 있으면 그것을 띄우고, 튜토리얼 중이면 context.getNextGameContext() 로 넘긴다"]
@@ -4112,7 +4257,7 @@ const EXTRA = {
   ]
 },
     {
-      id: "switchctx", cat: "system", kind: "View", x: 1150, y: 1320, w: 300,
+      id: "switchctx", cat: "system", kind: "View", x: 1150, y: 1372, w: 300,
       title: "ViewSwitchContext", ko: "컨텍스트 전환",
       file: "assets/script/game/ingame/view/ViewSwitchContext.ts",
       acts: [
@@ -4140,7 +4285,7 @@ const EXTRA = {
         ]},
         { h: "생성 · 예외", rows: [
           ["ViewCreator.showViewSwitchContext(onComplete, onCancel, ignoreIOSMessenger = true)", "ViewCreator.ts:213. 콜백 두 개를 붙여 돌려주고 setXxx() + show(true) 는 호출자가 한다"],
-          ["iOS 메신저", "ignoreIOSMessenger 가 true 면 onShowEnded 에서 node.opacity = 0 — 지면은 뜨지만 안 보인다. ViewAsyncPage 의 랜덤 매칭만 false 를 넘긴다"],
+          ["iOS 메신저", "isIOSMessenger() 이고 ignoreIOSMessenger 가 true 인 두 조건이 다 맞을 때만 onShowEnded 에서 node.opacity = 0 — 지면은 뜨지만 안 보인다 (ViewCreator.ts:218-222). false 를 넘기는 곳은 ViewAsyncPage.onClickNewMatch(:422) 하나인데 랜덤 전용이 아니라 새 매치 시작 경로 전부다. 친구 타일 클릭(AsyncFriendItem.ts:119)도 여기로 오고 랜덤 경로(:372 · :388)는 그중 일부다"],
           ["CC_BUILD 아님", "이 지면을 아예 만들지 않고 곧바로 onSwitchComplete() 를 부른다 (FBContext.ts:3062 · 3081 · 3101)"],
           ["프리팹 위치", "PopupBase 를 상속하지만 이름에 Popup 이 없어 assets/bundle/view/ViewSwitchContext.prefab 에 있다"],
           ["호출처", "FBContext 7지점(:598 :641 :707 :3040 :3064 :3083 :3103) · ViewAsyncPage 2지점(:422 :494)"]
@@ -4349,7 +4494,50 @@ const EXTRA = {
           ["호출처", "ViewGamePIC.ts:304 한 곳뿐이다. 일반 인게임 튜토리얼은 이 지면을 쓰지 않는다"]
         ]}
       ]
-    }
+    },
+{
+  id: "ugcedit", cat: "meta", kind: "View", x: 720, y: 1396, w: 300,
+  title: "UGCMapEditor", ko: "UGC 맵 에디터 (PC 전용)",
+  file: "assets/script/game/UGC/UGCMapEditor.ts",
+  acts: [
+    ["진입 · 새로 만들기", "UGCMyLevelTab.onClickCreateNew() → requestUGCCreateStage() → refresh() 후 목록에서 res.id 를 찾으면 그 항목의 onClickEdit(), 못 찾으면 ugcMapEditor.node.active = true 로 켜고 load(res.id, UGC_DEFAULT_MAP_DATA) (UGCMyLevelTab.ts:88)"],
+    ["진입 · 기존 편집", "UGCMyStageItem.onClickEdit() → mapEditor.node.active = true → ViewManager.getLastView().hideAllOverlays() → load(data.id, data.data). 둘 다 별도 지면을 로드하지 않고 ViewUGC.prefab 안의 비활성 노드를 켜는 방식이다 (UGCMyStageItem.ts:209)"],
+    ["그리기", "브러시를 고른 뒤 드래그하면 MapEditorMouseEvent.moveAction → check() 가 마우스 좌표를 9x9 격자 인덱스로 바꿔 타일 / 블록 / 젤리 / 락커 / 속성을 칠한다 (UGCMapEditor.ts:281 · 285)"],
+    ["저장", "onClickSave() → save() 검증 통과 → requestUGCUpdateStage(id, saveData) → onSave() 콜백 + logUGCLevelSave(). 저장 버튼은 10초 쿨다운이 걸린다 (UGCMapEditor.ts:1548)"],
+    ["나가기", "onClickBack() → hide() 로 node.active = false 후 onBack() 콜백 — 목록 refresh() 와 오버레이 복구를 진입 경로가 걸어 둔다 (UGCMapEditor.ts:1600)"]
+  ],
+  detail: [
+    { h: "PC 전용 진입 · 와이드 캔버스", rows: [
+      ["사이드 메뉴 분기", "LobbyHeader → ViewCreator.showPopupSideMenu() 가 isPlatformPC() 이면 PopupSideMenu, 아니면 PopupSideMenuMobile 을 로드한다 (ViewCreator.ts:270)"],
+      ["버튼 유무", "onClickUGC 핸들러는 PopupSideMenu.prefab 에만 걸려 있고 PopupSideMenuMobile.prefab 에는 없다 — 모바일에는 UGC 진입구 자체가 없다"],
+      ["PC 판정", "isPlatformPC() 는 cc.sys.os 가 OS_WINDOWS 또는 OS_OSX 일 때만 true (CCUtil.ts:77)"],
+      ["지면 열기", "PopupSideMenu.onClickUGC() → SceneManager.toUGC() → ViewManager.load(ViewUGC) → show(true) → refreshCanvasSizeByUGCMode(true) → closeDirectly() (PopupSideMenu.ts:108 · SceneManager.ts:429)"],
+      ["해상도 전환", "refreshCanvasSizeByUGCMode(true) 가 cc.Canvas.instance.designResolution 을 originCanvasSize(720x1280) 에서 ugcCanvasSize(2290x1280) 로 바꾼다 — 두 값 모두 intro.fire 의 SceneManager 인스펙터에 박혀 있다 (SceneManager.ts:329)"],
+      ["위젯 재정렬", "Canvas 와 PersistRootNode 의 Widget 을 isAlignTop/Bottom 대신 isAlignLeft/Right 로 뒤집고 노드 높이를 1280 으로 맞춘 뒤 updateAlignment(). 복귀는 resetUGCSetting() 의 refreshCanvasSizeByUGCMode(false)"],
+      ["에디터 노드", "ViewUGC.prefab 의 UGCMapEditor 노드는 크기 2290x1280 에 _active false 로 들어 있다 — 프리팹 단위 스캔에는 잡히지 않는 전체 화면이다"]
+    ]},
+    { h: "에디터 구성 (init · create · UGCMapEditor.ts:196)", rows: [
+      ["초기화", "onLoad() 가 CCres.loadBundle() → PoolManager.preloadMaker(UGC) 를 AsyncProcess 로 잇고, init() 에서 viewUGC.getSpriteManager() 를 받아 create(). 준비가 끝날 때까지 ndBlockInput 으로 입력을 막는다"],
+      ["격자", "mapSize 9 — 9x9 TileModel 을 만들고 TileViewGenerator.generateMapEditor() 로 타일 뷰를 깔아 nodes 맵(Tile / Jelly / Block / Locker / Properties / Cascade / Boss / GoldBar / Rod)에 인덱스로 저장한다"],
+      ["브러시", "UGCMapEditorBrushGroup.create() 가 색블록 4종(일반 · 가로 · 세로 · 폭탄) 과 빔 · 수집물 4종 · 나선 · 머랭 · 잉크 · 젤리 · 락커 2종 · 럼 · 진주 · 레스큐 항목을 만든다. 선택은 onSelected() → setBlockBrush() / setJellyBrush() / setLockerBrush() 등 브러시 setter 로 내려간다"],
+      ["색 선택", "UGCMapEditorColorSelector.getBlockTable() 이 체크된 색만 kind Normal · type i · weight 1 로 묶어 blockTables 로 내보낸다. 반면 stage.colorLimit 값은 getMissionData() 에서 항상 6 으로 고정이다 (UGCMapEditorMission.ts:282)"],
+      ["미션", "UGCMapEditorMission.init() 이 22종 미션 프리셋(색블록 6색 · 로켓 · 폭탄 · 빔 · 수집물 · 머랭 · 젤리 · 락커 2종 · 레스큐 등)을 만들고, 고른 프리셋과 missionCount 로 목표를 정한다. setMissionCount() 는 보드에 실제로 놓인 개수를 세어 기본값으로 넣는다"],
+      ["이동 수", "move EditBox. onReturnMoveText() 가 0 미만이거나 maxMove(40) 초과면 40 으로 되돌리고 T_UGC_MESSAGE_4 안내를 띄운다"],
+      ["레스큐 그룹", "레스큐 블록을 클릭하면 groupCountEditBox 가 뜨고, onGroupTextReturn() 이 입력값을 1~99 로 잘라 RescueBlockModel.setOptionalValue(group x 100 + 값) 에 반영한다"],
+      ["테스트 플레이", "onClickPlay() → save() 가 null 이 아니면 showViewGame(id, saveData, true, true) → SceneManager.toUGCGame() 로 실제 인게임을 띄운다. logUGCLevelTest()"]
+    ]},
+    { h: "저장 검증 · 다이얼로그 2종", rows: [
+      ["직렬화", "save() 가 stage.serialize() 와 mission.getMissionData() 를 합쳐 colorLimit · blockTables · tileMap 을 JSON 문자열로 stage 에 담고 moves · missions · id(대문자) 를 채운다. name / sub_name / description 은 T_(ID)_TITLE 규칙, preview 는 (id 소문자)_v2.png 로 만든다 (UGCMapEditor.ts:1156)"],
+      ["자동 보정", "저장 직전 모든 타일에 Generator 속성을 붙이고, 보드에 수집물 블록이 있으면 Collector 속성도 함께 붙인다. meringueCount 와 property.icon 은 지우고 cascadeBlocks 는 빈 배열로 채운다"],
+      ["검증 5종", "매치 가능한 인접 쌍이 하나도 없으면 T_UGC_MESSAGE_5, 목표 수량이 0 이하면 T_UGC_MESSAGE_6, 보드의 목표 블록 수보다 목표치가 크면 T_UGC_MESSAGE_1, 이동 수가 비었으면 T_UGC_MESSAGE_2 · 0 이하면 T_UGC_MESSAGE_4, 고른 색이 3개 미만이면 T_UGC_MESSAGE_3. 하나라도 걸리면 안내를 띄우고 null 을 반환해 저장을 멈춘다"],
+      ["서버 전송", "requestUGCUpdateStage(id, saveData) → POST /api/ugc/update-stage (NetworkManager.ts:1527). 발행 / 숨김 / 삭제는 에디터 밖 UGCMyStageItem 의 publish-stage · hide-stage · delete-stage 요청이 맡는다"],
+      ["쿨다운", "저장은 saveable 을 내리고 lbSave 를 10초 카운트다운으로 바꿨다가 T_SAVE 로 되돌린다. 새로 만들기 버튼은 같은 방식으로 60초 (UGCMyLevelTab.ts:74)"],
+      ["UGCNotice", "안내 다이얼로그. showPopupNotice(text) → setData(text) → show(true), OK 버튼은 show(false) 만 한다. 저장 검증 실패 문구가 전부 이리로 나온다 (UGCNotice.ts:17)"],
+      ["UGCDelete", "삭제 확인 다이얼로그. onClickDelete() 이 popupDelete.onClickDelete 에 콜백을 직접 대입한 뒤 show(true) — 확인하면 다이얼로그와 에디터를 함께 닫고 onDelete() → requestUGCDeleteStage(id) + logUGCLevelDelete() (UGCMapEditor.ts:1585)"],
+      ["onBack 콜백", "새로 만들기 경로는 tab.refresh() 만, 기존 편집 경로는 tab.refresh() 와 ViewManager.getLastView().showAllOverlays() 를 함께 건다 — 편집 진입에서 껐던 DOM 오버레이를 되살리는 자리다"]
+    ]}
+  ]
+}
   ];
 
 
@@ -4405,6 +4593,9 @@ const EXTRA = {
     { a: "asyncpage", b: "switchctx", label: "showViewSwitchContext() (ViewAsyncPage.ts:422)" },
     { a: "switchctx", b: "picgame", kind: "back", label: "전환 성공 → 대전 진입" },
     { a: "ugc", b: "ugcgame", label: "UGC 스테이지 시작" },
+    /* 맵 에디터는 별도 지면 로드가 아니라 ViewUGC 안의 노드를 켜는 방식이다 (PC 전용). */
+    { a: "ugc", b: "ugcedit", label: "onClickCreateNew() · onClickEdit()" },
+    { a: "ugcedit", b: "ugc", kind: "back", label: "onClickBack() · onClickSave()" },
     { a: "ugc", b: "lobby", kind: "back", label: "close() → toLobby()" },
     { a: "raid", b: "lobby", kind: "back", label: "close() → toLobby()" },
     { a: "shop", b: "lobby", kind: "back", label: "close()" },
@@ -4449,7 +4640,8 @@ const EXTRA = {
     showPopupCrossPromotionMission: "p_crossmis",
     moveToGame: "router", getStartType: "router", introStart: "e_minigame",
     toLobby: "lobby", toMerge: "merge", toGacha: "gacha", toUGC: "ugc",
-    toUGCGame: "ugcgame", createViewGame: "viewgame", requestPlayStart: "lobby"
+    toUGCGame: "ugcgame", createViewGame: "viewgame", requestPlayStart: "lobby",
+    onClickCreateNew: "ugcedit", onClickEdit: "ugcedit"
   };
 
 
@@ -4647,7 +4839,7 @@ const EXTRA = {
       return {
         label: b._label || nameOf(b), sec: b._sec, row: b._row, steps: steps.length,
         type: stepType(steps[steps.length - 1] || ""), big: BIG.test(b._label || ""),
-        x: b.x, y: b.y, w: b.w, h: b.hh, on: b.a === 1,
+        x: b.x, y: b.y, w: b.w, h: b.hh, on: b.a !== 0,   /* PF 는 비활성일 때만 a:0 을 붙인다. a === 1 로 보면 활성 버튼이 전부 비활성으로 그려진다 */
         moved: b.mv === 1, alt: b.alt || null, ctx: b.ctx || null,
         handler: b.h, node: b.n, full: b.w >= 0.9 && b.hh >= 0.9
       };
@@ -4701,10 +4893,14 @@ const EXTRA = {
   /* 맵에 사각형으로 놓이는 것만 카드. 팝업은 부모 카드의 칩이라 좌표가 없다. */
   const CARDS = N.filter(function (n) { return !n.chip; });
 
-  /* 컨텍스트를 건드리는 지면. SOLO 복귀 호출부(14곳)가 있는 지면 + 클리어 정산 지면.
+  /* 컨텍스트를 건드리는 지면. CTX_RETURNS 가 가리키는 지면 + 판 정산 지면 + 전환 지면.
      배지를 눌러 컨텍스트 문서로 넘어간다 — 맵 구조는 안 건드린다. */
   const CTXNODE = {};
-  CTX_RETURNS.forEach(function (r) { CTXNODE[r.node] = CTX_STATES[0].name + " 복귀 " + r.n + "곳"; });
+  /* CTX_RETURNS.node 는 대부분 맵 노드가 아니라 서술용 키(cancel · reset · same 등)다.
+     실재하는 노드일 때만 배지를 단다 — 아니면 아무 카드에도 안 붙는 죽은 항목이 된다. */
+  CTX_RETURNS.forEach(function (r) {
+    if (byId[r.node]) CTXNODE[r.node] = CTX_STATES[0].name + " 복귀 " + r.n + "곳";
+  });
   CTXNODE.p_coinclaim = "판 정산 분기";
   CTXNODE.switchctx = "전환 지면 본체";
   /* 칩으로 내려간 지면의 배지는 그 부모 카드에 모아 보여준다 */
@@ -5292,7 +5488,9 @@ const EXTRA = {
     const full = b.filter(function (x) { return x.full; });
     const spot = b.filter(function (x) { return !x.full; });
 
-    let o = '<div class="wf-wrap"><div class="wf" style="--cc: ' + cc + '">';
+    /* 지면마다 설계 해상도가 다를 수 있다 (UGC 모드는 2290x1280 가로). ar 이 있으면 그 비율로 그린다. */
+    let o = '<div class="wf-wrap' + (pf.ar ? ' wide' : '') + '"><div class="wf" style="--cc: ' + cc
+      + (pf.ar ? ';aspect-ratio: ' + pf.ar : '') + '">';
     if (pf.panel) {
       o += '<span class="wf-panel" style="width:' + (pf.panel.w * 100).toFixed(1)
         + '%;height:' + (pf.panel.h * 100).toFixed(1) + '%"></span>';
@@ -5340,8 +5538,8 @@ const EXTRA = {
         + '<span>' + esc(x.label) + (x.alt ? '<i class="wf-alt">+' + x.alt.length + '</i>' : '')
         + (x.moved ? '<i class="wf-mv">?</i>' : '') + '</span></button>';
     });
-    /* 모든 지면 위에 상주하는 공통 헤더 (골드 · 티켓). 어느 팝업 프리팹에도 없고
-       intro.fire 의 PersistRootNode 에만 있어서 지금까지 어느 지면에도 안 그려졌다. */
+    /* 모든 지면 위에 상주하는 공통 헤더 (코인 · 젬). HeaderLayer.prefab 독립 프리팹이고
+       PopupManager.setHeader() 가 띄운다. 세로 위치는 TopCoin 이 코드로 잡으므로 상단에 붙여 그린다. */
     if (typeof HDR !== "undefined" && HDR.length && n.id !== "intro") {
       HDR.forEach(function (x) {
         const txt = (x.t || "").trim();
@@ -5357,7 +5555,10 @@ const EXTRA = {
     const ctxN = b.filter(function (x) { return x.ctx; }).length;
     const folded = b.reduce(function (n, x) { return n + (x.alt ? x.alt.length : 0); }, 0);
     const movedN = b.filter(function (x) { return x.moved; }).length;
-    o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b> 실측 · 720&times;1280 세로 · 화면 요소 '
+    o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b>'
+      + (pf.sub ? ' 의 <code>' + esc(pf.sub) + '</code> 노드' : '')
+      + ' 실측 · ' + (pf.cw ? pf.cw + '&times;' + pf.ch + (pf.ar > 1 ? ' 가로' : ' 세로') : '720&times;1280 세로')
+      + ' · 화면 요소 '
       + (b.length + deco.length) + '개 (버튼 ' + b.length + ' · 장식 ' + deco.length + ')'
       + (ctxN ? ' · 이 중 <b>' + ctxN + '개</b>는 같은 프리팹의 다른 구역 담당 (흐린 버튼 — 눌러서 그 지면으로)' : '')
       + (folded ? ' · <b>+n</b> 은 같은 자리에 겹친 상태별 변형 ' + folded + '개' : '')
@@ -5570,7 +5771,7 @@ const EXTRA = {
        "여기서 저기로 넘어간다"가 그림의 뼈대다. 솔리테어판은 도형이 코드에 박혀 있었으나
        코인 매치는 컨텍스트 타입이 셋으로 갈라져 있어 데이터로 그린다. */
     /* 두 열 사이를 넉넉히 벌린다 — 붙여 두면 Solo↔PVP · Solo↔Tournament 네 화살표의
-   라벨이 짧은 구간에 몰려 서로 덮는다. */
+       라벨이 짧은 구간에 몰려 서로 덮는다. */
     const W = 1120, BW = 300, BH = 96, LEFT = 18, RIGHT = 600;
     const rest = CTX_STATES.slice(1);
     const H = Math.max(300, 40 + rest.length * (BH + 44));
@@ -5682,7 +5883,7 @@ const EXTRA = {
 
   const renderCtx = function () {
     let h = '<div class="sec-lede"><h2>컨텍스트 분기</h2>'
-      + '<p>FB 컨텍스트는 <b>지면이 아니라 상태</b>다. 같은 로비 · 같은 프리게임 팝업 · 같은 PLAY 버튼이 '
+      + '<p>FB 컨텍스트는 <b>지면이 아니라 상태</b>다. 같은 로비 · 같은 매치 버튼 · 같은 정산 팝업이 '
       + '이 상태에 따라 다르게 동작한다. 맵의 화살표로는 표현되지 않는 축이라 따로 그렸다.</p></div>';
     h += ctxStateMachine();
     if (CTX_TRAP) h += '<div class="warn"><b>함정</b> ' + esc(CTX_TRAP) + '</div>';
@@ -5708,8 +5909,9 @@ const EXTRA = {
     }));
 
     const rtot = CTX_RETURNS.reduce(function (a, r) { return a + r.n; }, 0);
-    h += '<h3>' + esc(CTX_STATES[0].name) + ' 복귀 지점 ' + rtot + '곳 <em>— 이 지면들이 컨텍스트를 끊는다</em></h3>';
-    h += tableOf(["지면", "호출 수", "위치"], CTX_RETURNS.map(function (r) {
+    h += '<h3>컨텍스트를 끊거나 되돌리는 지점 ' + rtot + '곳 <em>— ' + esc(CTX_STATES[0].name)
+      + ' 복귀 · 데이터 리셋 · 이미 같은 컨텍스트</em></h3>';
+    h += tableOf(["경로", "호출 수", "위치"], CTX_RETURNS.map(function (r) {
       const n = byId[r.node];
       return [(n ? '<button class="lnk" data-jump="' + r.node + '">' + esc(r.name) + '</button>' : esc(r.name)),
               '<b>' + r.n + '</b>', src(r.at)];
@@ -5771,8 +5973,8 @@ const EXTRA = {
       }));
     });
     h += '<p class="note">이 표는 코드를 읽어 손으로 정리했다 — 기계 파싱이 아니다. '
-      + '<code>assets/script/Base/FacebookPlatform.ts</code> 가 FB API 를 감싸고, 게임 코드는 '
-      + '<code>BasePlatform.instance</code> 를 통해서만 부른다.</p>';
+      + '<code>assets/script/common/Fbi.ts</code> 가 FB SDK(<code>FBInstant</code>)를 감싸고, '
+      + '게임 코드는 <code>Fbi</code> 의 정적 메소드를 통해서만 부른다.</p>';
     return h;
   };
 

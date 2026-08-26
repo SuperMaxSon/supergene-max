@@ -11,6 +11,7 @@
      updated: "2026-08-07 10:48",     // 날짜 + 시각(HH:MM)
      pinned:  true,                  // 상단 강조
      tags:    ["태그", "태그"],        // 최대 3개
+     share:   false,                 // 선택 · 설정탭 전용. 없으면 노출, false 면 허브에서 숨김
    }
    --------------------------------------------------------------------------
    ★★ 허브는 "무슨 문서가 있나"를 훑는 인덱스다. desc 는 문서를 열 이유 하나만
@@ -27,7 +28,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-26 09:10",
+  updated: "2026-08-26 10:05",
 };
 
 const SECTIONS = [
@@ -39,11 +40,11 @@ const SECTIONS = [
     cards: [
       {
         title: "FB 게이밍 탭 복귀 지면 — 노출 조사 히스토리",
-        desc: "게임 종료 후 뜨는 FB 지면에 우리 게임을 띄우려 한 기록. 가설 6건 검증 결과 제어 API도 문서도 없음. FB가 결정한다.",
+        desc: "포스트는 그 지면에 자동으로 실린다. 문제는 이틀간 발사가 2건뿐이라는 것. 게이트 6개가 무로그로 막고 있다.",
         url: "docs/fb-exit-surface-investigation.html",
-        status: "완료",
-        version: "v1.0",
-        updated: "2026-08-26 09:08",
+        status: "진행중",
+        version: "v2.0",
+        updated: "2026-08-26 09:56",
         pinned: false,
         tags: ["FB 플랫폼", "소셜", "크로스프로젝트", "코드 실측"],
       },
@@ -152,8 +153,8 @@ const SECTIONS = [
         desc: "솔리테어 맵과 같은 두 단 구조로 코인 매치 전 지면을 폈습니다. 세로 화면 와이어프레임 위에서 버튼을 누르면 호출 사슬이 그 자리에서 펼쳐집니다.",
         url: "docs/coin-match-flow-map.html",
         status: "완료",
-        version: "v1.0",
-        updated: "2026-08-26 09:10",
+        version: "v1.1",
+        updated: "2026-08-26 10:05",
         pinned: false,
         tags: ["레퍼런스", "플로우", "인터랙티브"],
       },
