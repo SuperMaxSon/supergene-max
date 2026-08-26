@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>코인 매치 전체 지면 플로우 맵</title>
+    <meta
+      name="description"
+      content="코인 매치의 인트로 진입부터 로비·인게임·정산·사후 플로우, 그리고 머지·가챠·레이드·UGC·비동기 대전까지 전 지면을 드래그·확대로 훑는 인터랙티브 맵. 지면마다 버튼 → 호출 메소드를 코드 실측으로 붙였다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#map">맵</a>
+        <a class="nav-back" href="#trunk">주 흐름</a>
+        <a class="nav-back" href="#entry">진입 분기</a>
+        <a class="nav-back" href="#buttons">버튼 → 메소드</a>
+        <a class="nav-back" href="#post">결과 후 플로우</a>
+        <a class="nav-back" href="#context">컨텍스트 분기</a>
+        <a class="nav-back" href="#fb">FB 지면</a>
+        <a class="nav-back" href="#scope">확인 범위</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 코드 레퍼런스</div>
+        <h1 class="doc-title">코인 매치 전체 지면 플로우 맵</h1>
+        <p class="doc-lede">
+          솔리테어 플로우 맵과 <b>같은 두 단 구조</b>입니다.
+          <b>1단</b> 오픈맵으로 어느 지면이 어느 흐름에 있는지 보고,
+          <b>2단</b> 지면을 누르면 큰 팝업에 <b>그 지면의 UI 와이어프레임</b>(프리팹을 직접 파싱해
+          실제 버튼 좌표를 720&times;1280 <b>세로</b> 화면에 올린 그림)과 <b>버튼별 한 줄 요약</b>이 함께 뜹니다.
+          와이어프레임의 버튼이나 요약 셀을 누르면 그 자리에서 호출 흐름이 아래로 펼쳐집니다 —
+          화면이 바뀌지 않으니 뒤로가기를 쓸 일이 없습니다.
+          맵은 <b>글줄처럼 접혀</b> 왼쪽→오른쪽으로 읽고 줄이 끝나면 아래로 내려갑니다.
+          지면 64개 중 <b>주 흐름 24개만 카드</b>이고, 그 지면에서 열리는 팝업 40개는 카드 안의 <b>칩</b>입니다.
+          지면으로 표현되지 않는 두 축은 툴바에서 따로 엽니다 —
+          <b>컨텍스트</b>는 솔로 · PvP · 토너먼트 상태 기계, <b>FB 지면</b>은 FB 가 직접 그리는 화면입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--cmt)">코인 매치</span>
+          <span class="tag">coin-match-client · main 브랜치 코드 실측</span>
+          <span class="tag">기준 커밋 a1e8739eb</span>
+          <span class="tag">카드 24 + 칩 40 · 흐름 45</span>
+          <span class="tag">화면 요소 1,417개 · 세로 720&times;1280</span>
+          <span class="tag">v1.0 · 2026-08-26</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="map">
+        <h2 class="doc-h2">맵 <span class="doc-h2-sub">오픈맵 → 지면(UI + 로직) 두 단</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--cmt)">
+            <div class="stat-num">24<span class="stat-unit">장</span></div>
+            <div class="stat-name">맵 카드 (+ 칩 40개)</div>
+            <div class="stat-sub">지면 64개 · 팝업은 칩으로</div>
+          </div>
+          <div class="stat" style="--acc: var(--analysis)">
+            <div class="stat-num">45<span class="stat-unit">개</span></div>
+            <div class="stat-name">지면 사이 흐름(화살표)</div>
+            <div class="stat-sub">화면 전환만 · 팝업 열기는 칩 소속으로</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">1,417<span class="stat-unit">개</span></div>
+            <div class="stat-name">프리팹에서 뽑은 화면 요소</div>
+            <div class="stat-sub">이미지 852 · 라벨 401 · 버튼 158 · 리스트 6</div>
+          </div>
+          <div class="stat" style="--acc: var(--balance)">
+            <div class="stat-num">141<span class="stat-unit">개</span></div>
+            <div class="stat-name">메소드 → 한 줄 동작 사전</div>
+            <div class="stat-sub">맵에 노출된 고유 핸들러 68개 + 사슬 안 메소드</div>
+          </div>
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">23<span class="stat-unit">종</span></div>
+            <div class="stat-name">FB 가 그리는 지면</div>
+            <div class="stat-sub">맵 밖 별도 문서 · 툴바에서 연다</div>
+          </div>
+        </div>
+
+        <!-- CTA = a.pill. 좁은 화면에서 미리보기 프레임은 조작이 어려워 이 버튼이 주 입구다. -->
+        <div class="doc-meta">
+          <a class="pill" style="--acc: var(--cmt)" href="coin-match-flow-canvas.html" target="_blank" rel="noopener">다이어그램 크게 보기 →</a>
+          <span class="tag">새 탭에서 전체 화면으로 · 지면 클릭 → 팝업 → 버튼 클릭 → 흐름 펼침</span>
+        </div>
+
+        <!-- 맵은 팬/줌이 필요한 인터랙티브 화면이라 style.css 컴포넌트로 만들 수 없다.
+             디자인 시스템을 건드리지 않기 위해 자립 파일(coin-match-flow-canvas.html)로 두고
+             여기서는 프레임만 올린다. 테두리·라운드·배경은 .table-scroll 이 그대로 준다. -->
+        <div class="table-scroll" style="padding: 0">
+          <iframe
+            src="coin-match-flow-canvas.html"
+            title="코인 매치 전체 지면 플로우 인터랙티브 맵 (미리보기)"
+            loading="lazy"
+            style="display: block; width: 100%; height: 76vh; min-height: 520px; border: 0"
+          ></iframe>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">와이어프레임이 세로인 이유</div>
+            <p>
+              코인 매치는 <strong>세로 게임</strong>입니다. <code>assets/scene/intro.fire</code> 의
+              <code>cc.Canvas._designResolution</code> 이 <strong>720&times;1280 · fitWidth</strong> 입니다
+              (<code>settings/project.json</code> 의 960&times;640 은 에디터 기본값이 남은 것이고 런타임 값이 아닙니다).
+              그래서 지면 팝업의 와이어프레임 열을 솔리테어(가로 16:9)보다 <strong>좁게</strong> 두고,
+              남는 가로 폭을 오른쪽 <strong>버튼 요약 열</strong>에 더 줬습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 그림이 어디서 나왔나</div>
+            <p>
+              손으로 그린 그림이 아닙니다. <code>assets/bundle/{view,popup}</code> 의 프리팹과
+              <code>intro.fire</code> 를 파싱해 <code>_trs</code> 좌표와 <code>cc.Widget</code> 정렬을
+              계산한 결과입니다. 생성기는 코인 매치 저장소의 <code>_ignore/flowmap/</code> 에 있습니다.
+              <strong>회전은 무시</strong>했고, 프리팹 저장 시점 비활성 장식 · 화면 밖 스크롤 컨텐츠 ·
+              잠금 오버레이는 뺐습니다. 반복 셀 <strong>130개</strong>는 대표 1개 + <code>&times;n</code> 으로 접었고,
+              부모와 같은 자리를 차지하는 중복 상자 <strong>63개</strong>는 지웠습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="trunk">
+        <h2 class="doc-h2">주 흐름 <span class="doc-h2-sub">맵 가운데 굵은 축</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">단계</th>
+                <th style="width: 20%">지면</th>
+                <th style="width: 32%">여기로 들어오는 계기</th>
+                <th>다음으로 넘기는 메소드</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>①</td>
+                <td><code>Intro</code><br /><span class="tag">intro.fire</span></td>
+                <td>앱 시작. <code>start()</code> 가 <code>AsyncProcess</code> 로 번들 · FB · 로그인 · 프리로드를 의존성 그래프로 돌린다</td>
+                <td><code>moveToGame(startType)</code></td>
+              </tr>
+              <tr>
+                <td>②</td>
+                <td><code>ViewLobbyRanking</code></td>
+                <td>진입 라우터 기본 경로(<code>StartType.Lobby</code>) · 결과 후 복귀 · 머지/가챠/상점 닫기</td>
+                <td><code>SceneManager.requestPlayStart()</code></td>
+              </tr>
+              <tr>
+                <td>③</td>
+                <td><code>ViewGame</code> + <code>StageView</code></td>
+                <td>로비 매치 시작 · 토너먼트 직행 · UGC · 튜토리얼</td>
+                <td>판 종료 → <code>sendPlayEnd()</code> → <code>GameEndFlowEnumerator.play()</code></td>
+              </tr>
+              <tr>
+                <td>④</td>
+                <td><code>PopupBigCoinClaim</code><br /><span class="tag">PopupCoinClaim</span></td>
+                <td><code>GameEndFlowEnumerator.showPopupCoinClaim()</code></td>
+                <td><code>onClickClaim()</code> / <code>onClickRestart()</code> / <code>onClickMerge()</code></td>
+              </tr>
+              <tr>
+                <td>⑤</td>
+                <td><code>GameEndFlowEnumerator</code> + <code>SceneManager.toLobby()</code></td>
+                <td>정산 팝업이 닫힌 뒤 사후 단계가 차례로 실행된다</td>
+                <td><code>viewGame.close("Lobby")</code> → <code>toLobby()</code> 의 팝업 체인</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--cmt)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              한 판의 사이클은 <strong>②→③→④→⑤→②</strong> 로 닫힙니다. 솔리테어와 달리
+              <strong>프리게임 팝업 단계가 없습니다</strong> — 로비에서 누르면 <code>requestPlayStart()</code> 가
+              곧바로 서버에 판 시작을 요청하고 <code>createViewGame()</code> 으로 넘어갑니다.
+              대신 코인 매치는 <strong>④ 뒤에 메타가 붙습니다</strong>: 정산 팝업의
+              <code>onClickMerge()</code> 로 젬 머지 화면에 들어가고, 머지에서
+              <code>onClickGoMatch()</code> 를 누르면 ②를 거치지 않고 ③으로 바로 돌아옵니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">⑤에서 머지 · 가챠 자동 진입은 지금 죽어 있다</div>
+            <p>
+              <code>GameEndFlowEnumerator.modifyClaimEndEvent()</code>
+              (<code>assets/script/game/ingame/GameEndFlowEnumerator.ts:209</code>) 안의
+              <code>goToMerge</code> · <code>goToGacha</code> 호출부가 <strong>전부 주석 처리</strong>돼 있어,
+              결과 후에는 항상 <code>viewGame.close("Lobby")</code> 로 갑니다.
+              머지로 들어가는 살아 있는 길은 <strong>정산 팝업의 버튼</strong>과 <strong>로비의 머지 버튼</strong> 둘뿐입니다.
+              맵의 화살표도 그렇게 그렸습니다 — 코드에 남아 있는 주석 경로는 그리지 않았습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="entry">
+        <h2 class="doc-h2">진입 분기 <span class="doc-h2-sub"><code>Intro.moveToGame(startType)</code> — <code>FBContext.getStartType()</code> 이 고른 하나만 실행</span></h2>
+        <p class="doc-lede" style="margin-top: 0">
+          부팅이 끝나면 <code>Intro.moveToGame(startType)</code> 의 <code>switch</code> 가 한 갈래만 실행합니다.
+          <code>startType</code> 을 정하는 것은 <code>FBContext.getStartType()</code> 이고,
+          판정 재료는 <b>FB 진입 경로(<code>entryPoint</code>)</b> 와 <b>진입 페이로드(<code>entryData.social</code>)</b> 둘입니다.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">판정 조건 <span class="tag">위에서 먼저 걸린 것</span></th>
+                <th style="width: 14%">StartType</th>
+                <th>실행 경로</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>startData</code> 가 <code>null</code></td>
+                <td><code>MainGame</code></td>
+                <td><code>mainGame()</code> → <code>checkTutorial()</code></td>
+              </tr>
+              <tr>
+                <td><code>entryPoint === "messenger_game_list"</code><br /><span class="tag">entryData 보기 전에 먼저 걸린다</span></td>
+                <td><code>AsyncPage</code></td>
+                <td><code>asyncPvp()</code> → <code>requestAsyncPVPGetList()</code> → <code>asyncPvpPage(res)</code></td>
+              </tr>
+              <tr>
+                <td><code>social</code> 에 <code>FB_EVENT_TOURNAMENT</code> 포함</td>
+                <td><code>MainGame</code> / <code>Lobby</code></td>
+                <td><code>fromEventTournament()</code> 가 원격 JSON 으로 토너먼트 컨텍스트를 세운다. 실패하면 로비</td>
+              </tr>
+              <tr>
+                <td><code>social</code> 에 <code>TOURNAMENT</code> 포함</td>
+                <td><code>MainGame</code> / <code>Lobby</code></td>
+                <td><code>fromSocialTournament()</code> → <code>Fbi.getTournamentAsync()</code>. 토너먼트가 없으면 로비</td>
+              </tr>
+              <tr>
+                <td><code>social === MESSAGE_ASYNC</code></td>
+                <td><code>AsyncGame</code> / <code>AsyncPage</code></td>
+                <td><code>fromAsyncMessage()</code> — <code>entryData.friend</code> 가 내 ID 면 대전 판 직행, 아니면 목록</td>
+              </tr>
+              <tr>
+                <td><code>social === FEED_UGC</code></td>
+                <td><code>UGCGame</code> / <code>UGC</code> / <code>MainGame</code> / <code>Lobby</code></td>
+                <td><code>getEntryUGCStage()</code> 가 있으면 그 스테이지 직행. 없으면 PC 는 UGC 목록, 튜토리얼 중이면 본 게임</td>
+              </tr>
+              <tr>
+                <td><code>social</code> 이 <code>INVITE</code> · <code>ROULETTE</code> · <code>MESSAGE</code> · <code>FEED</code> · <code>MONSTER_FEED</code> · A2U · BOT 계열</td>
+                <td><code>MainGame</code> / <code>Lobby</code></td>
+                <td>각 <code>from*()</code> 가 친구 컨텍스트를 잡으면 본 게임, 못 잡으면 로비</td>
+              </tr>
+              <tr>
+                <td>그 외 (default)</td>
+                <td><code>UGC</code> / <code>MainGame</code></td>
+                <td><code>feed</code> 가 UGC 이고 PC 면 UGC 목록. <code>fixGame</code> 이 켜져 있으면 그 게임을 Solo 컨텍스트로 고정</td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="mut">반환되지 않음</span></td>
+                <td><code>Gacha</code> · <code>MergeGem</code></td>
+                <td><code>moveToGame()</code> 에 갈래는 있지만 <code>getStartType()</code> 이 이 값을 돌려주지 않아 <strong>현재 도달하지 않는다</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">미니게임은 분기 앞에 끼어든다</div>
+            <p>
+              <code>entryData.start_type === "minigame"</code> 이면
+              <code>IntroStartType.introStart()</code> 가 <strong>원래 분기보다 먼저</strong> 실행됩니다.
+              <code>MINIGAME_COUNT_ + minigame</code> 로컬 카운트가 <strong>3 이상이면 건너뛰고</strong>,
+              미만이면 <code>PopupBonusGame_{minigame}</code> 을 <code>isAD = true</code> 로 띄운 뒤
+              그 팝업의 <code>onClose</code> 에 원래 분기를 연결합니다.
+              즉 미니게임은 지면이 아니라 <strong>분기 앞에 끼어드는 관문</strong>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">부팅 중 확인된 fall-through</div>
+            <p>
+              <code>Intro.preloadView()</code> 의 <code>AsyncGame</code> · <code>AsyncPage</code> 케이스에
+              <code>break</code> 가 없어 <code>UGCGame</code> 케이스로 이어집니다
+              (<code>assets/script/game/Intro.ts:428-430</code>).
+              결과적으로 비동기 대전 진입 때 <code>ViewGameUGC</code> 프리로드가 함께 걸립니다.
+              <strong>의도인지 실수인지는 판단하지 않고 사실만 적습니다</strong> — 프리로드라 동작은 깨지지 않습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="buttons">
+        <h2 class="doc-h2">버튼 → 호출 메소드 <span class="doc-h2-sub">맵 카드를 눌러도 같은 내용이 열린다</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">지면</th>
+                <th style="width: 14%">버튼</th>
+                <th>호출 사슬</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="5"><code>ViewLobbyRanking</code><br /><span class="tag">로비</span></td>
+                <td>PLAY</td>
+                <td><code>onClickMatch()</code> → <code>blockInput(true)</code> → <code>DataManager.updateMatchEntry(lobby)</code> → <code>FBContext.getNextGameContext()</code> → 국가 ContextType 별로 PvP · 토너먼트 우선 분기 → <code>toMainGame()</code> (ViewLobbyRanking.ts:672 → FBContext.ts:884)</td>
+              </tr>
+              <tr>
+                <td>머지</td>
+                <td><code>onClickMerge()</code> → <code>blockInput(true)</code> → <code>SceneManager.toMerge()</code> → 낮은 젬 자동 합치기 요청 + 젬 스프라이트 로드 → <code>ViewCreator.showViewMergeGem()</code> (ViewLobbyRanking.ts:598 → SceneManager.ts:655)</td>
+              </tr>
+              <tr>
+                <td>토너먼트</td>
+                <td><code>onClickTournament()</code> → <code>logBtnMenuTournaments()</code> → <code>ViewCreator.showPopupTournament()</code> → 닫히면 <code>blockInput(false)</code>, 실패하면 <code>showPopupErrorDefault()</code> <span class="tag">ViewLobbyRanking.ts:680</span></td>
+              </tr>
+              <tr>
+                <td>코인 · 상점</td>
+                <td><code>TopCoin.onClickCoin()</code> → isDirection 가드 → <code>Fbi.isPaymentsAvailable()</code> 면 <code>ViewCreator.showViewShop()</code>, 아니면 <code>logBtnLobbyCoin()</code> 후 <code>showPopupFreeCoin(FREE_COIN_AMOUNT)</code> <span class="tag">TopCoin.ts:330</span></td>
+              </tr>
+              <tr>
+                <td>젬 · 머지</td>
+                <td><code>TopCoin.onClickGem()</code> → isDirection 가드 → <code>SceneManager.toMerge()</code> <span class="tag">TopCoin.ts:324</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>ViewGame</code><br /><span class="tag">인게임</span></td>
+                <td>부스터 사용</td>
+                <td><code>onClickBooster(event)</code> → BoosterButton 확인 → <code>openBoosterView(button)</code> → 입력 가능 · 사용 가능 판정 후 보유 개수가 있으면 즉시 사용, 없으면 차단 (ViewGame.ts:1740 → :1749)</td>
+              </tr>
+              <tr>
+                <td>설정</td>
+                <td><code>onClickSetting()</code> → <code>logBtnGamePlaySetting()</code> → <code>ViewCreator.showPopupSettingInGame()</code> → onLeave 면 <code>onClickLeave()</code>, onRetry 면 <code>retry(false)</code> <span class="tag">ViewGame.ts:1695</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="5"><code>PopupBigCoinClaim</code><br /><span class="tag">판 정산</span></td>
+                <td>PLAY NEXT</td>
+                <td><code>onClickClaim()</code> → clickable 가드 → <code>showContextPopupOnIngameResultIfNeeded()</code> → 국가 ResultClaim_IT 이 1 이면 <code>tryShowInterstitialAD(finish_claim)</code> → <code>updateStageEntry(finish_playnext)</code> → <code>requestGetPlayEndReward()</code> <span class="tag">PopupCoinClaim.ts:629</span></td>
+              </tr>
+              <tr>
+                <td>보상 2배</td>
+                <td><code>onClickClaimX2()</code> → playEndError 면 T_NO_ADS 토스트로 대체 → <code>updateStageEntry(finish_double_claim)</code> → <code>useRVTicket(finish_reward_double)</code> → 성공 시 2배 보상 수령 <span class="tag">PopupCoinClaim.ts:540</span></td>
+              </tr>
+              <tr>
+                <td>다시하기</td>
+                <td><code>onClickRestart()</code> → <code>DataManager.addRetryCount()</code> → <code>updateStageEntry(finish_retry)</code> → <code>clearContextPopupOnIngameResult()</code> → 같은 판 재진입 <span class="tag">PopupCoinClaim.ts:671</span></td>
+              </tr>
+              <tr>
+                <td>닫기</td>
+                <td><code>onClickClose()</code> → <code>logFinishExit()</code> → ResultClaim_IT 이 1 이면 전면 광고 → <code>updateStageEntry(finish_playnext)</code> → <code>requestGetPlayEndReward(onClickClose)</code> 로 보상만 챙기고 종료 <span class="tag">PopupCoinClaim.ts:713</span></td>
+              </tr>
+              <tr>
+                <td>머지로</td>
+                <td><code>onClickMerge()</code> → <code>logFinishMerge()</code> → <code>directionTopCoin.hide()</code> → <code>SceneManager.toMerge(StartType.IngameResult)</code> → 머지 닫힐 때 인게임 배경으로 되돌린다 <span class="tag">PopupCoinClaim.ts:749</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="8"><code>ViewMergeGem</code><br /><span class="tag">젬 머지</span></td>
+                <td>PLAY</td>
+                <td><code>onClickGoMatch()</code> → 튜토리얼이면 손 연출 정리 → <code>logMergePlaySuccess()</code> → <code>sendGemStatusDirectly()</code> 로 젬 배치 저장 → <code>updateStageEntry(merge_play)</code> → <code>FBContext.getNextGameContext()</code> <span class="tag">ViewMergeGem.ts:1604</span></td>
+              </tr>
+              <tr>
+                <td>자동 머지</td>
+                <td><code>onClickMergeAll()</code> → <code>canMergeAll()</code> 아니면 T_NO_GEMS 토스트 → 시간제 아이템 있으면 바로 <code>modifyMergeAll()</code>, AUTO_MERGE_TICKET 있으면 <code>requestUseItem()</code> 후 합치기, 둘 다 없으면 PopupAutoFreeMerge 노출 <span class="tag">ViewMergeGem.ts:1294</span></td>
+              </tr>
+              <tr>
+                <td>무료 젬</td>
+                <td><code>onClickFreeGem()</code> → <code>logMergeFreeGems()</code> → <code>DataManager.useRVTicket(free_gem)</code> → 스킵권 없으면 보상형 광고 → 성공 시 <code>requestGetFreeGem()</code> 으로 서버 지급 <span class="tag">ViewMergeGem.ts:1756</span></td>
+              </tr>
+              <tr>
+                <td>공유</td>
+                <td><code>onClickShare()</code> → <code>captureScreenShotRect()</code> 로 보드 캡처 → <code>entryPointData(feed: gem_share)</code> 구성 → <code>FBContext.shareGem(base64, data)</code> → 페이스북 피드 공유 <span class="tag">ViewMergeGem.ts:1540</span></td>
+              </tr>
+              <tr>
+                <td>젬 도감</td>
+                <td><code>onClickIndex()</code> → <code>GemSpriteManager.loadUntil(getMaxPublishedGemLevel()</code>) → <code>ViewCreator.showPopupItemIndex()</code> → 닫힐 때 수령 가능 레벨 목록 갱신 <span class="tag">ViewMergeGem.ts:1528</span></td>
+              </tr>
+              <tr>
+                <td>다음 젬 꺼내기</td>
+                <td><code>onClickInventory()</code> → nextGemView 상태가 Normal 이면 보드에 젬 배치, Empty 면 <code>ViewCreator.showPopupPlayGacha()</code> → OK 시 <code>SceneManager.toGacha()</code> 로 이동 <span class="tag">ViewMergeGem.ts:1409</span></td>
+              </tr>
+              <tr>
+                <td>가챠</td>
+                <td><code>onClickGacha()</code> → <code>sendGemStatusDirectly()</code> → <code>logMergeGachaIcon()</code> → <code>SceneManager.toGacha()</code> → 가챠 지면이 뜨면 머지 지면 <code>closeDirectly()</code> <span class="tag">ViewMergeGem.ts:1706</span></td>
+              </tr>
+              <tr>
+                <td>닫기</td>
+                <td><code>onClickBack()</code> → <code>isShown()</code> 가드 → <code>handleOnClickEvent(true)</code> → 젬 배치 저장 후 로비로 복귀 <span class="tag">ViewMergeGem.ts:1192</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="4"><code>ViewGacha</code><br /><span class="tag">가챠</span></td>
+                <td>안내</td>
+                <td><code>BaseView.show(true)</code> → 안내 토스트 노출 + <code>ViewGacha.onClickInfo()</code> → <code>logGachaIconInfo()</code> — 한 버튼에 clickEvents 두 개가 붙어 있다 (BaseView.ts:115 · ViewGacha.ts:671)</td>
+              </tr>
+              <tr>
+                <td>1회 뽑기</td>
+                <td><code>onClickDrawX1()</code> → <code>updateHasDoneActionFromIngameResult()</code> → 튜토리얼이면 <code>drawX1Tutorial()</code>, 아니면 <code>drawX1(false)</code> → 티켓/코인 차감 후 PopupGachaResult 연출 <span class="tag">ViewGacha.ts:547</span></td>
+              </tr>
+              <tr>
+                <td>10회 뽑기</td>
+                <td><code>onClickDrawX10()</code> → <code>drawX10(false)</code> → 10연차 결과를 PopupGachaResult 로 순차 노출 <span class="tag">ViewGacha.ts:557</span></td>
+              </tr>
+              <tr>
+                <td>닫기</td>
+                <td><code>onClickBack()</code> → 튜토리얼이면 <code>playSessionFirstStageOnTutorial()</code> 로 첫 판 진입, 아니면 ViewLobbyRanking 을 미리 로드하고 <code>close()</code> + <code>Fbi.setIsMergeOrGacha(false)</code> <span class="tag">ViewGacha.ts:644</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupTournament</code><br /><span class="tag">토너먼트</span></td>
+                <td>토너먼트 참가</td>
+                <td><code>PopupTournamentItem.onClickPlay()</code> → <code>updateStageEntry(tournaments)</code> → <code>ViewLobbyRanking.setResetOnEnable(true)</code> → <code>FBContext.createTournamentViewOnTournaments()</code> → 성공하면 <code>PopupTournament.playHide()</code> <span class="tag">PopupTournamentItem.ts:160</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupTournamentResult</code><br /><span class="tag">토너먼트 결과</span></td>
+                <td>보상 2배</td>
+                <td><code>onClickDoubleClaim()</code> → gemDiff 0 · blockInput 가드 → <code>useRVTicket(tournament_reward_double)</code> → <code>requestRecieveEndTournamentAdRewardAll()</code> → <code>onClaimGem()</code> 연출 후 <code>close()</code> <span class="tag">PopupTournamentResult.ts:77</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>ViewAsyncPage</code><br /><span class="tag">비동기 목록</span></td>
+                <td>NEW GAME</td>
+                <td><code>onClickRandomMatch()</code> → <code>FBContext.getNextAsyncFriend(friendIds)</code> 로 아직 안 붙은 상대 선택 → 있으면 <code>onClickNewMatch(next,false)</code> → <code>ViewCreator.showViewSwitchContext()</code> → <code>startNewGame()</code>, 없으면 <code>randomGame()</code> <span class="tag">ViewAsyncPage.ts:364</span></td>
+              </tr>
+              <tr>
+                <td>바로 시작</td>
+                <td><code>onClickRandomMatchWithSolo()</code> → <code>onClickNewMatch(next,true)</code> → 전환 취소되면 <code>tryShowInterstitialAD(turn_context_switch_cancel)</code> 후 <code>randomGame()</code> 으로 랜덤 상대 진행 (ViewAsyncPage.ts:380 → :396)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>PopupAsyncResult</code><br /><span class="tag">대전 결과</span></td>
+                <td>보상 수령</td>
+                <td><code>onClickClaim()</code> → fromViewGame 이 아니면 <code>requestAsyncPVPViewResult(false)</code> → <code>updateAsyncPvpFriendList()</code> → <code>logFinishTurnRewardSuccess()</code> → <code>onClaimCoin()</code> 연출 후 <code>close()</code> <span class="tag">PopupAsyncResult.ts:170</span></td>
+              </tr>
+              <tr>
+                <td>보상 2배</td>
+                <td><code>onClickDoubleClaim()</code> → <code>useRVTicket(turn_mode_reward_double)</code> → <code>requestAsyncPVPFinishTurnADReward()</code> 또는 <code>requestAsyncPVPViewResult(true)</code> → 상대 목록 갱신 → <code>onClaimCoin()</code> 후 <code>close()</code> <span class="tag">PopupAsyncResult.ts:205</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupAsyncStatus</code><br /><span class="tag">대전 현황</span></td>
+                <td>계속</td>
+                <td><code>onClickContinue()</code> → closing 가드 → <code>Fbi.tryShowInterstitialAD(turn_finish_claim)</code> → ViewAsyncPage 가 없으면 친구 목록 갱신 + <code>showViewAsyncPage()</code> 후 <code>close()</code> <span class="tag">PopupAsyncStatus.ts:192</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>ViewRaid</code><br /><span class="tag">레이드</span></td>
+                <td>상자 열기</td>
+                <td><code>RaidBox.onOpenBox()</code> → <code>upcastEvent(ViewRaid.OpenBoxProcess)</code> → <code>ViewRaid.openBoxProcess(event)</code> → 연속 성공 · 실패 보정 확률로 결과 결정 (RaidBox.ts:169 → ViewRaid.ts:270)</td>
+              </tr>
+              <tr>
+                <td>보상 2배</td>
+                <td><code>onClickDoubleClaim()</code> → <code>useRVTicket(raid_reward_double)</code> → 결과 상자를 찾아 <code>onClaimResult()</code> → <code>requestMakeLastRaidDouble(friendId)</code> <span class="tag">ViewRaid.ts:451</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>ViewShop</code><br /><span class="tag">상점</span></td>
+                <td>상품 구매</td>
+                <td><code>ShopPackageItem.onClickPurchase()</code> → productID 가드 → 프로모션 기간이면 _promotion 접미사 → <code>logShopPurchaseTry()</code> → <code>Fbi.onPurchaseProduct()</code> → <code>requestGetIAPPurchaseResult()</code> → <code>onConsumeProduct()</code> → 지급 연출 (ShopPackageItem .ts:128)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupStarterPack</code><br /><span class="tag">스타터팩</span></td>
+                <td>스타터팩 구매</td>
+                <td><code>onClickPurchase()</code> → <code>Fbi.onPurchaseProduct(productId)</code> → <code>requestGetIAPPurchaseResult()</code> → <code>onConsumeProduct()</code> → <code>effectClaim()</code> → 실패 시 T_ERROR_MESSAGE_PURCHASE 팝업 + <code>onRefreshWindow()</code> <span class="tag">PopupStarterPack.ts:153</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupCoinHotTime</code><br /><span class="tag">핫타임</span></td>
+                <td>핫타임 구매</td>
+                <td><code>onClickPurchase()</code> → 이미 핫타임 진행 중이면 남은 시간 토스트로 차단 → 아니면 결제 진행 후 <code>onClickClose()</code> <span class="tag">PopupGemHotTime.ts:171</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>PopupAutoFreeMerge</code><br /><span class="tag">오토 머지</span></td>
+                <td>무료 1회</td>
+                <td><code>onClickFreeUse()</code> → <code>DataManager.useRVTicket(auto_merge)</code> → 에러면 중단 → <code>handleClose(onFreeUseSuccess)</code> 로 닫으며 머지 지면에 성공을 알린다 <span class="tag">PopupAutoFreeMerge.ts:79</span></td>
+              </tr>
+              <tr>
+                <td>10회권 구매</td>
+                <td><code>onClickPurchase10Uses()</code> → <code>purchaseProduct(fbIAPID_10Uses)</code> → <code>Fbi.onPurchaseProduct()</code> → <code>requestGetIAPPurchaseResult()</code> → <code>handleClose(onX10IAPSuccess)</code> (PopupAutoFreeMerge.ts:87 → :97)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupFreeCoin</code><br /><span class="tag">무료 코인</span></td>
+                <td>무료 코인 받기</td>
+                <td><code>onClickGet()</code> → isPlayingAd 가드 → <code>useRVTicket(free_coin)</code> → 실패하면 <code>logFreeCoinsFail()</code> 만 남기고 종료, 성공하면 <code>updateCoin()</code> <span class="tag">PopupFreeCoin.ts:75</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="2"><code>PopupGachaGetCoin</code><br /><span class="tag">가챠 코인</span></td>
+                <td>판 하러 가기</td>
+                <td><code>onClickPlay()</code> → <code>logGachaPopupNotEnoughCoinPlay()</code> → <code>updateMatchEntry(get_coin)</code> → <code>FBContext.getNextGameContext()</code> 로 판 진입 <span class="tag">PopupGachaGetCoin.ts:256</span></td>
+              </tr>
+              <tr>
+                <td>무료 코인</td>
+                <td><code>onClickFreeCoin()</code> → isPlayingAd 가드 → <code>logGachaPopupNotEnoughCoinFree()</code> → <code>useRVTicket(free_coin)</code> → 성공 시 <code>updateCoin()</code> → <code>requestFreeCoin()</code> 으로 지급 <span class="tag">PopupGachaGetCoin.ts:232</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupGemUnlocked</code><br /><span class="tag">젬 해금</span></td>
+                <td>SHARE</td>
+                <td><code>onClickShare()</code> → <code>screenShot()</code> → 딤 불투명도를 올리고 젬을 캡처용 부모로 옮겨 <code>ScreenShot.shotNode()</code> → Fbi 로 피드 공유 (PopupGemUnlocked.ts:194 → :71)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupItemIndex</code><br /><span class="tag">젬 도감</span></td>
+                <td>모두 받기</td>
+                <td><code>onClickClaimAll()</code> → 수령 가능 레벨이 없으면 종료 → <code>requestClaimGemCollectionLevelRewards(...levels)</code> → 코인 연출 + 목록 갱신 → <code>logMergeCollectionClaimAll()</code> <span class="tag">PopupItemIndex.ts:238</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupExtraMove</code><br /><span class="tag">이동 추가</span></td>
+                <td>이어하기</td>
+                <td><code>onClickOK()</code> → clickable 가드 → <code>playNext(true)</code> → <code>useRVTicket(gameplay_extra_move)</code> → 결과를 onCompleted 로 넘기고 <code>close()</code> (PopupExtraMove.ts:112 → :87)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupFreeBooster</code><br /><span class="tag">무료 부스터</span></td>
+                <td>FREE</td>
+                <td><code>onClickOK()</code> → <code>playNext(true)</code> → <code>useRVTicket(free_booster)</code> → 성공 시 <code>LogGamePlayFreeBoosterSuccess()</code> 후 부스터 지급 (PopupFreeBooster.ts:91 → :67)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="3"><code>PopupSettingInGame</code><br /><span class="tag">인게임 설정</span></td>
+                <td>나가기</td>
+                <td><code>onLeave()</code> → <code>close(PopupSettingInGame.onLeave)</code> → ViewGame 이 <code>onClickLeave()</code> 실행 → 인게임 닫고 배너 광고 정리 → <code>tryShowInterstitialAD(ingame_lobby)</code> (PopupSettingInGame.ts:139 → ViewGame.ts:1721)</td>
+              </tr>
+              <tr>
+                <td>다시하기</td>
+                <td><code>onRetry()</code> → <code>updateStageEntry(ingame_retry)</code> → <code>close(PopupSettingInGame.onRetry)</code> → <code>ViewGame.retry(false)</code> → <code>SceneManager.toMainGame()</code> 로 같은 판 재진입 (PopupSettingInGame.ts:143 → ViewGame.ts:1502)</td>
+              </tr>
+              <tr>
+                <td>제목(로그 복사)</td>
+                <td><code>onClickHeader()</code> → <code>StageLogger.copyToClipboard()</code> — 개발용. 현재 판의 스테이지 로그를 클립보드에 담는다 <span class="tag">PopupSettingInGame.ts:148</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupSideMenuMobile</code><br /><span class="tag">사이드 메뉴</span></td>
+                <td>턴 대전</td>
+                <td><code>onClickAsync()</code> → <code>logBtnLobbyTurnMode()</code> → <code>requestAsyncPVPGetList()</code> 와 <code>showViewAsyncPage()</code> 를 동시에 → 목록 setData 후 <code>show(true)</code> → 사이드 메뉴 <code>close()</code> <span class="tag">PopupSideMenu.ts:120</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>ViewRanking</code><br /><span class="tag">랭킹</span></td>
+                <td>프로필 사진</td>
+                <td><code>RankListUIItem.onClickUserPhoto()</code> → 내 아이디면 <code>showViewUserProfileWithId()</code>, 남이면 <code>showPopupOtherUserProfile()</code> <span class="tag">RankListUIItem.ts:129</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>ViewMail</code><br /><span class="tag">우편</span></td>
+                <td>친구와 플레이</td>
+                <td><code>onBtnInviteItem()</code> → <code>logInboxPlayWithFriends()</code> → <code>Fbi.inviteFriend()</code> → 페이스북 친구 초대 다이얼로그 <span class="tag">ViewMail.ts:291</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>ViewUserProfile</code><br /><span class="tag">프로필</span></td>
+                <td>기록 탭</td>
+                <td><code>CategoryLobbyTabView.onClickCategory(event)</code> → 눌린 버튼의 인덱스 계산 → <code>setCategoryIndex(index,true)</code> → <code>categoryPageView.scrollToPage()</code> <span class="tag">CategoryLobbyTabView.ts:289</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupOtherUserProfile</code><br /><span class="tag">상대 프로필</span></td>
+                <td>친구와 플레이</td>
+                <td><code>PopupOtherUserProfile.onClickPlay()</code> → <code>logProfileFriendPlay()</code> → <code>FBContext.fromRaidLog(userId)</code> → 대화방 전환 성공 시 <code>updateStageEntry(profile_play)</code> 후 <code>close()</code> (PopupOtherUserProfile.ts:181 → FBContext.ts:610)</td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupBonusGame_*</code><br /><span class="tag">미니게임</span></td>
+                <td>START</td>
+                <td>프리팹 clickEvents 는 비어 있다 — <code>MinigameButton.setPlayButton(target)</code> 이 cc.Component.EventHandler 를 만들어 PopupRewardGame.onClickPlay 를 런타임에 붙인다 <span class="tag">MinigameButton.ts:182</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupSolitaireCityJourney</code><br /><span class="tag">크로스 프로모션</span></td>
+                <td>다른 게임 플레이</td>
+                <td><code>onClickPlay()</code> → <code>Fbi.switchApp(대상 앱ID, {social: CROSS_COIN_MATCH, player_id})</code> → <code>logCrossPromoPlay()</code> — 이 게임을 떠난다 <span class="tag">PopupCrossPromotion.ts:72</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>PopupCrossPromotionMission</code><br /><span class="tag">프로모션 미션</span></td>
+                <td>미션 하러 가기</td>
+                <td><code>PopupCrossPromotionMissionItem.onClickGo()</code> → state 가 Claimable 일 때만 → <code>logCrossPromoPlayPopup()</code> → <code>Fbi.switchApp(대상 게임, social: CROSS_COIN_MATCH_MISSION)</code> <span class="tag">PopupCrossPromotionMissionItem.ts:73</span></td>
+              </tr>
+
+              <tr>
+                <td rowspan="1"><code>(공통)</code></td>
+                <td>닫기</td>
+                <td><code>ViewBase.close(event)</code> → isClose 가드 → createdFromManager 면 <code>ViewManager.blockInputEvent()</code> → <code>onClose(event)</code> 콜백 1회 → <code>show(false)</code> → 호출한 지면 복귀 <span class="tag">ViewBase.ts:75</span></td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--cmt)">
+            <div class="note-title">여기 실린 것과 맵에 실린 것</div>
+            <p>
+              위 표는 <strong>중요한 버튼 57개</strong>만 뽑은 것입니다.
+              맵에서 지면을 열면 <strong>그 지면의 모든 버튼</strong>이 와이어프레임 위에 얹혀 나오고,
+              버튼을 누르면 같은 사슬이 그 자리에서 단계별로 펼쳐집니다.
+              맵에 노출된 버튼은 <strong>158개</strong>, 그중 <strong>157개</strong>가 프리팹에
+              <code>clickEvents</code> 핸들러를 들고 있습니다 (고유 핸들러 68개).
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">프리팹만 봐서는 안 나오는 버튼 두 종류</div>
+            <p>
+              첫째, <strong>런타임에 핸들러를 붙이는 버튼</strong>이 있습니다 —
+              미니게임의 <code>BtnStart</code> 는 프리팹 <code>clickEvents</code> 가 비어 있고
+              <code>MinigameButton.setPlayButton()</code>
+              (<code>assets/script/game/miniGame/MinigameButton.ts:182</code>) 이
+              <code>cc.Component.EventHandler</code> 를 만들어 붙입니다.
+              둘째, <strong>목록 셀 전체</strong>가 코드 생성입니다 — 랭킹 행 · 상점 상품 · 우편 항목 ·
+              UGC 스테이지 · 가챠 결과 등 <strong>15개 지면</strong>이 여기 해당하고,
+              맵에서는 그 지면 캡션에 그 사실을 적어 뒀습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="post">
+        <h2 class="doc-h2">결과 후 플로우 <span class="doc-h2-sub">인게임이 끝난 뒤 무엇이 순서대로 뜨는가</span></h2>
+        <p class="doc-lede" style="margin-top: 0">
+          판이 끝나면 <b>세 구간</b>이 차례로 돕니다 —
+          ① 인게임 안에서 도는 결과 체인(<code>GameEndFlowEnumerator</code>),
+          ② 로비로 돌아가는 게이트(<code>SceneManager.checkToLobby()</code>),
+          ③ 로비에 도착한 뒤의 팝업 순서(<code>toLobby()</code>).
+          <b>솔리테어와 달리 한 메소드에 모여 있지 않아서</b>, "결과 다음에 뭐가 안 뜬다" 류의 문제는
+          어느 구간에서 끊겼는지부터 갈라야 합니다.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 8%">구간</th>
+                <th style="width: 26%">단계</th>
+                <th>조건 · 하는 일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="5">① 결과 체인<br /><span class="tag">GameEndFlowEnumerator</span></td>
+                <td><code>showPopupCoinClaim()</code></td>
+                <td>프리로드와 <code>Localization</code> 로드를 기다리고 배너를 끈 뒤 정산 팝업. <strong>버튼이 눌릴 때까지 여기서 멈춘다</strong></td>
+              </tr>
+              <tr>
+                <td><code>showRewardGame()</code></td>
+                <td><code>DataManager.checkMinigame()</code> 일 때만. 이름이 <code>MINIGAME_NAME_ALT_1</code> 이면 <code>requestPlayMinigame()</code> 으로 가챠 토큰만 받고, 그 외에는 <code>showBonusGame()</code></td>
+              </tr>
+              <tr>
+                <td><code>showRaid()</code></td>
+                <td><code>shouldShowViewRaid</code> 이고 <code>getRaidSkipStreak() &lt; 2</code> 일 때. 이미 턴 (친구, 스테이지) 조합이면 건너뛴다</td>
+              </tr>
+              <tr>
+                <td><code>playLastStep()</code></td>
+                <td>튜토리얼이면 <code>modifyOnTutorial()</code> 로 다음 튜토리얼 판을 바로 잇고, 아니면 <code>modifyClaimEndEvent()</code></td>
+              </tr>
+              <tr>
+                <td><code>modifyClaimEndEvent()</code></td>
+                <td>닫힘 이벤트가 <code>onRestart</code> 면 <code>viewGame.retry(true)</code>, 그 외에는 <code>viewGame.close("Lobby")</code></td>
+              </tr>
+
+              <tr>
+                <td rowspan="3">② 복귀 게이트<br /><span class="tag">SceneManager</span></td>
+                <td>호출 지점</td>
+                <td><code>ViewManager.removeView()</code> 와 <code>PopupManager.close()</code> — 뷰나 팝업이 스택에서 빠질 때마다 <code>checkToLobby()</code> 가 불린다</td>
+              </tr>
+              <tr>
+                <td><code>checkToLobby()</code></td>
+                <td><code>dontCheckLobby</code> 가 <code>true</code> 면 아무것도 하지 않는다. 마지막 뷰가 없거나 <code>ViewLobbyRanking</code> 이면 <code>toLobby()</code></td>
+              </tr>
+              <tr>
+                <td><code>dontCheckLobby</code></td>
+                <td><code>toMainGame()</code> 에서 잠그고 <code>createViewGame()</code> 이 뷰를 띄운 뒤 푼다. 머지 · 가챠를 거치는 동안 로비가 겹쳐 뜨지 않게 하는 잠금</td>
+              </tr>
+
+              <tr>
+                <td rowspan="6">③ 로비 팝업 순서<br /><span class="tag">toLobby()</span></td>
+                <td>⓪ UGC 실패</td>
+                <td><code>getShouldShowUGCStageFailed()</code> 이면 <code>T_NO_STAGE</code> 에러 팝업부터</td>
+              </tr>
+              <tr>
+                <td>① 업데이트 보상</td>
+                <td><code>getShowUpdateReward()</code> (서버 응답의 <code>canReceive2307Rollback</code>) 이면 띄우고 <strong>즉시 return</strong></td>
+              </tr>
+              <tr>
+                <td>② 웰컴백</td>
+                <td><code>checkWelcomeBack()</code> 이면 띄우고 return</td>
+              </tr>
+              <tr>
+                <td>③ 레이드 대기</td>
+                <td><code>checkRaidData</code> 가 처음일 때만 <code>requestGetRaidWaiting()</code>. <strong>대기 로그 팝업 노출은 현재 주석 처리</strong></td>
+              </tr>
+              <tr>
+                <td>④ 토너먼트 결과</td>
+                <td><code>checkTournamentData</code> 가 처음일 때만 <code>showPopupTournamentResult()</code>. 받을 보상이 없으면 <code>null</code> 이 와서 다음으로 넘어간다</td>
+              </tr>
+              <tr>
+                <td>잠금 · 마무리</td>
+                <td>여기까지 아무것도 안 걸리면 <code>checkLobbyData = false</code> 로 세션 1회 잠금. 이어서 <code>ViewGame</code> 선로드 · <code>checkShortCut()</code> · 로비 갱신</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">지금 이 순서에 들어 있지 않은 것들</div>
+            <p>
+              <strong>스타터팩</strong>(<code>firstPopStarterPack</code>) · <strong>데일리 보너스</strong> ·
+              <strong>친구 초대 이벤트</strong> · <strong>리워드 캘린더</strong> 는
+              <code>toLobby()</code> 안에 코드가 남아 있지만 <strong>호출부가 전부 주석 처리</strong>돼 있습니다.
+              결과 체인 쪽의 <strong>머지 · 가챠 자동 진입</strong>도 같습니다.
+              맵과 이 표는 <strong>실제로 도는 경로만</strong> 그렸습니다 — 주석 경로를 살아 있는 것처럼 그리면
+              "왜 안 뜨지"를 코드에서 다시 찾게 되기 때문입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">다음 판 프리로드가 여기 붙어 있다</div>
+            <p>
+              <code>createViewGame()</code> 이 끝나면 <code>preloadViewsAfterIngameFlow()</code> 가
+              <code>PopupBigCoinClaim</code> → (가챠 튜토리얼 여부에 따라) <code>ViewGacha</code> / <code>ViewMergeGem</code>
+              → <code>ViewLobbyRanking</code> 순으로 미리 올려 둡니다.
+              <strong>다음 판의 체감 로딩이 여기서 결정</strong>되므로, 로딩 지연을 볼 때 이 순서를 같이 봐야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="context">
+        <h2 class="doc-h2">컨텍스트 분기 <span class="doc-h2-sub">같은 지면 · 같은 버튼이 상태에 따라 다르게 동작한다</span></h2>
+        <p class="doc-lede" style="margin-top: 0">
+          FB 컨텍스트는 <b>지면이 아니라 상태</b>입니다. 같은 로비 · 같은 매치 버튼이 이 상태에 따라
+          다르게 동작합니다. 맵의 화살표로는 표현되지 않는 축이라 캔버스 툴바의
+          <b>[컨텍스트]</b> 버튼에 따로 그려 뒀습니다. 아래는 그 요약입니다.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%">상태</th>
+                <th style="width: 20%">타입</th>
+                <th>이 상태가 되는 조건</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Solo</b><br /><span class="tag">혼자</span></td>
+                <td><code>FBContextType.Solo</code></td>
+                <td>기본 상태. 전환 취소 · 추천 실패 · 페이로드 없음이면 여기로 온다. <code>defaultGame()</code> 이 <code>Fbi.switchToContextSolo()</code> 를 부른다</td>
+              </tr>
+              <tr>
+                <td><b>PVP</b><br /><span class="tag">친구 대전</span></td>
+                <td><code>FBContextType.PVP</code></td>
+                <td><code>currentFriend != null</code> 이고 <code>Fbi.createContextWith(friendId)</code> 성공. 성공 시 <code>setIsSendableMsgP2P(true)</code></td>
+              </tr>
+              <tr>
+                <td><b>Tournament</b><br /><span class="tag">토너먼트</span></td>
+                <td><code>FBContextType.Tournament</code></td>
+                <td><code>currentTournament != null</code> 이고 <code>Fbi.switchToContext(tournamentContextId)</code> 성공. 성공 시 <code>setIsSendableMsgP2P(false)</code> 로 P2P 메시지를 막는다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">함정 — 토너먼트 방이 친구 P2P 방으로 둔갑할 수 있다</div>
+            <p>
+              FB 에서는 <strong>토너먼트 컨텍스트도 P2P 스레드와 똑같이 THREAD</strong> 입니다.
+              코인 매치는 친구별 <code>contextID</code> 를 <code>FBDataKey.FriendContextID</code> 에 캐시해 두고
+              다음 전환 때 재사용하는데, 토너먼트 전환 직후에 그대로 저장하면
+              <strong>토너먼트 방이 그 친구의 P2P 방으로 캐시</strong>됩니다.
+              그래서 <code>Fbi.saveFriendContext()</code>
+              (<code>assets/script/common/Fbi.ts:1868-1879</code>) 가
+              <code>isThreadContext()</code> 와 <code>getTournamentAsync()</code> <strong>두 겹</strong>으로 막고 있고,
+              후자에는 "토너먼트 컨텍스트는 저장하지 않음" 주석이 붙어 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">로그로는 컨텍스트 종류를 볼 수 없다</div>
+            <p>
+              <code>Fbi.getContextType()</code> (<code>Fbi.ts:687-690</code>) 은 <strong>첫 줄이 <code>return "";</code></strong> 이라
+              SDK 값을 절대 돌려주지 않습니다. 이 값이 로그인 로그의
+              <code>entrypoint.contextType</code> 으로 그대로 나가므로
+              (<code>assets/script/common/LogManager.ts:194</code>),
+              <strong>BQ 로그에서 컨텍스트 종류는 전부 빈 문자열</strong>입니다.
+              살아 있는 판별 경로는 <code>getContextTypeRaw()</code> 와
+              클라이언트 필드 <code>FBContext.currentContextType</code> 뿐입니다.
+              컨텍스트별 지표를 로그로 보려면 이걸 먼저 고쳐야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title"><code>PvpType</code> 12종은 상태가 아니다</div>
+            <p>
+              <code>PvpType</code>(<code>P2P</code> · <code>RAID_*</code> 4종 · <code>PIC_*</code> 4종 ·
+              <code>ASYNC_PVP</code> 2종 · <code>P2PAI</code>)은 어디에도 <strong>상태로 저장되지 않습니다</strong>.
+              <code>sharePvpMessage</code> · <code>getPvpPayload</code> · <code>TemplateImageManager</code> 에서
+              <strong>메시지 · 이미지 종류</strong>로만 쓰입니다.
+              그래서 상태 기계에서는 <code>PVP</code> 상자의 <strong>자기 자신으로 도는 전이 라벨</strong>로 그렸습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">정의만 있고 호출처가 없는 것들</div>
+            <p>
+              <code>fromPICMessage()</code> · <code>checkEntryDataMonsterFeed()</code> 는 호출처가 없습니다 —
+              <code>SOCIAL_MESSAGE_PIC</code> 진입은 컨텍스트를 PVP 로 세우지 않고 그냥 <code>MainGame</code> 으로 갑니다.
+              <code>getNextContextP2POnly()</code> 와 <code>getLobbyRecommendContextType()</code> 도 호출처가 없고,
+              <code>getNextGameContext()</code> 의 유일한 분기축은 서버가 내리는
+              <code>CoinCountryData.ContextType</code>(A/B/C, 기본 <code>"C"</code>)입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="fb">
+        <h2 class="doc-h2">FB 지면 <span class="doc-h2-sub">FB 가 직접 그리는 화면</span></h2>
+        <p class="doc-lede" style="margin-top: 0">
+          우리 프리팹이 아니라 <b>FB 가 직접 그리는 화면</b>입니다. 게임 위에 덮이므로
+          프리팹 파싱으로는 절대 나오지 않아 와이어프레임에 없습니다.
+          <b>23종</b> 중 <b>16종</b>이 유저에게 보이는 다이얼로그이고 나머지는 화면 없이 조용히 처리됩니다.
+          전체 표는 캔버스 툴바의 <b>[FB 지면]</b> 버튼에 있습니다.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 14%">분류</th>
+                <th style="width: 12%" >종수</th>
+                <th>대표 API · 언제 뜨나</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>컨텍스트</td>
+                <td>5</td>
+                <td><code>createAsync</code> 친구 방 만들기 · <code>switchAsync</code> 토너먼트/저장된 방 · <code>switchAsync("SOLO")</code> 복귀. <code>chooseAsync</code> · <code>matchPlayerAsync</code> 는 <strong>래퍼만 있고 호출처 0</strong></td>
+              </tr>
+              <tr>
+                <td>토너먼트</td>
+                <td>4</td>
+                <td><code>createAsync</code> 생성 다이얼로그(판이 끝났고 컨텍스트가 토너먼트가 아닐 때) · <code>shareAsync</code> 공유 · <code>postScoreAsync</code> 사일런트 등록(실패 시 3회 재시도 + <code>3320_TOURNAMENT_POST_FAIL</code>)</td>
+              </tr>
+              <tr>
+                <td>공유 · 초대</td>
+                <td>4</td>
+                <td><code>shareAsync</code> 젬 해금 · 합성 · 미니게임 · 랭킹 · UGC · 가챠 결과 · <code>inviteAsync</code> 3지면 · <code>updateAsync</code> 대화방 글(<code>PvpType</code> 11종). <code>shareLinkAsync</code> 는 호출처 0</td>
+              </tr>
+              <tr>
+                <td>플레이어 · 커뮤니티</td>
+                <td>4</td>
+                <td><code>subscribeBotAsync</code> 하루 1회 · <code>createShortcutAsync</code> 홈 추가 · <code>followOfficialPageAsync</code> 우편함 팬페이지 보상. <code>joinOfficialGroupAsync</code> 는 호출처 0</td>
+              </tr>
+              <tr>
+                <td>결제</td>
+                <td>3</td>
+                <td><code>getCatalogAsync</code> 부팅 1회 · <code>purchaseAsync</code> 6지면(먼저 <code>getPurchasesAsync()</code> 로 미소비 구매를 확인) · <code>consumePurchaseAsync</code></td>
+              </tr>
+              <tr>
+                <td>크로스 · 광고</td>
+                <td>3</td>
+                <td><code>switchGameAsync</code> 크로스 프로모션 · 전면광고 <strong>8구좌</strong>(<code>LogITPosition</code>) · 보상형 광고 <strong>33구좌</strong>(<code>LogRVPosition</code>)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">호출처가 0인 래퍼가 6개 있다</div>
+            <p>
+              <code>showPopupAdBreak</code> · <code>showPopupToastError</code> · <code>chooseContext</code> ·
+              <code>matchPlayerAsync</code> · <code>shareLink</code> · <code>joinOfficialGroup</code> 은
+              래퍼 메소드만 남아 있고 게임 코드에서 부르는 곳이 없습니다.
+              <strong>지울 후보</strong>이거나, 예전에 쓰다 끊긴 경로입니다 — 어느 쪽인지는 이 문서 범위 밖입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="scope">
+        <h2 class="doc-h2">확인 범위</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 26%">항목</th>
+                <th style="width: 14%">방법</th>
+                <th>범위 · 한계</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>지면 ↔ 프리팹 매핑</td>
+                <td><span class="pill" style="--acc: var(--ok)">자동 + 검증</span></td>
+                <td><code>ViewCreator.ts</code> 의 <code>ViewManager.load</code> 인자를 정적 분석해 <strong>63개 전부 코드 리터럴로 대조</strong>했다. 경로 규칙은 <code>ViewManager.ts:87</code> (<code>Popup</code> 포함이면 <code>popup/</code>, 아니면 <code>view/</code>), 번들 루트는 <code>assets/bundle</code>. <strong><code>assets/art</code> · <code>assets/unusedResources</code> 의 동명 프리팹은 로드되지 않아 제외</strong></td>
+              </tr>
+              <tr>
+                <td>와이어프레임 좌표</td>
+                <td><span class="pill" style="--acc: var(--ok)">자동</span></td>
+                <td>프리팹 JSON 의 <code>_trs</code> 를 읽고 <code>cc.Widget</code> 정렬을 계산해 720&times;1280 으로 정규화. <strong>회전은 무시</strong>. 프리팹 저장 시점 비활성 장식 · 화면 밖 스크롤 컨텐츠 · 잠금 오버레이 제외</td>
+              </tr>
+              <tr>
+                <td>버튼 → 호출 사슬</td>
+                <td><span class="pill" style="--acc: var(--warn)">손</span></td>
+                <td>핸들러 이름은 프리팹의 <code>clickEvents</code> 에서 자동으로 나오지만, <strong>사슬 내용은 구현을 읽고 손으로 적었다</strong>. 내부 가드 · 로그 · 갱신 호출은 큰 틀을 흐려 뺐다</td>
+              </tr>
+              <tr>
+                <td>지면 로직 표 · 흐름 화살표</td>
+                <td><span class="pill" style="--acc: var(--warn)">손</span></td>
+                <td>노드 64개의 <code>acts</code> · <code>detail</code> 과 화살표 45개는 코드를 읽고 작성. <strong>주석 처리된 경로는 그리지 않았다</strong></td>
+              </tr>
+              <tr>
+                <td>컨텍스트 상태 기계</td>
+                <td><span class="pill" style="--acc: var(--warn)">손</span></td>
+                <td><code>FBContext.ts</code>(3,375줄) · <code>Fbi.ts</code> · <code>ViewSwitchContext.ts</code> 기준. 상태 3 · 전이 12 · 구좌 15 · 게이트 11 · 복귀 7 · 정산 6</td>
+              </tr>
+              <tr>
+                <td>런타임 생성 목록</td>
+                <td><span class="pill" style="--acc: var(--bad)">불가</span></td>
+                <td>랭킹 행 · 상점 상품 셀 · 우편 항목 · 친구 목록 · UGC 스테이지 · 가챠 결과 등은 <strong>프리팹에 없고 코드가 만든다</strong>. 파서를 고쳐도 안 나오므로 해당 <strong>15개 지면</strong> 캡션에 그 사실을 적었다</td>
+              </tr>
+              <tr>
+                <td>서버가 내리는 값</td>
+                <td><span class="pill" style="--acc: var(--bad)">불가</span></td>
+                <td><code>GEM.MAX_PUBLISHED_LEVEL</code> · <code>COIN_BONUS</code> · <code>GACHA.PRODUCTSv3</code> 는 클라 기본값이 최소치이고 <code>setSharedConstant()</code> 로 서버가 덮어쓴다. <strong>실제 젬 최대 레벨과 가챠 상품표는 코드만으로 확정할 수 없어 계산식만 적었다</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">맵에 올리지 않은 프리팹</div>
+            <p>
+              <code>assets/bundle</code> 안에 있지만 맵에 없는 것은
+              <strong>배경 · 부스터 연출 · 파츠</strong>(<code>bg_lobby</code> · <code>booster_*</code> 4종 ·
+              <code>PopupPartsTitle</code> · <code>Silhouette</code> · <code>bonus_game_touch_coin</code>)와
+              <strong>코드 참조가 없는</strong> <code>PopupEndPHTournamentReward</code> 입니다.
+              앞의 것들은 지면이 아니고, 뒤의 것은 죽은 프리팹입니다.
+              같은 지면의 프리팹 변형(플랫폼별 · 프로모션 기간용 · 미니게임 6종 · 크로스 프로모션 8종)은
+              <strong>카드를 늘리지 않고 캡션에 적었습니다</strong>.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">코드상 사실과 맵 표기가 다른 곳</div>
+            <p>
+              <code>ViewMergeGem</code> 과 <code>ViewGacha</code> 는 맵에서 <code>View</code> 로 표기했지만
+              <strong>코드상으로는 둘 다 <code>PopupBase</code> 를 상속</strong>합니다.
+              화면 전체를 덮고 <code>view/</code> 에서 로드되므로 흐름상 View 로 다뤘습니다.
+              또 설정 팝업 4종(<code>PopupSetting</code> / <code>InGame</code> / <code>UGC</code> / <code>AsyncGame</code>)은
+              <strong>전부 같은 <code>PopupSettingInGame</code> 스크립트</strong>를 쓰고 프리팹만 다릅니다.
+              <code>ViewGameUGC</code> 도 별도 스크립트가 아니라 <code>ViewGame</code> 컴포넌트를 얹은 다른 프리팹이고,
+              분기는 <code>isUGCStage</code> 플래그 하나로만 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">다시 만드는 법</div>
+            <p>
+              생성기는 코인 매치 저장소의 <code>_ignore/flowmap/</code> 에 있습니다.
+              <code>python3 gen_ui.py</code> → <code>python3 gen_block.py</code> → <code>python3 assemble.py</code> 순으로 돌리면
+              프리팹 좌표와 와이어프레임이 <strong>현재 코드 기준으로 다시 생성</strong>됩니다.
+              지면 로직 표 · 흐름 · 사전은 손 작업이라 자동으로 따라오지 않습니다 —
+              <code>_ignore/flowmap/</code> 옆의 조각 파일을 고쳐야 합니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> coin-match-client <code>main</code> 브랜치 기준 커밋 <code>a1e8739eb</code> ·
+          측정 2026-08-26 · 프리팹 77개 파싱 → 지면 56개 · 화면 요소 1,417개 ·
+          <code>ViewCreator</code> show 메소드 62개 · 서버 응답으로 결정되는 값과 런타임 생성 목록은 제외.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>
