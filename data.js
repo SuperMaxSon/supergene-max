@@ -28,7 +28,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-26 11:05",
+  updated: "2026-08-26 10:41",
 };
 
 const SECTIONS = [
@@ -213,6 +213,7 @@ const SECTIONS = [
         updated: "2026-08-19 10:07",
         pinned: true,
         tags: ["QA", "트래커", "상시"],
+        share: false,
       },
       {
         title: "토너먼트 참가 · 전환 다이얼로그 1회",
@@ -223,6 +224,7 @@ const SECTIONS = [
         updated: "2026-08-13 18:40",
         pinned: false,
         tags: ["QA", "토너먼트", "참가"],
+        share: false,
       },
       {
         title: "토너먼트 만들기 복구 · 솔로 전환 대기",
@@ -233,6 +235,7 @@ const SECTIONS = [
         updated: "2026-08-13 17:13",
         pinned: false,
         tags: ["QA", "토너먼트", "네트워크오류"],
+        share: false,
       },
       {
         title: "인게임 재도전",
@@ -243,6 +246,7 @@ const SECTIONS = [
         updated: "2026-08-13 17:13",
         pinned: false,
         tags: ["QA", "재도전", "정산"],
+        share: false,
       },
       {
         title: "나가기 종료 처리 순서 변경",
@@ -253,6 +257,7 @@ const SECTIONS = [
         updated: "2026-08-13 17:13",
         pinned: false,
         tags: ["QA", "나가기", "전면광고"],
+        share: false,
       },
       {
         title: "SPEC-038 토너 초대 토글",
@@ -263,6 +268,7 @@ const SECTIONS = [
         updated: "2026-08-13 17:13",
         pinned: false,
         tags: ["QA", "SPEC-038", "초대"],
+        share: false,
       },
     ],
   },
