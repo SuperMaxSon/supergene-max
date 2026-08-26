@@ -127,6 +127,7 @@ const SECTIONS = [
         updated: "2026-08-18 18:10",
         pinned: false,
         tags: ["축2", "로딩", "정본"],
+        share: false,
       },
       {
         title: "전면광고 지면 — 4개 프로젝트 플로우 비교",
@@ -137,6 +138,7 @@ const SECTIONS = [
         updated: "2026-08-14 09:57",
         pinned: false,
         tags: ["축1", "광고", "4프로젝트"],
+        share: false,
       },
       {
         title: "전체 지면 플로우 맵 — UI + 로직 + 컨텍스트",
