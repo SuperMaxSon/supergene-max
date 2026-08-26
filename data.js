@@ -28,7 +28,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-26 10:45",
+  updated: "2026-08-26 10:46",
 };
 
 const SECTIONS = [
@@ -127,7 +127,6 @@ const SECTIONS = [
         updated: "2026-08-18 18:10",
         pinned: false,
         tags: ["축2", "로딩", "정본"],
-        share: false,
       },
       {
         title: "전면광고 지면 — 4개 프로젝트 플로우 비교",
@@ -138,7 +137,6 @@ const SECTIONS = [
         updated: "2026-08-14 09:57",
         pinned: false,
         tags: ["축1", "광고", "4프로젝트"],
-        share: false,
       },
       {
         title: "전체 지면 플로우 맵 — UI + 로직 + 컨텍스트",
