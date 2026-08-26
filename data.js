@@ -57,7 +57,6 @@ const SECTIONS = [
         updated: "2026-08-20 18:52",
         pinned: false,
         tags: ["UA", "NRU", "BigQuery", "크로스프로젝트"],
-        share: false,
       },
       {
         title: "주간 KPI 3축 — 분석 입구",
