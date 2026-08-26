@@ -28,7 +28,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-26 12:10",
+  updated: "2026-08-26 14:02",
 };
 
 const SECTIONS = [
@@ -147,6 +147,16 @@ const SECTIONS = [
         updated: "2026-08-26 12:10",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "컨텍스트", "인터랙티브", "검색"],
+      },
+      {
+        title: "스토리 머지 프로토 플로우 맵",
+        desc: "지면이 4개뿐인 프로토라 축을 지면이 아니라 스토리 노드 11개 · 연출 모드 3종 · 태스크 골드 루프로 잡았습니다. 프리팹 실측 와이어프레임과 주요 이동 경로가 카드마다 붙습니다.",
+        url: "docs/story-merge-flow-map.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-08-26 14:02",
+        pinned: false,
+        tags: ["레퍼런스", "플로우", "스토리머지"],
       },
       {
         title: "코인 매치 전체 지면 플로우 맵",

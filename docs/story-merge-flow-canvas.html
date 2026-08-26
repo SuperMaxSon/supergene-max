@@ -1,0 +1,4215 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Story Merge 프로토 플로우 맵</title>
+    <meta name="description" content="스토리 머지 프로토타입의 부팅 · 스토리 노드 11개 · 연출 모드 3종 · 태스크 골드 루프를 드래그·확대로 훑는 오픈맵. 카드를 누르면 프리팹 실측 와이어프레임과 주요 이동 경로가 열린다." />
+    <meta name="color-scheme" content="light" />
+  </head>
+  <body>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --grid: #e4e8ef;
+    --surface: #ffffff;
+    --surface-2: #f1f3f7;
+    --surface-3: #e9ecf2;
+    --ink: #16192a;
+    --ink-2: #3c4258;
+    --muted: #5a6178;
+    --faint: #8b93a8;
+    --line: #dfe3ea;
+    --line-soft: #eceff4;
+    --shadow: rgba(20, 25, 45, .1);
+    --shadow-lg: 0 10px 34px rgba(20, 25, 45, .16);
+
+    /* 계층 색. 코인 매치의 지면 분류(로비 · 인게임 · 상점)와 축이 다르다 —
+       이 프로토는 지면이 4개뿐이고 정보가 있는 축이 스토리 노드 흐름이라
+       '부팅 · 스토리 · 연출 모드 · 태스크 · 데이터 · 시스템' 으로 나눈다. */
+    --c-entry: #0e7490;
+    --c-story: #1d4ed8;
+    --c-mode: #6d28d9;
+    --c-task: #1f9e4a;
+    --c-data: #a8801a;
+    --c-system: #5a6178;
+
+    --t-gate: #d97706;
+    --t-net: #1f7fd4;
+    --t-ad: #d1542c;
+    --t-nav: #1f9e4a;
+    --t-call: #5a6178;
+
+    --font-ui: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ L1 : 오픈맵 ============ */
+  #stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  #stage.dragging { cursor: grabbing; }
+
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+  #wires { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+  #wlabels { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; z-index: 3; }
+
+  .wire { fill: none; stroke: var(--line); stroke-width: 1.6; }
+  .wire.trunk { stroke: var(--ink-2); stroke-width: 2.4; }
+  .wire.back { stroke: var(--c-task); stroke-dasharray: 8 6; stroke-width: 1.8; }
+  .wire.branch { stroke: var(--c-entry); stroke-width: 1.8; }
+
+  .wlabel {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+  .wlabel.strong { fill: var(--ink-2); font-size: 11.5px; }
+  /* 선에서 멀리 밀어낸 라벨을 원래 화살표와 이어주는 지시선 */
+  .wlead { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; }
+  #wires.focused ~ #wlabels .wlead { opacity: .05; }
+
+  #wires.focused .wire { opacity: .08; }
+  #wires.focused .wlabel { opacity: .05; }
+  #wires.focused .wire.hot { opacity: 1; stroke-width: 2.6; }
+  #wires.focused .wlabel.hot { opacity: 1; }
+
+  /* 카드는 훑는 용도 — 제목 · 역할 한 줄 · 개념도만. 나머지는 지면 팝업에 있다. */
+  .node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: left;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--cc);
+    border-radius: 4px;
+    padding: 8px 10px 9px;
+    box-shadow: 0 1px 2px var(--shadow);
+    cursor: pointer;
+    transition: box-shadow .13s ease, opacity .13s ease;
+  }
+  .node:hover { box-shadow: 0 4px 14px var(--shadow); }
+  .node:focus-visible { outline: 2px solid var(--cc); outline-offset: 2px; }
+  .node.selected { box-shadow: 0 0 0 2px var(--cc), 0 6px 18px var(--shadow); }
+  #world.focused .node { opacity: .24; }
+  #world.focused .node.hot { opacity: 1; }
+
+  .node { position: absolute; }
+  /* 카드 우측 초소형 화면 개념도 — 9:16 세로, 점 하나가 프리팹 버튼 하나.
+     좌표를 세로 화면 기준으로 찍으므로 상자도 세로여야 점 배치가 안 뭉개진다. */
+  .n-wf {
+    position: absolute; top: 8px; right: 9px;
+    width: 24px; height: 42.7px;
+    border: 1px solid var(--line); border-radius: 2px;
+    background: var(--surface-2); pointer-events: none;
+  }
+  .n-wf u {
+    position: absolute; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
+    border-radius: 50%; background: var(--cc); opacity: .6; display: block;
+  }
+
+  .n-title { font-size: 14.5px; font-weight: 650; letter-spacing: -.012em; line-height: 1.25; padding-right: 46px; }
+  .n-ko { font-size: 11px; color: var(--ink-2); }
+
+  /* 칩 = 이 지면에서 열리는 다른 지면. 화살표 대신 소속으로 표현한다. */
+  .n-chips {
+    display: flex; flex-wrap: wrap; gap: 4px 5px; align-items: center;
+    margin-top: 4px; padding-top: 7px; border-top: 1px dashed var(--line);
+  }
+  .n-chips .c-h {
+    flex: 0 0 100%; display: flex; align-items: center; gap: 6px;
+    font-size: 9px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--faint); font-weight: 800; margin: 1px 0 1px;
+  }
+  .n-chips .c-h em { font-style: normal; color: var(--cc); }
+  .n-chips .c-h:not(:first-child) { margin-top: 5px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10.5px; font-weight: 650; line-height: 1.2; color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 3px 8px 3px 6px;
+    white-space: nowrap; cursor: pointer;
+  }
+  .chip i { width: 5px; height: 5px; border-radius: 50%; background: var(--tc, var(--cc)); flex: 0 0 auto; }
+  .chip:hover { border-color: var(--cc); color: var(--ink); background: var(--surface); }
+  .chip.on { border-color: var(--cc); color: var(--ink); box-shadow: 0 0 0 2px var(--cc); }
+  .chip.zone {
+    background: var(--surface); border-style: solid; border-left: 3px solid var(--cc);
+    border-radius: 4px; font-weight: 700; color: var(--ink);
+  }
+
+  .cat-entry { --cc: var(--c-entry); }
+  /* 띠 라벨 — 맵 조작을 막지 않게 pointer-events 를 끊는다 */
+  .band-label {
+    position: absolute; left: 80px;
+    font-size: 12px; font-weight: 800; letter-spacing: .04em;
+    color: var(--faint); pointer-events: none; white-space: nowrap;
+    border-left: 3px solid var(--line); padding-left: 9px; line-height: 1.5;
+  }
+
+  .cat-story { --cc: var(--c-story); }
+  .cat-mode { --cc: var(--c-mode); }
+  .cat-task { --cc: var(--c-task); }
+  .cat-data { --cc: var(--c-data); }
+  .cat-system { --cc: var(--c-system); }
+  .node.gate { border-top-width: 1px; border-left: 3px solid var(--cc); background: var(--surface-2); }
+
+  /* ============ 크롬 ============ */
+  .panel {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+
+  #head { top: 14px; left: 14px; padding: 11px 13px; max-width: 318px; }
+  #head h1 { margin: 0; font-size: 13px; font-weight: 750; letter-spacing: -.01em; }
+  #head p { margin: 4px 0 0; font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+  #head b { color: var(--ink-2); font-weight: 650; }
+  #legend { display: flex; flex-wrap: wrap; gap: 3px 9px; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); }
+  #legend span { font-size: 9.5px; color: var(--ink-2); display: flex; align-items: center; gap: 5px; }
+  #legend i { width: 8px; height: 8px; border-radius: 1px; display: block; }
+
+  #tools { top: 14px; right: 14px; display: flex; gap: 4px; padding: 6px; z-index: 6; }
+  #tools button {
+    font-family: inherit; font-size: 11px; font-weight: 650;
+    color: var(--ink-2); background: transparent;
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: 5px 9px; cursor: pointer; min-width: 30px;
+  }
+  #tools button:hover { background: var(--surface-2); color: var(--ink); }
+  #tools button:focus-visible { outline: 2px solid var(--c-task); outline-offset: 1px; }
+  #zoomval { font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: flex; align-items: center; padding: 0 6px; font-variant-numeric: tabular-nums; }
+
+
+  /* 검색 — 메소드 · 지면 · 프리팹 · 버튼 이름을 한 상자에서 찾는다.
+     맞은 항목을 고르면 그 지면을 열고, 메소드면 그 메소드가 걸린 가지 칸까지 펼친다. */
+  #find { top: 56px; right: 14px; width: 342px; padding: 0; z-index: 7; }
+  #fx-bar { display: flex; align-items: center; gap: 7px; padding: 6px 9px; }
+  #fx-ico { flex: none; font-size: 11px; color: var(--faint); }
+  #fx-q {
+    flex: 1; min-width: 0; font-family: inherit; font-size: 11.5px; color: var(--ink);
+    background: transparent; border: 0; outline: none; padding: 3px 0;
+  }
+  #fx-q::placeholder { color: var(--faint); }
+  #fx-q::-webkit-search-cancel-button { display: none; }
+  #fx-n { flex: none; font-family: var(--font-mono); font-size: 9.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  #fx-list { display: none; max-height: min(54vh, 470px); overflow-y: auto; border-top: 1px solid var(--line); }
+  #find.open #fx-list { display: block; }
+  .fx-it { display: flex; align-items: baseline; gap: 7px; padding: 6px 9px; cursor: pointer; border-bottom: 1px solid var(--line-soft); }
+  .fx-it:last-child { border-bottom: 0; }
+  .fx-it:hover { background: var(--surface-2); }
+  .fx-it.sel { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--cc, var(--c-task)); }
+  .fx-k { flex: none; font-size: 9px; font-weight: 700; color: #fff; background: var(--cc, var(--c-system)); border-radius: 2px; padding: 1px 4px; letter-spacing: -.01em; }
+  .fx-t { flex: 1; min-width: 0; font-size: 11px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-t.mono { font-family: var(--font-mono); font-size: 10.5px; }
+  .fx-t mark { background: #fde68a; color: inherit; border-radius: 1px; padding: 0 1px; }
+  .fx-w { flex: none; max-width: 42%; font-size: 9.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-msg { padding: 9px 10px; font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+  .fx-msg code { font-family: var(--font-mono); font-size: 9.5px; }
+
+  #hint { bottom: 14px; left: 50%; transform: translateX(-50%); padding: 7px 13px; font-size: 10.5px; color: var(--muted); display: flex; gap: 13px; white-space: nowrap; z-index: 4; }
+  #hint b { color: var(--ink-2); font-weight: 650; }
+
+  #mini { bottom: 14px; left: 14px; width: 200px; height: 162px; padding: 6px; cursor: crosshair; z-index: 4; }
+  #mini-in { position: relative; width: 100%; height: 100%; }
+  #mini .mn { position: absolute; border-radius: 1px; opacity: .5; }
+  #mini-vp { position: absolute; border: 1.5px solid var(--c-task); background: rgba(31, 158, 74, .1); border-radius: 1px; }
+
+  /* ============ L2/L3 : 탭 도크 ============ */
+  /* 노드를 누르면 화면 가운데 팝업으로 띄운다. 다이어그램이 커야 읽히므로 폭을 넓게 쓴다. */
+  #veil {
+    position: fixed; inset: 0; z-index: 7;
+    background: rgba(20, 25, 45, .34);
+    backdrop-filter: blur(1.5px);
+    display: none;
+  }
+  #veil.open { display: block; }
+
+  #dock {
+    position: fixed; z-index: 8;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(2240px, 97vw);
+    height: min(1200px, 95vh);
+    display: none; flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    box-shadow: 0 24px 70px rgba(20, 25, 45, .3);
+    overflow: hidden;
+  }
+  #dock.open { display: flex; }
+
+  /* 탭 대신 한 갈래 드릴다운. 헤더에 뒤로 · 현재 경로 · 닫기만 둔다. */
+  #dock-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px 8px 8px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  #d-back {
+    flex: 0 0 auto;
+    font-family: inherit; font-size: 11.5px; font-weight: 700;
+    color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 6px 11px; cursor: pointer; white-space: nowrap;
+  }
+  #d-back:hover { color: var(--ink); border-color: var(--muted); }
+  #d-back:focus-visible { outline: 2px solid var(--c-task); outline-offset: 1px; }
+  #d-close {
+    flex: 0 0 auto; width: 26px; height: 26px;
+    font-family: inherit; font-size: 15px; line-height: 1;
+    color: var(--faint); background: transparent;
+    border: 1px solid var(--line); border-radius: 4px; cursor: pointer;
+  }
+  #d-close:hover { color: var(--ink); background: var(--surface); }
+
+  #crumb { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow: hidden; font-size: 11px; }
+  .g-node { align-items: flex-start; }
+  #crumb .step { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  #crumb .sep { color: var(--faint); flex: 0 0 auto; }
+  #crumb .cur { color: var(--ink); font-weight: 750; white-space: nowrap; }
+  #crumb .lv { flex: 0 0 auto; margin-left: auto; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px; font-weight: 700; }
+
+  #dock-body { overflow-y: auto; padding: 16px 26px 30px; flex: 1; }
+
+  /* ---- 공통: 탭 안 다이어그램 ---- */
+  .g-root {
+    position: relative;
+    border: 1px solid var(--line); border-left: 4px solid var(--cc);
+    border-radius: 5px; background: var(--surface-2);
+    padding: 11px 13px;
+  }
+  .g-root .r-cat { font-size: 9px; letter-spacing: .09em; text-transform: uppercase; color: var(--cc); font-weight: 800; }
+  .g-root .r-title { font-size: 16.5px; font-weight: 720; letter-spacing: -.015em; margin-top: 3px; }
+  .g-root .r-ko { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
+  .g-root .r-file { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); margin-top: 6px; word-break: break-all; }
+  /* 표에 넣기 애매한 한 줄 보충 — 지면 머리 아래에 붙인다 */
+  .g-root .r-more { font-size: 11.5px; line-height: 1.6; color: var(--ink-2); margin-top: 8px; max-width: 78ch; }
+
+  .g-lane { margin-top: 15px; }
+  .g-lane-h {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); font-weight: 800; margin-bottom: 4px;
+  }
+  .g-lane-h::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .g-lane-h em { font-style: normal; color: var(--faint); font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 10px; }
+
+  /* 트리: 왼쪽 척추 + 가지마다 팔꿈치 선과 화살촉 */
+  .g-tree { position: relative; padding-left: 26px; }
+  .g-tree::before {
+    content: ""; position: absolute; left: 10px; top: 0; bottom: 20px;
+    width: 1px; background: var(--line);
+  }
+  /* v2 §3-1 : 세로로 쌓고 전폭을 준다.
+     가로 플렉스로 두면 펼친 .b-flow 가 형제 아이템이라 글자 폭으로 쪼그라든다
+     (v1 실측 : 팝업 폭의 11%). 대신 트리 팔꿈치 선의 top:50% 기준이 통째로
+     틀어지므로 첫 줄(.g-row) 높이의 절반인 21px 로 고정한다. */
+  .g-branch { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 7px; margin: 6px 0; }
+  /* 팔꿈치 선은 .g-branch 가 아니라 **첫 줄** 에 건다.
+     .g-branch 기준 top:50% 는 펼친 만큼 아래로 밀리고, 고정 px 는 제목이
+     두 줄로 접히면 어긋난다. .g-row 에 걸면 JS 측정 없이 항상 맞는다. */
+  .g-branch > .g-row { position: relative; }
+  .g-branch > .g-row::before {
+    content: ""; position: absolute; left: -16px; top: 50%;
+    width: 12px; height: 1px; background: var(--line);
+  }
+  .g-branch > .g-row::after {
+    content: ""; position: absolute; left: -5px; top: 50%;
+    transform: translateY(-50%);
+    border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
+    border-left: 5px solid var(--line);
+  }
+
+  .g-node {
+    flex: 1 1 auto; min-width: 0; text-align: left; font-family: inherit;
+    display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 9px;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-left: 3px solid var(--nc, var(--line));
+    border-radius: 4px; padding: 8px 10px; cursor: pointer;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .g-node:hover { border-color: var(--cc); box-shadow: 0 2px 8px var(--shadow); }
+  .g-node:focus-visible { outline: 2px solid var(--cc); outline-offset: 2px; }
+  .g-node .b-n {
+    width: 20px; height: 20px; border-radius: 3px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 9.5px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .g-node:hover .b-n { border-color: var(--cc); color: var(--cc); }
+  .g-node .b-main { min-width: 0; }
+  .g-node .b-k { font-size: 12.5px; font-weight: 700; line-height: 1.35; word-break: keep-all; }
+  .g-node .b-sum {
+    font-size: 11px; color: var(--ink-2); line-height: 1.5; margin-top: 3px;
+    white-space: normal; word-break: keep-all; overflow-wrap: anywhere;
+  }
+  .g-node .b-go { font-size: 9.5px; font-weight: 750; color: var(--cc); white-space: nowrap; }
+
+  /* 가지 끝 도착 노드 */
+  .g-to {
+    display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+    font-family: inherit; font-size: 10px; font-weight: 700; color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 4px 9px 4px 7px; cursor: pointer; max-width: 100%;
+  }
+  .g-to:hover { border-color: var(--tc); color: var(--ink); background: var(--surface); }
+  .g-to i { width: 7px; height: 7px; border-radius: 2px; background: var(--tc); flex: 0 0 auto; }
+  .g-to span { white-space: normal; word-break: keep-all; text-align: left; }
+  .g-arrow { flex: 0 0 auto; color: var(--faint); font-size: 11px; }
+
+  .n-gate { --nc: var(--t-gate); }
+  .n-net { --nc: var(--t-net); }
+  .n-ad { --nc: var(--t-ad); }
+  .n-nav { --nc: var(--t-nav); }
+  .n-call { --nc: var(--t-call); }
+
+  /* 폭이 남는 만큼 레인 열을 늘린다 (2열 고정이면 넓은 화면에서 공간이 남는다). */
+  /* auto-fill 은 레인이 하나여도 빈 트랙을 만들어 폭이 남는다.
+     v2 는 기본 노출이 레인 1~2개라 auto-fit 으로 남는 폭을 레인에 준다. */
+  .g-lanes {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 4px 24px; align-items: start;
+  }
+  .g-lanes > .g-lane.wide { grid-column: 1 / -1; }
+
+  /* 상단 흐름 밴드 : 들어오는 지면 → 현재 → 나가는 지면 (글 대신 도형으로 문맥 제시) */
+  .io {
+    display: grid; grid-template-columns: 1fr auto minmax(120px, auto) auto 1fr;
+    align-items: center; gap: 8px;
+    margin-top: 12px; padding: 11px 12px;
+    border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2);
+  }
+  .io-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .io-col.r { align-items: flex-end; }
+  .io-now {
+    text-align: center; border: 2px solid var(--cc); border-radius: 5px;
+    background: var(--surface); padding: 7px 10px;
+  }
+  .io-now b { display: block; font-size: 12px; font-weight: 750; line-height: 1.25; }
+  .io-now span { display: block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--cc); font-weight: 800; margin-top: 2px; }
+  .io-ar { color: var(--faint); font-size: 13px; text-align: center; }
+  .io-none { font-size: 10px; color: var(--faint); }
+  .io-more { font-size: 9.5px; color: var(--faint); font-weight: 650; }
+  .io .g-to { max-width: 100%; }
+
+  /* 2단 본문 = 왼쪽 UI 와이어프레임 · 오른쪽 로직 가지. 좁으면 위아래로 떨어진다.
+     프리팹 버튼이 없는 지면은 .one 으로 로직만 전폭 표시한다. */
+  .two { display: grid; grid-template-columns: minmax(300px, 24%) 1fr; gap: 28px; align-items: start; margin-top: 14px; }
+  .one { margin-top: 14px; }
+  @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } }
+
+  .wf-wrap { position: sticky; top: 0; max-width: 420px; }
+  /* UGC 모드처럼 가로 화면인 지면은 세로 틀보다 넓게 써야 읽힌다 */
+  .wf-wrap.wide { max-width: 760px; }
+  /* 게임은 세로 모드다 — 디자인 해상도 720x1280 그대로 9:16
+     (intro.fire 의 cc.Canvas._designResolution · fitWidth) */
+  .wf {
+    position: relative; aspect-ratio: 9 / 16;
+    border: 2px solid var(--line); border-radius: 10px;
+    background: var(--surface-2); overflow: hidden;
+  }
+  /* 화면보다 작은 패널 루트 프리팹의 실제 패널 범위 */
+  .wf-panel {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    border: 1px dashed var(--line); border-radius: 8px; background: var(--surface);
+  }
+
+  /* ── 컨텍스트 · FB 지면 문서 ──────────────────────────────── */
+  .t-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+  .sec-lede { margin: 2px 0 18px; }
+  .sec-lede h2 { font-size: 19px; font-weight: 800; margin: 0 0 6px; letter-spacing: -.01em; }
+  .sec-lede p { font-size: 13px; line-height: 1.65; color: var(--ink-2); margin: 0; max-width: 74ch; }
+  #dock-body h3 {
+    font-size: 14px; font-weight: 750; margin: 26px 0 9px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  }
+  #dock-body h3 em { font-style: normal; font-weight: 500; font-size: 12px; color: var(--faint); }
+  .warn {
+    font-size: 12.5px; line-height: 1.65; margin: 14px 0 4px; padding: 11px 13px;
+    border-left: 3px solid var(--c-data); border-radius: 4px; background: var(--surface-2);
+  }
+  .warn b { color: var(--c-data); }
+  .note { font-size: 11.5px; line-height: 1.6; color: var(--faint); margin: 8px 0 0; }
+
+  .fig { margin: 16px 0 6px; }
+  .fig svg { width: 100%; height: auto; max-width: 760px; display: block; color: var(--ink); }
+  .fig figcaption {
+    font-size: 11.5px; line-height: 1.6; color: var(--ink-2);
+    margin-top: 9px; max-width: 74ch;
+  }
+  .sm-box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+  .sm-box.s-solo { stroke: var(--c-entry); stroke-width: 1.8; }
+  .sm-box.s-p2p  { stroke: var(--c-entry); stroke-width: 1.8; }
+  .sm-box.s-tour { stroke: var(--c-event); stroke-width: 1.8; }
+  .sm-box.s-fb   { stroke: var(--line); }
+  .sm-grp { fill: none; stroke: var(--faint); stroke-width: 1; stroke-dasharray: 4 4; }
+  .sm-grp-t { font-size: 11px; font-weight: 700; fill: var(--faint); font-family: inherit; }
+  .sm-t { font-size: 14px; font-weight: 800; fill: currentColor; font-family: inherit; }
+  .sm-s { font-size: 11px; fill: var(--ink-2); font-family: inherit; }
+  .sm-c { font-size: 10.5px; fill: var(--faint); font-family: inherit; }
+  .sm-a { stroke: var(--ink-2); stroke-width: 1.3; fill: none; }
+  .sm-a.ok { stroke: var(--c-entry); stroke-width: 1.8; }
+  .sm-l { font-size: 10.5px; font-weight: 700; fill: var(--ink-2); font-family: inherit; }
+
+  /* 넓은 표는 자기 안에서만 옆으로 흐른다 — 본문이 가로 스크롤되면 안 된다 */
+  .tw { overflow-x: auto; margin: 10px 0 4px; }
+  .tb { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tb th {
+    text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--faint); padding: 0 10px 6px 0;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  .tb td {
+    padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line);
+    vertical-align: top; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere;
+  }
+  .tb td:last-child, .tb th:last-child { padding-right: 0; }
+  .tb .mut { color: var(--faint); }
+  .sc { font-size: 10.5px; color: var(--faint); white-space: nowrap; }
+  .pill {
+    font-style: normal; font-size: 9px; font-weight: 800; letter-spacing: .03em;
+    padding: 1px 5px; border-radius: 8px; white-space: nowrap;
+    color: var(--c-entry); border: 1px solid var(--c-entry);
+  }
+  .pill.q { color: var(--faint); border-color: var(--line); }
+  .lnk {
+    font: inherit; font-size: 12px; font-weight: 700; color: var(--c-entry);
+    background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+    border-bottom: 1px solid currentColor;
+  }
+
+  /* 컨텍스트 배지 — 맵 카드에서 이 지면이 컨텍스트를 건드린다는 표시 */
+  .n-ctxb {
+    position: absolute; right: 8px; bottom: 7px;
+    font-size: 9px; font-weight: 800; letter-spacing: .03em;
+    padding: 2px 6px; border-radius: 8px; cursor: pointer;
+    color: var(--c-entry); background: var(--surface); border: 1px solid var(--c-entry);
+  }
+  .n-ctxb:hover { background: var(--c-entry); color: #fff; }
+
+  /* ── 장식 레이어 ── 화면을 알아보게 해주는 비클릭 요소.
+     v1 은 cc.Button 만 그려서 화면의 4.5% 만 보였다. 클릭은 버튼만 받아야 하므로
+     pointer-events 를 끈다(툴팁은 title 로 브라우저가 띄운다 → auto 로 되돌린다). */
+  .wf-d {
+    position: absolute; transform: translate(-50%, -50%);
+    border-radius: 3px; pointer-events: none; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wf-d.d-img   { border: 1px solid var(--line); background: var(--surface-2); opacity: .5; }
+  .wf-d.d-anim  { border: 1px dashed var(--line); background: none; opacity: .45; }
+  .wf-d.d-gauge { border: 1px solid var(--line); background:
+    repeating-linear-gradient(90deg, var(--surface-2) 0 5px, transparent 5px 9px); opacity: .7; }
+  .wf-d.d-list  { border: 1px solid var(--line); background:
+    repeating-linear-gradient(-45deg, var(--surface-2) 0 4px, transparent 4px 8px); opacity: .8; }
+  .wf-d.d-lbl   { border: 0; background: none; opacity: 1; }
+  .wf-d.d-lbl b {
+    font-size: 9px; font-weight: 600; color: var(--ink-2); line-height: 1.05;
+    white-space: nowrap; padding: 0 1px; background: var(--surface);
+    max-width: 100%; overflow: hidden; text-overflow: clip;
+  }
+  .wf-d.ctx { opacity: .28; }
+  .wf-rep {
+    position: absolute; right: 1px; bottom: 0; font-style: normal;
+    font-size: 8px; font-weight: 800; color: var(--faint); background: var(--surface);
+    padding: 0 2px; border-radius: 2px;
+  }
+  /* 공통 헤더 — 모든 지면에 상주하는데 어느 팝업 프리팹에도 없다 */
+  .wf-d.d-hdr { border: 1px solid var(--c-entry); background: var(--surface); opacity: .85; }
+  .wf-d.d-hdr.d-lbl { border: 0; background: none; }
+  .wf-d.d-hdr.d-lbl b { color: var(--c-entry); font-weight: 800; }
+
+  .wf-btn {
+    position: absolute; transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit; font-size: 10.5px; font-weight: 750; line-height: 1.12;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--nc, var(--line)); border-radius: 4px;
+    padding: 2px 3px; cursor: pointer; text-align: center;
+  }
+  /* 상자는 실제 크기. 글자는 두 줄까지 접어 옆 버튼을 덮지 않게 한다 */
+  .wf-btn span {
+    background: var(--surface); border-radius: 2px;
+    max-width: 132px; word-break: keep-all; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .wf-btn.off { border-style: dashed; opacity: .74; }
+  .wf-btn.mv { border-style: dotted; border-width: 2px; }
+  /* 같은 프리팹을 공유하는 다른 노드 담당 버튼 — 화면 전체를 보여주되 담당은 구분한다 */
+  .wf-btn.ctx {
+    opacity: .42; border-color: var(--line); background: var(--surface-2);
+    border-left-color: var(--line); font-weight: 600;
+  }
+  .wf-btn.ctx span { background: var(--surface-2); }
+  .wf-btn.ctx:hover { opacity: 1; border-color: var(--cc); }
+  .wf-alt, .wf-mv {
+    font-style: normal; font-size: 7.5px; font-weight: 800; margin-left: 2px;
+    color: var(--cc); vertical-align: super;
+  }
+  .wf-mv { color: var(--c-warnmark, #b26a00); }
+  .wf-btn.big { font-size: 12.5px; font-weight: 800; }
+  .wf-btn:hover { z-index: 9; border-color: var(--cc); box-shadow: 0 2px 9px var(--shadow); }
+  .wf-btn:hover span { -webkit-line-clamp: 4; max-width: 200px; }
+  .wf-btn:hover span { background: var(--surface); }
+  .wf-btn:focus-visible { z-index: 9; outline: 2px solid var(--cc); outline-offset: 1px; }
+  /* 화면 전체를 덮는 터치 영역 (배경 터치 · 수령 터치 · dim) */
+  .wf-full {
+    position: absolute; left: 4px; top: 4px; right: 4px; bottom: 4px;
+    display: flex; align-items: flex-start; justify-content: flex-end; gap: 4px;
+    font-family: inherit; font-size: 9px; font-weight: 750; color: var(--muted);
+    background: transparent; border: 1px dashed var(--line); border-radius: 7px;
+    padding: 4px 6px; cursor: pointer;
+  }
+  .wf-full em { font-style: normal; font-size: 8px; color: var(--faint); letter-spacing: .05em; }
+  .wf-full:hover { border-color: var(--cc); color: var(--ink); }
+  /* 작아서 이름을 못 넣은 버튼 : 번호만 찍고 아래 범례에서 이름을 준다 */
+  .wf-btn.tiny { padding: 0; font-size: 9px; }
+  .wf-num {
+    font-size: 9px; font-weight: 800; color: var(--cc);
+    line-height: 1; display: block;
+  }
+  .wf-key {
+    margin-top: 9px; display: flex; flex-wrap: wrap; gap: 5px 6px; align-items: center;
+  }
+  .wf-key-h {
+    flex: 0 0 100%; font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--faint); font-weight: 800;
+  }
+  .wf-key-i {
+    display: inline-flex; align-items: center; gap: 5px; word-break: keep-all;
+    font-family: inherit; font-size: 10.5px; font-weight: 700; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 5px; padding: 3px 7px 3px 4px; cursor: pointer;
+  }
+  .wf-key-i b {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 15px; height: 15px; border-radius: 3px;
+    background: var(--surface-2); color: var(--cc); font-size: 9px; font-weight: 800;
+  }
+  .wf-key-i code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px; color: var(--faint); font-weight: 600;
+  }
+  .wf-key-i:hover { border-color: var(--cc); box-shadow: 0 1px 5px var(--shadow); }
+  .wf-key-i.off { border-style: dashed; opacity: .78; }
+  .wf-key-i.ctx { opacity: .55; }
+
+  .wf-cap { margin-top: 7px; font-size: 10px; color: var(--muted); line-height: 1.55; }
+  .wf-cap b { color: var(--ink-2); }
+  .wf-lg { border-bottom: 1px dashed var(--ink-2); }
+
+  /* 3단 본문 : 메소드명 + 한 줄 동작 */
+  .f-text code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; font-weight: 700; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 3px; padding: 0 4px;
+  }
+  .f-d { display: block; font-style: normal; margin-top: 3px; color: var(--ink-2); }
+  .b-sum code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 700; color: var(--ink-2);
+  }
+  /* 가지 셀 = 한 줄 요약 + 눌러서 펼치는 흐름 (3단을 이 자리로 합쳤다) */
+  .g-branch > .g-row { display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
+  /* 주요 경로 레인은 항상 전폭. 행이 적으면 .wide(8행 이상) 조건에 안 걸려
+     폭을 넓혀 놓고도 380px 열로 쪼개진다 (코인 매치 v2 기록의 두 번째 함정). */
+  .g-lanes > .g-lane.acts { grid-column: 1 / -1; }
+  .b-flow { display: none; width: 100%; margin: 8px 0 4px 27px; }
+  .g-branch.open > .b-flow { display: block; }
+  .g-branch.open .b-go { color: var(--muted); }
+  .g-branch.open .b-go::after { content: ""; }
+  .g-branch.flash > .g-row .g-node { border-color: var(--cc); box-shadow: 0 0 0 2px var(--cc); }
+  .b-flow .f-flow { margin-top: 0; }
+  .b-flow .f-step { font-size: 11px; }
+
+  /* 검색이 상세로 가는 유일한 통로라는 안내 (v2 §4) */
+  .g-hint {
+    margin: 12px 0 0; font-size: 10.5px; line-height: 1.6; color: var(--muted);
+    border-left: 2px solid var(--line); padding-left: 9px; word-break: keep-all;
+  }
+  .g-hint b {
+    font-family: var(--font-mono); color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 3px; padding: 0 4px;
+  }
+
+  .g-inner {
+    margin-top: 14px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface-2); padding: 10px 13px;
+  }
+  .g-inner summary { font-size: 11px; font-weight: 750; color: var(--muted); cursor: pointer; }
+  .g-inner[open] summary { margin-bottom: 10px; }
+  /* 접힘 안 그리드도 잘게 쪼개지면 같은 문제가 반복된다 — 오른쪽 열(팝업 폭의 약 72%)
+     안에서도 두 열이 나오도록 660 을 유지하고, 좁아지면 한 열로 떨어진다. */
+  .g-inner .g-lanes { grid-template-columns: repeat(auto-fit, minmax(660px, 1fr)); }
+
+  .f-raw {
+    margin-top: 12px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--surface-2); padding: 8px 11px;
+  }
+  .f-raw summary { font-size: 10.5px; font-weight: 750; color: var(--muted); cursor: pointer; }
+  .f-raw p { margin: 7px 0 0; font-size: 10.5px; line-height: 1.65; color: var(--ink-2); word-break: keep-all; }
+
+  /* ---- 3단: 호출 사슬 플로우 ---- */
+  /* v2 §3-1 : 스텝을 가로로 흐르게. 폭이 남으면 옆으로, 모자라면 접힌다. */
+  .f-flow { display: flex; flex-wrap: wrap; align-items: stretch; margin-top: 2px; }
+  .f-flow > .f-step { flex: 1 1 250px; min-width: 230px; }
+  .f-step {
+    display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start;
+    border: 1px solid var(--line); border-left: 4px solid var(--st);
+    border-radius: 5px; background: var(--surface); padding: 9px 11px;
+  }
+  .f-step.is-gate { border-style: dashed; background: rgba(217, 119, 6, .045); }
+  .f-step.is-end { border-color: var(--st); box-shadow: 0 0 0 1px var(--st) inset; }
+  .f-step.can { cursor: pointer; }
+  .f-step.can:hover { box-shadow: 0 2px 10px var(--shadow); }
+  .f-n {
+    font-family: var(--font-mono); font-size: 10px; color: var(--st); font-weight: 750;
+    border: 1px solid var(--st); border-radius: 3px; text-align: center; padding: 1px 0;
+    opacity: .85;
+  }
+  .f-body { min-width: 0; }
+  .f-type { display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; color: var(--st); }
+  .f-text { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); line-height: 1.5; margin-top: 3px; word-break: break-word; }
+  .f-open { display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; font-size: 10px; font-weight: 750; color: var(--tc); }
+  .f-open i { width: 7px; height: 7px; border-radius: 2px; background: var(--tc); }
+
+  /* 단계 사이 연결선 + 화살촉 */
+  /* 가로 배치에 맞춰 연결선·화살촉을 오른쪽으로 돌린다 (v2 §3-1). */
+  .f-link { position: relative; flex: 0 0 30px; width: 30px; align-self: stretch; margin: 0; }
+  .f-link::before { content: ""; position: absolute; left: 3px; top: 50%; width: 18px; height: 1px; background: var(--line); }
+  .f-link::after {
+    content: ""; position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--line);
+  }
+  .f-link b {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -140%);
+    font-size: 9px; font-weight: 650; color: var(--faint); white-space: nowrap;
+  }
+
+  .f-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+  .f-legend span { display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--muted); }
+  .f-legend i { width: 3px; height: 11px; border-radius: 1px; }
+
+  .f-note { margin-top: 13px; border: 1px solid var(--line); border-left: 3px solid var(--t-gate); border-radius: 4px; background: var(--surface-2); padding: 10px 12px; }
+  .f-note .t { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--t-gate); }
+  .f-note p { margin: 5px 0 0; font-size: 11px; color: var(--ink-2); line-height: 1.55; }
+  .f-note code { font-family: var(--font-mono); font-size: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 2px; padding: 0 3px; }
+
+  @media (max-width: 1000px) {
+    #mini, #hint { display: none; }
+    #find { width: min(342px, 46vw); }
+    #dock { width: 96vw; height: 94vh; }
+    .io { grid-template-columns: 1fr; }
+    .io-col.r { align-items: flex-start; }
+    #head { max-width: 200px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .node, .r-go { transition: none; } }
+</style>
+
+<div id="stage">
+  <div id="world">
+    <svg id="wires" aria-hidden="true">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="context-stroke"></path>
+        </marker>
+      </defs>
+      <g id="wire-g"></g>
+    </svg>
+    <div id="nodes"></div>
+    <!-- 라벨은 카드보다 위에 그려야 가려지지 않는다 -->
+    <svg id="wlabels" aria-hidden="true"><g id="wlabel-g"></g></svg>
+  </div>
+</div>
+
+<div id="head" class="panel">
+  <h1>Story Merge 프로토 — 전체 플로우</h1>
+  <p><b>1단</b> 이 맵으로 전체를 훑고 · <b>2단</b> 카드를 누르면 그 지면의 와이어프레임과 <b>주요 이동 경로</b>. 전체 버튼 · 내부 분기는 접혀 있고 <b>검색</b>으로 바로 펼쳐집니다.</p>
+  <div id="legend">
+    <span><i style="background:var(--c-entry)"></i>부팅 · 라우팅</span>
+    <span><i style="background:var(--c-story)"></i>스토리 지면 · 노드</span>
+    <span><i style="background:var(--c-mode)"></i>연출 모드</span>
+    <span><i style="background:var(--c-task)"></i>태스크 · 머지</span>
+    <span><i style="background:var(--c-data)"></i>데이터 계약</span>
+    <span><i style="background:var(--c-system)"></i>시스템 · 공통</span>
+  </div>
+</div>
+
+<div id="tools" class="panel">
+  <button id="b-out" title="축소">−</button>
+  <div id="zoomval">100%</div>
+  <button id="b-in" title="확대">+</button>
+  <button id="b-fit">전체</button>
+  <button id="b-top">시작점</button>
+  <span class="t-sep"></span>
+  <button id="b-ctx" title="스토리 노드 11개 · 연출 모드별 재생 대조">노드 표</button>
+  <button id="b-fb" title="플랫폼 어댑터 9종 · 빌드 프로파일">플랫폼 · 빌드</button>
+</div>
+
+<div id="find" class="panel">
+  <div id="fx-bar">
+    <span id="fx-ico" aria-hidden="true">⌕</span>
+    <input id="fx-q" type="search" autocomplete="off" spellcheck="false"
+           placeholder="메소드 · 지면 · 노드 · 프리팹 검색   ( / )"
+           role="combobox" aria-expanded="false" aria-controls="fx-list" aria-label="맵 검색" />
+    <span id="fx-n"></span>
+  </div>
+  <div id="fx-list" role="listbox" aria-label="검색 결과"></div>
+</div>
+
+<div id="mini" class="panel"><div id="mini-in"><div id="mini-vp"></div></div></div>
+
+<div id="hint" class="panel">
+  <span><b>드래그</b> 이동</span>
+  <span><b>휠</b> 확대·축소</span>
+  <span><b>카드 클릭</b> 상세 보기</span>
+  <span><b>/</b> 검색</span>
+  <span><b>Esc</b> 뒤로 · 닫기</span>
+</div>
+
+<div id="veil"></div>
+
+<aside id="dock" role="dialog" aria-modal="true" aria-label="지면 상세 다이어그램">
+  <div id="dock-head">
+    <button id="d-back" type="button">← 맵으로</button>
+    <div id="crumb"></div>
+    <button id="d-close" type="button" title="닫기" aria-label="닫기">×</button>
+  </div>
+  <div id="dock-body"></div>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ── 메소드 → 한 줄 동작 사전 ──────────────────────────────────
+     사슬을 펼쳤을 때 각 단계 밑에 붙는 설명이자, 검색이 훑는 본문이다.
+     코드를 읽어 손으로 적었다 — 기계 파싱이 아니다. */
+  const DESC = {
+    /* 부팅 */
+    start: "BaseIntro 의 부팅 본체. 플랫폼 인스턴스 · 로그 매니저를 세우고 asyncProcess 로 로딩을 병렬로 돌린 뒤 moveToNext() 로 넘긴다",
+    createPlatformInstance: "문자열이나 PlatformSelector.platformType 으로 어댑터 하나를 만든다. 안 맞으면 BasePlatform 폴백",
+    initPlatformInstance: "어댑터 초기화. CC_BUILD 가 아니면 디버그 모드로 켠다",
+    preloadPlatform: "플랫폼 SDK 를 미리 올린다",
+    onStartPlatform: "플랫폼 시작 신호. FB 라면 서명된 플레이어 정보를 받아 온다",
+    getLogHandler: "플랫폼별 로그 전송 핸들러. 게임 로그 매니저에 주입한다",
+    initLogManager: "LogType 이벤트 이름을 등록하고 BaseLogManager.instance 에 자기를 꽂는다",
+    waitAll: "asyncProcess 에 등록한 모든 작업이 끝날 때까지 기다린다",
+    moveToNext: "부팅이 끝난 뒤의 진입 분기. 신규 유저 · 초대 · 토너먼트를 보고 갈 곳을 정한다",
+    moveToBasic: "기본 진입. 이 프로토에서는 ViewCreator.showViewStory() 한 줄이다",
+    moveToP2P: "친구 대전 진입. 이 프로토에서는 본문이 비어 있다",
+    moveToTournament: "토너먼트 진입. 종료 시각만 보고 나머지는 미구현이다",
+    getEntryData: "플랫폼 진입 데이터(초대 · 메시지 · 토너먼트 정보)를 읽는다",
+    addContextToFriendID: "초대로 들어왔을 때 상대 id 를 컨텍스트에 담는다",
+    show: "ViewBase / PopupBase 의 노출. true 면 열고 false 면 닫는다",
+    hide: "화면을 접는다",
+    close: "팝업을 닫는다. 팝업 스택에서도 빠진다",
+
+    /* 지면 생성 */
+    showViewStory: "ViewManager.load(\"ViewStory\") 로 프리팹을 올리고 show(true)",
+    showPopupTask: "PopupTask 를 올려 configure(node, gold, cost) 한 뒤 띄운다",
+    showViewMergeBoard: "ViewMergeBoard 를 올려 configure(node, orderContext) 한 뒤 띄운다",
+    showPopupError: "오류 팝업. 문구와 에러 코드를 직접 넘긴다",
+    showPopupErrorDefault: "T_ERROR_MESSAGE_2 문구의 기본 오류 팝업",
+    showPopupErrorRestart: "확인하면 뷰를 전부 지우고 BaseIntro.start() 로 다시 타는 오류 팝업",
+    showPopupToastError: "1.5초 뒤 스스로 닫히는 오류 토스트",
+    showPopupToastRVError: "보상형 광고 실패 토스트. RvErrorBannerPopup 로그를 함께 남긴다",
+    showPopupSetting: "설정 팝업 (프리팹 이름은 PopupSetting)",
+    showPopupPrivacyPolicy: "개인정보 처리방침 전문",
+    showPopupSettingLanguage: "언어 설정",
+    showPopupSwitchContextPVP: "친구 대전 컨텍스트 전환 팝업",
+    showPopupSwitchContextTournament: "토너먼트 컨텍스트 전환 팝업",
+    showPopupCrossPromotion: "다른 게임으로 보내는 프로모션 팝업",
+    load: "ViewManager 가 이름으로 프리팹을 찾아 올린다. 이름에 Popup 이 있으면 bundle/popup, 아니면 bundle/view",
+    clearViewAll: "쌓인 뷰를 전부 지운다",
+
+    /* 러너 */
+    run: "스토리 실행 본체. 스테이지 반영 → 데이터 로드 → 연출 생성 → 모드 대조 → 프리로드 → 노드 순회",
+    runNodes: "노드 11개를 node_order 순으로 돌린다. 삼켜진 노드는 재생 없이 완료 처리한다",
+    runNode: "노드 하나를 종류(dialogue · stillcut · task)에 따라 갈라 보낸다",
+    loadStoryData: "DataManager 캐시를 먼저 보고 없으면 StoryDataLoader.load() 로 세 파일을 읽는다",
+    createStoryPresentation: "바인딩을 받아 연출 인스턴스를 만든다. 빌드마다 반환 클래스가 다르다",
+    createPresentationBindings: "프리팹에서 받은 노드 · 라벨 · 스프라이트를 한 객체로 묶는다. 연출은 프리팹을 직접 모른다",
+    createPresentationContext: "그 노드가 쓸 대사 · 씬 전체 대사 · 비디오 행을 모아 준다. 하나라도 없으면 throw",
+    getMode: "연출이 자기 모드를 돌려준다. 빌드 설정과 대조하는 데 쓴다",
+    consumesSceneAfterDialogue: "true 면 dialogue 노드가 같은 씬의 뒤 노드를 삼킨다. 채팅만 false",
+    collectConsumedSceneNodes: "뒤 순번이면서 task 가 아니고 같은 씬에 속한 노드를 소비 목록에 담는다",
+    completeNode: "완료 목록에 순번을 담고 로그를 남긴다. 삼킨 노드는 (scene consumed) 접미사",
+    sortDialogues: "대사를 step 오름차순으로 정렬한다",
+    preload: "모드별 에셋을 미리 올린다. 실패하면 STORY DATA ERROR",
+    dispose: "연출 뒷정리. 러너의 finally 와 onDestroy 양쪽에서 부른다",
+    hideForGameplay: "머지 보드로 내려갈 때 연출을 접는다",
+
+    /* 데이터 */
+    validate: "행 수 · 순번 · 씬:파트 대사 수 · 스틸컷 자리 · 비디오 줄 수를 검사한다. 하나라도 어기면 throw",
+    loadJson: "번들에서 cc.JsonAsset 하나를 읽는다. 배열이 아니면 reject",
+    loadBundle: "BundleKey 로 에셋 번들을 올린다",
+
+    /* 전체화면 연출 */
+    present: "씬 하나를 재생하고 끝날 때까지 기다린다. 이미 재생 중이면 reject",
+    presentDialogue: "dialogue 노드를 재생한다. 전체화면 모드는 셸에 넘긴다",
+    presentStillcut: "독립 스틸컷 노드. 전체화면 모드에선 이미 씬에 포함돼 경고만 남긴다",
+    createFullscreenStoryTapTimeline: "대사 1줄당 탭 비트 1개를 만든다. 삽입 스틸컷 뒤 비트는 cue.endSec 을 쓴다",
+    createFullscreenStoryTimeline: "대사 자막 구간을 만든다. step 이 건너뛴 만큼 3초씩 시작 시각을 민다",
+    onTouchEnd: "화면 터치. tap_to_skip 이 1일 때만 다음 대사로 넘어간다",
+    showActiveDialogue: "지금 비트의 시각으로 소스를 옮기고 자막을 0.2초 페이드로 교체한다",
+    finishPresentation: "소스 정지 · 배경 복구 · 자막 초기화 후 present() 의 약속을 푼다",
+    prepareVisualState: "화면 배경을 끄고 카메라를 투명으로 만든다. 이전 상태는 기억해 둔다",
+    makeCameraTransparent: "cc.Camera.main 배경색의 알파를 0 으로. 복귀 때 원래 색으로 되돌린다",
+    restoreBackground: "꺼 뒀던 배경과 카메라 색을 되돌린다",
+    cancel: "재생을 강제로 끝낸다. hideForGameplay() 가 이걸 부른다",
+
+    /* 스틸컷 */
+    createStillcutPlaybackPlan: "씬의 컷마다 시작 · 끝 초를 계산한다. 마지막 컷만 씬 목표 길이에 맞춰 자른다",
+    getStillcutScenePlan: "씬 id 로 컷 목록을 돌려준다",
+    showCut: "앞뒤 스프라이트를 0.2초 크로스페이드로 교대한다",
+    loadSpriteFrame: "번들에서 컷 한 장을 읽는다. 실패해도 reject 하지 않고 null 을 준다",
+    releaseFrames: "다 쓴 컷을 cc.assetManager.releaseAsset 으로 놓아 준다",
+    update: "지난 시각으로 지금 컷을 고른다. 같은 컷이면 아무것도 안 한다",
+
+    /* 태스크 */
+    presentTask: "상태 라벨에 태스크 정보를 쓰고 골드 루프로 넘긴다",
+    playCostTask: "골드가 찰 때까지 PopupTask 와 머지 보드를 오가는 while 루프",
+    resolveStoryTaskGoldCost: "task_cost 가 null 이면 TUTORIAL_TASK_GOLD_COST(10) 을 준다",
+    waitForConfirmation: "PopupTask 의 시작 버튼을 누를 때까지 기다린다",
+    onClickStart: "확인 처리. 약속을 풀고 팝업을 닫는다. 두 번째 클릭은 버린다",
+    configure: "지면에 데이터를 채운다. 제목 · 비용 · 보상 · 진행 문구 · 초상까지",
+    makeRewardText: "보상이 none 이거나 0이면 Reward: None, 아니면 종류와 수량을 적는다",
+    spend: "골드를 깎는다. 모자라면 false 를 돌려주고 아무것도 안 깎는다",
+    canSpend: "비용이 0 이상이고 잔액이 그 이상인지",
+    collectMergeOrders: "완료한 주문 수 x 10 골드를 더한다",
+    getGoldBalance: "지금 골드. 세션 안에서만 산다 — 저장되지 않는다",
+    reset: "골드를 0 으로 되돌린다. 러너가 run() 시작에서 부른다",
+    completeCostTask: "완료 목록에 node_id 를 담고 스테이지를 다시 그린다. 이미 있으면 그냥 돌아간다",
+    refreshStoryStage: "스테이지 오브젝트를 완료 목록에 맞춰 켠다. 바인딩이 비면 throw",
+
+    /* 머지 보드 */
+    waitForCompletion: "보드가 끝날 때까지 기다린다. 이미 끝났으면 즉시 돌려준다",
+    generateItem: "생성기 클릭. 빈 슬롯과 빈 셀이 있으면 티어 1 아이템을 놓는다",
+    beginItemDrag: "아이템 집기. 오프셋을 기억하고 맨 앞으로 올린 뒤 1.08 배로 키운다",
+    moveItemDrag: "끄는 중 위치 갱신. 보드 밖으로 못 나가게 잡는다",
+    endItemDrag: "놓기. 가장 가까운 셀을 찾아 model.move() 로 판정한다",
+    cancelItemDrag: "끌기 취소. 원래 셀로 되돌린다",
+    move: "이동 · 합치기 · 거절 판정. 티어가 같고 3 미만일 때만 합쳐진다",
+    onClickContinue: "주문 완료. 목표 티어 아이템 하나를 비우고 골드를 더한다. 주문 모드에선 안 닫힌다",
+    onClickBack: "보드를 나간다. 지금까지 완료한 주문 수를 담아 루프에 돌려준다",
+    refreshBoard: "셀 상태를 화면에 반영하고 버튼 활성 · 진행 문구를 다시 쓴다",
+    isComplete: "보드에 목표 티어가 하나라도 있는지",
+    consumeTier: "그 티어 아이템 하나를 비우고 셀 번호를 돌려준다",
+    findDropCell: "가장 가까운 셀. 56px 을 넘으면 -1",
+    getCellPosition: "셀 번호 → 보드 좌표. 6열 기준 피치 78px",
+    getTargetTier: "주문 모드면 지금 주문 티어, 아니면 3 고정",
+    getNextOrderTargetTier: "완료 수가 짝수면 2, 홀수면 3 — 번갈아 간다",
+    playMergeFeedback: "합쳐진 아이템 스프라이트를 바꾸고 0.78 → 1.0 backOut 으로 튕긴다",
+    resolveCompletion: "결과를 담아 waitForCompletion() 의 약속을 푼다. 한 번만 통한다",
+
+    /* 채팅 */
+    onTap: "채팅 탭. 타이핑 중이면 그 줄을 즉시 완성하고, 아니면 다음 줄로 넘어간다",
+    collectPreloadPaths: "말풍선 프레임 · 초상 · 삽입 스틸컷 경로를 모은다",
+    validateBindings: "채팅 연출이 필요한 바인딩이 다 있는지 검사한다",
+
+    /* 빌드 */
+    readProfile: "story-build-profiles/{mode}.json 을 읽고 validateProfile() 로 검사한다",
+    validateProfile: "모드 · 산출 여부 · 출력 경로 · 공유 데이터 · 배제 목록이 규격과 같은지 본다",
+    getVideoClipPath: "clip 슬롯 이름을 storyVideo/clips/* 경로로 바꾼다. 없으면 빈 문자열"
+  };
+
+  /* 프리팹 노드 이름만으로는 뭔지 모를 때 붙이는 사람 이름 */
+  const BTNNAME = {
+    profile: "프로필",
+    StartButton: "태스크 시작",
+    ContinueButton: "주문 완료",
+    BackButton: "뒤로",
+    DimmedLayer: "딤",
+    BackgroundPanel: "패널",
+    BoardSurface: "보드 판",
+    Cell00: "보드 셀",
+    Artwork: "아이템 그림",
+    Title: "제목",
+    Cost: "비용",
+    Reward: "보상",
+    GoldProgress: "골드 진행",
+    OrderProgress: "주문 진행",
+    SelectedItemHint: "안내 문구",
+    Olivia: "올리비아 초상",
+    Colton: "콜튼 초상",
+    Sam: "샘 초상",
+    StoryStageBackground: "스테이지 배경",
+    StoryFlowerVaseObject: "꽃병 (task_1_1 완료 시)",
+    StoryTableSettingObject: "식탁 세팅 (set_table 완료 시)",
+    StoryRunner: "러너 상태 라벨",
+    Portrait: "채팅 초상",
+    ChatBubble: "말풍선",
+    SpeakerName: "화자 이름",
+    Dialogue: "대사",
+    TapHint: "탭 안내",
+    Stillcut: "채팅용 스틸컷",
+    StillcutSurfaceA: "스틸컷 서피스 A",
+    StillcutSurfaceB: "스틸컷 서피스 B",
+    SubtitleBar: "자막 바",
+    SubtitleText: "자막",
+    loading: "로딩 막",
+    box: "코인 바",
+    count: "코인 수",
+    text: "빌드 표시"
+  };
+
+  /* 로직 표에 없는 프리팹 버튼을 보충한다. "노드id:핸들러" 또는 "핸들러" 로 찾는다 */
+  const EXTRA = {
+    "intro:onClickUserProfile": ["프로필 (죽은 바인딩)",
+      "onClickUserProfile() → UserProfileItem 에 그 메소드가 없다 — 인스펙터 바인딩만 남아 있고 addOnclickAction 도 아무 데서도 채우지 않는다. 눌러도 아무 일이 없다"],
+    "merge:onClickBack": ["뒤로", "onClickBack() → resolveCompletion(false) → close() → playCostTask() 의 루프로 돌아간다"],
+    "merge:onClickContinue": ["주문 완료", "onClickContinue() → model.consumeTier(목표) → currentGold += 10 → refreshBoard()"],
+    "task:onClickStart": ["EARN / SPEND GOLD", "onClickStart() → waitForConfirmation() 의 약속을 풀고 close(). 골드 판정은 팝업이 닫힌 뒤 루프가 한다"]
+  };
+
+  /* ── 프리팹 실측 화면 요소 ────────────────────────────────────
+     assets/bundle 하위 프리팹과 intro.fire 의 화면 요소(버튼 · 라벨 ·
+     이미지 · 리스트 · 게이지 · 연출)를 파싱해 720x1280 세로 화면
+     좌표로 정규화했다. 생성기는 story-merge-proto-client/_ignore/flowmap/ 에 있다.
+       k  요소 종류 — b 버튼 · l 라벨 · i 이미지 · s 리스트 · g 게이지 · m 연출
+       x/y  요소 중심 (0~1, y 는 위에서 아래) · w/hh  크기
+       t  라벨 문구(프리팹에 저장된 _string) · L  경로로 확정한 이름
+       rep  같은 자리 반복 셀 n개를 대표 1개로 접음
+       alt  같은 자리에 겹쳐 있어 접은 상태별 변형
+     cc.Widget 정렬을 재현했다 — 이걸 안 하면 부모가 Widget 정렬인 요소가
+     전부 화면 밖으로 밀린다.
+     회전은 무시했다. 화면 밖 채움(top · bottom)과 웹 배경은 이름으로 뺐다.
+     **비활성 장식은 버리지 않았다** — 이 프로젝트에서 _active=false 는 파킹이 아니라
+     연출 모드 · 진행도에 따른 런타임 노출이라 그게 곧 지면의 내용이다 (a: 0 으로 표시).
+     목록 셀을 코드가 런타임에 만드는 지면은 runtime 에 그 사실을 적었다.
+     전 지면이 720x1280 단일 해상도라 ar/cw/ch 는 붙지 않는다.
+     sub 는 별도 프리팹이 아니라 그 프리팹 안의 노드를 뽑아 온 지면이다. */
+  const PF = {
+    intro: { src: "intro.fire", panel: null, parked: 0, folded: 0, nested: 2, boxes: [
+      { k: "i", n: "loading", x: 0.5, y: 0.3906, w: 1.0, hh: 1.218 },
+      { k: "i", n: "bg", x: 0.5, y: 0.5, w: 1.7778, hh: 0.5625 },
+      { k: "b", h: "onClickUserProfile", n: "profile", x: 0.0861, y: 0.043, w: 0.1389, hh: 0.0781 },
+      { k: "i", n: "box", x: 0.3917, y: 0.0344, w: 0.3703, hh: 0.0416 },
+      { k: "i", n: "btn", x: 0.55, y: 0.0359, w: 0.0806, hh: 0.0492, a: 0 },
+      { k: "l", n: "count", t: "3,000", x: 0.3931, y: 0.0367, w: 0.2222, hh: 0.0391 },
+      { k: "l", n: "text", t: "DEV", x: 0.8367, y: 0.964, w: 0.2858, hh: 0.049 }
+    ] },
+    merge: { src: "ViewMergeBoard.prefab", panel: null, parked: 0, folded: 4, nested: 0, runtime: "보드 셀 상태 · 아이템 티어 스프라이트 (SimpleMergeBoardModel)", boxes: [
+      { k: "i", n: "Background", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
+      { k: "i", n: "BoardSurface", x: 0.5, y: 0.5195, w: 0.8194, hh: 0.625 },
+      { k: "l", n: "Title", t: "CLEAN THE KITCHEN", x: 0.5, y: 0.0742, w: 0.5556, hh: 0.0344 },
+      { k: "l", n: "SelectedItemHint", t: "Tap the generator to create ", x: 0.5, y: 0.8477, w: 0.7083, hh: 0.0328 },
+      { k: "i", n: "Cell00", x: 0.2292, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell01", x: 0.3375, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell02", x: 0.4458, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell03", x: 0.5542, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell04", x: 0.6625, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell05", x: 0.7708, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell06", x: 0.2292, y: 0.3977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell07", x: 0.3375, y: 0.3977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell08", x: 0.4458, y: 0.3977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell09", x: 0.5542, y: 0.3977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell10", x: 0.6625, y: 0.3977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell11", x: 0.7708, y: 0.3977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell12", x: 0.2292, y: 0.4586, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell13", x: 0.3375, y: 0.4586, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell14", x: 0.4458, y: 0.4586, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell15", x: 0.5542, y: 0.4586, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell16", x: 0.6625, y: 0.4586, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell17", x: 0.7708, y: 0.4586, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell18", x: 0.2292, y: 0.5195, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell19", x: 0.3375, y: 0.5195, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell20", x: 0.4458, y: 0.5195, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell21", x: 0.5542, y: 0.5195, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell22", x: 0.6625, y: 0.5195, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell23", x: 0.7708, y: 0.5195, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell24", x: 0.2292, y: 0.5805, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell25", x: 0.3375, y: 0.5805, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell26", x: 0.4458, y: 0.5805, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell27", x: 0.5542, y: 0.5805, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell28", x: 0.6625, y: 0.5805, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell29", x: 0.7708, y: 0.5805, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell30", x: 0.2292, y: 0.6414, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell31", x: 0.3375, y: 0.6414, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell32", x: 0.4458, y: 0.6414, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell33", x: 0.5542, y: 0.6414, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell34", x: 0.6625, y: 0.6414, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell35", x: 0.7708, y: 0.6414, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell36", x: 0.2292, y: 0.7023, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell37", x: 0.3375, y: 0.7023, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell38", x: 0.4458, y: 0.7023, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell39", x: 0.5542, y: 0.7023, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell40", x: 0.6625, y: 0.7023, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell41", x: 0.7708, y: 0.7023, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Artwork", x: 0.4458, y: 0.3977, w: 0.0972, hh: 0.0445 },
+      { k: "i", n: "Artwork", rep: 5, x: 0.6625, y: 0.3977, w: 0.0972, hh: 0.0445, a: 0 },
+      { k: "l", n: "OrderProgress", t: "TARGET: TIER 3 - 0 MERGES", x: 0.5, y: 0.1289, w: 0.5833, hh: 0.0312 },
+      { k: "b", h: "onClickBack", n: "BackButton", x: 0.1458, y: 0.0742, w: 0.1111, hh: 0.0625 },
+      { k: "b", h: "onClickContinue", n: "ContinueButton", t: "COMPLETE ITEM", x: 0.5, y: 0.918, w: 0.5, hh: 0.0563 },
+      { k: "l", n: "Label", t: "COMPLETE ITEM", x: 0.5, y: 0.918, w: 0.5, hh: 0.0563 }
+    ] },
+    story: { src: "ViewStory.prefab", panel: null, parked: 0, folded: 16, nested: 0, runtime: "대사 행 · 스틸컷 텍스처 (StoryNodeRunner 가 데이터로 채운다)", boxes: [
+      { k: "i", n: "Bg", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
+      { k: "i", n: "StoryStageBackground", x: 0.5, y: 0.5, w: 1.0, hh: 0.7414 },
+      { k: "i", n: "StoryFlowerVaseObject", x: 0.7986, y: 0.1762, w: 0.1236, hh: 0.0938, a: 0 },
+      { k: "i", n: "StoryTableSettingObject", x: 0.5694, y: 0.5152, w: 0.2931, hh: 0.1094, a: 0 },
+      { k: "i", n: "Portrait", rep: 5, x: 0.1681, y: 0.8125, w: 0.1556, hh: 0.1172, a: 0 },
+      { k: "i", n: "ChatBubble", rep: 5, x: 0.6042, y: 0.8125, w: 0.5972, hh: 0.1641, a: 0 },
+      { k: "l", n: "SpeakerName", rep: 5, x: 0.6042, y: 0.7734, w: 0.5194, hh: 0.0219, a: 0 },
+      { k: "l", n: "Dialogue", rep: 5, x: 0.6042, y: 0.8297, w: 0.5194, hh: 0.0781, a: 0 },
+      { k: "l", n: "TapHint", t: "v", x: 0.8611, y: 0.9492, w: 0.0667, hh: 0.0375, a: 0 },
+      { k: "i", n: "Stillcut", x: 0.5, y: 0.5, w: 0.8194, hh: 0.8195, a: 0 },
+      { k: "i", n: "StillcutSurfaceA", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 0 },
+      { k: "i", n: "StillcutSurfaceB", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 0 },
+      { k: "i", n: "SubtitleBar", x: 0.5, y: 0.9102, w: 0.8194, hh: 0.1172, a: 0 },
+      { k: "l", n: "SubtitleText", x: 0.5, y: 0.9109, w: 0.7417, hh: 0.0563, a: 0 },
+      { k: "l", n: "StoryRunner", t: "LOADING STORY DATA...", x: 0.5, y: 0.5, w: 0.8194, hh: 0.1875 }
+    ] },
+    task: { src: "PopupTask.prefab", panel: null, parked: 0, folded: 0, nested: 0, boxes: [
+      { k: "i", n: "DimmedLayer", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
+      { k: "i", n: "BackgroundPanel", x: 0.5, y: 0.4844, w: 0.8194, hh: 0.4375 },
+      { k: "i", n: "Olivia", x: 0.5, y: 0.2656, w: 0.1514, hh: 0.1094 },
+      { k: "i", n: "Colton", x: 0.5, y: 0.2656, w: 0.15, hh: 0.1094, a: 0 },
+      { k: "i", n: "Sam", x: 0.5, y: 0.2656, w: 0.1528, hh: 0.1094, a: 0 },
+      { k: "l", n: "Title", t: "WE'RE DIVORCED!", x: 0.5, y: 0.3531, w: 0.7528, hh: 0.0344 },
+      { k: "l", n: "Cost", t: "Cost: 26", x: 0.3194, y: 0.4047, w: 0.3472, hh: 0.0281 },
+      { k: "l", n: "Reward", t: "Reward: EXP 15", x: 0.6806, y: 0.4047, w: 0.3472, hh: 0.0281 },
+      { k: "l", n: "GoldProgress", t: "GOLD 0 / 26 - EARN IN MERGE", x: 0.5, y: 0.4453, w: 0.7083, hh: 0.025 },
+      { k: "b", h: "onClickStart", n: "StartButton", t: "EARN GOLD", x: 0.5, y: 0.6406, w: 0.5556, hh: 0.0625 },
+      { k: "l", n: "Label", t: "EARN GOLD", x: 0.5, y: 0.6406, w: 0.5556, hh: 0.0625 }
+    ] },
+  };
+
+  /* 모든 지면 위에 상주하는 공통 헤더 (프로필 · 코인 바).
+     독립 프리팹이 아니라 intro.fire 의 PersistRootNode/Header 안에 있고,
+     SceneManager.directionTopCoin(TopCoin)이 그 인스턴스다.
+     PopupManager.setHeader() 는 HeaderLayer.prefab 을 찾지만 이 프로젝트엔 없다 — 죽은 경로. */
+  const HDR = [
+    { k: "b", n: "profile", x: 0.0861, y: 0.0391, w: 0.1389, hh: 0.0781 },
+    { k: "i", n: "box", x: 0.3917, y: 0.0305, w: 0.3703, hh: 0.0416 },
+    { k: "i", n: "btn", x: 0.55, y: 0.032, w: 0.0806, hh: 0.0492 },
+    { k: "l", n: "count", t: "3,000", x: 0.3931, y: 0.0328, w: 0.2222, hh: 0.0391 }
+  ];
+
+  /* ── 맵 밖 축 : 노드 표 · 태스크 루프 · 플랫폼 · 빌드 ────────────
+     SPINE 은 story_node.json 에서 생성했다 (gen_ctx.py).
+     나머지는 코드를 읽어 손으로 적은 표다 — 기계 파싱이 아니다. */
+  const SPINE = [
+    {
+      "i": 1,
+      "type": "dialogue",
+      "node": null,
+      "scene": "tutorial_0 : 1",
+      "label": null,
+      "gimmick": null,
+      "play": "씬 tutorial_0 전체 재생 (컷 4장)",
+      "cost": 0
+    },
+    {
+      "i": 2,
+      "type": "task",
+      "node": "clean_kitchen",
+      "scene": null,
+      "label": "Clean the Kitchen",
+      "gimmick": "merge",
+      "play": "태스크 — 삼킴 대상 아님",
+      "cost": 0
+    },
+    {
+      "i": 3,
+      "type": "dialogue",
+      "node": null,
+      "scene": "1_1_begin : 1",
+      "label": null,
+      "gimmick": null,
+      "play": "씬 1_1_begin 전체 재생 (컷 4장)",
+      "cost": 0
+    },
+    {
+      "i": 4,
+      "type": "task",
+      "node": "task_1_1",
+      "scene": null,
+      "label": "We're Divorced!",
+      "gimmick": "decorate",
+      "play": "태스크 — 삼킴 대상 아님",
+      "cost": 26
+    },
+    {
+      "i": 5,
+      "type": "dialogue",
+      "node": null,
+      "scene": "1_2_begin : 1",
+      "label": null,
+      "gimmick": null,
+      "play": "씬 1_2_begin 전체 재생 (컷 3장) · 노드 6·7 을 삼킨다",
+      "cost": 0
+    },
+    {
+      "i": 6,
+      "type": "stillcut",
+      "node": "sc_sam_tools",
+      "scene": "← 1_2_begin step 3",
+      "label": "Sam with Tools",
+      "gimmick": null,
+      "play": "삼켜짐 — 씬의 삽입 컷으로 이미 재생",
+      "cost": 0
+    },
+    {
+      "i": 7,
+      "type": "dialogue",
+      "node": null,
+      "scene": "1_2_begin : 2",
+      "label": null,
+      "gimmick": null,
+      "play": "삼켜짐 — 같은 씬 뒤 파트",
+      "cost": 0
+    },
+    {
+      "i": 8,
+      "type": "task",
+      "node": "set_table",
+      "scene": null,
+      "label": "Something Fishy",
+      "gimmick": "decorate",
+      "play": "태스크 — 삼킴 대상 아님",
+      "cost": 16
+    },
+    {
+      "i": 9,
+      "type": "dialogue",
+      "node": null,
+      "scene": "1_2_end : 1",
+      "label": null,
+      "gimmick": null,
+      "play": "씬 1_2_end 전체 재생 (컷 5장) · 노드 10·11 을 삼킨다",
+      "cost": 0
+    },
+    {
+      "i": 10,
+      "type": "stillcut",
+      "node": "sc_detective",
+      "scene": "← 1_2_end step 8",
+      "label": "Detective Quinn",
+      "gimmick": null,
+      "play": "삼켜짐 — 씬의 삽입 컷으로 이미 재생",
+      "cost": 0
+    },
+    {
+      "i": 11,
+      "type": "dialogue",
+      "node": null,
+      "scene": "1_2_end : 2",
+      "label": null,
+      "gimmick": null,
+      "play": "삼켜짐 — 같은 씬 뒤 파트",
+      "cost": 0
+    }
+  ];
+
+  const MODES = [
+    {
+      "id": "chat",
+      "cls": "ChatBubbleStoryPresentation",
+      "consume": false,
+      "bundle": "assets/bundle/chat",
+      "active": false,
+      "state": "구현됨 · 비활성",
+      "src": "presentation/chat/ChatBubbleStoryPresentation.ts (415줄)"
+    },
+    {
+      "id": "stillcut",
+      "cls": "StillcutStoryPresentation + FullscreenStoryShell",
+      "consume": true,
+      "bundle": "assets/bundle/storyStillcut",
+      "active": true,
+      "state": "활성",
+      "src": "presentation/stillcut/StillcutStoryPresentation.ts"
+    },
+    {
+      "id": "video",
+      "cls": "VideoStoryPresentation + FullscreenStoryShell",
+      "consume": true,
+      "bundle": "assets/bundle/storyVideo",
+      "active": false,
+      "state": "봉인 (dormant)",
+      "src": "presentation/video/VideoStorySource.ts"
+    }
+  ];
+
+  const CUTPLAN = [
+    {
+      "scene": "tutorial_0",
+      "cuts": 4,
+      "plan": "<code>_01</code>(대사 1,2,3) · <code>_02</code>(4,5,6) · <code>_03</code>(7,8) · <code>_04</code>(9,10)"
+    },
+    {
+      "scene": "1_1_begin",
+      "cuts": 4,
+      "plan": "<code>_01</code>(1,2,3) · <code>_02</code>(4,5,6) · <code>_03</code>(7,8,9) · <code>_04</code>(10,11,12)"
+    },
+    {
+      "scene": "1_2_begin",
+      "cuts": 3,
+      "plan": "<code>_01</code>(1,2) · <b>삽입 still_sam_tools</b>(3초) · <code>_03</code>(4,5,6)"
+    },
+    {
+      "scene": "1_2_end",
+      "cuts": 5,
+      "plan": "<code>_01</code>(1,2,3) · <code>_02</code>(4,5) · <code>_03</code>(6,7) · <b>삽입 still_detective</b>(3초) · <code>_05</code>(9)"
+    }
+  ];
+
+  const CONTRACT = [
+    [
+      "행 수",
+      "nodes <b>11</b> · dialogues <b>35</b> · videos <b>4</b>",
+      "expected 11 nodes, 35 dialogue rows, and 4 videos"
+    ],
+    [
+      "노드 순번",
+      "node_order 가 1..11 연속",
+      "invalid node_order N"
+    ],
+    [
+      "활성 표시",
+      "모든 노드 in_use === 1",
+      "node N is not active"
+    ],
+    [
+      "씬:파트 대사 수",
+      "tutorial_0:1=10 · 1_1_begin:1=12 · 1_2_begin:1=2 · 1_2_begin:2=3 · 1_2_end:1=7 · 1_2_end:2=1",
+      "invalid dialogue join count for KEY"
+    ],
+    [
+      "대사 있는 dialogue 노드",
+      "dialogue 노드의 scene:part 가 위 표에 있어야 한다",
+      "missing dialogue rows for node N"
+    ],
+    [
+      "스틸컷 자리",
+      "스틸컷 노드의 origin_scene:origin_step 자리에 대사가 <b>없어야</b> 한다",
+      "stillcut X does not match a missing dialogue step"
+    ],
+    [
+      "비디오 줄 수",
+      "present_video.line_count 가 그 씬의 실제 대사 수와 같아야 한다",
+      "invalid video line_count for SCENE"
+    ]
+  ];
+
+  const PLATFORMS = [
+    {
+      "cls": "FaceBookPlatform",
+      "n": "1,787",
+      "note": "PLATFORM_DEFAULT. 광고 · 컨텍스트 · 토너먼트 · 스토리지가 모두 여기에 있다"
+    },
+    {
+      "cls": "TikTokPlatform",
+      "n": "1,253",
+      "note": "TTMinis.ts(748줄) SDK 래퍼 · TTMinisPreviewMock.ts(105줄) 목과 3파일 구성"
+    },
+    {
+      "cls": "BasePlatform",
+      "n": "954",
+      "note": "나머지 7종의 부모이자 폴백. PlatformType.Preview 기본값이 이걸 탄다"
+    },
+    {
+      "cls": "TossPlatform",
+      "n": "749",
+      "note": "이 프로토에서 부르는 경로 없음"
+    },
+    {
+      "cls": "GooglePlatform",
+      "n": "705",
+      "note": "이 프로토에서 부르는 경로 없음"
+    },
+    {
+      "cls": "CrazyGamePlatform",
+      "n": "604",
+      "note": "이 프로토에서 부르는 경로 없음"
+    },
+    {
+      "cls": "YouTubePlatform",
+      "n": "386",
+      "note": "함정은 .claude/reference/platform-quirks-youtube-playables.md 참고"
+    },
+    {
+      "cls": "SamsungPlatform",
+      "n": "38",
+      "note": "거의 비어 있다 — 자리만 잡아 둔 상태"
+    }
+  ];
+
+  const PROFILES = [
+    {
+      "id": "chat",
+      "keep": "assets/bundle/chat",
+      "drop": "storyStillcut · storyVideo",
+      "out": "build/…/chat",
+      "dormant": false
+    },
+    {
+      "id": "stillcut",
+      "keep": "assets/bundle/storyStillcut",
+      "drop": "chat · storyVideo",
+      "out": "build/…/stillcut",
+      "dormant": false
+    },
+    {
+      "id": "video",
+      "keep": "assets/bundle/storyVideo",
+      "drop": "chat · storyStillcut",
+      "out": "build/…/video",
+      "dormant": true
+    }
+  ];
+
+  /* 태스크 골드 루프 상태 기계. 렌더러(ctxStateMachine)는 첫 상태를 왼쪽에,
+     나머지를 오른쪽에 쌓는다 — 그래서 loop 가 맨 앞이다. */
+  const CTX_STATES = [
+    {
+      "id": "loop",
+      "name": "playCostTask()",
+      "ko": "골드 루프",
+      "cond": "while (!completed) — 골드가 태스크 비용에 닿을 때까지 돈다"
+    },
+    {
+      "id": "popup",
+      "name": "PopupTask",
+      "ko": "태스크 안내",
+      "cond": "매 회차 getGoldBalance() 를 다시 읽어 EARN / SPEND 로 문구가 갈린다"
+    },
+    {
+      "id": "board",
+      "name": "ViewMergeBoard",
+      "ko": "머지 보드 (주문 모드)",
+      "cond": "orderContext { rewardGold 10 · currentGold · targetGold }"
+    },
+    {
+      "id": "done",
+      "name": "completeCostTask()",
+      "ko": "태스크 완료",
+      "cond": "spend(cost) 성공 시에만. node_id 를 담고 스테이지를 다시 그린다"
+    }
+  ];
+
+  const CTX_EDGES = [
+    {
+      "a": "loop",
+      "b": "popup",
+      "label": "showPopupTask()",
+      "ok": 1,
+      "note": "지금 골드와 비용을 넘겨 팝업을 띄우고 waitForConfirmation() 으로 확인을 기다린다",
+      "src": "StoryNodeRunner.ts:playCostTask · ViewCreator.showPopupTask"
+    },
+    {
+      "a": "popup",
+      "b": "loop",
+      "label": "onClickStart() → close()",
+      "ok": 1,
+      "note": "확인 약속이 풀리면 루프가 taskEconomy.spend(cost) 로 판정한다. 팝업 자체는 골드를 안 건드린다",
+      "src": "PopupTask.ts:onClickStart"
+    },
+    {
+      "a": "loop",
+      "b": "board",
+      "label": "spend 실패 → 보드",
+      "ok": 0,
+      "note": "hideForGameplay() 로 연출을 접고 showViewMergeBoard(node, orderContext) 로 내려간다",
+      "src": "StoryNodeRunner.ts:playMergeTask"
+    },
+    {
+      "a": "board",
+      "b": "loop",
+      "label": "onClickBack() → 주문 수 회수",
+      "ok": 1,
+      "note": "waitForCompletion() 이 completedOrderCount 를 돌려주고 collectMergeOrders(n) 이 10골드씩 더한다",
+      "src": "ViewMergeBoard.ts:onClickBack · StoryTaskEconomy.ts:collectMergeOrders"
+    },
+    {
+      "a": "loop",
+      "b": "done",
+      "label": "spend 성공 → 탈출",
+      "ok": 1,
+      "note": "completeCostTask(node) → completedCostNodeIds 에 담고 refreshStoryStage() 로 스테이지 오브젝트를 켠다",
+      "src": "StoryNodeRunner.ts:completeCostTask"
+    }
+  ];
+
+  const CTX_TRAP = "루프에 골드 말고 다른 출구가 없다. 머지 보드에서 주문을 하나도 안 하고 뒤로 나가면 collectMergeOrders(0) 이 아무것도 더하지 않고, 팝업이 다시 뜨고, 다시 보드로 내려간다 — 무한히 반복된다. 프로토라 의도된 동작이지만, 실제 게임에서는 이탈 경로가 필요하다.";
+
+  /* 이 프로젝트는 FB 전용 지면 표를 쓰지 않는다 — 검색 색인이 typeof 로 확인한다 */
+  const FBS = [];
+
+  const N = [
+    /* ── 부팅 · 라우팅 · 데이터 계약 ────────────────────────────── */
+    {
+      id: "intro", cat: "entry", kind: "씬", gate: true, x: 80, y: 208, w: 300,
+      title: "intro.fire", ko: "부팅 씬",
+      file: "assets/scene/intro.fire · assets/script/game/Base/BaseIntro.ts:126",
+      acts: [
+        ["게임을 켜면", "BaseIntro.start() → asyncProcess.waitAll() → moveToNext()"],
+        ["프로필을 누르면", "onClickUserProfile() → 프로필 팝업"],
+        ["부팅이 끝나면", "SceneLoader.hide() → registPlatformAPI()"]
+      ],
+      detail: [
+        { h: "부팅 순서 — asyncProcess 의존 그래프", rows: [
+          ["플랫폼 선택", "PlatformSelector.createPlatformInstance() → BasePlatform.instance 확정. 이 한 줄이 FB · TikTok · Toss 중 무엇으로 뜰지를 정한다"],
+          ["로그 매니저", "new StoryMergeProtoLogManager() → initLogManager(getLogHandler()). 60-mvvm-structure 규칙 1 대로 BaseLogManager 를 직접 new 하지 않는다"],
+          ["gameData", "loadGameData() — 게임 데이터. IntroGameData / IntroGameDataFinish 로그 사이"],
+          ["bundle", "CCres.loadBundle() → 이어서 objectPool(preloadResources) · setting(loadSettings) 두 갈래로 갈린다"],
+          ["fbStart 갈래", "fbData · fbSignedPlayerInfo · fbFriend · fbEntryPoint → fbEntryData · fbCanSubscribeBot 이 병렬로 돈다"],
+          ["login", "fbSignedPlayerInfo · fbFriend · fbEntryData · setting 이 모두 끝나야 login() 이 돈다"],
+          ["loginLog", "logPlayTime() → startLogSessionTime() → logLoginComplete() 의 JSON 을 afterLoginLogJson 에 담는다"],
+          ["마무리", "waitAll() → networkReady = true → SceneLoader.hide() → moveToNext()"]
+        ]},
+        { h: "화면에 상주하는 것", rows: [
+          ["공통 헤더", "PersistRootNode/Header 의 프로필 · 코인 바. SceneManager.directionTopCoin 이 그 인스턴스다"],
+          ["헤더 파킹", "HeaderPosition(+590) 아래 HeaderLayer(+124) 로 화면 위 밖에 저장돼 있다 — 슬라이드 인 시작 프레임이라 와이어프레임은 상단에 붙여 그렸다"],
+          ["죽은 경로", "PopupManager.setHeader() 는 HeaderLayer.prefab 을 preload 하지만 이 프로젝트엔 그 프리팹이 없다. 아무 데서도 부르지 않는다"],
+          ["로딩 막", "loading 노드 · SceneLoader.show()/hide() 가 켜고 끈다"],
+          ["DEV 라벨", "빌드 구분용 문구. 프리팹에 문자열이 그대로 들어 있다"]
+        ]}
+      ]
+    },
+    {
+      id: "router", cat: "entry", kind: "로직", x: 80, y: 334, w: 300,
+      title: "moveToNext()", ko: "진입 분기",
+      file: "assets/script/game/Base/BaseIntro.ts:399",
+      acts: [
+        ["기본", "moveToBasic() → ViewCreator.showViewStory()"],
+        ["초대로 들어오면", "addContextToFriendID() → moveToP2P() 또는 moveToBasic()"],
+        ["토너먼트로 들어오면", "moveToTournament() → (프로토는 빈 껍데기)"]
+      ],
+      detail: [
+        { h: "분기 조건 — 실제로 갈리는 지점", rows: [
+          ["신규 유저", "DataManager.isNewPlayer 면 entryData.social 이 초대 · 메시지인지 본다. 상대 id 가 자기 자신이 아니면 addContextToFriendID(userId)"],
+          ["초대 + 스테이지", "entryData.stage_id 가 있으면 moveToP2P(userId, stage_id). 이 프로토의 moveToP2P 는 본문이 비어 있다"],
+          ["토너먼트", "entryData.tournamentInfo 가 있으면 moveToTournament(). 종료 시각을 지났는지만 보고 나머지는 주석 뿐 — 프로토라 미구현"],
+          ["실패 · 그 외", "전부 moveToBasic() 으로 떨어진다. 결국 이 프로토의 실질 경로는 하나다"],
+          ["로그 위치", "DataManager.enterPosition = LogEnterPosition.direct_entry 로 고정"]
+        ]}
+      ]
+    },
+    {
+      id: "data", chips: ["d_node", "d_dialogue", "d_video"], cat: "data", kind: "묶음", gate: true, x: 590, y: 244, w: 300,
+      title: "StoryDataLoader", ko: "데이터 계약",
+      file: "assets/script/game/story/data/StoryDataLoader.ts",
+      acts: [
+        ["러너가 부르면", "DataManager.loadStoryData() → StoryDataLoader.load()"],
+        ["세 파일을 함께", "BundleLoader.loadBundle(MainBundle) → loadJson x3"],
+        ["검증에 걸리면", "validate() → throw → STORY DATA ERROR"]
+      ],
+      detail: [
+        { h: "validate() 가 던지는 조건 — 하나라도 어기면 부팅이 멈춘다", rows: [
+          ["행 수 고정", "nodes 11 · dialogues 35 · videos 4 가 아니면 throw. 프로토라 데이터가 늘어날 일이 없다는 전제다"],
+          ["노드 순서", "node_order 가 1..11 연속이 아니거나 in_use !== 1 인 노드가 있으면 throw"],
+          ["씬:파트 대사 수", "tutorial_0:1=10 · 1_1_begin:1=12 · 1_2_begin:1=2 · 1_2_begin:2=3 · 1_2_end:1=7 · 1_2_end:2=1 로 고정"],
+          ["대사 없는 dialogue 노드", "dialogue 노드의 scene:part 조합이 위 표에 없으면 throw"],
+          ["스틸컷 자리", "스틸컷 노드의 origin_scene/origin_step 자리에 대사가 **있으면** throw — 스틸컷은 빠진 스텝을 메우는 자리여야 한다"],
+          ["비디오 줄 수", "present_video.line_count 가 그 씬의 실제 대사 수와 다르면 throw"]
+        ]},
+        { h: "정렬 · 캐시", rows: [
+          ["정렬", "nodes 는 node_order · dialogues 와 videos 는 key_number 오름차순으로 정렬해 넘긴다"],
+          ["캐시", "DataManager.storyData 에 담아 두 번째 호출부터는 그대로 돌려준다"]
+        ]}
+      ]
+    },
+    {
+      id: "d_node", chip: true, cat: "data", kind: "데이터", x: 0, y: 0, w: 300,
+      title: "story_node.json", ko: "노드 11행",
+      file: "assets/bundle/data/story_node.json",
+      acts: [
+        ["러너가 순회", "runNodes() → node_order 순으로 11개"],
+        ["종류로 갈림", "node_type = dialogue 6 · task 3 · stillcut 2"],
+        ["태스크 비용", "task_cost → resolveStoryTaskGoldCost()"]
+      ],
+      detail: [
+        { h: "쓰이는 필드", rows: [
+          ["node_order", "순회 순서이자 검증 키. 1..11 연속이어야 한다"],
+          ["node_type", "dialogue · stillcut · task 세 갈래. StoryNodeRunner.runNode() 의 분기 기준"],
+          ["scene_id · part", "dialogue 노드가 어느 대사 묶음을 쓰는지"],
+          ["origin_scene · origin_step", "stillcut 노드가 어느 씬의 몇 번째 빈 스텝을 메우는지"],
+          ["task_cost", "태스크에 드는 골드. null 이면 TUTORIAL_TASK_GOLD_COST(10)"],
+          ["node_id", "task_1_1 · set_table 은 스테이지 오브젝트 활성 키로도 쓰인다"],
+          ["portrait", "PopupTask 가 olivia · colton · sam 중 하나를 켠다"],
+          ["asset", "스틸컷 노드가 가리키는 이미지 파일명 (still_sam_tools.png 등)"]
+        ]}
+      ]
+    },
+    {
+      id: "d_dialogue", chip: true, cat: "data", kind: "데이터", x: 0, y: 0, w: 300,
+      title: "story_dialogue.json", ko: "대사 35행",
+      file: "assets/bundle/data/story_dialogue.json",
+      acts: [
+        ["노드 문맥 만들 때", "createPresentationContext() → scene_id + part 로 거른다"],
+        ["씬 전체가 필요할 때", "sceneDialogues = scene_id 로만 거른다"],
+        ["재생 순서", "sortDialogues() → step 오름차순"]
+      ],
+      detail: [
+        { h: "쓰이는 필드", rows: [
+          ["scene_id · part · step", "노드-대사 조인 키. step 이 건너뛴 자리가 곧 스틸컷 자리다"],
+          ["speaker · direction", "채팅 모드에서 말풍선 좌/우와 이름표를 정한다"],
+          ["emotion · anim", "채팅 모드 초상 · 애니 선택용"],
+          ["text_en", "실제 문구. 자막(subtitle=1)일 때만 화면에 나간다"]
+        ]}
+      ]
+    },
+    {
+      id: "d_video", chip: true, cat: "data", kind: "데이터", x: 0, y: 0, w: 300,
+      title: "present_video.json", ko: "씬 재생 4행",
+      file: "assets/bundle/data/present_video.json",
+      acts: [
+        ["씬 길이", "duration_target_sec → 컷 플랜 · 자막 타임라인의 상한"],
+        ["자막 여부", "subtitle === 1 일 때만 자막을 그린다"],
+        ["탭 넘김", "tap_to_skip === 1 일 때만 터치가 다음 대사로 넘긴다"]
+      ],
+      detail: [
+        { h: "비디오 모드가 봉인이어도 이 파일이 필요한 이유", rows: [
+          ["세 모드 공유", "clip 은 비디오 모드만 쓰지만 duration_target_sec · subtitle · tap_to_skip 은 스틸컷 · 채팅도 쓴다"],
+          ["검증 고리", "line_count 가 그 씬의 실제 대사 수와 맞는지 StoryDataLoader 가 대조한다 — 데이터가 어긋나면 여기서 잡힌다"],
+          ["문맥 필수", "createPresentationContext() 는 video 행이 없으면 그 노드에서 throw 한다"],
+          ["embedded_stillcut_1", "씬 안에 박히는 스틸컷 파일명. 컷 플랜의 embeddedCut 과 짝이다"]
+        ]}
+      ]
+    },
+    /* ── 스토리 지면 · 러너 · 노드 스파인 ─────────────────────── */
+    {
+      id: "story", cat: "story", kind: "지면", x: 1100, y: 208, w: 300,
+      title: "ViewStory", ko: "스토리 진입 지면",
+      file: "assets/script/game/story/ViewStory.ts · assets/bundle/view/ViewStory.prefab",
+      acts: [
+        ["라우터가 부르면", "ViewCreator.showViewStory() → ViewManager.load(\"ViewStory\") → show(true)"],
+        ["열리면", "onShowStart() → StoryNodeRunner.onEnable() → run()"],
+        ["화면을 누르면", "FullscreenStoryShell.onTouchEnd() → 다음 대사"]
+      ],
+      detail: [
+        { h: "버튼이 0개인 이유 — 필터 탓이 아니다", rows: [
+          ["실제로 없다", "ViewStory.prefab 에 cc.Button 이 한 개도 없다. 진행은 노드 전체 TOUCH_END 로 받는다"],
+          ["전체화면 탭", "FullscreenStoryShell.onEnable() 이 this.node.on(cc.Node.EventType.TOUCH_END) 으로 붙인다"],
+          ["채팅 탭", "ChatBubbleStoryPresentation 은 bindings.chatRoot 에 같은 이벤트를 붙인다"],
+          ["탭 게이트", "video.tap_to_skip !== 1 이면 터치를 무시한다 — 데이터로 잠글 수 있다"]
+        ]},
+        { h: "한 프리팹에 세 연출이 다 들어 있다", rows: [
+          ["ChatLayer", "MessageRow0~4 · Portrait · ChatBubble · SpeakerName · Dialogue · TapHint · Stillcut — 채팅 모드용"],
+          ["FullscreenStoryShell", "StillcutSurfaceA/B · SubtitleBar/SubtitleText — 스틸컷 · 비디오 공용"],
+          ["StoryStage", "StoryStageBackground · StoryFlowerVaseObject · StoryTableSettingObject — 태스크 완료 반영용"],
+          ["StoryRunner", "StoryNodeRunner 가 붙은 노드. statusLabel 이 여기 있다"],
+          ["편집 시점 비활성", "위 요소 대부분이 _active=false 로 저장돼 있다. 파킹이 아니라 **연출 모드 · 진행도에 따른 런타임 노출**이라 와이어프레임에 점선으로 남겼다"]
+        ]},
+        { h: "ViewBase 계약", rows: [
+          ["contentRoot", "@property(cc.Node) — 러너가 마운트되는 전용 부모. getContentRoot() 로 꺼낸다"],
+          ["라이프사이클", "onShowStart / onShowEnd / onHideStart 모두 super 를 부른다 (60-mvvm-structure 규칙 2)"]
+        ]}
+      ]
+    },
+    {
+      id: "runner", cat: "story", kind: "로직", gate: true, x: 1100, y: 336, w: 300,
+      title: "StoryNodeRunner", ko: "노드 러너",
+      file: "assets/script/game/story/StoryNodeRunner.ts",
+      acts: [
+        ["켜지면", "onEnable() → run() → refreshStoryStage() → loadStoryData()"],
+        ["연출 만들기", "createStoryPresentation(bindings) → getMode() 대조 → preload(data)"],
+        ["노드 순회", "runNodes(data, presentation) → 11개"],
+        ["끝나면", "dispose() → statusLabel = COMPLETE [MODE] 11 / 11 NODES"],
+        ["실패하면", "catch → statusLabel = STORY DATA ERROR"]
+      ],
+      detail: [
+        { h: "run() 실행 순서", rows: [
+          ["중복 방지", "isRunning 이면 그냥 돌아간다. completedNodeOrders · completedCostNodeIds · taskEconomy 를 초기화한다"],
+          ["스테이지", "refreshStoryStage() — 바인딩이 하나라도 비면 여기서 throw 한다 (프리팹 연결 누락을 부팅에서 잡는다)"],
+          ["데이터", "await DataManager.loadStoryData() 후 isValid · statusLabel 를 다시 확인 (async 안전)"],
+          ["모드 대조", "presentation.getMode() !== STORY_PRESENTATION_MODE 면 throw — 팩토리와 빌드 설정이 어긋난 빌드를 즉시 잡는다"],
+          ["프리로드", "await presentation.preload(data) → isValid 재확인"],
+          ["뒷정리", "finally 에서 presentation.dispose() · isRunning = false"]
+        ]},
+        { h: "runNodes() — 씬 삼킴", rows: [
+          ["이미 소비됨", "consumedNodeOrders 에 있으면 재생 없이 completeNode(node, true) 만 하고 넘어간다"],
+          ["삼키는 조건", "dialogue 노드를 재생한 뒤 presentation.consumesSceneAfterDialogue() 가 true 일 때만"],
+          ["삼키는 대상", "collectConsumedSceneNodes() — 뒤 순번이면서 task 가 아니고, 같은 scene_id 의 dialogue 이거나 origin_scene 이 같은 stillcut"],
+          ["최종 검사", "completedNodeOrders.length !== data.nodes.length 면 throw — 11개를 다 밟았는지 확인한다"],
+          ["로그", "노드마다 CClog.log(\"StoryNodeRunner > node N\") · 삼킨 노드는 (scene consumed) 접미사"]
+        ]},
+        { h: "바인딩 — 프리팹에서 받아 연출에 넘기는 것", rows: [
+          ["공통", "statusLabel · storyStageRoot · storyFlowerVaseObject · storyTableSettingObject"],
+          ["채팅", "chatRoot · chatListRoot · chatMessageRows[] · chatPortraitNodes[] · chatPortraitSprites[] · chatBubbleRoots[] · chatBubbleSprites[] · chatSpeakerLabels[] · chatDialogueLabels[] · chatTapHintNode · chatStillcutRoot · chatStillcutSprite"],
+          ["전체화면", "fullscreenShellNode · fullscreenStillcutSprites[] (2장이 아니면 StillcutStoryPresentation 이 throw)"],
+          ["넘기는 방식", "createPresentationBindings() 가 한 객체로 묶어 팩토리에 넘긴다 — 연출은 프리팹을 직접 모른다"]
+        ]}
+      ]
+    },
+    {
+      id: "spine", chips: ["n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11"], cat: "story", kind: "묶음", x: 1610, y: 120, w: 300,
+      title: "노드 11개", ko: "스토리 스파인",
+      file: "assets/bundle/data/story_node.json · StoryNodeRunner.runNodes()",
+      acts: [
+        ["dialogue 노드", "presentDialogue(context) → 씬 재생"],
+        ["stillcut 노드", "presentStillcut(node) → 스틸컷 모드에선 씬에 이미 포함"],
+        ["task 노드", "presentTask(node) → playCostTask()"]
+      ],
+      detail: [
+        { h: "구성", rows: [
+          ["dialogue 6개", "1 · 3 · 5 · 7 · 9 · 11 — 씬 4개(tutorial_0 · 1_1_begin · 1_2_begin · 1_2_end)를 파트로 나눠 쓴다"],
+          ["task 3개", "2 clean_kitchen(0골드) · 4 task_1_1(26골드) · 8 set_table(16골드)"],
+          ["stillcut 2개", "6 sc_sam_tools · 10 sc_detective — 둘 다 씬 타임라인 안에 박힌 컷이다"],
+          ["스틸컷 모드에서", "dialogue 노드가 같은 씬의 뒤 노드를 삼켜, 11노드를 밟되 실제 재생은 씬 4 + 태스크 3 이다"],
+          ["채팅 모드에서", "consumesSceneAfterDialogue() 가 false 라 11개를 하나씩 재생한다"]
+        ]}
+      ]
+    },
+    {
+      id: "shell", cat: "story", kind: "로직", x: 80, y: 914, w: 300,
+      title: "FullscreenStoryShell", ko: "전체화면 연출 껍데기",
+      file: "assets/script/game/story/presentation/fullscreen/FullscreenStoryShell.ts",
+      acts: [
+        ["연출이 부르면", "present(context, source) → prepareVisualState() → loadAndPlaySource()"],
+        ["화면을 누르면", "onTouchEnd() → activeSource.update(beat.sourceSec) → 자막 교체"],
+        ["끝나면", "finishPresentation() → source.stop() → restoreBackground() → resolve()"]
+      ],
+      detail: [
+        { h: "탭 타임라인 — 한 번의 터치가 하는 일", rows: [
+          ["비트 만들기", "createFullscreenStoryTapTimeline(sceneDialogues, duration_target_sec) — 대사 1줄당 비트 1개"],
+          ["빈 스텝 보정", "createFullscreenStoryTimeline() 이 step 이 건너뛴 만큼 3초(삽입 스틸컷 길이)를 더해 시작 시각을 민다"],
+          ["삽입 컷 보존", "다음 대사와 step 차가 1보다 크면 그 비트의 sourceSec 을 cue.endSec 으로 잡는다 — 그래야 삽입 스틸컷이 화면에 남는다"],
+          ["자막 게이트", "video.subtitle !== 1 이면 beat.text 를 빈 문자열로 만들어 자막바를 아예 안 켠다"],
+          ["끝 판정", "다음 비트가 없으면 finishPresentation(\"dialogue beats completed\")"]
+        ]},
+        { h: "화면 상태 · 앱 전환", rows: [
+          ["배경 끄기", "prepareVisualState() 가 screenBackgrounds 를 전부 끄고 이전 상태를 기억한다"],
+          ["카메라 투명", "makeCameraTransparent() — cc.Camera.main.backgroundColor.a = 0. 복귀 시 원래 색으로 되돌린다"],
+          ["자막 페이드", "cc.tween(subtitleLabel.node) opacity 0 → 255, 0.2초"],
+          ["앱 숨김", "cc.game.EVENT_HIDE → source.pause(). EVENT_SHOW → 인덱스를 0 으로 되돌리고 source.restart()"],
+          ["중복 방지", "activeResolver 가 살아 있으면 present() 는 reject 한다"],
+          ["강제 종료", "cancel() — 머지 보드로 넘어갈 때 hideForGameplay() 가 이걸 부른다"]
+        ]}
+      ]
+    },
+    /* ── 스토리 노드 11개 (칩) ──────────────────────────────────
+       story_node.json 실측에서 생성했다 (gen_nodes.py).
+       손으로 적은 것은 '왜 그런가' 한 줄뿐이다. */
+    {
+      id: "n1", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      title: "노드 01 · 대사", ko: "tutorial_0 파트 1 · 대사 10줄",
+      file: "assets/bundle/data/story_node.json #1 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
+        ["씬 문맥", "nodeDialogues 10줄 · sceneDialogues 10줄 · video tutorial_0"],
+        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["scene_id : part", "tutorial_0 : 1 — 이 조합의 대사 10줄만 이 노드가 쓴다"],
+          ["씬 전체", "tutorial_0 씬의 대사는 모두 10줄 · duration_target_sec 25초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
+          ["화자", "Olivia · Quinn"],
+          ["첫 줄", "I still can't believe those rioters destroyed my restaurant!"],
+          ["끝 줄", "Now to straighten up the kitchen so I can cook."],
+          ["스틸컷 컷 플랜", "stillcut_tutorial_0_01(1,2,3) · stillcut_tutorial_0_02(4,5,6) · stillcut_tutorial_0_03(7,8) · stillcut_tutorial_0_04(9,10)"],
+          ["왜 이렇게 되나", "첫 노드. 튜토리얼 씬 전체(10줄)를 한 번에 재생한다. 스틸컷 모드에선 이 노드 하나가 씬을 통째로 소비한다."]
+        ]}
+      ]
+    },
+    {
+      id: "n2", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
+      title: "노드 02 · 태스크", ko: "Clean the Kitchen · merge",
+      file: "assets/bundle/data/story_node.json #2 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "presentTask(node) → resolveStoryTaskGoldCost(0) → playCostTask()"],
+        ["팝업", "ViewCreator.showPopupTask(node, goldBalance, 0) → waitForConfirmation()"],
+        ["골드가 모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["task_cost", "0 골드 — 머지 주문 0회분(주문 1회 = 10골드)"],
+          ["node_id", "clean_kitchen — 완료 시 refreshStoryStage() 가 이 id 로 스테이지 오브젝트를 켠다"],
+          ["portrait", "olivia — PopupTask 가 이 이름의 초상만 활성화한다"],
+          ["보상", "none 0"],
+          ["task_ref · quest", "tutorial_clean_kitchen · q1_tutorial(order 1) · day 0"],
+          ["왜 이렇게 되나", "비용이 0이라 PopupTask 의 첫 판정에서 바로 통과한다 — 머지 보드로 내려가지 않는 유일한 태스크다."]
+        ]}
+      ]
+    },
+    {
+      id: "n3", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      title: "노드 03 · 대사", ko: "1_1_begin 파트 1 · 대사 12줄",
+      file: "assets/bundle/data/story_node.json #3 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
+        ["씬 문맥", "nodeDialogues 12줄 · sceneDialogues 12줄 · video 1_1_begin"],
+        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["scene_id : part", "1_1_begin : 1 — 이 조합의 대사 12줄만 이 노드가 쓴다"],
+          ["씬 전체", "1_1_begin 씬의 대사는 모두 12줄 · duration_target_sec 30초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
+          ["화자", "Colton · Quinn"],
+          ["첫 줄", "Cole! How dare you come back here? We're DIVORCED!"],
+          ["끝 줄", "If you say so…see you around, Quinn."],
+          ["스틸컷 컷 플랜", "stillcut_1_1_begin_01(1,2,3) · stillcut_1_1_begin_02(4,5,6) · stillcut_1_1_begin_03(7,8,9) · stillcut_1_1_begin_04(10,11,12)"],
+          ["왜 이렇게 되나", "12줄로 가장 긴 씬. duration_target_sec 30초 · 컷 4장."]
+        ]}
+      ]
+    },
+    {
+      id: "n4", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
+      title: "노드 04 · 태스크", ko: "We're Divorced! · decorate",
+      file: "assets/bundle/data/story_node.json #4 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "presentTask(node) → resolveStoryTaskGoldCost(26) → playCostTask()"],
+        ["팝업", "ViewCreator.showPopupTask(node, goldBalance, 26) → waitForConfirmation()"],
+        ["골드가 모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["task_cost", "26 골드 — 머지 주문 3회분(주문 1회 = 10골드)"],
+          ["node_id", "task_1_1 — 완료 시 refreshStoryStage() 가 이 id 로 스테이지 오브젝트를 켠다"],
+          ["portrait", "colton — PopupTask 가 이 이름의 초상만 활성화한다"],
+          ["보상", "exp 15"],
+          ["task_ref · quest", "casinio_task_1_1 · q2_1_1(order 2) · day 1"],
+          ["왜 이렇게 되나", "26골드로 가장 비싸다. 머지 주문 3회(10골드 x 3 = 30)를 채워야 넘어간다. 완료하면 꽃병이 켜진다."]
+        ]}
+      ]
+    },
+    {
+      id: "n5", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      title: "노드 05 · 대사", ko: "1_2_begin 파트 1 · 대사 2줄",
+      file: "assets/bundle/data/story_node.json #5 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
+        ["씬 문맥", "nodeDialogues 2줄 · sceneDialogues 5줄 · video 1_2_begin"],
+        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["scene_id : part", "1_2_begin : 1 — 이 조합의 대사 2줄만 이 노드가 쓴다"],
+          ["씬 전체", "1_2_begin 씬의 대사는 모두 5줄 · duration_target_sec 15초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
+          ["화자", "Quinn · Sam"],
+          ["첫 줄", "Sam! I’m so happy you’re here – and with tools!"],
+          ["끝 줄", "Of course! A little vandalism won't stop me from coming to work."],
+          ["스틸컷 컷 플랜", "stillcut_1_2_begin_01(1,2) · still_sam_tools(삽입) · stillcut_1_2_begin_03(4,5,6)"],
+          ["왜 이렇게 되나", "1_2_begin 의 앞 2줄만 쓰는 파트. 스틸컷 모드에선 노드 6·7 까지 삼킨다."]
+        ]}
+      ]
+    },
+    {
+      id: "n6", chip: true, cat: "story", kind: "stillcut", x: 0, y: 0, w: 300,
+      title: "노드 06 · 스틸컷", ko: "Sam with Tools · 1_2_begin step 3 자리",
+      file: "assets/bundle/data/story_node.json #6 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "presentation.presentStillcut(node)"],
+        ["스틸컷 모드", "CClog.warn(unexpected standalone stillcut) — 씬에 이미 포함돼 여기 오면 경고다"],
+        ["에셋", "storyStillcut/stills/still_sam_tools"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["origin_scene : step", "1_2_begin : 3 — 이 자리에 대사가 **없어야** 검증을 통과한다"],
+          ["씬 안 위치", "1_2_begin 컷 플랜의 삽입(embedded) 컷 · 노출 3초"],
+          ["present_video", "embedded_stillcut_1 = sc_sam_tools"],
+          ["asset", "still_sam_tools.png"],
+          ["왜 이렇게 되나", "독립 지면이 아니다. 1_2_begin 씬 타임라인의 두 번째 컷(삽입 3초)으로 이미 재생된다 — 그래서 스틸컷 모드에선 삼켜진다."]
+        ]}
+      ]
+    },
+    {
+      id: "n7", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      title: "노드 07 · 대사", ko: "1_2_begin 파트 2 · 대사 3줄",
+      file: "assets/bundle/data/story_node.json #7 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
+        ["씬 문맥", "nodeDialogues 3줄 · sceneDialogues 5줄 · video 1_2_begin"],
+        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["scene_id : part", "1_2_begin : 2 — 이 조합의 대사 3줄만 이 노드가 쓴다"],
+          ["씬 전체", "1_2_begin 씬의 대사는 모두 5줄 · duration_target_sec 15초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
+          ["화자", "Quinn · Sam"],
+          ["첫 줄", "But I don't understand what caused the riot. What happened?"],
+          ["끝 줄", "Don't you worry, Quinn. I can fix this right up."],
+          ["스틸컷 컷 플랜", "stillcut_1_2_begin_01(1,2) · still_sam_tools(삽입) · stillcut_1_2_begin_03(4,5,6)"],
+          ["왜 이렇게 되나", "1_2_begin 의 뒤 3줄. step 4~6 이라 앞의 빈 step 3 자리가 노드 6 의 삽입 컷이다."]
+        ]}
+      ]
+    },
+    {
+      id: "n8", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
+      title: "노드 08 · 태스크", ko: "Something Fishy · decorate",
+      file: "assets/bundle/data/story_node.json #8 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "presentTask(node) → resolveStoryTaskGoldCost(16) → playCostTask()"],
+        ["팝업", "ViewCreator.showPopupTask(node, goldBalance, 16) → waitForConfirmation()"],
+        ["골드가 모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["task_cost", "16 골드 — 머지 주문 2회분(주문 1회 = 10골드)"],
+          ["node_id", "set_table — 완료 시 refreshStoryStage() 가 이 id 로 스테이지 오브젝트를 켠다"],
+          ["portrait", "sam — PopupTask 가 이 이름의 초상만 활성화한다"],
+          ["보상", "exp 15"],
+          ["task_ref · quest", "casinio_task_1_2 · q3_1_2(order 3) · day 1"],
+          ["왜 이렇게 되나", "16골드. 머지 주문 2회면 채워진다. 완료하면 식탁 세팅이 켜진다."]
+        ]}
+      ]
+    },
+    {
+      id: "n9", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      title: "노드 09 · 대사", ko: "1_2_end 파트 1 · 대사 7줄",
+      file: "assets/bundle/data/story_node.json #9 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
+        ["씬 문맥", "nodeDialogues 7줄 · sceneDialogues 8줄 · video 1_2_end"],
+        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["scene_id : part", "1_2_end : 1 — 이 조합의 대사 7줄만 이 노드가 쓴다"],
+          ["씬 전체", "1_2_end 씬의 대사는 모두 8줄 · duration_target_sec 23초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
+          ["화자", "Quinn · Sam"],
+          ["첫 줄", "So, about the food poisoning…it wasn't an accident, was it?"],
+          ["끝 줄", "Maybe it's time I got back into my childhood hobby: solving mysteries!"],
+          ["스틸컷 컷 플랜", "stillcut_1_2_end_01(1,2,3) · stillcut_1_2_end_02(4,5) · stillcut_1_2_end_03(6,7) · still_detective(삽입) · stillcut_1_2_end_05(9)"],
+          ["왜 이렇게 되나", "1_2_end 의 앞 7줄. 컷 3장을 지나 삽입 컷 앞까지다."]
+        ]}
+      ]
+    },
+    {
+      id: "n10", chip: true, cat: "story", kind: "stillcut", x: 0, y: 0, w: 300,
+      title: "노드 10 · 스틸컷", ko: "Detective Quinn · 1_2_end step 8 자리",
+      file: "assets/bundle/data/story_node.json #10 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "presentation.presentStillcut(node)"],
+        ["스틸컷 모드", "CClog.warn(unexpected standalone stillcut) — 씬에 이미 포함돼 여기 오면 경고다"],
+        ["에셋", "storyStillcut/stills/still_detective"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["origin_scene : step", "1_2_end : 8 — 이 자리에 대사가 **없어야** 검증을 통과한다"],
+          ["씬 안 위치", "1_2_end 컷 플랜의 삽입(embedded) 컷 · 노출 3초"],
+          ["present_video", "embedded_stillcut_1 = sc_detective"],
+          ["asset", "still_detective.png"],
+          ["왜 이렇게 되나", "1_2_end 씬의 네 번째 컷(삽입 3초). origin_step 8 자리에 대사가 없어야 검증을 통과한다."]
+        ]}
+      ]
+    },
+    {
+      id: "n11", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      title: "노드 11 · 대사", ko: "1_2_end 파트 2 · 대사 1줄",
+      file: "assets/bundle/data/story_node.json #11 · StoryNodeRunner.runNode()",
+      acts: [
+        ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
+        ["씬 문맥", "nodeDialogues 1줄 · sceneDialogues 8줄 · video 1_2_end"],
+        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+      ],
+      detail: [
+        { h: "원본 데이터 · 재생 규칙", rows: [
+          ["scene_id : part", "1_2_end : 2 — 이 조합의 대사 1줄만 이 노드가 쓴다"],
+          ["씬 전체", "1_2_end 씬의 대사는 모두 8줄 · duration_target_sec 23초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
+          ["화자", "Quinn"],
+          ["첫 줄", "I'm gonna figure out what's going on here!"],
+          ["끝 줄", "I'm gonna figure out what's going on here!"],
+          ["스틸컷 컷 플랜", "stillcut_1_2_end_01(1,2,3) · stillcut_1_2_end_02(4,5) · stillcut_1_2_end_03(6,7) · still_detective(삽입) · stillcut_1_2_end_05(9)"],
+          ["왜 이렇게 되나", "마지막 노드. 1_2_end 의 step 9 한 줄. 끝나면 COMPLETE 11 / 11 이 뜬다."]
+        ]}
+      ]
+    },
+    /* ── 연출 모드 · 빌드 분기 ───────────────────────────────── */
+    {
+      id: "mode", chips: ["m_chat", "m_stillcut", "m_video"], cat: "mode", kind: "묶음", gate: true, x: 80, y: 733, w: 300,
+      title: "연출 모드", ko: "chat · stillcut · video",
+      file: "assets/script/game/story/StoryBuildConfig.ts · StoryPresentationFactory.ts",
+      acts: [
+        ["러너가 만들 때", "createStoryPresentation(bindings) → 지금은 StillcutStoryPresentation 고정"],
+        ["빌드 설정", "STORY_PRESENTATION_MODE = StoryPresentationMode.Stillcut"],
+        ["어긋나면", "getMode() !== STORY_PRESENTATION_MODE → throw"]
+      ],
+      detail: [
+        { h: "왜 팩토리가 분기하지 않고 한 줄인가", rows: [
+          ["빌드 타임 결정", "런타임 if 가 아니라 scripts/story-build-profile.js 가 StoryBuildConfig.ts 와 StoryPresentationFactory.ts 두 파일을 통째로 갈아끼운다"],
+          ["빌드 크기", "런타임 분기로 두면 세 모드의 연출 코드와 에셋이 전부 빌드에 들어간다. 프로토의 목적이 연출 비교라 빌드마다 하나만 남긴다"],
+          ["대조 검사", "그래도 실수로 어긋날 수 있어 StoryNodeRunner.run() 이 getMode() 를 빌드 설정과 대조하고 다르면 그 자리에서 throw 한다"],
+          ["데이터는 공유", "story_node · story_dialogue · present_video 세 파일은 모드와 무관하게 같다 — 같은 스토리를 다른 연출로 비교하기 위해서다"]
+        ]},
+        { h: "IStoryPresentation 계약 — 세 모드가 지키는 것", rows: [
+          ["getMode()", "자기 모드를 돌려준다. 빌드 설정 대조용"],
+          ["consumesSceneAfterDialogue()", "true 면 dialogue 노드가 같은 씬의 뒤 노드를 삼킨다. 채팅만 false"],
+          ["preload(data)", "모드별 에셋을 미리 올린다. 실패하면 STORY DATA ERROR 로 떨어진다"],
+          ["presentDialogue(context)", "노드 하나를 재생하고 끝날 때까지 기다린다"],
+          ["presentStillcut(node)", "독립 스틸컷 노드. 전체화면 모드에선 이미 씬에 포함돼 경고만 남긴다"],
+          ["hideForGameplay()", "머지 보드로 내려갈 때 연출을 접는다"],
+          ["dispose()", "뒷정리. 러너의 finally 와 onDestroy 양쪽에서 부른다"]
+        ]}
+      ]
+    },
+    {
+      id: "m_chat", chip: true, cat: "mode", kind: "연출", x: 0, y: 0, w: 300,
+      title: "ChatBubbleStoryPresentation", ko: "채팅 말풍선",
+      file: "assets/script/game/story/presentation/chat/ChatBubbleStoryPresentation.ts",
+      acts: [
+        ["대사 하나", "presentDialogue(context) → 말풍선 행을 아래에서 위로 밀어 올린다"],
+        ["화면을 누르면", "chatRoot TOUCH_END → onTap() → 타이핑 중이면 즉시 완성, 아니면 다음 줄"],
+        ["씬 삼킴", "consumesSceneAfterDialogue() → false — 11노드를 하나씩 재생한다"]
+      ],
+      detail: [
+        { h: "배치 상수 — 프리팹이 아니라 코드가 정한다", rows: [
+          ["보이는 줄", "VISIBLE_MESSAGE_COUNT 5 — ViewStory.prefab 의 MessageRow0~4 와 짝이다"],
+          ["세로", "MESSAGE_BOTTOM_Y -400 에서 시작해 MESSAGE_SPACING_Y 220 씩 위로 쌓는다"],
+          ["가로", "초상 LEFT_PORTRAIT_X -239 / RIGHT_PORTRAIT_X 239 · 말풍선 LEFT_BUBBLE_X 75 / RIGHT_BUBBLE_X -75"],
+          ["좌우 결정", "story_dialogue 의 direction 값"],
+          ["말풍선 프레임", "chat/ui/ui_frame_chat-bubble_default 한 장을 좌우로 뒤집어 쓴다"]
+        ]},
+        { h: "타이핑 · 탭", rows: [
+          ["속도", "CHAT_PRESENTATION_CONFIG.typing_speed_cps 40자/초 · auto_advance_sec 0 (자동 넘김 없음)"],
+          ["탭 폴링", "ADVANCE_TAP_POLL_INTERVAL_MS 16ms · advanceTapSequence 로 이전 대기를 무효화한다"],
+          ["스킵", "타이핑 중 탭 → skipTyping = true → 그 줄을 즉시 완성. 다시 탭해야 다음 줄"],
+          ["초상", "portraitFrames/portraitPaths 를 슬롯 5개만큼 들고 있다가 필요할 때만 갈아 끼운다"],
+          ["상태", "현재 빌드에서는 비활성. StoryPresentationFactory 가 이 클래스를 반환하지 않는다"]
+        ]}
+      ]
+    },
+    {
+      id: "m_stillcut", chip: true, cat: "mode", kind: "연출", x: 0, y: 0, w: 300,
+      title: "StillcutStoryPresentation", ko: "스틸컷 (현재 활성)",
+      file: "assets/script/game/story/presentation/stillcut/StillcutStoryPresentation.ts",
+      acts: [
+        ["만들 때", "bindings.chatRoot.active = false → new StillcutStorySource(sprites)"],
+        ["대사 하나", "presentDialogue(context) → shell.present(context, source)"],
+        ["씬 삼킴", "consumesSceneAfterDialogue() → true"]
+      ],
+      detail: [
+        { h: "생성자가 던지는 조건", rows: [
+          ["필수 바인딩", "statusLabel · chatRoot · fullscreenShellNode 의 FullscreenStoryShell 컴포넌트가 있어야 한다"],
+          ["서피스 2장", "fullscreenStillcutSprites 가 정확히 2개여야 한다 — 크로스페이드가 A/B 두 장을 번갈아 쓰기 때문"],
+          ["하나라도 없으면", "throw \"fullscreen shell prefab binding is incomplete\" — 프리팹 연결 누락을 첫 노드 전에 잡는다"]
+        ]},
+        { h: "독립 스틸컷 노드를 만나면", rows: [
+          ["경고만", "presentStillcut(node) → CClog.warn(unexpected standalone stillcut)"],
+          ["왜", "스틸컷 노드는 이미 씬 컷 플랜의 삽입 컷으로 재생됐고, 러너가 그 노드를 삼켰어야 한다"],
+          ["여기 왔다면", "consumesSceneAfterDialogue() 나 collectConsumedSceneNodes() 가 어긋났다는 신호다"]
+        ]}
+      ]
+    },
+    {
+      id: "m_video", chip: true, cat: "mode", kind: "연출", x: 0, y: 0, w: 300,
+      title: "VideoStoryPresentation", ko: "비디오 (봉인)",
+      file: "assets/script/game/story/presentation/video/VideoStorySource.ts",
+      acts: [
+        ["같은 껍데기", "FullscreenStoryShell 을 스틸컷과 그대로 공유한다 — 시각 소스만 바뀐다"],
+        ["클립 매핑", "getVideoClipPath(clip) → storyVideo/clips/ref_q*"],
+        ["끝 판정", "videoPlayer \"completed\" → setCompletedHandler 로 셸에 알린다"]
+      ],
+      detail: [
+        { h: "봉인 상태", rows: [
+          ["프로파일", "story-build-profiles/video.json 이 dormant: true 로 잠겨 있고, story-build-profile.js 가 이 값을 검증한다"],
+          ["산출물 없음", "artifact: false — 다른 두 모드와 달리 빌드를 만들지 않는다"],
+          ["클립 4개 중 3개", "vo_1_2_begin 과 vo_1_2_end 가 같은 ref_q3 를 가리킨다 — 레퍼런스 영상이라 아직 1:1 이 아니다"],
+          ["플레이어 설정", "LOCAL · keepAspectRatio · isFullscreen=false · stayOnBottom · mute (볼륨 0)"]
+        ]}
+      ]
+    },
+    {
+      id: "stillplan", cat: "mode", kind: "로직", x: 80, y: 1042, w: 300,
+      title: "StillcutScenePlan", ko: "컷 플랜 · 크로스페이드",
+      file: "assets/script/game/story/presentation/stillcut/StillcutScenePlan.ts · StillcutStorySource.ts",
+      acts: [
+        ["씬을 열 때", "createStillcutPlaybackPlan(scene_id, duration_target_sec) → 컷별 start/end"],
+        ["프리로드", "preload(sceneIds) → bundle.preload(cut.assetPath, cc.SpriteFrame)"],
+        ["컷이 바뀌면", "update(elapsedSec) → showCut(i) → A/B 크로스페이드 0.2초"]
+      ],
+      detail: [
+        { h: "길이 계산", rows: [
+          ["대사 컷", "dialogueSteps.length x 2.5초. 컷 하나가 대사 여러 줄을 덮는다"],
+          ["삽입 컷", "고정 3초. dialogueSteps 가 비어 있고 embedded: true"],
+          ["끝 자르기", "endSec = min(startSec + durationSec, duration_target_sec) — 마지막 컷만 씬 목표 길이에 맞춰 잘린다"],
+          ["크로스페이드", "0.2초는 각 컷의 노출 시간 안에 포함된다 (따로 더하지 않는다)"]
+        ]},
+        { h: "A/B 서피스 크로스페이드", rows: [
+          ["첫 컷", "activeCutIndex < 0 이면 앞 스프라이트에 바로 넣고 opacity 255"],
+          ["다음 컷", "뒤 스프라이트에 다음 컷을 넣고 opacity 0 → 255, 앞은 255 → 0 후 spriteFrame=null · active=false"],
+          ["번갈아", "frontSpriteIndex = 1 - frontSpriteIndex — 두 장을 계속 교대한다"],
+          ["정지", "stop() 이 프레임을 releaseAsset 으로 해제한다. dispose() 는 bundle 참조까지 끊는다"],
+          ["프리로드 실패", "assetPaths.size 가 0 이면 throw — 컷이 하나도 안 걸린 빌드를 즉시 잡는다"]
+        ]}
+      ]
+    },
+    {
+      id: "profile", cat: "mode", kind: "빌드", x: 590, y: 761, w: 300,
+      title: "story-build-profile.js", ko: "빌드 프로파일",
+      file: "scripts/story-build-profile.js · story-build-profiles/*.json",
+      acts: [
+        ["프로파일 적용", "readProfile(mode) → validateProfile() → StoryBuildConfig.ts · StoryPresentationFactory.ts 교체"],
+        ["에셋 분리", "presentationAssetDirectories 로 그 모드 번들만 남기고 나머지는 뺀다"],
+        ["상태 기록", "temp/story-build-profile/state.json"]
+      ],
+      detail: [
+        { h: "validateProfile() 이 잠가 둔 것", rows: [
+          ["모드 일치", "profile.mode 와 presentationDirectory 가 파일 이름과 같아야 한다"],
+          ["산출 여부", "artifact 는 video 만 false. video.json 은 dormant: true 도 함께여야 한다"],
+          ["출력 경로", "outputRoot 는 build/ 아래여야 하고 절대경로면 거부한다"],
+          ["공유 데이터", "sharedData 가 story_node · story_dialogue · present_video 세 파일과 정확히 같아야 한다"],
+          ["배제 목록", "excludedPresentationDirectories 가 나머지 두 모드와 정확히 같아야 한다"]
+        ]},
+        { h: "모드별 에셋 번들", rows: [
+          ["chat", "assets/bundle/chat — 말풍선 프레임 · 초상 · 애니"],
+          ["stillcut", "assets/bundle/storyStillcut — stills/ 아래 컷 이미지"],
+          ["video", "assets/bundle/storyVideo — clips/ref_q* (봉인)"]
+        ]}
+      ]
+    },
+    /* ── 태스크 골드 루프 ────────────────────────────────────── */
+    {
+      id: "taskloop", cat: "task", kind: "로직", gate: true, x: 590, y: 889, w: 300,
+      title: "playCostTask()", ko: "골드 루프",
+      file: "assets/script/game/story/StoryNodeRunner.ts:playCostTask",
+      acts: [
+        ["태스크 노드", "presentTask(node) → resolveStoryTaskGoldCost(task_cost)"],
+        ["안내 팝업", "showPopupTask(node, goldBalance, taskCost) → waitForConfirmation()"],
+        ["골드가 있으면", "taskEconomy.spend(cost) → completeCostTask() → 루프 탈출"],
+        ["모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+      ],
+      detail: [
+        { h: "while 루프가 도는 방식", rows: [
+          ["반복 조건", "while (!completed) — 골드가 찰 때까지 팝업과 보드를 오간다. 유저가 나갈 문은 없다"],
+          ["매 회차", "getGoldBalance() 를 다시 읽어 팝업에 넘긴다 — 팝업 문구가 EARN GOLD / SPEND GOLD 로 갈린다"],
+          ["async 안전", "showPopupTask · waitForCompletion 뒤마다 this.isValid 를 다시 확인하고 아니면 즉시 반환한다"],
+          ["주문 문맥", "MergeOrderContext { rewardGold: 10, currentGold: 지금 골드, targetGold: 태스크 비용 }"],
+          ["회수", "result.completedOrderCount 를 collectMergeOrders() 에 넘겨 10골드씩 더한다"],
+          ["끝 로그", "CClog.log(\"StoryNodeRunner > cost task complete N\")"]
+        ]},
+        { h: "0골드 태스크가 특별한 이유", rows: [
+          ["노드 2", "clean_kitchen 은 task_cost 0 이라 첫 spend(0) 이 바로 성공한다"],
+          ["보드 안 감", "머지 보드로 내려가지 않는 유일한 태스크 — 튜토리얼 성격이다"],
+          ["기본값", "task_cost 가 null 이면 resolveStoryTaskGoldCost() 가 TUTORIAL_TASK_GOLD_COST(10) 을 준다. 데이터에는 셋 다 값이 있어 지금은 안 쓰인다"]
+        ]}
+      ]
+    },
+    {
+      id: "task", cat: "task", kind: "지면", x: 1100, y: 760, w: 300,
+      title: "PopupTask", ko: "태스크 안내 팝업",
+      file: "assets/script/game/popup/PopupTask.ts · assets/bundle/popup/PopupTask.prefab",
+      acts: [
+        ["루프가 열면", "ViewCreator.showPopupTask(node, gold, cost) → configure() → show(true)"],
+        ["EARN / SPEND 누름", "onClickStart() → confirmationResolver() → close()"],
+        ["초상 선택", "node.portrait === olivia / colton / sam 중 하나만 켠다"]
+      ],
+      detail: [
+        { h: "configure() 가 채우는 것", rows: [
+          ["제목", "node.label.toUpperCase() — WE'RE DIVORCED! 처럼"],
+          ["비용 · 보상", "Cost: {cost} Gold · Reward: {item} {amount}. 보상이 none 이거나 0이면 Reward: None"],
+          ["진행 문구", "골드가 충분하면 Gold n / m - Ready · 모자라면 Gold n / m - Earn in Merge"],
+          ["버튼 문구", "충분하면 SPEND GOLD · 모자라면 EARN GOLD. 같은 버튼 · 같은 핸들러다"],
+          ["숫자 형식", "Utils.separateThousandsOnlyComma() — 프로젝트 규칙대로 toString() 을 쓰지 않는다"],
+          ["초상", "oliviaPortrait · coltonPortrait · samPortrait 세 노드를 portrait 값으로 켜고 끈다. 프리팹엔 셋 다 있고 둘은 비활성 저장이다"]
+        ]},
+        { h: "확인 대기", rows: [
+          ["약속", "waitForConfirmation() — 이미 눌렀으면 즉시 resolve, 아니면 confirmationResolver 를 담아 둔다"],
+          ["중복 방지", "onClickStart() 는 isConfirmed 를 먼저 보고 두 번째 클릭을 버린다"],
+          ["닫기", "resolve 한 뒤 close() — 루프는 팝업이 닫힌 다음 골드를 판정한다"]
+        ]}
+      ]
+    },
+    {
+      id: "merge", cat: "task", kind: "지면", x: 1100, y: 888, w: 300,
+      title: "ViewMergeBoard", ko: "머지 보드",
+      file: "assets/script/game/story/ViewMergeBoard.ts · assets/bundle/view/ViewMergeBoard.prefab",
+      acts: [
+        ["루프가 열면", "ViewCreator.showViewMergeBoard(node, orderContext) → configure() → show(true)"],
+        ["생성기를 누르면", "generateItem() → model.generateItem() → 셀에 티어 1 배치"],
+        ["아이템을 끌면", "beginItemDrag() → moveItemDrag() → endItemDrag() → model.move()"],
+        ["주문 완료", "onClickContinue() → consumeTier() → currentGold += 10"],
+        ["나가기", "onClickBack() → resolveCompletion(false) → close()"]
+      ],
+      detail: [
+        { h: "보드 규격", rows: [
+          ["격자", "6열 x 7행 = 42칸. 셀 72px · 간격 6px → 피치 78px"],
+          ["생성기", "MERGE_GENERATOR_CELL_INDEX 8 — 이 칸은 아이템이 못 들어간다 (isValidCell 이 막는다)"],
+          ["아이템 풀", "MERGE_ITEM_POOL_SIZE 5. 프리팹의 mergeItemNodes 5개와 짝이다"],
+          ["생성 자리", "SPAWN_CELL_PRIORITY [10, 19, 22, 31, 33] 중 빈 칸을 앞에서부터 고른다"],
+          ["드롭 판정", "가장 가까운 셀 중심까지 DROP_DISTANCE_LIMIT 56px 안이어야 놓인다. 넘으면 원래 자리로"],
+          ["드래그 한계", "clampDragPosition() 이 보드 밖으로 못 나가게 잡는다"]
+        ]},
+        { h: "합치기 규칙 (SimpleMergeBoardModel.move)", rows: [
+          ["거절", "같은 칸 · 잘못된 칸 · 빈 아이템을 끌면 Rejected"],
+          ["이동", "목표 칸이 비어 있으면 Moved — 티어를 그대로 옮긴다"],
+          ["합치기", "티어가 같고 3 미만이면 Merged → 목표 칸이 티어+1, mergeCount += 1"],
+          ["상한", "티어 3 이 최고다. 3 끼리는 합쳐지지 않는다 (sourceTier >= 3 이면 Rejected)"],
+          ["완료 판정", "isComplete(targetTier) = 보드에 그 티어가 하나라도 있으면 true"]
+        ]},
+        { h: "주문 모드 vs 단독 모드", rows: [
+          ["단독", "orderContext 가 null 이면 목표 티어 3 고정 · 버튼 COMPLETE ITEM · 누르면 바로 완료하고 닫는다"],
+          ["주문", "목표 티어가 2 → 3 → 2 … 로 번갈아 간다 (getNextOrderTargetTier: 완료 수가 짝수면 2)"],
+          ["주문 처리", "consumeTier(목표) 로 아이템 하나를 비우고 completedOrderCount += 1 · currentGold += rewardGold"],
+          ["닫히지 않음", "주문 모드의 onClickContinue 는 화면을 닫지 않는다 — 골드가 찰 때까지 계속 받는다"],
+          ["나갈 때", "onClickBack() 이 completedOrderCount 를 담아 루프에 돌려준다"],
+          ["안내 문구", "빈 보드면 Tap the generator … · 골드가 찼으면 Enough Gold - tap Back or keep earning"]
+        ]},
+        { h: "연출 · 사운드", rows: [
+          ["생성", "0.72 → 1.0 backOut 0.18초 · 생성기 0.9 → 1.08 backOut 0.12초 · GameSound.play(\"FX_SHOW\")"],
+          ["집기", "setScale(1.08) · setSiblingIndex(맨 앞) · GameSound.play(\"FX_SLIDE\")"],
+          ["합치기", "결과 티어 스프라이트로 교체 후 0.78 → 1.0 backOut 0.2초 · FX_SHOW"],
+          ["티어 스프라이트", "tierSpriteFrames[tier - 1] — 프리팹에 3장이 물려 있다"]
+        ]}
+      ]
+    },
+    {
+      id: "economy", cat: "task", kind: "로직", x: 1100, y: 1016, w: 300,
+      title: "StoryTaskEconomy", ko: "골드 경제",
+      file: "assets/script/game/story/task/StoryTaskEconomy.ts · task/SimpleMergeBoardModel.ts",
+      acts: [
+        ["주문 회수", "collectMergeOrders(n) → goldBalance += 10 x n"],
+        ["태스크 지불", "spend(cost) → 잔액이 모자라면 false 를 돌려주고 아무것도 안 깎는다"],
+        ["노드마다 초기화", "run() 시작에서 reset() → goldBalance = 0"]
+      ],
+      detail: [
+        { h: "상수와 그 뜻", rows: [
+          ["MERGE_ORDER_GOLD_REWARD 10", "주문 1건당 골드. 태스크 26골드는 주문 3건, 16골드는 2건이면 넘는다"],
+          ["TUTORIAL_TASK_GOLD_COST 10", "task_cost 가 null 일 때의 기본값. 지금 데이터엔 셋 다 값이 있어 쓰이지 않는다"],
+          ["세션 한정", "골드는 DataManager 나 저장소에 안 들어간다 — 러너 인스턴스 안에서만 산다. 다시 켜면 0 이다"],
+          ["음수 방지", "canSpend(cost) 는 cost >= 0 도 함께 본다"]
+        ]}
+      ]
+    },
+    {
+      id: "stage", cat: "task", kind: "로직", x: 590, y: 1015, w: 300,
+      title: "refreshStoryStage()", ko: "스테이지 반영",
+      file: "assets/script/game/story/StoryNodeRunner.ts:refreshStoryStage",
+      acts: [
+        ["러너 시작", "run() 첫 줄에서 한 번 — 바인딩이 비면 여기서 throw"],
+        ["태스크 완료", "completeCostTask(node) → completedCostNodeIds.push → refreshStoryStage()"],
+        ["켜지는 것", "task_1_1 → 꽃병 · set_table → 식탁 세팅"]
+      ],
+      detail: [
+        { h: "무엇이 켜지나", rows: [
+          ["StoryStageBackground", "항상 켠다 (storyStageRoot.active = true)"],
+          ["StoryFlowerVaseObject", "completedCostNodeIds 에 task_1_1 이 있을 때만"],
+          ["StoryTableSettingObject", "completedCostNodeIds 에 set_table 이 있을 때만"],
+          ["clean_kitchen 은 없음", "노드 2 는 스테이지 오브젝트가 없다 — 0골드 튜토리얼이라 화면 변화 대신 흐름만 익히게 했다"],
+          ["중복 방지", "completeCostTask() 가 이미 담긴 node_id 면 그냥 돌아간다"],
+          ["바인딩 검사", "storyStageRoot · 꽃병 · 식탁 셋 중 하나라도 없으면 throw — 프리팹 연결 누락을 첫 노드 전에 잡는다"]
+        ]}
+      ]
+    },
+    /* ── 시스템 · 공통 ───────────────────────────────────────── */
+    {
+      id: "common", chips: ["p_error", "p_toast", "p_setting", "p_privacy", "p_lang", "p_switch", "p_promo"], cat: "system", kind: "묶음", gate: true, x: 1610, y: 720, w: 300,
+      title: "공통 팝업", ko: "프리팹 미존재 · 코드 계약만",
+      file: "assets/script/common/view/ViewCreator.ts",
+      acts: [
+        ["어디서든", "showPopupError · showPopupSetting · showPopupToastError 는 지면을 가리지 않는다"],
+        ["로드 규칙", "ViewManager.load(name) → 이름에 Popup 이 있으면 bundle/popup/, 없으면 bundle/view/"],
+        ["지금은", "assets/bundle/popup 에 PopupTask.prefab 한 장뿐 — 나머지는 로드가 실패한다"]
+      ],
+      detail: [
+        { h: "왜 와이어프레임이 없나", rows: [
+          ["프리팹 없음", "ViewCreator 에 메소드는 다 있는데 대응 프리팹이 assets/bundle/popup 에 없다. 파싱할 대상 자체가 없다"],
+          ["프로토 범위", "이 프로젝트는 스토리 연출 3종 비교가 목적이라 공통 팝업은 템플릿 코드만 딸려온 상태다"],
+          ["부르면 어떻게 되나", "ViewManager.load 가 프리팹을 못 찾아 실패한다 — 스토리 흐름에서는 부르는 경로가 없어 드러나지 않는다"],
+          ["규칙", ".claude/rules/00-core.md — 템플릿은 공통 팝업 프리팹을 제공하지 않고, 각 게임이 계약에 맞게 만든다"]
+        ]}
+      ]
+    },
+    {
+      id: "p_error", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupError", ko: "오류 알림",
+      file: "assets/script/game/popup/PopupError.ts · ViewCreator.showPopupError",
+      acts: [
+        ["기본형", "showPopupErrorDefault(code, onOK) → T_ERROR_MESSAGE_2 문구"],
+        ["재시작형", "showPopupErrorRestart(error) → clearViewAll() → BaseIntro.instance.start()"],
+        ["로그", "BaseLogManager.log(LogType.RestartErrorPopup, { error_code })"]
+      ],
+      detail: [
+        { h: "세 갈래", rows: [
+          ["showPopupError", "문구 · 에러코드 · onOK 를 직접 넘긴다"],
+          ["showPopupErrorDefault", "Localization.getString(\"T_ERROR_MESSAGE_2\") 를 문구로 쓴다"],
+          ["showPopupErrorRestart", "T_ERROR_MESSAGE_1 · 코드 1000. 확인하면 뷰를 전부 지우고 인트로부터 다시 탄다"],
+          ["로그 두 줄", "재시작 확인 시 BtnRestartErrorOk 와 BtnRestartErrorClose 를 모두 남긴다"]
+        ]}
+      ]
+    },
+    {
+      id: "p_toast", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupToastError", ko: "오류 토스트",
+      file: "assets/script/common/view/ViewCreator.ts:showPopupToastError",
+      acts: [
+        ["짧은 알림", "showPopupToastError(msg, code, onOK) → 1.5초 뒤 자동 close()"],
+        ["광고 오류", "showPopupToastRVError(code) → T_ERROR_MESSAGE_3 + RvErrorBannerPopup 로그"],
+        ["같은 클래스", "PopupError 를 쓰고 프리팹 이름만 PopupToastError 로 다르다"]
+      ],
+      detail: [
+        { h: "동작", rows: [
+          ["자동 닫힘", "scheduleOnce(1.5) → close() → unscheduleAllCallbacks()"],
+          ["등장 방식", "setShow(false) 후 show(true) — 딤 없이 뜨게 하는 호출 순서다"]
+        ]}
+      ]
+    },
+    {
+      id: "p_setting", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupSettingInGame", ko: "설정",
+      file: "assets/script/game/popup/PopupSettingInGame.ts · ViewCreator.showPopupSetting",
+      acts: [["열기", "showPopupSetting() → ViewManager.load(\"PopupSetting\") → show(true)"],
+             ["프리팹", "PopupSetting.prefab — 이 프로젝트에 없다"]],
+      detail: [{ h: "메모", rows: [
+        ["이름 불일치", "클래스는 PopupSettingInGame 인데 로드 이름은 \"PopupSetting\" 이다 — 프리팹을 만들 때 이 이름을 써야 한다"]
+      ]}]
+    },
+    {
+      id: "p_privacy", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupPrivacyPolicy", ko: "개인정보 처리방침",
+      file: "assets/script/game/popup/PopupPrivacyPolicy.ts · ViewCreator.showPopupPrivacyPolicy",
+      acts: [["열기", "showPopupPrivacyPolicy() → show(true)"],
+             ["프리팹", "PopupPrivacyPolicy.prefab — 이 프로젝트에 없다"]],
+      detail: [{ h: "메모", rows: [["용도", "설정에서 들어가는 전문 화면. 스토리 흐름에서 부르는 경로는 없다"]]}]
+    },
+    {
+      id: "p_lang", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupSettingLanguage", ko: "언어 설정",
+      file: "assets/script/game/popup/SettingLanguage/PopupSettingLanguage.ts",
+      acts: [["열기", "showPopupSettingLanguage() → show(true)"],
+             ["프리팹", "PopupSettingLanguage.prefab — 이 프로젝트에 없다"]],
+      detail: [{ h: "메모", rows: [
+        ["문구", "Localization.getString() 정적 메소드로만 읽는다 (Localization.instance 는 없다)"]
+      ]}]
+    },
+    {
+      id: "p_switch", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupSwitchContext", ko: "컨텍스트 전환",
+      file: "assets/script/game/popup/PopupSwitchContext.ts",
+      acts: [
+        ["P2P", "showPopupSwitchContextPVP(friendId, contextId, listener) → setP2P()"],
+        ["토너먼트", "showPopupSwitchContextTournament(id, ctxId, type, listener) → setTournament()"],
+        ["콜백", "onSwitchComplete(close) · onSwitchCancel(err, close)"]
+      ],
+      detail: [{ h: "메모", rows: [
+        ["프로토 상태", "moveToP2P · moveToTournament 이 빈 껍데기라 부르는 경로가 없다"],
+        ["프리팹", "PopupSwitchContext.prefab — 이 프로젝트에 없다"]
+      ]}]
+    },
+    {
+      id: "p_promo", chip: true, cat: "system", kind: "팝업", x: 0, y: 0, w: 300,
+      title: "PopupCrossPromotion", ko: "크로스 프로모션",
+      file: "assets/script/game/popup/PopupCrossPromotion.ts · Base/PromotionManager.ts",
+      acts: [["열기", "showPopupCrossPromotion(spriteFrame, targetGameId, socialContext) → setTarget()"],
+             ["프리팹", "PopupCrossPromotion.prefab — 이 프로젝트에 없다"]],
+      detail: [{ h: "메모", rows: [["관리", "PromotionManager(62줄)가 대상 게임 목록을 들고 있다"]]}]
+    },
+    {
+      id: "platform", chips: ["pf_fb", "pf_tiktok", "pf_toss", "pf_google", "pf_crazy", "pf_youtube", "pf_samsung", "pf_base"], cat: "system", kind: "묶음", x: 1610, y: 951, w: 300,
+      title: "플랫폼 어댑터", ko: "BasePlatform 파생 8종",
+      file: "assets/script/common/PlatformSelector.ts · assets/script/game/Base/",
+      acts: [
+        ["부팅 첫 줄", "PlatformSelector.createPlatformInstance() → BasePlatform.instance"],
+        ["초기화", "initPlatformInstance(!CC_BUILD) → preloadPlatform() → onStartPlatform()"],
+        ["로그 핸들러", "BasePlatform.instance.getLogHandler() → StoryMergeProtoLogManager 에 넘긴다"]
+      ],
+      detail: [
+        { h: "고르는 방법", rows: [
+          ["문자열", "createPlatformInstance(\"facebook\" 등) — PLATFORM_* 상수 7개"],
+          ["enum", "PlatformSelector.platformType (PlatformType.Preview 가 기본)"],
+          ["기본값", "둘 다 안 맞으면 new BasePlatform() — 화면은 뜨지만 플랫폼 기능은 없다"],
+          ["기본 상수", "PLATFORM_DEFAULT = facebook"]
+        ]},
+        { h: "이 프로토에서의 위치", rows: [
+          ["본론 아님", "스토리 연출 비교가 목적이라 어댑터는 템플릿에서 그대로 딸려온 것이다"],
+          ["TTMinis", "TikTok 용 SDK 래퍼(748줄)와 미리보기용 목(TTMinisPreviewMock 105줄)이 따로 있다"],
+          ["부팅 의존", "fbStart 갈래(스토리지 · 서명 정보 · 친구 · 진입 데이터)가 전부 이 인스턴스를 탄다"]
+        ]}
+      ]
+    },
+    {
+      id: "pf_fb", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "FaceBookPlatform", ko: "1,787줄 · 기본값",
+      file: "assets/script/game/Base/FaceBookPlatform.ts",
+      acts: [["선택", "PLATFORM_FACEBOOK / PlatformType.Facebook"],
+             ["기본값", "PLATFORM_DEFAULT 가 이것이다"],
+             ["부팅 분기", "getPlatformType() === \"facebook\" 이면 VersionDataLoader.loadAdPlacementData()"]],
+      detail: [{ h: "메모", rows: [["규모", "어댑터 중 가장 크다 — 광고 · 컨텍스트 · 토너먼트 · 스토리지가 모두 여기에 있다"]]}]
+    },
+    {
+      id: "pf_tiktok", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "TikTokPlatform", ko: "1,253줄",
+      file: "assets/script/game/Base/TikTokPlatform.ts · TTMinis.ts",
+      acts: [["선택", "PLATFORM_TIKTOK / PlatformType.TikTok"],
+             ["SDK 래퍼", "TTMinis.ts 748줄이 SDK 를 감싼다"],
+             ["미리보기", "TTMinisPreviewMock.ts 105줄"]],
+      detail: [{ h: "메모", rows: [["구성", "어댑터 · SDK 래퍼 · 목 세 파일로 나뉜 유일한 플랫폼이다"]]}]
+    },
+    {
+      id: "pf_toss", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "TossPlatform", ko: "749줄",
+      file: "assets/script/game/Base/TossPlatform.ts",
+      acts: [["선택", "PLATFORM_TOSS / PlatformType.Toss"]],
+      detail: [{ h: "메모", rows: [["범위", "이 프로토에서 부르는 경로는 없다 — 템플릿 코드다"]]}]
+    },
+    {
+      id: "pf_google", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "GooglePlatform", ko: "705줄",
+      file: "assets/script/game/Base/GooglePlatform.ts",
+      acts: [["선택", "PLATFORM_GOOGLE / PlatformType.Google"]],
+      detail: [{ h: "메모", rows: [["범위", "이 프로토에서 부르는 경로는 없다 — 템플릿 코드다"]]}]
+    },
+    {
+      id: "pf_crazy", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "CrazyGamePlatform", ko: "604줄",
+      file: "assets/script/game/Base/CrazyGamePlatform.ts",
+      acts: [["선택", "PLATFORM_CRAZY_GAMES / PlatformType.CrazyGames"]],
+      detail: [{ h: "메모", rows: [["범위", "이 프로토에서 부르는 경로는 없다 — 템플릿 코드다"]]}]
+    },
+    {
+      id: "pf_youtube", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "YouTubePlatform", ko: "386줄",
+      file: "assets/script/game/Base/YouTubePlatform.ts",
+      acts: [["선택", "PLATFORM_YOUTUBE / PlatformType.YouTube"]],
+      detail: [{ h: "메모", rows: [["참고", "플랫폼 함정은 .claude/reference/platform-quirks-youtube-playables.md 에 정리돼 있다"]]}]
+    },
+    {
+      id: "pf_samsung", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "SamsungPlatform", ko: "38줄 · 껍데기",
+      file: "assets/script/game/Base/SamsungPlatform.ts",
+      acts: [["선택", "PLATFORM_SAMSUNG / PlatformType.Samsung"],
+             ["크기", "38줄 — 거의 비어 있다"]],
+      detail: [{ h: "메모", rows: [["상태", "다른 어댑터의 1/20 크기다. 자리만 잡아 둔 상태로 보인다"]]}]
+    },
+    {
+      id: "pf_base", chip: true, cat: "system", kind: "어댑터", x: 0, y: 0, w: 300,
+      title: "BasePlatform", ko: "954줄 · 기본 구현",
+      file: "assets/script/game/Base/BasePlatform.ts",
+      acts: [["폴백", "어느 것도 안 맞으면 new BasePlatform()"],
+             ["미리보기", "PlatformType.Preview 가 기본값이라 에디터 미리보기는 이걸 탄다"],
+             ["계약", "나머지 7종이 이 클래스를 상속한다"]],
+      detail: [{ h: "메모", rows: [
+        ["주의", "미리보기에서 스토리를 돌리면 플랫폼 기능 없이 도는 것이다 — 연출 검증에는 지장이 없다"]
+      ]}]
+    }
+  ];
+
+  /* 띠 라벨 — 같은 밀도에서도 덜 난잡해 보이게 (flowmap-v2-guide §3-2).
+     좌표는 layout.py 가 실측 높이로 계산한 띠 상단이다. */
+  const BANDLABEL = [{"y": 120, "text": "부팅 · 데이터 · 스토리 노드"}, {"y": 720, "text": "연출 모드 · 태스크 골드 루프 · 시스템"}];
+
+
+  /* 카드 사이 흐름 — 화면이 바뀌거나 제어가 넘어가는 이동만 그린다.
+     카드 안에서 펼치는 것(노드 칩 · 모드 칩 · 공통 팝업)은 화살표가 아니라 칩이다.
+     kind: trunk 주 흐름 · branch 분기 · back 되돌아오는 길 · (없음) 곁가지 */
+  const E = [
+    /* 주 흐름 — 켜서 스토리가 끝날 때까지 한 줄로 이어지는 길 */
+    { a: "intro", b: "router", kind: "trunk", label: "waitAll() → moveToNext()" },
+    { a: "router", b: "story", kind: "trunk", label: "moveToBasic() → showViewStory()" },
+    { a: "story", b: "runner", kind: "trunk", label: "onEnable() → run()" },
+    { a: "runner", b: "spine", kind: "trunk", label: "runNodes(data, presentation)" },
+
+    /* 러너가 시작 전에 거는 것 */
+    { a: "runner", b: "data", kind: "branch", label: "await loadStoryData()" },
+    { a: "runner", b: "mode", kind: "branch", label: "createStoryPresentation() → getMode() 대조" },
+
+    /* 연출 갈래 */
+    { a: "spine", b: "shell", label: "dialogue 노드 → presentDialogue()" },
+    { a: "mode", b: "shell", label: "스틸컷 · 비디오 공용 껍데기" },
+    { a: "mode", b: "stillplan", label: "컷 플랜 · 크로스페이드" },
+    { a: "mode", b: "profile", label: "빌드가 모드를 고정한다" },
+    { a: "shell", b: "spine", kind: "back", label: "씬이 끝나면 다음 노드" },
+
+    /* 태스크 갈래 */
+    { a: "spine", b: "taskloop", kind: "branch", label: "task 노드 → playCostTask()" },
+    { a: "taskloop", b: "task", kind: "trunk", label: "showPopupTask()" },
+    { a: "task", b: "merge", kind: "trunk", label: "골드 부족 → showViewMergeBoard()" },
+    { a: "merge", b: "taskloop", kind: "back", label: "waitForCompletion() → 루프 재진입" },
+    { a: "taskloop", b: "economy", label: "spend() · collectMergeOrders()" },
+    { a: "taskloop", b: "stage", label: "골드 충분 → completeCostTask()" },
+    { a: "stage", b: "spine", kind: "back", label: "refreshStoryStage() → 다음 노드" },
+
+    /* 시스템 */
+    { a: "intro", b: "platform", label: "createPlatformInstance()" }
+  ];
+
+  const CATNAME = {
+    entry: "부팅 · 라우팅",
+    story: "스토리 지면 · 노드",
+    mode: "연출 모드",
+    task: "태스크 · 머지",
+    data: "데이터 계약",
+    system: "시스템 · 공통"
+  };
+
+  /* 사슬에 이 메소드가 보이면 그 카드로 건너뛰는 버튼을 붙인다 */
+  const JUMP = {
+    moveToNext: "router", moveToBasic: "story",
+    showViewStory: "story", run: "runner", runNodes: "spine",
+    loadStoryData: "data", createStoryPresentation: "mode",
+    presentDialogue: "shell", present: "shell",
+    createStillcutPlaybackPlan: "stillplan", getStillcutScenePlan: "stillplan",
+    presentTask: "taskloop", playCostTask: "taskloop",
+    showPopupTask: "task", showViewMergeBoard: "merge",
+    collectMergeOrders: "economy", spend: "economy",
+    completeCostTask: "stage", refreshStoryStage: "stage",
+    showPopupError: "p_error", showPopupErrorDefault: "p_error",
+    showPopupErrorRestart: "p_error", showPopupToastError: "p_toast",
+    showPopupToastRVError: "p_toast", showPopupSetting: "p_setting",
+    showPopupPrivacyPolicy: "p_privacy", showPopupSettingLanguage: "p_lang",
+    showPopupSwitchContextPVP: "p_switch", showPopupSwitchContextTournament: "p_switch",
+    showPopupCrossPromotion: "p_promo",
+    createPlatformInstance: "platform"
+  };
+
+
+  /* 카드 · 칩 · 브레드크럼에서 쓰는 짧은 제목 (렌더보다 먼저 정의돼야 한다) */
+  const shortTitle = function (n) {
+    return n.title.replace(/\s*·.*$/, "").replace(/\(.*\)/, "").trim();
+  };
+
+  /* 화살표 라벨은 짧아야 카드 사이에 들어간다. 사슬이면 도착 메소드만, 인자는 버린다.
+     원문은 <title> 로 남겨 마우스를 올리면 보인다. */
+  const shortLabel = function (txt) {
+    let v = String(txt);
+    if (v.indexOf("→") > -1) v = v.split("→").pop().trim();
+    v = v.replace(/\([^)]*\)/g, "");
+    return v.trim();
+  };
+
+  /* 칩에 쓰는 이름 — 클래스명보다 역할(ko)이 짧고 읽힌다 */
+  const chipName = function (n) {
+    return String(n.ko || n.title).split(" (")[0].trim();
+  };
+
+  const esc = function (s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+
+  /* 사슬 문자열 → 스텝 배열. 원문에 이미 있는 "→"가 곧 단계 구분이다. */
+  const splitChain = function (chain) {
+    return String(chain).split("→").map(function (x) { return x.trim(); }).filter(Boolean);
+  };
+
+  /* 사슬 한 칸을 "메소드명() · 한 줄 동작" 으로 줄인다.
+     대외 공유용이라 괄호 안 인자 · 가드 설명 · 로그는 화면에 올리지 않는다. */
+  const METH = /([A-Za-z_][A-Za-z0-9_$]*)\s*\(/g;
+  const methodsOf = function (text) {
+    METH.lastIndex = 0;
+    const out = [];
+    let m;
+    while ((m = METH.exec(String(text)))) out.push(m[1]);
+    return out;
+  };
+  const brief = function (text, label) {
+    const ms = methodsOf(text);
+    for (let i = ms.length - 1; i >= 0; i--) {
+      if (DESC[ms[i]]) return { m: ms[i], d: DESC[ms[i]] };
+    }
+    const t = String(text).replace(/\s+/g, " ").trim();
+    const cut = t.length > 44 ? t.slice(0, 43) + "…" : t;
+    if (ms.length) {
+      /* 사전에 없으면 진입 메소드를 쓰고, 설명이 그 서명을 되풀이할 뿐이면 비운다 */
+      const m0 = ms[0];
+      const dup = t.replace(/^[A-Za-z_$][A-Za-z0-9_$.]*\s*/, "").indexOf("(") === 0
+        || t.indexOf(m0) === 0 || t.indexOf("." + m0) > -1;
+      return { m: m0, d: dup ? "" : cut };
+    }
+    /* 스텝에 메소드 표기가 없으면 행 이름에서 찾는다 (openPopup(showFn) 같은 경우) */
+    if (label) {
+      const lm = methodsOf(label);
+      if (lm.length) return { m: lm[0], d: DESC[lm[0]] || cut };
+    }
+    return { m: "", d: cut };
+  };
+  /* 대외용 흐름에서 뺄 칸 — 로그 · 갱신 · 연출처럼 큰 틀에 영향이 없는 것 */
+  const bigSteps = function (steps) {
+    /* 사전에 한 줄 설명이 있는 칸(= 큰 틀에서 의미 있는 호출)과 판정 칸만 남긴다.
+       로그 · 갱신 · 연출 호출은 대외 공유용 흐름에서 뺀다. */
+    const keep = steps.filter(function (st, i) {
+      if (i === 0 || i === steps.length - 1) return true;
+      if (stepType(st) === "gate") return true;
+      return methodsOf(st).some(function (m) { return DESC[m]; });
+    });
+    if (keep.length <= 4) return keep;
+    return [keep[0], keep[1], keep[keep.length - 2], keep[keep.length - 1]];
+  };
+
+  const stepType = function (text) {
+    if (/tryShow(Reward|Interstitial)AD|ADPlayer/.test(text)) return "ad";
+    if (/BaseNetworkManager|claim[A-Z]|buyItem|purchaseAsync|sendGameEnd|getEventInfos|loadStageList|invalidateCache|upgradeMetaCity|forceSubscribeBotAsync/.test(text)) return "net";
+    if (/show(View|Popup)[A-Za-z]*|showViewLobby|tryContextSwitch|trySwitchToJoinedTournament|showBushView/.test(text)) return "nav";
+    if (/가드|판정|확인|이면|아니면|없으면|남으면|통과|소진|초과|충분|부족|잠금|차단|막|체크|경우|조건|유효/.test(text)) return "gate";
+    return "call";
+  };
+
+  const TYPENAME = { gate: "게이트 · 판정", net: "서버 호출", ad: "광고", nav: "지면 이동", call: "호출" };
+
+  const jumpFor = function (text) {
+    const m = String(text).match(/\b(show[A-Za-z]+|tryContextSwitch|trySwitchToJoinedTournament|onClickCard|clickCard|upgradeMetaCity)\b/g);
+    if (!m) return null;
+    for (let i = 0; i < m.length; i++) { if (JUMP[m[i]]) return JUMP[m[i]]; }
+    return null;
+  };
+
+  /* ── UI : 프리팹 실측 ────────────────────────────────────────
+     버튼 위치는 추정하지 않는다. PF(프리팹 파싱 결과)의 좌표를 그대로 쓴다.
+     각 버튼의 핸들러명으로 로직 표의 행을 찾아 붙이고, 표에 없던 버튼은
+     EXTRA 의 사슬을 담은 섹션을 하나 덧붙여 3단까지 이어지게 한다. */
+
+  /* 섹션 묶음은 노드당 한 번만 만든다 (프리팹 추가 버튼 섹션이 붙는다) */
+  const SEC_CACHE = {};
+  /* v2 §1 : 지면을 열었을 때 **기본으로 보이는 것은 acts 뿐**이다.
+     v1 은 detail 이 있으면 그걸 통째로 펼쳤고(가지 20~30개), 프리팹 버튼 표까지
+     같은 높이에 얹었다. 데이터는 그대로 두고 노출만 바꾼다 —
+     detail 과 프리팹 버튼 표는 sec.inner 표시를 달아 접힘으로 내려간다. */
+  const baseSections = function (n) {
+    const secs = [{ h: "주요 이동 경로", rows: (n.acts || []).map(function (a) { return [a[0], a[1]]; }) }];
+    (n.detail || []).forEach(function (d) {
+      secs.push({ h: d.h, rows: d.rows, inner: true });
+    });
+    return secs;
+  };
+
+  const extraOf = function (id, h) {
+    return EXTRA[id + ":" + h] || EXTRA[h] || null;
+  };
+
+  /* PF.boxes 는 화면 요소 전체다. 로직 섹션은 버튼만 쓴다. */
+  const pfButtons = function (id) {
+    const pf = PF[id];
+    if (!pf) return [];
+    if (!pf._btns) pf._btns = pf.boxes.filter(function (b) { return b.k === "b"; });
+    return pf._btns;
+  };
+  /* 버튼이 아닌 것 = 화면을 알아보게 해주는 장식 (패널 · 타이틀 · 아이콘 · 리스트) */
+  const pfDecor = function (id) {
+    const pf = PF[id];
+    if (!pf) return [];
+    if (!pf._deco) pf._deco = pf.boxes.filter(function (b) { return b.k !== "b"; });
+    return pf._deco;
+  };
+
+  /* 프리팹 노드 이름 · 라벨 문자열에서 사람이 읽을 이름을 고른다.
+     숫자만 있는 라벨(재화 표시 등)은 버튼 이름이 아니므로 버린다. */
+  const nameOf = function (b) {
+    if (b.L) return b.L;                 /* 경로로 확정한 이름이 가장 정확하다 */
+    const t = (b.t || "").trim();
+    if (t && !/^[\d,.:%\s+x/-]*$/.test(t) && t.length <= 14) return t;
+    if (BTNNAME[b.n] && BTNNAME[b.n] !== "버튼") return BTNNAME[b.n];
+    if (b.h) return b.h.replace(/^on(Click|Change)/, "");
+    return BTNNAME[b.n] || b.n || "버튼";
+  };
+
+  const sectionsOf = function (n) {
+    if (SEC_CACHE[n.id]) return SEC_CACHE[n.id];
+    const secs = baseSections(n).slice();
+    const pf = PF[n.id];
+    if (pf) {
+      const add = [];
+      pfButtons(n.id).forEach(function (b) {
+        b._sec = -1;
+        if (b.ctx) return;          /* 담당 노드의 표에만 둔다 (중복 제거) */
+        const re = b.h
+          ? new RegExp("\\b" + b.h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\(")
+          : null;
+        if (re) {
+          for (let si = 0; si < secs.length; si++) {
+            const rows = secs[si].rows;
+            for (let ri = 0; ri < rows.length; ri++) {
+              if (re.test(rows[ri][1])) { b._sec = si; b._row = ri; b._label = b.L || rows[ri][0]; return; }
+            }
+          }
+        }
+        /* detail 에 없어도 acts(카드 요약)에 있으면 그 사슬을 쓴다 */
+        let row = null;
+        if (re && n.acts) {
+          for (let i = 0; i < n.acts.length; i++) {
+            if (re.test(n.acts[i][1])) { row = [n.acts[i][0], n.acts[i][1]]; break; }
+          }
+        }
+        if (!row) {
+          const ex = extraOf(n.id, b.h);
+          row = ex ? [ex[0], ex[1]]
+                   : [nameOf(b), b.h
+                        ? b.h + "() — 프리팹에서 확인된 핸들러. 로직 표에는 아직 정리되지 않았다."
+                        : "클릭 이벤트가 비어 있다 — 코드에서 등록하거나 연출 전용 터치 영역이다."];
+        }
+        add.push({ b: b, row: row });
+      });
+      if (add.length) {
+        /* v2 : 프리팹 실측 버튼은 접힘 안으로. 제목에 개수를 적어 '숨긴 게 아니라 접었다'를 알린다. */
+        secs.push({ h: "프리팹 실측 버튼", rows: add.map(function (a) { return a.row; }), inner: true, pf: true });
+        const si = secs.length - 1;
+        add.forEach(function (a, i) { a.b._sec = si; a.b._row = i; a.b._label = a.b.L || a.row[0]; });
+      }
+    }
+    SEC_CACHE[n.id] = secs;
+    return secs;
+  };
+  const rowCountOf = function (n) {
+    return sectionsOf(n).reduce(function (s, sec) { return s + sec.rows.length; }, 0);
+  };
+
+  const BIG = /PLAY|START|NEW GAME|시작|플레이|받기|수령|합치기|MERGE|뽑기|다시|계속|구매|참가|대전/;
+
+  /* 지면의 UI 버튼 = 프리팹 버튼 그대로. 좌표·크기까지 함께 넘긴다. */
+  const uiButtons = function (n, noCtx) {
+    const pf = PF[n.id];
+    if (!pf) return [];
+    sectionsOf(n);   /* _sec/_row 채우기 */
+    const secs = SEC_CACHE[n.id];
+    const out = pfButtons(n.id).map(function (b) {
+      const row = secs[b._sec] ? secs[b._sec].rows[b._row] : null;
+      const steps = row ? splitChain(row[1]) : [""];
+      return {
+        label: b._label || nameOf(b), sec: b._sec, row: b._row, steps: steps.length,
+        type: stepType(steps[steps.length - 1] || ""), big: BIG.test(b._label || ""),
+        x: b.x, y: b.y, w: b.w, h: b.hh, on: b.a !== 0,   /* PF 는 비활성일 때만 a:0 을 붙인다. a === 1 로 보면 활성 버튼이 전부 비활성으로 그려진다 */
+        moved: b.mv === 1, alt: b.alt || null, ctx: b.ctx || null,
+        handler: b.h, node: b.n, full: b.w >= 0.9 && b.hh >= 0.9
+      };
+    });
+    /* 같은 프리팹을 공유하는 다른 구역의 버튼은 그 노드의 로직 표에서 이름을 가져온다.
+       (로비 화면에 main_view 버튼이 함께 그려지므로 이름이 비어 보이면 안 된다) */
+    if (!noCtx) {
+      const cache = {};
+      out.forEach(function (x) {
+        if (!x.ctx || !byId[x.ctx]) return;
+        if (!cache[x.ctx]) cache[x.ctx] = uiButtons(byId[x.ctx], true);
+        const hit = cache[x.ctx].filter(function (y) {
+          return y.handler === x.handler && y.node === x.node;
+        })[0];
+        if (hit) { x.label = hit.label; x.type = hit.type; x.steps = hit.steps; }
+      });
+    }
+
+    /* 한 로직 행에 버튼이 여러 개 붙는 경우(IAP A/B/C, 인게임 아이템 4종)
+       라벨이 똑같아지므로 프리팹 노드 이름으로 갈라준다. */
+    const count = function (arr) {
+      const c = {};
+      arr.forEach(function (x) { c[x.label] = (c[x.label] || 0) + 1; });
+      return c;
+    };
+    let seen = count(out);
+    out.forEach(function (x) {                       /* 1차: 프리팹 노드 이름으로 갈라본다 */
+      if (seen[x.label] < 2) return;
+      const alt = BTNNAME[x.node];
+      if (alt && alt !== "버튼" && alt !== x.label) x.label = alt;
+    });
+    seen = count(out);                               /* 2차: 그래도 남은 동명만 번호를 붙인다 */
+    const used = {};
+    out.forEach(function (x) {
+      if (seen[x.label] < 2) return;
+      used[x.label] = (used[x.label] || 0) + 1;
+      x.label = x.label + " " + used[x.label];
+    });
+    return out;
+  };
+
+  const stage = document.getElementById("stage");
+  const world = document.getElementById("world");
+  const svg = document.getElementById("wires");
+  const wireG = document.getElementById("wire-g");
+  const labelG = document.getElementById("wlabel-g");
+  const lblSvg = document.getElementById("wlabels");
+  const nodeLayer = document.getElementById("nodes");
+  const byId = {};
+  N.forEach(function (n) { byId[n.id] = n; });
+  /* 맵에 사각형으로 놓이는 것만 카드. 팝업은 부모 카드의 칩이라 좌표가 없다. */
+  const CARDS = N.filter(function (n) { return !n.chip; });
+
+  /* 맵의 화살표로는 표현되지 않는 축을 건드리는 카드에 배지를 단다.
+     코인 매치는 이 자리가 FB 컨텍스트였다. 이 프로토는 컨텍스트가 없고,
+     대신 **노드 데이터 · 연출 모드 · 태스크 루프**가 그 자리를 차지한다.
+     배지를 눌러 노드 표로 넘어간다 — 맵 구조는 안 건드린다. */
+  const CTXNODE = {
+    spine:    "노드 11개 원본 데이터",
+    taskloop: "골드 루프 상태 기계",
+    mode:     "연출 모드 3종 대조",
+    data:     "데이터 계약 전량",
+    stillplan: "씬별 컷 플랜"
+  };
+  /* 칩으로 내려간 지면의 배지는 그 부모 카드에 모아 보여준다 */
+  const ctxBadge = function (n) {
+    const own = [];
+    if (CTXNODE[n.id]) own.push(n.id);
+    (n.chips || []).forEach(function (c) { if (CTXNODE[c]) own.push(c); });
+    if (!own.length) return "";
+    const txt = own.length === 1 ? CTXNODE[own[0]] : "노드 표 " + own.length + "곳";
+    return '<button class="n-ctxb" data-ctxdoc="1" title="'
+      + esc(own.map(function (i) { return (byId[i] ? byId[i].title : i) + " — " + CTXNODE[i]; }).join(" · "))
+      + ' · 눌러서 노드 표로">표 · ' + esc(txt) + '</button>';
+  };
+  const ZONE = {};   /* 한 프리팹을 나눠 쓰는 지면이 없다 */
+
+  /* 카드 우측의 초소형 화면 개념도 — 프리팹 실좌표를 그대로 점으로 찍는다 (16:9) */
+  const wfGlyph = function (n) {
+    const b = uiButtons(n);
+    if (!b.length) return "";
+    let o = '<span class="n-wf">';
+    b.slice(0, 20).forEach(function (x) {
+      if (x.full) return;
+      o += '<u style="left:' + (x.x * 100).toFixed(1) + '%;top:' + (x.y * 100).toFixed(1) + '%"></u>';
+    });
+    return o + '</span>';
+  };
+
+  /* ============ L1 카드 ============
+     제목 · 역할 한 줄 · 화면 개념도만 둔다. 카테고리 배지 · kind · 대표 호출 · 개수는
+     지면 팝업에 다 있어서 카드에서 빼면 카드가 낮아지고 맵이 좁아진다. */
+  CARDS.forEach(function (n) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "node cat-" + n.cat + (n.gate ? " gate" : "") + (n.chips ? " has-chips" : "");
+    el.style.left = n.x + "px";
+    el.style.top = n.y + "px";
+    el.style.width = n.w + "px";
+    el.dataset.id = n.id;
+
+    let h = '<span class="n-title">' + esc(n.title) + '</span>'
+      + '<span class="n-ko">' + esc(n.ko) + '</span>'
+      + wfGlyph(n);
+    if (n.chips && n.chips.length) {
+      const zones = n.chips.filter(function (c) { return ZONE[c]; });
+      const pops = n.chips.filter(function (c) { return !ZONE[c]; });
+      h += '<span class="n-chips">';
+      if (zones.length) {
+        h += '<span class="c-h">같은 지면의 다른 구역</span>';
+        zones.forEach(function (c) {
+          const t = byId[c];
+          h += '<span class="chip zone" data-chip="' + c + '" title="' + esc(t.title + " · " + t.ko) + '">'
+            + esc(chipName(t)) + '</span>';
+        });
+      }
+      h += '<span class="c-h">여기서 열리는 지면 <em>' + pops.length + '</em></span>';
+      pops.forEach(function (c) {
+        const t = byId[c];
+        h += '<span class="chip" data-chip="' + c + '" style="--tc: var(--c-' + t.cat + ')"'
+          + ' title="' + esc(t.title + " · " + t.ko) + '"><i></i>' + esc(chipName(t)) + '</span>';
+      });
+      h += '</span>';
+    }
+    h += ctxBadge(n);
+    el.innerHTML = h;
+    nodeLayer.appendChild(el);
+    n.el = el;
+  });
+
+  /* 띠 라벨 — 좌표는 layout.py 가 실측 높이로 잰 띠 상단이다 (flowmap-v2-guide §3-2).
+     카드보다 뒤에 그려도 되도록 pointer-events 를 끊어 맵 드래그를 막지 않는다. */
+  if (typeof BANDLABEL !== "undefined") {
+    BANDLABEL.forEach(function (b) {
+      const el = document.createElement("div");
+      el.className = "band-label";
+      el.style.top = (b.y - 46) + "px";
+      el.textContent = b.text;
+      nodeLayer.appendChild(el);
+    });
+  }
+
+  /* ============ 월드 크기 · 배선 ============ */
+  let WW = 0, WH = 0;
+  const measure = function () {
+    let maxX = 0, maxY = 0;
+    CARDS.forEach(function (n) {
+      /* 레이아웃이 없는 환경(테스트)에서는 높이를 추정해 배선 계산이 어긋나지 않게 한다 */
+      n.h = n.el.offsetHeight || (86 + (n.chips ? Math.ceil(n.chips.length / 7) * 34 : 0));
+      maxX = Math.max(maxX, n.x + n.w);
+      maxY = Math.max(maxY, n.y + n.h);
+    });
+    /* 칩에서 출발하는 흐름이 있으니 칩의 월드 좌표도 잡아 둔다 */
+    CARDS.forEach(function (n) {
+      if (!n.chips) return;
+      n.chips.forEach(function (c) {
+        const t = byId[c], ce = n.el.querySelector('[data-chip="' + c + '"]');
+        if (!t || !ce) return;
+        t.x = n.x + ce.offsetLeft;
+        t.y = n.y + ce.offsetTop;
+        t.w = ce.offsetWidth || 90;
+        t.h = ce.offsetHeight || 22;
+        t.owner = n.id;
+      });
+    });
+    /* 여백은 좌우 대칭으로 최소만 둔다. 오른쪽에만 380 을 두던 이전 값은
+       월드 폭의 22% 가 빈칸이라 화면을 좁게 쓰는 원인이었다. */
+    WW = maxX + 70;
+    WH = maxY + 90;
+    BANDS = bandsOf();
+    world.style.width = WW + "px";
+    world.style.height = WH + "px";
+    svg.setAttribute("width", WW);
+    svg.setAttribute("height", WH);
+    svg.setAttribute("viewBox", "0 0 " + WW + " " + WH);
+    lblSvg.setAttribute("width", WW);
+    lblSvg.setAttribute("height", WH);
+    lblSvg.setAttribute("viewBox", "0 0 " + WW + " " + WH);
+  };
+
+  const anchor = function (n, d, off) {
+    const o = off || 0;
+    if (d === "t") return { x: n.x + n.w / 2 + o, y: n.y, ax: "v" };
+    if (d === "b") return { x: n.x + n.w / 2 + o, y: n.y + n.h, ax: "v" };
+    if (d === "l") return { x: n.x, y: n.y + n.h / 2 + o, ax: "h" };
+    return { x: n.x + n.w, y: n.y + n.h / 2 + o, ax: "h" };
+  };
+
+  /* ── 배선 라우터 ──────────────────────────────────────────────
+     예전엔 via · aoff · ad · bd 를 데이터에 손으로 박아 뒀다. 그건 세로 레이아웃 전용이라
+     배치를 바꾸면 선이 카드를 관통했다. 이제 좌표에서 후보 경로를 만들고
+     "카드를 안 지나는 첫 후보"를 고른다 — 배치를 바꿔도 배선이 따라온다.
+
+     통로는 두 종류다. 띠 사이 가로 통로(글줄 折り返し가 지나간다)와
+     월드 좌우/상하 여백(같은 띠에서 되돌아가는 선이 돌아간다). */
+  let BANDS = [];
+  const bandsOf = function () {
+    const rows = CARDS.slice().sort(function (a, b) { return a.y - b.y; });
+    const out = [];
+    rows.forEach(function (n) {
+      const last = out[out.length - 1];
+      /* 임계값은 layout.GAP_Y 보다 커야 한다. 작으면 한 열의 카드가 서로 다른 띠로
+         갈라져 배선이 무너진다 (코인 매치 v2 에서 GAP_Y 74 vs 임계 60 으로 실제로 겪음). */
+      if (last && n.y < last.bot + 150) {
+        last.bot = Math.max(last.bot, n.y + n.h);
+        last.top = Math.min(last.top, n.y);
+      } else {
+        out.push({ top: n.y, bot: n.y + n.h });
+      }
+    });
+    return out;
+  };
+  const bandIdx = function (n) {
+    const c = n.y + n.h / 2;
+    for (let i = 0; i < BANDS.length; i++) if (c >= BANDS[i].top - 40 && c <= BANDS[i].bot + 40) return i;
+    return 0;
+  };
+  /* 띠 i 아래의 가로 통로 중앙 y (마지막 띠면 월드 아래 여백) */
+  const gapBelow = function (i) {
+    if (i + 1 < BANDS.length) return (BANDS[i].bot + BANDS[i + 1].top) / 2;
+    return BANDS[i].bot + 46;
+  };
+  const gapAbove = function (i) {
+    if (i > 0) return (BANDS[i - 1].bot + BANDS[i].top) / 2;
+    return BANDS[i].top - 46;
+  };
+
+  /* 선분이 끝점 두 개를 뺀 카드를 지나가는지 */
+  const hits = function (pts, a, b) {
+    /* 칩에서 출발·도착하는 선은 그 칩을 품은 카드 안에서 시작한다 — 관통이 아니다 */
+    const skip = [a, b, byId[a.chip], byId[b.chip], byId[a.owner], byId[b.owner]];
+    for (let i = 1; i < pts.length; i++) {
+      const s = pts[i - 1], t = pts[i];
+      const x0 = Math.min(s.x, t.x), x1 = Math.max(s.x, t.x);
+      const y0 = Math.min(s.y, t.y), y1 = Math.max(s.y, t.y);
+      for (let k = 0; k < CARDS.length; k++) {
+        const c = CARDS[k];
+        if (skip.indexOf(c) >= 0) continue;
+        if (x0 < c.x + c.w - 4 && x1 > c.x + 4 && y0 < c.y + c.h - 4 && y1 > c.y + 4) return true;
+      }
+    }
+    return false;
+  };
+
+  const plansFor = function (a, b) {
+    const ia = bandIdx(a), ib = bandIdx(b);
+    const fwd = b.x + b.w / 2 > a.x + a.w / 2;
+    const L = 34;              /* 월드 왼쪽 여백 통로 */
+    const p = [];
+    if (ib > ia) p.push({ ad: "b", bd: "t", mid: gapBelow(ia) });
+    else if (ib < ia) p.push({ ad: "t", bd: "b", mid: gapAbove(ia) });
+    else p.push(fwd ? { ad: "r", bd: "l" } : { ad: "l", bd: "r" });
+    /* 같은 띠 · 가까운 띠에서 막히면 통로로 우회한다 */
+    p.push({ ad: "b", bd: "b", mid: gapBelow(Math.max(ia, ib)) });
+    p.push({ ad: "t", bd: "t", mid: gapAbove(Math.min(ia, ib)) });
+    p.push({ ad: "b", bd: "t", mid: gapBelow(ia) });
+    p.push({ ad: "t", bd: "b", mid: gapAbove(ia) });
+    p.push({ ad: "l", bd: "l", mid: L });
+    p.push({ ad: "r", bd: "r", mid: WW - 34 });
+    p.push(fwd ? { ad: "r", bd: "l" } : { ad: "l", bd: "r" });
+    return p;
+  };
+
+  /* 카드를 안 지나는 첫 후보. 다 막히면 마지막 후보(단순 좌우)를 쓴다. */
+  const routeFor = function (a, b) {
+    const plans = plansFor(a, b);
+    for (let i = 0; i < plans.length; i++) {
+      const pl = plans[i];
+      const pts = buildPoints(anchor(a, pl.ad), anchor(b, pl.bd), { mid: pl.mid });
+      if (!hits(pts, a, b)) return { pts: pts, plan: pl };
+    }
+    const pl = plans[plans.length - 1];
+    return { pts: buildPoints(anchor(a, pl.ad), anchor(b, pl.bd), { mid: pl.mid }), plan: pl };
+  };
+
+  const simpleRoute = function (p, q, mid) {
+    const pts = [];
+    if (p.ax === "v" && q.ax === "v") {
+      if (Math.abs(p.x - q.x) > 1) {
+        const my = mid != null ? mid : (p.y + q.y) / 2;
+        pts.push({ x: p.x, y: my }, { x: q.x, y: my });
+      }
+    } else if (p.ax === "h" && q.ax === "h") {
+      if (Math.abs(p.y - q.y) > 1) {
+        const mx = mid != null ? mid : (p.x + q.x) / 2;
+        pts.push({ x: mx, y: p.y }, { x: mx, y: q.y });
+      }
+    } else if (p.ax === "v") {
+      pts.push({ x: p.x, y: q.y });
+    } else {
+      pts.push({ x: q.x, y: p.y });
+    }
+    return pts;
+  };
+
+  const buildPoints = function (p, q, e) {
+    let pts = [{ x: p.x, y: p.y }];
+    if (e.via && e.via.length) {
+      const v0 = e.via[0];
+      if (p.ax === "v" && Math.abs(v0.x - p.x) > 1) pts.push({ x: p.x, y: v0.y });
+      if (p.ax === "h" && Math.abs(v0.y - p.y) > 1) pts.push({ x: v0.x, y: p.y });
+      e.via.forEach(function (v) { pts.push({ x: v.x, y: v.y }); });
+      const last = e.via[e.via.length - 1];
+      if (q.ax === "v" && Math.abs(last.x - q.x) > 1) pts.push({ x: q.x, y: last.y });
+      if (q.ax === "h" && Math.abs(last.y - q.y) > 1) pts.push({ x: last.x, y: q.y });
+    } else {
+      pts = pts.concat(simpleRoute(p, q, e.mid));
+    }
+    pts.push({ x: q.x, y: q.y });
+
+    const out = [];
+    pts.forEach(function (pt) {
+      const prev = out[out.length - 1];
+      if (!prev || Math.abs(prev.x - pt.x) > 0.5 || Math.abs(prev.y - pt.y) > 0.5) out.push(pt);
+    });
+    return out;
+  };
+
+  const roundPath = function (pts, r) {
+    if (pts.length < 3) {
+      return "M " + pts[0].x + " " + pts[0].y + " L " + pts[pts.length - 1].x + " " + pts[pts.length - 1].y;
+    }
+    let d = "M " + pts[0].x + " " + pts[0].y;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+      const d1 = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const d2 = Math.hypot(c.x - b.x, c.y - b.y) || 1;
+      const rr = Math.max(0, Math.min(r, d1 / 2, d2 / 2));
+      const p1 = { x: b.x - ((b.x - a.x) / d1) * rr, y: b.y - ((b.y - a.y) / d1) * rr };
+      const p2 = { x: b.x + ((c.x - b.x) / d2) * rr, y: b.y + ((c.y - b.y) / d2) * rr };
+      d += " L " + p1.x + " " + p1.y + " Q " + b.x + " " + b.y + " " + p2.x + " " + p2.y;
+    }
+    const last = pts[pts.length - 1];
+    d += " L " + last.x + " " + last.y;
+    return d;
+  };
+
+  const drawWires = function () {
+    wireG.innerHTML = "";
+    labelG.innerHTML = "";
+    const pend = [];   /* 라벨 후보 (2패스로 배치) */
+    E.forEach(function (e) {
+      const a = byId[e.a], b = byId[e.b];
+      if (!a || !b) return;
+      const pts = routeFor(a, b).pts;
+
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", roundPath(pts, 14));
+      path.setAttribute("class", "wire" + (e.kind ? " " + e.kind : ""));
+      path.setAttribute("marker-end", "url(#ah)");
+      wireG.appendChild(path);
+      e.path = path;
+
+      if (!e.label) { e.lbl = null; return; }
+      /* 가장 긴 구간을 고른다. 실제 자리는 아래 2패스에서 폭을 재고 정한다. */
+      let best = 0, bl = -1;
+      for (let k = 0; k < pts.length - 1; k++) {
+        const L = Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
+        if (L > bl) { bl = L; best = k; }
+      }
+      pend.push({ e: e, s: pts[best], t: pts[best + 1] });
+    });
+
+    /* ── 라벨 배치 ────────────────────────────────────────────────
+       폭을 글자 수로 추정하면 한글(모노스페이스에서 2배 폭)이 섞일 때 크게 어긋나
+       카드 위에 얹혀 잘린 것처럼 보인다. 그래서 먼저 그려 실제 폭을 재고 자리를 정한다. */
+    const taken = [];
+    pend.forEach(function (q) {
+      const e = q.e, s = q.s, t = q.t;
+      const horiz = Math.abs(t.y - s.y) < 1;
+      const strong = e.kind === "trunk";
+      const tx2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      tx2.setAttribute("class", "wlabel" + (strong ? " strong" : ""));
+      tx2.setAttribute("text-anchor", horiz ? "middle" : "start");
+      tx2.textContent = shortLabel(e.label);
+      if (tx2.textContent !== e.label) {
+        const ti = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        ti.textContent = e.label;
+        tx2.appendChild(ti);
+      }
+      labelG.appendChild(tx2);
+
+      /* 실측 → 안 되면(테스트 환경) 한글 2배 폭으로 추정 */
+      let tw = 0;
+      try { tw = tx2.getComputedTextLength(); } catch (err) { tw = 0; }
+      if (!tw) {
+        const cw = strong ? 6.9 : 6.3;
+        let u = 0;
+        const str = tx2.textContent;
+        for (let i = 0; i < str.length; i++) {
+          u += /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7A3\u3000-\u303F\uFF00-\uFFEF]/.test(str[i]) ? 2 : 1;
+        }
+        tw = u * cw;
+      }
+      const th = strong ? 13 : 12;
+
+      const spot = function (f, dd) {
+        const cx = s.x + (t.x - s.x) * f, cy = s.y + (t.y - s.y) * f;
+        if (horiz) {
+          const y = cy - 6 + dd;
+          return { x: cx, y: y, l: cx - tw / 2, r: cx + tw / 2, tp: y - th, bt: y + 3, d: dd };
+        }
+        const x = cx + 7 + (dd < 0 ? dd - tw : dd);
+        const y = cy - 2;
+        return { x: x, y: y, l: x, r: x + tw, tp: y - th, bt: y + 3, d: dd };
+      };
+      const clash = function (r) {
+        for (let i = 0; i < CARDS.length; i++) {
+          const nd = CARDS[i];
+          if (r.r > nd.x - 5 && r.l < nd.x + nd.w + 5
+           && r.bt > nd.y - 5 && r.tp < nd.y + (nd.h || 130) + 5) return true;
+        }
+        for (let i = 0; i < taken.length; i++) {
+          const o = taken[i];
+          if (r.r > o.l - 4 && r.l < o.r + 4 && r.bt > o.tp - 3 && r.tp < o.bt + 3) return true;
+        }
+        return false;
+      };
+      let put = null;
+      const fs2 = [0.5, 0.44, 0.56, 0.36, 0.64, 0.3, 0.7, 0.24, 0.76, 0.18, 0.82, 0.12, 0.88, 0.07, 0.93];
+      const ds = [0, -16, 16, -30, 30, -44, 44, -58, 58, -72, 72, -88, 88];
+      for (let k = 0; k < ds.length && !put; k++) {
+        for (let i = 0; i < fs2.length; i++) {
+          const r = spot(fs2[i], ds[k]);
+          if (!clash(r)) { put = r; break; }
+        }
+      }
+      if (!put) put = spot(0.5, 0);
+      taken.push(put);
+      tx2.setAttribute("x", put.x);
+      tx2.setAttribute("y", put.y);
+      tx2.setAttribute("data-d", put.d);
+      if (Math.abs(put.d) >= 25) {
+        const ax = (s.x + t.x) / 2, ay = (s.y + t.y) / 2;
+        const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        ln.setAttribute("x1", horiz ? put.x : (put.d < 0 ? put.r : put.l));
+        ln.setAttribute("y1", horiz ? (put.d < 0 ? put.bt : put.tp) : put.y - 4);
+        ln.setAttribute("x2", ax);
+        ln.setAttribute("y2", ay);
+        ln.setAttribute("class", "wlead");
+        labelG.insertBefore(ln, labelG.firstChild);
+      }
+      e.lbl = tx2;
+    });
+  };
+
+  /* ============ 미니맵 ============ */
+  const mini = document.getElementById("mini");
+  const miniIn = document.getElementById("mini-in");
+  const miniVp = document.getElementById("mini-vp");
+  let mScale = 1;
+
+  const buildMini = function () {
+    Array.prototype.slice.call(miniIn.querySelectorAll(".mn")).forEach(function (d) { d.remove(); });
+    const r = miniIn.getBoundingClientRect();
+    if (!r.width) return;
+    mScale = Math.min(r.width / WW, r.height / WH);
+    CARDS.forEach(function (n) {
+      const d = document.createElement("div");
+      d.className = "mn";
+      d.style.left = (n.x * mScale) + "px";
+      d.style.top = (n.y * mScale) + "px";
+      d.style.width = Math.max(2, n.w * mScale) + "px";
+      d.style.height = Math.max(2, n.h * mScale) + "px";
+      d.style.background = "var(--c-" + n.cat + ")";
+      miniIn.appendChild(d);
+    });
+  };
+
+  /* ============ 팬 · 줌 ============ */
+  let tx = 0, ty = 0, sc = 1;
+  const MIN = 0.14, MAX = 2.2;
+  const zoomLabel = document.getElementById("zoomval");
+  const dock = document.getElementById("dock");
+
+  /* 팝업은 화면 가운데를 덮으므로 맵 중앙 계산에서 빼는 여백은 없다. */
+  const dockPad = function () { return 0; };
+
+  const apply = function () {
+    world.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sc + ")";
+    zoomLabel.textContent = Math.round(sc * 100) + "%";
+    stage.style.backgroundSize = (48 * sc) + "px " + (48 * sc) + "px";
+    stage.style.backgroundPosition = tx + "px " + ty + "px";
+    miniVp.style.left = (-tx / sc * mScale) + "px";
+    miniVp.style.top = (-ty / sc * mScale) + "px";
+    miniVp.style.width = (stage.clientWidth / sc * mScale) + "px";
+    miniVp.style.height = (stage.clientHeight / sc * mScale) + "px";
+  };
+
+  const clampScale = function (s) { return Math.max(MIN, Math.min(MAX, s)); };
+
+  const fitAll = function () {
+    const pad = 56;
+    const vw = stage.clientWidth - dockPad();
+    sc = clampScale(Math.min((vw - pad * 2) / WW, (stage.clientHeight - pad * 2) / WH));
+    tx = (vw - WW * sc) / 2;
+    ty = (stage.clientHeight - WH * sc) / 2;
+    apply();
+  };
+
+  const goTop = function () {
+    sc = clampScale(0.72);
+    const n = byId.intro;
+    tx = (stage.clientWidth - dockPad()) / 2 - (n.x + n.w / 2) * sc;
+    ty = 120 - n.y * sc;
+    apply();
+  };
+
+  const centerOn = function (n) {
+    if (n && n.chip && byId[n.chip]) n = byId[n.chip];
+    tx = (stage.clientWidth - dockPad()) / 2 - (n.x + n.w / 2) * sc;
+    ty = stage.clientHeight / 2 - (n.y + n.h / 2) * sc;
+    apply();
+  };
+
+  let dragging = false, moved = 0, lx = 0, ly = 0, pinchDist = 0, downNode = null, downChip = null, downCtx = null;
+  const pointers = new Map();
+
+  stage.addEventListener("pointerdown", function (ev) {
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size > 1) { dragging = false; downNode = null; downChip = null; downCtx = null; return; }
+    dragging = true; moved = 0; lx = ev.clientX; ly = ev.clientY;
+    downNode = ev.target && ev.target.closest ? ev.target.closest(".node") : null;
+    downChip = ev.target && ev.target.closest ? ev.target.closest("[data-chip]") : null;
+    downCtx = ev.target && ev.target.closest ? ev.target.closest("[data-ctxdoc]") : null;
+    stage.classList.add("dragging");
+    /* setPointerCapture 를 걸면 click 이 #stage 로 재지정돼 노드 클릭이 죽는다.
+       캡처 대신 window 에서 move/up 을 받고, 노드 활성화는 pointerup 에서 직접 판정한다. */
+  });
+
+  window.addEventListener("pointermove", function (ev) {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+
+    if (pointers.size === 2) {
+      const pp = Array.from(pointers.values());
+      const d = Math.hypot(pp[0].x - pp[1].x, pp[0].y - pp[1].y);
+      const cx = (pp[0].x + pp[1].x) / 2, cy = (pp[0].y + pp[1].y) / 2;
+      if (pinchDist) {
+        const ns = clampScale(sc * (d / pinchDist));
+        const k = ns / sc;
+        tx = cx - (cx - tx) * k;
+        ty = cy - (cy - ty) * k;
+        sc = ns;
+        apply();
+      }
+      pinchDist = d;
+      return;
+    }
+    if (!dragging) return;
+    const dx = ev.clientX - lx, dy = ev.clientY - ly;
+    moved += Math.abs(dx) + Math.abs(dy);
+    tx += dx; ty += dy; lx = ev.clientX; ly = ev.clientY;
+    apply();
+  });
+
+  const endPointer = function (ev, cancelled) {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinchDist = 0;
+    if (pointers.size > 0) return;
+    dragging = false;
+    stage.classList.remove("dragging");
+    const hit = downNode, chip = downChip, cbox = downCtx;
+    downNode = null; downChip = null; downCtx = null;
+    if (cancelled || moved > 6) return;
+    if (cbox) { openScreen("__ctx__", { reset: true, recenter: false }); return; }
+    if (chip) { openScreen(chip.dataset.chip, { reset: true }); return; }
+    if (hit) openScreen(hit.dataset.id, { reset: true });
+  };
+  window.addEventListener("pointerup", function (ev) { endPointer(ev, false); });
+  window.addEventListener("pointercancel", function (ev) { endPointer(ev, true); });
+
+  stage.addEventListener("wheel", function (ev) {
+    ev.preventDefault();
+    const ns = clampScale(sc * Math.pow(0.9988, ev.deltaY * (ev.deltaMode === 1 ? 18 : 1)));
+    const k = ns / sc;
+    tx = ev.clientX - (ev.clientX - tx) * k;
+    ty = ev.clientY - (ev.clientY - ty) * k;
+    sc = ns;
+    apply();
+  }, { passive: false });
+
+  const zoomBtn = function (dir) {
+    const ns = clampScale(sc * (dir > 0 ? 1.25 : 0.8));
+    const cx = (stage.clientWidth - dockPad()) / 2, cy = stage.clientHeight / 2;
+    const k = ns / sc;
+    tx = cx - (cx - tx) * k;
+    ty = cy - (cy - ty) * k;
+    sc = ns;
+    apply();
+  };
+  document.getElementById("b-in").addEventListener("click", function () { zoomBtn(1); });
+  document.getElementById("b-out").addEventListener("click", function () { zoomBtn(-1); });
+  document.getElementById("b-fit").addEventListener("click", fitAll);
+  document.getElementById("b-top").addEventListener("click", goTop);
+  document.getElementById("b-ctx").addEventListener("click", function () {
+    openScreen("__ctx__", { reset: true, recenter: false });
+  });
+  document.getElementById("b-fb").addEventListener("click", function () {
+    openScreen("__fb__", { reset: true, recenter: false });
+  });
+
+  mini.addEventListener("pointerdown", function (ev) {
+    ev.stopPropagation();
+    const r = miniIn.getBoundingClientRect();
+    tx = (stage.clientWidth - dockPad()) / 2 - ((ev.clientX - r.left) / mScale) * sc;
+    ty = stage.clientHeight / 2 - ((ev.clientY - r.top) / mScale) * sc;
+    apply();
+  });
+
+  /* ============ 하이라이트 ============ */
+  const highlight = function (id) {
+    CARDS.forEach(function (n) { n.el.classList.remove("hot", "selected"); });
+    E.forEach(function (e) {
+      if (e.path) e.path.classList.remove("hot");
+      if (e.lbl) e.lbl.classList.remove("hot");
+    });
+    if (!id) {
+      world.classList.remove("focused");
+      svg.classList.remove("focused");
+      return;
+    }
+    world.classList.add("focused");
+    svg.classList.add("focused");
+    const tgt = byId[id];
+    const host = tgt.chip ? byId[tgt.chip] : tgt;
+    if (host && host.el) host.el.classList.add("hot", "selected");
+    nodeLayer.querySelectorAll(".chip.on").forEach(function (e) { e.classList.remove("on"); });
+    if (tgt.chip && host && host.el) {
+      const ce = host.el.querySelector('[data-chip="' + id + '"]');
+      if (ce) ce.classList.add("on");
+    }
+    E.forEach(function (e) {
+      if (e.a !== id && e.b !== id) return;
+      if (e.path) e.path.classList.add("hot");
+      if (e.lbl) e.lbl.classList.add("hot");
+      const other = e.a === id ? e.b : e.a;
+      const oh = byId[other] && byId[other].chip ? byId[byId[other].chip] : byId[other];
+      if (oh && oh.el) oh.el.classList.add("hot");
+    });
+  };
+
+  /* ============ 탭 도크 ============ */
+  const crumbEl = document.getElementById("crumb");
+  const bodyEl = document.getElementById("dock-body");
+  const backBtn = document.getElementById("d-back");
+
+  /* 파고든 순서를 그대로 쌓는 한 갈래 스택. 뒤로가기가 한 칸씩 되돌린다. */
+  let stack = [];     /* [{id, view:{sec,row}|null}] */
+  const cur = function () { return stack.length ? stack[stack.length - 1] : null; };
+
+
+  /* ── 2단 UI 와이어프레임 : 프리팹 좌표를 720x1280 세로 틀에 그대로 올린다 ── */
+  const wireframe = function (n, cc) {
+    const pf = PF[n.id];
+    if (!pf) return "";                       /* 프리팹이 아예 없는 로직 노드만 와이어프레임을 뺀다 */
+    const b = uiButtons(n);
+    const deco = pfDecor(n.id);
+    if (!b.length && !deco.length) return "";
+
+    const full = b.filter(function (x) { return x.full; });
+    const spot = b.filter(function (x) { return !x.full; });
+
+    /* 지면마다 설계 해상도가 다를 수 있다 (UGC 모드는 2290x1280 가로). ar 이 있으면 그 비율로 그린다. */
+    let o = '<div class="wf-wrap' + (pf.ar ? ' wide' : '') + '"><div class="wf" style="--cc: ' + cc
+      + (pf.ar ? ';aspect-ratio: ' + pf.ar : '') + '">';
+    if (pf.panel) {
+      o += '<span class="wf-panel" style="width:' + (pf.panel.w * 100).toFixed(1)
+        + '%;height:' + (pf.panel.h * 100).toFixed(1) + '%"></span>';
+    }
+    /* 장식 레이어. 클릭은 버튼만 받게 pointer-events 를 끈다(CSS).
+       프리팹 문서 순서(z)대로 그려 큰 배경이 작은 요소를 덮지 않게 한다. */
+    const DKIND = { l: "lbl", i: "img", s: "list", g: "gauge", m: "anim" };
+    deco.forEach(function (x) {
+      const w = Math.max(x.w * 100, 0.6), h = Math.max(x.hh * 100, 1.0);
+      const txt = (x.t || "").trim();
+      o += '<span class="wf-d d-' + (DKIND[x.k] || "img") + (x.ctx ? " ctx" : "") + '"'
+        + ' style="left:' + (x.x * 100).toFixed(2) + '%;top:' + (x.y * 100).toFixed(2) + '%;'
+        + 'width:' + w.toFixed(2) + '%;height:' + h.toFixed(2) + '%"'
+        + ' title="' + esc(x.n + (txt ? " · \u201c" + txt + "\u201d" : "")
+            + (x.rep ? " · 같은 셀 " + x.rep + "개" : "")) + '">'
+        + (x.k === "l" && txt ? '<b>' + esc(txt.length > 18 ? txt.slice(0, 18) + "\u2026" : txt) + '</b>' : '')
+        + (x.rep ? '<i class="wf-rep">\u00d7' + x.rep + '</i>' : '')
+        + '</span>';
+    });
+    full.forEach(function (x) {
+      o += '<button class="wf-full' + (x.ctx ? " ctx" : "") + '"'
+        + (x.ctx ? ' data-jump="' + x.ctx + '"' : ' data-sec="' + x.sec + '" data-row="' + x.row + '"')
+        + ' title="' + esc(x.ctx && byId[x.ctx]
+            ? byId[x.ctx].title + " 담당 — 눌러서 그 지면으로"
+            : x.node + " · " + (x.handler || "핸들러 없음")) + '">'
+        + esc(x.label) + ' <em>화면 전체</em></button>';
+    });
+    /* 상자는 실측 크기 그대로. 라벨은 일단 전부 쓰고, 렌더 후 실제 프레임 크기를 재서
+       겹치는 것만 번호로 내린다(fitLabels). 프레임 폭이 창 크기에 따라 변하므로 고정 계산은 못 쓴다. */
+    spot.forEach(function (x) {
+      const w = Math.max(x.w * 100, 3.2), h = Math.max(x.h * 100, 5.0);
+      const tip = x.ctx && byId[x.ctx]
+        ? "이 버튼은 " + byId[x.ctx].title + " 담당 — 눌러서 그 지면으로"
+        : x.node + " · " + (x.handler || "핸들러 없음") + " · " + x.steps + "단계"
+        + (x.on ? "" : " · 프리팹 저장 시점 비활성")
+        + (x.moved ? " · 위치는 코드가 런타임에 정함" : "");
+      o += '<button class="wf-btn n-' + x.type + (x.big ? " big" : "") + (x.on ? "" : " off")
+        + (x.moved ? " mv" : "") + (x.ctx ? " ctx" : "") + '"'
+        + (x.ctx ? ' data-jump="' + x.ctx + '"' : ' data-sec="' + x.sec + '" data-row="' + x.row + '"')
+        + ' data-lbl="' + esc(x.label) + '" data-rank="' + ((x.ctx ? 0 : 4) + (x.big ? 2 : 0)) + '"'
+        + (x.alt ? ' data-alt="' + x.alt.length + '"' : '') + (x.moved ? ' data-mv="1"' : '')
+        + ' style="left:' + (x.x * 100).toFixed(2) + '%;top:' + (x.y * 100).toFixed(2) + '%;'
+        + 'width:' + w.toFixed(2) + '%;height:' + h.toFixed(2) + '%"'
+        + ' title="' + esc(x.label + " · " + tip) + '">'
+        + '<span>' + esc(x.label) + (x.alt ? '<i class="wf-alt">+' + x.alt.length + '</i>' : '')
+        + (x.moved ? '<i class="wf-mv">?</i>' : '') + '</span></button>';
+    });
+    /* 모든 지면 위에 상주하는 공통 헤더 (프로필 · 코인). 이 프로젝트는 독립 프리팹이 아니라
+       intro.fire 의 PersistRootNode/Header 안에 있고, SceneManager.directionTopCoin 이 그 인스턴스다.
+       (PopupManager.setHeader() 는 HeaderLayer.prefab 을 찾지만 이 프로젝트엔 그 프리팹이 없다 — 죽은 경로)
+       세로 위치는 TopCoin 이 코드로 잡으므로 상단에 붙여 그린다. */
+    if (typeof HDR !== "undefined" && HDR.length && n.id !== "intro") {
+      HDR.forEach(function (x) {
+        const txt = (x.t || "").trim();
+        o += '<span class="wf-d d-hdr' + (x.k === "l" ? " d-lbl" : "") + '"'
+          + ' style="left:' + (x.x * 100).toFixed(2) + '%;top:' + (x.y * 100).toFixed(2) + '%;'
+          + 'width:' + Math.max(x.w * 100, 0.6).toFixed(2) + '%;height:' + Math.max(x.hh * 100, 1.0).toFixed(2) + '%"'
+          + ' title="공통 헤더 intro.fire PersistRootNode/Header (모든 지면 상주) · ' + esc(x.n) + '">'
+          + (x.k === "l" && txt ? '<b>' + esc(txt) + '</b>' : '') + '</span>';
+      });
+    }
+    o += '</div>';
+    o += '<div class="wf-key" hidden><span class="wf-key-h">번호로 표시한 버튼 — 자리가 좁아 이름을 안에 못 넣은 것</span></div>';
+    const ctxN = b.filter(function (x) { return x.ctx; }).length;
+    const folded = b.reduce(function (n, x) { return n + (x.alt ? x.alt.length : 0); }, 0);
+    const movedN = b.filter(function (x) { return x.moved; }).length;
+    o += '<div class="wf-cap"><b>' + esc(pf.src) + '</b>'
+      + (pf.sub ? ' 의 <code>' + esc(pf.sub) + '</code> 노드' : '')
+      + ' 실측 · ' + (pf.cw ? pf.cw + '&times;' + pf.ch + (pf.ar > 1 ? ' 가로' : ' 세로') : '720&times;1280 세로')
+      + ' · 화면 요소 '
+      + (b.length + deco.length) + '개 (버튼 ' + b.length + ' · 장식 ' + deco.length + ')'
+      + (ctxN ? ' · 이 중 <b>' + ctxN + '개</b>는 같은 프리팹의 다른 구역 담당 (흐린 버튼 — 눌러서 그 지면으로)' : '')
+      + (folded ? ' · <b>+n</b> 은 같은 자리에 겹친 상태별 변형 ' + folded + '개' : '')
+      + ' · <span class="wf-cnt"></span>'
+      + (pf.folded ? ' · 반복 셀 ' + pf.folded + '개는 대표 1개 + <b>&times;n</b> 으로 접음' : '')
+      + (pf.nested ? ' · 부모와 같은 자리를 차지하는 중복 상자 ' + pf.nested + '개 제외' : '')
+      + (pf.parked ? ' · 에디터에서 옆으로 빼둔 배타 패널 ' + pf.parked + '개 제외' : '')
+      + (movedN ? ' · <b>?</b> 는 코드가 런타임에 위치를 정해 <b>좌표를 믿을 수 없는</b> 버튼 ' + movedN + '개' : '')
+      + '<br><code>cc.Widget</code> 정렬은 계산해서 반영했습니다(회전은 무시). '
+      + '<span class="wf-lg">점선</span>은 프리팹 저장 시점 비활성(런타임 조건부 노출). '
+      + '<b>파란 띠</b>는 모든 지면에 상주하는 공통 헤더입니다 — 독립 프리팹이 아니라 '
+      + '<code>intro.fire</code> 의 <code>PersistRootNode/Header</code> 안에 있고 '
+      + '<code>SceneManager.directionTopCoin</code>(<code>TopCoin</code>)이 그 인스턴스입니다. '
+      + '프리팹에는 화면 위 <code>+124</code> 에 파킹돼 있어(슬라이드 인 시작 프레임) '
+      + '<b>화면 상단에 붙여 그렸습니다</b>(가로는 프리팹 실측).'
+      + (pf.runtime ? ' <b>' + esc(pf.runtime) + '</b>은 프리팹에 없습니다 — 코드가 런타임에 만듭니다.' : '')
+      + (pf['var'] ? ' 같은 지면의 다른 프리팹 변형: <b>' + esc(pf['var'].join(' · ')) + '</b>.' : '')
+      + '</div>';
+    return o + '</div>';
+  };
+
+  /* ---- 2단 : 지면 다이어그램 (흐름 밴드 + 가지 트리) ---- */
+  const renderScreen = function (t) {
+    const n = byId[t.id];
+    const secs = sectionsOf(n);
+    const cc = "var(--c-" + n.cat + ")";
+
+    const outs = [], ins = [];
+    E.forEach(function (e) {
+      if (e.a === t.id) outs.push(e);
+      else if (e.b === t.id) ins.push(e);
+    });
+    /* 팝업 열기는 화살표에서 칩 소속으로 옮겼으므로, 문맥 밴드는 소속에서 만든다 */
+    /* 상점처럼 두 곳에서 열리는 지면은 부모를 전부 보여준다 */
+    CARDS.forEach(function (c) {
+      if (c.chips && c.chips.indexOf(t.id) > -1) ins.push({ a: c.id, b: t.id, label: "여기서 열린다" });
+    });
+    if (n.chips) n.chips.forEach(function (c) { outs.push({ a: t.id, b: c, label: "여기서 열린다" }); });
+
+    let h = '<div class="g-root" style="--cc: ' + cc + '">'
+      + '<div class="r-cat">' + esc(CATNAME[n.cat]) + ' · ' + esc(n.kind) + '</div>'
+      + '<div class="r-title">' + esc(n.title) + '</div>'
+      + '<div class="r-ko">' + esc(n.ko) + '</div>'
+      + '<div class="r-file">' + esc(n.file) + '</div>'
+      + (n.more ? '<div class="r-more">' + esc(n.more) + '</div>' : '')
+      + '</div>';
+
+    /* 문맥은 글로 적지 않고 밴드 하나로 보여준다 : 들어오는 지면 → 현재 → 나가는 지면 */
+    const side = function (list, dir, cls) {
+      if (!list.length) return '<div class="io-col ' + cls + '"><span class="io-none">없음</span></div>';
+      const cap = 5;
+      let o = '<div class="io-col ' + cls + '">';
+      list.slice(0, cap).forEach(function (e) {
+        const other = byId[dir === "out" ? e.b : e.a];
+        o += '<button class="g-to" data-jump="' + other.id + '" style="--tc: var(--c-' + other.cat + ')"'
+          + ' title="' + esc((e.label || "") + " → " + other.title) + '">'
+          + '<i></i><span>' + esc(shortTitle(other)) + '</span></button>';
+      });
+      if (list.length > cap) o += '<span class="io-more">+' + (list.length - cap) + '개</span>';
+      return o + '</div>';
+    };
+
+    h += '<div class="io" style="--cc: ' + cc + '">'
+      + side(ins, "in", "")
+      + '<div class="io-ar">→</div>'
+      + '<div class="io-now"><span>현재</span><b>' + esc(shortTitle(n)) + '</b></div>'
+      + '<div class="io-ar">→</div>'
+      + side(outs, "out", "r")
+      + '</div>';
+
+    /* 왼쪽 = UI 와이어프레임, 오른쪽 = 로직 가지. 프리팹 버튼이 없는 지면은 로직만 전폭으로. */
+    const wf = wireframe(n, cc);
+    h += wf ? '<div class="two">' + wf + '<div>' : '<div class="one"><div>';
+    /* v2 §1 : 이름으로 짐작하지 않고 sec.inner 표시로 가른다.
+       기본 노출 = acts 한 레인. 나머지는 전부 접힘으로 내려간다. */
+    const open = [], inner = [], pfSec = [];
+    secs.forEach(function (sec, si) {
+      if (sec.pf) pfSec.push([sec, si]);
+      else if (sec.inner) inner.push([sec, si]);
+      else open.push([sec, si]);
+    });
+
+    const lane = function (pair, isActs) {
+      const sec = pair[0], si = pair[1];
+      let o = '<div class="g-lane' + (sec.rows.length >= 8 ? " wide" : "")
+        + (isActs ? " acts" : "") + '" style="--cc: ' + cc + '">'
+        + '<div class="g-lane-h">' + esc(sec.h) + ' <em>' + sec.rows.length + '</em></div>'
+        + '<div class="g-tree">';
+      sec.rows.forEach(function (r, ri) {
+        const steps = splitChain(r[1]);
+        const bf = brief(steps[0] || r[1], r[0]);
+        const ty = stepType(steps[steps.length - 1] || r[1]);
+        const jid = jumpFor(r[1]);
+        const to = jid && jid !== t.id ? byId[jid] : null;
+        o += '<div class="g-branch" data-key="' + si + '-' + ri + '">'
+          + '<div class="g-row">'
+          + '<button class="g-node n-' + ty + '" data-sec="' + si + '" data-row="' + ri + '">'
+          + '<span class="b-n">' + (ri + 1) + '</span>'
+          + '<span class="b-main"><span class="b-k">' + esc(r[0]) + '</span>'
+          + '<span class="b-sum">' + (bf.m ? '<code>' + esc(bf.m) + '()</code> ' : '')
+          + esc(bf.d) + '</span></span>'
+          + '<span class="b-go">흐름 ▾</span>'
+          + '</button>'
+          + (to
+              ? '<span class="g-arrow">→</span>'
+                + '<button class="g-to" data-jump="' + to.id + '" style="--tc: var(--c-' + to.cat + ')" title="' + esc(to.title) + '">'
+                + '<i></i><span>' + esc(shortTitle(to)) + '</span></button>'
+              : '')
+          + '</div>'
+          + '<div class="b-flow">' + chainHTML(t.id, r, cc) + '</div>'
+          + '</div>';
+      });
+      return o + '</div></div>';
+    };
+
+    h += '<div class="g-lanes">' + open.map(function (p) { return lane(p, true); }).join("") + '</div>';
+    /* 검색이 상세를 볼 수 있는 유일한 통로라, 그렇다고 팝업 안에 한 줄 적는다 (v2 §4) */
+    if (inner.length || pfSec.length) {
+      h += '<p class="g-hint">전체 버튼 · 내부 분기는 아래에 접혀 있습니다. '
+        + '<b>/</b> 로 메소드 · 버튼 이름을 검색하면 그 항목까지 자동으로 펼쳐집니다.</p>';
+    }
+    /* 접힘은 **오른쪽 열 안**에 둔다 (v2 §1 의 그림 그대로).
+       .two 밖에 두면 왼쪽 와이어프레임 열(프레임 + 긴 캡션)만큼 아래로 밀려
+       화면 밖으로 나간다 — 실제로 그랬다. */
+    const fold = function (list, title, cls) {
+      if (!list.length) return "";
+      const cnt = list.reduce(function (a2, p) { return a2 + p[0].rows.length; }, 0);
+      return '<details class="g-inner ' + cls + '"><summary>' + title + ' ' + cnt + '개</summary>'
+        + '<div class="g-lanes">' + list.map(function (p) { return lane(p, false); }).join("") + '</div></details>';
+    };
+    h += fold(pfSec, "프리팹 실측 버튼 전체", "is-pf");
+    h += fold(inner, "내부 동작 · 분기", "is-inner");
+    h += '</div></div>';
+
+    bodyEl.innerHTML = h;
+    fitLabels();
+    crumbEl.innerHTML = '<span class="cur">' + esc(shortTitle(n)) + '</span>'
+      + '<span class="lv">UI + 로직</span>';
+  };
+
+  /* 렌더 후 실제 프레임 크기를 재서 라벨 겹침을 없앤다.
+     담당 구역 > 주요 행동 > 큰 버튼 순으로 자리를 잡고, 부딪히는 것은 번호로 내린다. */
+  const fitLabels = function () {
+    const frame = bodyEl.querySelector(".wf");
+    if (!frame) return;
+    const FW = frame.clientWidth || 900;
+    const FH = frame.clientHeight || Math.round(FW * 9 / 16);
+    const keyBox = bodyEl.querySelector(".wf-key");
+    const btns = Array.from(frame.querySelectorAll(".wf-btn"));
+    const info = btns.map(function (el) {
+      const st = el.style;
+      const lbl = el.dataset.lbl || "";
+      const len = lbl.length + (el.dataset.alt ? 2 : 0);
+      const bw = parseFloat(st.width) / 100 * FW, bh = parseFloat(st.height) / 100 * FH;
+      const lw = Math.min(140, Math.max(len * 7.4, 22));
+      const lh = len * 7.4 > 140 ? 30 : 17;
+      return {
+        el: el, lbl: lbl,
+        x: parseFloat(st.left) / 100 * FW, y: parseFloat(st.top) / 100 * FH,
+        w: Math.max(bw, lw), h: Math.max(bh, lh),
+        rank: parseInt(el.dataset.rank || "0", 10), area: bw * bh
+      };
+    });
+    info.slice().sort(function (a2, b2) {
+      return (b2.rank - a2.rank) || (b2.area - a2.area);
+    }).forEach(function (q) {
+      const hit = info.some(function (o) {
+        return o.ok && Math.abs(o.x - q.x) < (o.w + q.w) / 2 - 2
+                    && Math.abs(o.y - q.y) < (o.h + q.h) / 2 - 2;
+      });
+      q.ok = !hit;
+    });
+    let n = 0;
+    info.forEach(function (q) {
+      if (q.ok) return;
+      n += 1;
+      q.el.classList.add("tiny");
+      q.el.innerHTML = '<b class="wf-num">' + n + '</b>';
+      const item = document.createElement("button");
+      item.className = "wf-key-i" + (q.el.classList.contains("off") ? " off" : "")
+        + (q.el.classList.contains("ctx") ? " ctx" : "");
+      if (q.el.dataset.jump) item.dataset.jump = q.el.dataset.jump;
+      else { item.dataset.sec = q.el.dataset.sec; item.dataset.row = q.el.dataset.row; }
+      item.innerHTML = '<b>' + n + '</b><span>' + esc(q.lbl) + '</span>';
+      keyBox.appendChild(item);
+    });
+    if (n) keyBox.removeAttribute("hidden");
+    const cnt = bodyEl.querySelector(".wf-cnt");
+    if (cnt) cnt.textContent = "이름 " + (info.length - n) + "개는 그림 안 · " + n + "개는 번호";
+  };
+
+  /* ---- 가지 셀 안에 펼쳐지는 흐름 (예전 3단을 그 자리로 옮긴 것) ---- */
+  const chainHTML = function (nid, row, cc) {
+    const steps = splitChain(row[1]);
+    const flow = bigSteps(steps);
+    let h = '<div class="f-flow">';
+    flow.forEach(function (st, i) {
+      const ty = stepType(st);
+      const jid = jumpFor(st);
+      const to = jid && jid !== nid ? byId[jid] : null;
+      const isEnd = i === flow.length - 1;
+      const bf = brief(st, row[0]);
+      if (i > 0) h += '<div class="f-link"><b>' + (stepType(flow[i - 1]) === "gate" ? "통과하면" : "다음") + '</b></div>';
+      h += '<div class="f-step st-' + ty + (ty === "gate" ? " is-gate" : "") + (isEnd ? " is-end" : "")
+        + (to ? " can" : "") + '"' + (to ? ' data-jump="' + to.id + '" style="--tc: var(--c-' + to.cat + ')"' : '') + '>'
+        + '<span class="f-n">' + (i + 1).toString().padStart(2, "0") + '</span>'
+        + '<span class="f-body">'
+        + '<span class="f-type">' + TYPENAME[ty] + (isEnd ? " · 도착" : "") + '</span>'
+        + '<span class="f-text">' + (bf.m ? '<code>' + esc(bf.m) + '()</code>' : '')
+        + (bf.d ? '<em class="f-d">' + esc(bf.d) + '</em>' : '') + '</span>'
+        + (to ? '<span class="f-open"><i></i>' + esc(shortTitle(to)) + ' 다이어그램 열기 ▸</span>' : '')
+        + '</span></div>';
+    });
+    h += '</div>';
+    if (steps.length > flow.length) {
+      h += '<details class="f-raw"><summary>원문 사슬 ' + steps.length + '단계 (개발용)</summary>'
+        + '<p>' + esc(row[1]) + '</p></details>';
+    }
+    return h;
+  };
+
+
+  /* ── 상태 기계 · 표 유틸 ─────────────────────────────────────
+     ctxStateMachine 은 CTX_STATES/CTX_EDGES 만 받는 범용 렌더러다.
+     이 프로젝트는 컨텍스트 대신 **태스크 골드 루프**를 여기에 그린다. */
+  const ctxStateMachine = function () {
+    /* CTX_STATES 를 그대로 그린다. 첫 상태(보통 솔로)를 왼쪽에 두고 나머지를 오른쪽에 쌓는다 —
+       "여기서 저기로 넘어간다"가 그림의 뼈대다. 솔리테어판은 도형이 코드에 박혀 있었으나
+       코인 매치는 컨텍스트 타입이 셋으로 갈라져 있어 데이터로 그린다. */
+    /* 두 열 사이를 넉넉히 벌린다 — 붙여 두면 Solo↔PVP · Solo↔Tournament 네 화살표의
+       라벨이 짧은 구간에 몰려 서로 덮는다. */
+    const W = 1120, BW = 300, BH = 96, LEFT = 18, RIGHT = 600;
+    const rest = CTX_STATES.slice(1);
+    const H = Math.max(300, 40 + rest.length * (BH + 44));
+    /* SVG <text> 는 줄바꿈이 없다. 조건문은 상자 폭(약 44자)에 맞춰 두 줄로 자르고
+       잘린 전문은 <title> 로 남긴다 — 표에도 같은 내용이 그대로 있다. */
+    const wrap2 = function (t, per) {
+      t = String(t || "");
+      if (t.length <= per) return [t, ""];
+      let cut = t.lastIndexOf(" ", per);
+      if (cut < per * 0.5) cut = per;
+      const rest = t.slice(cut).trim();
+      return [t.slice(0, cut).trim(), rest.length > per ? rest.slice(0, per - 1) + "…" : rest];
+    };
+    const box = function (x, y, cls, name, ko, cond) {
+      const c = wrap2(cond, 44);
+      return '<g><title>' + esc(cond || "") + '</title>'
+        + '<rect class="sm-box ' + cls + '" x="' + x + '" y="' + y + '" width="' + BW
+        + '" height="' + BH + '" rx="7"></rect>'
+        + '<text class="sm-t" x="' + (x + 14) + '" y="' + (y + 24) + '">' + esc(name) + '</text>'
+        + '<text class="sm-s" x="' + (x + 14) + '" y="' + (y + 42) + '">' + esc(ko) + '</text>'
+        + '<text class="sm-c" x="' + (x + 14) + '" y="' + (y + 62) + '">' + esc(c[0]) + '</text>'
+        + (c[1] ? '<text class="sm-c" x="' + (x + 14) + '" y="' + (y + 76) + '">' + esc(c[1]) + '</text>' : '')
+        + '</g>';
+    };
+    /* 라벨은 선의 가운데가 아니라 t 지점에 둔다. 정방향 0.34 · 역방향 0.66 으로 갈라
+       Solo↔PVP · Solo↔Tournament 네 화살표의 라벨이 한자리에 뭉치지 않게 한다. */
+    const arrow = function (x1, y1, x2, y2, label, cls, t, dy) {
+      t = t == null ? 0.5 : t;
+      const mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t + (dy || 0);
+      return '<line class="sm-a ' + (cls || '') + '" x1="' + x1 + '" y1="' + y1
+        + '" x2="' + x2 + '" y2="' + y2 + '" marker-end="url(#smah)"></line>'
+        + '<text class="sm-l" x="' + mx + '" y="' + (my - 6) + '" text-anchor="middle"><title>'
+        + esc(label) + '</title>' + esc(label.length > 22 ? label.slice(0, 21) + "…" : label) + '</text>';
+    };
+    const at = {};
+    at[CTX_STATES[0].id] = { x: LEFT, y: (H - BH) / 2 };
+    rest.forEach(function (st, i) { at[st.id] = { x: RIGHT, y: 30 + i * (BH + 44) }; });
+
+    let g = '<svg class="sm" viewBox="0 0 ' + W + ' ' + H + '" role="img" '
+      + 'aria-label="컨텍스트 상태 기계">'
+      + '<defs><marker id="smah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+      + 'orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="context-stroke"></path></marker></defs>';
+    const CLS = ["s-solo", "s-p2p", "s-tour", "s-p2p", "s-tour"];
+    CTX_STATES.forEach(function (st, i) {
+      g += box(at[st.id].x, at[st.id].y, CLS[i % CLS.length], st.name, st.ko || "", st.cond);
+    });
+    /* 화살표는 상자 옆면끼리 잇는다. 같은 쌍의 반대 방향은 살짝 어긋나게 둬 겹치지 않는다. */
+    /* 같은 (a→b) 전이가 여러 개면 화살표 하나로 합치고 개수만 적는다 —
+       네 개를 겹쳐 그리면 라벨이 뭉쳐 아무것도 안 읽힌다. 내용은 아래 표에 다 있다. */
+    const merged = [];
+    const at2 = {};
+    CTX_EDGES.forEach(function (e) {
+      const k = e.a + ">" + e.b;
+      if (at2[k]) { at2[k].n++; return; }
+      at2[k] = { a: e.a, b: e.b, label: e.label, n: 1, ok: e.ok };
+      merged.push(at2[k]);
+    });
+    merged.forEach(function (e) { if (e.n > 1) e.label = e.label + " 외 " + (e.n - 1) + "건"; });
+
+    /* 화살표마다 라벨 자리(가로 t · 세로 어긋냄)를 돌려 쓴다. 네 선이 Solo 오른쪽
+       한 점에서 부채처럼 퍼져 나가므로 자리를 안 나누면 라벨이 통째로 겹친다. */
+    const TPOS = [0.30, 0.52, 0.74, 0.40, 0.62, 0.86];
+    const DYPOS = [-4, -18, 10, 22, -30, 0];
+    let ei = 0;
+    const seen = {}, self = {};
+    merged.forEach(function (e) {
+      const a = at[e.a], b = at[e.b];
+      if (!a || !b) return;
+      if (e.a === e.b) {
+        /* 자기 자신으로 도는 전이 — 같은 상태 안에서 종류만 바뀐다(PvpType 등).
+           상자 오른쪽에 작은 고리로 그리고, 여러 개면 아래로 층을 쌓는다. */
+        const i = self[e.a] || 0;
+        self[e.a] = i + 1;
+        const x = a.x + BW, y = a.y + 20 + i * 18, r = 13 + i * 5;
+        g += '<path class="sm-a loop" d="M ' + x + ' ' + y + ' a ' + r + ' ' + r
+          + ' 0 1 1 0 ' + (r * 2) + '" marker-end="url(#smah)"></path>'
+          + '<text class="sm-l" x="' + (x + r * 2 + 6) + '" y="' + (y + r + 4) + '"><title>'
+          + esc(e.label) + '</title>' + esc(e.label.length > 40 ? e.label.slice(0, 39) + "…" : e.label) + '</text>';
+        return;
+      }
+      const key = [e.a, e.b].sort().join(">");
+      const off = seen[key] ? 22 : -8;
+      seen[key] = 1;
+      const aRight = a.x < b.x;
+      g += arrow(aRight ? a.x + BW : a.x, a.y + BH / 2 + off,
+                 aRight ? b.x : b.x + BW, b.y + BH / 2 - off,
+                 e.label, e.ok ? "ok" : "",
+                 TPOS[ei % TPOS.length], DYPOS[ei % DYPOS.length]);
+      ei++;
+    });
+    g += '</svg>';
+    return '<figure class="fig">' + g
+      + '<figcaption>상태 ' + CTX_STATES.length + '종. 조건은 각 상자 아래 줄에 적었다. '
+      + '전이마다 무슨 일이 일어나는지는 아래 표를 본다.</figcaption></figure>';
+  };
+
+  const tableOf = function (head, rows, cls) {
+    let h = '<div class="tw"><table class="tb ' + (cls || '') + '"><thead><tr>';
+    head.forEach(function (c) { h += '<th>' + esc(c) + '</th>'; });
+    h += '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+      h += '<tr>';
+      r.forEach(function (c) { h += '<td>' + c + '</td>'; });
+      h += '</tr>';
+    });
+    return h + '</tbody></table></div>';
+  };
+  const src = function (v) { return '<code class="sc">' + esc(v) + '</code>'; };
+
+  /* ── 노드 표 ──────────────────────────────────────────────────
+     맵은 "어느 카드가 어느 흐름에 있나"를 보여주지만, 이 프로토의 알맹이는
+     스토리 노드 11개가 **연출 모드에 따라 다르게 소비된다**는 축이다.
+     지면으로 표현되지 않으므로 맵 밖 표로 뺀다. */
+  const renderCtx = function () {
+    let h = '<div class="sec-lede"><h2>스토리 노드 · 태스크 루프</h2>'
+      + '<p>노드 11개는 <b>지면이 아니라 데이터</b>다. 같은 노드가 연출 모드에 따라 '
+      + '한 컷으로 재생되기도 하고 통째로 삼켜지기도 한다. 맵의 화살표로는 표현되지 않는 축이라 따로 그렸다.</p></div>';
+
+    h += '<h3>태스크 골드 루프 <em>— 골드가 찰 때까지 도는 while</em></h3>';
+    h += ctxStateMachine();
+    if (CTX_TRAP) h += '<div class="warn"><b>함정</b> ' + esc(CTX_TRAP) + '</div>';
+
+    h += '<h3>전이할 때 실제로 일어나는 일</h3>';
+    h += tableOf(["전이", "무슨 일이 일어나나", "코드"], CTX_EDGES.map(function (e) {
+      const a = CTX_STATES.filter(function (s) { return s.id === e.a; })[0];
+      const b = CTX_STATES.filter(function (s) { return s.id === e.b; })[0];
+      return ['<b>' + esc(a.name) + ' → ' + esc(b.name) + '</b><br><span class="mut">' + esc(e.label) + '</span>',
+              esc(e.note), src(e.src)];
+    }));
+
+    h += '<h3>스토리 노드 ' + SPINE.length + '개 <em>— story_node.json 실측</em></h3>';
+    h += tableOf(["#", "종류", "노드 · 씬", "제목 · 기믹", "스틸컷 모드에서", "골드"],
+      SPINE.map(function (n) {
+        return ['<b>' + n.i + '</b>',
+                '<code>' + esc(n.type) + '</code>',
+                (n.node ? '<b>' + esc(n.node) + '</b><br>' : '')
+                  + '<span class="mut">' + esc(n.scene || "—") + '</span>',
+                '<b>' + esc(n.label || "—") + '</b>'
+                  + (n.gimmick ? '<br><span class="mut">' + esc(n.gimmick) + '</span>' : ''),
+                esc(n.play),
+                n.cost ? '<b>' + n.cost + '</b>' : '<span class="mut">—</span>'];
+      }));
+    h += '<p class="note">스틸컷 · 비디오 모드는 <code>consumesSceneAfterDialogue()</code> 가 '
+      + 'true 라, dialogue 노드 하나가 같은 <code>scene_id</code> 의 뒤 노드를 통째로 삼킨다 '
+      + '(<code>StoryNodeRunner.collectConsumedSceneNodes</code>). 그래서 11노드를 다 밟지만 '
+      + '실제 재생은 씬 4개 + 태스크 3개다. 채팅 모드는 false 라 11개를 하나씩 재생한다.</p>';
+
+    h += '<h3>연출 모드 ' + MODES.length + '종 <em>— 빌드 타임에 하나만 남는다</em></h3>';
+    h += tableOf(["모드", "클래스", "씬 삼킴", "에셋 번들", "상태", "코드"], MODES.map(function (m) {
+      return ['<code>' + esc(m.id) + '</code>', '<b>' + esc(m.cls) + '</b>',
+              m.consume ? '<b>예</b>' : '<span class="mut">아니오</span>',
+              '<code>' + esc(m.bundle) + '</code>',
+              (m.active ? '<i class="pill">현재 활성</i>' : '<i class="pill q">' + esc(m.state) + '</i>'),
+              src(m.src)];
+    }));
+
+    h += '<h3>스틸컷 컷 플랜 <em>— 대사 1줄 2.5초 · 삽입 스틸컷 3초 · 크로스페이드 0.2초</em></h3>';
+    h += tableOf(["씬", "컷", "구성"], CUTPLAN.map(function (c) {
+      return ['<code>' + esc(c.scene) + '</code>', '<b>' + c.cuts + '</b>', c.plan];
+    }));
+    h += '<p class="note">삽입(<b>embedded</b>) 컷이 곧 노드 6 · 10 의 정체다 — 별도 지면이 아니라 '
+      + '씬 타임라인 안에 박혀 있다. <code>StoryDataLoader</code> 는 스틸컷 노드의 '
+      + '<code>origin_step</code> 자리에 대사가 <b>없어야</b> 통과시킨다 — 스틸컷은 빠진 대사 스텝을 메우는 자리다.</p>';
+
+    h += '<h3>데이터 계약 <em>— StoryDataLoader.validate 가 던지는 조건</em></h3>';
+    h += tableOf(["검사", "통과 조건", "어기면"], CONTRACT.map(function (r) {
+      return ['<b>' + esc(r[0]) + '</b>', r[1], esc(r[2])];
+    }));
+    return h;
+  };
+
+  /* ── 플랫폼 · 빌드 ────────────────────────────────────────────
+     프리팹 파싱으로는 안 나오는 축. 어느 플랫폼으로 빌드하느냐 · 어느 연출 모드로
+     빌드하느냐가 같은 코드에서 다른 산출물을 만든다. */
+  const renderFB = function () {
+    let h = '<div class="sec-lede"><h2>플랫폼 · 빌드</h2>'
+      + '<p>이 프로토는 <b>연출 3종을 비교하려고</b> 만든 것이라, 같은 코드에서 '
+      + '<b>다른 빌드</b>가 나온다. 어느 모드로 빌드했는지가 곧 그 빌드의 정체다.</p></div>';
+
+    h += '<h3>빌드 프로파일 ' + PROFILES.length + '종 <em>— scripts/story-build-profile.js</em></h3>';
+    h += tableOf(["프로파일", "남기는 에셋", "빼는 에셋", "산출물", "상태"], PROFILES.map(function (p) {
+      return ['<code>' + esc(p.id) + '.json</code>', '<code>' + esc(p.keep) + '</code>',
+              '<span class="mut">' + esc(p.drop) + '</span>', '<code>' + esc(p.out) + '</code>',
+              (p.dormant ? '<i class="pill q">봉인</i>' : '<i class="pill">산출</i>')];
+    }));
+    h += '<p class="note">프로파일은 <code>StoryBuildConfig.ts</code> 의 '
+      + '<code>STORY_PRESENTATION_MODE</code> 와 <code>StoryPresentationFactory.ts</code> 를 갈아끼운다. '
+      + '데이터 3종(<code>story_node</code> · <code>story_dialogue</code> · <code>present_video</code>)은 '
+      + '모드와 무관하게 <b>공유</b>한다 — 그래야 같은 스토리를 다른 연출로 비교할 수 있다. '
+      + '<code>StoryNodeRunner.run()</code> 은 팩토리가 돌려준 연출의 '
+      + '<code>getMode()</code> 가 빌드 설정과 다르면 그 자리에서 던진다.</p>';
+
+    h += '<h3>플랫폼 어댑터 ' + PLATFORMS.length + '종 <em>— BasePlatform 파생</em></h3>';
+    h += tableOf(["어댑터", "줄 수", "비고"], PLATFORMS.map(function (p) {
+      return ['<code>' + esc(p.cls) + '</code>', '<b>' + p.n + '</b>', esc(p.note)];
+    }));
+    h += '<p class="note">이 프로토의 본론은 스토리 연출이라 어댑터는 <b>템플릿에서 그대로 딸려온 것</b>이다. '
+      + '<code>PlatformSelector.createPlatformInstance()</code> 가 하나를 고르고, '
+      + '<code>BaseIntro.start()</code> 가 그 인스턴스로 부팅한다. '
+      + '맵 본체에 올리면 무게중심이 흐려져 여기로 뺐다.</p>';
+    return h;
+  };
+
+  const veil = document.getElementById("veil");
+
+  const renderBody = function () {
+    const t = cur();
+    if (!t) {
+      dock.classList.remove("open");
+      veil.classList.remove("open");
+      crumbEl.innerHTML = "";
+      bodyEl.innerHTML = "";
+      highlight(null);
+      return;
+    }
+    dock.classList.add("open");
+    veil.classList.add("open");
+    backBtn.textContent = stack.length > 1 ? "← 이전 지면" : "← 맵으로";
+    /* 지면이 아닌 별도 문서 두 개 — 컨텍스트 상태 기계와 FB 지면 목록 */
+    if (t.id === "__ctx__" || t.id === "__fb__") {
+      bodyEl.innerHTML = t.id === "__ctx__" ? renderCtx() : renderFB();
+      crumbEl.innerHTML = '<span class="cur">' + (t.id === "__ctx__" ? "컨텍스트 분기" : "FB 지면") + '</span>'
+        + '<span class="lv">맵 밖 문서</span>';
+      bodyEl.scrollTop = 0;
+      highlight(null);
+      return;
+    }
+    renderScreen(t);
+    bodyEl.scrollTop = 0;
+    if (t.view) openCell(t.view.sec, t.view.row, true);
+    highlight(t.id);
+  };
+
+  /* 지면 열기 = 스택에 한 칸 쌓기. 맵에서 새로 누르면 스택을 비우고 다시 시작한다. */
+  const openScreen = function (id, opts) {
+    const o = opts || {};
+    if (o.reset) stack = [];
+    stack.push({ id: id, view: null });
+    renderBody();
+    if (o.recenter !== false && byId[id]) centerOn(byId[id]);
+  };
+
+  /* 가지 셀을 그 자리에서 펼친다. 화면 이동이 없으니 뒤로가기도 필요 없다. */
+  const openCell = function (sec, row, scroll) {
+    const t = cur();
+    if (!t) return;
+    const br = bodyEl.querySelector('.g-branch[data-key="' + sec + '-' + row + '"]');
+    if (!br) return;
+    const was = br.classList.contains("open");
+    if (was && !scroll) { br.classList.remove("open"); t.view = null; return; }
+    br.classList.add("open");
+    t.view = { sec: sec, row: row };
+    /* 내부 동작 섹션 안이면 그 접힘도 같이 연다 */
+    const det = br.closest("details");
+    if (det) det.open = true;
+    if (scroll && br.scrollIntoView) br.scrollIntoView({ block: "center" });
+    bodyEl.querySelectorAll(".g-branch.flash").forEach(function (e) { e.classList.remove("flash"); });
+    br.classList.add("flash");
+  };
+
+  const goBack = function () {
+    stack.pop();
+    renderBody();
+    const t = cur();
+    if (t) centerOn(byId[t.id]);
+  };
+
+  const closeAll = function () {
+    stack = [];
+    renderBody();
+  };
+
+  /* 키보드 활성화(Enter · Space)는 detail 0 의 click 으로 온다. 포인터 클릭은 pointerup 이 처리. */
+  nodeLayer.addEventListener("click", function (ev) {
+    if (ev.target.closest("[data-ctxdoc]")) {
+      ev.stopPropagation();
+      openScreen("__ctx__", { reset: true, recenter: false });
+      return;
+    }
+    if (ev.detail !== 0) return;
+    const ch = ev.target.closest("[data-chip]");
+    if (ch) { openScreen(ch.dataset.chip, { reset: true }); return; }
+    const el = ev.target.closest(".node");
+    if (el) openScreen(el.dataset.id, { reset: true });
+  });
+
+  bodyEl.addEventListener("click", function (ev) {
+    const jump = ev.target.closest("[data-jump]");
+    if (jump) { openScreen(jump.dataset.jump, {}); return; }
+    const node = ev.target.closest(".g-node, .wf-btn, .wf-full, .wf-key-i");
+    if (!node) return;
+    const fromUI = !node.classList.contains("g-node");
+    openCell(parseInt(node.dataset.sec, 10), parseInt(node.dataset.row, 10), fromUI);
+  });
+
+  /* 프레임 폭이 바뀌면 라벨 배치가 달라지므로 다시 그린다 */
+  let reflow = null;
+  window.addEventListener("resize", function () {
+    if (!cur()) return;
+    clearTimeout(reflow);
+    reflow = setTimeout(renderBody, 160);
+  });
+
+  backBtn.addEventListener("click", goBack);
+  document.getElementById("d-close").addEventListener("click", closeAll);
+  document.getElementById("veil").addEventListener("click", closeAll);
+
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { goBack(); return; }
+    if (ev.target && /INPUT|TEXTAREA/.test(ev.target.tagName)) return;
+    /* 슬래시 · Ctrl(Cmd)+K 로 검색창에 바로 들어간다 */
+    if (ev.key === "/" || ((ev.metaKey || ev.ctrlKey) && (ev.key === "k" || ev.key === "K"))) {
+      ev.preventDefault();
+      fxQ.focus();
+      fxQ.select();
+      return;
+    }
+    const step = 100;
+    if (ev.key === "ArrowLeft") { tx += step; apply(); }
+    else if (ev.key === "ArrowRight") { tx -= step; apply(); }
+    else if (ev.key === "ArrowUp") { ty += step; apply(); }
+    else if (ev.key === "ArrowDown") { ty -= step; apply(); }
+  });
+
+
+  /* ============ 검색 ============ */
+  /* 색인 원천은 전부 이 문서 안의 데이터다 — 노드(지면 이름 · 한글명 · 소스 파일 · 프리팹),
+     로직 표의 버튼 이름과 호출 사슬에서 뽑은 메소드, 프리팹 실측 버튼의 핸들러 · 노드 이름 ·
+     라벨 문자열, DESC 설명문, FB 지면(FBS), 컨텍스트 상태(CTX_STATES).
+     맞은 항목을 고르면 그 지면을 열고, 표의 한 행에 걸린 것이면 그 가지 칸까지 펼친다. */
+  const FX_COLOR = {
+    "지면": "var(--c-story)", "메소드": "var(--c-task)", "버튼": "var(--c-data)",
+    "프리팹": "var(--c-mode)", "요소": "var(--c-system)", "FB": "var(--c-entry)",
+    "컨텍스트": "var(--c-entry)"
+  };
+
+  let IDX = null;
+  const buildIndex = function () {
+    if (IDX) return IDX;
+    const out = [], seen = {}, meth = {};
+    const add = function (k, label, node, sec, row, extra, mono) {
+      label = String(label == null ? "" : label).trim();
+      if (!label) return null;
+      const key = k + " " + label + " " + node + " " + sec + " " + row;
+      if (seen[key]) return seen[key];
+      const e = { k: k, label: label, node: node, sec: sec, row: row, mono: !!mono,
+                  q: (label + " " + (extra || "")).toLowerCase() };
+      seen[key] = e;
+      out.push(e);
+      return e;
+    };
+    /* 메소드는 지면당 한 항목만 둔다. 표의 행에 걸린 쪽이 더 쓸모 있으니 그 쪽을 남긴다. */
+    const addMethod = function (m, node, sec, row, extra) {
+      const key = node + " " + m;
+      const prev = meth[key];
+      if (prev) {
+        if (prev.sec == null && sec != null) { prev.sec = sec; prev.row = row; }
+        if (extra) prev.q += " " + String(extra).toLowerCase();
+        return;
+      }
+      meth[key] = add("메소드", m + "()", node, sec, row,
+                      m + " " + (DESC[m] || "") + " " + (extra || ""), true);
+    };
+
+    N.forEach(function (n) {
+      const pf = PF[n.id];
+      add("지면", n.title, n.id, null, null,
+          [n.id, n.ko || "", n.file || "", n.kind || "", pf ? pf.src : ""].join(" "));
+      /* 한글 이름도 따로 색인한다 — "가챠" 를 치면 버튼 라벨이 아니라 그 지면이 먼저 나와야 한다 */
+      if (n.ko && n.ko !== n.title) add("지면", n.ko, n.id, null, null, n.title + " " + n.id);
+      if (pf && pf.src) add("프리팹", pf.src, n.id, null, null, n.title + " " + n.id, true);
+      sectionsOf(n).forEach(function (sec, si) {
+        sec.rows.forEach(function (row, ri) {
+          add("버튼", row[0], n.id, si, ri, row[1] + " " + n.title);
+          methodsOf(row[1]).forEach(function (m) { addMethod(m, n.id, si, ri, row[0]); });
+        });
+      });
+      pfButtons(n.id).forEach(function (b) {
+        const si = b._sec >= 0 ? b._sec : null, ri = b._sec >= 0 ? b._row : null;
+        if (b.h) addMethod(b.h, n.id, si, ri, b.n || "");
+        if (b.n) add("요소", b.n, n.id, si, ri, n.title + " " + (b.t || ""), true);
+        if (b.t) add("버튼", b.t, n.id, si, ri, n.title + " " + (b.n || ""));
+      });
+      pfDecor(n.id).forEach(function (b) {
+        if (b.n) add("요소", b.n, n.id, null, null, n.title + " " + (b.t || ""), true);
+      });
+    });
+    (typeof FBS !== "undefined" ? FBS : []).forEach(function (f) {
+      add("FB", f.api, "__fb__", null, null, [f.ko, f.when, f.cond, f.src, f.g].join(" "), true);
+    });
+    (typeof CTX_STATES !== "undefined" ? CTX_STATES : []).forEach(function (s) {
+      add("컨텍스트", s.name + " — " + s.ko, "__ctx__", null, null,
+          [s.id, s.type, s.cond].join(" "));
+    });
+    IDX = out;
+    return IDX;
+  };
+
+  /* 같은 점수일 때의 종류 우선순위. "PopupCoinClaim" 을 치면 소스 각주가 아니라
+     그 지면이 먼저 나와야 한다 — 이름만으로는 길이가 같아 갈리지 않는다. */
+  const FX_RANK = { "지면": 0, "프리팹": 1, "메소드": 1, "FB": 1, "컨텍스트": 1, "버튼": 2, "요소": 3 };
+
+  /* 점수: 앞에서 맞을수록 · 이름 자체에서 맞을수록 위로. 같은 점수면 종류 · 짧은 이름 순. */
+  const fxScore = function (e, q) {
+    const lab = e.label.toLowerCase();
+    const i = lab.indexOf(q);
+    if (i === 0) return 0;
+    if (i > 0) return /[^a-z0-9]/.test(lab.charAt(i - 1)) ? 1 : 2;
+    return e.q.indexOf(q) < 0 ? -1 : 3;
+  };
+
+  const fxMark = function (label, q) {
+    const i = label.toLowerCase().indexOf(q);
+    if (i < 0) return esc(label);
+    return esc(label.slice(0, i)) + "<mark>" + esc(label.slice(i, i + q.length))
+      + "</mark>" + esc(label.slice(i + q.length));
+  };
+
+  const findPanel = document.getElementById("find");
+  const fxQ = document.getElementById("fx-q");
+  const fxList = document.getElementById("fx-list");
+  const fxN = document.getElementById("fx-n");
+  const FX_MAX = 40;
+  let fxHits = [], fxSel = -1;
+
+  const fxClose = function () {
+    findPanel.classList.remove("open");
+    fxQ.setAttribute("aria-expanded", "false");
+    fxHits = []; fxSel = -1;
+  };
+
+  const fxPaint = function () {
+    Array.prototype.forEach.call(fxList.children, function (el, i) {
+      el.classList.toggle("sel", i === fxSel);
+    });
+    const cur = fxList.children[fxSel];
+    if (fxSel >= 0 && cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest" });
+  };
+
+  const fxRun = function () {
+    const q = fxQ.value.trim().toLowerCase();
+    if (q.length < 2) {
+      fxN.textContent = "";
+      fxList.innerHTML = '<div class="fx-msg">두 글자 이상 입력하세요. '
+        + '메소드(<code>onClickMerge</code>) · 지면 이름 · 프리팹(<code>PopupBigCoinClaim</code>) · '
+        + '버튼 라벨 · 프리팹 노드 · FB API · 컨텍스트 <b>'
+        + buildIndex().length.toLocaleString() + '개</b>에서 찾습니다.</div>';
+      findPanel.classList.toggle("open", q.length > 0);
+      fxQ.setAttribute("aria-expanded", q.length > 0 ? "true" : "false");
+      fxHits = []; fxSel = -1;
+      return;
+    }
+    const idx = buildIndex();
+    const scored = [];
+    for (let i = 0; i < idx.length; i++) {
+      const s = fxScore(idx[i], q);
+      if (s >= 0) {
+        const rk = FX_RANK[idx[i].k];    /* 지면은 0 — || 로 기본값을 주면 0 이 9 로 뒤집힌다 */
+        scored.push([s, rk == null ? 9 : rk, idx[i].label.length, idx[i]]);
+      }
+    }
+    scored.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]; });
+    fxHits = scored.slice(0, FX_MAX).map(function (x) { return x[3]; });
+    fxSel = fxHits.length ? 0 : -1;
+    fxN.textContent = scored.length
+      ? (scored.length > FX_MAX ? FX_MAX + "/" + scored.length : String(scored.length)) : "";
+    if (!fxHits.length) {
+      fxList.innerHTML = '<div class="fx-msg">맞는 항목이 없습니다.</div>';
+    } else {
+      fxList.innerHTML = fxHits.map(function (e, i) {
+        const owner = e.node === "__fb__" ? "FB 지면"
+          : e.node === "__ctx__" ? "컨텍스트 분기"
+          : (byId[e.node] ? byId[e.node].title : e.node);
+        return '<div class="fx-it' + (i === 0 ? " sel" : "") + '" role="option" data-i="' + i
+          + '" style="--cc: ' + (FX_COLOR[e.k] || "var(--c-system)") + '">'
+          + '<span class="fx-k">' + esc(e.k) + '</span>'
+          + '<span class="fx-t' + (e.mono ? " mono" : "") + '">' + fxMark(e.label, q) + '</span>'
+          + '<span class="fx-w">' + esc(owner) + '</span></div>';
+      }).join("");
+    }
+    findPanel.classList.add("open");
+    fxQ.setAttribute("aria-expanded", "true");
+    fxList.scrollTop = 0;
+  };
+
+  const fxGo = function (i) {
+    const e = fxHits[i];
+    if (!e) return;
+    if (e.node === "__fb__" || e.node === "__ctx__") {
+      openScreen(e.node, { reset: true, recenter: false });
+    } else {
+      openScreen(e.node, { reset: true });
+      if (e.sec != null) openCell(e.sec, e.row, true);
+    }
+    fxClose();
+    fxQ.blur();
+  };
+
+  fxQ.addEventListener("input", fxRun);
+  fxQ.addEventListener("focus", function () { if (fxQ.value.trim()) fxRun(); });
+  fxQ.addEventListener("keydown", function (ev) {
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      if (fxHits.length) { fxSel = (fxSel + 1) % fxHits.length; fxPaint(); }
+    } else if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      if (fxHits.length) { fxSel = (fxSel - 1 + fxHits.length) % fxHits.length; fxPaint(); }
+    } else if (ev.key === "Enter") {
+      ev.preventDefault();
+      fxGo(fxSel);
+    } else if (ev.key === "Escape") {
+      ev.stopPropagation();
+      if (findPanel.classList.contains("open")) fxClose();
+      else { fxQ.value = ""; fxQ.blur(); }
+    }
+  });
+  fxList.addEventListener("click", function (ev) {
+    const it = ev.target.closest(".fx-it");
+    if (it) fxGo(+it.getAttribute("data-i"));
+  });
+  /* 바깥을 누르면 목록을 접는다. 맵 드래그가 목록에 가려지지 않게 캡처 단계에서 받는다. */
+  document.addEventListener("pointerdown", function (ev) {
+    if (!findPanel.contains(ev.target)) fxClose();
+  }, true);
+
+  /* ============ 부팅 ============ */
+  /* 문서에 임베드된 경우엔 새 탭으로 크게 여는 버튼을 붙인다. */
+  if (window.self !== window.top) {
+    const full = document.createElement("button");
+    full.id = "b-full";
+    full.textContent = "크게 보기";
+    full.title = "새 탭에서 맵만 열기";
+    full.addEventListener("click", function () {
+      window.open(window.location.href, "_blank", "noopener");
+    });
+    document.getElementById("tools").appendChild(full);
+  }
+
+  const boot = function () {
+    measure();
+    drawWires();
+    buildMini();
+    /* 코인 매치는 월드가 넓어(2,410x2,080) 전체 맞춤이 카드를 너무 줄여서 goTop() 0.72 고정을 썼다.
+       이 프로젝트는 월드가 1,990x1,234 라 전체가 화면에 거의 그대로 들어온다.
+       goTop() 은 맨 왼쪽 카드(intro)를 가운데 두므로 화면 왼쪽 절반이 비고 오른쪽이 잘린다 —
+       그래서 첫 화면은 전체 맞춤으로 연다. '시작점' 버튼이 goTop() 을 그대로 갖고 있다. */
+    fitAll();
+  };
+  boot();
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { measure(); drawWires(); buildMini(); apply(); });
+  }
+  window.addEventListener("resize", function () { buildMini(); apply(); });
+})();
+</script>
+  </body>
+</html>
