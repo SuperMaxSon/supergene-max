@@ -27,7 +27,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-24 16:08",
+  updated: "2026-08-26 09:10",
 };
 
 const SECTIONS = [
@@ -37,6 +37,16 @@ const SECTIONS = [
     accent: "analysis",
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
+      {
+        title: "FB 게이밍 탭 복귀 지면 — 노출 조사 히스토리",
+        desc: "게임 종료 후 뜨는 FB 지면에 우리 게임을 띄우려 한 기록. 가설 6건 검증 결과 제어 API도 문서도 없음. FB가 결정한다.",
+        url: "docs/fb-exit-surface-investigation.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-08-26 09:08",
+        pinned: false,
+        tags: ["FB 플랫폼", "소셜", "크로스프로젝트", "코드 실측"],
+      },
       {
         title: "광고 유입 NRU 첫터치 — 원인 규명",
         desc: "업데이트·빌드·클라 결함 전부 배제. 같은 조건 대조군이 45.9%·70.7%인데 광고만 7.3%. 남은 원인은 유입 의도.",
@@ -136,6 +146,16 @@ const SECTIONS = [
         updated: "2026-08-24 16:08",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "컨텍스트", "인터랙티브"],
+      },
+      {
+        title: "코인 매치 전체 지면 플로우 맵",
+        desc: "솔리테어 맵과 같은 두 단 구조로 코인 매치 전 지면을 폈습니다. 세로 화면 와이어프레임 위에서 버튼을 누르면 호출 사슬이 그 자리에서 펼쳐집니다.",
+        url: "docs/coin-match-flow-map.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-08-26 09:10",
+        pinned: false,
+        tags: ["레퍼런스", "플로우", "인터랙티브"],
       },
     ],
   },
@@ -270,6 +290,16 @@ const SECTIONS = [
         updated: "2026-08-24 14:00",
         pinned: false,
         tags: ["아트", "리소스", "인계규격", "부팅예산", "머지"],
+      },
+      {
+        title: "코인매치 커밋 히스토리 — 왜 이렇게 고쳤나",
+        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 06-02~08-25 커밋 41건 diff 실측 + 미머지 3건.",
+        url: "docs/commit-history-coin-match.html",
+        status: "진행중",
+        version: "v1.0",
+        updated: "2026-08-25 15:25",
+        pinned: false,
+        tags: ["커밋", "작업기록", "코인매치"],
       },
       {
         title: "솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나",

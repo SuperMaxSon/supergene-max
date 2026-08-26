@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FB 게이밍 탭 복귀 지면 — 노출 조사 히스토리</title>
+    <meta
+      name="description"
+      content="게임을 닫으면 나오는 FB 게이밍 탭 복귀 지면(Jump back in / Featured games / Games you may like)에 우리 게임을 띄우려 한 조사 기록. 가설 6건 검증 결과 우리 코드로 제어할 수단이 없음을 확인."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#verdict">결론</a>
+        <a class="nav-back" href="#surface">지면 구분</a>
+        <a class="nav-back" href="#history">가설 검증</a>
+        <a class="nav-back" href="#data">실측</a>
+        <a class="nav-back" href="#limit">남은 것</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · FB 플랫폼</div>
+        <h1 class="doc-title">FB 게이밍 탭 복귀 지면 — 노출 조사 히스토리</h1>
+        <p class="doc-lede">
+          게임을 닫으면 나오는 페이스북 지면(<b>Jump back in</b> · <b>Featured games</b> ·
+          <b>Games you may like</b>)에 우리 게임·토너먼트를 띄울 수 있는지 조사한 기록입니다.
+          가설 6건을 코드 실측과 로그로 검증했고, <b>제어 수단이 없다</b>는 결론에 도달했습니다.
+          아래는 무엇을 시도했고 각각 왜 아니었는지의 기록입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--bad)">제어 불가</span>
+          <span class="pill" style="--acc: var(--warn)">가설 6건 · 확정 3 · 미확정 3</span>
+          <span class="tag">3개 리포 코드 실측</span>
+          <span class="tag">BigQuery 실측</span>
+          <span class="tag">2026-08-26 09:08 기준</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 결론 ================= -->
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          결론
+          <span class="doc-h2-sub">조사 종료 · 코드로 할 수 있는 일 없음</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">0<span class="stat-unit">개</span></div>
+            <div class="stat-name">우리가 쓸 수 있는 API</div>
+            <div class="stat-sub">해당 지면에 게시 수단 없음</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">0<span class="stat-unit">건</span></div>
+            <div class="stat-name">공식 문서</div>
+            <div class="stat-sub">노출 조건·지면 명칭 모두 미공개</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">3<span class="stat-unit">건</span></div>
+            <div class="stat-name">기각된 가설</div>
+            <div class="stat-sub">코드·로그로 반증</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">3<span class="stat-unit">건</span></div>
+            <div class="stat-name">측정 불가로 남은 가설</div>
+            <div class="stat-sub">FB 내부 판단 영역</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">한 줄 결론</div>
+            <p>
+              이 지면은 <b>페이스북 클라이언트가 소유하고 페이스북이 노출을 결정</b>합니다. 게임이
+              콘텐츠를 싣는 슬롯이 아니며, 띄우는 API도 노출 조건 문서도 존재하지 않습니다.
+              <b>보였다 안 보였다 하는 것은 우리 버그가 아니라 FB의 랭킹·실험 결과</b>입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">조사 내내 혼선을 만든 것</div>
+            <p>
+              우리가 발사하는 포스트는 <b>메신저/컨텍스트 스레드</b>에 올라가고, 문제의 지면은
+              <b>게이밍 탭</b>입니다. 서로 다른 지면인데 유저 눈에는 둘 다 "앱을 닫은 뒤에 보이는 것"이라
+              같은 것으로 읽힙니다. 아래 지면 구분을 먼저 맞춘 뒤에야 가설이 정리됐습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 지면 구분 ================= -->
+      <section class="doc-section" id="surface">
+        <h2 class="doc-h2">
+          1. 지면 구분
+          <span class="doc-h2-sub">우리가 게시할 수 있는 곳과 없는 곳</span>
+        </h2>
+
+        <!-- 두 지면의 소유권이 다르다는 것이 이 조사의 핵심이라 가장 먼저 그린다 -->
+        <div class="table-scroll">
+          <svg
+            viewBox="0 0 900 260"
+            width="900"
+            height="260"
+            role="img"
+            aria-label="우리 코드가 게시하는 스레드 지면과 페이스북이 소유한 게이밍 탭 지면의 구분"
+          >
+            <defs>
+              <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                      markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <!-- 상단: 통제 가능 경로 -->
+            <text x="20" y="30" font-size="12" font-weight="700" fill="var(--ok)">통제 가능</text>
+            <rect x="20" y="42" width="180" height="48" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="110" y="66" text-anchor="middle" font-size="13" fill="var(--text)">우리 클라이언트</text>
+            <text x="110" y="82" text-anchor="middle" font-size="11" fill="var(--text-faint)">판 진입 시점</text>
+
+            <line x1="200" y1="66" x2="242" y2="66" stroke="var(--text-faint)" marker-end="url(#ar)" />
+            <rect x="248" y="42" width="200" height="48" rx="8" fill="var(--surface)" stroke="var(--ok)" />
+            <text x="348" y="66" text-anchor="middle" font-size="13" fill="var(--text)">updateAsync</text>
+            <text x="348" y="82" text-anchor="middle" font-size="11" fill="var(--text-faint)">strategy: IMMEDIATE</text>
+
+            <line x1="448" y1="66" x2="490" y2="66" stroke="var(--text-faint)" marker-end="url(#ar)" />
+            <rect x="496" y="42" width="230" height="48" rx="8" fill="var(--surface)" stroke="var(--ok)" />
+            <text x="611" y="66" text-anchor="middle" font-size="13" fill="var(--text)">메신저 · 컨텍스트 스레드</text>
+            <text x="611" y="82" text-anchor="middle" font-size="11" fill="var(--text-faint)">"도전하기" 카드</text>
+
+            <text x="740" y="70" font-size="12" fill="var(--ok)">← 여기까지가</text>
+            <text x="740" y="86" font-size="12" fill="var(--ok)">우리 영역</text>
+
+            <line x1="20" y1="122" x2="880" y2="122" stroke="var(--border)" />
+
+            <!-- 하단: 통제 불가 경로 -->
+            <text x="20" y="156" font-size="12" font-weight="700" fill="var(--bad)">통제 불가</text>
+            <rect x="20" y="168" width="180" height="48" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="110" y="192" text-anchor="middle" font-size="13" fill="var(--text)">유저가 앱 종료</text>
+            <text x="110" y="208" text-anchor="middle" font-size="11" fill="var(--text-faint)">우리 훅 없음</text>
+
+            <line x1="200" y1="192" x2="242" y2="192" stroke="var(--text-faint)" marker-end="url(#ar)" />
+            <rect x="248" y="168" width="200" height="48" rx="8" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="348" y="192" text-anchor="middle" font-size="13" fill="var(--text)">FB 클라이언트</text>
+            <text x="348" y="208" text-anchor="middle" font-size="11" fill="var(--text-faint)">랭킹 · 실험이 결정</text>
+
+            <line x1="448" y1="192" x2="490" y2="192" stroke="var(--text-faint)" marker-end="url(#ar)" />
+            <rect x="496" y="168" width="230" height="48" rx="8" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="611" y="188" text-anchor="middle" font-size="13" fill="var(--text)">게이밍 탭 복귀 지면</text>
+            <text x="611" y="206" text-anchor="middle" font-size="11" fill="var(--text-faint)">Jump back in · Featured · You may like</text>
+
+            <text x="740" y="196" font-size="12" fill="var(--bad)">← 진입 API</text>
+            <text x="740" y="212" font-size="12" fill="var(--bad)">자체가 없음</text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 그림을 읽는 법</div>
+            <p>
+              위아래 두 경로는 <b>도착지가 다릅니다.</b> 우리가 아무리 포스트를 잘 쏴도 그것은 스레드에
+              쌓일 뿐 아래 지면에는 올라가지 않습니다. 조사 초반의 여러 시도가 무의미했던 이유가
+              이것입니다.
+            </p>
+          </div>
+        </div>
+
+        <h2 class="doc-h2" style="margin-top: 28px">
+          "종료할 때 포스트가 뜬다"는 착시
+          <span class="doc-h2-sub">발사 시점과 목격 시점이 다르다</span>
+        </h2>
+
+        <!-- 발사와 목격 사이의 시간차가 오해의 근원이라 타임라인으로 그린다 -->
+        <div class="table-scroll">
+          <svg
+            viewBox="0 0 900 170"
+            width="900"
+            height="170"
+            role="img"
+            aria-label="판 진입 시점에 발사된 포스트를 유저가 앱 종료 후에 목격하는 시간차"
+          >
+            <line x1="40" y1="112" x2="850" y2="112" stroke="var(--border)" stroke-width="2" />
+
+            <circle cx="120" cy="112" r="7" fill="var(--ok)" />
+            <text x="120" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">판 진입</text>
+            <text x="120" y="78" text-anchor="middle" font-size="11" fill="var(--ok)">여기서 발사</text>
+            <text x="120" y="94" text-anchor="middle" font-size="11" fill="var(--text-faint)">updateAsync</text>
+            <text x="120" y="136" text-anchor="middle" font-size="11" fill="var(--text-faint)">스레드에 즉시 게시</text>
+
+            <circle cx="420" cy="112" r="7" fill="var(--surface-2)" stroke="var(--border)" stroke-width="2" />
+            <text x="420" y="78" text-anchor="middle" font-size="13" fill="var(--text-dim)">플레이 중</text>
+            <text x="420" y="136" text-anchor="middle" font-size="11" fill="var(--text-faint)">게임 안이라 카드가 안 보임</text>
+
+            <circle cx="740" cy="112" r="7" fill="var(--warn)" />
+            <text x="740" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">앱 종료</text>
+            <text x="740" y="78" text-anchor="middle" font-size="11" fill="var(--warn)">여기서 목격</text>
+            <text x="740" y="136" text-anchor="middle" font-size="11" fill="var(--text-faint)">스레드로 돌아가 그제야 확인</text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">왜 이게 중요한가</div>
+            <p>
+              발사 트리거는 <b>판 진입</b>이고 종료 시점에는 아무 코드도 돌지 않습니다. 그런데 목격은
+              종료 후에 일어나므로 <b>"종료할 때 포스트가 나간다"고 읽히게 됩니다.</b> 이 착시 때문에
+              조사 중반까지 종료 시점 훅을 찾는 데 시간을 썼습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 가설 검증 ================= -->
+      <section class="doc-section" id="history">
+        <h2 class="doc-h2">
+          2. 가설 검증 히스토리
+          <span class="doc-h2-sub">세운 순서대로 · 무엇으로 확인했고 어떻게 끝났나</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 4%">#</th>
+                <th style="width: 26%">가설</th>
+                <th style="width: 24%">검증 방법</th>
+                <th style="width: 32%">결과</th>
+                <th style="width: 14%">판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>종료 시점에 우리가 포스트를 쏜다</td>
+                <td>클라이언트 전수 검색</td>
+                <td>
+                  <code>quit()</code> 호출부 없음 · <code>switchGameAsync</code> 미사용 ·
+                  <code>beforeunload</code>/<code>onPause</code> 훅 없음. 발사는 전부 판 진입 시점
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>가로(LANDSCAPE) 설정 때문에 지면이 다르다</td>
+                <td>3개 리포 <code>fbapp-config.json</code> 대조</td>
+                <td>
+                  우리만 <code>orientation: LANDSCAPE</code> + <code>override_web_orientation</code>.
+                  <b>유일한 설정 차이</b>지만 같은 게임 안에서 보였다 안 보였다 하는 것을 설명 못 함
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>우리 스레드 포스트가 안 나가서 안 보인다</td>
+                <td>BigQuery <code>3400</code>/<code>3410</code>/<code>3420</code></td>
+                <td>
+                  시도 2건 · 성공 2건 · <b>실패 0건</b>. 발사만 되면 100% 게시됨.
+                  애초에 도착 지면이 스레드라 이 지면과 무관
+                </td>
+                <td><span class="pill" style="--acc: var(--bad)">기각</span></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>마종은 FB 데일리 토너먼트에 편입돼 있다</td>
+                <td>3개 리포 진입 처리 코드 대조</td>
+                <td>
+                  세 프로젝트 모두 <code>getTournamentType() === "DAILY"</code> 분기를 갖고 있음.
+                  <b><code>DAILY</code>는 클라이언트가 만들 수 없는 값</b> — FB가 생성한 토너먼트라는 뜻.
+                  편입은 Meta 쪽 설정이라 코드에 흔적이 없음
+                </td>
+                <td><span class="pill" style="--acc: var(--warn)">사실 · 통제 밖</span></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>FB가 세션마다 다른 실험군을 준다</td>
+                <td>URL 파라미터 처리 코드 대조</td>
+                <td>
+                  <code>intr_en</code>/<code>cli_int</code>가 켜진 세션은 프롬프트 다이얼로그가 막혀
+                  우리 동작이 달라짐 — <b>FB가 세션 단위로 권한을 쥐었다 놓는 구조는 실재</b>.
+                  코지만 <code>arlsi</code>를 추가로 받아 게임별 실험군이 다르다는 증거도 확보.
+                  단 이 값들을 <b>로그로 남기지 않아 대조 불가</b>
+                </td>
+                <td><span class="pill" style="--acc: var(--validate)">측정 불가</span></td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>세션이 플레이로 인정되지 않는다</td>
+                <td><code>startGameAsync</code> 처리 대조</td>
+                <td>
+                  벤치는 게임 코드에서 타임아웃 재시도 후 로그를 남김. 우리는 부팅 스크립트에서
+                  <b>0.2ms 무한 재시도 + 실패 로그 없음</b>. 실패가 있어도 우리는 알 수 없는 구조
+                </td>
+                <td><span class="pill" style="--acc: var(--validate)">측정 불가</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              <b>기각</b>은 근거를 갖고 반증된 것입니다. <b>측정 불가</b>는 틀렸다는 뜻이 아니라
+              <b>우리 로그로는 참·거짓을 가릴 수 없다</b>는 뜻입니다. 5·6번은 로그를 붙이면 판정할 수
+              있지만, 판정하더라도 이 지면의 노출 자체는 여전히 측정되지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">2번 가설을 남겨둔 이유</div>
+            <p>
+              가로 설정은 <b>세 프로젝트 중 우리만 가진 유일한 차이</b>라 후보로 남을 자격이 있었지만,
+              같은 게임 안에서의 on/off를 설명하지 못해 기각했습니다. 게임 설계가 1280×720 가로 기준이라
+              <b>맞더라도 바꿀 수 없는 원인</b>이기도 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 실측 ================= -->
+      <section class="doc-section" id="data">
+        <h2 class="doc-h2">
+          3. 실측 데이터
+          <span class="doc-h2-sub">스레드 포스트 발사 결과 · 8/25~26</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40%">이벤트</th>
+                <th style="text-align: right">건수</th>
+                <th style="text-align: right">유저</th>
+                <th style="width: 32%">해석</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>3400_MSG_P2P</code> 시도</td>
+                <td style="text-align: right">2</td>
+                <td style="text-align: right">2</td>
+                <td>모수 자체가 없음</td>
+              </tr>
+              <tr>
+                <td><code>3410_MSG_P2P_SUCCESS</code></td>
+                <td style="text-align: right">2</td>
+                <td style="text-align: right">2</td>
+                <td>발사되면 100% 성공</td>
+              </tr>
+              <tr>
+                <td><code>3420_MSG_P2P_FAIL</code></td>
+                <td style="text-align: right">0</td>
+                <td style="text-align: right">0</td>
+                <td>FB가 거절한 적 없음</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 수치로 결론을 내면 안 되는 이유</div>
+            <p>
+              해당 기능이 들어간 빌드(<code>client_version 471</code>)는 <b>테스트 배포 상태</b>라 접근한
+              유저가 사실상 QA뿐입니다. "2건"은 기능이 안 나간다는 뜻이 아니라
+              <b>측정할 모수가 아직 없다</b>는 뜻입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">진단을 막는 구조적 공백</div>
+            <p>
+              포스트 발사 조건 6개(스위치·재도전 제외·컨텍스트·P2P·튜토리얼·쿨다운)는 걸리면
+              <b>조용히 return하고 로그를 남기지 않습니다.</b> 그래서 "나갔다"는 알 수 있어도
+              <b>"무엇에 막혔다"는 데이터가 통째로 없습니다.</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 남은 것 ================= -->
+      <section class="doc-section" id="limit">
+        <h2 class="doc-h2">
+          4. 남은 것
+          <span class="doc-h2-sub">코드로 되는 것과 안 되는 것</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%">수단</th>
+                <th style="width: 14%">통제 주체</th>
+                <th style="width: 18%">도착 지면</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="is-dead">
+                <td>게이밍 탭 복귀 지면 게시</td>
+                <td>FB</td>
+                <td>게이밍 탭</td>
+                <td>API 없음 — <b>포기 대상</b></td>
+              </tr>
+              <tr>
+                <td>컨텍스트 진입 포스트</td>
+                <td>우리</td>
+                <td>스레드</td>
+                <td>구현 완료 · 테스트 배포(471)</td>
+              </tr>
+              <tr>
+                <td>토너먼트 공유 카드</td>
+                <td>우리</td>
+                <td>스레드</td>
+                <td>구현 완료 · 유저 제스처 필요</td>
+              </tr>
+              <tr>
+                <td>A2U 푸시 메시지</td>
+                <td>우리</td>
+                <td>알림</td>
+                <td>구현 완료 · 세션 밖 도달 가능한 유일한 수단</td>
+              </tr>
+              <tr>
+                <td>FB 데일리 토너먼트 편입</td>
+                <td>Meta</td>
+                <td>게이밍 탭</td>
+                <td>클라이언트 준비는 끝. <b>파트너 채널 문의 필요</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">유일하게 남은 진짜 경로</div>
+            <p>
+              마종처럼 <b>FB 데일리 토너먼트에 편입</b>되면 그 지면에 카드가 붙습니다. 우리 클라이언트는
+              <code>DAILY</code> 진입 처리를 이미 갖고 있어 <b>편입만 되면 코드 수정 없이 동작</b>합니다.
+              대신 편입 여부는 우리가 결정할 수 없고, 자격 기준도 공개돼 있지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">Meta에 문의할 때</div>
+            <p>
+              이 지면은 <b>공식 명칭이 확인되지 않습니다.</b> 상위 그릇이 "Facebook Gaming 탭"인 것까지만
+              확실합니다. 문의 시에는 자체 조어 대신 <b>화면 문구 + 스크린샷</b>으로 특정해야 엉뚱한 지면
+              답변을 피할 수 있습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 클라이언트 3종(솔리테어 트리피크스 · 마종 · 코지타일즈) <code>main</code> 기준
+          코드 실측, BigQuery <code>solitaire_city_journey</code> 8/25~26 실측.
+          FB 지면의 노출 조건·랭킹 인자·데일리 토너먼트 편입 기준은 <b>모두 미공개</b>이며 이 문서의 관련
+          서술은 추정입니다. 지면 자체의 노출 여부는 게임 밖에서 일어나 <b>어떤 로그로도 관측되지
+          않습니다.</b>
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
