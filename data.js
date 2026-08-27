@@ -11,6 +11,8 @@
      updated: "2026-08-07 10:48",     // 날짜 + 시각(HH:MM)
      pinned:  true,                  // 상단 강조
      tags:    ["태그", "태그"],        // 최대 3개
+     project: "smg",                 // 선택 · 아래 PROJECTS 의 키. 카드 테두리색 + 제목줄 칩.
+                                     //   생략하면 종전대로 섹션 accent 로 그려진다.
      share:   false,                 // 선택 · 설정탭 전용. 없으면 노출, false 면 허브에서 숨김
    }
    --------------------------------------------------------------------------
@@ -28,7 +30,28 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-27 15:28",
+  updated: "2026-08-27 15:34",
+};
+
+/* --------------------------------------------------------------------------
+   PROJECTS — 카드의 project 키를 이름·식별색으로 푼다.
+   허브 카드의 왼쪽 테두리와 제목줄 칩이 이 색을 쓴다. 섹션(분석·검증·QA·배포)은
+   제목과 nav pill 로 이미 구분되므로, 카드 테두리는 프로젝트 쪽에 양보한다.
+   project 를 안 적은 카드는 종전대로 섹션 accent 로 그려진다(무손상).
+   색 토큰은 style.css 의 프로젝트 식별색과 같은 값이다.
+   -------------------------------------------------------------------------- */
+
+const PROJECTS = {
+  smg: { name: "스토리머지", token: "--smg" },
+  cmt: { name: "코인매치", token: "--cmt" },
+  sol: { name: "솔리테어", token: "--sol" },
+  coz: { name: "코지", token: "--coz" },
+  mah: { name: "마종", token: "--mah" },
+  pbm: { name: "퍼블마", token: "--pbm" },
+  bbl: { name: "블록블라스트", token: "--bbl" },
+  tpz: { name: "더퍼즐", token: "--tpz" },
+  // 여러 프로젝트를 나란히 놓고 대조하는 문서. 한 색을 고를 수 없으니 무채색으로 둔다.
+  multi: { name: "다중대조", token: "--text-dim" },
 };
 
 const SECTIONS = [
@@ -42,6 +65,7 @@ const SECTIONS = [
         title: "스토리 머지 — 로그 적용 매트릭스",
         desc: "주요 게임 5개 로그를 전량 실측해 프로토에 넣을 수 있는 것만 골랐다. 배관 2곳이 의도적으로 막혀 있어 지금은 전송 0건.",
         url: "docs/story-merge-log-matrix.html",
+        project: "smg",
         status: "완료",
         version: "v1.0",
         updated: "2026-08-27 15:01",
@@ -52,6 +76,7 @@ const SECTIONS = [
         title: "FB 게이밍 탭 복귀 지면 — 노출 조사 히스토리",
         desc: "포스트는 그 지면에 자동으로 실린다. 문제는 이틀간 발사가 2건뿐이라는 것. 게이트 6개가 무로그로 막고 있다.",
         url: "docs/fb-exit-surface-investigation.html",
+        project: "multi",
         status: "진행중",
         version: "v2.0",
         updated: "2026-08-26 09:56",
@@ -62,6 +87,7 @@ const SECTIONS = [
         title: "광고 유입 NRU 첫터치 — 원인 규명",
         desc: "업데이트·빌드·클라 결함 전부 배제. 같은 조건 대조군이 45.9%·70.7%인데 광고만 7.3%. 남은 원인은 유입 의도.",
         url: "docs/ua-ad-nru-first-touch.html",
+        project: "multi",
         status: "완료",
         version: "v3.5",
         updated: "2026-08-20 18:52",
@@ -82,6 +108,7 @@ const SECTIONS = [
         title: "공유 · 메시지 — 왜 실패하나",
         desc: "피드공유 실패의 81%가 유저 취소가 아니라 호출 충돌. 겹치는 호출 후보는 4개까지 좁혀졌다.",
         url: "docs/viral-surface-cross-project.html",
+        project: "multi",
         status: "진행중",
         version: "v5.2",
         updated: "2026-08-19 08:55",
@@ -112,6 +139,7 @@ const SECTIONS = [
         title: "NRU 0~10분 — 6개 프로젝트 온보딩 비교",
         desc: "같은 정의로 재는 지표 4개에서 3승 1패. 값이 갈리는 이유는 가설 7건으로 분해했다.",
         url: "docs/nru-first-10min-compare.html",
+        project: "multi",
         status: "진행중",
         version: "v4.2",
         updated: "2026-08-18 18:10",
@@ -122,6 +150,7 @@ const SECTIONS = [
         title: "5프로젝트 소셜 코드 대조표",
         desc: "공유 호출 · 지면 게이트 · 로그를 5개 프로젝트 코드로 나란히 놓은 28행 대조표.",
         url: "docs/social-code-matrix.html",
+        project: "multi",
         status: "완료",
         version: "v3.5",
         updated: "2026-08-19 08:55",
@@ -132,6 +161,7 @@ const SECTIONS = [
         title: "로딩 속도 — 3개 프로젝트 비교",
         desc: "부팅 지연 전량이 LOAD_FB→LOAD_INTRO 한 구간에 몰린다(코지의 3.3배).",
         url: "docs/loading-speed-compare.html",
+        project: "multi",
         status: "완료",
         version: "v2.3",
         updated: "2026-08-18 18:10",
@@ -142,6 +172,7 @@ const SECTIONS = [
         title: "전면광고 지면 — 4개 프로젝트 플로우 비교",
         desc: "솔리테어 · 퍼블마 · 코지 · 마종의 전면광고를 유저 플로우 13개 노드에 올려 비교.",
         url: "docs/ad-placements.html",
+        project: "multi",
         status: "완료",
         version: "v1.9",
         updated: "2026-08-14 09:57",
@@ -152,6 +183,7 @@ const SECTIONS = [
         title: "전체 지면 플로우 맵 — UI + 로직 + 컨텍스트",
         desc: "카드 17장 + 칩 32개 오픈맵을 16:9 로 눕혔습니다(가로 사용률 30%→100%). 지면을 열면 프리팹 실측 화면 요소 1,575개로 그린 와이어프레임과 버튼별 흐름 · 컨텍스트 상태 기계 · FB 지면 15종이 나옵니다. 기본은 주요 이동 경로만 보여주고, 메소드·프리팹·버튼 이름으로 검색하면 그 지면의 상세까지 펼쳐 줍니다.",
         url: "docs/solitaire-flow-map.html",
+        project: "sol",
         status: "완료",
         version: "v10.3",
         updated: "2026-08-26 12:10",
@@ -162,6 +194,7 @@ const SECTIONS = [
         title: "스토리 머지 — 앞으로 해야 할 것",
         desc: "Gossip Harbor 대비로 남은 거리를 그림 넉 장으로 정리했습니다. 끊긴 루프 · 갭 17개(필수 10/후순위 3/컷 4) · 3개월 로드맵.",
         url: "docs/story-merge-todo-roadmap.html",
+        project: "smg",
         status: "초안",
         version: "v1.1",
         updated: "2026-08-27 15:02",
@@ -172,6 +205,7 @@ const SECTIONS = [
         title: "스토리 머지 — FB 인스턴트게임 착수 점검",
         desc: "리포 이미지 120MB 를 전수로 재봤습니다. 아틀라스가 못 고쳐주는 구간이 63%(75.6MB)고, 포맷만 바꿔도 1/5 로 줄어듭니다. 플랫폼 함정 5개는 그림으로 정리했습니다.",
         url: "docs/story-merge-fb-instant-checklist.html",
+        project: "smg",
         status: "초안",
         version: "v1.0",
         updated: "2026-08-27 15:28",
@@ -182,6 +216,7 @@ const SECTIONS = [
         title: "스토리 머지 프로토 플로우 맵",
         desc: "지면이 4개뿐인 프로토라 축을 스토리 노드 11개 · 연출 모드 3종 · 태스크 루프로 잡았습니다. 같은 노드 표를 채팅·스틸컷 두 빌드에 나란히 놓고 대조합니다.",
         url: "docs/story-merge-flow-map.html",
+        project: "smg",
         status: "완료",
         version: "v1.1",
         updated: "2026-08-27 14:53",
@@ -192,6 +227,7 @@ const SECTIONS = [
         title: "코인 매치 전체 지면 플로우 맵",
         desc: "솔리테어 맵과 같은 두 단 구조로 코인 매치 전 지면을 폈습니다. 세로 화면 와이어프레임 위에서 버튼을 누르면 호출 사슬이 그 자리에서 펼쳐집니다. 기본은 주요 이동 경로만 보여주고, 메소드·프리팹·버튼 이름으로 검색하면 그 지면의 상세까지 펼쳐 줍니다.",
         url: "docs/coin-match-flow-map.html",
+        project: "cmt",
         status: "완료",
         version: "v2.0",
         updated: "2026-08-26 12:10",
@@ -322,6 +358,7 @@ const SECTIONS = [
         title: "데코 영역 아트 리소스 트리 — 이전 프로젝트 사례",
         desc: "이전 네이티브 프로젝트에서 데코 영역 아트 리소스를 어떤 트리로 공유받았는지. 이유는 상태별 대응 — 망가짐→고쳐짐 · 5단 성장 · 완성 3종 택1이 같은 형태로 흡수된다.",
         url: "docs/deco-area-prefab-structure.html",
+        project: "smg",
         status: "초안",
         version: "v3.5",
         updated: "2026-08-24 14:00",
@@ -332,6 +369,7 @@ const SECTIONS = [
         title: "머지 웹 프로젝트 — 아트 인계 · 이미지 관리",
         desc: "아트 인계 규격 + 부팅 예산 상한 4축(전송 1.5MB / 파싱 2.0MB / 디코드 3Mpx / bpp 2.0). 웹 빌드 2종 부팅 페이로드 실측. 오픈맵·단편형 2안은 타사 머지 FB IG 실측.",
         url: "docs/art-resource-handoff.html",
+        project: "smg",
         status: "진행중",
         version: "v6.0",
         updated: "2026-08-24 14:00",
@@ -342,6 +380,7 @@ const SECTIONS = [
         title: "코인매치 커밋 히스토리 — 왜 이렇게 고쳤나",
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 06-02~08-25 커밋 41건 diff 실측 + 미머지 3건.",
         url: "docs/commit-history-coin-match.html",
+        project: "cmt",
         status: "진행중",
         version: "v1.0",
         updated: "2026-08-25 15:25",
@@ -352,6 +391,7 @@ const SECTIONS = [
         title: "솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나",
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~08-27 Max 커밋 170건 diff 전량 실측.",
         url: "docs/commit-history-solitaire.html",
+        project: "sol",
         status: "진행중",
         version: "v10.0",
         updated: "2026-08-27 12:03",
@@ -362,6 +402,7 @@ const SECTIONS = [
         title: "토너먼트 생성 복구 판정 정규화 — 다른 프로젝트 이식",
         desc: "이식할 것은 에러 문구 끝 마침표를 떼는 것 하나. 4개 프로젝트 11곳의 현재 상태 · 조치.",
         url: "docs/tournament-recovery-message-port.html",
+        project: "multi",
         status: "완료",
         version: "v3.5",
         updated: "2026-08-20 10:05",

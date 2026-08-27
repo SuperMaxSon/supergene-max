@@ -37,13 +37,27 @@
     var url = card.url || "#";
     var a = el("a", "card" + (card.pinned ? " is-pinned" : ""));
     a.href = url;
-    a.style.setProperty("--acc", "var(--" + accent + ")");
+
+    // 프로젝트가 지정된 카드는 --acc 를 프로젝트 식별색으로 덮는다.
+    // 섹션은 제목과 nav pill 로 이미 구분되므로 카드 테두리는 프로젝트에 양보한다.
+    // PROJECTS 가 없거나 card.project 가 없으면 종전대로 섹션 accent (기존 카드 무손상).
+    var proj =
+      typeof PROJECTS !== "undefined" && card.project
+        ? PROJECTS[card.project]
+        : null;
+    a.style.setProperty(
+      "--acc",
+      "var(" + (proj ? proj.token : "--" + accent) + ")"
+    );
+
     if (isExternal(url)) {
       a.target = "_blank";
       a.rel = "noopener noreferrer";
     }
 
     var top = el("div", "card-top");
+    // 색만으로는 어느 프로젝트인지 알 수 없으니 이름 칩을 제목 앞에 세운다.
+    if (proj) top.appendChild(el("span", "card-proj", proj.name));
     top.appendChild(el("span", "card-title", card.title));
     if (isExternal(url)) top.appendChild(el("span", "card-ext", "↗"));
     if (card.status) {
@@ -63,7 +77,12 @@
     });
     if (foot.childNodes.length) a.appendChild(foot);
 
-    a.dataset.search = [card.title, card.desc, (card.tags || []).join(" ")]
+    a.dataset.search = [
+      card.title,
+      card.desc,
+      proj ? proj.name : "",
+      (card.tags || []).join(" "),
+    ]
       .join(" ")
       .toLowerCase();
     return a;
