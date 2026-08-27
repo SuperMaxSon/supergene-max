@@ -28,7 +28,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-27 15:21",
+  updated: "2026-08-27 15:28",
 };
 
 const SECTIONS = [
@@ -43,8 +43,8 @@ const SECTIONS = [
         desc: "주요 게임 5개 로그를 전량 실측해 프로토에 넣을 수 있는 것만 골랐다. 배관 2곳이 의도적으로 막혀 있어 지금은 전송 0건.",
         url: "docs/story-merge-log-matrix.html",
         status: "완료",
-        version: "v1.1",
-        updated: "2026-08-27 15:21",
+        version: "v1.0",
+        updated: "2026-08-27 15:01",
         pinned: false,
         tags: ["로그 설계", "스토리 머지", "크로스프로젝트"],
       },
@@ -157,6 +157,26 @@ const SECTIONS = [
         updated: "2026-08-26 12:10",
         pinned: false,
         tags: ["레퍼런스", "플로우", "UI", "컨텍스트", "인터랙티브", "검색"],
+      },
+      {
+        title: "스토리 머지 — 앞으로 해야 할 것",
+        desc: "Gossip Harbor 대비로 남은 거리를 그림 넉 장으로 정리했습니다. 끊긴 루프 · 갭 17개(필수 10/후순위 3/컷 4) · 3개월 로드맵.",
+        url: "docs/story-merge-todo-roadmap.html",
+        status: "초안",
+        version: "v1.1",
+        updated: "2026-08-27 15:02",
+        pinned: false,
+        tags: ["역기획", "로드맵", "스토리머지"],
+      },
+      {
+        title: "스토리 머지 — FB 인스턴트게임 착수 점검",
+        desc: "리포 이미지 120MB 를 전수로 재봤습니다. 아틀라스가 못 고쳐주는 구간이 63%(75.6MB)고, 포맷만 바꿔도 1/5 로 줄어듭니다. 플랫폼 함정 5개는 그림으로 정리했습니다.",
+        url: "docs/story-merge-fb-instant-checklist.html",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-08-27 15:28",
+        pinned: false,
+        tags: ["FB 플랫폼", "리소스", "스토리머지"],
       },
       {
         title: "스토리 머지 프로토 플로우 맵",
