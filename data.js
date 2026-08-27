@@ -28,7 +28,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-27 15:01",
+  updated: "2026-08-27 15:21",
 };
 
 const SECTIONS = [
@@ -43,8 +43,8 @@ const SECTIONS = [
         desc: "주요 게임 5개 로그를 전량 실측해 프로토에 넣을 수 있는 것만 골랐다. 배관 2곳이 의도적으로 막혀 있어 지금은 전송 0건.",
         url: "docs/story-merge-log-matrix.html",
         status: "완료",
-        version: "v1.0",
-        updated: "2026-08-27 15:01",
+        version: "v1.1",
+        updated: "2026-08-27 15:21",
         pinned: false,
         tags: ["로그 설계", "스토리 머지", "크로스프로젝트"],
       },
