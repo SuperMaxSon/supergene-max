@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>게임 장르별 AWS 아키텍처 — 2024</title>
+    <meta
+      name="description"
+      content="메가존클라우드 장르별 AWS 레퍼런스 구성도 4장(웹 비동기 · MMORPG · 세션 자체구축 · GameLift 서버리스)을 다시 그리고, 장르별로 무엇이 왜 달라지는지 설명한 문서."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=proj2" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#read">읽는 법</a>
+        <a class="nav-back" href="#web">웹 비동기</a>
+        <a class="nav-back" href="#mmo">MMORPG</a>
+        <a class="nav-back" href="#session">세션 자체구축</a>
+        <a class="nav-back" href="#gamelift">GameLift 서버리스</a>
+        <a class="nav-back" href="#compare">비교</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 인프라 레퍼런스</div>
+        <h1 class="doc-title">게임 장르별 AWS 아키텍처 — 2024</h1>
+        <p class="doc-lede">
+          메가존클라우드가 준 원본은 <b>설명 한 줄 없는 구성도 4장</b>입니다. 아이콘만 봐서는
+          장르별로 뭐가 달라지는지 안 보여서, <b>같은 그림을 다시 그리고 차이를 글로 붙였습니다</b>.
+          핵심은 서비스 목록이 아니라 <b>게임 서버가 상태를 갖느냐</b> 하나입니다 —
+          그것 하나로 스케일 단위도, 진입 경로도, 비용 성격도 전부 갈립니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--analysis)">레퍼런스</span>
+          <span class="tag">원본 PDF 4페이지 렌더링 후 아이콘 판독</span>
+          <span class="tag">원본에 설명·비용·규모 기준 없음</span>
+          <span class="tag">v1.0 · 2026-08-27</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- 1단: 4장을 개별로 읽으면 "AWS 서비스 나열"로만 보인다. 먼저 축 3개를 못 박아야
+           이후 그림들이 서로 대조되어 읽힌다. 그래서 다이어그램보다 앞에 둔다. -->
+      <section class="doc-section" id="read">
+        <h2 class="doc-h2">읽는 법 <span class="doc-h2-sub">4장의 차이는 축 3개로 전부 설명됩니다</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--analysis)">
+            <div class="stat-num">1<span class="stat-unit">축</span></div>
+            <div class="stat-name">서버가 상태를 갖나</div>
+            <div class="stat-sub">가지면 자동 스케일 불가 → 나머지가 다 따라 바뀜</div>
+          </div>
+          <div class="stat" style="--acc: var(--plan)">
+            <div class="stat-num">2<span class="stat-unit">축</span></div>
+            <div class="stat-name">늘릴 때 뭘 늘리나</div>
+            <div class="stat-sub">인스턴스 / 월드 통째 / 세션 플릿</div>
+          </div>
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">3<span class="stat-unit">축</span></div>
+            <div class="stat-name">유저가 어디로 들어오나</div>
+            <div class="stat-sub">ELB(HTTP) 냐 Global Accelerator(실시간) 냐</div>
+          </div>
+          <div class="stat" style="--acc: var(--balance)">
+            <div class="stat-num">4<span class="stat-unit">장 공통</span></div>
+            <div class="stat-name">바뀌지 않는 것</div>
+            <div class="stat-sub">DNS · CDN · WAF · DB 2계층 · 운영 도구 세트</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">4장 모두에 똑같이 붙어 있는 것 — 그래서 아래 그림에서는 뺐습니다</div>
+            <p>
+              <strong>Route 53</strong>(DNS) · <strong>CloudFront</strong>(CDN) ·
+              <strong>WAF + Shield Advanced</strong>(방어)가 모든 장르의 입구에 동일하게 있고,
+              데이터는 예외 없이 <strong>관계형(RDS 계열) + NoSQL/캐시</strong> 2계층입니다.
+              운영 도구(<code>S3</code> · <code>Secrets Manager</code> · <code>Certificate Manager</code> ·
+              <code>CloudWatch</code> · <code>CloudTrail</code> · <code>Systems Manager</code>)도 4장에
+              똑같이 나열돼 있는데, <strong>원본에는 선이 하나도 연결돼 있지 않습니다</strong> —
+              "쓰긴 쓴다"는 표시일 뿐 어디에 붙는지는 그림이 말해주지 않습니다.
+              공통분은 아래 4개 그림에서 생략했으니, <strong>그림에 남은 것이 곧 장르별 차이</strong>입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2단: 우리 프로젝트가 속한 유형이라 가장 먼저 놓는다. 원본 순서와도 같다. -->
+      <section class="doc-section" id="web">
+        <h2 class="doc-h2">
+          ① 웹 기반 비동기
+          <span class="doc-h2-sub">서버가 상태를 안 가짐 — 그래서 유일하게 자동 스케일이 성립합니다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 400" width="900" height="400" role="img"
+               aria-label="웹 기반 비동기 게임의 AWS 구성도">
+            <defs>
+              <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <!-- 좌측: 유저 → DNS → 엣지. 4장 공통이지만 이 그림에서만 한 번 그려 둔다. -->
+            <rect x="8" y="180" width="78" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="47" y="208" text-anchor="middle" font-size="13" fill="var(--text)">유저</text>
+
+            <rect x="106" y="180" width="104" height="46" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="158" y="200" text-anchor="middle" font-size="12" fill="var(--text)">Route 53</text>
+            <text x="158" y="216" text-anchor="middle" font-size="10" fill="var(--text-faint)">DNS</text>
+
+            <rect x="230" y="180" width="112" height="46" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="286" y="200" text-anchor="middle" font-size="12" fill="var(--text)">CloudFront</text>
+            <text x="286" y="216" text-anchor="middle" font-size="10" fill="var(--text-faint)">+ WAF · Shield</text>
+
+            <!-- Public subnet -->
+            <rect x="366" y="56" width="140" height="316" rx="10" fill="none" stroke="var(--balance)" />
+            <text x="376" y="76" font-size="11" fill="var(--balance)">Public subnet</text>
+            <rect x="386" y="176" width="100" height="54" rx="8" fill="#fff" stroke="var(--analysis)" />
+            <text x="436" y="199" text-anchor="middle" font-size="12" fill="var(--text)">ELB</text>
+            <text x="436" y="215" text-anchor="middle" font-size="10" fill="var(--text-faint)">로드밸런서</text>
+
+            <!-- Private subnet (컴퓨트) -->
+            <rect x="524" y="56" width="232" height="316" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="534" y="76" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <text x="640" y="98" text-anchor="middle" font-size="11" fill="var(--text-dim)">Auto Scaling · Target Group</text>
+
+            <rect x="540" y="110" width="200" height="106" rx="8" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="640" y="130" text-anchor="middle" font-size="11" fill="var(--text-dim)">상시 서버</text>
+            <rect x="552" y="142" width="56" height="56" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="580" y="176" text-anchor="middle" font-size="12" fill="var(--text)">EC2</text>
+            <rect x="612" y="142" width="56" height="56" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="640" y="176" text-anchor="middle" font-size="12" fill="var(--text)">ECS</text>
+            <rect x="672" y="142" width="56" height="56" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="700" y="176" text-anchor="middle" font-size="12" fill="var(--text)">EKS</text>
+
+            <rect x="540" y="234" width="200" height="106" rx="8" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="640" y="254" text-anchor="middle" font-size="11" fill="var(--text-dim)">서버리스</text>
+            <rect x="558" y="266" width="80" height="56" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="598" y="300" text-anchor="middle" font-size="12" fill="var(--text)">Lambda</text>
+            <rect x="646" y="266" width="80" height="56" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="686" y="300" text-anchor="middle" font-size="12" fill="var(--text)">Fargate</text>
+
+            <!-- Private subnet (데이터) -->
+            <rect x="774" y="56" width="118" height="316" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="784" y="76" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <rect x="790" y="110" width="86" height="106" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="833" y="156" text-anchor="middle" font-size="12" fill="var(--text)">RDS</text>
+            <text x="833" y="174" text-anchor="middle" font-size="10" fill="var(--text-faint)">관계형</text>
+            <rect x="790" y="234" width="86" height="106" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="833" y="280" text-anchor="middle" font-size="12" fill="var(--text)">NoSQL</text>
+            <text x="833" y="298" text-anchor="middle" font-size="10" fill="var(--text-faint)">+ 캐시</text>
+
+            <!-- 연결선 -->
+            <g stroke="var(--text-faint)" fill="none" marker-end="url(#a1)">
+              <path d="M86,203 L102,203" />
+              <path d="M210,203 L226,203" />
+              <path d="M342,203 L382,203" />
+              <path d="M486,203 L536,203" />
+              <path d="M740,163 L786,163" />
+              <path d="M740,287 L786,287" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">우리(솔리테어 · 캐주얼)가 여기입니다</div>
+            <p>
+              판이 <strong>요청 단위로 끝나고</strong> 서버가 특정 유저를 붙들고 있지 않으니,
+              아무 인스턴스나 받아도 됩니다. 그래서 <strong>ELB → Auto Scaling</strong>이 그대로 성립하고,
+              트래픽이 빠지면 인스턴스도 같이 줄어 <strong>비용이 트래픽에 비례</strong>합니다.
+              그림에서 <strong>"상시 서버"와 "서버리스"가 나란히 있는 것은 택일이 아니라 혼용</strong>
+              가능하다는 뜻입니다 — 상시 API는 컨테이너로, 이벤트성 작업은 Lambda로 나누는 구성을
+              한 장에 겹쳐 그린 것입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="mmo">
+        <h2 class="doc-h2">
+          ② MMORPG
+          <span class="doc-h2-sub">서버가 월드를 붙들고 있음 — 자동 스케일이 사라집니다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 430" width="900" height="430" role="img"
+               aria-label="MMORPG의 AWS 구성도">
+            <defs>
+              <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <rect x="8" y="192" width="70" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="43" y="220" text-anchor="middle" font-size="13" fill="var(--text)">유저</text>
+
+            <!-- 실시간 경로와 웹 경로가 입구에서부터 갈린다. 이 분기가 이 장르의 핵심이라
+                 위/아래로 확실히 벌려 그린다. -->
+            <rect x="96" y="96" width="118" height="50" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="155" y="118" text-anchor="middle" font-size="12" fill="var(--text)">Global Accelerator</text>
+            <text x="155" y="134" text-anchor="middle" font-size="10" fill="var(--text-faint)">실시간 · 저지연</text>
+
+            <rect x="96" y="286" width="118" height="50" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="155" y="308" text-anchor="middle" font-size="12" fill="var(--text)">CloudFront · WAF</text>
+            <text x="155" y="324" text-anchor="middle" font-size="10" fill="var(--text-faint)">웹 · 상점</text>
+
+            <!-- Public subnet -->
+            <rect x="244" y="40" width="384" height="366" rx="10" fill="none" stroke="var(--balance)" />
+            <text x="254" y="60" font-size="11" fill="var(--balance)">Public subnet</text>
+
+            <rect x="262" y="76" width="348" height="150" rx="8" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="436" y="98" text-anchor="middle" font-size="12" fill="var(--text-dim)">World (Realm) × n — 통째로 복제</text>
+            <rect x="292" y="112" width="130" height="90" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="357" y="150" text-anchor="middle" font-size="12" fill="var(--text)">Game 서버</text>
+            <text x="357" y="168" text-anchor="middle" font-size="10" fill="var(--text-faint)">EC2 · 고정 IP</text>
+            <rect x="446" y="112" width="130" height="90" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="511" y="150" text-anchor="middle" font-size="12" fill="var(--text)">Chat 서버</text>
+            <text x="511" y="168" text-anchor="middle" font-size="10" fill="var(--text-faint)">EC2 · 고정 IP</text>
+
+            <rect x="292" y="296" width="120" height="54" rx="8" fill="#fff" stroke="var(--analysis)" />
+            <text x="352" y="328" text-anchor="middle" font-size="12" fill="var(--text)">ELB</text>
+
+            <!-- Private subnet (공통 서비스) -->
+            <rect x="646" y="40" width="118" height="366" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="656" y="60" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <rect x="662" y="276" width="86" height="94" rx="8" fill="#fff" stroke="var(--validate)" />
+            <text x="705" y="312" text-anchor="middle" font-size="12" fill="var(--text)">Common</text>
+            <text x="705" y="330" text-anchor="middle" font-size="10" fill="var(--text-faint)">로그인·상점</text>
+
+            <!-- Private subnet (데이터) -->
+            <rect x="782" y="40" width="110" height="366" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="792" y="60" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <rect x="798" y="106" width="80" height="94" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="838" y="146" text-anchor="middle" font-size="11" fill="var(--text)">Realm DB</text>
+            <text x="838" y="163" text-anchor="middle" font-size="10" fill="var(--text-faint)">월드별</text>
+            <rect x="798" y="276" width="80" height="94" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="838" y="316" text-anchor="middle" font-size="11" fill="var(--text)">공통 DB</text>
+            <text x="838" y="333" text-anchor="middle" font-size="10" fill="var(--text-faint)">계정·결제</text>
+
+            <g stroke="var(--text-faint)" fill="none" marker-end="url(#a2)">
+              <path d="M43,192 L43,121 L92,121" />
+              <path d="M43,238 L43,311 L92,311" />
+              <path d="M214,121 L288,121" />
+              <path d="M214,311 L288,311" />
+              <path d="M412,323 L658,323" />
+              <path d="M610,157 L794,157" />
+              <path d="M748,323 L794,323" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">이 그림에 Auto Scaling이 없는 게 실수가 아닙니다</div>
+            <p>
+              게임 서버가 <strong>특정 월드의 상태를 메모리에 들고</strong> 있어서 아무 서버나 붙을 수
+              없습니다. 유저는 "서버 1번"에 접속하는 것이지 로드밸런서 뒤 아무 데나 가는 게 아니고,
+              그래서 <strong>서버마다 고정 IP</strong>가 붙고 <strong>ELB를 못 씁니다</strong>.
+              늘리는 단위는 인스턴스가 아니라 <strong>월드(Realm) 통째</strong> — 신규 서버 오픈이 곧
+              스케일아웃입니다. 대신 로그인·상점처럼 상태 없는 부분만 떼어 <strong>ELB 뒤 Private
+              subnet</strong>에 두는데, 이게 ①의 구조와 정확히 같습니다.
+              실시간 트래픽이 ELB 대신 <strong>Global Accelerator</strong>로 들어가는 것도 같은 이유입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="session">
+        <h2 class="doc-h2">
+          ③ 세션 기반 — 자체 구축
+          <span class="doc-h2-sub">매치가 끝나면 상태도 끝남 — 상태의 수명이 "한 판"입니다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 450" width="900" height="450" role="img"
+               aria-label="세션 기반 게임을 자체 구축한 AWS 구성도">
+            <defs>
+              <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <rect x="8" y="206" width="70" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="43" y="234" text-anchor="middle" font-size="13" fill="var(--text)">유저</text>
+            <rect x="8" y="272" width="70" height="46" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="43" y="294" text-anchor="middle" font-size="10" fill="var(--text)">GA · CDN</text>
+            <text x="43" y="309" text-anchor="middle" font-size="10" fill="var(--text-faint)">WAF</text>
+
+            <!-- Region A -->
+            <rect x="104" y="34" width="530" height="392" rx="10" fill="none" stroke="var(--pbm)" stroke-dasharray="5 4" />
+            <text x="116" y="54" font-size="11" fill="var(--pbm)">Region A (홈)</text>
+
+            <rect x="330" y="62" width="290" height="42" rx="8" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="475" y="88" text-anchor="middle" font-size="11" fill="var(--text-dim)">EventBridge · SQS · Lambda (비동기 처리)</text>
+
+            <rect x="120" y="126" width="170" height="180" rx="10" fill="none" stroke="var(--balance)" />
+            <text x="130" y="146" font-size="11" fill="var(--balance)">Public subnet</text>
+            <rect x="136" y="164" width="138" height="122" rx="8" fill="#fff" stroke="var(--validate)" />
+            <text x="205" y="212" text-anchor="middle" font-size="12" fill="var(--text)">게임 서버 플릿</text>
+            <text x="205" y="230" text-anchor="middle" font-size="10" fill="var(--text-faint)">EC2 · 세션당 배정</text>
+            <text x="205" y="248" text-anchor="middle" font-size="10" fill="var(--text-faint)">고정 IP</text>
+
+            <rect x="306" y="126" width="164" height="284" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="316" y="146" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <rect x="322" y="162" width="132" height="60" rx="8" fill="#fff" stroke="var(--validate)" />
+            <text x="388" y="197" text-anchor="middle" font-size="12" fill="var(--text)">매치메이킹</text>
+            <rect x="322" y="248" width="132" height="140" rx="8" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="388" y="270" text-anchor="middle" font-size="11" fill="var(--text-dim)">Auto Scaling</text>
+            <rect x="336" y="284" width="104" height="88" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="388" y="326" text-anchor="middle" font-size="12" fill="var(--text)">로그인 · 로비</text>
+
+            <rect x="486" y="126" width="134" height="284" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="496" y="146" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <rect x="502" y="180" width="102" height="86" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="553" y="228" text-anchor="middle" font-size="12" fill="var(--text)">RDS</text>
+            <rect x="502" y="290" width="102" height="86" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="553" y="330" text-anchor="middle" font-size="11" fill="var(--text)">캐시 · NoSQL</text>
+
+            <!-- Transit Gateway + Region B -->
+            <rect x="654" y="180" width="112" height="52" rx="8" fill="#fff" stroke="var(--analysis)" />
+            <text x="710" y="202" text-anchor="middle" font-size="11" fill="var(--text)">Transit Gateway</text>
+            <text x="710" y="219" text-anchor="middle" font-size="10" fill="var(--text-faint)">리전 간 연결</text>
+
+            <rect x="654" y="270" width="238" height="156" rx="10" fill="none" stroke="var(--pbm)" stroke-dasharray="5 4" />
+            <text x="666" y="290" font-size="11" fill="var(--pbm)">Region B (원거리 유저용)</text>
+            <rect x="676" y="304" width="194" height="104" rx="8" fill="#fff" stroke="var(--validate)" />
+            <text x="773" y="348" text-anchor="middle" font-size="12" fill="var(--text)">게임 서버 플릿</text>
+            <text x="773" y="366" text-anchor="middle" font-size="10" fill="var(--text-faint)">서버만 복제 · DB는 홈 리전</text>
+
+            <g stroke="var(--text-faint)" fill="none" marker-end="url(#a3)">
+              <path d="M78,229 L100,229 L100,225 L132,225" />
+              <path d="M78,295 L100,295 L100,318 L332,318" />
+              <path d="M388,248 L388,232" />
+              <path d="M454,192 L498,192" />
+              <path d="M454,318 L498,318" />
+              <path d="M620,206 L650,206" />
+              <path d="M710,232 L710,266" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">①과 ②를 반씩 섞은 구조입니다</div>
+            <p>
+              게임 서버는 <strong>한 판 동안만</strong> 상태를 갖습니다. 그래서 ②처럼
+              <strong>플릿에 고정 IP</strong>를 붙여 직접 접속시키되, ①처럼 로비·로그인은
+              <strong>Auto Scaling</strong>으로 굴립니다. 자동으로 못 늘리는 대신
+              <strong>매치메이킹이 "빈 서버에 방을 꽂는" 역할</strong>을 하는 게 이 장르의 추가 부품입니다.
+              오른쪽 <strong>Region B는 DB까지 복제한 게 아니라 서버 플릿만</strong> 둔 것 —
+              멀리 있는 유저의 핑만 줄이고 데이터는 홈 리전 하나로 유지하는 방식입니다.
+              상단의 <strong>EventBridge · SQS · Lambda</strong>는 전투 결과 정산처럼
+              즉답이 필요 없는 일을 큐로 빼는 배관입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="gamelift">
+        <h2 class="doc-h2">
+          ④ 세션 기반 — GameLift + 서버리스
+          <span class="doc-h2-sub">③에서 직접 운영하던 부분을 통째로 AWS에 넘긴 버전</span>
+        </h2>
+
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 450" width="900" height="450" role="img"
+               aria-label="GameLift와 서버리스를 쓴 세션 기반 게임의 AWS 구성도">
+            <defs>
+              <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-faint)" />
+              </marker>
+            </defs>
+
+            <!-- 상단: 멀티 리전 플릿. 홈 리전 한 곳에서 관리된다는 게 ③과의 차이라
+                 위쪽에 나란히 띄우고 아래 GameLift 한 점으로 모은다. -->
+            <rect x="404" y="24" width="140" height="76" rx="10" fill="none" stroke="var(--pbm)" stroke-dasharray="5 4" />
+            <text x="414" y="42" font-size="10" fill="var(--pbm)">Region</text>
+            <rect x="418" y="50" width="112" height="38" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="474" y="74" text-anchor="middle" font-size="11" fill="var(--text)">GameLift 플릿</text>
+
+            <rect x="560" y="24" width="140" height="76" rx="10" fill="none" stroke="var(--pbm)" stroke-dasharray="5 4" />
+            <text x="570" y="42" font-size="10" fill="var(--pbm)">Region</text>
+            <rect x="574" y="50" width="112" height="38" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="630" y="74" text-anchor="middle" font-size="11" fill="var(--text)">GameLift 플릿</text>
+
+            <rect x="716" y="24" width="140" height="76" rx="10" fill="none" stroke="var(--pbm)" stroke-dasharray="5 4" />
+            <text x="726" y="42" font-size="10" fill="var(--pbm)">Region</text>
+            <rect x="730" y="50" width="112" height="38" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="786" y="74" text-anchor="middle" font-size="11" fill="var(--text)">GameLift 플릿</text>
+
+            <rect x="8" y="206" width="70" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="43" y="234" text-anchor="middle" font-size="13" fill="var(--text)">유저</text>
+            <rect x="8" y="152" width="70" height="44" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="43" y="180" text-anchor="middle" font-size="10" fill="var(--text)">GA</text>
+            <rect x="8" y="272" width="70" height="44" rx="8" fill="#fff" stroke="var(--deploy)" />
+            <text x="43" y="293" text-anchor="middle" font-size="10" fill="var(--text)">CDN</text>
+            <text x="43" y="307" text-anchor="middle" font-size="10" fill="var(--text-faint)">WAF</text>
+
+            <!-- 홈 리전 -->
+            <rect x="104" y="126" width="788" height="300" rx="10" fill="none" stroke="var(--pbm)" stroke-dasharray="5 4" />
+            <text x="116" y="146" font-size="11" fill="var(--pbm)">Region (홈)</text>
+
+            <rect x="404" y="156" width="180" height="52" rx="8" fill="#fff" stroke="var(--validate)" />
+            <text x="494" y="178" text-anchor="middle" font-size="12" fill="var(--text)">GameLift</text>
+            <text x="494" y="194" text-anchor="middle" font-size="10" fill="var(--text-faint)">매치메이킹 · 플릿 관리</text>
+
+            <rect x="612" y="156" width="272" height="42" rx="8" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="748" y="182" text-anchor="middle" font-size="11" fill="var(--text-dim)">EventBridge · SQS</text>
+
+            <rect x="120" y="238" width="152" height="170" rx="10" fill="none" stroke="var(--balance)" />
+            <text x="130" y="258" font-size="11" fill="var(--balance)">Public subnet</text>
+            <rect x="136" y="292" width="120" height="72" rx="8" fill="#fff" stroke="var(--analysis)" />
+            <text x="196" y="324" text-anchor="middle" font-size="12" fill="var(--text)">API Gateway</text>
+            <text x="196" y="341" text-anchor="middle" font-size="10" fill="var(--text-faint)">ELB 대체</text>
+
+            <rect x="292" y="238" width="292" height="170" rx="10" fill="var(--surface-3)" stroke="var(--border)" stroke-dasharray="4 3" />
+            <text x="438" y="262" text-anchor="middle" font-size="11" fill="var(--text-dim)">서버리스 백엔드 — 상시 서버 0대</text>
+            <rect x="308" y="286" width="84" height="88" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="350" y="336" text-anchor="middle" font-size="11" fill="var(--text)">Lobby</text>
+            <rect x="396" y="286" width="84" height="88" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="438" y="336" text-anchor="middle" font-size="11" fill="var(--text)">Result</text>
+            <rect x="484" y="286" width="84" height="88" rx="6" fill="#fff" stroke="var(--validate)" />
+            <text x="526" y="336" text-anchor="middle" font-size="11" fill="var(--text)">Battle</text>
+            <text x="438" y="396" text-anchor="middle" font-size="10" fill="var(--text-faint)">Lambda 3종</text>
+
+            <rect x="612" y="238" width="272" height="170" rx="10" fill="none" stroke="var(--analysis)" />
+            <text x="622" y="258" font-size="11" fill="var(--analysis)">Private subnet</text>
+            <rect x="630" y="282" width="118" height="100" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="689" y="326" text-anchor="middle" font-size="12" fill="var(--text)">RDS</text>
+            <text x="689" y="344" text-anchor="middle" font-size="10" fill="var(--text-faint)">관계형</text>
+            <rect x="760" y="282" width="112" height="100" rx="8" fill="#fff" stroke="var(--plan)" />
+            <text x="816" y="326" text-anchor="middle" font-size="11" fill="var(--text)">캐시 · NoSQL</text>
+
+            <g stroke="var(--text-faint)" fill="none" marker-end="url(#a4)">
+              <path d="M43,206 L43,196" />
+              <path d="M43,252 L43,270" />
+              <path d="M78,174 L392,174 L392,180 L400,180" />
+              <path d="M78,294 L100,294 L100,326 L132,326" />
+              <path d="M256,328 L304,328" />
+              <path d="M568,328 L608,328" />
+              <path d="M494,156 L494,120 L474,120 L474,104" />
+              <path d="M494,120 L630,120 L630,104" />
+              <path d="M494,120 L786,120 L786,104" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">③과 비교하면 "무엇을 안 하게 되는지"가 이 그림의 내용입니다</div>
+            <p>
+              직접 짜던 <strong>매치메이킹 · 서버 플릿 기동/회수 · 리전 배치</strong>가
+              <strong>GameLift 한 상자</strong>로 들어가고, 로비·결과·전투 로직은
+              <strong>Lambda</strong>로 바뀌어 <strong>상시 서버가 0대</strong>가 됩니다.
+              ELB 자리는 <strong>API Gateway</strong>가 대신합니다.
+              대가는 <strong>GameLift 종속</strong>과 <strong>Lambda 특성</strong>(콜드 스타트,
+              실행 시간 상한)이라, 한 판이 길거나 서버가 계속 틱을 돌려야 하는 게임에는 안 맞습니다.
+              원본은 이 트레이드오프를 <strong>한 줄도 적어두지 않았습니다</strong>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="compare">
+        <h2 class="doc-h2">비교 <span class="doc-h2-sub">한 표로 접으면 이렇게 됩니다</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>축</th>
+                <th>① 웹 비동기</th>
+                <th>② MMORPG</th>
+                <th>③ 세션 자체구축</th>
+                <th>④ GameLift + SLS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>서버 상태</b></td>
+                <td>없음</td>
+                <td>월드 단위 · 영구</td>
+                <td>한 판 동안</td>
+                <td>한 판 동안</td>
+              </tr>
+              <tr>
+                <td><b>진입 경로</b></td>
+                <td>CloudFront → ELB</td>
+                <td>Global Accelerator</td>
+                <td>GA + ELB</td>
+                <td>GA + API Gateway</td>
+              </tr>
+              <tr>
+                <td><b>스케일 단위</b></td>
+                <td>인스턴스 (ASG)</td>
+                <td>월드 통째</td>
+                <td>플릿 + 로비 ASG</td>
+                <td>AWS가 처리</td>
+              </tr>
+              <tr>
+                <td><b>멀티 리전</b></td>
+                <td>✕</td>
+                <td>✕</td>
+                <td>○ Transit Gateway</td>
+                <td>○ GameLift 내장</td>
+              </tr>
+              <tr>
+                <td><b>상시 서버</b></td>
+                <td>있음 (혼용 가능)</td>
+                <td>많음</td>
+                <td>많음</td>
+                <td>0대</td>
+              </tr>
+              <tr>
+                <td><b>비용 성격</b></td>
+                <td>트래픽 비례</td>
+                <td>고정비 큼</td>
+                <td>고정비 큼</td>
+                <td>사용량 비례</td>
+              </tr>
+              <tr>
+                <td><b>운영 부담</b></td>
+                <td>중</td>
+                <td>상</td>
+                <td>상</td>
+                <td>하 (대신 종속)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 표를 읽는 법 — 세로로 고르는 게 아니라 가로로 확인하는 표입니다</div>
+            <p>
+              장르가 정해지면 <strong>1행(서버 상태)이 자동으로 정해지고, 나머지 6행은 거의 따라옵니다</strong>.
+              그래서 "우리는 ③이 좋을까 ④가 좋을까" 같은 질문은 <strong>1행이 같은 ③·④ 사이에서만</strong>
+              의미가 있습니다. ①과 ②는 고르는 대상이 아니라 게임 형태가 이미 결정한 결과입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">원본 문서의 한계 — 도입 판단에는 그대로 못 씁니다</div>
+            <p>
+              4장 어디에도 <strong>규모 기준(DAU 몇부터 이 구성인지) · 비용 · 인스턴스 사양 ·
+              장애 대응</strong>이 없습니다. 운영 도구 6종도 선 없이 나열만 돼 있어
+              <strong>어디에 붙는지 모릅니다</strong>. 실제 검토로 넘어가려면
+              <strong>우리 트래픽 수치를 넣은 견적</strong>을 따로 요청해야 합니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 원본 PDF 4페이지를 전부 이미지로 렌더링해 아이콘·연결선·그룹 경계를 판독했습니다.
+          위 4개 그림은 <b>원본을 옮겨 그린 것</b>이며, 공통분(DNS · CDN · WAF · Shield · 운영 도구 6종)은
+          가독성을 위해 ① 외에는 생략했습니다.
+          <b>추정</b> 원본 아이콘 중 라벨이 없는 DB 4종은 정확한 서비스명을 특정할 수 없어
+          <code>RDS 계열</code> · <code>캐시 · NoSQL</code>로 뭉뚱그렸습니다(Aurora인지 RDS Multi-AZ인지,
+          ElastiCache인지 MemoryDB인지 구분 불가). ③·④ 상단의 <code>SQS</code>도 아이콘 판독 기준 추정입니다.
+          <b>원본</b> <code>메가존클라우드_게임 장르별 아키텍처 자료.pdf</code> (2024).
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
