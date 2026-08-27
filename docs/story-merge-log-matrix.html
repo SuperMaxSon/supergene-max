@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>스토리 머지 — 로그 적용 매트릭스</title>
+    <meta
+      name="description"
+      content="주요 게임 5개의 로그 정의를 전량 실측해서, 스토리 머지 프로토에 무엇을 넣을 수 있고 무엇을 못 넣는지 O/X 로 가른 매트릭스. 넣는 경우의 삽입 타이밍까지 표기."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#basis">기준</a>
+        <a class="nav-back" href="#matrix">적용 매트릭스</a>
+        <a class="nav-back" href="#new">신규 정의</a>
+        <a class="nav-back" href="#block">못 넣는 것</a>
+        <a class="nav-back" href="#wire">선행 작업</a>
+        <a class="nav-back" href="#order">넣는 순서</a>
+        <a class="nav-back" href="#scope">확인 범위</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 로그 설계</div>
+        <h1 class="doc-title">스토리 머지 — 로그 적용 매트릭스</h1>
+        <p class="doc-lede">
+          주요 게임 <b>5개</b>(솔리테어 · 코지타일 · 코인매치 · 마종 · 블록블라스트)의 로그 정의를
+          전량 읽어서, 그중 <b>스토리 머지 프로토가 지금 실제로 발화시킬 수 있는 것</b>만 골라낸
+          문서입니다. 판정 기준은 취향이 아니라 <b>코드에 그 경로가 존재하는가</b> 하나입니다 —
+          기능이 없으면 이벤트도 없습니다. 각 칸은 <b>✅ 넣을 수 있음 / 🔶 조건부 / ❌ 못 넣음</b>이고,
+          ✅·🔶 에는 <b>어느 시점에 꽂는지</b>를 같이 적었습니다. 읽는 순서는
+          <b>기준 → 매트릭스 → 신규 정의 → 못 넣는 것 → 선행 작업</b>이고, 마지막
+          <b>선행 작업 2건</b>이 풀리기 전에는 이 표의 ✅ 가 전부 0건으로 나갑니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--analysis)">스토리 머지 프로토</span>
+          <span class="tag">5개 리포 main 브랜치 LogManager 전량 실측</span>
+          <span class="tag">기준 커밋 002df73</span>
+          <span class="tag">타이밍은 성숙 게임 콜사이트 관례 기준</span>
+          <span class="tag">v1.0 · 2026-08-27</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- 1단: 대조군의 크기와 프로토의 현재값(0)을 먼저 못 박는다.
+           "왜 대부분 X 인가"의 분모가 여기라서 매트릭스보다 앞에 둔다. -->
+      <section class="doc-section" id="basis">
+        <h2 class="doc-h2">기준 <span class="doc-h2-sub">대조군 5개 · 프로토 현재값</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--analysis)">
+            <div class="stat-num">434<span class="stat-unit">개</span></div>
+            <div class="stat-name">최대 보유 게임</div>
+            <div class="stat-sub">코인매치. 최소는 블록블라스트 280개</div>
+          </div>
+          <div class="stat" style="--acc: var(--plan)">
+            <div class="stat-num">78<span class="stat-unit">개</span></div>
+            <div class="stat-name">5게임 공통 코어</div>
+            <div class="stat-sub">코드·이름까지 동일한 것만 센 값</div>
+          </div>
+          <div class="stat" style="--acc: var(--balance)">
+            <div class="stat-num">~25<span class="stat-unit">곳</span></div>
+            <div class="stat-name">프로토 기존 콜사이트</div>
+            <div class="stat-sub">이미 <code>BaseLogManager.log()</code> 를 부르고 있음</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">0<span class="stat-unit">건</span></div>
+            <div class="stat-name">실제 전송량</div>
+            <div class="stat-sub">이벤트맵 공백 + <code>log()</code> 본문 주석</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>게임</th>
+                <th>LogManager 파일</th>
+                <th style="text-align: right">이벤트 수</th>
+                <th>등록 방식</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>솔리테어</b> 트라이픽스</td>
+                <td><code>common/log/SolitaireTripeaksLogManager.ts</code></td>
+                <td style="text-align: right">369</td>
+                <td><code>registLogEvent</code> 레지스트리 + <code>LogType</code> enum</td>
+              </tr>
+              <tr>
+                <td><b>코지타일</b></td>
+                <td><code>common/LogManager.ts</code></td>
+                <td style="text-align: right">388</td>
+                <td>메서드마다 문자열 직접 <code>Fbi.logEvent</code></td>
+              </tr>
+              <tr>
+                <td><b>코인매치</b></td>
+                <td><code>common/LogManager.ts</code></td>
+                <td style="text-align: right">434</td>
+                <td>전 멤버 <code>static</code> · 문자열 직접</td>
+              </tr>
+              <tr>
+                <td><b>마종</b></td>
+                <td><code>common/LogManager.ts</code></td>
+                <td style="text-align: right">341</td>
+                <td>문자열 직접</td>
+              </tr>
+              <tr>
+                <td><b>블록블라스트</b></td>
+                <td><code>common/LogManager.ts</code></td>
+                <td style="text-align: right">280</td>
+                <td>문자열 직접</td>
+              </tr>
+              <tr class="is-dead">
+                <td><b>스토리 머지</b> 프로토</td>
+                <td><code>common/log/StoryMergeProtoLogManager.ts</code></td>
+                <td style="text-align: right">0</td>
+                <td>레지스트리 구조는 상속 · 등록 0건 (20줄)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              이벤트 수는 <strong>파일 안에서 실제로 발화 가능한 고유 이벤트명</strong>만 센 값입니다
+              (주석 처리분 제외). 숫자 차이는 성숙도 차이가 아니라 <strong>기능 개수 차이</strong>입니다 —
+              코인매치가 가장 많은 이유는 몬스터 · 가챠 · 머지 · UGC · 레이드가 다 붙어 있기 때문입니다.
+              스토리 머지의 <code>0</code> 은 "아직 안 붙였다"가 아니라
+              <strong>의도적으로 비워둔 상태</strong>입니다 — <code>StoryMergeProtoLogManager</code> 독스트링에
+              <em>"The comparison study deliberately has no analytics"</em> 라고 명시돼 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">등록 방식이 왜 중요한가</div>
+            <p>
+              스토리 머지는 솔리테어 계열의 <strong>레지스트리 방식</strong>을 상속받았습니다. 즉
+              <code>LogType</code> enum(≈110개)은 이미 있고 <code>registLogEvent(LogType.X, "0000_NAME")</code>
+              매핑만 비어 있습니다. 문자열 직접 방식(코지·코인·마종·블블)과 달리
+              <strong>이벤트명 매핑 한 곳만 채우면 기존 콜사이트가 전부 살아납니다</strong>.
+              이것이 아래 "즉시 가능" 판정이 나오는 근거입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2단: 본문. 코드 대역 순서로 훑되, 게임별 보유 여부를 옆에 둬서
+           "다른 게임엔 있는데 우리만 없는 것"이 눈에 잡히게 한다. -->
+      <section class="doc-section" id="matrix">
+        <h2 class="doc-h2">적용 매트릭스 <span class="doc-h2-sub">코드 대역별 · 게임 대조</span></h2>
+
+        <!-- .legend 의 스와치는 currentColor 라서 --acc 를 안 읽는다.
+             판정색을 살리려면 --acc 를 읽는 .pill 이 맞다. -->
+        <div class="doc-meta" style="margin-bottom: 16px">
+          <span class="pill" style="--acc: var(--ok)">✅ 넣을 수 있음 — 코드 경로 존재</span>
+          <span class="pill" style="--acc: var(--warn)">🔶 조건부 — 의미 재정의 / 기능 추가 필요</span>
+          <span class="pill" style="--acc: var(--bad)">❌ 못 넣음 — 기능 자체가 없음</span>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>대역</th>
+                <th>계열</th>
+                <th style="text-align: center">솔</th>
+                <th style="text-align: center">코지</th>
+                <th style="text-align: center">코인</th>
+                <th style="text-align: center">마종</th>
+                <th style="text-align: center">블블</th>
+                <th style="text-align: center">머지</th>
+                <th>삽입 타이밍</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>1000</code></td>
+                <td>LOGIN_COMPLETE</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td>인트로 DAG <code>loginLog</code> 노드 · <code>login</code> 완료 직후. 콜사이트 이미 있음</td>
+              </tr>
+              <tr>
+                <td><code>1010</code></td>
+                <td>LOAD_COMPLETE</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td><b>첫 인터랙티브 프레임</b> — <code>ViewStory.onShowStart</code>. 1회성. 여기서 <code>injectIntroTime</code> 끔</td>
+              </tr>
+              <tr>
+                <td><code>1110~1220</code></td>
+                <td>PLAYTIME 12단</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td><code>logPlayTime()</code> 를 <code>logLoginComplete()</code> <b>await 전</b>에 시작. 10초 인터벌</td>
+              </tr>
+              <tr>
+                <td><code>INTRO_*</code></td>
+                <td>인트로 단계 브래킷 23종</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td>DAG 노드마다 <code>await</code> 를 <code>X</code> / <code>X_FINISH</code> 로 감쌈. <b>콜사이트 이미 있음</b></td>
+              </tr>
+              <tr>
+                <td><code>2100</code></td>
+                <td>GAMEPLAY_START</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">🔶</td>
+                <td><b>의미 재정의 필요</b> — "스테이지 시작" 대신 <b>스토리 러너 시작</b>. 프리로드+인트로 게이트 통과 직후, 첫 노드 전</td>
+              </tr>
+              <tr>
+                <td><code>2300</code></td>
+                <td>GAMEPLAY_FINISH</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">🔶</td>
+                <td><b>재정의</b> — 11/11 완주 assert 통과 직후. 실패 경로는 이탈뿐이라 <code>result</code> 값이 사실상 단일</td>
+              </tr>
+              <tr>
+                <td><code>2109 / 9990</code></td>
+                <td>첫 터치</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td>인트로 영상 이후 <b>첫 advance tap</b>. 가드 통과 후 · 진행 로직 전. 1회성 플래그</td>
+              </tr>
+              <tr>
+                <td><code>2120~2130</code></td>
+                <td>첫 매치 / NRU 진행</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td><code>SimpleMergeBoardModel</code> 첫 머지 성립 직후 (콤보/점수 반영 전). 1회성</td>
+              </tr>
+              <tr>
+                <td><code>214x~219x</code></td>
+                <td>아이템 · 부스터 Try/Success/Fail</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>아이템·부스터·언두·힌트 <b>전량 없음</b></td>
+              </tr>
+              <tr>
+                <td><code>220x~221x</code></td>
+                <td>컨티뉴 · 재도전</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">🔶</td>
+                <td>실패 개념이 없음. 다만 <b>BACK → PopupTask 재노출</b> 루프가 있어 <b>재시도 카운트</b>로는 잡힘</td>
+              </tr>
+              <tr>
+                <td><code>211x</code></td>
+                <td>튜토리얼 스텝</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>튜토리얼 · 핸드포인터 시스템 없음</td>
+              </tr>
+              <tr>
+                <td><code>24xx~25xx</code></td>
+                <td>결과 화면 · 보상 클레임</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>결과 화면 자체가 없음. 완주 시 <code>COMPLETE 11/11</code> 라벨로 종료</td>
+              </tr>
+              <tr>
+                <td><code>3000~3020</code></td>
+                <td>컨텍스트 스위치</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td><code>PopupSwitchContext</code> 스크립트는 있으나 <b>프리팹 없음</b> · 호출부 0</td>
+              </tr>
+              <tr>
+                <td><code>3100~3320</code></td>
+                <td>토너먼트 생성 · 공유 · 포스트</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>토너먼트 기능 전무</td>
+              </tr>
+              <tr>
+                <td><code>3400~3450</code></td>
+                <td>P2P 메시지</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>메시지 전송 지면 없음 · 오버레이 XML 에셋 0</td>
+              </tr>
+              <tr>
+                <td><code>3500~3520</code></td>
+                <td>피드 공유</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>공유 버튼 없음</td>
+              </tr>
+              <tr>
+                <td><code>36xx / 37xx</code></td>
+                <td>스크린샷 공유 · 친구 선택</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td><code>PopupScreenShotTarget</code> 프리팹 없음</td>
+              </tr>
+              <tr>
+                <td><code>4000~4090</code></td>
+                <td>전면광고 + 프리로드</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td><code>ADManager</code> 는 있으나 <b>호출부 0</b></td>
+              </tr>
+              <tr>
+                <td><code>4200~4290</code></td>
+                <td>보상형 광고(RV)</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>RV 지면 없음 (보상 지급 개념 자체가 없음)</td>
+              </tr>
+              <tr>
+                <td><code>43xx</code></td>
+                <td>배너</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td><code>hideBannerAd()</code> 만 리사이즈 훅에서 호출. 로드/표시 경로 없음</td>
+              </tr>
+              <tr>
+                <td><code>5xxx</code></td>
+                <td>로비 · 상점 · 컬렉션 · 리더보드 · 데일리</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>로비 지면 자체가 없음 — 인트로 → 스토리 직행</td>
+              </tr>
+              <tr>
+                <td><code>6000</code></td>
+                <td>FRIEND_COUNT</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td><code>fbFriend</code> DAG 노드 · 친구목록 resolve 직후. <b>콜사이트 이미 있음</b></td>
+              </tr>
+              <tr>
+                <td><code>601x~603x</code></td>
+                <td>재화 · 레벨 · 진행도 스냅샷</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td><code>DataManager.coin</code> 이 <code>return 0</code> 하드코딩 · 플레이어 모델 없음</td>
+              </tr>
+              <tr>
+                <td><code>6040</code></td>
+                <td>SETTING_LANGUAGE</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td><code>BaseIntro.loadSettings()</code> 언어 결정 시점. <b>콜사이트 이미 있음</b></td>
+              </tr>
+              <tr>
+                <td><code>7xxx</code></td>
+                <td>헤더 · 로비 버튼</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>프로토 전체 클릭 핸들러가 5개 (<code>Skip · Back · Continue · Start · UserProfile</code>)</td>
+              </tr>
+              <tr>
+                <td><code>80xx~805x</code></td>
+                <td>설정 · 언어 · 개인정보 팝업</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">🔶</td>
+                <td><b>스크립트·로그 호출부 완비, 프리팹 없음</b>. 프리팹 + 진입 버튼만 붙이면 그날 살아남</td>
+              </tr>
+              <tr>
+                <td><code>89xx</code></td>
+                <td>에러 배너 · 재시도 · 재시작 팝업</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">🔶</td>
+                <td><code>ViewCreator</code> 의 show 헬퍼 최상단에 로그가 <b>이미</b> 있음. <code>PopupError</code> 프리팹만 필요</td>
+              </tr>
+              <tr>
+                <td><code>9000~9300</code></td>
+                <td>FB API · 서버 · 클라이언트 에러 / 로그</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td><code>NetworkManager</code> 비200 응답 파싱 시점 · <code>CCstorage</code> 프라이빗모드 catch</td>
+              </tr>
+              <tr>
+                <td><code>NETWORK_*</code></td>
+                <td>타임아웃 / 리트라이 / 초과</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td>타임아웃 시 <code>TIMEOUT</code> 먼저 → 재시도면 <code>RETRY</code>, 예산 소진이면 <code>RETRY_OVER</code></td>
+              </tr>
+              <tr>
+                <td><code>940x</code></td>
+                <td>재화 트랜잭션 로그</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td>재화 자체가 없음. <code>reward_1_item: exp 15</code> 는 <b>텍스트로만 렌더</b></td>
+              </tr>
+              <tr>
+                <td><code>950x</code></td>
+                <td>IAP 미소비 지급</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td><code>iapSuccess</code>/<code>iapRefund</code> 전부 빈 스텁 · <code>checkConsume</code> 콜백 본문 주석</td>
+              </tr>
+              <tr>
+                <td><code>1000x</code></td>
+                <td>리텐션 D1~D28</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td style="text-align: center">❌</td>
+                <td>플랫폼 스토리지 기반 접속일 판정 필요 — 저장 키 0개</td>
+              </tr>
+              <tr>
+                <td><code>1101x</code></td>
+                <td>RV / P2P 누적 마케팅 카운트</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>RV·P2P 원본 이벤트가 없으므로 파생 카운트도 불가</td>
+              </tr>
+              <tr>
+                <td><code>200xx</code></td>
+                <td>광고 다운로드 디버그</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">✅</td>
+                <td style="text-align: center">❌</td>
+                <td>광고 세트 다운로드 경로 없음</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              게임 5칸은 <strong>"그 게임이 이 계열을 갖고 있나"</strong>만 표시합니다 — 이름·코드가
+              게임마다 조금씩 다르므로 <strong>계열 단위</strong>로 묶었습니다. 판정의 핵심은 마지막
+              <b>머지</b> 칸이고, 근거는 항상 <strong>호출부가 존재하는가</strong>입니다.
+              스크립트가 리포에 있어도 <strong>프리팹이 없으면 도달 불가 = ❌ 또는 🔶</strong>로 봤습니다
+              (<code>ViewManager.load</code> 가 실패하기 때문). 이 구분이 중요한 이유는,
+              🔶 중 상당수가 <strong>프리팹 하나만 만들면 그날 ✅ 로 바뀌는 것</strong>이라
+              작업량 견적이 완전히 다르기 때문입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">✅ 15계열의 성격 — 대부분 "이미 심겨 있다"</div>
+            <p>
+              ✅ 로 잡힌 것 중 <code>1000</code> · <code>INTRO_*</code> · <code>6000</code> ·
+              <code>6040</code> · <code>9000~9300</code> · <code>89xx</code> 는
+              <strong>프로토에 이미 <code>BaseLogManager.log()</code> 호출문이 들어가 있습니다</strong>
+              (총 ~25곳). 즉 코드를 새로 쓰는 작업이 아니라
+              <strong>이벤트명 매핑을 채우고 전송 함수를 되살리는 작업</strong>입니다.
+              신규 코드가 필요한 것은 아래 "신규 정의" 섹션뿐입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">🔶 2100 / 2300 을 재정의해야 하는 이유</div>
+            <p>
+              5게임 전부 <code>2100_GAMEPLAY_START</code> / <code>2300_GAMEPLAY_FINISH</code> 를
+              <strong>스테이지 1판</strong> 단위로 씁니다. 스토리 머지에는 스테이지가 없고
+              <strong>11노드 선형 순회 1회</strong>가 세션 전부입니다. 그대로 쓰면 세션당 1건씩만
+              찍혀 퍼널 분석이 안 됩니다. 그래서 <code>2100/2300</code> 은
+              <strong>스토리 러너 시작/완주</strong>로 두고, 실제 퍼널은 아래
+              <strong>노드 단위 신규 이벤트</strong>로 잡는 것이 맞습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3단: 기존 게임엔 없는 것. 이 게임 고유 기능이라 코드를 새로 짜야 하는 구간.
+           파일·메서드까지 박아서 바로 작업 지시가 되게 한다. -->
+      <section class="doc-section" id="new">
+        <h2 class="doc-h2">신규 정의 <span class="doc-h2-sub">이 게임에만 있는 기능 — 대조군에 선례 없음</span></h2>
+
+        <p class="doc-lede" style="font-size: 15px; margin-bottom: 18px">
+          아래는 <b>기능이 실제로 존재하는데 5개 게임 어디에도 대응 이벤트가 없는 것</b>들입니다.
+          전부 ✅ 이지만 <b>코드를 새로 넣어야 합니다</b>. 코드값은 기존 대역 관례
+          (2xxx 인게임 · 6xxx 세션 · 9xxx 에러)를 따른 <b>제안값</b>입니다.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: center">판정</th>
+                <th>제안 코드 · 이벤트</th>
+                <th>삽입 위치</th>
+                <th>타이밍</th>
+                <th>주요 파라미터</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2010_STORY_INTRO_VIDEO_START</code></td>
+                <td><code>StoryIntroVideoPlayer.play()</code></td>
+                <td><code>armIntroGate()</code> 직후 · 재생 호출 직전</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2011_..._FINISH</code> / <code>2012_..._ERROR</code> / <code>2013_..._TIMEOUT</code></td>
+                <td>동 파일 <code>markIntroFinished()</code> 3경로</td>
+                <td>완료 / 에러 / 20초 워치독 <b>각각 개별 발화</b></td>
+                <td><code>elapsed_ms</code>, <code>error_code</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">🔶</td>
+                <td><code>2100_GAMEPLAY_START</code> (재정의)</td>
+                <td><code>StoryNodeRunner.run()</code></td>
+                <td><code>preload</code> 완료 + <code>waitForIntro()</code> 통과 직후 · 첫 노드 진입 전</td>
+                <td><code>mode</code>, <code>node_total</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2110_STORY_NODE_START</code></td>
+                <td><code>StoryNodeRunner.runNode()</code></td>
+                <td>노드 디스패치 최상단 (연출 시작 전)</td>
+                <td><code>node_order</code>, <code>node_type</code>, <code>scene</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2111_STORY_NODE_FINISH</code></td>
+                <td><code>StoryNodeRunner.completeNode()</code></td>
+                <td>연출 resolve 직후 · 다음 노드 전</td>
+                <td><code>node_order</code>, <code>node_type</code>, <code>dwell_sec</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2120_STORY_DIALOGUE_ADVANCE</code></td>
+                <td>chat <code>onTap</code> / shell <code>onTouchEnd</code></td>
+                <td>탭 처리 확정 직후 (다음 줄 렌더 전)</td>
+                <td><code>node_order</code>, <code>line_index</code>, <code>typing_skipped</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2121_STORY_TYPING_SKIP</code></td>
+                <td>동 핸들러 <code>skipTyping</code> 분기</td>
+                <td>타이핑 중 탭으로 전체 줄 스냅한 순간</td>
+                <td><code>node_order</code>, <code>line_index</code>, <code>elapsed_ms</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2130_STORY_STILLCUT_SHOW</code></td>
+                <td><code>presentStillcut(node)</code></td>
+                <td>크로스페이드 시작 시점</td>
+                <td><code>node_order</code>, <code>cut_id</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">🔶</td>
+                <td><code>2140_STORY_SKIP</code></td>
+                <td><code>FullscreenStoryShell.onClickSkip()</code></td>
+                <td>핸들러 최상단 · 스킵 실행 전</td>
+                <td><code>node_order</code>, <code>elapsed_sec</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2150_STORY_HIDE</code> / <code>2151_STORY_SHOW</code></td>
+                <td><code>EVENT_HIDE</code> / <code>EVENT_SHOW</code> 리스너</td>
+                <td>일시정지·재개 처리와 동일 프레임</td>
+                <td><code>node_order</code>, <code>away_sec</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2200_TASK_POPUP_SHOW</code></td>
+                <td><code>PopupTask.onShowStart()</code></td>
+                <td><code>super.onShowStart()</code> 직후 (관례)</td>
+                <td><code>node_order</code>, <code>gimmick</code>, <code>reward</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2201_TASK_START</code></td>
+                <td><code>PopupTask.onClickStart()</code></td>
+                <td><code>waitForConfirmation()</code> resolve 직전</td>
+                <td><code>node_order</code>, <code>retry_index</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2210_MERGE_BOARD_SHOW</code></td>
+                <td><code>ViewMergeBoard.onShowStart()</code></td>
+                <td><b>보드 구성 완료 후 · 첫 입력 가능 전</b> (솔리테어 관례)</td>
+                <td><code>node_order</code>, <code>gimmick</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2220_MERGE_GENERATOR_TAP</code></td>
+                <td><code>MergeBoardDragItem</code> 생성기 탭</td>
+                <td>스폰 성공 직후 (연출 콜백 전)</td>
+                <td><code>board_item_count</code>, <code>spawn_tier</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2221_MERGE_ITEM_MOVE</code></td>
+                <td><code>SimpleMergeBoardModel</code> 이동 확정</td>
+                <td>빈 칸 이동이 확정된 순간</td>
+                <td><code>from</code>, <code>to</code>, <code>tier</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2222_MERGE_SUCCESS</code></td>
+                <td>동 모델 머지 성립</td>
+                <td>티어 상승 확정 직후 (연출 전)</td>
+                <td><code>tier_from</code>, <code>tier_to</code>, <code>merge_index</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2223_MERGE_REJECT</code></td>
+                <td><code>MergeMoveStatus</code> 거부 분기</td>
+                <td>거부 판정 직후 — <b>사유별로 구분</b></td>
+                <td><code>reason</code> (<code>board_full</code>/<code>tier_max</code>/<code>not_same</code>)</td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2230_TASK_CLEAR</code></td>
+                <td><code>ViewMergeBoard.onClickContinue()</code></td>
+                <td><code>resolve(true)</code> 직전 · <code>play_time</code> 로컬 계산</td>
+                <td><code>node_order</code>, <code>merge_count</code>, <code>play_time</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>2231_TASK_BACK</code></td>
+                <td><code>ViewMergeBoard.onClickBack()</code></td>
+                <td><code>resolve(false)</code> 직전 = <b>재시도 루프 진입</b></td>
+                <td><code>node_order</code>, <code>merge_count</code>, <code>play_time</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">🔶</td>
+                <td><code>2300_GAMEPLAY_FINISH</code> (재정의)</td>
+                <td><code>StoryNodeRunner</code> 완주 지점</td>
+                <td>11/11 assert 통과 직후 · <code>COMPLETE</code> 라벨 세팅 전</td>
+                <td><code>mode</code>, <code>play_time</code>, <code>node_reached</code>, <code>task_retry_total</code></td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>6050_STORY_PRESENTATION_MODE</code></td>
+                <td>인트로 <code>loginLog</code> 노드</td>
+                <td><code>logLoginComplete()</code> resolve 직후 · 1회성</td>
+                <td><code>mode</code> (<code>chat</code>/<code>stillcut</code>/<code>video</code>)</td>
+              </tr>
+              <tr>
+                <td style="text-align: center">✅</td>
+                <td><code>9210_STORY_DATA_ERROR</code></td>
+                <td><code>StoryDataLoader</code> 검증 실패 / 노드 미달 assert</td>
+                <td>throw 하기 <b>전</b></td>
+                <td><code>error_code</code>, <code>node_count</code>, <code>video_count</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">
+              <code>6050_STORY_PRESENTATION_MODE</code> 가 이 목록에서 가장 중요합니다
+            </div>
+            <p>
+              이 프로토의 존재 이유가 <strong>채팅 / 스틸컷 / 영상 연출 방식 A·B 비교</strong>입니다.
+              그런데 연출 모드는 <code>StoryBuildConfig.ts</code> 를
+              <code>scripts/story-build-profile.js</code> 로 <strong>빌드 시점에 갈아끼우는</strong> 구조라
+              (한 빌드에 한 모드만 컴파일) 런타임에는 흔적이 남지 않습니다.
+              <strong>이 세션 차원을 안 넣으면 나머지 이벤트를 다 넣어도 비교가 불가능합니다.</strong>
+              모드별로 앱 ID나 빌드 태그를 나눠도 되지만, <strong>이벤트 파라미터로 박는 것이 가장 안전</strong>합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">🔶 3건의 조건</div>
+            <p>
+              <code>2140_STORY_SKIP</code> 은 <strong>Skip 버튼이 fullscreen 셸에만 있습니다</strong> —
+              현재 체크인된 빌드는 <code>Chat</code> 모드라 그 경로가 활성이 아닙니다
+              (스틸컷/영상 빌드에서만 발화). <code>2100</code>/<code>2300</code> 은 앞서 말한
+              <strong>의미 재정의</strong>가 전제입니다. 재정의 없이 이름만 재사용하면
+              BigQuery 에서 다른 게임과 같은 코드로 <strong>다른 뜻</strong>이 섞입니다 —
+              대조군에서 이미 발생한 문제입니다(코드 충돌 사례가 게임마다 4~8건 있습니다).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4단: X 를 근거와 함께 묶는다. "안 했다"와 "못 한다"를 구분하는 게 목적. -->
+      <section class="doc-section" id="block">
+        <h2 class="doc-h2">못 넣는 것 <span class="doc-h2-sub">기능 부재 vs 도달 불가</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>분류</th>
+                <th>해당 계열</th>
+                <th>근거</th>
+                <th>붙이면 살아나나</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>기능 자체가 없음</b><br /><span class="tag">❌ 확정</span></td>
+                <td>소셜 전량(3xxx) · 광고 전량(4xxx) · IAP(950x) · 로비·상점·컬렉션(5xxx) · 재화(601x/940x) · 아이템·부스터(214x~) · 튜토리얼(211x) · 결과화면(24xx) · 리텐션(1000x) · 마케팅 카운트(1101x)</td>
+                <td>라이브러리 코드는 상속돼 있으나 <b>호출부 0</b>. 기능 붙이는 것이 로그보다 훨씬 큰 작업</td>
+                <td>기능 개발 후</td>
+              </tr>
+              <tr>
+                <td><b>도달 불가 (프리팹 부재)</b><br /><span class="tag">🔶 근접</span></td>
+                <td>설정·언어·개인정보 팝업(80xx~805x) · 에러 팝업(89xx)</td>
+                <td>스크립트 + <b>로그 호출문까지 이미 있음</b>. <code>.prefab</code> 이 없어 <code>ViewManager.load</code> 실패</td>
+                <td><b>프리팹 + 진입 버튼만</b></td>
+              </tr>
+              <tr>
+                <td><b>설계상 존재하지 않음</b><br /><span class="tag">❌ 영구</span></td>
+                <td>선택지 · 분기 · 플래그 · 스토리 재생/이어보기</td>
+                <td><code>node_order</code> 평면 <code>for</code> 순회. <code>StoryNodeType</code> 에 choice 없음. 진행 저장 키 0개 — 리로드마다 1노드부터</td>
+                <td>기획 변경 필요</td>
+              </tr>
+              <tr>
+                <td><b>데이터가 비어 있음</b><br /><span class="tag">❌ 지금은</span></td>
+                <td>decorate 기믹 · 아이템 카탈로그 · 에너지·태스크 코스트</td>
+                <td>노드 4·8 이 <code>gimmick: "decorate"</code> 인데 <code>playMergeTask</code> 는 항상 같은 머지보드를 엶. 아이템명 <code>"CLEANING SPONGE"</code> 하드코딩. <code>task_cost</code> 필드 미사용</td>
+                <td>기능 구현 후</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              같은 ❌ 라도 <strong>붙이는 비용이 완전히 다릅니다</strong>. 2행(프리팹 부재)은
+              <strong>로그 작업이 이미 끝나 있고</strong> UI 껍데기만 없는 상태라, 설정 버튼 하나
+              달면 8~10개 이벤트가 한 번에 살아납니다 — 여기가 가장 값싼 구간입니다.
+              반대로 1행은 기능 개발이 선행이라 <strong>로그 논의 대상이 아닙니다</strong>.
+              3행은 비용 문제가 아니라 <strong>기획이 그렇게 안 돼 있는 것</strong>이라,
+              분기 분석을 원한다면 스토리 데이터 구조부터 바꿔야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5단: 이게 없으면 위 전부 무효. 표 뒤에 두지만 실행 순서상 1번이라 강조한다. -->
+      <section class="doc-section" id="wire">
+        <h2 class="doc-h2">선행 작업 <span class="doc-h2-sub">이거 전엔 ✅ 전량이 0건으로 나감</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: right">#</th>
+                <th>막고 있는 것</th>
+                <th>현재 상태</th>
+                <th>해야 할 일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: right"><b>1</b></td>
+                <td>이벤트명 매핑 공백</td>
+                <td>
+                  <code>LogEventHandler.logEventMap</code> 이 끝까지 비어 있음.
+                  <code>FacebookLogEventHandler.initLogEvent()</code> 의 유일한
+                  <code>addLogEvent</code> 가 주석 처리
+                </td>
+                <td>
+                  <code>StoryMergeProtoLogManager.initLogManager()</code> 에서
+                  <code>registLogEvent(LogType.X, "0000_NAME")</code> 등록.
+                  <b>여기만 채우면 기존 ~25개 콜사이트가 그대로 발화</b>
+                </td>
+              </tr>
+              <tr>
+                <td style="text-align: right"><b>2</b></td>
+                <td>전송 함수 무력화</td>
+                <td>
+                  <code>NetworkManager.log()</code> 본문이
+                  <em>"스토리 프로토타입은 로그/통계 페이로드를 수집하거나 전송하지 않는다"</em>
+                  주석 한 줄. <code>loginLog()</code> 는 <code>Promise.resolve(null)</code>
+                </td>
+                <td>
+                  POST 복원. 로그 호스트 상수는 살아 있음 —
+                  <code>ProjectConfig.SERVER_URL_LOG</code>
+                </td>
+              </tr>
+              <tr>
+                <td style="text-align: right">3</td>
+                <td>앱 식별자가 마종을 가리킴</td>
+                <td>
+                  <code>ProjectConfig.ts</code> 가 마종 프로젝트 그대로
+                  (<code>APP_ID_PROD = "mahjong_prod"</code>, 마종 CDN 경로)
+                </td>
+                <td>
+                  앱 ID · 서버 경로 교체. 안 하면 <b>마종 로그와 같은 테이블에 섞임</b>
+                </td>
+              </tr>
+              <tr>
+                <td style="text-align: right">4</td>
+                <td>플랫폼 인스턴스가 no-op</td>
+                <td>
+                  <code>PlatformSelector.platformType</code> 기본값 <code>Preview</code> 이고
+                  이를 바꾸는 코드가 없음 → 실체는 스텁 <code>BasePlatform</code>
+                </td>
+                <td>
+                  FB 빌드에서 <code>FaceBookPlatform</code> 선택 경로 확인.
+                  안 되면 <code>getLogHandler()</code> 가 FB 핸들러를 못 줌
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">1·2 는 실수가 아니라 의도입니다</div>
+            <p>
+              두 곳 모두 <strong>"수집하지 않는다"는 주석이 명시적으로</strong> 달려 있습니다.
+              연출 비교용 프로토라서 통계를 일부러 뺀 것입니다. 따라서 이건 버그 수정이 아니라
+              <strong>정책 전환</strong>이고, <strong>이 프로토에 로그를 넣을 것인지부터 결정</strong>돼야
+              합니다. 넣기로 하면 1·2는 반나절 작업이고, 그다음부터 위 매트릭스가 의미를 가집니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">3번을 빼먹으면 조용히 오염됩니다</div>
+            <p>
+              앱 ID가 <code>mahjong_prod</code> 인 채로 전송이 살아나면 에러 없이
+              <strong>마종 로그 스트림에 스토리 머지 이벤트가 섞여 들어갑니다</strong>.
+              코드값도 상당수 겹치므로(<code>2100</code>/<code>2300</code>/<code>6040</code> 등)
+              양쪽 대시보드가 동시에 틀어집니다. <strong>1·2보다 3을 먼저 하는 것이 안전합니다.</strong>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6단: 실행 순서. 앞의 판정을 작업 단위로 접는다. -->
+      <section class="doc-section" id="order">
+        <h2 class="doc-h2">넣는 순서 <span class="doc-h2-sub">비용 대비 얻는 것</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: right">단계</th>
+                <th>범위</th>
+                <th style="text-align: right">이벤트</th>
+                <th>얻는 것</th>
+                <th>작업 성격</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: right"><b>0</b></td>
+                <td>선행 작업 3 → 1 → 2</td>
+                <td style="text-align: right">—</td>
+                <td>아무 로그도 이 단계 없이는 안 나감</td>
+                <td>정책 결정 + 반나절</td>
+              </tr>
+              <tr>
+                <td style="text-align: right"><b>1</b></td>
+                <td>부팅·세션 코어 — <code>1000</code> · <code>1010</code> · PLAYTIME 12 · <code>INTRO_*</code> 23 · <code>6000</code> · <code>6040</code> · <code>9000~9300</code> · <code>NETWORK_*</code></td>
+                <td style="text-align: right">~45</td>
+                <td>인트로 이탈 지점 · 로드 시간 · 에러율. <b>다른 게임과 바로 대조 가능</b></td>
+                <td>매핑 등록만 (신규 코드 0)</td>
+              </tr>
+              <tr>
+                <td style="text-align: right"><b>2</b></td>
+                <td>연출 퍼널 — 인트로영상 4 · <code>2100</code>/<code>2300</code> · 노드 2 · 대사 2 · 스틸컷 1 · hide/show 2 · <code>6050</code> · <code>9210</code></td>
+                <td style="text-align: right">~15</td>
+                <td><b>이 프로토의 본 목적</b>. 11노드 중 어디서 나가는지 + 모드별 비교</td>
+                <td>신규 코드 (러너·연출 계층)</td>
+              </tr>
+              <tr>
+                <td style="text-align: right"><b>3</b></td>
+                <td>머지 태스크 — <code>2200</code>/<code>2201</code>/<code>2210</code>/<code>222x</code>/<code>2230</code>/<code>2231</code> · <code>9990</code></td>
+                <td style="text-align: right">~10</td>
+                <td>태스크 이탈률 · BACK 재시도 횟수 · 보드 거부 사유</td>
+                <td>신규 코드 (보드 계층)</td>
+              </tr>
+              <tr>
+                <td style="text-align: right">4</td>
+                <td>설정·에러 팝업 — <code>80xx</code>/<code>89xx</code></td>
+                <td style="text-align: right">~10</td>
+                <td>로그 작업은 이미 끝. UI 껍데기만 필요</td>
+                <td>프리팹 + 진입 버튼</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">1단계를 먼저 하는 이유</div>
+            <p>
+              신규 코드가 <strong>0줄</strong>인데 즉시 <strong>~45개</strong>가 살아나고, 그중 대부분이
+              5게임 공통 코어라 <strong>기존 대시보드·쿼리를 그대로 재사용</strong>할 수 있습니다.
+              반대로 2·3단계는 이 게임 고유라 <strong>쿼리도 새로 써야</strong> 합니다. 다만
+              <strong>프로토의 목적 자체는 2단계</strong>에 있으므로, 1단계는 "배관 검증"으로 두고
+              바로 2단계로 넘어가는 것이 맞습니다 — 1단계가 나오면 배관이 뚫린 것이 증명됩니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="scope">
+        <h2 class="doc-h2">확인 범위</h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">실측한 것</div>
+            <p>
+              대조군 5개 리포 <code>main</code> 브랜치의 LogManager <strong>전문</strong>
+              (솔리테어 <code>SolitaireTripeaksLogManager.ts</code> + <code>BaseLogManager.ts</code>,
+              나머지 4개 <code>common/LogManager.ts</code>) — 등록된 이벤트명·코드·파라미터 키 전량.
+              삽입 타이밍은 솔리테어·코지 두 리포의 <strong>실제 호출부</strong>
+              (<code>BaseIntro</code> · <code>SceneManager</code> · <code>ViewGame</code> ·
+              <code>ViewCozyTile</code> · <code>MergeBoard</code> · 결과·설정 팝업) 기준입니다.
+              프로토 쪽은 <code>assets/script/</code> 전체(229개 <code>.ts</code>)와
+              <code>story_node.json</code> 내용, 프리팹 존재 여부까지 확인했습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">추정인 것</div>
+            <p>
+              <strong>제안 코드값</strong>(<code>2010</code>, <code>2110</code>,
+              <code>6050</code>, <code>9210</code> 등)은 기존 대역 관례를 따른 <strong>제안</strong>이며
+              분석팀 확정 전입니다. 대조군에도 코드 충돌이 게임마다 4~8건 있으니
+              <strong>신규 대역은 확정 후 등록</strong>하는 것이 안전합니다.
+              <strong>이벤트 개수</strong>(~45 / ~15 / ~10)는 계열 단위 추산입니다.
+              4번 선행 작업(<code>PlatformSelector</code>)은 <strong>정적 분석</strong> 결과이며
+              FB 빌드 실기에서 재확인이 필요합니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>다음 단계</b> "이 프로토에 로그를 넣을 것인가"가 먼저 결정돼야 합니다.
+          넣기로 하면 선행 작업 3→1→2 순으로 뚫고 1단계 매핑부터 올립니다.
+          원본 분석 노트는 프로젝트 리포의
+          <code>_ignore/log/research.md</code> 에 있습니다.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
