@@ -168,11 +168,14 @@
 
   .cat-entry { --cc: var(--c-entry); }
   /* 띠 라벨 — 맵 조작을 막지 않게 pointer-events 를 끊는다 */
+  /* 띠 라벨. 맵을 패닝하면 헤더 패널(고정 오버레이) 아래로 들어갈 수 있어
+     배경을 깔아 어디에 놓여도 읽히게 한다. */
   .band-label {
     position: absolute; left: 80px;
     font-size: 12px; font-weight: 800; letter-spacing: .04em;
-    color: var(--faint); pointer-events: none; white-space: nowrap;
-    border-left: 3px solid var(--line); padding-left: 9px; line-height: 1.5;
+    color: var(--muted); pointer-events: none; white-space: nowrap;
+    border-left: 3px solid var(--line); padding: 2px 8px 2px 9px; line-height: 1.5;
+    background: var(--bg); border-radius: 0 3px 3px 0;
   }
 
   .cat-story { --cc: var(--c-story); }
@@ -875,9 +878,12 @@
     hideForGameplay: "머지 보드로 내려갈 때 연출을 접는다",
 
     /* 데이터 */
-    validate: "행 수 · 순번 · 씬:파트 대사 수 · 스틸컷 자리 · 비디오 줄 수를 검사한다. 하나라도 어기면 throw",
-    loadJson: "번들에서 cc.JsonAsset 하나를 읽는다. 배열이 아니면 reject",
+    validate: "노드 11 · 비디오 4 · 순번 · 씬 연결을 검사한다. **대사 총 줄 수는 더 이상 보지 않는다** — 원고가 바뀔 때마다 막히던 검사였다",
     loadBundle: "BundleKey 로 에셋 번들을 올린다",
+    loadStillcutDialogueData: "스틸컷 전용 대사 파일(48행)을 읽고 validateStillcutDialogueData 로 검사한다",
+    validateStillcutDialogueData: "씬별 기대치의 합으로 총합을 계산해 대조한다. say/cut_only 종류와 화자 화이트리스트도 본다",
+    getStillcutSceneId: "node_order 로 스틸컷 씬을 찾는다. 1 · 3 · 5 만 있고 나머지는 빈 문자열",
+    createStillcutPresentationContext: "스틸컷 대사 행을 StoryDialogueData 모양으로 바꾸고 video 행도 코드로 만들어 문맥을 세운다",
 
     /* 전체화면 연출 */
     present: "씬 하나를 재생하고 끝날 때까지 기다린다. 이미 재생 중이면 reject",
@@ -902,20 +908,15 @@
     update: "지난 시각으로 지금 컷을 고른다. 같은 컷이면 아무것도 안 한다",
 
     /* 태스크 */
-    presentTask: "상태 라벨에 태스크 정보를 쓰고 골드 루프로 넘긴다",
-    playCostTask: "골드가 찰 때까지 PopupTask 와 머지 보드를 오가는 while 루프",
-    resolveStoryTaskGoldCost: "task_cost 가 null 이면 TUTORIAL_TASK_GOLD_COST(10) 을 준다",
+    presentTask: "상태 라벨에 태스크 정보를 쓰고, 머지 1회를 끝낼 때까지 PopupTask 와 머지 보드를 오가는 while 루프",
+    playMergeTask: "연출을 접고 머지 보드를 열어 waitForCompletion() 의 boolean 을 기다린다",
     waitForConfirmation: "PopupTask 의 시작 버튼을 누를 때까지 기다린다",
     onClickStart: "확인 처리. 약속을 풀고 팝업을 닫는다. 두 번째 클릭은 버린다",
     configure: "지면에 데이터를 채운다. 제목 · 비용 · 보상 · 진행 문구 · 초상까지",
     makeRewardText: "보상이 none 이거나 0이면 Reward: None, 아니면 종류와 수량을 적는다",
-    spend: "골드를 깎는다. 모자라면 false 를 돌려주고 아무것도 안 깎는다",
-    canSpend: "비용이 0 이상이고 잔액이 그 이상인지",
-    collectMergeOrders: "완료한 주문 수 x 10 골드를 더한다",
-    getGoldBalance: "지금 골드. 세션 안에서만 산다 — 저장되지 않는다",
-    reset: "골드를 0 으로 되돌린다. 러너가 run() 시작에서 부른다",
-    completeCostTask: "완료 목록에 node_id 를 담고 스테이지를 다시 그린다. 이미 있으면 그냥 돌아간다",
-    refreshStoryStage: "스테이지 오브젝트를 완료 목록에 맞춰 켠다. 바인딩이 비면 throw",
+    isQuestComplete: "model.getMergeCount() 가 REQUIRED_MERGE_COUNT(1) 이상인지. 이게 태스크 완료의 유일한 기준이다",
+    coverStageToScreen: "배경(720x949)의 세로를 화면(1280)에 맞춘다. 늦게 붙으면 인트로 영상이 걷히는 한 프레임에 레터박스가 드러난다",
+    refreshItemInfo: "선택한 아이템의 이름과 LEVEL n 을 정보바에 쓴다",
 
     /* 머지 보드 */
     waitForCompletion: "보드가 끝날 때까지 기다린다. 이미 끝났으면 즉시 돌려준다",
@@ -932,15 +933,29 @@
     consumeTier: "그 티어 아이템 하나를 비우고 셀 번호를 돌려준다",
     findDropCell: "가장 가까운 셀. 56px 을 넘으면 -1",
     getCellPosition: "셀 번호 → 보드 좌표. 6열 기준 피치 78px",
-    getTargetTier: "주문 모드면 지금 주문 티어, 아니면 3 고정",
-    getNextOrderTargetTier: "완료 수가 짝수면 2, 홀수면 3 — 번갈아 간다",
     playMergeFeedback: "합쳐진 아이템 스프라이트를 바꾸고 0.78 → 1.0 backOut 으로 튕긴다",
+    setArtworkSpriteFrame: "타일 안쪽 그림만 갈아끼운다. 테두리 · 면은 그대로 둔다",
     resolveCompletion: "결과를 담아 waitForCompletion() 의 약속을 푼다. 한 번만 통한다",
+
+    /* 인트로 영상 · 게이트 */
+    armIntroGate: "인트로 재생을 시작했다고 표시한다. 이 시점부터 러너는 첫 대사 전에 기다린다",
+    markIntroFinished: "인트로가 끝났다. 기다리던 러너를 풀어준다",
+    waitForIntro: "인트로가 걸려 있으면 끝날 때까지 기다린다. arm 한 적이 없으면 즉시 통과",
+    finishIntro: "영상 정지 · clip 비우기 · stayOnBottom 복구 · 러너 노드 켜기 · 게이트 해제를 한 번에. hasFinished 로 한 번만 통한다",
+    onPlaybackTimeout: "20초가 지나면 영상을 포기하고 진행한다",
+    onVideoCompleted: "영상이 끝났다 — finishIntro()",
+    onVideoError: "재생 실패 — 경고를 남기고 finishIntro() 로 넘어간다",
+    onClickSkip: "전체화면 연출의 건너뛰기. video.skippable_after_sec 이 지나기 전에는 무시한다",
 
     /* 채팅 */
     onTap: "채팅 탭. 타이핑 중이면 그 줄을 즉시 완성하고, 아니면 다음 줄로 넘어간다",
-    collectPreloadPaths: "말풍선 프레임 · 초상 · 삽입 스틸컷 경로를 모은다",
+    collectPreloadPaths: "말풍선 프레임 · 초상 · 삽화 경로를 모은다",
     validateBindings: "채팅 연출이 필요한 바인딩이 다 있는지 검사한다",
+    getStoryCharacterTheme: "화자 이름으로 말풍선 · 이름표 · 외곽선 에셋과 색을 고른다. 미등록 화자면 throw",
+    matches: "그 행이 같은 화자 · 같은 방향인지. 맞으면 행을 이어 쓴다",
+    playShow: "행을 0.9배에서 0.18초에 걸쳐 올린다",
+    playHide: "행을 0.16초에 걸쳐 내린다",
+    playPortrait: "초상 프레임 배열을 12fps 로 돌린다",
 
     /* 빌드 */
     readProfile: "story-build-profiles/{mode}.json 을 읽고 validateProfile() 로 검사한다",
@@ -949,39 +964,53 @@
   };
 
   /* 프리팹 노드 이름만으로는 뭔지 모를 때 붙이는 사람 이름 */
+  /* 프리팹 노드 이름만으로는 뭔지 모를 때 붙이는 사람 이름.
+     v1.0 에서 12개가 프리팹에서 사라졌다 — 골드 표시(Cost · GoldProgress · OrderProgress) ·
+     옛 캐스트 초상(Olivia · Colton · Sam) · 꾸미기 오브젝트(꽃병 · 식탁) ·
+     프리팹에 박혀 있던 채팅 행(Portrait · ChatBubble · SpeakerName · Dialogue). */
   const BTNNAME = {
     profile: "프로필",
     StartButton: "태스크 시작",
-    ContinueButton: "주문 완료",
+    ContinueButton: "퀘스트 완료 (CLEAR)",
     BackButton: "뒤로",
+    SkipButton: "건너뛰기",
     DimmedLayer: "딤",
     BackgroundPanel: "패널",
-    BoardSurface: "보드 판",
-    Cell00: "보드 셀",
-    Artwork: "아이템 그림",
     Title: "제목",
-    Cost: "비용",
     Reward: "보상",
-    GoldProgress: "골드 진행",
-    OrderProgress: "주문 진행",
+    Objective: "목표 문구 (프리팹 고정)",
+    Poppy: "포피 초상",
+    Brett: "브렛 초상",
+    Rafa: "라파 초상",
+    Background: "배경",
+    WarmScrim: "따뜻한 막",
+    HeaderShadow: "헤더 그림자",
+    HeaderCard: "헤더 카드",
+    BoardShadow: "보드 그림자",
+    BoardEdge: "보드 테두리",
+    BoardSurface: "보드 판",
+    GridWell: "격자 홈",
+    GridTopHighlight: "격자 상단 하이라이트",
+    Cell00: "보드 셀",
+    TileBorder: "타일 테두리",
+    TileFace: "타일 면",
+    Artwork: "아이템 그림",
+    InfoBarShadow: "정보바 그림자",
+    InfoBarEdge: "정보바 테두리",
+    ItemInfoBar: "아이템 정보바",
+    ItemName: "아이템 이름",
+    ItemLevel: "아이템 레벨",
+    MergeProgress: "머지 진행 (n / 1)",
     SelectedItemHint: "안내 문구",
-    Olivia: "올리비아 초상",
-    Colton: "콜튼 초상",
-    Sam: "샘 초상",
     StoryStageBackground: "스테이지 배경",
-    StoryFlowerVaseObject: "꽃병 (task_1_1 완료 시)",
-    StoryTableSettingObject: "식탁 세팅 (set_table 완료 시)",
     StoryRunner: "러너 상태 라벨",
-    Portrait: "채팅 초상",
-    ChatBubble: "말풍선",
-    SpeakerName: "화자 이름",
-    Dialogue: "대사",
     TapHint: "탭 안내",
-    Stillcut: "채팅용 스틸컷",
+    Stillcut: "채팅 피드 삽화",
     StillcutSurfaceA: "스틸컷 서피스 A",
     StillcutSurfaceB: "스틸컷 서피스 B",
     SubtitleBar: "자막 바",
     SubtitleText: "자막",
+    FullscreenSpeakerName: "전체화면 화자 이름",
     loading: "로딩 막",
     box: "코인 바",
     count: "코인 수",
@@ -989,12 +1018,18 @@
   };
 
   /* 로직 표에 없는 프리팹 버튼을 보충한다. "노드id:핸들러" 또는 "핸들러" 로 찾는다 */
+  /* 로직 표에 없는 프리팹 버튼을 보충한다. "노드id:핸들러" 또는 "핸들러" 로 찾는다 */
   const EXTRA = {
     "intro:onClickUserProfile": ["프로필 (죽은 바인딩)",
       "onClickUserProfile() → UserProfileItem 에 그 메소드가 없다 — 인스펙터 바인딩만 남아 있고 addOnclickAction 도 아무 데서도 채우지 않는다. 눌러도 아무 일이 없다"],
-    "merge:onClickBack": ["뒤로", "onClickBack() → resolveCompletion(false) → close() → playCostTask() 의 루프로 돌아간다"],
-    "merge:onClickContinue": ["주문 완료", "onClickContinue() → model.consumeTier(목표) → currentGold += 10 → refreshBoard()"],
-    "task:onClickStart": ["EARN / SPEND GOLD", "onClickStart() → waitForConfirmation() 의 약속을 풀고 close(). 골드 판정은 팝업이 닫힌 뒤 루프가 한다"]
+    "story:onClickSkip": ["건너뛰기 (전체화면 전용)",
+      "onClickSkip() → video.skippable_after_sec 이 지나기 전에는 무시하고, 지나면 finishPresentation(\"skip button\"). 채팅 빌드에서는 비활성이다"],
+    "merge:onClickBack": ["뒤로",
+      "onClickBack() → resolveCompletion(false) → close() → presentTask() 루프가 팝업부터 다시 시작한다"],
+    "merge:onClickContinue": ["퀘스트 완료",
+      "onClickContinue() → isQuestComplete() 확인 → resolveCompletion(true) → close(). 머지 1회 전에는 버튼 자체가 꺼져 있다"],
+    "task:onClickStart": ["START",
+      "onClickStart() → waitForConfirmation() 의 약속을 풀고 close(). 곧바로 머지 보드로 내려간다"]
   };
 
   /* ── 프리팹 실측 화면 요소 ────────────────────────────────────
@@ -1024,89 +1059,100 @@
       { k: "l", n: "count", t: "3,000", x: 0.3931, y: 0.0367, w: 0.2222, hh: 0.0391 },
       { k: "l", n: "text", t: "DEV", x: 0.8367, y: 0.964, w: 0.2858, hh: 0.049 }
     ] },
-    merge: { src: "ViewMergeBoard.prefab", panel: null, parked: 0, folded: 4, nested: 0, runtime: "보드 셀 상태 · 아이템 티어 스프라이트 (SimpleMergeBoardModel)", boxes: [
-      { k: "i", n: "Background", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
-      { k: "i", n: "BoardSurface", x: 0.5, y: 0.5195, w: 0.8194, hh: 0.625 },
+    merge: { src: "ViewMergeBoard.prefab", panel: null, parked: 0, folded: 12, nested: 2, runtime: "보드 셀 상태 · 아이템 티어 스프라이트 (SimpleMergeBoardModel)", boxes: [
+      { k: "i", n: "Background", x: 0.5, y: 0.5, w: 1.35, hh: 0.7414 },
+      { k: "i", n: "WarmScrim", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
+      { k: "i", n: "HeaderShadow", x: 0.5, y: 0.1086, w: 0.7222, hh: 0.1 },
+      { k: "i", n: "HeaderCard", x: 0.5, y: 0.1031, w: 0.7222, hh: 0.1 },
+      { k: "i", n: "BoardShadow", x: 0.5, y: 0.5289, w: 0.8, hh: 0.45 },
+      { k: "i", n: "BoardEdge", x: 0.5, y: 0.7492, w: 0.8, hh: 0.0094 },
+      { k: "i", n: "BoardSurface", x: 0.5, y: 0.5195, w: 0.8, hh: 0.45 },
       { k: "l", n: "Title", t: "CLEAN THE KITCHEN", x: 0.5, y: 0.0742, w: 0.5556, hh: 0.0344 },
-      { k: "l", n: "SelectedItemHint", t: "Tap the generator to create ", x: 0.5, y: 0.8477, w: 0.7083, hh: 0.0328 },
-      { k: "i", n: "Cell00", x: 0.2292, y: 0.3367, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell01", x: 0.3375, y: 0.3367, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell02", x: 0.4458, y: 0.3367, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell03", x: 0.5542, y: 0.3367, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell04", x: 0.6625, y: 0.3367, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell05", x: 0.7708, y: 0.3367, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell06", x: 0.2292, y: 0.3977, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell07", x: 0.3375, y: 0.3977, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell08", x: 0.4458, y: 0.3977, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell09", x: 0.5542, y: 0.3977, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell10", x: 0.6625, y: 0.3977, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell11", x: 0.7708, y: 0.3977, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell12", x: 0.2292, y: 0.4586, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell13", x: 0.3375, y: 0.4586, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell14", x: 0.4458, y: 0.4586, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell15", x: 0.5542, y: 0.4586, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell16", x: 0.6625, y: 0.4586, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell17", x: 0.7708, y: 0.4586, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell18", x: 0.2292, y: 0.5195, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell19", x: 0.3375, y: 0.5195, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell20", x: 0.4458, y: 0.5195, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell21", x: 0.5542, y: 0.5195, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell22", x: 0.6625, y: 0.5195, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell23", x: 0.7708, y: 0.5195, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell24", x: 0.2292, y: 0.5805, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell25", x: 0.3375, y: 0.5805, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell26", x: 0.4458, y: 0.5805, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell27", x: 0.5542, y: 0.5805, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell28", x: 0.6625, y: 0.5805, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell29", x: 0.7708, y: 0.5805, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell30", x: 0.2292, y: 0.6414, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell31", x: 0.3375, y: 0.6414, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell32", x: 0.4458, y: 0.6414, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell33", x: 0.5542, y: 0.6414, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell34", x: 0.6625, y: 0.6414, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell35", x: 0.7708, y: 0.6414, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell36", x: 0.2292, y: 0.7023, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell37", x: 0.3375, y: 0.7023, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell38", x: 0.4458, y: 0.7023, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell39", x: 0.5542, y: 0.7023, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell40", x: 0.6625, y: 0.7023, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Cell41", x: 0.7708, y: 0.7023, w: 0.1, hh: 0.0563 },
-      { k: "i", n: "Artwork", x: 0.4458, y: 0.3977, w: 0.0972, hh: 0.0445 },
-      { k: "i", n: "Artwork", rep: 5, x: 0.6625, y: 0.3977, w: 0.0972, hh: 0.0445, a: 0 },
-      { k: "l", n: "OrderProgress", t: "TARGET: TIER 3 - 0 MERGES", x: 0.5, y: 0.1289, w: 0.5833, hh: 0.0312 },
+      { k: "i", n: "GridWell", x: 0.5, y: 0.5172, w: 0.6583, hh: 0.4297 },
+      { k: "i", n: "GridTopHighlight", x: 0.5, y: 0.3047, w: 0.6417, hh: 0.0047 },
+      { k: "i", n: "Cell00", x: 0.2326, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell01", x: 0.3396, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell02", x: 0.4465, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell03", x: 0.5535, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell04", x: 0.6604, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell05", x: 0.7674, y: 0.3367, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell06", x: 0.2326, y: 0.3969, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell07", x: 0.3396, y: 0.3969, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell08", x: 0.4465, y: 0.3969, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell09", x: 0.5535, y: 0.3969, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell10", x: 0.6604, y: 0.3969, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell11", x: 0.7674, y: 0.3969, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell12", x: 0.2326, y: 0.457, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell13", x: 0.3396, y: 0.457, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell14", x: 0.4465, y: 0.457, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell15", x: 0.5535, y: 0.457, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell16", x: 0.6604, y: 0.457, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell17", x: 0.7674, y: 0.457, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell18", x: 0.2326, y: 0.5172, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell19", x: 0.3396, y: 0.5172, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell20", x: 0.4465, y: 0.5172, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell21", x: 0.5535, y: 0.5172, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell22", x: 0.6604, y: 0.5172, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell23", x: 0.7674, y: 0.5172, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell24", x: 0.2326, y: 0.5773, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell25", x: 0.3396, y: 0.5773, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell26", x: 0.4465, y: 0.5773, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell27", x: 0.5535, y: 0.5773, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell28", x: 0.6604, y: 0.5773, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell29", x: 0.7674, y: 0.5773, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell30", x: 0.2326, y: 0.6375, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell31", x: 0.3396, y: 0.6375, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell32", x: 0.4465, y: 0.6375, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell33", x: 0.5535, y: 0.6375, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell34", x: 0.6604, y: 0.6375, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell35", x: 0.7674, y: 0.6375, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell36", x: 0.2326, y: 0.6977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell37", x: 0.3396, y: 0.6977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell38", x: 0.4465, y: 0.6977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell39", x: 0.5535, y: 0.6977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell40", x: 0.6604, y: 0.6977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "Cell41", x: 0.7674, y: 0.6977, w: 0.1, hh: 0.0563 },
+      { k: "i", n: "TileBorder", x: 0.4458, y: 0.3953, w: 0.0917, hh: 0.0516 },
+      { k: "i", n: "TileFace", x: 0.4458, y: 0.3953, w: 0.0861, hh: 0.0484 },
+      { k: "i", n: "Artwork", x: 0.4458, y: 0.3953, w: 0.0806, hh: 0.0406 },
+      { k: "i", n: "TileBorder", rep: 5, x: 0.6625, y: 0.3953, w: 0.0917, hh: 0.0516, a: 0 },
+      { k: "i", n: "TileFace", rep: 5, x: 0.6625, y: 0.3953, w: 0.0861, hh: 0.0484, a: 0 },
+      { k: "i", n: "Artwork", rep: 5, x: 0.6625, y: 0.3953, w: 0.0806, hh: 0.0406, a: 0 },
+      { k: "i", n: "InfoBarShadow", x: 0.5, y: 0.8305, w: 0.8, hh: 0.0813 },
+      { k: "i", n: "InfoBarEdge", x: 0.5, y: 0.868, w: 0.8, hh: 0.0063 },
+      { k: "i", n: "ItemInfoBar", x: 0.5, y: 0.8242, w: 0.8, hh: 0.0813 },
+      { k: "l", n: "ItemName", t: "CLEANING SPONGE", x: 0.3472, y: 0.807, w: 0.4306, hh: 0.0266 },
+      { k: "l", n: "ItemLevel", t: "LEVEL 1", x: 0.7569, y: 0.807, w: 0.2083, hh: 0.0266 },
+      { k: "l", n: "SelectedItemHint", t: "Tap the generator to create ", x: 0.5, y: 0.8453, w: 0.7222, hh: 0.0266 },
+      { k: "l", n: "MergeProgress", t: "0 / 1 MERGE", x: 0.5, y: 0.1289, w: 0.5833, hh: 0.0312 },
       { k: "b", h: "onClickBack", n: "BackButton", x: 0.1458, y: 0.0742, w: 0.1111, hh: 0.0625 },
-      { k: "b", h: "onClickContinue", n: "ContinueButton", t: "COMPLETE ITEM", x: 0.5, y: 0.918, w: 0.5, hh: 0.0563 },
-      { k: "l", n: "Label", t: "COMPLETE ITEM", x: 0.5, y: 0.918, w: 0.5, hh: 0.0563 }
+      { k: "b", h: "onClickContinue", n: "ContinueButton", t: "CLEAR", x: 0.5, y: 0.918, w: 0.5, hh: 0.0563, a: 0 },
+      { k: "l", n: "Label", t: "CLEAR", x: 0.5, y: 0.918, w: 0.5, hh: 0.0563, a: 0 }
     ] },
-    story: { src: "ViewStory.prefab", panel: null, parked: 0, folded: 16, nested: 0, runtime: "대사 행 · 스틸컷 텍스처 (StoryNodeRunner 가 데이터로 채운다)", boxes: [
+    story: { src: "ViewStory.prefab", panel: null, parked: 0, folded: 0, nested: 0, runtime: "대사 행 · 스틸컷 텍스처 (StoryNodeRunner 가 데이터로 채운다)", boxes: [
       { k: "i", n: "Bg", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
       { k: "i", n: "StoryStageBackground", x: 0.5, y: 0.5, w: 1.0, hh: 0.7414 },
-      { k: "i", n: "StoryFlowerVaseObject", x: 0.7986, y: 0.1762, w: 0.1236, hh: 0.0938, a: 0 },
-      { k: "i", n: "StoryTableSettingObject", x: 0.5694, y: 0.5152, w: 0.2931, hh: 0.1094, a: 0 },
-      { k: "i", n: "Portrait", rep: 5, x: 0.1681, y: 0.8125, w: 0.1556, hh: 0.1172, a: 0 },
-      { k: "i", n: "ChatBubble", rep: 5, x: 0.6042, y: 0.8125, w: 0.5972, hh: 0.1641, a: 0 },
-      { k: "l", n: "SpeakerName", rep: 5, x: 0.6042, y: 0.7734, w: 0.5194, hh: 0.0219, a: 0 },
-      { k: "l", n: "Dialogue", rep: 5, x: 0.6042, y: 0.8297, w: 0.5194, hh: 0.0781, a: 0 },
       { k: "l", n: "TapHint", t: "v", x: 0.8611, y: 0.9492, w: 0.0667, hh: 0.0375, a: 0 },
-      { k: "i", n: "Stillcut", x: 0.5, y: 0.5, w: 0.8194, hh: 0.8195, a: 0 },
+      { k: "i", n: "Stillcut", x: 0.5, y: 0.7578, w: 1.0, hh: 0.3836, a: 0 },
       { k: "i", n: "StillcutSurfaceA", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 0 },
       { k: "i", n: "StillcutSurfaceB", x: 0.5, y: 0.5, w: 1.0, hh: 1.0, a: 0 },
-      { k: "i", n: "SubtitleBar", x: 0.5, y: 0.9102, w: 0.8194, hh: 0.1172, a: 0 },
-      { k: "l", n: "SubtitleText", x: 0.5, y: 0.9109, w: 0.7417, hh: 0.0563, a: 0 },
-      { k: "l", n: "StoryRunner", t: "LOADING STORY DATA...", x: 0.5, y: 0.5, w: 0.8194, hh: 0.1875 }
+      { k: "i", n: "SubtitleBar", x: 0.5, y: 0.8668, w: 0.8194, hh: 0.2195, a: 0 },
+      { k: "l", n: "FullscreenSpeakerName", x: 0.2375, y: 0.7816, w: 0.2778, hh: 0.0469, a: 0 },
+      { k: "l", n: "SubtitleText", x: 0.5, y: 0.8613, w: 0.6944, hh: 0.125, a: 0 },
+      { k: "b", h: "onClickSkip", n: "SkipButton", x: 0.8444, y: 0.0547, w: 0.1167, hh: 0.0656, a: 0 },
+      { k: "l", n: "StoryRunner", t: "LOADING STORY DATA...", x: 0.5, y: 0.5, w: 0.8194, hh: 0.1875, a: 0 }
     ] },
     task: { src: "PopupTask.prefab", panel: null, parked: 0, folded: 0, nested: 0, boxes: [
       { k: "i", n: "DimmedLayer", x: 0.5, y: 0.5, w: 1.0, hh: 1.0 },
       { k: "i", n: "BackgroundPanel", x: 0.5, y: 0.4844, w: 0.8194, hh: 0.4375 },
-      { k: "i", n: "Olivia", x: 0.5, y: 0.2656, w: 0.1514, hh: 0.1094 },
-      { k: "i", n: "Colton", x: 0.5, y: 0.2656, w: 0.15, hh: 0.1094, a: 0 },
-      { k: "i", n: "Sam", x: 0.5, y: 0.2656, w: 0.1528, hh: 0.1094, a: 0 },
+      { k: "i", n: "Poppy", x: 0.5, y: 0.2656, w: 0.1736, hh: 0.1094 },
+      { k: "i", n: "Brett", x: 0.5, y: 0.2656, w: 0.15, hh: 0.1094, a: 0 },
+      { k: "i", n: "Rafa", x: 0.5, y: 0.2656, w: 0.15, hh: 0.1094, a: 0 },
       { k: "l", n: "Title", t: "WE'RE DIVORCED!", x: 0.5, y: 0.3531, w: 0.7528, hh: 0.0344 },
-      { k: "l", n: "Cost", t: "Cost: 26", x: 0.3194, y: 0.4047, w: 0.3472, hh: 0.0281 },
-      { k: "l", n: "Reward", t: "Reward: EXP 15", x: 0.6806, y: 0.4047, w: 0.3472, hh: 0.0281 },
-      { k: "l", n: "GoldProgress", t: "GOLD 0 / 26 - EARN IN MERGE", x: 0.5, y: 0.4453, w: 0.7083, hh: 0.025 },
-      { k: "b", h: "onClickStart", n: "StartButton", t: "EARN GOLD", x: 0.5, y: 0.6406, w: 0.5556, hh: 0.0625 },
-      { k: "l", n: "Label", t: "EARN GOLD", x: 0.5, y: 0.6406, w: 0.5556, hh: 0.0625 }
+      { k: "l", n: "Reward", t: "Reward: EXP 15", x: 0.5, y: 0.4047, w: 0.7083, hh: 0.0281 },
+      { k: "l", n: "Objective", t: "MERGE ONCE TO CONTINUE", x: 0.5, y: 0.4453, w: 0.7083, hh: 0.025 },
+      { k: "b", h: "onClickStart", n: "StartButton", t: "START", x: 0.5, y: 0.6406, w: 0.5556, hh: 0.0625 },
+      { k: "l", n: "Label", t: "START", x: 0.5, y: 0.6406, w: 0.5556, hh: 0.0625 }
     ] },
   };
 
@@ -1132,7 +1178,8 @@
       "scene": "tutorial_0 : 1",
       "label": null,
       "gimmick": null,
-      "play": "씬 tutorial_0 전체 재생 (컷 4장)",
+      "play": "재생 — tutorial_0 파트 1",
+      "still": "씬 1_1_the_road_back 전체 (컷 7장) · 노드 2 앞까지 삼킨다",
       "cost": 0
     },
     {
@@ -1140,9 +1187,10 @@
       "type": "task",
       "node": "clean_kitchen",
       "scene": null,
-      "label": "Clean the Kitchen",
+      "label": "Tidy the Kitchen",
       "gimmick": "merge",
-      "play": "태스크 — 삼킴 대상 아님",
+      "play": "태스크 — PopupTask → 머지 보드",
+      "still": "태스크 — 삼킴 대상 아님",
       "cost": 0
     },
     {
@@ -1152,7 +1200,8 @@
       "scene": "1_1_begin : 1",
       "label": null,
       "gimmick": null,
-      "play": "씬 1_1_begin 전체 재생 (컷 4장)",
+      "play": "재생 — 1_1_begin 파트 1",
+      "still": "씬 1_2_my_workshop 전체 (컷 12장)",
       "cost": 0
     },
     {
@@ -1160,9 +1209,10 @@
       "type": "task",
       "node": "task_1_1",
       "scene": null,
-      "label": "We're Divorced!",
+      "label": "None of Your Business",
       "gimmick": "decorate",
-      "play": "태스크 — 삼킴 대상 아님",
+      "play": "태스크 — PopupTask → 머지 보드",
+      "still": "태스크 — 삼킴 대상 아님",
       "cost": 26
     },
     {
@@ -1172,17 +1222,19 @@
       "scene": "1_2_begin : 1",
       "label": null,
       "gimmick": null,
-      "play": "씬 1_2_begin 전체 재생 (컷 3장) · 노드 6·7 을 삼킨다",
+      "play": "재생 — 1_2_begin 파트 1",
+      "still": "씬 1_3_doesnt_add_up 전체 (컷 8장) · 노드 6·7 을 삼킨다",
       "cost": 0
     },
     {
       "i": 6,
       "type": "stillcut",
-      "node": "sc_sam_tools",
+      "node": "sc_rafa_tools",
       "scene": "← 1_2_begin step 3",
-      "label": "Sam with Tools",
+      "label": "Rafa with Tools",
       "gimmick": null,
-      "play": "삼켜짐 — 씬의 삽입 컷으로 이미 재생",
+      "play": "재생 — 삽화를 채팅 피드에 끼워 넣는다",
+      "still": "삼켜짐 — 스틸컷 씬에 흡수",
       "cost": 0
     },
     {
@@ -1192,7 +1244,8 @@
       "scene": "1_2_begin : 2",
       "label": null,
       "gimmick": null,
-      "play": "삼켜짐 — 같은 씬 뒤 파트",
+      "play": "재생 — 1_2_begin 파트 2",
+      "still": "삼켜짐 — 같은 씬 뒤 파트",
       "cost": 0
     },
     {
@@ -1200,9 +1253,10 @@
       "type": "task",
       "node": "set_table",
       "scene": null,
-      "label": "Something Fishy",
+      "label": "Something Doesn't Add Up",
       "gimmick": "decorate",
-      "play": "태스크 — 삼킴 대상 아님",
+      "play": "태스크 — PopupTask → 머지 보드",
+      "still": "태스크 — 삼킴 대상 아님",
       "cost": 16
     },
     {
@@ -1212,7 +1266,8 @@
       "scene": "1_2_end : 1",
       "label": null,
       "gimmick": null,
-      "play": "씬 1_2_end 전체 재생 (컷 5장) · 노드 10·11 을 삼킨다",
+      "play": "재생 — 1_2_end 파트 1",
+      "still": "씬 배정 없음 — getStillcutSceneId() 가 빈 문자열",
       "cost": 0
     },
     {
@@ -1220,9 +1275,10 @@
       "type": "stillcut",
       "node": "sc_detective",
       "scene": "← 1_2_end step 8",
-      "label": "Detective Quinn",
+      "label": "Rosie Investigates",
       "gimmick": null,
-      "play": "삼켜짐 — 씬의 삽입 컷으로 이미 재생",
+      "play": "재생 — 삽화를 채팅 피드에 끼워 넣는다",
+      "still": "삼켜짐 — 스틸컷 씬에 흡수",
       "cost": 0
     },
     {
@@ -1232,7 +1288,8 @@
       "scene": "1_2_end : 2",
       "label": null,
       "gimmick": null,
-      "play": "삼켜짐 — 같은 씬 뒤 파트",
+      "play": "재생 — 1_2_end 파트 2",
+      "still": "씬 배정 없음",
       "cost": 0
     }
   ];
@@ -1240,20 +1297,20 @@
   const MODES = [
     {
       "id": "chat",
-      "cls": "ChatBubbleStoryPresentation",
+      "cls": "ChatBubbleStoryPresentation + ChatMessageRow",
       "consume": false,
-      "bundle": "assets/bundle/chat",
-      "active": false,
-      "state": "구현됨 · 비활성",
-      "src": "presentation/chat/ChatBubbleStoryPresentation.ts (415줄)"
+      "bundle": "assets/bundle/chat + assets/prefabs/chat_*",
+      "active": true,
+      "state": "활성",
+      "src": "presentation/chat/ChatBubbleStoryPresentation.ts (791줄)"
     },
     {
       "id": "stillcut",
       "cls": "StillcutStoryPresentation + FullscreenStoryShell",
       "consume": true,
       "bundle": "assets/bundle/storyStillcut",
-      "active": true,
-      "state": "활성",
+      "active": false,
+      "state": "구현됨 · 비활성",
       "src": "presentation/stillcut/StillcutStoryPresentation.ts"
     },
     {
@@ -1269,32 +1326,33 @@
 
   const CUTPLAN = [
     {
-      "scene": "tutorial_0",
-      "cuts": 4,
-      "plan": "<code>_01</code>(대사 1,2,3) · <code>_02</code>(4,5,6) · <code>_03</code>(7,8) · <code>_04</code>(9,10)"
+      "scene": "1_1_the_road_back",
+      "cuts": 7,
+      "rows": 12,
+      "node": 1,
+      "plan": "01(대사 1,2) · 02(3) · 03(4) · 04(5) · 05(6,7) · 06(8) · 07(9~12)"
     },
     {
-      "scene": "1_1_begin",
-      "cuts": 4,
-      "plan": "<code>_01</code>(1,2,3) · <code>_02</code>(4,5,6) · <code>_03</code>(7,8,9) · <code>_04</code>(10,11,12)"
+      "scene": "1_2_my_workshop",
+      "cuts": 12,
+      "rows": 18,
+      "node": 3,
+      "plan": "01(1) · 02(2,3) · 03(4,5) · 04(6) · 05(7~9) · 06(10) · 07(11) · 08(12,13) · 09(14) · 10(15) · 11(16) · 12(17,18)"
     },
     {
-      "scene": "1_2_begin",
-      "cuts": 3,
-      "plan": "<code>_01</code>(1,2) · <b>삽입 still_sam_tools</b>(3초) · <code>_03</code>(4,5,6)"
-    },
-    {
-      "scene": "1_2_end",
-      "cuts": 5,
-      "plan": "<code>_01</code>(1,2,3) · <code>_02</code>(4,5) · <code>_03</code>(6,7) · <b>삽입 still_detective</b>(3초) · <code>_05</code>(9)"
+      "scene": "1_3_doesnt_add_up",
+      "cuts": 8,
+      "rows": 18,
+      "node": 5,
+      "plan": "01(1~3) · 02(4) · 03(5~7) · 04(8~11) · 05(12,13) · 06(14~16) · 07(17) · 08(18)"
     }
   ];
 
   const CONTRACT = [
     [
       "행 수",
-      "nodes <b>11</b> · dialogues <b>35</b> · videos <b>4</b>",
-      "expected 11 nodes, 35 dialogue rows, and 4 videos"
+      "nodes <b>11</b> · videos <b>4</b> — <b>대사 총 줄 수는 더 이상 안 본다</b>",
+      "expected 11 nodes and 4 videos"
     ],
     [
       "노드 순번",
@@ -1307,24 +1365,59 @@
       "node N is not active"
     ],
     [
-      "씬:파트 대사 수",
-      "tutorial_0:1=10 · 1_1_begin:1=12 · 1_2_begin:1=2 · 1_2_begin:2=3 · 1_2_end:1=7 · 1_2_end:2=1",
-      "invalid dialogue join count for KEY"
+      "씬 연결",
+      "모든 dialogue 노드의 scene_id 에 대사 행이 하나라도 있어야 한다",
+      "no dialogue rows for scene SCENE"
     ],
     [
-      "대사 있는 dialogue 노드",
-      "dialogue 노드의 scene:part 가 위 표에 있어야 한다",
+      "씬:파트 연결",
+      "dialogue 노드의 scene:part 조합에 대사 행이 있어야 한다",
       "missing dialogue rows for node N"
     ],
     [
       "스틸컷 자리",
       "스틸컷 노드의 origin_scene:origin_step 자리에 대사가 <b>없어야</b> 한다",
       "stillcut X does not match a missing dialogue step"
+    ]
+  ];
+
+  /* 스틸컷 빌드는 story_dialogue 가 아니라 자기 대사 파일을 쓴다 —
+     storyStillcut/data/stillcuts-final-dialogue (48행). 검증도 따로다. */
+  const CONTRACT_STILL = [
+    [
+      "행 수",
+      "씬별 기대치의 합 <b>48행</b> (12 + 18 + 18)",
+      "expected 48 approved dialogue rows"
     ],
     [
-      "비디오 줄 수",
-      "present_video.line_count 가 그 씬의 실제 대사 수와 같아야 한다",
-      "invalid video line_count for SCENE"
+      "씬별 행 수",
+      "1_1_the_road_back 12 · 1_2_my_workshop 18 · 1_3_doesnt_add_up 18",
+      "invalid row count for SCENE"
+    ],
+    [
+      "순번 · 활성",
+      "씬 안에서 step 이 1부터 연속 · part 는 1 · in_use === 1",
+      "invalid active sequence for SCENE"
+    ],
+    [
+      "행 종류",
+      "type 이 <code>say</code> 또는 <code>cut_only</code>",
+      "invalid row type at KEY"
+    ],
+    [
+      "say 행",
+      "speaker 와 text_en 이 있고 speaker 가 Rosie · Poppy · Brett · Rafa · Narration 중 하나",
+      "incomplete say row KEY"
+    ],
+    [
+      "cut_only 행",
+      "speaker 와 text_en 이 <b>비어 있어야</b> 한다",
+      "cut-only row must not contain dialogue KEY"
+    ],
+    [
+      "미등록 씬",
+      "기대치에 없는 scene_id 가 섞이면 거부",
+      "unexpected scene in approved dialogue data"
     ]
   ];
 
@@ -1400,27 +1493,27 @@
   const CTX_STATES = [
     {
       "id": "loop",
-      "name": "playCostTask()",
-      "ko": "골드 루프",
-      "cond": "while (!completed) — 골드가 태스크 비용에 닿을 때까지 돈다"
+      "name": "presentTask()",
+      "ko": "태스크 루프",
+      "cond": "while (this.isValid) — 머지 1회를 끝낼 때까지 돈다. 골드 개념은 없어졌다"
     },
     {
       "id": "popup",
       "name": "PopupTask",
       "ko": "태스크 안내",
-      "cond": "매 회차 getGoldBalance() 를 다시 읽어 EARN / SPEND 로 문구가 갈린다"
+      "cond": "configure(node) 로 제목 · 보상 · 초상만 채운다. 비용 · 진행 문구가 사라졌다"
     },
     {
       "id": "board",
       "name": "ViewMergeBoard",
-      "ko": "머지 보드 (주문 모드)",
-      "cond": "orderContext { rewardGold 10 · currentGold · targetGold }"
+      "ko": "머지 보드",
+      "cond": "configure(node) — 주문 문맥 없이 노드만 받는다. REQUIRED_MERGE_COUNT = 1"
     },
     {
       "id": "done",
-      "name": "completeCostTask()",
-      "ko": "태스크 완료",
-      "cond": "spend(cost) 성공 시에만. node_id 를 담고 스테이지를 다시 그린다"
+      "name": "노드 완료",
+      "ko": "다음 노드로",
+      "cond": "waitForCompletion() 이 true 를 돌려줬을 때만"
     }
   ];
 
@@ -1428,46 +1521,46 @@
     {
       "a": "loop",
       "b": "popup",
-      "label": "showPopupTask()",
+      "label": "showPopupTask(node)",
       "ok": 1,
-      "note": "지금 골드와 비용을 넘겨 팝업을 띄우고 waitForConfirmation() 으로 확인을 기다린다",
-      "src": "StoryNodeRunner.ts:playCostTask · ViewCreator.showPopupTask"
+      "note": "팝업을 띄우고 waitForConfirmation() 으로 시작 버튼을 기다린다. 넘기는 것은 노드 하나뿐이다",
+      "src": "StoryNodeRunner.ts:presentTask · ViewCreator.showPopupTask"
     },
     {
       "a": "popup",
       "b": "loop",
       "label": "onClickStart() → close()",
       "ok": 1,
-      "note": "확인 약속이 풀리면 루프가 taskEconomy.spend(cost) 로 판정한다. 팝업 자체는 골드를 안 건드린다",
+      "note": "확인 약속이 풀리면 곧바로 머지 보드로 내려간다. 예전처럼 중간에 골드를 판정하지 않는다",
       "src": "PopupTask.ts:onClickStart"
     },
     {
       "a": "loop",
       "b": "board",
-      "label": "spend 실패 → 보드",
-      "ok": 0,
-      "note": "hideForGameplay() 로 연출을 접고 showViewMergeBoard(node, orderContext) 로 내려간다",
+      "label": "playMergeTask(node)",
+      "ok": 1,
+      "note": "hideForGameplay() 로 연출을 접고 showViewMergeBoard(node) 로 내려간다",
       "src": "StoryNodeRunner.ts:playMergeTask"
     },
     {
       "a": "board",
       "b": "loop",
-      "label": "onClickBack() → 주문 수 회수",
-      "ok": 1,
-      "note": "waitForCompletion() 이 completedOrderCount 를 돌려주고 collectMergeOrders(n) 이 10골드씩 더한다",
-      "src": "ViewMergeBoard.ts:onClickBack · StoryTaskEconomy.ts:collectMergeOrders"
+      "label": "waitForCompletion() → false",
+      "ok": 0,
+      "note": "뒤로 버튼(onClickBack)이면 false 가 돌아오고 continue — 팝업부터 다시 시작한다",
+      "src": "ViewMergeBoard.ts:onClickBack"
     },
     {
       "a": "loop",
       "b": "done",
-      "label": "spend 성공 → 탈출",
+      "label": "완료 → true",
       "ok": 1,
-      "note": "completeCostTask(node) → completedCostNodeIds 에 담고 refreshStoryStage() 로 스테이지 오브젝트를 켠다",
-      "src": "StoryNodeRunner.ts:completeCostTask"
+      "note": "머지를 1회 하면 완료 버튼이 켜지고(onClickContinue) true 가 돌아온다. 그 자리에서 return",
+      "src": "ViewMergeBoard.ts:onClickContinue · isQuestComplete"
     }
   ];
 
-  const CTX_TRAP = "루프에 골드 말고 다른 출구가 없다. 머지 보드에서 주문을 하나도 안 하고 뒤로 나가면 collectMergeOrders(0) 이 아무것도 더하지 않고, 팝업이 다시 뜨고, 다시 보드로 내려간다 — 무한히 반복된다. 프로토라 의도된 동작이지만, 실제 게임에서는 이탈 경로가 필요하다.";
+  const CTX_TRAP = "루프에 머지 말고 다른 출구가 없다. 보드에서 합치기를 한 번도 안 하고 뒤로 나가면 false 가 돌아와 continue 로 팝업부터 다시 시작한다 — 무한히 반복된다. 예전 골드 루프(주문 3회로 26골드)를 BUG-006 에서 '머지 1회' 로 통일하면서 회차가 짧아졌을 뿐, 이탈 경로가 없는 구조는 그대로다.";
 
   /* 이 프로젝트는 FB 전용 지면 표를 쓰지 않는다 — 검색 색인이 typeof 로 확인한다 */
   const FBS = [];
@@ -1523,26 +1616,27 @@
       ]
     },
     {
-      id: "data", chips: ["d_node", "d_dialogue", "d_video"], cat: "data", kind: "묶음", gate: true, x: 590, y: 244, w: 300,
+      id: "data", chips: ["d_node", "d_dialogue", "d_video", "d_stillcut"], cat: "data", kind: "묶음", gate: true, x: 590, y: 232, w: 300,
       title: "StoryDataLoader", ko: "데이터 계약",
       file: "assets/script/game/story/data/StoryDataLoader.ts",
       acts: [
         ["러너가 부르면", "DataManager.loadStoryData() → StoryDataLoader.load()"],
-        ["세 파일을 함께", "BundleLoader.loadBundle(MainBundle) → loadJson x3"],
+        ["세 파일을 함께", "BundleLoader.loadBundle(MainBundle) → 병렬 로드"],
         ["검증에 걸리면", "validate() → throw → STORY DATA ERROR"]
       ],
       detail: [
-        { h: "validate() 가 던지는 조건 — 하나라도 어기면 부팅이 멈춘다", rows: [
-          ["행 수 고정", "nodes 11 · dialogues 35 · videos 4 가 아니면 throw. 프로토라 데이터가 늘어날 일이 없다는 전제다"],
-          ["노드 순서", "node_order 가 1..11 연속이 아니거나 in_use !== 1 인 노드가 있으면 throw"],
-          ["씬:파트 대사 수", "tutorial_0:1=10 · 1_1_begin:1=12 · 1_2_begin:1=2 · 1_2_begin:2=3 · 1_2_end:1=7 · 1_2_end:2=1 로 고정"],
-          ["대사 없는 dialogue 노드", "dialogue 노드의 scene:part 조합이 위 표에 없으면 throw"],
-          ["스틸컷 자리", "스틸컷 노드의 origin_scene/origin_step 자리에 대사가 **있으면** throw — 스틸컷은 빠진 스텝을 메우는 자리여야 한다"],
-          ["비디오 줄 수", "present_video.line_count 가 그 씬의 실제 대사 수와 다르면 throw"]
+        { h: "validate() — 총 줄 수 검사를 버렸다", rows: [
+          ["왜 버렸나", "코드 주석 그대로 — \"대사 줄 수는 원고가 바뀔 때마다 달라진다. 총합을 박아두면 대사를 한 줄 고칠 때마다 여기서 막히므로, 대신 모든 대사 노드에 대사가 붙어 있는지를 본다\""],
+          ["남은 행 수 검사", "nodes 11 · videos 4 만. 대사는 지금 37행이지만 코드가 세지 않는다"],
+          ["노드 순번", "node_order 가 1..11 연속이 아니거나 in_use !== 1 이면 throw"],
+          ["씬 연결", "모든 dialogue 노드의 scene_id 에 대사 행이 하나라도 있어야 한다 (no dialogue rows for scene)"],
+          ["씬:파트 연결", "dialogue 노드의 scene:part 조합에 대사 행이 있어야 한다 (missing dialogue rows for node)"],
+          ["스틸컷 자리", "스틸컷 노드의 origin_scene:origin_step 자리에 대사가 **없어야** 한다 — 스틸컷은 빠진 스텝을 메우는 자리다"]
         ]},
         { h: "정렬 · 캐시", rows: [
-          ["정렬", "nodes 는 node_order · dialogues 와 videos 는 key_number 오름차순으로 정렬해 넘긴다"],
-          ["캐시", "DataManager.storyData 에 담아 두 번째 호출부터는 그대로 돌려준다"]
+          ["정렬", "nodes 는 node_order · dialogues 와 videos 는 key_number 오름차순"],
+          ["캐시", "DataManager.storyData 에 담아 두 번째 호출부터는 그대로 돌려준다"],
+          ["스틸컷은 별개", "스틸컷 빌드는 이 세 파일 외에 자기 대사 파일을 따로 읽는다 — StillcutStoryData 참고"]
         ]}
       ]
     },
@@ -1553,24 +1647,24 @@
       acts: [
         ["러너가 순회", "runNodes() → node_order 순으로 11개"],
         ["종류로 갈림", "node_type = dialogue 6 · task 3 · stillcut 2"],
-        ["태스크 비용", "task_cost → resolveStoryTaskGoldCost()"]
+        ["초상", "portrait → PopupTask 가 poppy · brett · rafa 중 하나를 켠다"]
       ],
       detail: [
         { h: "쓰이는 필드", rows: [
           ["node_order", "순회 순서이자 검증 키. 1..11 연속이어야 한다"],
-          ["node_type", "dialogue · stillcut · task 세 갈래. StoryNodeRunner.runNode() 의 분기 기준"],
+          ["node_type", "dialogue · stillcut · task. StoryNodeRunner.runNode() 의 분기 기준"],
           ["scene_id · part", "dialogue 노드가 어느 대사 묶음을 쓰는지"],
           ["origin_scene · origin_step", "stillcut 노드가 어느 씬의 몇 번째 빈 스텝을 메우는지"],
-          ["task_cost", "태스크에 드는 골드. null 이면 TUTORIAL_TASK_GOLD_COST(10)"],
-          ["node_id", "task_1_1 · set_table 은 스테이지 오브젝트 활성 키로도 쓰인다"],
-          ["portrait", "PopupTask 가 olivia · colton · sam 중 하나를 켠다"],
-          ["asset", "스틸컷 노드가 가리키는 이미지 파일명 (still_sam_tools.png 등)"]
+          ["label", "PopupTask · ViewMergeBoard 의 제목. 로즈우드 캐스트 통일(#18) 로 전면 교체됐다"],
+          ["portrait", "poppy · brett · rafa · none — 예전 olivia · colton · sam 에서 바뀌었다"],
+          ["task_cost", "0 · 26 · 16 이 남아 있지만 **코드가 읽지 않는다** (골드 경제 삭제)"],
+          ["asset", "스틸컷 노드가 가리키는 파일명. 지금은 still_rafa_tools · still_detective"]
         ]}
       ]
     },
     {
       id: "d_dialogue", chip: true, cat: "data", kind: "데이터", x: 0, y: 0, w: 300,
-      title: "story_dialogue.json", ko: "대사 35행",
+      title: "story_dialogue.json", ko: "대사 37행 (채팅 빌드)",
       file: "assets/bundle/data/story_dialogue.json",
       acts: [
         ["노드 문맥 만들 때", "createPresentationContext() → scene_id + part 로 거른다"],
@@ -1579,10 +1673,12 @@
       ],
       detail: [
         { h: "쓰이는 필드", rows: [
-          ["scene_id · part · step", "노드-대사 조인 키. step 이 건너뛴 자리가 곧 스틸컷 자리다"],
-          ["speaker · direction", "채팅 모드에서 말풍선 좌/우와 이름표를 정한다"],
-          ["emotion · anim", "채팅 모드 초상 · 애니 선택용"],
-          ["text_en", "실제 문구. 자막(subtitle=1)일 때만 화면에 나간다"]
+          ["scene_id · part · step", "노드-대사 조인 키. step 이 건너뛴 자리가 스틸컷 자리다"],
+          ["speaker", "Rosie · Poppy · Brett · Rafa · Narration — StoryCharacterTheme 이 이 이름으로 색을 고른다"],
+          ["direction", "채팅 말풍선 좌/우"],
+          ["emotion · anim", "채팅 초상 프레임 선택용"],
+          ["text_en", "실제 문구"],
+          ["행 수", "37행. 검증이 총 줄 수를 안 보므로 원고가 바뀌어도 막히지 않는다"]
         ]}
       ]
     },
@@ -1591,81 +1687,134 @@
       title: "present_video.json", ko: "씬 재생 4행",
       file: "assets/bundle/data/present_video.json",
       acts: [
-        ["씬 길이", "duration_target_sec → 컷 플랜 · 자막 타임라인의 상한"],
+        ["씬 길이", "duration_target_sec → 자막 타임라인의 상한"],
         ["자막 여부", "subtitle === 1 일 때만 자막을 그린다"],
-        ["탭 넘김", "tap_to_skip === 1 일 때만 터치가 다음 대사로 넘긴다"]
+        ["탭 넘김", "tap_to_skip === 1 일 때만 전체화면 터치가 다음 대사로 넘긴다"]
       ],
       detail: [
-        { h: "비디오 모드가 봉인이어도 이 파일이 필요한 이유", rows: [
-          ["세 모드 공유", "clip 은 비디오 모드만 쓰지만 duration_target_sec · subtitle · tap_to_skip 은 스틸컷 · 채팅도 쓴다"],
-          ["검증 고리", "line_count 가 그 씬의 실제 대사 수와 맞는지 StoryDataLoader 가 대조한다 — 데이터가 어긋나면 여기서 잡힌다"],
-          ["문맥 필수", "createPresentationContext() 는 video 행이 없으면 그 노드에서 throw 한다"],
-          ["embedded_stillcut_1", "씬 안에 박히는 스틸컷 파일명. 컷 플랜의 embeddedCut 과 짝이다"]
+        { h: "세 모드가 공유하는 이유", rows: [
+          ["필수 문맥", "createPresentationContext() 는 그 씬의 video 행이 없으면 그 노드에서 throw 한다"],
+          ["clip", "비디오 모드만 쓴다. VideoClipSlots 가 storyVideo/clips/* 로 매핑한다"],
+          ["검증 제외", "line_count 대조는 validate() 에서 빠졌다 — 원고 변경에 걸리던 검사였다"],
+          ["스틸컷 빌드", "StillcutStoryData 가 video 행을 **코드로 만들어 넣는다** (clip none · duration 0 · tap_to_skip 0)"]
         ]}
       ]
     },
-    /* ── 스토리 지면 · 러너 · 노드 스파인 ─────────────────────── */
     {
-      id: "story", cat: "story", kind: "지면", x: 1100, y: 208, w: 300,
+      id: "d_stillcut", chip: true, cat: "data", kind: "데이터", x: 0, y: 0, w: 300,
+      title: "stillcuts-final-dialogue.json", ko: "스틸컷 전용 대사 48행",
+      file: "assets/bundle/storyStillcut/data/stillcuts-final-dialogue.json · presentation/stillcut/StillcutStoryData.ts",
+      acts: [
+        ["스틸컷 빌드만", "loadStillcutDialogueData() → validateStillcutDialogueData()"],
+        ["노드에 붙이기", "getStillcutSceneId(node_order) — 1 · 3 · 5 에만 씬이 있다"],
+        ["문맥 만들기", "createStillcutPresentationContext() → StoryPresentationContext 로 변환"]
+      ],
+      detail: [
+        { h: "왜 별도 파일인가", rows: [
+          ["확정 원고", "최종 아트 컷 배정과 짝을 이루는 확정본이다. 씬 이름도 story_dialogue 와 다르다 (1_1_the_road_back 등)"],
+          ["씬 3개", "1_1_the_road_back 12행 · 1_2_my_workshop 18행 · 1_3_doesnt_add_up 18행 = 48행"],
+          ["노드 배정", "STILLCUT_SCENE_NODE_ORDERS = { 1, 3, 5 }. 나머지 dialogue 노드는 씬이 없다"],
+          ["행 종류", "say 45행 · cut_only 3행 — cut_only 는 대사 없이 컷만 넘기는 행이다"],
+          ["검증", "씬별 기대치의 합으로 총합을 계산한다 — \"총합을 따로 적어두면 컷을 지울 때마다 어긋난다\""],
+          ["화자 화이트리스트", "Rosie · Poppy · Brett · Rafa · Narration 만 허용. 채팅과 같은 캐스트다"]
+        ]}
+      ]
+    },
+    /* ── 스토리 지면 · 인트로 영상 · 러너 · 노드 스파인 ────────── */
+    {
+      id: "story", cat: "story", kind: "지면", x: 1100, y: 145, w: 300,
       title: "ViewStory", ko: "스토리 진입 지면",
       file: "assets/script/game/story/ViewStory.ts · assets/bundle/view/ViewStory.prefab",
       acts: [
         ["라우터가 부르면", "ViewCreator.showViewStory() → ViewManager.load(\"ViewStory\") → show(true)"],
-        ["열리면", "onShowStart() → StoryNodeRunner.onEnable() → run()"],
-        ["화면을 누르면", "FullscreenStoryShell.onTouchEnd() → 다음 대사"]
+        ["열리면", "StoryIntroVideoPlayer.start() → armIntroGate() → 영상 재생"],
+        ["러너는 함께", "StoryNodeRunner.onEnable() → run() 이 영상과 겹쳐 로드를 끝낸다"],
+        ["화면을 누르면", "채팅은 chatRoot · 전체화면은 셸 노드가 TOUCH_END 를 받는다"]
       ],
       detail: [
-        { h: "버튼이 0개인 이유 — 필터 탓이 아니다", rows: [
-          ["실제로 없다", "ViewStory.prefab 에 cc.Button 이 한 개도 없다. 진행은 노드 전체 TOUCH_END 로 받는다"],
-          ["전체화면 탭", "FullscreenStoryShell.onEnable() 이 this.node.on(cc.Node.EventType.TOUCH_END) 으로 붙인다"],
-          ["채팅 탭", "ChatBubbleStoryPresentation 은 bindings.chatRoot 에 같은 이벤트를 붙인다"],
-          ["탭 게이트", "video.tap_to_skip !== 1 이면 터치를 무시한다 — 데이터로 잠글 수 있다"]
-        ]},
-        { h: "한 프리팹에 세 연출이 다 들어 있다", rows: [
-          ["ChatLayer", "MessageRow0~4 · Portrait · ChatBubble · SpeakerName · Dialogue · TapHint · Stillcut — 채팅 모드용"],
-          ["FullscreenStoryShell", "StillcutSurfaceA/B · SubtitleBar/SubtitleText — 스틸컷 · 비디오 공용"],
-          ["StoryStage", "StoryStageBackground · StoryFlowerVaseObject · StoryTableSettingObject — 태스크 완료 반영용"],
+        { h: "한 프리팹에 네 계층이 들어 있다", rows: [
+          ["StoryIntroVideoPlayer", "cc.VideoPlayer 한 개. 인트로 영상을 재생하고 끝나면 러너 노드를 켠다"],
+          ["ChatLayer", "chatRoot · chatListRoot · chatTapHintNode · chatStillcutRoot — 채팅 빌드용. **대사 행은 프리팹에 없다**"],
+          ["FullscreenStoryShell", "StillcutSurfaceA/B · 자막바 — 스틸컷 · 비디오 공용"],
+          ["StoryStage", "배경 한 장. 꾸미기 오브젝트(꽃병 · 식탁)는 BUG-012 수정(#19)에서 제거됐다"],
           ["StoryRunner", "StoryNodeRunner 가 붙은 노드. statusLabel 이 여기 있다"],
-          ["편집 시점 비활성", "위 요소 대부분이 _active=false 로 저장돼 있다. 파킹이 아니라 **연출 모드 · 진행도에 따른 런타임 노출**이라 와이어프레임에 점선으로 남겼다"]
+          ["대사 행이 사라진 이유", "v1.0 에는 MessageRow0~4 가 프리팹에 박혀 있었다. 지금은 ChatMessageRow 를 PoolManager 로 꺼내 런타임에 만든다 — 프리팹이 3,308줄 줄었다"]
+        ]},
+        { h: "배경 배율 — 러너가 코드로 잡는다", rows: [
+          ["문제", "배경은 720x949 라 720x1280 화면에서 위아래가 남는다. 인트로 영상은 화면을 꽉 채운다"],
+          ["증상", "배율이 늦게 붙으면 영상이 걷히는 순간 레터박스가 한 프레임 스쳐 지나간다"],
+          ["해결", "coverStageToScreen() 을 run() 첫 줄에서 부른다 — 세로를 화면에 맞추고 가로 넘침은 흘려보낸다"],
+          ["와이어프레임 주의", "그래서 프리팹 좌표의 배경 크기는 실제 화면과 다르다"]
         ]},
         { h: "ViewBase 계약", rows: [
           ["contentRoot", "@property(cc.Node) — 러너가 마운트되는 전용 부모. getContentRoot() 로 꺼낸다"],
-          ["라이프사이클", "onShowStart / onShowEnd / onHideStart 모두 super 를 부른다 (60-mvvm-structure 규칙 2)"]
+          ["라이프사이클", "onShowStart / onShowEnd / onHideStart 모두 super 를 부른다"]
         ]}
       ]
     },
     {
-      id: "runner", cat: "story", kind: "로직", gate: true, x: 1100, y: 336, w: 300,
+      id: "introvideo", cat: "story", kind: "로직", gate: true, x: 1100, y: 273, w: 300,
+      title: "StoryIntroVideoPlayer", ko: "인트로 영상 · 게이트",
+      file: "assets/script/game/story/StoryIntroVideoPlayer.ts · StoryIntroGate.ts",
+      acts: [
+        ["지면이 열리면", "start() → armIntroGate() → videoPlayer.play()"],
+        ["끝나면", "onVideoCompleted() → finishIntro() → markIntroFinished()"],
+        ["러너는", "waitForIntro() 로 첫 대사 직전에만 기다린다"],
+        ["실패하면", "onVideoError · 20초 타임아웃 → finishIntro() 로 그냥 넘어간다"]
+      ],
+      detail: [
+        { h: "왜 게이트를 따로 뒀나 (BUG-009)", rows: [
+          ["예전", "영상이 끝난 뒤에야 러너 노드를 켰다. 데이터 로드와 에셋 프리로드가 그때부터 시작돼 배경만 뜬 채 멈추는 구간이 생겼다"],
+          ["지금", "러너가 영상과 **함께** 돌면서 로드를 끝내두고, 화면에 무언가 띄우기 직전(runNodes 앞)에만 게이트를 기다린다"],
+          ["게이트 위치", "StoryNodeRunner.run() 의 preload() 다음 · runNodes() 앞"],
+          ["arm 안 했으면", "waitForIntro() 는 즉시 통과한다 — 인트로가 없는 실행 경로에서 러너가 멈추지 않게"],
+          ["구현", "모듈 전역 3개(isArmed · pending · release)로 만든 1회용 신호. 컴포넌트가 아니다"]
+        ]},
+        { h: "플레이어 설정 · 안전장치", rows: [
+          ["설정", "LOCAL · keepAspectRatio · isFullscreen false · stayOnBottom **false** · mute · volume 0"],
+          ["끝낼 때", "stayOnBottom 을 true 로 되돌리고 clip 을 null 로 비운다 — 다음 화면 위에 남지 않게"],
+          ["타임아웃", "INTRO_PLAYBACK_TIMEOUT_SEC 20초. scheduleOnce 로 걸고 끝나면 unschedule"],
+          ["앱 전환", "EVENT_HIDE → pause() · EVENT_SHOW → resume()"],
+          ["바인딩 누락", "introClip · introRoot · storyRunnerNode · videoPlayer 중 하나라도 없으면 경고 후 즉시 finishIntro()"],
+          ["중복 방지", "hasFinished 로 한 번만 통한다"]
+        ]}
+      ]
+    },
+    {
+      id: "runner", cat: "story", kind: "로직", gate: true, x: 1100, y: 399, w: 300,
       title: "StoryNodeRunner", ko: "노드 러너",
       file: "assets/script/game/story/StoryNodeRunner.ts",
       acts: [
-        ["켜지면", "onEnable() → run() → refreshStoryStage() → loadStoryData()"],
+        ["켜지면", "onEnable() → run() → coverStageToScreen() → loadStoryData()"],
         ["연출 만들기", "createStoryPresentation(bindings) → getMode() 대조 → preload(data)"],
+        ["인트로 대기", "await waitForIntro() — 로드는 끝났고 여기서만 기다린다"],
         ["노드 순회", "runNodes(data, presentation) → 11개"],
-        ["끝나면", "dispose() → statusLabel = COMPLETE [MODE] 11 / 11 NODES"],
         ["실패하면", "catch → statusLabel = STORY DATA ERROR"]
       ],
       detail: [
         { h: "run() 실행 순서", rows: [
-          ["중복 방지", "isRunning 이면 그냥 돌아간다. completedNodeOrders · completedCostNodeIds · taskEconomy 를 초기화한다"],
-          ["스테이지", "refreshStoryStage() — 바인딩이 하나라도 비면 여기서 throw 한다 (프리팹 연결 누락을 부팅에서 잡는다)"],
-          ["데이터", "await DataManager.loadStoryData() 후 isValid · statusLabel 를 다시 확인 (async 안전)"],
+          ["중복 방지", "isRunning 이면 그냥 돌아간다"],
+          ["배경 배율", "coverStageToScreen() 을 **첫 줄에** 둔다 — 늦으면 영상이 걷히는 한 프레임 동안 레터박스가 드러난다"],
+          ["데이터", "await DataManager.loadStoryData() 후 isValid · statusLabel 재확인"],
           ["모드 대조", "presentation.getMode() !== STORY_PRESENTATION_MODE 면 throw — 팩토리와 빌드 설정이 어긋난 빌드를 즉시 잡는다"],
           ["프리로드", "await presentation.preload(data) → isValid 재확인"],
+          ["게이트", "await waitForIntro() — 이 줄이 v1.0 에 없던 것이다"],
           ["뒷정리", "finally 에서 presentation.dispose() · isRunning = false"]
         ]},
-        { h: "runNodes() — 씬 삼킴", rows: [
-          ["이미 소비됨", "consumedNodeOrders 에 있으면 재생 없이 completeNode(node, true) 만 하고 넘어간다"],
-          ["삼키는 조건", "dialogue 노드를 재생한 뒤 presentation.consumesSceneAfterDialogue() 가 true 일 때만"],
+        { h: "runNodes() — 씬 삼킴은 모드에 달렸다", rows: [
+          ["채팅 (현재 활성)", "consumesSceneAfterDialogue() 가 false 라 삼키지 않는다 — 11개를 하나씩 재생한다"],
+          ["스틸컷 · 비디오", "true 라 dialogue 노드가 같은 씬의 뒤 노드를 삼킨다"],
           ["삼키는 대상", "collectConsumedSceneNodes() — 뒤 순번이면서 task 가 아니고, 같은 scene_id 의 dialogue 이거나 origin_scene 이 같은 stillcut"],
-          ["최종 검사", "completedNodeOrders.length !== data.nodes.length 면 throw — 11개를 다 밟았는지 확인한다"],
-          ["로그", "노드마다 CClog.log(\"StoryNodeRunner > node N\") · 삼킨 노드는 (scene consumed) 접미사"]
+          ["최종 검사", "completedNodeOrders.length !== data.nodes.length 면 throw"],
+          ["완료 표시", "COMPLETE [CHAT] 11 / 11 NODES"]
         ]},
-        { h: "바인딩 — 프리팹에서 받아 연출에 넘기는 것", rows: [
-          ["공통", "statusLabel · storyStageRoot · storyFlowerVaseObject · storyTableSettingObject"],
-          ["채팅", "chatRoot · chatListRoot · chatMessageRows[] · chatPortraitNodes[] · chatPortraitSprites[] · chatBubbleRoots[] · chatBubbleSprites[] · chatSpeakerLabels[] · chatDialogueLabels[] · chatTapHintNode · chatStillcutRoot · chatStillcutSprite"],
-          ["전체화면", "fullscreenShellNode · fullscreenStillcutSprites[] (2장이 아니면 StillcutStoryPresentation 이 throw)"],
-          ["넘기는 방식", "createPresentationBindings() 가 한 객체로 묶어 팩토리에 넘긴다 — 연출은 프리팹을 직접 모른다"]
+        { h: "바인딩 — v1.0 보다 크게 줄었다", rows: [
+          ["공통", "statusLabel · storyStageRoot"],
+          ["채팅", "chatRoot · chatListRoot · chatTapHintNode · chatStillcutRoot · chatStillcutSprite"],
+          ["전체화면", "fullscreenShellNode · fullscreenStillcutSprites[]"],
+          ["사라진 것", "chatMessageRows[] · chatPortraitNodes[] · chatPortraitSprites[] · chatBubbleRoots[] · chatBubbleSprites[] · chatSpeakerLabels[] · chatDialogueLabels[] — 대사 행이 풀 생성으로 옮겨가면서 배열 7개가 통째로 빠졌다"],
+          ["꾸미기", "storyFlowerVaseObject · storyTableSettingObject 도 제거됐다 (#19)"],
+          ["문맥에 추가", "flowsIntoStillcut — 다음 노드가 스틸컷이면 마지막 대사와 삽화를 한 호흡으로 붙인다"]
         ]}
       ]
     },
@@ -1674,22 +1823,62 @@
       title: "노드 11개", ko: "스토리 스파인",
       file: "assets/bundle/data/story_node.json · StoryNodeRunner.runNodes()",
       acts: [
-        ["dialogue 노드", "presentDialogue(context) → 씬 재생"],
-        ["stillcut 노드", "presentStillcut(node) → 스틸컷 모드에선 씬에 이미 포함"],
-        ["task 노드", "presentTask(node) → playCostTask()"]
+        ["dialogue 노드", "createPresentationContext() → presentDialogue(context)"],
+        ["stillcut 노드", "presentStillcut(node)"],
+        ["task 노드", "presentTask(node) → PopupTask → 머지 보드"]
       ],
       detail: [
         { h: "구성", rows: [
           ["dialogue 6개", "1 · 3 · 5 · 7 · 9 · 11 — 씬 4개(tutorial_0 · 1_1_begin · 1_2_begin · 1_2_end)를 파트로 나눠 쓴다"],
-          ["task 3개", "2 clean_kitchen(0골드) · 4 task_1_1(26골드) · 8 set_table(16골드)"],
-          ["stillcut 2개", "6 sc_sam_tools · 10 sc_detective — 둘 다 씬 타임라인 안에 박힌 컷이다"],
-          ["스틸컷 모드에서", "dialogue 노드가 같은 씬의 뒤 노드를 삼켜, 11노드를 밟되 실제 재생은 씬 4 + 태스크 3 이다"],
-          ["채팅 모드에서", "consumesSceneAfterDialogue() 가 false 라 11개를 하나씩 재생한다"]
+          ["task 3개", "2 clean_kitchen · 4 task_1_1 · 8 set_table — 완료 기준은 셋 다 머지 1회"],
+          ["stillcut 2개", "6 sc_rafa_tools · 10 sc_detective"],
+          ["채팅 빌드에서", "11개를 하나씩 재생한다. 삽화 노드는 채팅 피드 안에 끼워 넣는다"],
+          ["스틸컷 빌드에서", "씬이 node_order 1 · 3 · 5 에만 붙고(자기 대사 파일 기준) 뒤 노드를 삼킨다"],
+          ["캐스트", "Rosie · Poppy · Brett · Rafa · Narration (로즈우드 캐스트 통일 #18)"]
         ]}
       ]
     },
     {
-      id: "shell", cat: "story", kind: "로직", x: 80, y: 914, w: 300,
+      id: "chatrow", cat: "story", kind: "로직", x: 80, y: 978, w: 300,
+      title: "ChatMessageRow", ko: "채팅 행 · 캐릭터 테마",
+      file: "assets/script/game/story/presentation/ChatMessageRow.ts · StoryCharacterTheme.ts",
+      acts: [
+        ["행이 필요하면", "PoolManager 에서 chat_{Speaker}_{side} 프리팹을 꺼낸다"],
+        ["색을 고르면", "getStoryCharacterTheme(speaker) → 말풍선 · 이름표 · 외곽선 경로"],
+        ["등장", "playShow() — 0.9배에서 0.18초 · 퇴장 playHide() 0.16초"],
+        ["초상 애니", "playPortrait(frames, 12fps)"]
+      ],
+      detail: [
+        { h: "왜 프리팹에서 풀로 옮겼나", rows: [
+          ["v1.0", "ViewStory.prefab 에 MessageRow0~4 다섯 줄이 박혀 있고 러너가 배열 7개로 그 안의 노드를 다 들고 있었다"],
+          ["지금", "ChatMessageRow extends PooledObject — 화자·방향별 프리팹을 풀에서 꺼내 쓴다"],
+          ["프리팹", "assets/prefabs/chat_{Rosie,Poppy,Brett,Rafa}_{left,right}.prefab 8장 + chat_unit_{left,right} 2장"],
+          ["풀 등록", "assets/bundle/objectPool/chat.prefab · CHAT_POOL_MAKER_NAME \"chat\" · 접두사 ChatMessageRow"],
+          ["효과", "화자마다 다른 초상·색을 프리팹으로 분리할 수 있게 됐고 ViewStory.prefab 이 3,308줄 줄었다"],
+          ["재사용 판정", "matches(speaker, direction) — 같은 화자·같은 방향이면 행을 이어 쓴다"]
+        ]},
+        { h: "캐릭터 테마 4종 (StoryCharacterTheme)", rows: [
+          ["Rosie", "colorIndex 01 · 외곽선 rgb(158,46,94). Narration 도 이 테마를 쓴다"],
+          ["Poppy", "colorIndex 02 · rgb(136,75,21)"],
+          ["Brett", "colorIndex 03 · rgb(29,93,126)"],
+          ["Rafa", "colorIndex 04 · rgb(76,74,183)"],
+          ["에셋 규칙", "chat/ui/story_character_{text_bubble,name_box,outline}{NN} · storyStillcut/ui/story02_character_text_bubble{NN}"],
+          ["미등록 화자", "getStoryCharacterTheme() 이 throw 한다 — 데이터에 새 화자가 들어오면 부팅에서 잡힌다"]
+        ]},
+        { h: "채팅 배치 상수 (코드가 정한다)", rows: [
+          ["보이는 줄", "VISIBLE_MESSAGE_COUNT 5 · 아래 -390 부터 위로 쌓고 간격 10"],
+          ["초상", "캔버스 304x288 · 좌우 ±193.5 · y -43 · 12fps"],
+          ["말풍선", "폭 370 · 최소 높이 220 · 좌우 ±110 · 앵커 (0.01, 0.12)"],
+          ["이름표", "192x68 · y -152"],
+          ["대사", "한 줄 44px · 줄당 14자 기준으로 높이를 계산한다"],
+          ["삽화 끼워넣기", "INLINE_STILLCUT_CENTER_Y -330 · 세로 반폭 245.5 · 피드 이동 0.18초"],
+          ["딤", "ChatDim 알파 128 · 0.3초 페이드 — 인트로 영상에서 배경으로 넘어갈 때 밝기 계단을 없앤다"],
+          ["타이핑", "40자/초 · 자동 넘김 없음 · 탭 폴링 16ms"]
+        ]}
+      ]
+    },
+    {
+      id: "shell", cat: "story", kind: "로직", x: 590, y: 760, w: 300,
       title: "FullscreenStoryShell", ko: "전체화면 연출 껍데기",
       file: "assets/script/game/story/presentation/fullscreen/FullscreenStoryShell.ts",
       acts: [
@@ -1698,20 +1887,19 @@
         ["끝나면", "finishPresentation() → source.stop() → restoreBackground() → resolve()"]
       ],
       detail: [
-        { h: "탭 타임라인 — 한 번의 터치가 하는 일", rows: [
-          ["비트 만들기", "createFullscreenStoryTapTimeline(sceneDialogues, duration_target_sec) — 대사 1줄당 비트 1개"],
-          ["빈 스텝 보정", "createFullscreenStoryTimeline() 이 step 이 건너뛴 만큼 3초(삽입 스틸컷 길이)를 더해 시작 시각을 민다"],
-          ["삽입 컷 보존", "다음 대사와 step 차가 1보다 크면 그 비트의 sourceSec 을 cue.endSec 으로 잡는다 — 그래야 삽입 스틸컷이 화면에 남는다"],
-          ["자막 게이트", "video.subtitle !== 1 이면 beat.text 를 빈 문자열로 만들어 자막바를 아예 안 켠다"],
+        { h: "탭 타임라인", rows: [
+          ["비트 만들기", "createFullscreenStoryTapTimeline(sceneDialogues, ...) — 대사 1줄당 비트 1개"],
+          ["빈 스텝 보정", "createFullscreenStoryTimeline() 이 step 이 건너뛴 만큼 시작 시각을 민다"],
+          ["삽입 컷 보존", "다음 대사와 step 차가 1보다 크면 그 비트의 sourceSec 을 cue.endSec 으로 잡는다"],
+          ["자막 게이트", "video.subtitle !== 1 이면 자막바를 아예 안 켠다"],
           ["끝 판정", "다음 비트가 없으면 finishPresentation(\"dialogue beats completed\")"]
         ]},
         { h: "화면 상태 · 앱 전환", rows: [
           ["배경 끄기", "prepareVisualState() 가 screenBackgrounds 를 전부 끄고 이전 상태를 기억한다"],
-          ["카메라 투명", "makeCameraTransparent() — cc.Camera.main.backgroundColor.a = 0. 복귀 시 원래 색으로 되돌린다"],
-          ["자막 페이드", "cc.tween(subtitleLabel.node) opacity 0 → 255, 0.2초"],
-          ["앱 숨김", "cc.game.EVENT_HIDE → source.pause(). EVENT_SHOW → 인덱스를 0 으로 되돌리고 source.restart()"],
+          ["카메라 투명", "makeCameraTransparent() — 복귀 시 원래 색으로 되돌린다"],
+          ["앱 숨김", "EVENT_HIDE → source.pause() · EVENT_SHOW → 인덱스를 0 으로 되돌리고 restart()"],
           ["중복 방지", "activeResolver 가 살아 있으면 present() 는 reject 한다"],
-          ["강제 종료", "cancel() — 머지 보드로 넘어갈 때 hideForGameplay() 가 이걸 부른다"]
+          ["강제 종료", "cancel() — 머지 보드로 넘어갈 때 hideForGameplay() 가 부른다"]
         ]}
       ]
     },
@@ -1725,80 +1913,82 @@
       acts: [
         ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
         ["씬 문맥", "nodeDialogues 10줄 · sceneDialogues 10줄 · video tutorial_0"],
-        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+        ["모드 분기", "chat: consumesSceneAfterDialogue() false — 그대로 재생 · stillcut: true — 씬을 삼킨다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
           ["scene_id : part", "tutorial_0 : 1 — 이 조합의 대사 10줄만 이 노드가 쓴다"],
-          ["씬 전체", "tutorial_0 씬의 대사는 모두 10줄 · duration_target_sec 25초"],
-          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
-          ["화자", "Olivia · Quinn"],
-          ["첫 줄", "I still can't believe those rioters destroyed my restaurant!"],
-          ["끝 줄", "Now to straighten up the kitchen so I can cook."],
-          ["스틸컷 컷 플랜", "stillcut_tutorial_0_01(1,2,3) · stillcut_tutorial_0_02(4,5,6) · stillcut_tutorial_0_03(7,8) · stillcut_tutorial_0_04(9,10)"],
-          ["왜 이렇게 되나", "첫 노드. 튜토리얼 씬 전체(10줄)를 한 번에 재생한다. 스틸컷 모드에선 이 노드 하나가 씬을 통째로 소비한다."]
+          ["씬 전체", "tutorial_0 씬의 대사는 모두 10줄 · present_video.line_count 10 · duration_target_sec 25초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 0 · skippable_after_sec 3"],
+          ["화자", "Poppy · Rosie"],
+          ["첫 줄", "I can't believe it. The whole village has gone wild."],
+          ["끝 줄", "I'll tidy Grandma Rosa's kitchen so I can bake."],
+          ["스틸컷 빌드에서는", "씬 1_1_the_road_back 가 이 노드에 붙는다 — 컷 7장 · 01(대사 1,2) · 02(3) · 03(4) · 04(5) · 05(6,7) · 06(8) · 07(9~12)"],
+          ["왜 이렇게 되나", "첫 노드. 활성 모드(chat)에서는 이 파트의 대사만 재생한다. 스틸컷 빌드에서는 이 노드에 씬 1_1_the_road_back(컷 7장)이 통째로 붙는다."]
         ]}
       ]
     },
     {
       id: "n2", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
-      title: "노드 02 · 태스크", ko: "Clean the Kitchen · merge",
+      title: "노드 02 · 태스크", ko: "Tidy the Kitchen · merge",
       file: "assets/bundle/data/story_node.json #2 · StoryNodeRunner.runNode()",
       acts: [
-        ["러너가 부르면", "presentTask(node) → resolveStoryTaskGoldCost(0) → playCostTask()"],
-        ["팝업", "ViewCreator.showPopupTask(node, goldBalance, 0) → waitForConfirmation()"],
-        ["골드가 모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+        ["러너가 부르면", "presentTask(node) → while (isValid)"],
+        ["팝업", "ViewCreator.showPopupTask(node) → waitForConfirmation()"],
+        ["보드", "playMergeTask(node) → showViewMergeBoard(node) → waitForCompletion()"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
-          ["task_cost", "0 골드 — 머지 주문 0회분(주문 1회 = 10골드)"],
-          ["node_id", "clean_kitchen — 완료 시 refreshStoryStage() 가 이 id 로 스테이지 오브젝트를 켠다"],
-          ["portrait", "olivia — PopupTask 가 이 이름의 초상만 활성화한다"],
+          ["완료 기준", "머지 1회 (REQUIRED_MERGE_COUNT). BUG-006 에서 세 태스크를 같은 기준으로 통일했다"],
+          ["task_cost", "데이터에는 0 이 남아 있지만 코드가 읽지 않는다 — StoryTaskEconomy 가 삭제됐다"],
+          ["node_id", "clean_kitchen — 예전에는 refreshStoryStage() 가 이 id 로 꾸미기 오브젝트를 켰다. 지금은 그 함수도 오브젝트도 없다 (#19)"],
+          ["portrait", "poppy — PopupTask 가 이 이름의 초상만 활성화한다"],
           ["보상", "none 0"],
           ["task_ref · quest", "tutorial_clean_kitchen · q1_tutorial(order 1) · day 0"],
-          ["왜 이렇게 되나", "비용이 0이라 PopupTask 의 첫 판정에서 바로 통과한다 — 머지 보드로 내려가지 않는 유일한 태스크다."]
+          ["왜 이렇게 되나", "첫 태스크. 예전에는 task_cost 0 이라 골드 판정을 바로 통과해 머지 보드로 안 내려갔지만, 지금은 세 태스크가 모두 머지 1회를 거친다."]
         ]}
       ]
     },
     {
       id: "n3", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
-      title: "노드 03 · 대사", ko: "1_1_begin 파트 1 · 대사 12줄",
+      title: "노드 03 · 대사", ko: "1_1_begin 파트 1 · 대사 14줄",
       file: "assets/bundle/data/story_node.json #3 · StoryNodeRunner.runNode()",
       acts: [
         ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
-        ["씬 문맥", "nodeDialogues 12줄 · sceneDialogues 12줄 · video 1_1_begin"],
-        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+        ["씬 문맥", "nodeDialogues 14줄 · sceneDialogues 14줄 · video 1_1_begin"],
+        ["모드 분기", "chat: consumesSceneAfterDialogue() false — 그대로 재생 · stillcut: true — 씬을 삼킨다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
-          ["scene_id : part", "1_1_begin : 1 — 이 조합의 대사 12줄만 이 노드가 쓴다"],
-          ["씬 전체", "1_1_begin 씬의 대사는 모두 12줄 · duration_target_sec 30초"],
-          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
-          ["화자", "Colton · Quinn"],
-          ["첫 줄", "Cole! How dare you come back here? We're DIVORCED!"],
-          ["끝 줄", "If you say so…see you around, Quinn."],
-          ["스틸컷 컷 플랜", "stillcut_1_1_begin_01(1,2,3) · stillcut_1_1_begin_02(4,5,6) · stillcut_1_1_begin_03(7,8,9) · stillcut_1_1_begin_04(10,11,12)"],
-          ["왜 이렇게 되나", "12줄로 가장 긴 씬. duration_target_sec 30초 · 컷 4장."]
+          ["scene_id : part", "1_1_begin : 1 — 이 조합의 대사 14줄만 이 노드가 쓴다"],
+          ["씬 전체", "1_1_begin 씬의 대사는 모두 14줄 · present_video.line_count 14 · duration_target_sec 35초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 0 · skippable_after_sec 3"],
+          ["화자", "Brett · Poppy · Rosie"],
+          ["첫 줄", "Brett! You can't just walk into my mother's workshop."],
+          ["끝 줄", "He had to get back to the shop."],
+          ["스틸컷 빌드에서는", "씬 1_2_my_workshop 가 이 노드에 붙는다 — 컷 12장 · 01(1) · 02(2,3) · 03(4,5) · 04(6) · 05(7~9) · 06(10) · 07(11) · 08(12,13) · 09(14) · 10(15) · 11(16) · 12(17,18)"],
+          ["왜 이렇게 되나", "스틸컷 빌드에서 씬 1_2_my_workshop(컷 12장 · 대사 18행)이 붙는 노드다. 세 씬 중 가장 길다."]
         ]}
       ]
     },
     {
       id: "n4", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
-      title: "노드 04 · 태스크", ko: "We're Divorced! · decorate",
+      title: "노드 04 · 태스크", ko: "None of Your Business · decorate",
       file: "assets/bundle/data/story_node.json #4 · StoryNodeRunner.runNode()",
       acts: [
-        ["러너가 부르면", "presentTask(node) → resolveStoryTaskGoldCost(26) → playCostTask()"],
-        ["팝업", "ViewCreator.showPopupTask(node, goldBalance, 26) → waitForConfirmation()"],
-        ["골드가 모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+        ["러너가 부르면", "presentTask(node) → while (isValid)"],
+        ["팝업", "ViewCreator.showPopupTask(node) → waitForConfirmation()"],
+        ["보드", "playMergeTask(node) → showViewMergeBoard(node) → waitForCompletion()"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
-          ["task_cost", "26 골드 — 머지 주문 3회분(주문 1회 = 10골드)"],
-          ["node_id", "task_1_1 — 완료 시 refreshStoryStage() 가 이 id 로 스테이지 오브젝트를 켠다"],
-          ["portrait", "colton — PopupTask 가 이 이름의 초상만 활성화한다"],
+          ["완료 기준", "머지 1회 (REQUIRED_MERGE_COUNT). BUG-006 에서 세 태스크를 같은 기준으로 통일했다"],
+          ["task_cost", "데이터에는 26 이 남아 있지만 코드가 읽지 않는다 — StoryTaskEconomy 가 삭제됐다"],
+          ["node_id", "task_1_1 — 예전에는 refreshStoryStage() 가 이 id 로 꾸미기 오브젝트를 켰다. 지금은 그 함수도 오브젝트도 없다 (#19)"],
+          ["portrait", "brett — PopupTask 가 이 이름의 초상만 활성화한다"],
           ["보상", "exp 15"],
           ["task_ref · quest", "casinio_task_1_1 · q2_1_1(order 2) · day 1"],
-          ["왜 이렇게 되나", "26골드로 가장 비싸다. 머지 주문 3회(10골드 x 3 = 30)를 채워야 넘어간다. 완료하면 꽃병이 켜진다."]
+          ["왜 이렇게 되나", "제목이 'None of Your Business' 로 바뀌었다(로즈우드 캐스트 통일 #18). task_cost 26 이 데이터에 남아 있지만 코드가 읽지 않는다 — 골드 경제가 삭제됐다."]
         ]}
       ]
     },
@@ -1809,37 +1999,37 @@
       acts: [
         ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
         ["씬 문맥", "nodeDialogues 2줄 · sceneDialogues 5줄 · video 1_2_begin"],
-        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+        ["모드 분기", "chat: consumesSceneAfterDialogue() false — 그대로 재생 · stillcut: true — 씬을 삼킨다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
           ["scene_id : part", "1_2_begin : 1 — 이 조합의 대사 2줄만 이 노드가 쓴다"],
-          ["씬 전체", "1_2_begin 씬의 대사는 모두 5줄 · duration_target_sec 15초"],
-          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
-          ["화자", "Quinn · Sam"],
-          ["첫 줄", "Sam! I’m so happy you’re here – and with tools!"],
-          ["끝 줄", "Of course! A little vandalism won't stop me from coming to work."],
-          ["스틸컷 컷 플랜", "stillcut_1_2_begin_01(1,2) · still_sam_tools(삽입) · stillcut_1_2_begin_03(4,5,6)"],
-          ["왜 이렇게 되나", "1_2_begin 의 앞 2줄만 쓰는 파트. 스틸컷 모드에선 노드 6·7 까지 삼킨다."]
+          ["씬 전체", "1_2_begin 씬의 대사는 모두 5줄 · present_video.line_count 5 · duration_target_sec 15초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 0 · skippable_after_sec 3"],
+          ["화자", "Rafa · Rosie"],
+          ["첫 줄", "Rafa! So glad you're here — with tools!"],
+          ["끝 줄", "A few boarded-up windows won't stop me."],
+          ["스틸컷 빌드에서는", "씬 1_3_doesnt_add_up 가 이 노드에 붙는다 — 컷 8장 · 01(1~3) · 02(4) · 03(5~7) · 04(8~11) · 05(12,13) · 06(14~16) · 07(17) · 08(18)"],
+          ["왜 이렇게 되나", "스틸컷 빌드에서 씬 1_3_doesnt_add_up(컷 8장)이 붙고, consumesSceneAfterDialogue() 가 true 라 노드 6·7 을 삼킨다."]
         ]}
       ]
     },
     {
       id: "n6", chip: true, cat: "story", kind: "stillcut", x: 0, y: 0, w: 300,
-      title: "노드 06 · 스틸컷", ko: "Sam with Tools · 1_2_begin step 3 자리",
+      title: "노드 06 · 스틸컷", ko: "Rafa with Tools · 1_2_begin step 3 자리",
       file: "assets/bundle/data/story_node.json #6 · StoryNodeRunner.runNode()",
       acts: [
         ["러너가 부르면", "presentation.presentStillcut(node)"],
-        ["스틸컷 모드", "CClog.warn(unexpected standalone stillcut) — 씬에 이미 포함돼 여기 오면 경고다"],
-        ["에셋", "storyStillcut/stills/still_sam_tools"]
+        ["채팅 빌드", "삽화를 채팅 피드 안에 끼워 넣는다 (INLINE_STILLCUT)"],
+        ["스틸컷 빌드", "CClog.warn(unexpected standalone stillcut) — 씬에 이미 포함돼 여기 오면 경고다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
           ["origin_scene : step", "1_2_begin : 3 — 이 자리에 대사가 **없어야** 검증을 통과한다"],
           ["씬 안 위치", "1_2_begin 컷 플랜의 삽입(embedded) 컷 · 노출 3초"],
           ["present_video", "embedded_stillcut_1 = sc_sam_tools"],
-          ["asset", "still_sam_tools.png"],
-          ["왜 이렇게 되나", "독립 지면이 아니다. 1_2_begin 씬 타임라인의 두 번째 컷(삽입 3초)으로 이미 재생된다 — 그래서 스틸컷 모드에선 삼켜진다."]
+          ["asset", "still_rafa_tools.png"],
+          ["왜 이렇게 되나", "채팅 빌드에서는 삽화를 채팅 피드 안에 끼워 넣는다(INLINE_STILLCUT). 스틸컷 빌드에서는 씬에 흡수돼 삼켜진다."]
         ]}
       ]
     },
@@ -1850,38 +2040,39 @@
       acts: [
         ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
         ["씬 문맥", "nodeDialogues 3줄 · sceneDialogues 5줄 · video 1_2_begin"],
-        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+        ["모드 분기", "chat: consumesSceneAfterDialogue() false — 그대로 재생 · stillcut: true — 씬을 삼킨다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
           ["scene_id : part", "1_2_begin : 2 — 이 조합의 대사 3줄만 이 노드가 쓴다"],
-          ["씬 전체", "1_2_begin 씬의 대사는 모두 5줄 · duration_target_sec 15초"],
-          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
-          ["화자", "Quinn · Sam"],
-          ["첫 줄", "But I don't understand what caused the riot. What happened?"],
-          ["끝 줄", "Don't you worry, Quinn. I can fix this right up."],
-          ["스틸컷 컷 플랜", "stillcut_1_2_begin_01(1,2) · still_sam_tools(삽입) · stillcut_1_2_begin_03(4,5,6)"],
-          ["왜 이렇게 되나", "1_2_begin 의 뒤 3줄. step 4~6 이라 앞의 빈 step 3 자리가 노드 6 의 삽입 컷이다."]
+          ["씬 전체", "1_2_begin 씬의 대사는 모두 5줄 · present_video.line_count 5 · duration_target_sec 15초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 0 · skippable_after_sec 3"],
+          ["화자", "Rafa · Rosie"],
+          ["첫 줄", "Why is the whole town boarded up? What happened?"],
+          ["끝 줄", "Don't worry, Rosie. I'll fix it up."],
+          ["스틸컷 빌드에서는", "이 노드에 배정된 씬이 없다 (STILLCUT_SCENE_NODE_ORDERS 는 1 · 3 · 5 뿐)"],
+          ["왜 이렇게 되나", "1_2_begin 의 뒤 파트. 앞의 빈 step 자리가 노드 6 의 삽화 자리다."]
         ]}
       ]
     },
     {
       id: "n8", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
-      title: "노드 08 · 태스크", ko: "Something Fishy · decorate",
+      title: "노드 08 · 태스크", ko: "Something Doesn't Add Up · decorate",
       file: "assets/bundle/data/story_node.json #8 · StoryNodeRunner.runNode()",
       acts: [
-        ["러너가 부르면", "presentTask(node) → resolveStoryTaskGoldCost(16) → playCostTask()"],
-        ["팝업", "ViewCreator.showPopupTask(node, goldBalance, 16) → waitForConfirmation()"],
-        ["골드가 모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+        ["러너가 부르면", "presentTask(node) → while (isValid)"],
+        ["팝업", "ViewCreator.showPopupTask(node) → waitForConfirmation()"],
+        ["보드", "playMergeTask(node) → showViewMergeBoard(node) → waitForCompletion()"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
-          ["task_cost", "16 골드 — 머지 주문 2회분(주문 1회 = 10골드)"],
-          ["node_id", "set_table — 완료 시 refreshStoryStage() 가 이 id 로 스테이지 오브젝트를 켠다"],
-          ["portrait", "sam — PopupTask 가 이 이름의 초상만 활성화한다"],
+          ["완료 기준", "머지 1회 (REQUIRED_MERGE_COUNT). BUG-006 에서 세 태스크를 같은 기준으로 통일했다"],
+          ["task_cost", "데이터에는 16 이 남아 있지만 코드가 읽지 않는다 — StoryTaskEconomy 가 삭제됐다"],
+          ["node_id", "set_table — 예전에는 refreshStoryStage() 가 이 id 로 꾸미기 오브젝트를 켰다. 지금은 그 함수도 오브젝트도 없다 (#19)"],
+          ["portrait", "rafa — PopupTask 가 이 이름의 초상만 활성화한다"],
           ["보상", "exp 15"],
           ["task_ref · quest", "casinio_task_1_2 · q3_1_2(order 3) · day 1"],
-          ["왜 이렇게 되나", "16골드. 머지 주문 2회면 채워진다. 완료하면 식탁 세팅이 켜진다."]
+          ["왜 이렇게 되나", "초상은 rafa. 완료 기준은 다른 태스크와 같은 머지 1회다."]
         ]}
       ]
     },
@@ -1892,29 +2083,29 @@
       acts: [
         ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
         ["씬 문맥", "nodeDialogues 7줄 · sceneDialogues 8줄 · video 1_2_end"],
-        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+        ["모드 분기", "chat: consumesSceneAfterDialogue() false — 그대로 재생 · stillcut: true — 씬을 삼킨다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
           ["scene_id : part", "1_2_end : 1 — 이 조합의 대사 7줄만 이 노드가 쓴다"],
-          ["씬 전체", "1_2_end 씬의 대사는 모두 8줄 · duration_target_sec 23초"],
-          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
-          ["화자", "Quinn · Sam"],
-          ["첫 줄", "So, about the food poisoning…it wasn't an accident, was it?"],
-          ["끝 줄", "Maybe it's time I got back into my childhood hobby: solving mysteries!"],
-          ["스틸컷 컷 플랜", "stillcut_1_2_end_01(1,2,3) · stillcut_1_2_end_02(4,5) · stillcut_1_2_end_03(6,7) · still_detective(삽입) · stillcut_1_2_end_05(9)"],
-          ["왜 이렇게 되나", "1_2_end 의 앞 7줄. 컷 3장을 지나 삽입 컷 앞까지다."]
+          ["씬 전체", "1_2_end 씬의 대사는 모두 8줄 · present_video.line_count 8 · duration_target_sec 23초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 0 · skippable_after_sec 3"],
+          ["화자", "Rafa · Rosie"],
+          ["첫 줄", "That market closing wasn't just bad luck, was it?"],
+          ["끝 줄", "Time to pick up my old hobby. Solving mysteries."],
+          ["스틸컷 빌드에서는", "이 노드에 배정된 씬이 없다 (STILLCUT_SCENE_NODE_ORDERS 는 1 · 3 · 5 뿐)"],
+          ["왜 이렇게 되나", "스틸컷 빌드에는 이 노드에 배정된 씬이 없다 — getStillcutSceneId() 가 빈 문자열을 돌려준다."]
         ]}
       ]
     },
     {
       id: "n10", chip: true, cat: "story", kind: "stillcut", x: 0, y: 0, w: 300,
-      title: "노드 10 · 스틸컷", ko: "Detective Quinn · 1_2_end step 8 자리",
+      title: "노드 10 · 스틸컷", ko: "Rosie Investigates · 1_2_end step 8 자리",
       file: "assets/bundle/data/story_node.json #10 · StoryNodeRunner.runNode()",
       acts: [
         ["러너가 부르면", "presentation.presentStillcut(node)"],
-        ["스틸컷 모드", "CClog.warn(unexpected standalone stillcut) — 씬에 이미 포함돼 여기 오면 경고다"],
-        ["에셋", "storyStillcut/stills/still_detective"]
+        ["채팅 빌드", "삽화를 채팅 피드 안에 끼워 넣는다 (INLINE_STILLCUT)"],
+        ["스틸컷 빌드", "CClog.warn(unexpected standalone stillcut) — 씬에 이미 포함돼 여기 오면 경고다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
@@ -1922,7 +2113,7 @@
           ["씬 안 위치", "1_2_end 컷 플랜의 삽입(embedded) 컷 · 노출 3초"],
           ["present_video", "embedded_stillcut_1 = sc_detective"],
           ["asset", "still_detective.png"],
-          ["왜 이렇게 되나", "1_2_end 씬의 네 번째 컷(삽입 3초). origin_step 8 자리에 대사가 없어야 검증을 통과한다."]
+          ["왜 이렇게 되나", "마지막 삽화. 채팅 빌드에서는 피드에 끼워 넣고, 스틸컷 빌드에서는 앞 씬에 흡수된다."]
         ]}
       ]
     },
@@ -1933,24 +2124,24 @@
       acts: [
         ["러너가 부르면", "createPresentationContext() → presentation.presentDialogue(context)"],
         ["씬 문맥", "nodeDialogues 1줄 · sceneDialogues 8줄 · video 1_2_end"],
-        ["스틸컷 모드", "consumesSceneAfterDialogue() → collectConsumedSceneNodes()"]
+        ["모드 분기", "chat: consumesSceneAfterDialogue() false — 그대로 재생 · stillcut: true — 씬을 삼킨다"]
       ],
       detail: [
         { h: "원본 데이터 · 재생 규칙", rows: [
           ["scene_id : part", "1_2_end : 2 — 이 조합의 대사 1줄만 이 노드가 쓴다"],
-          ["씬 전체", "1_2_end 씬의 대사는 모두 8줄 · duration_target_sec 23초"],
-          ["자막 · 탭", "subtitle 1 · tap_to_skip 1 · skippable_after_sec 3"],
-          ["화자", "Quinn"],
-          ["첫 줄", "I'm gonna figure out what's going on here!"],
-          ["끝 줄", "I'm gonna figure out what's going on here!"],
-          ["스틸컷 컷 플랜", "stillcut_1_2_end_01(1,2,3) · stillcut_1_2_end_02(4,5) · stillcut_1_2_end_03(6,7) · still_detective(삽입) · stillcut_1_2_end_05(9)"],
-          ["왜 이렇게 되나", "마지막 노드. 1_2_end 의 step 9 한 줄. 끝나면 COMPLETE 11 / 11 이 뜬다."]
+          ["씬 전체", "1_2_end 씬의 대사는 모두 8줄 · present_video.line_count 8 · duration_target_sec 23초"],
+          ["자막 · 탭", "subtitle 1 · tap_to_skip 0 · skippable_after_sec 3"],
+          ["화자", "Rosie"],
+          ["첫 줄", "I'll find out what happened here!"],
+          ["끝 줄", "I'll find out what happened here!"],
+          ["스틸컷 빌드에서는", "이 노드에 배정된 씬이 없다 (STILLCUT_SCENE_NODE_ORDERS 는 1 · 3 · 5 뿐)"],
+          ["왜 이렇게 되나", "마지막 노드. 끝나면 COMPLETE [CHAT] 11 / 11 이 뜬다."]
         ]}
       ]
     },
     /* ── 연출 모드 · 빌드 분기 ───────────────────────────────── */
     {
-      id: "mode", chips: ["m_chat", "m_stillcut", "m_video"], cat: "mode", kind: "묶음", gate: true, x: 80, y: 733, w: 300,
+      id: "mode", chips: ["m_chat", "m_stillcut", "m_video"], cat: "mode", kind: "묶음", gate: true, x: 80, y: 797, w: 300,
       title: "연출 모드", ko: "chat · stillcut · video",
       file: "assets/script/game/story/StoryBuildConfig.ts · StoryPresentationFactory.ts",
       acts: [
@@ -2043,7 +2234,7 @@
       ]
     },
     {
-      id: "stillplan", cat: "mode", kind: "로직", x: 80, y: 1042, w: 300,
+      id: "stillplan", cat: "mode", kind: "로직", x: 590, y: 888, w: 300,
       title: "StillcutScenePlan", ko: "컷 플랜 · 크로스페이드",
       file: "assets/script/game/story/presentation/stillcut/StillcutScenePlan.ts · StillcutStorySource.ts",
       acts: [
@@ -2068,7 +2259,7 @@
       ]
     },
     {
-      id: "profile", cat: "mode", kind: "빌드", x: 590, y: 761, w: 300,
+      id: "profile", cat: "mode", kind: "빌드", x: 590, y: 1016, w: 300,
       title: "story-build-profile.js", ko: "빌드 프로파일",
       file: "scripts/story-build-profile.js · story-build-profiles/*.json",
       acts: [
@@ -2091,136 +2282,93 @@
         ]}
       ]
     },
-    /* ── 태스크 골드 루프 ────────────────────────────────────── */
+    /* ── 태스크 · 머지 보드 ──────────────────────────────────────
+       v1.0 의 '골드 루프' 는 사라졌다. BUG-006 에서 완료 기준을 머지 1회로 통일하면서
+       StoryTaskEconomy.ts 가 삭제되고 PopupTask · ViewMergeBoard 의 인자도 노드 하나로 줄었다. */
     {
-      id: "taskloop", cat: "task", kind: "로직", gate: true, x: 590, y: 889, w: 300,
-      title: "playCostTask()", ko: "골드 루프",
-      file: "assets/script/game/story/StoryNodeRunner.ts:playCostTask",
+      id: "taskloop", cat: "task", kind: "로직", gate: true, x: 1100, y: 761, w: 300,
+      title: "presentTask()", ko: "태스크 루프",
+      file: "assets/script/game/story/StoryNodeRunner.ts:presentTask",
       acts: [
-        ["태스크 노드", "presentTask(node) → resolveStoryTaskGoldCost(task_cost)"],
-        ["안내 팝업", "showPopupTask(node, goldBalance, taskCost) → waitForConfirmation()"],
-        ["골드가 있으면", "taskEconomy.spend(cost) → completeCostTask() → 루프 탈출"],
-        ["모자라면", "hideForGameplay() → showViewMergeBoard() → collectMergeOrders()"]
+        ["태스크 노드", "presentTask(node) → statusLabel 에 [TASK] 표시"],
+        ["안내 팝업", "showPopupTask(node) → waitForConfirmation()"],
+        ["보드로", "playMergeTask(node) → showViewMergeBoard(node) → waitForCompletion()"],
+        ["완료면", "true → CClog.log(task complete N) → return"],
+        ["아니면", "false → continue → 팝업부터 다시"]
       ],
       detail: [
-        { h: "while 루프가 도는 방식", rows: [
-          ["반복 조건", "while (!completed) — 골드가 찰 때까지 팝업과 보드를 오간다. 유저가 나갈 문은 없다"],
-          ["매 회차", "getGoldBalance() 를 다시 읽어 팝업에 넘긴다 — 팝업 문구가 EARN GOLD / SPEND GOLD 로 갈린다"],
-          ["async 안전", "showPopupTask · waitForCompletion 뒤마다 this.isValid 를 다시 확인하고 아니면 즉시 반환한다"],
-          ["주문 문맥", "MergeOrderContext { rewardGold: 10, currentGold: 지금 골드, targetGold: 태스크 비용 }"],
-          ["회수", "result.completedOrderCount 를 collectMergeOrders() 에 넘겨 10골드씩 더한다"],
-          ["끝 로그", "CClog.log(\"StoryNodeRunner > cost task complete N\")"]
+        { h: "while 루프 — 예전 골드 루프와 무엇이 다른가", rows: [
+          ["반복 조건", "while (this.isValid) — 머지 1회를 끝낼 때까지 돈다. 예전엔 while (!completed) 로 골드가 찰 때까지였다"],
+          ["넘기는 것", "노드 하나뿐이다. 예전엔 (node, goldBalance, taskCost) 세 개를 넘겼다"],
+          ["판정 위치", "루프가 직접 판정하지 않는다 — 보드가 waitForCompletion() 으로 true/false 를 돌려준다"],
+          ["async 안전", "showPopupTask · waitForConfirmation · playMergeTask 뒤마다 this.isValid 를 다시 확인한다"],
+          ["사라진 것", "StoryTaskEconomy · resolveStoryTaskGoldCost · MergeOrderContext · completeCostTask · refreshStoryStage"],
+          ["데이터 잔재", "story_node.json 의 task_cost(0 · 26 · 16)는 남아 있지만 코드가 읽지 않는다"]
         ]},
-        { h: "0골드 태스크가 특별한 이유", rows: [
-          ["노드 2", "clean_kitchen 은 task_cost 0 이라 첫 spend(0) 이 바로 성공한다"],
-          ["보드 안 감", "머지 보드로 내려가지 않는 유일한 태스크 — 튜토리얼 성격이다"],
-          ["기본값", "task_cost 가 null 이면 resolveStoryTaskGoldCost() 가 TUTORIAL_TASK_GOLD_COST(10) 을 준다. 데이터에는 셋 다 값이 있어 지금은 안 쓰인다"]
+        { h: "함정", rows: [
+          ["출구가 하나", "보드에서 합치기를 한 번도 안 하고 뒤로 나가면 false → continue 로 팝업부터 다시 시작한다. 이탈 경로가 없다"],
+          ["프로토라 의도됨", "회차가 짧아졌을 뿐(주문 3회 → 머지 1회) 구조는 v1.0 때와 같다"]
         ]}
       ]
     },
     {
-      id: "task", cat: "task", kind: "지면", x: 1100, y: 760, w: 300,
+      id: "task", cat: "task", kind: "지면", x: 1100, y: 887, w: 300,
       title: "PopupTask", ko: "태스크 안내 팝업",
       file: "assets/script/game/popup/PopupTask.ts · assets/bundle/popup/PopupTask.prefab",
       acts: [
-        ["루프가 열면", "ViewCreator.showPopupTask(node, gold, cost) → configure() → show(true)"],
-        ["EARN / SPEND 누름", "onClickStart() → confirmationResolver() → close()"],
-        ["초상 선택", "node.portrait === olivia / colton / sam 중 하나만 켠다"]
+        ["루프가 열면", "ViewCreator.showPopupTask(node) → configure(node) → show(true)"],
+        ["시작 누름", "onClickStart() → confirmationResolver() → close()"],
+        ["초상 선택", "node.portrait === poppy / brett / rafa 중 하나만 켠다"]
       ],
       detail: [
-        { h: "configure() 가 채우는 것", rows: [
-          ["제목", "node.label.toUpperCase() — WE'RE DIVORCED! 처럼"],
-          ["비용 · 보상", "Cost: {cost} Gold · Reward: {item} {amount}. 보상이 none 이거나 0이면 Reward: None"],
-          ["진행 문구", "골드가 충분하면 Gold n / m - Ready · 모자라면 Gold n / m - Earn in Merge"],
-          ["버튼 문구", "충분하면 SPEND GOLD · 모자라면 EARN GOLD. 같은 버튼 · 같은 핸들러다"],
-          ["숫자 형식", "Utils.separateThousandsOnlyComma() — 프로젝트 규칙대로 toString() 을 쓰지 않는다"],
-          ["초상", "oliviaPortrait · coltonPortrait · samPortrait 세 노드를 portrait 값으로 켜고 끈다. 프리팹엔 셋 다 있고 둘은 비활성 저장이다"]
+        { h: "configure() 가 채우는 것 — v1.0 보다 줄었다", rows: [
+          ["제목", "node.label.toUpperCase()"],
+          ["보상", "makeRewardText(node) — reward_1_item 이 none 이거나 0이면 Reward: None"],
+          ["초상", "poppyPortrait · brettPortrait · rafaPortrait 세 노드. 로즈우드 캐스트 통일(#18) 로 olivia · colton · sam 에서 바뀌었다"],
+          ["사라진 것", "costLabel · goldProgressLabel — 비용과 골드 진행 문구가 통째로 없어졌다"],
+          ["버튼 문구", "고정. 예전엔 골드가 충분하면 SPEND GOLD, 모자라면 EARN GOLD 로 갈렸다"]
         ]},
         { h: "확인 대기", rows: [
           ["약속", "waitForConfirmation() — 이미 눌렀으면 즉시 resolve, 아니면 confirmationResolver 를 담아 둔다"],
           ["중복 방지", "onClickStart() 는 isConfirmed 를 먼저 보고 두 번째 클릭을 버린다"],
-          ["닫기", "resolve 한 뒤 close() — 루프는 팝업이 닫힌 다음 골드를 판정한다"]
+          ["닫기", "resolve 한 뒤 close(). 루프는 팝업이 닫힌 다음 보드를 연다"]
         ]}
       ]
     },
     {
-      id: "merge", cat: "task", kind: "지면", x: 1100, y: 888, w: 300,
+      id: "merge", cat: "task", kind: "지면", x: 1100, y: 1015, w: 300,
       title: "ViewMergeBoard", ko: "머지 보드",
       file: "assets/script/game/story/ViewMergeBoard.ts · assets/bundle/view/ViewMergeBoard.prefab",
       acts: [
-        ["루프가 열면", "ViewCreator.showViewMergeBoard(node, orderContext) → configure() → show(true)"],
-        ["생성기를 누르면", "generateItem() → model.generateItem() → 셀에 티어 1 배치"],
+        ["루프가 열면", "ViewCreator.showViewMergeBoard(node) → configure(node) → show(true)"],
+        ["생성기를 누르면", "generateItem() → model.generateItem() → 빈 셀에 티어 1"],
         ["아이템을 끌면", "beginItemDrag() → moveItemDrag() → endItemDrag() → model.move()"],
-        ["주문 완료", "onClickContinue() → consumeTier() → currentGold += 10"],
-        ["나가기", "onClickBack() → resolveCompletion(false) → close()"]
+        ["합치면", "머지 1회로 CLEAR 버튼이 켜진다 (isQuestComplete)"],
+        ["나가기", "onClickContinue() true · onClickBack() false → resolveCompletion() → close()"]
       ],
       detail: [
+        { h: "완료 기준 — v1.0 의 주문 시스템이 사라졌다", rows: [
+          ["기준", "REQUIRED_MERGE_COUNT = 1. model.getMergeCount() 가 1 이상이면 완료다"],
+          ["진행 문구", "progressLabel = \"n / 1 MERGE\" · 완료 버튼 문구는 CLEAR 고정"],
+          ["버튼 노출", "continueButton.node.active 를 완료 전까지 꺼 둔다 — 예전엔 켜 두고 interactable 만 껐다"],
+          ["사라진 것", "orderContext · orderTargetTier · completedOrderCount · getNextOrderTargetTier · consumeTier 호출"],
+          ["돌려주는 값", "boolean 하나. 예전엔 { completed, completedOrderCount } 였다"]
+        ]},
         { h: "보드 규격", rows: [
-          ["격자", "6열 x 7행 = 42칸. 셀 72px · 간격 6px → 피치 78px"],
-          ["생성기", "MERGE_GENERATOR_CELL_INDEX 8 — 이 칸은 아이템이 못 들어간다 (isValidCell 이 막는다)"],
-          ["아이템 풀", "MERGE_ITEM_POOL_SIZE 5. 프리팹의 mergeItemNodes 5개와 짝이다"],
-          ["생성 자리", "SPAWN_CELL_PRIORITY [10, 19, 22, 31, 33] 중 빈 칸을 앞에서부터 고른다"],
-          ["드롭 판정", "가장 가까운 셀 중심까지 DROP_DISTANCE_LIMIT 56px 안이어야 놓인다. 넘으면 원래 자리로"],
-          ["드래그 한계", "clampDragPosition() 이 보드 밖으로 못 나가게 잡는다"]
+          ["격자", "6열 x 7행 = 42칸. 셀 72px · 간격 5px → 피치 77px (MergeBoardPresentationConfig)"],
+          ["타일", "타일 66px · 프레임 폭 576 · 라운드 30 · 테두리 12"],
+          ["생성기", "MERGE_GENERATOR_CELL_INDEX 8 — 이 칸에는 아이템이 못 들어간다"],
+          ["아이템 풀", "MERGE_ITEM_POOL_SIZE 5. 다 차면 생성이 거부된다"],
+          ["생성 자리", "SPAWN_CELL_PRIORITY [10, 19, 22, 31, 33] 중 빈 칸을 앞에서부터"],
+          ["드롭 판정", "가장 가까운 셀 중심까지 56px 이내"],
+          ["합치기", "티어가 같고 3 미만일 때만. 티어 3 이 상한"]
         ]},
-        { h: "합치기 규칙 (SimpleMergeBoardModel.move)", rows: [
-          ["거절", "같은 칸 · 잘못된 칸 · 빈 아이템을 끌면 Rejected"],
-          ["이동", "목표 칸이 비어 있으면 Moved — 티어를 그대로 옮긴다"],
-          ["합치기", "티어가 같고 3 미만이면 Merged → 목표 칸이 티어+1, mergeCount += 1"],
-          ["상한", "티어 3 이 최고다. 3 끼리는 합쳐지지 않는다 (sourceTier >= 3 이면 Rejected)"],
-          ["완료 판정", "isComplete(targetTier) = 보드에 그 티어가 하나라도 있으면 true"]
-        ]},
-        { h: "주문 모드 vs 단독 모드", rows: [
-          ["단독", "orderContext 가 null 이면 목표 티어 3 고정 · 버튼 COMPLETE ITEM · 누르면 바로 완료하고 닫는다"],
-          ["주문", "목표 티어가 2 → 3 → 2 … 로 번갈아 간다 (getNextOrderTargetTier: 완료 수가 짝수면 2)"],
-          ["주문 처리", "consumeTier(목표) 로 아이템 하나를 비우고 completedOrderCount += 1 · currentGold += rewardGold"],
-          ["닫히지 않음", "주문 모드의 onClickContinue 는 화면을 닫지 않는다 — 골드가 찰 때까지 계속 받는다"],
-          ["나갈 때", "onClickBack() 이 completedOrderCount 를 담아 루프에 돌려준다"],
-          ["안내 문구", "빈 보드면 Tap the generator … · 골드가 찼으면 Enough Gold - tap Back or keep earning"]
-        ]},
-        { h: "연출 · 사운드", rows: [
-          ["생성", "0.72 → 1.0 backOut 0.18초 · 생성기 0.9 → 1.08 backOut 0.12초 · GameSound.play(\"FX_SHOW\")"],
-          ["집기", "setScale(1.08) · setSiblingIndex(맨 앞) · GameSound.play(\"FX_SLIDE\")"],
-          ["합치기", "결과 티어 스프라이트로 교체 후 0.78 → 1.0 backOut 0.2초 · FX_SHOW"],
-          ["티어 스프라이트", "tierSpriteFrames[tier - 1] — 프리팹에 3장이 물려 있다"]
-        ]}
-      ]
-    },
-    {
-      id: "economy", cat: "task", kind: "로직", x: 1100, y: 1016, w: 300,
-      title: "StoryTaskEconomy", ko: "골드 경제",
-      file: "assets/script/game/story/task/StoryTaskEconomy.ts · task/SimpleMergeBoardModel.ts",
-      acts: [
-        ["주문 회수", "collectMergeOrders(n) → goldBalance += 10 x n"],
-        ["태스크 지불", "spend(cost) → 잔액이 모자라면 false 를 돌려주고 아무것도 안 깎는다"],
-        ["노드마다 초기화", "run() 시작에서 reset() → goldBalance = 0"]
-      ],
-      detail: [
-        { h: "상수와 그 뜻", rows: [
-          ["MERGE_ORDER_GOLD_REWARD 10", "주문 1건당 골드. 태스크 26골드는 주문 3건, 16골드는 2건이면 넘는다"],
-          ["TUTORIAL_TASK_GOLD_COST 10", "task_cost 가 null 일 때의 기본값. 지금 데이터엔 셋 다 값이 있어 쓰이지 않는다"],
-          ["세션 한정", "골드는 DataManager 나 저장소에 안 들어간다 — 러너 인스턴스 안에서만 산다. 다시 켜면 0 이다"],
-          ["음수 방지", "canSpend(cost) 는 cost >= 0 도 함께 본다"]
-        ]}
-      ]
-    },
-    {
-      id: "stage", cat: "task", kind: "로직", x: 590, y: 1015, w: 300,
-      title: "refreshStoryStage()", ko: "스테이지 반영",
-      file: "assets/script/game/story/StoryNodeRunner.ts:refreshStoryStage",
-      acts: [
-        ["러너 시작", "run() 첫 줄에서 한 번 — 바인딩이 비면 여기서 throw"],
-        ["태스크 완료", "completeCostTask(node) → completedCostNodeIds.push → refreshStoryStage()"],
-        ["켜지는 것", "task_1_1 → 꽃병 · set_table → 식탁 세팅"]
-      ],
-      detail: [
-        { h: "무엇이 켜지나", rows: [
-          ["StoryStageBackground", "항상 켠다 (storyStageRoot.active = true)"],
-          ["StoryFlowerVaseObject", "completedCostNodeIds 에 task_1_1 이 있을 때만"],
-          ["StoryTableSettingObject", "completedCostNodeIds 에 set_table 이 있을 때만"],
-          ["clean_kitchen 은 없음", "노드 2 는 스테이지 오브젝트가 없다 — 0골드 튜토리얼이라 화면 변화 대신 흐름만 익히게 했다"],
-          ["중복 방지", "completeCostTask() 가 이미 담긴 node_id 면 그냥 돌아간다"],
-          ["바인딩 검사", "storyStageRoot · 꽃병 · 식탁 셋 중 하나라도 없으면 throw — 프리팹 연결 누락을 첫 노드 전에 잡는다"]
+        { h: "선택 아이템 정보 · 손맛 (v1.0 에 없던 것)", rows: [
+          ["선택 티어", "selectedTier — 집거나 놓거나 합칠 때 갱신되고 itemLevelLabel 에 LEVEL n 으로 나간다"],
+          ["누름 반응", "MergeBoardPressFeedback — 눌림 3px · 테두리 4→1 · 0.12초"],
+          ["생성기 대기", "1.05배 확대 + 3px 위아래 · 0.8초 주기"],
+          ["팔레트", "MERGE_BOARD_PALETTE — wood500 #B57F4E · mint400 #7FC9BA · coral500 #FF6B5B 등 10색"],
+          ["안내 문구", "빈 보드면 Tap the generator … · 완료면 Quest complete - tap Clear"]
         ]}
       ]
     },
@@ -2419,7 +2567,7 @@
 
   /* 띠 라벨 — 같은 밀도에서도 덜 난잡해 보이게 (flowmap-v2-guide §3-2).
      좌표는 layout.py 가 실측 높이로 계산한 띠 상단이다. */
-  const BANDLABEL = [{"y": 120, "text": "부팅 · 데이터 · 스토리 노드"}, {"y": 720, "text": "연출 모드 · 태스크 골드 루프 · 시스템"}];
+  const BANDLABEL = [{"y": 120, "text": "부팅 · 인트로 영상 · 데이터 · 스토리 노드"}, {"y": 720, "text": "연출 모드 · 태스크 · 시스템"}];
 
 
   /* 카드 사이 흐름 — 화면이 바뀌거나 제어가 넘어가는 이동만 그린다.
@@ -2432,25 +2580,30 @@
     { a: "story", b: "runner", kind: "trunk", label: "onEnable() → run()" },
     { a: "runner", b: "spine", kind: "trunk", label: "runNodes(data, presentation)" },
 
-    /* 러너가 시작 전에 거는 것 */
+    /* 인트로 영상 — 러너와 겹쳐 돌고 게이트로만 만난다 (BUG-009) */
+    { a: "story", b: "introvideo", kind: "branch", label: "start() → armIntroGate()" },
+    { a: "introvideo", b: "runner", kind: "back", label: "markIntroFinished() → waitForIntro() 해제" },
+
+    /* 러너가 첫 대사 전에 거는 것 */
     { a: "runner", b: "data", kind: "branch", label: "await loadStoryData()" },
     { a: "runner", b: "mode", kind: "branch", label: "createStoryPresentation() → getMode() 대조" },
 
     /* 연출 갈래 */
-    { a: "spine", b: "shell", label: "dialogue 노드 → presentDialogue()" },
-    { a: "mode", b: "shell", label: "스틸컷 · 비디오 공용 껍데기" },
+    { a: "spine", b: "chatrow", label: "dialogue 노드 → 채팅 빌드" },
+    { a: "spine", b: "shell", label: "dialogue 노드 → 전체화면 빌드" },
+    { a: "mode", b: "chatrow", label: "chat 이 쓰는 행 · 테마" },
+    { a: "mode", b: "shell", label: "stillcut · video 공용 껍데기" },
     { a: "mode", b: "stillplan", label: "컷 플랜 · 크로스페이드" },
     { a: "mode", b: "profile", label: "빌드가 모드를 고정한다" },
+    { a: "chatrow", b: "spine", kind: "back", label: "대사가 끝나면 다음 노드" },
     { a: "shell", b: "spine", kind: "back", label: "씬이 끝나면 다음 노드" },
 
-    /* 태스크 갈래 */
-    { a: "spine", b: "taskloop", kind: "branch", label: "task 노드 → playCostTask()" },
-    { a: "taskloop", b: "task", kind: "trunk", label: "showPopupTask()" },
-    { a: "task", b: "merge", kind: "trunk", label: "골드 부족 → showViewMergeBoard()" },
-    { a: "merge", b: "taskloop", kind: "back", label: "waitForCompletion() → 루프 재진입" },
-    { a: "taskloop", b: "economy", label: "spend() · collectMergeOrders()" },
-    { a: "taskloop", b: "stage", label: "골드 충분 → completeCostTask()" },
-    { a: "stage", b: "spine", kind: "back", label: "refreshStoryStage() → 다음 노드" },
+    /* 태스크 갈래 — 골드 루프가 아니라 머지 1회 */
+    { a: "spine", b: "taskloop", kind: "branch", label: "task 노드 → presentTask()" },
+    { a: "taskloop", b: "task", kind: "trunk", label: "showPopupTask(node)" },
+    { a: "task", b: "merge", kind: "trunk", label: "onClickStart() → showViewMergeBoard(node)" },
+    { a: "merge", b: "taskloop", kind: "back", label: "waitForCompletion() → boolean" },
+    { a: "taskloop", b: "spine", kind: "back", label: "머지 1회 완료 → 다음 노드" },
 
     /* 시스템 */
     { a: "intro", b: "platform", label: "createPlatformInstance()" }
@@ -2470,12 +2623,16 @@
     moveToNext: "router", moveToBasic: "story",
     showViewStory: "story", run: "runner", runNodes: "spine",
     loadStoryData: "data", createStoryPresentation: "mode",
-    presentDialogue: "shell", present: "shell",
+    armIntroGate: "introvideo", markIntroFinished: "introvideo",
+    waitForIntro: "introvideo", finishIntro: "introvideo",
+    presentDialogue: "shell", present: "shell", onClickSkip: "shell",
+    getStoryCharacterTheme: "chatrow", playShow: "chatrow", playPortrait: "chatrow",
     createStillcutPlaybackPlan: "stillplan", getStillcutScenePlan: "stillplan",
-    presentTask: "taskloop", playCostTask: "taskloop",
+    loadStillcutDialogueData: "d_stillcut", getStillcutSceneId: "d_stillcut",
+    createStillcutPresentationContext: "d_stillcut",
+    presentTask: "taskloop", playMergeTask: "taskloop",
     showPopupTask: "task", showViewMergeBoard: "merge",
-    collectMergeOrders: "economy", spend: "economy",
-    completeCostTask: "stage", refreshStoryStage: "stage",
+    isQuestComplete: "merge", waitForCompletion: "merge",
     showPopupError: "p_error", showPopupErrorDefault: "p_error",
     showPopupErrorRestart: "p_error", showPopupToastError: "p_toast",
     showPopupToastRVError: "p_toast", showPopupSetting: "p_setting",
@@ -2747,10 +2904,10 @@
      대신 **노드 데이터 · 연출 모드 · 태스크 루프**가 그 자리를 차지한다.
      배지를 눌러 노드 표로 넘어간다 — 맵 구조는 안 건드린다. */
   const CTXNODE = {
-    spine:    "노드 11개 원본 데이터",
-    taskloop: "골드 루프 상태 기계",
-    mode:     "연출 모드 3종 대조",
-    data:     "데이터 계약 전량",
+    spine:     "노드 11개 · 두 빌드 대조",
+    taskloop:  "태스크 루프 상태 기계",
+    mode:      "연출 모드 3종 대조",
+    data:      "데이터 계약 전량",
     stillplan: "씬별 컷 플랜"
   };
   /* 칩으로 내려간 지면의 배지는 그 부모 카드에 모아 보여준다 */
@@ -3787,7 +3944,7 @@
     }));
 
     h += '<h3>스토리 노드 ' + SPINE.length + '개 <em>— story_node.json 실측</em></h3>';
-    h += tableOf(["#", "종류", "노드 · 씬", "제목 · 기믹", "스틸컷 모드에서", "골드"],
+    h += tableOf(["#", "종류", "노드 · 씬", "제목 · 기믹", "채팅 빌드 (활성)", "스틸컷 빌드"],
       SPINE.map(function (n) {
         return ['<b>' + n.i + '</b>',
                 '<code>' + esc(n.type) + '</code>',
@@ -3796,12 +3953,18 @@
                 '<b>' + esc(n.label || "—") + '</b>'
                   + (n.gimmick ? '<br><span class="mut">' + esc(n.gimmick) + '</span>' : ''),
                 esc(n.play),
-                n.cost ? '<b>' + n.cost + '</b>' : '<span class="mut">—</span>'];
+                '<span class="mut">' + esc(n.still) + '</span>'];
       }));
-    h += '<p class="note">스틸컷 · 비디오 모드는 <code>consumesSceneAfterDialogue()</code> 가 '
-      + 'true 라, dialogue 노드 하나가 같은 <code>scene_id</code> 의 뒤 노드를 통째로 삼킨다 '
-      + '(<code>StoryNodeRunner.collectConsumedSceneNodes</code>). 그래서 11노드를 다 밟지만 '
-      + '실제 재생은 씬 4개 + 태스크 3개다. 채팅 모드는 false 라 11개를 하나씩 재생한다.</p>';
+    h += '<p class="note"><b>활성 빌드는 채팅</b>이다. 채팅은 '
+      + '<code>consumesSceneAfterDialogue()</code> 가 false 라 11노드를 하나씩 재생한다.<br>'
+      + '스틸컷 · 비디오는 true 라 dialogue 노드 하나가 같은 씬의 뒤 노드를 통째로 삼킨다 '
+      + '(<code>StoryNodeRunner.collectConsumedSceneNodes</code>). 게다가 스틸컷은 '
+      + '<code>story_dialogue</code> 가 아니라 <b>자기 대사 파일</b>을 쓰고 씬을 '
+      + '<code>node_order</code> 1 · 3 · 5 에만 붙이므로(<code>STILLCUT_SCENE_NODE_ORDERS</code>) '
+      + '같은 노드 표가 두 빌드에서 전혀 다르게 읽힌다.</p>';
+    h += '<p class="note"><code>task_cost</code>(0 · 26 · 16) 열은 뺐다 — '
+      + 'BUG-006 에서 완료 기준을 <b>머지 1회</b>로 통일하면서 '
+      + '<code>StoryTaskEconomy</code> 가 삭제됐고, 데이터에 값만 남아 코드가 읽지 않는다.</p>';
 
     h += '<h3>연출 모드 ' + MODES.length + '종 <em>— 빌드 타임에 하나만 남는다</em></h3>';
     h += tableOf(["모드", "클래스", "씬 삼킴", "에셋 번들", "상태", "코드"], MODES.map(function (m) {
@@ -3824,6 +3987,21 @@
     h += tableOf(["검사", "통과 조건", "어기면"], CONTRACT.map(function (r) {
       return ['<b>' + esc(r[0]) + '</b>', r[1], esc(r[2])];
     }));
+    h += '<p class="note">총 줄 수 검사는 <b>버렸다</b>. 코드 주석 그대로 — "대사 줄 수는 원고가 '
+      + '바뀔 때마다 달라진다. 총합을 박아두면 대사를 한 줄 고칠 때마다 여기서 막히므로, '
+      + '대신 모든 대사 노드에 대사가 붙어 있는지를 본다." 남은 하드코딩은 '
+      + '<code>nodes 11</code> · <code>videos 4</code> 뿐이다.</p>';
+
+    if (typeof CONTRACT_STILL !== "undefined" && CONTRACT_STILL.length) {
+      h += '<h3>스틸컷 전용 데이터 계약 <em>— StillcutStoryData.validateStillcutDialogueData</em></h3>';
+      h += tableOf(["검사", "통과 조건", "어기면"], CONTRACT_STILL.map(function (r) {
+        return ['<b>' + esc(r[0]) + '</b>', r[1], esc(r[2])];
+      }));
+      h += '<p class="note">스틸컷 빌드는 <code>story_dialogue</code> 를 쓰지 않고 '
+        + '<code>storyStillcut/data/stillcuts-final-dialogue</code>(48행)를 따로 읽는다. '
+        + '여기서도 총합을 직접 박지 않고 <b>씬별 기대치의 합</b>으로 계산한다 — '
+        + '"총합을 따로 적어두면 컷을 지울 때마다 어긋난다".</p>';
+    }
     return h;
   };
 
