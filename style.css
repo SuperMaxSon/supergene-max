@@ -2119,152 +2119,91 @@ figure.shot figcaption .src {
 }
 
 /* ==========================================================================
-   보기 전환 (섹션 · 태그 · 프로젝트)  — 2026-08-28
-   섹션 보기는 종전 카드 그리드 그대로 두고, 태그 · 프로젝트 보기만 새로 얹는다.
-   축을 바꿔 보는 목적이 "재고 확인"이라 카드(설명문 포함)가 아니라 한 줄 행을 쓴다.
+   프로젝트 필터 — 2026-08-28
+   타이틀 아래 버튼 한 줄. 누르면 그 프로젝트 문서만 남는다.
+   섹션은 필터가 아니라 결과의 뼈대라 여기 없다 (nav pill 이 그 역할을 이어간다).
    ========================================================================== */
 
-.viewtabs {
-  flex: none;
+.projbar {
   display: flex;
-  gap: 2px;
-  padding: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+/* 선택 안 된 상태는 테두리만. 8~9개가 한 줄에 서므로 채움색을 다 쓰면
+   색이 서로를 지운다 — 지금 무엇이 걸려 있는지가 안 읽힌다. */
+.projbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--surface);
-}
-
-.viewtab {
-  padding: 4px 12px;
-  border: 0;
-  border-radius: 999px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-dim);
-  background: transparent;
+  background: var(--surface);
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
-.viewtab:hover {
-  color: var(--text);
+.projbtn:hover {
+  color: var(--acc, var(--text));
+  border-color: var(--acc, var(--text-faint));
 }
 
-.viewtab.is-active {
-  color: var(--surface);
-  background: var(--text);
+/* 활성은 식별색으로 채운다. 글자는 흰색 고정 — nav-pill 과 같은 판단이다
+   (--bg #f6f7f9 를 쓰면 채움색 위에서 대비가 모자란다). */
+.projbtn.is-active {
+  color: #fff;
+  background: var(--acc, var(--analysis));
+  border-color: var(--acc, var(--analysis));
 }
 
-.viewtab:focus-visible {
-  outline: 2px solid var(--analysis);
-  outline-offset: 1px;
+.projbtn:focus-visible {
+  outline: 2px solid var(--acc, var(--analysis));
+  outline-offset: 2px;
 }
 
-/* 좁은 화면에서는 검색창 아래로 내린다 — 나란히 두면 검색창이 뭉개진다. */
-@media (max-width: 560px) {
-  .controls {
-    flex-wrap: wrap;
-  }
-}
-
-/* ---------- 그룹 (태그 · 프로젝트) ---------- */
-
-.group {
-  margin-top: 26px;
-}
-
-.group-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-bottom: 7px;
-  margin-bottom: 9px;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.group-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-/* 개수를 제목 옆에 세운다 — 이 보기의 목적이 "무엇이 몇 장 있나" 라서 */
-.group-count {
+/* 개수. 누르기 전에 몇 장인지 보이면 헛클릭이 없다. */
+.projbtn-n {
   font-size: 11px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
   color: var(--text-faint);
   background: var(--surface-2);
-  border-radius: 999px;
-  padding: 1px 7px;
 }
 
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.projbtn.is-active .projbtn-n {
+  color: #fff;
+  background: color-mix(in srgb, #000 22%, transparent);
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  border-left: 3px solid var(--acc);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.row:hover {
-  border-color: var(--border);
-  border-left-color: var(--acc);
-  background: color-mix(in srgb, var(--acc) 4%, var(--surface));
-}
-
-.row-proj {
-  flex: none;
-  padding: 1px 7px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  background: color-mix(in srgb, var(--acc) 15%, transparent);
-  color: var(--acc);
-}
-
-/* 제목이 길면 줄이 무너지므로 한 줄로 자른다 — 전문은 섹션 보기 카드에 있다. */
-.row-title {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 그룹 축이 태그·프로젝트로 바뀌면 섹션이 안 보이게 되므로 행에 작게 남긴다. */
-.row-sec {
-  flex: none;
-  font-size: 10.5px;
-  color: var(--text-faint);
-}
-
-.row-date {
-  flex: none;
-  font-size: 10.5px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-}
-
+/* 좁은 화면에서는 줄바꿈 대신 가로 스크롤로 한 줄을 유지한다 —
+   버튼 9개가 3줄로 접히면 헤더가 화면을 다 먹는다. 본문은 가로로 안 넘친다. */
 @media (max-width: 560px) {
-  .row-sec,
-  .row-date {
+  .projbar {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* .wrap 의 좌우 20px 패딩을 뚫어 화면 끝까지 스크롤되게 한다 */
+    margin-left: -20px;
+    margin-right: -20px;
+    padding: 0 20px;
+  }
+
+  .projbar::-webkit-scrollbar {
     display: none;
+  }
+
+  .projbtn {
+    flex: none;
   }
 }

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app.js — 렌더링 / 검색 / 스크롤스파이
+   app.js — 렌더링 / 프로젝트 필터 / 검색 / 스크롤스파이
    허브(index.html)와 문서 페이지에서 공용으로 로드됩니다.
    문서 페이지에는 없는 DOM 은 모두 null 가드 처리.
    테마 전환은 라이트 단일 테마로 정리하면서 제거됨.
@@ -21,6 +21,10 @@
   if (subEl) subEl.textContent = SITE.subtitle;
   if (updEl) updEl.textContent = "최종 업데이트 " + SITE.updated;
   document.title = SITE.title;
+
+  /* 프로젝트를 안 적은 카드도 필터 축에서 갈 곳이 있어야 한다 —
+     안 그러면 검색으로만 닿는 문서가 된다. */
+  var NOPROJ = "__none__";
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -77,6 +81,9 @@
     });
     if (foot.childNodes.length) a.appendChild(foot);
 
+    /* 필터는 이 값으로, 검색은 dataset.search 로 판정한다 — 두 축을 안 섞는다. */
+    a.dataset.project = proj ? card.project : NOPROJ;
+
     /* 섹션 라벨을 색인에 넣는다. "QA" · "전후비교" 처럼 섹션이 이미 말하는 태그를
        카드에서 뺐기 때문에, 이게 없으면 그 단어로 검색했을 때 카드가 사라진다. */
     a.dataset.search = [
@@ -90,6 +97,9 @@
       .toLowerCase();
     return a;
   }
+
+  /* pill 을 섹션 id 로 찾아 두면 필터로 빈 섹션이 됐을 때 같이 숨길 수 있다. */
+  var pillById = {};
 
   SECTIONS.forEach(function (sec) {
     // share:false 는 설정탭에서 숨긴 카드다. 플래그가 없으면 노출(기존 카드 무손상).
@@ -108,6 +118,7 @@
       if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     nav.appendChild(pill);
+    pillById[sec.id] = pill;
 
     var s = el("section", "section");
     s.id = sec.id;
@@ -126,137 +137,86 @@
     main.appendChild(s);
   });
 
+  /* ---------- 프로젝트 필터 ----------
+     타이틀 아래 버튼 한 줄. 누르면 그 프로젝트 문서만 남고, 남은 문서는 종전대로
+     섹션별로 그려진다. **좁히기만 하고 늘리지 않는다** — 한 카드는 언제나 한 번만 나온다.
 
-  /* ---------- 태그 · 프로젝트 그룹 보기 ----------
-     섹션 보기와 같은 카드를 다른 축으로 묶어 리스트로 편다.
-     한 카드가 태그 3개면 세 그룹에 나온다 — 필터가 아니라 라벨 브라우징이라 정상이다.
-     카드 그리드 대신 한 줄짜리 행을 쓰는 이유: 축을 바꿔 보는 목적이 "재고 확인"이라
-     설명문보다 개수와 목록이 먼저 읽혀야 한다. */
+     축을 프로젝트 하나로 정한 이유:
+       · 섹션은 이미 결과의 뼈대(제목 + nav pill)라 또 고를 필요가 없다.
+         프로젝트를 하나 고르면 남는 문서가 1~4장이라 더 좁힐 것도 없다.
+       · 태그는 축이 못 된다 — 노출 카드에 붙은 태그 19종 중 13종이 1장짜리라
+         버튼 줄이 문서 목록보다 길어진다. 태그는 검색 색인에만 남긴다. */
 
-  var grouped = document.getElementById("grouped");
-  var viewtabs = document.getElementById("viewtabs");
+  var projbar = document.getElementById("projbar");
 
-  /* 카드 → 속한 섹션 정보. 그룹 보기에서도 섹션 accent 를 쓰기 위해 같이 들고 다닌다. */
-  var ENTRIES = [];
-  SECTIONS.forEach(function (sec) {
-    (sec.cards || []).forEach(function (c) {
-      if (c.share === false) return;
-      ENTRIES.push({ card: c, sec: sec });
-    });
+  /* 버튼 목록은 **데이터에서 만든다.** PROJECTS 를 그대로 다 그리면 눌러도 아무것도
+     안 나오는 버튼이 생긴다 — 설정탭(share:false)에 따라 노출 카드가 0인 프로젝트가
+     생기기 때문이다. 지금은 bbl(블록블라스트) · tpz(더퍼즐) 이 0이다. */
+  var counts = {};
+  var total = 0;
+  main.querySelectorAll(".card").forEach(function (c) {
+    counts[c.dataset.project] = (counts[c.dataset.project] || 0) + 1;
+    total++;
   });
 
-  function buildRow(e) {
-    var url = e.card.url || "#";
-    var a = el("a", "row");
-    a.href = url;
-    var proj =
-      typeof PROJECTS !== "undefined" && e.card.project
-        ? PROJECTS[e.card.project]
-        : null;
-    a.style.setProperty(
-      "--acc",
-      "var(" + (proj ? proj.token : "--" + e.sec.accent) + ")"
-    );
-    if (isExternal(url)) {
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
+  var curProj = "";
+
+  function buildProjbar() {
+    if (!projbar) return;
+
+    function addBtn(key, label, count, token) {
+      var b = el("button", "projbtn", label);
+      b.type = "button";
+      b.dataset.proj = key;
+      if (token) b.style.setProperty("--acc", "var(" + token + ")");
+      b.appendChild(el("span", "projbtn-n", String(count)));
+      b.setAttribute("aria-pressed", "false");
+      projbar.appendChild(b);
     }
-    if (proj) a.appendChild(el("span", "row-proj", proj.name));
-    a.appendChild(el("span", "row-title", e.card.title));
-    /* 섹션은 그룹 보기에서 축이 아니므로 행마다 작게 남겨 어디 문서인지 잃지 않게 한다. */
-    a.appendChild(el("span", "row-sec", e.sec.label));
-    if (e.card.status) {
-      var st = el("span", "status", e.card.status);
-      st.setAttribute("data-status", e.card.status);
-      a.appendChild(st);
+
+    addBtn("", "전체", total, null);
+
+    /* 순서는 PROJECTS **선언 순서 고정**이다 (개수 순 아님).
+       자리가 고정돼야 눈이 위치를 기억한다. multi(다중대조)는 프로젝트가 아니지만
+       선언 순서상 이미 끝이라 그대로 두고, project 가 없는 카드는 그 뒤에 붙인다. */
+    if (typeof PROJECTS !== "undefined") {
+      Object.keys(PROJECTS).forEach(function (k) {
+        if (!counts[k]) return;
+        addBtn(k, PROJECTS[k].name, counts[k], PROJECTS[k].token);
+      });
     }
-    if (e.card.updated) a.appendChild(el("span", "row-date", e.card.updated.slice(0, 10)));
-    a.dataset.search = [
-      e.card.title,
-      e.card.desc,
-      proj ? proj.name : "",
-      e.sec.label,
-      (e.card.tags || []).join(" "),
-    ]
-      .join(" ")
-      .toLowerCase();
-    return a;
+    if (counts[NOPROJ]) addBtn(NOPROJ, "공통", counts[NOPROJ], "--text-dim");
   }
 
-  /* keyOf 가 카드 하나에서 그룹 키 배열을 뽑는다 (태그는 여러 개, 프로젝트는 하나). */
-  function buildGroups(mode) {
-    var map = {};
-    var order = [];
-    ENTRIES.forEach(function (e) {
-      var keys =
-        mode === "tag"
-          ? e.card.tags || []
-          : [
-              typeof PROJECTS !== "undefined" && e.card.project && PROJECTS[e.card.project]
-                ? PROJECTS[e.card.project].name
-                : "프로젝트 없음",
-            ];
-      if (!keys.length) keys = ["태그 없음"];
-      keys.forEach(function (k) {
-        if (!map[k]) {
-          map[k] = [];
-          order.push(k);
-        }
-        map[k].push(e);
+  function setProj(next, writeHash) {
+    // 같은 버튼을 다시 누르면 전체로 돌아온다.
+    curProj = next === curProj ? "" : next;
+    if (projbar) {
+      Array.prototype.slice.call(projbar.children).forEach(function (b) {
+        var on = b.dataset.proj === curProj;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
       });
-    });
-    /* 큰 묶음부터 — 재고 확인이 목적이라 개수가 스캔 순서가 된다. 같으면 가나다순. */
-    order.sort(function (a, b) {
-      return map[b].length - map[a].length || a.localeCompare(b, "ko");
-    });
-    return { map: map, order: order };
-  }
-
-  function renderGroups(mode) {
-    grouped.innerHTML = "";
-    var g = buildGroups(mode);
-    g.order.forEach(function (key) {
-      var sec = el("section", "group");
-      var head = el("div", "group-head");
-      head.appendChild(el("h2", "group-title", key));
-      head.appendChild(el("span", "group-count", String(g.map[key].length)));
-      sec.appendChild(head);
-      var rows = el("div", "rows");
-      g.map[key].forEach(function (e) {
-        rows.appendChild(buildRow(e));
-      });
-      sec.appendChild(rows);
-      grouped.appendChild(sec);
-    });
-  }
-
-  var view = "section";
-
-  function setView(next) {
-    view = next;
-    var isSection = next === "section";
-    main.hidden = !isSection;
-    grouped.hidden = isSection;
-    if (nav.parentNode) nav.parentNode.hidden = !isSection; /* nav.nav — 섹션 보기 전용 */
-    if (!isSection) renderGroups(next);
-    if (viewtabs) {
-      Array.prototype.slice.call(viewtabs.children).forEach(function (b) {
-        b.classList.toggle("is-active", b.dataset.view === next);
-        b.setAttribute("aria-selected", b.dataset.view === next ? "true" : "false");
-      });
+    }
+    if (writeHash) {
+      // replaceState 라 뒤로가기가 필터 이력으로 채워지지 않는다.
+      // 링크를 팀에 던지는 것이 목적이지 되돌리는 것이 아니다.
+      var h = curProj ? "#p=" + curProj : "";
+      history.replaceState(null, "", location.pathname + location.search + h);
     }
     applySearch();
   }
 
-  if (viewtabs) {
-    viewtabs.addEventListener("click", function (ev) {
-      var b = ev.target.closest("[data-view]");
-      if (b) setView(b.dataset.view);
+  if (projbar) {
+    buildProjbar();
+    projbar.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-proj]");
+      if (b) setProj(b.dataset.proj, true);
     });
   }
 
   /* ---------- 검색 ----------
-     섹션 · 그룹 두 보기가 같은 질의를 쓴다. 보이는 쪽만 훑고, 비는 묶음은 통째로 접는다. */
+     필터와 검색을 여기 한 곳에서 AND 로 겹친다. 경로가 둘이면 반드시 어긋난다. */
 
   var search = document.getElementById("search");
   var empty = document.getElementById("empty");
@@ -264,18 +224,21 @@
   function applySearch() {
     var q = search ? search.value.trim().toLowerCase() : "";
     var anyVisible = false;
-    var boxSel = view === "section" ? ".section" : ".group";
-    var itemSel = view === "section" ? ".card" : ".row";
-    var root = view === "section" ? main : grouped;
 
-    root.querySelectorAll(boxSel).forEach(function (box) {
+    main.querySelectorAll(".section").forEach(function (sec) {
       var shown = 0;
-      box.querySelectorAll(itemSel).forEach(function (it) {
-        var hit = !q || it.dataset.search.indexOf(q) !== -1;
-        it.classList.toggle("is-hidden", !hit);
+      sec.querySelectorAll(".card").forEach(function (c) {
+        var hit =
+          (!q || c.dataset.search.indexOf(q) !== -1) &&
+          (!curProj || c.dataset.project === curProj);
+        c.classList.toggle("is-hidden", !hit);
         if (hit) shown++;
       });
-      box.classList.toggle("is-hidden", shown === 0);
+      sec.classList.toggle("is-hidden", shown === 0);
+      /* 빈 섹션은 제목뿐 아니라 nav pill 도 같이 숨긴다. 남겨 두면 눌러도 아무 데도
+         안 가는 pill 이 되어 "안 먹는 필터"로 읽힌다 — 이게 원래 문제였다. */
+      var pill = pillById[sec.id];
+      if (pill) pill.classList.toggle("is-hidden", shown === 0);
       if (shown) anyVisible = true;
     });
 
@@ -283,6 +246,18 @@
   }
 
   if (search) search.addEventListener("input", applySearch);
+
+  /* 해시로 들어온 상태를 복원한다 — "#p=sol" 링크를 팀에 그대로 던질 수 있다.
+     setProj 가 토글이라 현재값과 같으면 꺼진다. 초기화는 curProj 를 비우고 부른다. */
+  function readHash() {
+    var m = /[#&]p=([^&]+)/.exec(location.hash);
+    var key = m ? decodeURIComponent(m[1]) : "";
+    if (key && !counts[key]) key = ""; // 없는 프로젝트를 가리키는 낡은 링크
+    curProj = "";
+    setProj(key, false);
+  }
+  readHash();
+  window.addEventListener("hashchange", readHash);
 
   /* ---------- 스크롤스파이 ---------- */
 
