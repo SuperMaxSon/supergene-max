@@ -31,8 +31,8 @@
         <h1 class="doc-title">스토리 머지 — 개발 TODO</h1>
         <p class="doc-lede">
           <b>무엇을 만들 것인가</b>(기능 갭 · 로드맵)와 <b>어떻게 내보낼 것인가</b>(리소스 · 플랫폼)를
-          한 장으로 합쳤습니다. 결정이 두 문서에 흩어져 있던 게 합친 이유라, 맨 앞이
-          <b>결정 대시보드</b>입니다 — 확정 6개, 미결 9개.
+          한 장으로 합쳤습니다. 맨 앞이 <b>인게임 · 아웃게임 TODO</b>이고, 그 뒤로
+          아이템 · 구현 규칙 · 에셋 · 플랫폼 · 착수 순서가 붙습니다.
         </p>
         <p class="doc-lede">
           <b>2머지 한 벌을 만들려면 무엇이 필요하고, 지금 코드는 어디까지 와 있는가.</b>
@@ -46,8 +46,8 @@
           <span class="tag">플랫폼 함정 = solitaire-tripeaks-client 실측</span>
           <span class="tag">시스템 언팩 = 2머지 풀셋 기준 · 코어 우선</span>
           <span class="tag">구현 규칙 = merge-series-impl-rules</span>
-          <span class="tag">아이템 도감 = 레퍼런스 Gossip Harbor 기준 · 개념 도식</span>
-          <span class="tag">v2.2 · 2026-08-27</span>
+          <span class="tag">아이템 용어 = Travel Town · Merge Mansion · Gossip Harbor 커뮤니티 · 위키 실측</span>
+          <span class="tag">v2.3 · 2026-08-28</span>
         </div>
       </div>
     </header>
@@ -127,26 +127,26 @@
               <tr>
                 <td>IN-1</td><td><b>보드 · 셀</b></td>
                 <td>그리드 좌표 계산</td>
-                <td>6×7 상수 · 셀이 <code>number</code>(티어)뿐</td>
+                <td>6×7 상수 · 셀이 <code>number</code>(레벨)뿐</td>
                 <td>셀 속성(잠금 · 비활성) · 보드 영역 확장 · 보드 프리셋</td>
               </tr>
               <tr>
                 <td>IN-2</td><td><b>아이템 타입</b></td>
                 <td>—</td>
-                <td>일반 1종 · 티어 3 고정 · 생성기 1개 무한</td>
-                <td>생성기 4종(무한 · 충전식 · 일회용 · 합쳐서 키움) · 소모품 · 상자 · 자물쇠 · 조합기 · 판매</td>
+                <td>일반 1종 · 레벨 3 고정 · 생성기 1개(에너지형)</td>
+                <td>생성기 3종(에너지형 · 자동형 · 충전식) · 소모품 · 상자 · 자물쇠 — 7종. 판매 · 보관함은 타입이 아니라 액션</td>
               </tr>
               <tr>
                 <td>IN-3</td><td><b>아이템 상태</b></td>
                 <td>—</td>
                 <td>—</td>
-                <td>버블 · 잠금 · 충전(charges) · 쿨다운 · 신규 뱃지 · 주문 지정</td>
+                <td>버블 · 잠금 · 충전(charges) · 쿨타임 · 신규 뱃지 · 주문 지정</td>
               </tr>
               <tr>
                 <td>IN-4</td><td><b>머지 규칙</b></td>
                 <td>2머지 판정</td>
-                <td><code>sourceTier &gt;= 3</code> 하드코딩 · 티어 숫자 비교</td>
-                <td>체인 6~8종 · 최대레벨 · 연쇄 머지 · 스왑 · 이종 결합</td>
+                <td><code>sourceTier &gt;= 3</code> 하드코딩 · 레벨 숫자 비교</td>
+                <td>체인 6~8종(단일 · 내포 · 결합) · 최대 레벨 · 연쇄 머지 · 스왑</td>
               </tr>
               <tr>
                 <td>IN-5</td><td><b>입력 · 조작</b></td>
@@ -158,13 +158,13 @@
                 <td>IN-6</td><td><b>경제 접점</b></td>
                 <td>—</td>
                 <td>—</td>
-                <td>에너지 소비 · 오더 제출 · 아이템 판매 · 보상 획득</td>
+                <td>에너지 소비 · 주문 제출 · 아이템 판매 · 보상 획득</td>
               </tr>
               <tr>
                 <td>IN-7</td><td><b>보드 상태 · 저장</b></td>
                 <td>—</td>
                 <td>뷰 열 때마다 <code>new SimpleMergeBoardModel()</code></td>
-                <td>직렬화 · 복원 · 가득 참 정책 · 인벤토리 출납</td>
+                <td>직렬화 · 복원 · 가득 참 정책 · 보관함 출납(넣으면 타이머 정지)</td>
               </tr>
               <tr>
                 <td>IN-8</td><td><b>연출 · 피드백</b></td>
@@ -335,16 +335,16 @@
         <h3 class="doc-h2-sub">아이템 해부도 — 왜 셀이 <code>number</code> 면 안 되는가</h3>
         <div class="table-scroll">
           <svg viewBox="0 0 720 300" width="720" height="300" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>아이템 인스턴스가 들고 있어야 하는 타입 10종과 상태 6종</title>
+            <title>아이템 인스턴스가 들고 있어야 하는 타입 7종과 상태 6종</title>
             <text x="131" y="34" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text)">타입 — 무엇인가</text>
             <text x="589" y="34" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text)">상태 — 지금 어떤가</text>
 
             <g font-size="11" font-weight="700" fill="#fff" text-anchor="middle">
               <rect x="6" y="48" width="250" height="30" rx="6" fill="var(--warn)" /><text x="131" y="67">일반 — 머지 대상</text>
-              <rect x="6" y="84" width="250" height="30" rx="6" fill="var(--warn)" /><text x="131" y="103">생성기 4종 — 탭하면 산출</text>
+              <rect x="6" y="84" width="250" height="30" rx="6" fill="var(--warn)" /><text x="131" y="103">생성기 3종 — 에너지형 · 자동형 · 충전식</text>
               <rect x="6" y="120" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="139">소모품 — 탭하면 효과 후 사라짐</text>
-              <rect x="6" y="156" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="175">상자 — 열면 다수 배출</text>
-              <rect x="6" y="192" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="211">자물쇠 · 조합기 · 판매</text>
+              <rect x="6" y="156" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="175">상자 — 열면 재화 · 도구 배출</text>
+              <rect x="6" y="192" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="211">자물쇠 — 열쇠 나올 때까지 잠김</text>
             </g>
 
             <rect x="286" y="48" width="148" height="174" rx="10" fill="var(--surface)" stroke="var(--text)" stroke-width="2" />
@@ -359,10 +359,10 @@
             </g>
 
             <g font-size="11" font-weight="700" fill="#fff" text-anchor="middle">
-              <rect x="464" y="48" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="65">버블 — 탭해서 터뜨림</text>
-              <rect x="464" y="78" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="95">잠금 — 머지 · 이동 불가</text>
+              <rect x="464" y="48" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="65">버블 — 광고 · 젬으로 터뜨림</text>
+              <rect x="464" y="78" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="95">잠금 — 열쇠 나올 때까지 머지 불가</text>
               <rect x="464" y="108" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="125">충전 — charges 잔량</text>
-              <rect x="464" y="138" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="155">쿨다운 — 회복 대기</text>
+              <rect x="464" y="138" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="155">쿨타임 — 회복 대기</text>
               <rect x="464" y="168" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="185">신규 — NEW 뱃지</text>
               <rect x="464" y="198" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="215">주문 지정 — 제출 대기</text>
             </g>
@@ -374,47 +374,51 @@
 
             <rect x="6" y="244" width="708" height="44" rx="8" fill="var(--surface-3)" stroke="var(--bad)" stroke-dasharray="4 3" />
             <text x="20" y="262" font-size="11" font-weight="800" fill="var(--bad)">현재</text>
-            <text x="20" y="280" font-size="11" fill="var(--text-dim)">cells: number[] — 셀 하나가 티어 숫자 하나. 위 11칸 중 담기는 건 level 하나뿐이다.</text>
+            <text x="20" y="280" font-size="11" fill="var(--text-dim)">cells: number[] — 셀 하나가 레벨 숫자 하나. 위 11칸 중 담기는 건 level 하나뿐이다.</text>
             <text x="700" y="271" text-anchor="end" font-size="11" font-weight="700" fill="var(--bad)">주황 = 프로토 수준 · 빨강 = 코드 0줄</text>
           </svg>
         </div>
 
-        <h3 class="doc-h2-sub">생성기 4종 — 무엇이 다른가</h3>
+        <h3 class="doc-h2-sub">생성기 3종 — 무엇이 다른가</h3>
         <div class="table-scroll">
+          <!-- 종류를 가르는 축은 "산출 트리거"와 "재고" 두 개다. 레벨업은 네 번째 종류가 아니라
+               세 종류 전부가 공유하는 성질이라 마지막 줄로 내렸다. -->
           <svg viewBox="0 0 720 250" width="720" height="250" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>생성기 4종의 동작 차이</title>
+            <title>생성기 3종의 동작 차이와 공통 성질</title>
             <g font-size="11" text-anchor="middle">
-              <!-- 무한 -->
-              <text x="6" y="38" text-anchor="start" font-size="12" font-weight="800" fill="var(--warn)">무한</text>
-              <rect x="90" y="20" width="86" height="26" rx="13" fill="var(--warn)" /><text x="133" y="37" fill="#fff" font-weight="700">에너지 소비</text>
-              <rect x="196" y="20" width="70" height="26" rx="13" fill="var(--warn)" /><text x="231" y="37" fill="#fff" font-weight="700">탭</text>
-              <rect x="286" y="20" width="70" height="26" rx="13" fill="var(--warn)" /><text x="321" y="37" fill="#fff" font-weight="700">산출</text>
-              <text x="400" y="38" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 무한 반복. 게이트는 에너지뿐 <tspan font-weight="800">← 현재 이것만 있음</tspan></text>
+              <!-- 에너지형 -->
+              <text x="6" y="38" text-anchor="start" font-size="12" font-weight="800" fill="var(--warn)">에너지형</text>
+              <rect x="96" y="20" width="60" height="26" rx="13" fill="var(--warn)" /><text x="126" y="37" fill="#fff" font-weight="700">탭</text>
+              <rect x="170" y="20" width="86" height="26" rx="13" fill="var(--warn)" /><text x="213" y="37" fill="#fff" font-weight="700">에너지 −1</text>
+              <rect x="270" y="20" width="70" height="26" rx="13" fill="var(--warn)" /><text x="305" y="37" fill="#fff" font-weight="700">산출</text>
+              <text x="356" y="38" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 재고 무한. 게이트는 에너지뿐 <tspan font-weight="800">← 현재 이것만 있음</tspan></text>
 
-              <!-- 충전 -->
-              <text x="6" y="93" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">충전식</text>
-              <rect x="90" y="75" width="86" height="26" rx="13" fill="var(--bad)" /><text x="133" y="92" fill="#fff" font-weight="700">charges 3</text>
-              <rect x="196" y="75" width="70" height="26" rx="13" fill="var(--bad)" /><text x="231" y="92" fill="#fff" font-weight="700">소진</text>
-              <rect x="286" y="75" width="96" height="26" rx="13" fill="var(--bad)" /><text x="334" y="92" fill="#fff" font-weight="700">쿨다운 회복</text>
-              <path d="M382 88 H430 M430 88 V64 H133 V75" stroke="var(--bad)" stroke-width="2" fill="none" />
-              <text x="440" y="93" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 시간이 게이트. 서버 시각 필요</text>
+              <!-- 자동형 -->
+              <text x="6" y="93" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">자동형</text>
+              <rect x="96" y="75" width="76" height="26" rx="13" fill="var(--bad)" /><text x="134" y="92" fill="#fff" font-weight="700">에너지 0</text>
+              <rect x="186" y="75" width="70" height="26" rx="13" fill="var(--bad)" /><text x="221" y="92" fill="#fff" font-weight="700">쿨타임</text>
+              <rect x="270" y="75" width="118" height="26" rx="13" fill="var(--bad)" /><text x="329" y="92" fill="#fff" font-weight="700">인접 빈 칸에 산출</text>
+              <text x="404" y="93" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 빈 칸이 게이트. 보드가 차면 스스로 멈춘다</text>
 
-              <!-- 일회용 -->
-              <text x="6" y="148" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">일회용</text>
-              <rect x="90" y="130" width="86" height="26" rx="13" fill="var(--bad)" /><text x="133" y="147" fill="#fff" font-weight="700">charges 3</text>
-              <rect x="196" y="130" width="70" height="26" rx="13" fill="var(--bad)" /><text x="231" y="147" fill="#fff" font-weight="700">소진</text>
-              <rect x="286" y="130" width="70" height="26" rx="13" fill="var(--text-faint)" /><text x="321" y="147" fill="#fff" font-weight="700">소멸</text>
-              <text x="400" y="148" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 보드에서 사라진다. 셀 비우기 규칙 필요</text>
+              <!-- 충전식 -->
+              <text x="6" y="148" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">충전식</text>
+              <rect x="96" y="130" width="106" height="26" rx="13" fill="var(--bad)" /><text x="149" y="147" fill="#fff" font-weight="700">배출 2 &times; 충전 3</text>
+              <rect x="216" y="130" width="70" height="26" rx="13" fill="var(--bad)" /><text x="251" y="147" fill="#fff" font-weight="700">최대 6</text>
+              <rect x="300" y="130" width="60" height="26" rx="13" fill="var(--bad)" /><text x="330" y="147" fill="#fff" font-weight="700">소진</text>
+              <rect x="374" y="130" width="86" height="26" rx="13" fill="var(--bad)" /><text x="417" y="147" fill="#fff" font-weight="700">시간 회복</text>
+              <path d="M460 143 H486 M486 143 V119 H149 V130" stroke="var(--bad)" stroke-width="2" fill="none" />
+              <text x="496" y="148" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 재고가 게이트</text>
 
-              <!-- 합쳐서 키움 -->
-              <text x="6" y="203" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">합쳐서 키움</text>
-              <rect x="90" y="185" width="60" height="26" rx="13" fill="var(--bad)" /><text x="120" y="202" fill="#fff" font-weight="700">Lv1</text>
-              <text x="162" y="203" font-size="13" font-weight="800" fill="var(--text-dim)">+</text>
-              <rect x="176" y="185" width="60" height="26" rx="13" fill="var(--bad)" /><text x="206" y="202" fill="#fff" font-weight="700">Lv1</text>
-              <rect x="256" y="185" width="76" height="26" rx="13" fill="var(--bad)" /><text x="294" y="202" fill="#fff" font-weight="700">Lv2</text>
-              <text x="350" y="203" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 생성기도 체인에 들어간다. 산출 품질 · 속도↑</text>
+              <!-- 공통 성질 -->
+              <text x="6" y="203" text-anchor="start" font-size="12" font-weight="800" fill="var(--text-dim)">레벨업</text>
+              <rect x="96" y="185" width="56" height="26" rx="13" fill="var(--text-faint)" /><text x="124" y="202" fill="#fff" font-weight="700">Lv1</text>
+              <text x="164" y="203" font-size="13" font-weight="800" fill="var(--text-dim)">+</text>
+              <rect x="176" y="185" width="56" height="26" rx="13" fill="var(--text-faint)" /><text x="204" y="202" fill="#fff" font-weight="700">Lv1</text>
+              <rect x="252" y="185" width="56" height="26" rx="13" fill="var(--text-faint)" /><text x="280" y="202" fill="#fff" font-weight="700">Lv2</text>
+              <text x="324" y="203" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 네 번째 종류가 아니라 <tspan font-weight="800">셋 다 갖는 성질</tspan>. 생성기도 체인 구성원이다</text>
             </g>
-            <text x="6" y="238" font-size="11" fill="var(--text-faint)">넷 다 같은 "생성기"이지만 필요한 저장 필드가 다르다 — charges · cooldownEndAt · level. 하나만 만들면 나머지 셋이 스키마 마이그레이션이 된다.</text>
+            <text x="6" y="232" font-size="11" fill="var(--text-faint)">요구하는 저장 필드가 다르다 — 자동형 cooldownEndAt · 충전식 charges/maxCharges · 공통 level. 하나만 만들면 나머지가 스키마 마이그레이션이 된다.</text>
+            <text x="6" y="246" font-size="11" fill="var(--text-faint)">충전 · 쿨타임 타이머는 보관함에 들어가면 멈춘다. 넣은 시각을 같이 들고 있지 않으면 꺼낼 때 계산이 안 된다.</text>
           </svg>
         </div>
         <!-- 아이콘 스프라이트. 페이지 안에서 <use href="#ic-*"> 로 재사용한다.
@@ -437,18 +441,11 @@
               <circle cx="16" cy="21" r="2.2" fill="currentColor" stroke="none" />
               <circle cx="21" cy="21" r="2.2" stroke-width="1.4" />
             </symbol>
-            <symbol id="ic-gen-consume" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <rect x="4" y="7" width="24" height="21" rx="4" stroke-dasharray="4 3" />
-              <path d="M16 13v7" stroke-linecap="round" />
-              <path d="M12.5 17 16 20.5 19.5 17" />
-              <circle cx="9" cy="24" r="1.1" fill="currentColor" stroke="none" />
-              <circle cx="23" cy="24" r="1.1" fill="currentColor" stroke="none" />
-            </symbol>
-            <symbol id="ic-gen-grow" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+            <symbol id="ic-gen-auto" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
               <rect x="4" y="7" width="24" height="21" rx="4" />
               <path d="M4 13h24" stroke-width="1.2" />
-              <path d="M16 24v-8" stroke-linecap="round" />
-              <path d="M12.5 19.5 16 16l3.5 3.5" />
+              <circle cx="16" cy="21" r="4.6" stroke-width="1.5" />
+              <path d="M16 18.2V21l2 1.5" stroke-width="1.3" stroke-linecap="round" />
             </symbol>
             <symbol id="ic-use" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
               <path d="M13 3.5v8.5L6.6 24a3 3 0 0 0 2.6 4.5h13.6a3 3 0 0 0 2.6-4.5L19 12V3.5z" />
@@ -550,51 +547,82 @@
           </defs>
         </svg>
 
-        <h3 class="doc-h2-sub">아이템 기믹 도감 — 타입 10종</h3>
+        <h3 class="doc-h2-sub">아이템 기믹 도감 — 타입 7종</h3>
         <div class="table-scroll">
+          <!-- 판매 · 조합기를 타입 축에서 뺀 자리가 오른쪽 아래 점선 박스다.
+               왜 뺐는지를 그림 밖 각주로 빼면 다음에 또 타입으로 되돌아온다. -->
           <svg viewBox="0 0 720 212" width="720" height="212" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>아이템 타입 10종 아이콘</title>
+            <title>아이템 타입 7종 아이콘</title>
             <use href="#ic-normal" x="55" y="8" width="34" height="34" style="color: var(--warn)" />
             <text x="72" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">일반</text>
             <text x="72" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">머지 대상</text>
             <text x="72" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">체인의 구성원</text>
             <use href="#ic-gen-inf" x="199" y="8" width="34" height="34" style="color: var(--warn)" />
-            <text x="216" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 무한</text>
-            <text x="216" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">탭 → 산출</text>
-            <text x="216" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">에너지만 소비</text>
-            <use href="#ic-gen-charge" x="343" y="8" width="34" height="34" style="color: var(--bad)" />
-            <text x="360" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 충전식</text>
-            <text x="360" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">charges 소진 →</text>
-            <text x="360" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">시간으로 회복</text>
-            <use href="#ic-gen-consume" x="487" y="8" width="34" height="34" style="color: var(--bad)" />
-            <text x="504" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 일회용</text>
-            <text x="504" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">charges 0 →</text>
-            <text x="504" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">보드에서 소멸</text>
-            <use href="#ic-gen-grow" x="631" y="8" width="34" height="34" style="color: var(--bad)" />
-            <text x="648" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 합쳐서 키움</text>
-            <text x="648" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">생성기끼리 머지</text>
-            <text x="648" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">산출 품질 · 속도↑</text>
-            <use href="#ic-use" x="55" y="108" width="34" height="34" style="color: var(--bad)" />
-            <text x="72" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">소모품</text>
-            <text x="72" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">탭 → 효과 발동</text>
-            <text x="72" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">후 소모</text>
-            <use href="#ic-box" x="199" y="108" width="34" height="34" style="color: var(--bad)" />
-            <text x="216" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">상자</text>
-            <text x="216" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">열면 다수 배출</text>
-            <text x="216" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">시간 잠금 가능</text>
-            <use href="#ic-lock" x="343" y="108" width="34" height="34" style="color: var(--bad)" />
-            <text x="360" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">자물쇠</text>
-            <text x="360" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">조건 충족 전까지</text>
-            <text x="360" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">머지 · 이동 불가</text>
-            <use href="#ic-mixer" x="487" y="108" width="34" height="34" style="color: var(--bad)" />
-            <text x="504" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">조합기</text>
-            <text x="504" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">이종 아이템 결합</text>
-            <text x="504" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">→ 다른 체인 산출</text>
-            <use href="#ic-sell" x="631" y="108" width="34" height="34" style="color: var(--bad)" />
-            <text x="648" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">판매</text>
-            <text x="648" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">코인으로 환전</text>
-            <text x="648" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">슬롯 회수 수단</text>
-            <text x="2" y="204" font-size="11" fill="var(--text-faint)">색 = 구현 현재 상태. 주황 = 프로토 수준(2종) · 빨강 = 코드 0줄(8종). 아이콘은 개념 도식이지 아트 스펙이 아니다.</text>
+            <text x="216" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 에너지형</text>
+            <text x="216" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">탭 → 에너지 소비</text>
+            <text x="216" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">재고는 무한</text>
+            <use href="#ic-gen-auto" x="343" y="8" width="34" height="34" style="color: var(--bad)" />
+            <text x="360" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 자동형</text>
+            <text x="360" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">에너지 0 · 쿨타임</text>
+            <text x="360" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">인접 빈 칸에 산출</text>
+            <use href="#ic-gen-charge" x="487" y="8" width="34" height="34" style="color: var(--bad)" />
+            <text x="504" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">생성기 — 충전식</text>
+            <text x="504" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">배출 &times; 충전 = 최대</text>
+            <text x="504" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">소진 → 시간 회복</text>
+            <use href="#ic-use" x="631" y="8" width="34" height="34" style="color: var(--bad)" />
+            <text x="648" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">소모품</text>
+            <text x="648" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">만능 · 분할 · 부스트</text>
+            <text x="648" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">탭 → 효과 후 소모</text>
+            <use href="#ic-box" x="55" y="108" width="34" height="34" style="color: var(--bad)" />
+            <text x="72" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">상자</text>
+            <text x="72" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">재화 · 도구 배출</text>
+            <text x="72" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">시간 잠금 가능</text>
+            <use href="#ic-lock" x="199" y="108" width="34" height="34" style="color: var(--bad)" />
+            <text x="216" y="158" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">자물쇠</text>
+            <text x="216" y="172" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">열쇠 나올 때까지</text>
+            <text x="216" y="184" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">머지 · 이동 불가</text>
+
+            <rect x="290" y="104" width="424" height="82" rx="8" fill="var(--surface-3)" stroke="var(--text-faint)" stroke-dasharray="4 3" />
+            <use href="#ic-sell" x="304" y="120" width="20" height="20" style="color: var(--text-faint)" />
+            <use href="#ic-mixer" x="304" y="150" width="20" height="20" style="color: var(--text-faint)" />
+            <text x="334" y="122" font-size="11" font-weight="800" fill="var(--text)">타입에서 뺀 둘 — 레퍼런스에 타입으로 존재하지 않는다</text>
+            <text x="334" y="138" font-size="10.5" fill="var(--text-dim)">판매 → 보드 오브젝트가 아니라 아이템 탭 메뉴의 <tspan font-weight="800">액션</tspan></text>
+            <text x="334" y="168" font-size="10.5" fill="var(--text-dim)">조합기 → 보드 위 기계가 아니라 <tspan font-weight="800">체인 구조</tspan>(결합 체인)</text>
+
+            <text x="2" y="204" font-size="11" fill="var(--text-faint)">색 = 구현 현재 상태. 주황 = 프로토 수준(2종) · 빨강 = 코드 0줄(5종). 아이콘은 개념 도식이지 아트 스펙이 아니다.</text>
+          </svg>
+        </div>
+
+        <h3 class="doc-h2-sub">체인 구조 3종 — "조합기"가 실제로 있어야 할 자리</h3>
+        <div class="table-scroll">
+          <svg viewBox="0 0 720 206" width="720" height="206" role="img" style="display: block; max-width: 100%; height: auto">
+            <title>체인 구조 3종 — 단일 · 내포 · 결합</title>
+            <g font-size="11" text-anchor="middle">
+              <!-- 단일 -->
+              <text x="6" y="34" text-anchor="start" font-size="12" font-weight="800" fill="var(--warn)">단일</text>
+              <rect x="86" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="112" y="33" fill="#fff" font-weight="700">Lv1</text>
+              <rect x="150" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="176" y="33" fill="#fff" font-weight="700">Lv2</text>
+              <rect x="214" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="240" y="33" fill="#fff" font-weight="700">Lv3</text>
+              <text x="284" y="34" font-size="13" font-weight="800" fill="var(--text-dim)">…</text>
+              <rect x="302" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="328" y="33" fill="#fff" font-weight="700">LvN</text>
+              <text x="370" y="34" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 일직선 <tspan font-weight="800">← 프로토가 가진 유일한 형태(Lv3 상한)</tspan></text>
+
+              <!-- 내포 -->
+              <text x="6" y="94" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">내포</text>
+              <rect x="86" y="76" width="86" height="26" rx="13" fill="var(--bad)" /><text x="129" y="93" fill="#fff" font-weight="700">체인A LvN</text>
+              <rect x="186" y="76" width="96" height="26" rx="13" fill="var(--text-faint)" /><text x="234" y="93" fill="#fff" font-weight="700">= 생성기 B</text>
+              <rect x="296" y="76" width="86" height="26" rx="13" fill="var(--bad)" /><text x="339" y="93" fill="#fff" font-weight="700">체인B Lv1</text>
+              <text x="396" y="94" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 체인 끝이 다음 체인의 생성기가 된다. 진행 게이트</text>
+
+              <!-- 결합 -->
+              <text x="6" y="154" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">결합</text>
+              <rect x="86" y="126" width="86" height="26" rx="13" fill="var(--bad)" /><text x="129" y="143" fill="#fff" font-weight="700">체인A LvN</text>
+              <rect x="86" y="158" width="86" height="26" rx="13" fill="var(--bad)" /><text x="129" y="175" fill="#fff" font-weight="700">체인C LvN</text>
+              <path d="M172 139 H202 M172 171 H202 M202 139 V171 M202 155 H228" stroke="var(--bad)" stroke-width="2" fill="none" />
+              <rect x="228" y="142" width="96" height="26" rx="13" fill="var(--bad)" /><text x="276" y="159" fill="#fff" font-weight="700">최종 아이템</text>
+              <text x="340" y="159" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 서로 다른 두 체인을 합쳐야 나온다 <tspan font-weight="800">= 내가 "조합기"라 부르던 것</tspan></text>
+            </g>
+            <text x="6" y="200" font-size="11" fill="var(--text-faint)">셋 다 보드 오브젝트가 아니라 체인 데이터가 정한다 — chainId · level · 재료 chainId 목록. 보드에 기계를 놓는 문제가 아니라 테이블 스키마 문제다.</text>
           </svg>
         </div>
 
@@ -604,18 +632,18 @@
             <title>아이템 상태 6종 아이콘</title>
             <use href="#ic-bubble" x="45" y="8" width="30" height="30" style="color: var(--bad)" />
             <text x="60" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">버블</text>
-            <text x="60" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">탭해서 터뜨림</text>
-            <text x="60" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">탭으로 해제</text>
+            <text x="60" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">광고 · 젬으로 개봉</text>
+            <text x="60" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">방치하면 보상 전환</text>
             <use href="#ic-locked-state" x="165" y="8" width="30" height="30" style="color: var(--bad)" />
             <text x="180" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">잠금</text>
             <text x="180" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">머지 · 이동 불가</text>
-            <text x="180" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">조건으로 해제</text>
+            <text x="180" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">열쇠로 해제</text>
             <use href="#ic-charge-state" x="285" y="8" width="30" height="30" style="color: var(--bad)" />
             <text x="300" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">충전</text>
             <text x="300" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">charges 잔량</text>
             <text x="300" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">N / 최대</text>
             <use href="#ic-cooldown" x="405" y="8" width="30" height="30" style="color: var(--bad)" />
-            <text x="420" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">쿨다운</text>
+            <text x="420" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">쿨타임</text>
             <text x="420" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">회복 대기</text>
             <text x="420" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">서버 시각 기준</text>
             <use href="#ic-new" x="525" y="8" width="30" height="30" style="color: var(--bad)" />
@@ -626,35 +654,91 @@
             <text x="660" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">주문 지정</text>
             <text x="660" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">제출 대기</text>
             <text x="660" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">reservedBy</text>
-            <text x="2" y="100" font-size="11" fill="var(--text-faint)">여섯 개 전부 빨강 — 셀이 number 하나라 상태를 담을 자리 자체가 없다. 타입보다 이쪽이 먼저 스키마를 바꾼다.</text>
+            <text x="2" y="100" font-size="11" fill="var(--text-faint)">여섯 개 전부 빨강 — 셀이 number 하나라 상태를 담을 자리 자체가 없다. 버블만 성격이 다르다: 보드 상태가 아니라 광고 · 젬 훅이라 재화 · 광고 설계와 같이 잡아야 한다.</text>
           </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">용어를 어디서 가져왔나 — 창작한 이름을 커뮤니티 표현으로 바꾼 근거</div>
+            <p>
+              <b>레벨 (← 티어)</b> — 위키 · 공식 지원 문서 · 국내 커뮤니티가 전부 "레벨"을 씁니다.
+              Merge Mansion 은 생성기 강화를 "merge 2 identical generators of a lower level than 10" 으로 설명하고,
+              나무위키 머지 게임 문서도 "최고레벨로 머지"라고 씁니다. "티어"를 쓰는 2머지는 찾지 못했습니다.
+            </p>
+            <p>
+              <b>생성기 3종 (← 무한 · 충전식 · 일회용 · 성장 4종)</b> — 실제로 갈리는 축은
+              <b>산출 트리거</b>(탭+에너지 / 쿨타임 자동)와 <b>재고</b>(무한 / 충전식) 두 개입니다.
+              Travel Town 은 "energy producers" 와 "no-energy generators — they can spawn items in free adjacent
+              cells after a cooldown" 으로 가르고, Merge Mansion 은 충전식을
+              <b>Drop count &times; Recharge count = Maximum capacity</b> 로 정의합니다.
+              "일회용"은 이벤트 생성기 정도라 상시 종류에서 뺐고, "성장"은 네 번째 종류가 아니라 셋 다 갖는 성질이라 내렸습니다.
+            </p>
+            <p>
+              <b>결합 체인 (← 조합기)</b> — 커뮤니티 용어는 <b>combined chain</b> 으로,
+              "you need to merge items from the two other chains together to get the final item" 입니다.
+              보드에 놓는 기계가 아니라 <b>체인 데이터 구조</b>라서 타입 축에서 뺐습니다.
+              같은 축에 <b>nestled chain</b>(체인 앞부분에서 새 생성기를 만들어야 다음으로 넘어감)이 붙습니다.
+            </p>
+            <p>
+              <b>판매 = 액션 (← 타입)</b> — Travel Town 은 아이템을 탭하면 뜨는 버튼으로 처리하고,
+              레벨에 비례한 코인을 줍니다. 딸린 규칙 셋이 그대로 스펙입니다 —
+              1레벨은 판매 불가(버리기만) · 보드에 머지 짝이 남아 있으면 판매 불가 · 판매 직후 되돌리기.
+              보드 오브젝트가 아니므로 아이템 타입일 수 없습니다.
+            </p>
+            <p>
+              <b>버블 = 광고 · 젬 훅 (← "탭해서 터뜨리는 상태")</b> — 제가 잘못 정의했습니다.
+              Travel Town 의 버블은 <b>머지 성공 시 마지막으로 만든 아이템의 복제본</b>이 담겨 뜨고,
+              광고(1일 3회) 또는 다이아로 개봉하며, 방치하면 보상으로 전환됩니다.
+              보드 잠금 상태는 버블이 아니라 <b>자물쇠</b>(Gossip Harbor 의 구름)이고 해제 수단은 <b>열쇠</b>입니다.
+              둘을 한 상태로 묶으면 광고 설계가 보드 로직에 섞입니다.
+            </p>
+            <p>
+              <b>보관함</b> — 도감에 아예 빠져 있던 축입니다. 보드가 찼을 때의 유일한 대피처이고
+              슬롯 확장이 과금 지점입니다. 저장 설계에 직접 걸리는 건
+              "<b>보관함에 넣으면 충전 · 쿨타임 타이머가 멈춘다</b>"(Merge Mansion) —
+              넣은 시각을 같이 저장하지 않으면 꺼낼 때 잔여 시간을 계산할 수 없습니다.
+            </p>
+          </div>
         </div>
 
         <h3 class="doc-h2-sub">아이템 기믹 — IN-2 · IN-3 펼침</h3>
         <div class="table-scroll">
           <table>
             <thead>
-              <tr><th style="width: 8%">축</th><th style="width: 16%">타입</th><th style="width: 34%">하는 일</th><th>현재</th></tr>
+              <tr><th style="width: 8%">축</th><th style="width: 16%">이름</th><th style="width: 40%">하는 일</th><th>현재</th></tr>
             </thead>
             <tbody>
               <tr><td rowspan="7">타입</td><td><b>일반</b></td><td>머지 대상. 체인의 구성원</td>
                 <td><span class="pill" style="--acc: var(--warn)">개선</span> 1종 · 3레벨</td></tr>
-              <tr><td><b>생성기 — 무한</b></td><td>탭하면 산출. 에너지만 소비</td>
-                <td><span class="pill" style="--acc: var(--warn)">개선</span> 이것만 있음 · 무한 · 셀 8 고정</td></tr>
-              <tr><td><b>생성기 — 충전식</b></td><td>charges N개, 시간으로 회복</td>
+              <tr><td><b>생성기 — 에너지형</b></td><td>탭 → 에너지 소비 → 산출. 재고 무한</td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span> 이것만 있음 · 셀 8 고정</td></tr>
+              <tr><td><b>생성기 — 자동형</b></td><td>에너지 0. 쿨타임마다 인접 빈 칸에 스스로 산출 — 보드가 차면 멈춘다</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>생성기 — 일회용</b></td><td>charges 소진 시 소멸</td>
+              <tr><td><b>생성기 — 충전식</b></td><td>배출량 &times; 충전 횟수 = 최대 보유량. 소진 후 시간 회복</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>생성기 — 합쳐서 키움</b></td><td>생성기끼리 머지 → 산출 품질·속도↑</td>
+              <tr><td><b>소모품</b></td><td>탭 → 효과 후 소모. 만능(무엇과도 머지) · 분할(한 단계 아래 2개로) · 에너지 회복 · 산출 부스트</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>소모품</b></td><td>탭 → 효과 발동 후 소모. 에너지 회복 · 부스터 · 열쇠</td>
+              <tr><td><b>상자</b></td><td>열면 재화 · 에너지 · 도구 배출. 시간 잠금 가능</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>상자 · 자물쇠 · 조합기</b></td><td>상자 = 다수 배출(시간 잠금 가능) · 자물쇠 · 조합기(다른 아이템 합치기) · 판매</td>
+              <tr><td><b>자물쇠</b></td><td>머지 · 이동 불가. 해당 아이템을 만들면 열쇠가 나와 풀린다</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td rowspan="2">상태</td><td><b>버블 · 잠금</b></td><td>머지·이동 불가. 탭 또는 조건으로 해제</td>
+              <tr><td rowspan="2">상태</td><td><b>버블 · 잠금</b></td><td>버블 = 광고 · 젬으로 개봉하는 복제본 보상(보드 상태 아님) · 잠금 = 열쇠 대기</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>충전 · 쿨다운 · 신규 · 주문 지정</b></td><td>아이템 인스턴스가 들고 있어야 하는 런타임 상태</td>
+              <tr><td><b>충전 · 쿨타임 · 신규 · 주문 지정</b></td><td>아이템 인스턴스가 들고 있어야 하는 런타임 상태</td>
                 <td><span class="pill" style="--acc: var(--bad)">없음</span> — 셀이 <code>number</code> 하나라 담을 자리가 없음</td></tr>
+              <tr><td rowspan="3">액션</td><td><b>판매</b></td><td>레벨에 비례한 코인. 1레벨은 판매 불가 · 보드에 머지 짝이 남아 있으면 판매 불가 · 판매 직후 되돌리기</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td><b>보관함</b></td><td>보드가 찼을 때의 대피처. 넣으면 충전 · 쿨타임 타이머가 멈춘다. 슬롯 확장이 과금 지점</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td><b>버리기</b></td><td>판매가 막힌 1레벨 정리용. 코인 없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td rowspan="3">체인</td><td><b>단일</b></td><td>Lv1 → LvN 일직선</td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span> Lv3 상한 하드코딩</td></tr>
+              <tr><td><b>내포</b></td><td>체인 끝이 다음 체인의 생성기가 된다</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td><b>결합</b></td><td>서로 다른 두 체인을 합쳐야 최종 아이템이 나온다</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -796,7 +880,7 @@
                 <td><span class="pill" style="--acc: var(--bad)">키 0개</span> <b><code>Fbi</code> 는 이 라인에 없다</b> — <code>Fbi.setDataAsync</code> 를 쓰라는 기존 규칙 문서는 stale</td></tr>
               <tr><td><b>시각 · 타이머</b><br /><span class="tag">IN-2 · OUT-1</span></td>
                 <td><code>DataManager.getTime()</code>(서버 갭 보정) + <code>StaticTimer</code>. <code>Date.now()</code> 직접 호출 금지</td>
-                <td><span class="pill" style="--acc: var(--bad)">위반</span> 스토리 코드에 <code>Date.now()</code> <b>5곳</b> · <code>setTimeout</code> 2곳. 생성기 쿨다운·에너지 회복이 이 위에 올라간다</td></tr>
+                <td><span class="pill" style="--acc: var(--bad)">위반</span> 스토리 코드에 <code>Date.now()</code> <b>5곳</b> · <code>setTimeout</code> 2곳. 생성기 쿨타임·에너지 회복이 이 위에 올라간다</td></tr>
               <tr><td><b>계측</b><br /><span class="tag">OUT-11</span></td>
                 <td><code>registLogEvent(LogType.X, "1000_NAME")</code> → <code>BaseLogManager.log(...)</code>. <b>LogType 등록은 기능 구현의 일부</b></td>
                 <td><span class="pill" style="--acc: var(--bad)">맵 빔</span> 서브클래스는 있으나 이벤트 0개 — BigQuery 에서 안 보임</td></tr>
@@ -822,7 +906,7 @@
           <div class="note" style="--acc: var(--bad)">
             <div class="note-title">먼저 손대야 하는 3가지 — 나머지 전부의 선행</div>
             <p>
-              <b>① 셀 자료형</b> — 지금 셀은 <code>number</code>(티어) 하나라 위 상태 6종을 담을 자리가 없습니다.
+              <b>① 셀 자료형</b> — 지금 셀은 <code>number</code>(레벨) 하나라 위 상태 6종을 담을 자리가 없습니다.
               <code>Cell { itemId, charges, state }</code> 로 바꾸는 게 IN-2 · IN-3 · IN-7 의 공통 선행입니다.
             </p>
             <p>
@@ -1221,7 +1305,7 @@
         <div class="foot">
           <b>확인 범위</b>
           <b>기능 갭 · 로드맵</b> — <code>story-merge-proto-client</code> main 커밋 <code>002df73</code> 코드 실측
-          (지면 4 · 프리팹 3 · <code>story_node.json</code> 11행 · 보드 6&times;7/티어 3 ·
+          (지면 4 · 프리팹 3 · <code>story_node.json</code> 11행 · 보드 6&times;7/레벨 3 ·
           <code>REQUIRED_MERGE_COUNT = 1</code> · <code>DataManager.coin</code> 의 <code>return 0</code> ·
           세이브 키 0개 · 커밋 <code>2d2cf06</code> 꾸미기 오버레이 제거). 레퍼런스 Gossip Harbor 쪽 수치와
           파트별 완성도 %는 <b>추정</b>이며, 큰 틀 판단(오더가 허브, 순환이 끊겼다)은 수치와 무관하게 유효합니다.
