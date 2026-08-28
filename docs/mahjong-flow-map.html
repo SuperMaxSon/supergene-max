@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>마종 전체 지면 플로우 맵</title>
+    <meta name="description" content="마종의 부팅·진입 라우팅부터 로비, 독립 View 4장(상점·도감·친구·토너먼트), 인게임, 결과 정산, 판 종료 후 5단계까지 전 지면을 드래그·확대로 훑는 인터랙티브 맵." />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#map">맵</a>
+        <a class="nav-back" href="#trunk">주 흐름</a>
+        <a class="nav-back" href="#entry">진입 분기</a>
+        <a class="nav-back" href="#buttons">버튼 → 메소드</a>
+        <a class="nav-back" href="#post">결과 후 플로우</a>
+        <a class="nav-back" href="#context">컨텍스트 분기</a>
+        <a class="nav-back" href="#fb">FB 지면</a>
+        <a class="nav-back" href="#scope">확인 범위</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 코드 레퍼런스</div>
+        <h1 class="doc-title">마종 전체 지면 플로우 맵</h1>
+        <p class="doc-lede">
+          솔리테어 · 코인 매치 플로우 맵과 <b>같은 두 단 구조</b>입니다.
+          <b>1단</b> 오픈맵으로 어느 지면이 어느 흐름에 있는지 보고,
+          <b>2단</b> 지면을 누르면 큰 팝업에 <b>그 지면의 UI 와이어프레임</b>(프리팹을 직접 파싱해
+          실제 버튼 좌표를 720&times;1280 세로 화면에 올린 그림)과 <b>버튼별 한 줄 요약</b>이 함께 뜹니다.
+          와이어프레임의 버튼이나 요약 셀을 누르면 그 자리에서 호출 흐름이 아래로 펼쳐집니다.
+          맵은 <b>세로 스파인</b>입니다 — 가운데 줄기가 한 판의 진행 순서(부팅 → 진입 라우팅 → 로비 → 인게임 → 결과 정산 → 판 종료 후 5단계)이고,
+          왼쪽 레일은 그 단계에서 <b>새어 나가는 길</b>, 오른쪽 레일은 그 단계가 <b>여는 지면</b>입니다.
+          띠 5개가 세로 눈금이라 <b>위에서 아래로만 훑으면 한 판이 끝납니다</b>.
+          찾는 게 정해져 있으면 <b>오른쪽 위 검색창</b>(단축키 <b>/</b>)에 메소드명 · 지면 이름 ·
+          프리팹 · 버튼 라벨을 치면 그 지면을 열고 접힘까지 펼쳐서 보여줍니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--mah)">마종</span>
+          <span class="tag">mahjong-client · main 브랜치 코드 실측</span>
+          <span class="tag">기준 커밋 7d242c86d</span>
+          <span class="tag">카드 23 (지면 14 + 진행 칸 5 + 진입 분기 4) + 칩 27 · 흐름 29</span>
+          <span class="tag">화면 요소 840개 · 세로 720&times;1280</span>
+          <span class="tag">v1.0 — 세로 스파인 (월드 2050×1310)</span>
+          <span class="tag">마지막 갱신 2026-08-28</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="map">
+        <h2 class="doc-h2">맵 <span class="doc-h2-sub">오픈맵 → 지면(UI + 로직) 두 단</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--mah)">
+            <div class="stat-num">23<span class="stat-unit">장</span></div>
+            <div class="stat-name">맵 카드 (+ 칩 27개)</div>
+            <div class="stat-sub">지면 14 + 진행 칸 5 + 진입 분기 4 · 월드 2050×1310</div>
+          </div>
+          <div class="stat" style="--acc: var(--analysis)">
+            <div class="stat-num">29<span class="stat-unit">개</span></div>
+            <div class="stat-name">지면 사이 흐름(화살표)</div>
+            <div class="stat-sub">그중 주 흐름 10개가 세로 한 줄기 · 팝업 열기는 칩 소속으로</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">840<span class="stat-unit">개</span></div>
+            <div class="stat-name">프리팹에서 뽑은 화면 요소</div>
+            <div class="stat-sub">이미지 390 · 라벨 280 · 버튼 168</div>
+          </div>
+          <div class="stat" style="--acc: var(--balance)">
+            <div class="stat-num">67<span class="stat-unit">개</span></div>
+            <div class="stat-name">메소드 → 한 줄 동작 사전</div>
+            <div class="stat-sub">맵에 노출된 고유 핸들러 67개를 전부 코드에서 읽고 적었다</div>
+          </div>
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">17<span class="stat-unit">종</span></div>
+            <div class="stat-name">FB 가 그리는 지면</div>
+            <div class="stat-sub">맵 밖 별도 문서 · 툴바에서 연다</div>
+          </div>
+        </div>
+
+        <!-- CTA = a.pill. 좁은 화면에서 미리보기 프레임은 조작이 어려워 이 버튼이 주 입구다. -->
+        <div class="doc-meta">
+          <a class="pill" style="--acc: var(--mah)" href="mahjong-flow-canvas.html" target="_blank" rel="noopener">다이어그램 크게 보기 →</a>
+          <span class="tag">새 탭에서 전체 화면으로 · 지면 클릭 → 팝업 → 버튼 클릭 → 흐름 펼침</span>
+        </div>
+
+        <!-- 맵은 팬/줌이 필요한 인터랙티브 화면이라 style.css 컴포넌트로 만들 수 없다.
+             디자인 시스템을 건드리지 않기 위해 자립 파일로 두고 여기서는 프레임만 올린다. -->
+        <div class="table-scroll" style="padding: 0">
+          <iframe
+            src="mahjong-flow-canvas.html"
+            title="마종 전체 지면 플로우 인터랙티브 맵 (미리보기)"
+            loading="lazy"
+            style="display: block; width: 100%; height: 76vh; min-height: 520px; border: 0"
+          ></iframe>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 그림이 어디서 나왔나</div>
+            <p>
+              손으로 그린 그림이 아닙니다. 번들 프리팹을 파싱해 <code>_trs</code> 좌표와
+              <code>cc.Widget</code> 정렬을 계산한 결과입니다. 생성기는
+              <code>mahjong-client/_ignore/flowmap/</code> 에 있고, 솔리테어 → 코인 매치로 이어져 온
+              생성기를 이 프로젝트로 이식한 것입니다.
+              <b>회전은 무시</b>했고, 프리팹 저장 시점 비활성 장식 · 화면 밖 스크롤 컨텐츠 ·
+              잠금 오버레이는 뺐습니다. 반복 셀 <b>93개</b>는 대표 1개 + <code>&times;n</code> 으로 접었고,
+              부모와 같은 자리를 차지하는 중복 상자 <b>167개</b>는 지웠습니다.
+            </p>
+            <p>
+              정규화 기준은 <b>부팅 씬 <code>intro.fire</code> 의 <code>cc.Canvas._designResolution</code></b>
+              (720&times;1280)입니다. <code>settings/project.json</code> 값이 아닙니다 —
+              코인 매치는 거기가 960&times;640 인데 실제 캔버스는 720&times;1280 이라
+              그 값으로 재면 좌표가 전부 어긋납니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">비활성 버튼을 왜 남겼나</div>
+            <p>
+              프리팹의 <code>_active = false</code> 는 &ldquo;에디터에 파킹&rdquo;이 아니라 대개
+              <b>런타임 조건부 노출</b>입니다. 같은 지면에 활성본이 따로 있을 때만 버렸고
+              (이번에 <b>68개</b>), 그 핸들러로 갈 길이 이것뿐이면 남겨 점선으로 그립니다.
+              함부로 버리면 조건부로만 뜨는 버튼이 통째로 사라집니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="trunk">
+        <h2 class="doc-h2">주 흐름 <span class="doc-h2-sub">맵 가운데 굵은 축 · 띠 5개가 세로 눈금</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>띠</th><th>스파인 카드</th><th>무슨 단계인가</th></tr></thead>
+            <tbody>              <tr><td><b>1 · 부팅 · 진입 라우팅</b></td><td><code>intro → router</code></td><td>토너먼트 · 친구 랭킹까지 받고 진입 분기를 고른다</td></tr>
+              <tr><td><b>2 · 로비</b></td><td><code>lobby</code></td><td>독립 View 4장(상점·도감·친구·토너먼트)을 연다</td></tr>
+              <tr><td><b>3 · 인게임</b></td><td><code>mahjong</code></td><td>같은 그림 타일 2장 맞추기</td></tr>
+              <tr><td><b>4 · 결과 정산</b></td><td><code>mahjongresul</code></td><td>확인/로비 두 버튼의 광고 구좌가 다르다</td></tr>
+              <tr><td><b>5 · 판 종료 후 순서</b></td><td><code>session → s1~s5</code></td><td>추천 매치가 다음 판의 컨텍스트를 정한다</td></tr></tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--mah)">
+            <div class="note-title">인게임</div>
+            <p>같은 그림 타일 2장을 맞춰 없앤다</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="entry">
+        <h2 class="doc-h2">진입 분기 <span class="doc-h2-sub">Intro.moveToNext() 가 고른 하나만 실행된다</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>분기</th><th>조건과 처리</th></tr></thead>
+            <tbody>              <tr><td><b>토너먼트</b></td><td><code>Fbi.getTournamentAsync()</code> 가 토너먼트를 주면. 튜토리얼 유저 경로의 토너먼트 분기는 <b>현재 주석 처리</b>돼 있다</td></tr>
+              <tr><td><b>친구 대전</b></td><td><code>entryJoinData.social</code> 이 INVITE · MESSAGE 이거나 <code>is_invite</code> 이고 그 상대가 친구 랭킹에 있을 때 <code>moveToMahjongP2P(userId)</code></td></tr>
+              <tr><td><b>데일리 챌린지</b></td><td>데일리 챌린지 페이로드로 들어왔을 때 <code>moveToDailyStage()</code></td></tr>
+              <tr><td><b>그 외</b></td><td><code>moveToLobby()</code></td></tr></tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">StartType 은 2개뿐이다</div>
+            <p>
+              <code>enum StartType { MainGame, Ranking }</code> — 코인 매치처럼 진입 종류가
+              enum 으로 갈려 있지 않습니다. 실제 분기는 <code>moveToNext()</code> 안의
+              <b>if 사슬</b>이 결정하므로, 맵에서는 그 사슬을 분기 칸 4개로 폈습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="buttons">
+        <h2 class="doc-h2">버튼 → 호출 메소드 <span class="doc-h2-sub">맵 카드를 눌러도 같은 내용이 열린다</span></h2>
+        <p>
+          맵의 지면을 누르면 와이어프레임 위 버튼과 오른쪽 요약 열이 함께 열립니다.
+          버튼 <b>168개</b>에서 고유 핸들러 <b>67개</b>를 뽑아, 그 구현을
+          코드에서 찾아 읽고 한 줄로 적었습니다(사전 <b>67항목</b>).
+          핸들러가 없는 버튼은 코드가 <code>node.on(&apos;click&apos;)</code> 으로 런타임에 다는 것이라
+          &ldquo;핸들러 없음&rdquo;으로 표시합니다.
+        </p>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">검색으로 바로 여는 법</div>
+            <p>
+              맵 오른쪽 위 검색창(단축키 <b>/</b>)에서 <b>1,093개 항목</b>을 찾습니다.
+              지면 이름 · 메소드 · 프리팹 · 버튼 라벨 · 프리팹 노드 이름이 걸리고,
+              메소드 설명문까지 같이 뒤지므로 이름이 정확히 기억나지 않아도 걸립니다.
+              고르면 그 지면을 열고, 그 메소드가 로직 표의 한 행에 걸려 있으면 그 칸까지 펼쳐 줍니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="post">
+        <h2 class="doc-h2">결과 후 플로우 <span class="doc-h2-sub">판이 끝난 뒤 무엇이 순서대로 일어나는가</span></h2>
+        <p>
+          근거는 <code>ViewMahjongResult.onClickConfirmButton()</code> <b>989~1056줄 + onClickConfirm() 1058~1166줄</b> 입니다. 위에서 아래로 <b>순서대로 지난다</b>. 코지처럼 먼저 걸리면 끝나는 구조가 아니다.
+          맵에서는 이걸 한 줄짜리 진행 칸 <b>5개</b>로 스파인 위에 폈습니다 —
+          카드 하나의 접힘 표 안에 두면 클릭 없이 보이는 진행 단계가 0이 되기 때문입니다.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>칸</th><th>하는 일</th></tr></thead>
+            <tbody>              <tr><td><b>① 미뤄둔 컨텍스트 팝업</b></td><td><code>hasDeferredContextPopupOnIngameResult()</code> 면 소비하고 0.5초 기다린다. 실패해도 로그만 남기고 진행</td></tr>
+              <tr><td><b>② 전면광고</b></td><td><code>stage_clear</code>. <code>!getInterstitalFront()</code> <b>그리고</b> <code>totalClearCount &gt; 4</code> 일 때만</td></tr>
+              <tr><td><b>③ 랜드마크 교체</b></td><td><code>landmarkProgress[0] === 0</code> 이면 <code>PopupChangeLandmark</code> 후 <code>changeMahjongLandmark()</code></td></tr>
+              <tr><td><b>④ 추천 매치 조회</b></td><td><code>getRecommendedMatchInfo()</code>. <code>isCreateTournament</code> 가 켜져 있으면 <b>여기서 즉시 return</b></td></tr>
+              <tr><td><b>⑤ 다음 판</b></td><td><code>playSwitchByInfo(info)</code> → <code>onOutGame(changeInfo)</code>. 추천이 없으면 <code>onOutGame(null)</code> 로 솔로 다음 판</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section" id="context">
+        <h2 class="doc-h2">컨텍스트 분기 <span class="doc-h2-sub">같은 지면 · 같은 버튼이 상태에 따라 다르게 동작한다</span></h2>
+        <p>마종도 코지처럼 상태 클래스가 없다. 다만 판 종료 후 <b>추천 매치</b>(<code>getRecommendedMatchInfo()</code>)가 다음 판의 컨텍스트를 정하는 구조라 전환 시점이 코지(전환 팝업 중심)와 다르다.</p>
+        <div class="notes">
+          <div class="note" style="--acc: var(--mah)">
+            <div class="note-title">맵 툴바의 &ldquo;컨텍스트&rdquo; 버튼에서 전문을 봅니다</div>
+            <p>
+              상태 3종(Solo · 친구 대전 · 토너먼트) · 전이 · 컨텍스트를 만드는 구좌 ·
+              노출 게이트 · 되돌리는 지점 · 함정을 항목마다 <b>파일:줄</b> 근거와 함께 정리했습니다.
+              지면으로 표현되지 않는 축이라 맵 화살표가 아니라 별도 문서로 뺐습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="fb">
+        <h2 class="doc-h2">FB 지면 <span class="doc-h2-sub">FB 가 직접 그리는 화면 17종</span></h2>
+        <p>
+          우리 프리팹이 아니라 게임 위에 덮이는 화면이라 와이어프레임에는 나오지 않습니다.
+          광고 · 소셜 · 컨텍스트 · 토너먼트 · 재방문 · 교차 홍보 · 결제 <b>7개 묶음</b>으로 갈라
+          호출부 개수와 함께 맵 툴바의 &ldquo;FB 지면&rdquo; 버튼에 담았습니다.
+        </p>
+      </section>
+
+      <section class="doc-section" id="scope">
+        <h2 class="doc-h2">확인 범위</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>항목</th><th>내용</th></tr></thead>
+            <tbody>
+              <tr><td>대상</td><td><code>mahjong-client</code> · main 브랜치 · 기준 커밋 <code>7d242c86d</code></td></tr>
+              <tr><td>파싱한 지면</td><td>36개 (번들 프리팹 + <code>intro.fire</code>)</td></tr>
+              <tr><td>뽑은 화면 요소</td><td>840개 — 이미지 390 · 라벨 280 · 버튼 168</td></tr>
+              <tr><td>정규화 기준</td><td><code>intro.fire</code> 의 <code>cc.Canvas._designResolution</code> = 720&times;1280</td></tr>
+              <tr><td>노드 ↔ 프리팹 검증</td><td><code>derive_map.py</code> 가 <code>ViewCreator</code> 코드와 대조 — 프리팹 없음 0 · 코드 리터럴 미확인 0</td></tr>
+              <tr><td>추정으로 남긴 것</td><td>회전이 걸린 노드의 좌표(회전 무시) · 코드가 런타임에 채우는 목록(캡션에 명시)</td></tr>
+              <tr><td>생성기</td><td><code>mahjong-client/_ignore/flowmap/</code> — <code>gen_ui.py</code> → <code>gen_block.py</code> → <code>assemble.py</code> → <code>probe.sh</code></td></tr>
+              <tr><td>합격선 계측</td><td><code>probe.sh</code> 전 항목 통과 (카드 겹침 0 · 주 흐름 위→아래 1.00 · 띠 역행 0 · JS 오류 0)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">맵을 만들며 확인된 것</div>
+                        <p><b>로비에 탭이 없다 — 코지와 갈리는 지점</b> — 상점 · 도감 · 친구 · 토너먼트가 각각 <b>독립 View 프리팹</b>이고 번들도 <code>assets/bundles/lobby/{shop,collection,friends,tournament}</code> 로 따로다. 로비 진입 시점에 같이 받지 않고 각 지면을 처음 열 때 받는다.</p>
+            <p><b>확인 버튼 경로가 두 벌로 복사돼 있다</b> — <code>onClickConfirmButton()</code> 은 전면광고 유무로 같은 코드가 두 번 적혀 있다(<b>1011~1033</b> 과 <b>1034~1055</b>). 한쪽만 고치면 광고가 나간 유저와 안 나간 유저의 동작이 갈린다.</p>
+            <p><b>죽은 등록 1건</b> — <code>ViewCreator.showPopupWeekendPack()</code> 이 <code>PopupWeekendPack</code> 을 로드하는데 <b>그 프리팹이 저장소에 없다</b> — 코지와 같은 증상이다.</p>
+            <p><b>솔로 복귀 호출부가 19곳</b> — <code>Fbi.switchToContextSolo()</code> 호출부가 코지(8곳)의 2배가 넘는다. 컨텍스트를 되돌리는 지점이 그만큼 흩어져 있다.</p>
+            <p><b>결과 화면에 A/B 두 벌이 들어 있다</b> — <code>isATest</code> 에 따라 같은 프리팹의 <code>ANode</code> / <code>BNode</code> 중 하나만 켠다.</p>
+            <p><b>셔플 팝업 프리팹이 둘</b> — <code>PopupUseShuffle</code> 과 <code>PopupUseShuffle_1</code> 이 같이 있고 코드가 로드하는 것은 <code>_1</code> 쪽이다.</p>
+            <p><b>디버그 버튼이 로비에 있다</b> — <code>ViewLobby.onClickRemoveFaceBookDate()</code> 가 FB 저장소의 진행 데이터를 지운다. 운영 빌드에서 노출되는지 확인이 필요하다.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="../app.js"></script>
+  </body>
+</html>
