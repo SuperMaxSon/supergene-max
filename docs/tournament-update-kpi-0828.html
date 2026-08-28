@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>토너먼트 업데이트 KPI 검증 — 8/27 배포</title>
+    <meta
+      name="description"
+      content="8/27 build 477 배포 이후 토너먼트 공유·생성 KPI 검증. P2P 오발송만 줄었고 공유·생성은 무변화. 클리어의 3.7%만 소셜로 발사되며 병목은 유저 취소 93%."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#verdict">결론</a>
+        <a class="nav-back" href="#funnel">퍼널</a>
+        <a class="nav-back" href="#effect">전후 지표</a>
+        <a class="nav-back" href="#inflow">유입</a>
+        <a class="nav-back" href="#pending">잔여 이슈</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · 솔리테어</div>
+        <h1 class="doc-title">토너먼트 업데이트 KPI 검증 — 8/27 배포</h1>
+        <p class="doc-lede">
+          8/27 <b>build 477</b> 배포(토너먼트 공유·진입 5건) 이후 지표를 대조했습니다.
+          같은 기간 <b>UA 집행이 축소</b>돼 세션 수가 절반이 됐기 때문에, 모든 지표는
+          <b>클리어 100판당</b>으로 정규화하고 <b>기존 유저 코호트</b>만 봅니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--ok)">P2P 오발송 −29%</span>
+          <span class="pill" style="--acc: var(--warn)">공유·생성 무변화</span>
+          <span class="pill" style="--acc: var(--bad)">병목: 유저 취소 93%</span>
+          <span class="tag">BigQuery 실측</span>
+          <span class="tag">solitaire_city_journey</span>
+          <span class="tag">2026-08-28 12:21 기준 v1.0</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 결론 ================= -->
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          결론
+          <span class="doc-h2-sub">잘못 나가던 건 멈췄고, 제대로 나가게 하는 건 실패</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">−29<span class="stat-unit">%</span></div>
+            <div class="stat-name">P2P 오발송</div>
+            <div class="stat-sub">5.02 → 3.57 / 100클리어</div>
+          </div>
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">0</div>
+            <div class="stat-name">공유 순증</div>
+            <div class="stat-sub">18.79 → 20.69, 밴드 내</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">3.7<span class="stat-unit">%</span></div>
+            <div class="stat-name">클리어 → 소셜 발사 성공</div>
+            <div class="stat-sub">11,862판 중 436건</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">92.9<span class="stat-unit">%</span></div>
+            <div class="stat-name">생성 실패 = 유저 취소</div>
+            <div class="stat-sub">USER_INPUT 1,598건</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>배포한 것</th>
+                <th>판정 지표</th>
+                <th style="text-align: right">전 → 후</th>
+                <th style="text-align: center">판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>토너먼트 진입의 P2P 오인 수정</td>
+                <td><code>3400_MSG_P2P</code> / 100클리어</td>
+                <td style="text-align: right">5.02 → <b>3.57</b></td>
+                <td style="text-align: center"><span class="pill" style="--acc: var(--ok)">효과 확인</span></td>
+              </tr>
+              <tr>
+                <td>토너 없는 컨텍스트 → 생성 지면 폴백</td>
+                <td><code>3100_TOURNAMENT_CREATE</code> / 100클리어</td>
+                <td style="text-align: right">15.97 → 16.02</td>
+                <td style="text-align: center"><span class="pill" style="--acc: var(--bad)">무효</span></td>
+              </tr>
+              <tr>
+                <td>(공통 목표) 토너 공유 증가</td>
+                <td><code>3200_TOURNAMENT_SHARE</code> / 100클리어</td>
+                <td style="text-align: right">18.79 → 20.69</td>
+                <td style="text-align: center"><span class="pill" style="--acc: var(--warn)">밴드 내</span></td>
+              </tr>
+              <tr>
+                <td>초반 유저 소셜 슬롯 처리 변경</td>
+                <td><code>3230</code> <code>first_nru</code> 발생 코호트</td>
+                <td style="text-align: right">NRU 전용 380건</td>
+                <td style="text-align: center"><span class="pill" style="--acc: var(--ok)">설계대로</span></td>
+              </tr>
+              <tr>
+                <td>공유 미노출 사유 로그(3230) 추가</td>
+                <td>사유 3종 계측 확보</td>
+                <td style="text-align: right">이 문서의 근거</td>
+                <td style="text-align: center"><span class="pill" style="--acc: var(--ok)">목적 달성</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">"밴드 내"가 무효와 다른 이유</div>
+            <p>
+              공유 20.69는 배포 전 9일 범위(18.2~22.6)의 <b>정중앙</b>입니다. 올랐다고도 안 올랐다고도
+              말할 수 없는 값이고, 깨끗한 배포 후 데이터가 <b>8/28 하루뿐</b>이라 판정을 유보합니다.
+              반면 폴백은 <b>발동 자체는 455건 확인</b>되는데 생성 시도가 안 늘어 무효로 봅니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 퍼널 ================= -->
+      <section class="doc-section" id="funnel">
+        <h2 class="doc-h2">
+          어디서 죽는가
+          <span class="doc-h2-sub">8/28 · 기존 유저 · 클리어 11,862판</span>
+        </h2>
+
+        <!-- 이 문서의 핵심 그림. 앞단 물량을 아무리 밀어도 3.7%에서 막힌다는 걸
+             한 장으로 보여주기 위해 손실 라벨을 바 옆에 직접 붙였다. -->
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 330" width="900" height="330" role="img"
+               aria-label="클리어 11862판 중 소셜 지면 시도 4351건, 최종 발사 성공 436건으로 줄어드는 퍼널">
+            <!-- 1단: 클리어 -->
+            <text x="20" y="34" font-size="12.5" font-weight="700" fill="var(--text-dim)">클리어</text>
+            <rect x="20" y="44" width="860" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border)" />
+            <text x="40" y="73" font-size="17" font-weight="700" fill="var(--text)">11,862판</text>
+            <text x="866" y="73" text-anchor="end" font-size="12" fill="var(--text-faint)">100%</text>
+
+            <!-- 손실 1 -->
+            <line x1="60" y1="90" x2="60" y2="134" stroke="var(--border)" />
+            <text x="76" y="112" font-size="11.5" fill="var(--bad)">− 생성 억제 4,585 · 지면 미도달 2,926</text>
+
+            <!-- 2단: 지면 시도 -->
+            <text x="20" y="152" font-size="12.5" font-weight="700" fill="var(--text-dim)">소셜 지면 시도</text>
+            <rect x="20" y="162" width="316" height="46" rx="8" fill="var(--surface)" stroke="var(--warn)" />
+            <text x="40" y="191" font-size="17" font-weight="700" fill="var(--warn)">4,351건</text>
+            <text x="352" y="185" font-size="11.5" fill="var(--text-faint)">생성 1,900 + 공유 2,451</text>
+            <text x="352" y="200" font-size="11.5" fill="var(--text-faint)">클리어의 36.7%</text>
+
+            <!-- 손실 2 -->
+            <line x1="60" y1="208" x2="60" y2="252" stroke="var(--border)" />
+            <text x="76" y="230" font-size="11.5" fill="var(--bad)">− 유저가 다이얼로그 닫음 1,598 · 공유 미완료 2,178</text>
+
+            <!-- 3단: 발사 성공 -->
+            <text x="20" y="270" font-size="12.5" font-weight="700" fill="var(--text-dim)">발사 성공</text>
+            <rect x="20" y="280" width="32" height="46" rx="8" fill="var(--surface)" stroke="var(--bad)" />
+            <text x="68" y="303" font-size="17" font-weight="700" fill="var(--bad)">436건</text>
+            <text x="68" y="319" font-size="11.5" fill="var(--text-faint)">생성 163 + 공유 273 · 클리어의 3.7%</text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">병목은 코드가 아니라 지면입니다</div>
+            <p>
+              생성 실패 1,719건 중 <b>1,598건(92.9%)이 <code>USER_INPUT</code></b> — 유저가 다이얼로그를
+              그대로 닫은 겁니다. 그리고 한 번 닫으면 거절 카운터가 올라가 이후 시도가 억제되므로
+              (<code>3130</code> 4,585건), <b>실패와 억제는 같은 현상의 앞뒤</b>입니다.
+              앞단에서 물량을 늘리는 수정으로는 이 구간을 통과할 수 없습니다.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>이 퍼널은 어떻게 뽑았나 — 생성/공유 카운트 + 실패 사유</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 분모는 세션이 아니라 "클리어 판수". 토너 공유·생성은 클리어 시점에만 발사되므로
+-- 세션당으로 보면 UA 축소로 바뀐 플레이 강도가 그대로 섞여 들어온다.
+WITH base AS (
+  SELECT
+    log_date, event,
+    JSON_VALUE(data, '$.result')     AS result,
+    JSON_VALUE(data, '$.error_code') AS error_code,
+    IF(logincount_total &lt;= 1, 'nru', 'existing') AS cohort
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date BETWEEN '2026-08-20' AND '2026-08-28'
+)
+SELECT
+  log_date,
+  COUNTIF(event = '2300_GAMEPLAY_FINISH' AND result = 'clear') AS clears,
+  COUNTIF(event = '3100_TOURNAMENT_CREATE')            AS create_try,
+  COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')    AS create_ok,
+  COUNTIF(event = '3120_TOURNAMENT_CREATE_FAIL')       AS create_fail,
+  COUNTIF(event = '3130_TOURNAMENT_CREATE_SUPPRESSED') AS create_supp,
+  COUNTIF(event = '3200_TOURNAMENT_SHARE')             AS share_try,
+  COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')     AS share_ok
+FROM base
+WHERE cohort = 'existing'
+GROUP BY log_date
+ORDER BY log_date;
+
+-- 실패 사유 분해 (USER_INPUT 비중)
+SELECT
+  log_date,
+  JSON_VALUE(data, '$.error_code') AS error_code,
+  COUNT(*) AS fail_count,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY log_date), 1) AS pct
+FROM `game-log-359704.raw.solitaire_city_journey`
+WHERE log_date BETWEEN '2026-08-26' AND '2026-08-28'
+  AND event = '3120_TOURNAMENT_CREATE_FAIL'
+  AND logincount_total &gt; 1
+GROUP BY log_date, error_code
+ORDER BY log_date, fail_count DESC;</pre></div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= 전후 지표 ================= -->
+      <section class="doc-section" id="effect">
+        <h2 class="doc-h2">
+          배포 전후
+          <span class="doc-h2-sub">클리어 100판당 · 기존 유저 · 세로 점선이 8/27 배포</span>
+        </h2>
+
+        <!-- 공유·생성은 배포선을 지나도 밴드 안에 머문다. 무변화를 말로 설명하는 대신
+             밴드(회색 띠)를 깔아서 "선이 띠를 못 벗어났다"로 보이게 했다. -->
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 290" width="900" height="290" role="img"
+               aria-label="공유 시도와 생성 시도의 8월 20일부터 28일까지 추이. 배포 후에도 기존 범위 안에 머문다">
+            <!-- 밴드: 배포 전 9일 범위 -->
+            <rect x="60" y="43" width="800" height="40" fill="var(--surface-3)" />
+            <text x="866" y="58" text-anchor="end" font-size="10.5" fill="var(--text-faint)">공유 배포 전 범위</text>
+
+            <!-- 격자 -->
+            <line x1="60" y1="250" x2="860" y2="250" stroke="var(--border)" />
+            <line x1="60" y1="195" x2="860" y2="195" stroke="var(--border-soft)" />
+            <line x1="60" y1="140" x2="860" y2="140" stroke="var(--border-soft)" />
+            <line x1="60" y1="85" x2="860" y2="85" stroke="var(--border-soft)" />
+            <line x1="60" y1="30" x2="860" y2="30" stroke="var(--border-soft)" />
+            <text x="52" y="254" text-anchor="end" font-size="10.5" fill="var(--text-faint)">0</text>
+            <text x="52" y="199" text-anchor="end" font-size="10.5" fill="var(--text-faint)">6</text>
+            <text x="52" y="144" text-anchor="end" font-size="10.5" fill="var(--text-faint)">12</text>
+            <text x="52" y="89" text-anchor="end" font-size="10.5" fill="var(--text-faint)">18</text>
+            <text x="52" y="34" text-anchor="end" font-size="10.5" fill="var(--text-faint)">24</text>
+
+            <!-- 배포선 -->
+            <line x1="760" y1="30" x2="760" y2="250" stroke="var(--bad)" stroke-dasharray="5 4" />
+            <text x="766" y="44" font-size="11" font-weight="700" fill="var(--bad)">8/27 배포</text>
+
+            <!-- 공유 시도 -->
+            <polyline fill="none" stroke="var(--sol)" stroke-width="2.5"
+              points="60,59.9 160,67.5 260,43.0 360,60.3 460,65.2 560,74.3 660,77.8 760,83.0 860,60.3" />
+            <circle cx="860" cy="60.3" r="4" fill="var(--sol)" />
+            <text x="854" y="52" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--sol)">20.69</text>
+
+            <!-- 생성 시도 -->
+            <polyline fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="6 4"
+              points="60,77.9 160,79.8 260,61.1 360,80.3 460,80.4 560,108.7 660,103.6 760,85.7 860,103.2" />
+            <circle cx="860" cy="103.2" r="4" fill="var(--warn)" />
+            <text x="854" y="120" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--warn)">16.02</text>
+
+            <!-- x축 -->
+            <text x="60" y="270" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/20</text>
+            <text x="260" y="270" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/22</text>
+            <text x="460" y="270" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/24</text>
+            <text x="660" y="270" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/26</text>
+            <text x="860" y="270" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/28</text>
+
+            <!-- 범례 -->
+            <line x1="60" y1="286" x2="86" y2="286" stroke="var(--sol)" stroke-width="2.5" />
+            <text x="94" y="290" font-size="11" fill="var(--text-dim)">공유 시도</text>
+            <line x1="170" y1="286" x2="196" y2="286" stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="6 4" />
+            <text x="204" y="290" font-size="11" fill="var(--text-dim)">생성 시도</text>
+          </svg>
+        </div>
+
+        <!-- P2P는 값 자체가 작아 위 차트에 섞으면 변화가 안 보인다. 축을 0~6으로 확대한
+             별도 차트로 분리해 유일하게 확인된 효과를 보이게 했다. -->
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 230" width="900" height="230" role="img"
+               aria-label="P2P 메시지 발사가 배포 직후 기존 범위 아래로 내려간 추이">
+            <rect x="60" y="52" width="800" height="26" fill="var(--surface-3)" />
+            <text x="866" y="68" text-anchor="end" font-size="10.5" fill="var(--text-faint)">배포 전 범위 4.2~5.2</text>
+
+            <line x1="60" y1="190" x2="860" y2="190" stroke="var(--border)" />
+            <line x1="60" y1="136.7" x2="860" y2="136.7" stroke="var(--border-soft)" />
+            <line x1="60" y1="83.3" x2="860" y2="83.3" stroke="var(--border-soft)" />
+            <line x1="60" y1="30" x2="860" y2="30" stroke="var(--border-soft)" />
+            <text x="52" y="194" text-anchor="end" font-size="10.5" fill="var(--text-faint)">0</text>
+            <text x="52" y="141" text-anchor="end" font-size="10.5" fill="var(--text-faint)">2</text>
+            <text x="52" y="87" text-anchor="end" font-size="10.5" fill="var(--text-faint)">4</text>
+            <text x="52" y="34" text-anchor="end" font-size="10.5" fill="var(--text-faint)">6</text>
+
+            <line x1="760" y1="30" x2="760" y2="190" stroke="var(--bad)" stroke-dasharray="5 4" />
+            <text x="766" y="44" font-size="11" font-weight="700" fill="var(--bad)">8/27 배포</text>
+
+            <polyline fill="none" stroke="var(--ok)" stroke-width="2.5"
+              points="60,130.8 160,77.2 260,52.7 360,58.8 460,66.8 560,69.2 660,56.1 760,89.2 860,94.8" />
+            <circle cx="660" cy="56.1" r="4" fill="var(--ok)" />
+            <text x="654" y="48" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--text-dim)">5.02</text>
+            <circle cx="860" cy="94.8" r="4" fill="var(--ok)" />
+            <text x="854" y="112" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--ok)">3.57</text>
+
+            <text x="60" y="212" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/20</text>
+            <text x="260" y="212" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/22</text>
+            <text x="460" y="212" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/24</text>
+            <text x="660" y="212" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/26</text>
+            <text x="860" y="212" text-anchor="middle" font-size="10.5" fill="var(--text-faint)">8/28</text>
+
+            <line x1="60" y1="226" x2="86" y2="226" stroke="var(--ok)" stroke-width="2.5" />
+            <text x="94" y="230" font-size="11" fill="var(--text-dim)">P2P 메시지 발사 — 배포일부터 범위 아래로 이탈</text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">P2P만 밴드를 벗어났습니다</div>
+            <p>
+              남이 만든 토너먼트를 친구 대전으로 잘못 분류하던 문제를 고치자
+              <b>오발송이 배포일부터 범위 밖으로 내려갔습니다.</b> 다만 빠진 물량이
+              공유·생성 어느 쪽으로도 넘어가지 않아, <b>줄어든 만큼 유입이 늘지는 않았습니다.</b>
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>이 차트는 어떻게 뽑았나 — 코호트 분리 + 100클리어 정규화</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- UA를 줄이면 NRU가 통째로 빠져 남은 코호트가 기존 유저로 쏠린다.
+-- 그럼 클리어당 공유 자격자 비중이 저절로 올라가므로 코호트를 반드시 분리한다.
+WITH base AS (
+  SELECT
+    log_date, client_version, event,
+    JSON_VALUE(data, '$.result') AS result,
+    JSON_VALUE(data, '$.reason') AS reason,
+    IF(logincount_total &lt;= 1, 'nru', 'existing') AS cohort
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date BETWEEN '2026-08-20' AND '2026-08-28'
+)
+SELECT
+  log_date, cohort,
+  MAX(client_version) AS max_build,          -- 배포 반영 확인용 (474 → 477)
+  COUNTIF(event = '2300_GAMEPLAY_FINISH' AND result = 'clear') AS clears,
+  ROUND(COUNTIF(event = '3200_TOURNAMENT_SHARE') * 100.0
+        / NULLIF(COUNTIF(event = '2300_GAMEPLAY_FINISH' AND result = 'clear'), 0), 2) AS share_try_per_100_clear,
+  ROUND(COUNTIF(event = '3400_MSG_P2P') * 100.0
+        / NULLIF(COUNTIF(event = '2300_GAMEPLAY_FINISH' AND result = 'clear'), 0), 2) AS p2p_per_100_clear,
+  COUNTIF(event = '3230_TOURNAMENT_SHARE_SUPPRESSED' AND reason = 'no_tournament') AS supp_no_tournament,
+  COUNTIF(event = '3230_TOURNAMENT_SHARE_SUPPRESSED' AND reason = 'first_nru')     AS supp_first_nru
+FROM base
+GROUP BY log_date, cohort
+ORDER BY log_date, cohort;</pre></div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--validate)">
+                <div class="note-title">3230은 전후 비교가 불가능합니다</div>
+                <p>
+                  <code>3230</code> 로그 자체가 <b>8/27에 처음 들어간</b> 계측이라 이전 값이 없습니다.
+                  사유 분포 스냅샷으로만 씁니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= 유입 ================= -->
+      <section class="doc-section" id="inflow">
+        <h2 class="doc-h2">
+          유입 구성
+          <span class="doc-h2-sub">비중이 아니라 절대수로 봐야 하는 구간</span>
+        </h2>
+
+        <!-- in_game_menu 비중 26.8%는 분모(ad) 붕괴 때문이라는 걸 절대수 막대로 보여준다.
+             퍼센트만 보면 "오가닉이 좋아졌다"로 오독된다. -->
+        <div class="table-scroll">
+          <svg viewBox="0 0 900 270" width="900" height="270" role="img"
+               aria-label="광고 유입은 8305에서 1307로 급감하고 인게임 메뉴 유입은 완만히 증가한 일별 세션 수">
+            <line x1="70" y1="230" x2="870" y2="230" stroke="var(--border)" />
+
+            <!-- 8/23 -->
+            <rect x="85" y="92.8" width="45" height="137.2" rx="3" fill="var(--sol)" />
+            <rect x="138" y="206.1" width="45" height="23.9" rx="3" fill="var(--validate)" />
+            <text x="134" y="248" text-anchor="middle" font-size="11" fill="var(--text-faint)">8/23</text>
+            <text x="107" y="86" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">5,832</text>
+            <!-- 8/24 -->
+            <rect x="218" y="100.6" width="45" height="129.4" rx="3" fill="var(--sol)" />
+            <rect x="271" y="201.0" width="45" height="29.0" rx="3" fill="var(--validate)" />
+            <text x="267" y="248" text-anchor="middle" font-size="11" fill="var(--text-faint)">8/24</text>
+            <text x="240" y="94" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">5,501</text>
+            <!-- 8/25 -->
+            <rect x="351" y="34.6" width="45" height="195.4" rx="3" fill="var(--sol)" />
+            <rect x="404" y="204.7" width="45" height="25.3" rx="3" fill="var(--validate)" />
+            <text x="400" y="248" text-anchor="middle" font-size="11" fill="var(--text-faint)">8/25</text>
+            <text x="373" y="28" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--sol)">8,305</text>
+            <!-- 8/26 -->
+            <rect x="484" y="151.6" width="45" height="78.4" rx="3" fill="var(--sol)" />
+            <rect x="537" y="204.2" width="45" height="25.8" rx="3" fill="var(--validate)" />
+            <text x="533" y="248" text-anchor="middle" font-size="11" fill="var(--text-faint)">8/26</text>
+            <text x="506" y="145" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">3,330</text>
+            <!-- 8/27 -->
+            <rect x="617" y="169.8" width="45" height="60.2" rx="3" fill="var(--sol)" />
+            <rect x="670" y="196.2" width="45" height="33.8" rx="3" fill="var(--validate)" />
+            <text x="666" y="248" text-anchor="middle" font-size="11" fill="var(--text-faint)">8/27</text>
+            <text x="639" y="163" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">2,557</text>
+            <!-- 8/28 -->
+            <rect x="750" y="199.2" width="45" height="30.8" rx="3" fill="var(--sol)" />
+            <rect x="803" y="194.3" width="45" height="35.7" rx="3" fill="var(--validate)" />
+            <text x="799" y="248" text-anchor="middle" font-size="11" fill="var(--text-faint)">8/28*</text>
+            <text x="772" y="193" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--bad)">1,307</text>
+            <text x="825" y="188" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--validate)">1,519</text>
+
+            <line x1="70" y1="264" x2="96" y2="264" stroke="var(--sol)" stroke-width="8" />
+            <text x="104" y="268" font-size="11" fill="var(--text-dim)">광고(ad)</text>
+            <line x1="190" y1="264" x2="216" y2="264" stroke="var(--validate)" stroke-width="8" />
+            <text x="224" y="268" font-size="11" fill="var(--text-dim)">인게임 메뉴(in_game_menu)</text>
+            <text x="470" y="268" font-size="11" fill="var(--text-faint)">* 8/28은 집계 진행 중인 부분일</text>
+          </svg>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">"인게임 메뉴 26.8%"를 성과로 읽으면 안 됩니다</div>
+            <p>
+              비중이 오른 주된 이유는 <b>분모인 광고 유입이 8,305 → 1,307로 84% 빠졌기</b> 때문입니다
+              (UA 집행 축소, 확인됨). 절대수도 1,076 → 1,519로 늘긴 했지만 이는 <b>복귀 유입</b>이지
+              신규 획득이 아닙니다. 그리고 이번 배포가 노린 <code>feed</code> 유입은
+              <b>92~144 밴드에서 전혀 움직이지 않았습니다.</b>
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>이 그래프는 어떻게 뽑았나 — 진입점별 세션 수</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 세션 = (player_id, logincount_total) 한 쌍. BigQuery는 COUNT(DISTINCT struct)를
+-- 허용하지 않으므로 문자열 복합키로 만든다.
+WITH sessions AS (
+  SELECT
+    log_date,
+    CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
+    JSON_VALUE(entrypoint_now, '$.entry') AS entry
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date BETWEEN '2026-08-20' AND '2026-08-28'
+  GROUP BY log_date, session_key, entry
+)
+SELECT
+  log_date, entry,
+  COUNT(DISTINCT session_key) AS sessions,
+  ROUND(COUNT(DISTINCT session_key) * 100.0
+        / SUM(COUNT(DISTINCT session_key)) OVER (PARTITION BY log_date), 2) AS pct
+FROM sessions
+WHERE entry IS NOT NULL
+GROUP BY log_date, entry
+ORDER BY log_date, sessions DESC;</pre></div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= 잔여 이슈 ================= -->
+      <section class="doc-section" id="pending">
+        <h2 class="doc-h2">
+          잔여 이슈
+          <span class="doc-h2-sub">PENDING_REQUEST — 이번 배포와 무관</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--warn)">
+            <div class="stat-num">102<span class="stat-unit">건</span></div>
+            <div class="stat-name">8/28 PENDING_REQUEST</div>
+            <div class="stat-sub">생성 실패의 5.9%</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">87<span class="stat-unit">건</span></div>
+            <div class="stat-name">그중 단일 세션이</div>
+            <div class="stat-sub">전체의 85%</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">0.69<span class="stat-unit">%</span></div>
+            <div class="stat-name">폴백 탄 세션 발생률</div>
+            <div class="stat-sub">안 탄 세션과 동일 — 무혐의</div>
+          </div>
+          <div class="stat" style="--acc: var(--text-dim)">
+            <div class="stat-num">6<span class="stat-unit">세션</span></div>
+            <div class="stat-name">하루 영향 범위</div>
+            <div class="stat-sub">후순위 판단</div>
+          </div>
+        </div>
+
+        <!-- 비율(5.9%)만 보면 전체 회귀로 오독된다. 세션별 분포를 그려서
+             "한 명이 87번"이라는 실체를 보이게 했다. -->
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>세션당 발생</th>
+                <th style="text-align: right">세션 수</th>
+                <th>분포</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>87건</b></td>
+                <td style="text-align: right">1</td>
+                <td><div class="bar" style="--acc: var(--bad)"><i style="width: 100%"></i></div></td>
+              </tr>
+              <tr>
+                <td>5건</td>
+                <td style="text-align: right">2</td>
+                <td><div class="bar" style="--acc: var(--warn)"><i style="width: 5.7%"></i></div></td>
+              </tr>
+              <tr>
+                <td>3건</td>
+                <td style="text-align: right">1</td>
+                <td><div class="bar" style="--acc: var(--warn)"><i style="width: 3.4%"></i></div></td>
+              </tr>
+              <tr>
+                <td>1건</td>
+                <td style="text-align: right">2</td>
+                <td><div class="bar" style="--acc: var(--ok)"><i style="width: 1.1%"></i></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">전체 회귀가 아니라 개별 세션 루프입니다</div>
+            <p>
+              실패 <b>비율</b>은 2.1% → 5.9%로 올랐지만, 실체는 <b>한 세션이 87번 반복 발사</b>한 것입니다.
+              나머지 5개 세션은 1~5건으로 우발적 충돌 수준입니다. 폴백을 탄 세션의 발생률이
+              안 탄 세션과 같아(0.69% vs 0.69%) <b>이번 배포는 무관</b>합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">지금은 고치지 않습니다</div>
+            <p>
+              거절 카운터가 <code>USER_INPUT</code>에만 증가해 <code>PENDING_REQUEST</code> 실패는
+              억제 게이트에 걸리지 않는 구조입니다 — 루프가 구조적으로 가능합니다. 다만
+              <b>무엇이 재호출을 트리거하는지 미상</b>이라, 가드만 넣으면 증상만 덮습니다.
+              재현 경로 확보가 선행돼야 합니다.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>이 판정은 어떻게 뽑았나 — 세션 교차 + 집중도</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- ① 폴백을 탄 세션과 안 탄 세션의 PENDING_REQUEST 발생률 비교 (생성 시도 세션만)
+WITH ev AS (
+  SELECT
+    log_date,
+    CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
+    event,
+    JSON_VALUE(data, '$.reason')     AS reason,
+    JSON_VALUE(data, '$.error_code') AS error_code
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date BETWEEN '2026-08-27' AND '2026-08-28'
+    AND logincount_total &gt; 1
+),
+s AS (
+  SELECT
+    log_date, session_key,
+    LOGICAL_OR(event = '3100_TOURNAMENT_CREATE') AS had_create,
+    LOGICAL_OR(event = '3230_TOURNAMENT_SHARE_SUPPRESSED' AND reason = 'no_tournament') AS had_fallback,
+    LOGICAL_OR(event = '3120_TOURNAMENT_CREATE_FAIL' AND error_code = 'PENDING_REQUEST') AS had_pending
+  FROM ev GROUP BY log_date, session_key
+)
+SELECT
+  log_date, had_fallback,
+  COUNT(*) AS sessions_with_create,
+  COUNTIF(had_pending) AS sessions_with_pending,
+  ROUND(COUNTIF(had_pending) * 100.0 / NULLIF(COUNT(*), 0), 2) AS pending_rate_pct
+FROM s WHERE had_create
+GROUP BY log_date, had_fallback
+ORDER BY log_date, had_fallback;
+
+-- ② 집중도 — 세션당 몇 건씩 터졌나
+WITH ev AS (
+  SELECT
+    CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
+    COUNT(*) AS pending_count
+  FROM `game-log-359704.raw.solitaire_city_journey`
+  WHERE log_date = '2026-08-28'
+    AND event = '3120_TOURNAMENT_CREATE_FAIL'
+    AND JSON_VALUE(data, '$.error_code') = 'PENDING_REQUEST'
+  GROUP BY session_key
+)
+SELECT pending_count, COUNT(*) AS sessions
+FROM ev GROUP BY pending_count ORDER BY pending_count DESC;</pre></div>
+          </div>
+        </details>
+
+        <div class="foot">
+          <b>확인 범위</b> BigQuery <code>solitaire_city_journey</code> 8/20~8/28 실측,
+          솔리테어 트리피크스 <code>main</code> 코드 실측(<code>FacebookPlatform.ts</code> ·
+          <code>ViewGame.ts</code>). 배포 후 깨끗한 데이터는 <b>8/28 하루뿐이고 그마저 집계 진행 중</b>이라
+          공유 지표는 확정이 아닙니다. <code>PENDING_REQUEST</code>의 재호출 트리거,
+          NRU 클리어가 8/26부터 3배로 뛴 건은 <b>둘 다 미조사</b>입니다.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>

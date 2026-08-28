@@ -245,6 +245,17 @@ const SECTIONS = [
     desc: "수정 전/후 결과 대조",
     cards: [
       {
+        title: "토너먼트 업데이트 KPI 검증 — 8/27 배포",
+        desc: "P2P 오발송만 −29%, 공유·생성은 무변화. 클리어의 3.7%만 발사되고 병목은 유저 취소 93%.",
+        url: "docs/tournament-update-kpi-0828.html",
+        project: "sol",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-08-28 12:21",
+        pinned: false,
+        tags: ["토너먼트", "전후비교", "KPI"],
+      },
+      {
         title: "전환 지면 중복 제거 — 바이럴 검증",
         desc: "조인 진입 판의 중복 지면을 없앤 8/20 배포. 광고 유입 제외 후 개선 2건 · 악화 0건.",
         url: "docs/switch-surface-dedupe-viral.html",
