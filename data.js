@@ -205,7 +205,7 @@ const SECTIONS = [
       },
       {
         title: "스토리 머지 — 개발 TODO",
-        desc: "2머지 한 벌을 인게임 8·아웃게임 11 묶음으로 갈라 있음 21 / 개선 24 / 없음 99 로 표시한 TODO 매트릭스. 아이템을 타입 7·상태 6·액션 3·체인 3 네 축으로 재정의하고, 용어는 Travel Town·Merge Mansion·Gossip Harbor 커뮤니티 표현에 맞췄습니다.",
+        desc: "2머지 한 벌을 인게임 8·아웃게임 11 묶음으로 갈라 있음 21 / 개선 24 / 없음 99 로 표시한 TODO 매트릭스. 아이템은 타입 7·상태 6·액션 3·체인 3 네 축으로, 생성기 3종·체인 구조 3종은 필요한 저장 필드까지 도식으로 폅니다.",
         url: "docs/story-merge-kickoff.html",
         project: "smg",
         status: "초안",
