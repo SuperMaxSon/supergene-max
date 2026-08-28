@@ -136,6 +136,24 @@
   .n-title { font-size: 14.5px; font-weight: 650; letter-spacing: -.012em; line-height: 1.25; padding-right: 46px; }
   .n-ko { font-size: 11px; color: var(--ink-2); }
 
+  /* 진행 칸 — 결과 후 10단계는 한 줄짜리로 낮게 그린다 (v1.2).
+     일반 카드 높이(58~185)로 두면 10칸이 세로를 580px 먹어 fit 줌에서 제목이 11px 밑으로 떨어진다.
+     역할 한 줄(ko)은 지면 팝업에 그대로 있다. 위쪽 색띠는 남긴다 —
+     보상 · 이벤트 · 꾸미기 · 시스템이 색 리듬으로 읽히는 지점이다. */
+  .node.rung { padding: 4px 10px 5px; gap: 0; }
+  .node.rung .n-title { font-size: 12.5px; padding-right: 10px; }
+  .node.rung .n-ko { display: none; }
+
+  /* 띠 라벨 = 진행 단계 이름. 세로 눈금 역할을 한다.
+     맵을 패닝하면 고정 패널 아래로 들어갈 수 있어 배경을 깔아 어디서든 읽히게 한다. */
+  .band-label {
+    position: absolute; left: 70px;
+    font-size: 12px; font-weight: 800; letter-spacing: .04em;
+    color: var(--muted); pointer-events: none; white-space: nowrap;
+    border-left: 3px solid var(--line); padding: 2px 8px 2px 9px; line-height: 1.5;
+    background: var(--bg); border-radius: 0 3px 3px 0;
+  }
+
   /* 칩 = 이 지면에서 열리는 다른 지면. 화살표 대신 소속으로 표현한다. */
   .n-chips {
     display: flex; flex-wrap: wrap; gap: 4px 5px; align-items: center;
@@ -2747,13 +2765,14 @@
     {"g": "광고", "api": "보상형 광고 (rewarded)", "ko": "FB 보상형 광고", "when": "8구좌", "cond": "shop · free_coin · lobby_free_gold · daily_wheel · daily_gift_missed · daily_change_task · ingame_reward_double · shadow_chase_extend", "src": "ADPlayer.tryShowRewardAD", "dlg": 1}
   ];
   const CTX_TRAP = "P2P 와 토너먼트가 둘 다 THREAD 다. getContextType() 단독으로는 구분할 수 없고 currentP2PPlayerId 를 같이 봐야 한다. 코드 3곳이 각자 이 함정을 막고 있다 — SceneManager.ts:555 · PopupGameEntry.ts:1116 · ViewGame.ts:2391 에 똑같은 경고 주석이 붙어 있다.";
-  /* 지면 노드 — 카드 17장 + 칩 26개.
+  /* 지면 노드 — 카드 24장 + 칩 32개.
      팝업은 카드로 두지 않고 그 지면을 여는 부모 카드의 칩으로 붙인다.
      화살표 절반이 "여기서 이 팝업을 연다" 였고, 그게 선 꼬임의 주원인이었다.
-     칩을 눌러도 카드와 똑같은 지면 팝업이 열린다 — 정보는 그대로다. */
+     칩을 눌러도 카드와 똑같은 지면 팝업이 열린다 — 정보는 그대로다.
+     카드 24 = 지면 17 + 결과 후 진행 칸 7 (rung: true · v1.2). */
   const N = [
     {
-      id: "intro", cat: "entry", kind: "Scene", x: 70, y: 223, w: 460,
+      id: "intro", cat: "entry", kind: "Scene", x: 610, y: 89, w: 560,
       title: "intro.fire / BaseIntro", ko: "인트로 · 로딩 지면",
       file: "assets/script/Base/BaseIntro.ts",
       acts: [
@@ -2776,7 +2795,7 @@
       ]
     },
     {
-      id: "router", cat: "entry", kind: "분기", gate: true, x: 70, y: 355, w: 460,
+      id: "router", cat: "entry", kind: "분기", gate: true, x: 610, y: 169, w: 560,
       title: "BaseIntro.moveToNext()", ko: "진입 라우터",
       file: "Base/BaseIntro.ts:947",
       acts: [
@@ -2798,31 +2817,31 @@
       ]
     },
     {
-      id: "e_tour", cat: "entry", kind: "직행", x: 1080, y: 90, w: 280,
+      id: "e_tour", rung: true, cat: "entry", kind: "직행", x: 1370, y: 60, w: 340,
       title: "토너먼트 직행", ko: "FB 토너먼트 링크 진입",
       file: "game/SceneManager.ts:346",
       acts: [["진입", "showViewGameWithTournament(stageId, direct_entry, contextId)"], ["합류", "trySwitchToJoinedTournament()"]]
     },
     {
-      id: "e_p2p", cat: "entry", kind: "직행", x: 1080, y: 222, w: 280,
+      id: "e_p2p", rung: true, cat: "entry", kind: "직행", x: 1370, y: 115, w: 340,
       title: "P2P 친구 직행", ko: "친구 대결 링크 진입",
       file: "game/SceneManager.ts:378",
       acts: [["진입", "showViewGameWithFriend(stageId, direct_entry, friendId)"], ["폴백", "BasePlatform.switchToContextSolo()"]]
     },
     {
-      id: "e_solo", cat: "entry", kind: "직행", x: 1080, y: 354, w: 280,
+      id: "e_solo", rung: true, cat: "entry", kind: "직행", x: 1370, y: 170, w: 340,
       title: "솔로 직행", ko: "레벨 1~2 · 하루 1회 직행",
       file: "game/SceneManager.ts:416",
       acts: [["진입", "showViewSoloGame(stageId, direct_entry)"], ["지연", "preloadLobbyBundlesPriority() (+5s)"]]
     },
     {
-      id: "e_resume", cat: "entry", kind: "복귀", x: 1080, y: 486, w: 280,
+      id: "e_resume", rung: true, cat: "entry", kind: "복귀", x: 1370, y: 225, w: 340,
       title: "세션 복귀", ko: "진행 중이던 판으로 복귀",
       file: "Base/BaseIntro.ts:1030",
       acts: [["진입", "ViewCreator.showViewGame(stageId, …, gameId, …, resumeTier)"], ["주의", "game-start 재호출 없음 · 서버 기록 티어 사용"]]
     },
     {
-      id: "lobby", chips: ["lobbymain", "deco", "upgrade", "p_shop", "p_leader", "p_tour", "p_collect", "p_mail", "p_task", "p_wheel", "p_offer", "p_needhammer", "p_setting", "p_ev_card", "p_ev_win", "p_ev_rank", "p_citylist", "p_decoshare", "p_newarea"], cat: "lobby", kind: "View", x: 1910, y: 224, w: 1180,
+      id: "lobby", chips: ["lobbymain", "deco", "upgrade", "p_shop", "p_leader", "p_tour", "p_collect", "p_mail", "p_task", "p_wheel", "p_offer", "p_needhammer", "p_setting", "p_ev_card", "p_ev_win", "p_ev_rank", "p_citylist", "p_decoshare", "p_newarea"], cat: "lobby", kind: "View", x: 390, y: 334, w: 1000,
       title: "ViewLobby", ko: "로비 (메인 지면)",
       file: "assets/script/game/lobby/ViewLobby.ts",
       acts: [
@@ -2862,7 +2881,7 @@
       ]
     },
     {
-      id: "entrypopup", chips: ["p_charge", "p_shop"], cat: "game", kind: "Popup", x: 70, y: 887, w: 560,
+      id: "entrypopup", chips: ["p_charge", "p_shop"], cat: "game", kind: "Popup", x: 610, y: 541, w: 560,
       title: "PopupGameEntry", ko: "프리게임 (배팅 · 부스터)",
       file: "game/popup/PopupGameEntry.ts",
       acts: [
@@ -2897,7 +2916,7 @@
       ]
     },
     {
-      id: "viewgame", chips: ["p_ingameset", "p_lang"], cat: "game", kind: "View", x: 870, y: 812, w: 560,
+      id: "viewgame", chips: ["p_ingameset", "p_lang"], cat: "game", kind: "View", x: 610, y: 735, w: 560,
       title: "ViewGame", ko: "인게임 (트라이픽스 보드)",
       file: "assets/script/game/ingame/ViewGame.ts",
       acts: [
@@ -2941,7 +2960,7 @@
       ]
     },
     {
-      id: "stage", cat: "game", kind: "Model / VM", x: 980, y: 1000, w: 340,
+      id: "stage", cat: "game", kind: "Model / VM", x: 1370, y: 794, w: 340,
       title: "StageView · StageViewModel · StageModel", ko: "보드 로직 (MVVM)",
       file: "game/ingame/StageView.ts · StageViewModel.ts",
       acts: [
@@ -2963,7 +2982,7 @@
       ]
     },
     {
-      id: "p_complete", cat: "result", kind: "Popup", x: 1670, y: 784, w: 420,
+      id: "p_complete", cat: "result", kind: "Popup", x: 610, y: 871, w: 560,
       title: "PopupCompleteLevel", ko: "클리어 결과창",
       file: "game/popup/ingame/PopupCompleteLevel.ts",
       acts: [
@@ -2991,7 +3010,7 @@
       ]
     },
     {
-      id: "p_quit", cat: "result", kind: "Popup", x: 1680, y: 916, w: 400,
+      id: "p_quit", cat: "result", kind: "Popup", x: 70, y: 762, w: 340,
       title: "PopupQuitLevel", ko: "포기 · 실패 결과창",
       file: "game/popup/ingame/PopupQuitLevel.ts",
       acts: [
@@ -3008,7 +3027,7 @@
       ]
     },
     {
-      id: "retry", cat: "game", kind: "분기", gate: true, x: 1720, y: 1048, w: 320,
+      id: "retry", cat: "game", kind: "분기", gate: true, x: 70, y: 846, w: 340,
       title: "ViewGame.onRetryRequested()", ko: "재시도 라우팅",
       file: "game/ingame/ViewGame.ts:2085",
       acts: [
@@ -3027,7 +3046,7 @@
       ]
     },
     {
-      id: "session", chips: ["p_reward", "p_gift", "p_shadow", "p_tutorial"], cat: "system", kind: "Manager", x: 2330, y: 887, w: 760,
+      id: "session", chips: ["p_reward", "p_gift", "p_shadow", "p_tutorial"], cat: "system", kind: "Manager", x: 610, y: 1009, w: 560,
       title: "SessionFlowManager.runPostGameFlow(isWin)", ko: "결과 후 로비 플로우 오케스트레이터",
       file: "assets/script/game/SessionFlowManager.ts",
       acts: [
@@ -3058,8 +3077,134 @@
         ]}
       ]
     },
+    /* ── 결과 후 플로우의 진행 칸 7개 (v1.2) ─────────────────────
+       SessionFlowManager.runPostGameFlow() 를 읽어 실제 순서를 옮겼다.
+       v1.1 까지는 session 카드의 접힘 표 안에만 있어 클릭 없이 보이는 진행 단계가 0이었다.
+       session 카드의 표는 그대로 둔다 — 여기 있는 건 그 순서를 지면 위에 편 것이다.
+
+       코드의 최상위 단계는 10개지만 7칸으로 묶었다. 세로 배치에서 한 칸이 50px 을 먹고
+       fit 줌 제목 크기(합격선 11px)가 세로에 묶여 있어서다. 묶은 것은
+       **코드에서 연속이고 종류가 같은 것끼리만**이고 메소드명은 acts / detail 에 전부 남겼다:
+         · 승 · 패 분기(runWinFlow/runFailFlow) → session 카드의 acts 로 (이미 있다)
+         · 마일스톤 보상 + 도시 완성 보상 → ① 보상 정산 (둘 다 runWinFlow 안 showPopupRewardClaim)
+         · 로비 튜토리얼 가이드 + 망치 준비 가이드 → ⑥ 튜토리얼 가이드 (둘 다 TutorialManager 펜딩 가이드)
+
+       ⚠️ 맵 v1.1 표의 showPreLevelPopup() · showFirstActiveEventPopup() 은 코드와 어긋나 있었다.
+          전자는 지금 빈 함수이고 호출부가 0곳(SessionFlowManager.ts:978),
+          후자는 최상위 단계가 아니라 튜토리얼 가이드의 content_event_forced 분기(:750)다. */
     {
-      id: "p_switch", cat: "commerce", kind: "Popup", x: 70, y: 1372, w: 340,
+      id: "s1", rung: true, cat: "result", kind: "단계", x: 610, y: 1145, w: 560,
+      title: "① 보상 정산 — 마일스톤 · 도시 완성", ko: "showMilestoneRewardPopupsIfNeeded() → showPopupRewardClaim()",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["마일스톤", "getNewlyRewardedMilestoneKeyNumbers() — 흑 · 적 카드 · 승리 마일스톤"],
+        ["도시 완성", "getNewlyCompletedCities() → MetaCityManager.getCompleteReward()"],
+        ["연출", "ViewCreator.showPopupRewardClaim(data) → syncMilestoneRewardedKeysToCurrent()"]
+      ],
+      detail: [
+        { h: "규칙", rows: [
+          ["승리 판에서만", "runWinFlow() 의 첫 두 단계다. runFailFlow() 에는 없다"],
+          ["대조 기준", "recordPreGameState() 가 판 시작 때 잡은 스냅샷에 없던 것만 새로 받은 것으로 본다"],
+          ["TopCoin 선반영 방지", "getPendingMilestoneRewardTotals() 로 아직 연출하지 않은 총량을 빼 둔다"],
+          ["빈 보상", "rewards.length === 0 이면 그 도시는 건너뛴다"],
+          ["미구현", "컬렉션 보상 전면 팝업은 아직 없다 (코드 TODO)"]
+        ]}
+      ]
+    },
+    {
+      id: "s2", rung: true, cat: "system", kind: "단계", x: 610, y: 1196, w: 560,
+      title: "② 로그인 유도", ko: "BasePlatform.tryLoginPromptAsync()",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["첫 도시 완성", "tryLoginPromptAsync(\"firstCity\")"],
+        ["레벨 7", "getPlayerLevel() >= 7 → tryLoginPromptAsync(\"level7\")"]
+      ],
+      detail: [
+        { h: "규칙", rows: [
+          ["패배 판", "runFailFlow() 에는 level7 조건만 있다"]
+        ]}
+      ]
+    },
+    {
+      id: "s3", rung: true, cat: "commerce", kind: "단계", x: 610, y: 1247, w: 560,
+      title: "③ 스페셜 오퍼", ko: "SpecialOfferManager.tryShowOffers()",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["호출", "tryShowOffers(soContext)"],
+        ["문맥", "완성 도시가 있으면 cityCompletedKeyNumbers 를 넘긴다"],
+        ["뒤처리", "isReturnAfter24h = false · lastPlayedEntryCost = 0"]
+      ]
+    },
+    {
+      id: "s4", rung: true, cat: "lobby", kind: "단계", x: 610, y: 1298, w: 560,
+      title: "④ 자동 꾸미기", ko: "enterForceDecoIfNeeded()",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["게이트", "DataManager.hasForceDeco() — 망치로 살 수 있을 때"],
+        ["실행", "enterDecoView() → ViewLobby.enterDecoViewAndWait()"],
+        ["순서", "튜토리얼보다 먼저. 끝나고 로비로 돌아온 뒤 펜딩 튜토리얼을 낸다"]
+      ]
+    },
+    {
+      id: "s5", rung: true, cat: "event", kind: "단계", x: 610, y: 1349, w: 560,
+      title: "⑤ 출석 체크", ko: "showAttendanceIfNeeded() → showPopupDailyGift()",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["게이트", "needShowDailyGift + content_daily_check 언락 + 오늘 미수령"],
+        ["토스", "PopupTossDailyPromotion.tryShowAndWait()"],
+        ["팝업", "ViewCreator.showPopupDailyGift() → showDailyCheckTutorialIfNeeded()"]
+      ],
+      detail: [
+        { h: "닫은 뒤", rows: [
+          ["closeDailyCheckTutorial()", "출석 위에 띄운 튜토리얼을 닫는다"],
+          ["topCoin 갱신", "출석 보상 수령으로 재화가 변했으므로 로비 상단을 즉시 다시 읽는다"]
+        ]}
+      ]
+    },
+    {
+      id: "s6", rung: true, cat: "system", kind: "단계", x: 610, y: 1400, w: 560,
+      title: "⑥ 튜토리얼 가이드 — 로비 · 망치 준비", ko: "showLobbyTutorialGuidesIfNeeded() · showHammerReadyGuideIfNeeded()",
+      file: "assets/script/game/SessionFlowManager.ts:649",
+      acts: [
+        ["로비 가이드", "TutorialManager.getPendingLobbyGuides() → executeLobbyGuideAction(contentId)"],
+        ["망치 준비", "getHammerCount() > 0 + HAMMER_READY 펜딩 가이드"],
+        ["실행", "ViewCreator.showPopupTutorial(guide, targetNode)"]
+      ],
+      detail: [
+        { h: "로비 가이드 분기", rows: [
+          ["content_event_forced", "showFirstActiveEventPopup() — 진행 중인 첫 이벤트 팝업 (SessionFlowManager.ts:750)"],
+          ["content_daily_task", "refreshDailyTaskIfNeeded() → ViewCreator.showPopupDailyTask()"],
+          ["content_city_deco_grad", "enterDecoView() — 꾸미기 지면으로"],
+          ["content_daily_check", "여기서 제외한다. 출석 팝업 위(showDailyCheckTutorialIfNeeded)에서만 낸다"]
+        ]},
+        { h: "망치 준비 가이드", rows: [
+          ["게이트", "TutorialManager.getPendingConditionGuides(TutorialConditionKey.HAMMER_READY)"],
+          ["스킵", "DataManager.const.isDecoAutoOpen 이면 자동 꾸미기가 대신하므로 건너뛴다"],
+          ["실패 처리", "팝업이 안 뜨면 markGuideCompleted(guide) 로 표시만 하고 넘어간다"]
+        ]}
+      ]
+    },
+    {
+      id: "s7", rung: true, cat: "event", kind: "단계", x: 610, y: 1451, w: 560,
+      title: "⑦ 냥이추격전 (160005)", ko: "runShadowChaseFlow()",
+      file: "assets/script/game/SessionFlowManager.ts",
+      acts: [
+        ["게이트", "IS_SHADOW_CHASE_ENABLED (ShadowChaseSwitch 상수 하나)"],
+        ["관측", "logShadowChaseExpiredIfNeeded() · refreshShadowChaseState() · observeShadowChaseActivation()"],
+        ["연출", "runShadowChaseCycleStart() → showShadowChasePopupIfNeeded() · showShadowChaseChestIfNeeded()"]
+      ],
+      detail: [
+        { h: "왜 관측인가", rows: [
+          ["서버가 주인", "스프린트 시작 · 판수 증가 · 완주 · 쿨다운 전환은 전부 서버가 game-end 에서 처리한다. 클라에 시작 API 가 없어 상태 전이를 관측해 로그 · 팝업만 낸다"],
+          ["완주 판정", "ViewGame 이 game-end 응답에서 세운 표식으로 한다 — 서버가 완주 응답에서 clearedRounds / sprintEndAt 을 리셋해 이 시점엔 관측할 수 없다"],
+          ["로그", "EventShadowChaseSlotOpen (window_sec · target_clear)"],
+          ["흐름을 안 끊는다", "runPostGameFlow 가 try/catch 로 감싸고 CClog.error 만 남긴다"],
+          ["마지막 단계", "_preGameStateRecorded = false 로 스냅샷을 놓으며 결과 후 플로우가 끝난다"]
+        ]}
+      ]
+    },
+    {
+      id: "p_switch", cat: "commerce", kind: "Popup", x: 1370, y: 1075, w: 340,
       title: "PopupSwitchContext", ko: "컨텍스트 전환 (P2P · 토너먼트)",
       file: "game/popup/PopupSwitchContext.ts",
       acts: [
@@ -3076,7 +3221,7 @@
       ]
     },
     {
-      id: "p_common", cat: "system", kind: "Popup 묶음", x: 1390, y: 1344, w: 360,
+      id: "p_common", cat: "system", kind: "Popup 묶음", x: 1370, y: 1159, w: 340,
       title: "공통 시스템 팝업", ko: "오류 · 토스트 · 광고",
       chips: ["p_error", "p_toasterr", "p_toastpkg"],
       file: "common/view/ViewCreator.ts",
@@ -3139,7 +3284,7 @@
       ]
     },
     {
-      id: "p_misc", cat: "system", kind: "기타 지면", x: 2730, y: 1344, w: 360,
+      id: "p_misc", cat: "system", kind: "기타 지면", x: 1370, y: 1299, w: 340,
       title: "기타 지면", ko: "저빈도 지면 묶음",
       chips: ["p_privacy", "p_shadowinfo", "p_tosspromo"],
       file: "assets/script/game/*",
@@ -3511,14 +3656,30 @@
     }
   ];
 
-  /* 흐름 — 화면 전환만 남긴다. 팝업 열기는 칩 소속이 대신한다. */
+
+  /* 띠 라벨 — 띠 = 진행 단계. 세로 눈금 역할을 한다 (flowmap-v2-guide §3-2).
+     좌표는 layout.py 가 실측 높이로 계산한 띠 상단이다. */
+  const BANDLABEL = [{"y": 60, "text": "1 · 부팅 · 진입"}, {"y": 334, "text": "2 · 로비 · 프리게임"}, {"y": 735, "text": "3 · 인게임 · 결과"}, {"y": 1009, "text": "4 · 결과 후 플로우 (SessionFlowManager)"}];
+  /* 흐름 — 화면 전환만 남긴다. 팝업 열기는 칩 소속이 대신한다.
+     v1.2: trunk 를 한 판의 라이프사이클 한 줄기로 다시 이었다.
+     부팅 → 로비 → 프리게임 → 인게임 → 결과 → 결과 후 10단계 → 로비 복귀.
+     ad/bd/via 는 적지 않는다 — 라우터가 좌표에서 후보 경로를 고른다. */
   const E = [
+    /* ── 주 흐름 (trunk) — 위에서 아래로 한 줄기 ── */
     { a: "intro", b: "router", kind: "trunk", label: "moveToNext()" },
     { a: "router", b: "lobby", kind: "trunk", label: "showViewLobby()" },
     { a: "lobby", b: "entrypopup", kind: "trunk", label: "showPopupGameEntry()" },
     { a: "entrypopup", b: "viewgame", kind: "trunk", label: "startGame()" },
     { a: "viewgame", b: "p_complete", kind: "trunk", label: "showPopupCompleteLevel()" },
     { a: "p_complete", b: "session", kind: "trunk", label: "runPostGameFlow()" },
+    { a: "session", b: "s1", kind: "trunk", label: "runWinFlow() / runFailFlow()" },
+    { a: "s1", b: "s2", kind: "trunk" },
+    { a: "s2", b: "s3", kind: "trunk" },
+    { a: "s3", b: "s4", kind: "trunk" },
+    { a: "s4", b: "s5", kind: "trunk" },
+    { a: "s5", b: "s6", kind: "trunk" },
+    { a: "s6", b: "s7", kind: "trunk" },
+    /* ── 진입 직행 (branch) ── */
     { a: "router", b: "e_tour", kind: "branch", label: "토너먼트 초대" },
     { a: "router", b: "e_p2p", kind: "branch", label: "친구 대전" },
     { a: "router", b: "e_solo", kind: "branch", label: "레벨 직행" },
@@ -3527,17 +3688,22 @@
     { a: "e_p2p", b: "viewgame", label: "showViewGameWithFriend" },
     { a: "e_solo", b: "entrypopup", label: "showViewSoloGame" },
     { a: "e_resume", b: "viewgame", label: "이어하기 복원" },
+    /* ── 인게임 내부 · 이탈 ── */
     { a: "viewgame", b: "stage", label: "보드 조작" },
     { a: "viewgame", b: "p_quit", label: "showPopupQuitLevel()" },
     { a: "p_quit", b: "retry", label: "onClickRetry()" },
     { a: "retry", b: "entrypopup", kind: "back", label: "showPopupGameEntryForRetry" },
     { a: "p_quit", b: "session", label: "포기 집계" },
-    { a: "session", b: "lobby", kind: "back", label: "showViewLobby()" },
-    { a: "session", b: "entrypopup", kind: "back", label: "다음 판 이어가기" },
+    /* ── 결과 후 플로우가 여는 지면 ── */
     { a: "session", b: "p_switch", label: "tryContextSwitch()" },
     { a: "session", b: "p_common", label: "공통 팝업" },
     { a: "session", b: "p_misc", label: "기타 지면" },
     { a: "p_switch", b: "viewgame", kind: "back", label: "전환 후 재진입" },
+    /* ── 로비 복귀 (back) — 다음 판은 유저가 로비에서 플레이를 눌러 시작한다 ──
+       v1.1 에 있던 session → entrypopup "다음 판 이어가기" 는 지웠다:
+       showPreLevelPopup() 이 빈 함수이고 호출부가 0곳이다 (SessionFlowManager.ts:978). */
+    { a: "s7", b: "lobby", kind: "back", label: "로비 복귀 · 잠금 해제" },
+    /* ── 칩에서 다른 화면으로 나가는 예외 ── */
     { a: "p_needhammer", b: "entrypopup", label: "해머 채우고 시작" },
     { a: "p_ev_card", b: "entrypopup", label: "이벤트에서 시작" },
     { a: "p_tour", b: "viewgame", label: "토너먼트 참가" },
@@ -3856,7 +4022,8 @@
   CARDS.forEach(function (n) {
     const el = document.createElement("button");
     el.type = "button";
-    el.className = "node cat-" + n.cat + (n.gate ? " gate" : "") + (n.chips ? " has-chips" : "");
+    el.className = "node cat-" + n.cat + (n.gate ? " gate" : "") + (n.chips ? " has-chips" : "")
+      + (n.rung ? " rung" : "");
     el.style.left = n.x + "px";
     el.style.top = n.y + "px";
     el.style.width = n.w + "px";
@@ -3890,6 +4057,18 @@
     nodeLayer.appendChild(el);
     n.el = el;
   });
+
+  /* 띠 라벨 — 띠 = 진행 단계. 좌표는 layout.py 가 실측 높이로 잰 띠 상단이다 (v2 §3-2).
+     맵 드래그를 막지 않게 pointer-events 를 끊는다. */
+  if (typeof BANDLABEL !== "undefined") {
+    BANDLABEL.forEach(function (b) {
+      const el = document.createElement("div");
+      el.className = "band-label";
+      el.style.top = (b.y - 40) + "px";
+      el.textContent = b.text;
+      nodeLayer.appendChild(el);
+    });
+  }
 
   /* ============ 월드 크기 · 배선 ============ */
   let WW = 0, WH = 0;
@@ -3950,9 +4129,11 @@
     const out = [];
     rows.forEach(function (n) {
       const last = out[out.length - 1];
-      /* 임계값은 열 안 카드 간격(GAP_Y)보다 크고 띠 간격(BAND_Y)보다 작아야 한다.
-         v2 에서 GAP_Y 를 74 로 올렸으므로 60 으로 두면 한 열이 여러 띠로 쪼개져 배선이 무너진다. */
-      if (last && n.y < last.bot + 150) {
+      /* 임계값은 레인 안 카드 간격보다 크고 띠 간격보다 작아야 한다.
+         v1.2 세로 배치: SPINE_GAP_Y 22 < RAIL_GAP_Y 26 < 임계 50 < BAND_Y 80.
+         레인 간격보다 작으면 한 레인이 여러 띠로 갈라져 배선이 무너지고,
+         BAND_Y 보다 크면 진행 단계가 한 띠로 뭉쳐 띠 사이 가로 통로가 사라진다. */
+      if (last && n.y < last.bot + 50) {
         last.bot = Math.max(last.bot, n.y + n.h);
         last.top = Math.min(last.top, n.y);
       } else {
@@ -3998,6 +4179,11 @@
     const fwd = b.x + b.w / 2 > a.x + a.w / 2;
     const L = 34;              /* 월드 왼쪽 여백 통로 */
     const p = [];
+    /* v1.2 — 세로 스파인이 옆으로 돌아 나가지 않게, 가로 범위가 겹치고 아래에 있으면
+       위→아래 직선을 1순위로 둔다. 이게 없으면 같은 띠에서 라우터가 r→l 을 먼저 골라
+       스파인이 카드 옆구리로 빠진다 (스토리 머지 v1.2 에서 밟은 함정). */
+    const ovx = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    if (ovx > 20 && b.y > a.y) p.push({ ad: "b", bd: "t" });
     if (ib > ia) p.push({ ad: "b", bd: "t", mid: gapBelow(ia) });
     else if (ib < ia) p.push({ ad: "t", bd: "b", mid: gapAbove(ia) });
     else p.push(fwd ? { ad: "r", bd: "l" } : { ad: "l", bd: "r" });
