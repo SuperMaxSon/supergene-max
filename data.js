@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-28 17:55",
+  updated: "2026-08-28 17:16",
 };
 
 /* --------------------------------------------------------------------------
@@ -101,6 +101,7 @@ const SECTIONS = [
         updated: "2026-08-26 09:56",
         pinned: false,
         tags: ["FB 플랫폼", "공유", "코드 실측"],
+        share: false,
       },
       {
         title: "광고 유입 NRU 첫터치 — 원인 규명",
@@ -112,6 +113,7 @@ const SECTIONS = [
         updated: "2026-08-20 18:52",
         pinned: false,
         tags: ["광고", "온보딩", "BigQuery"],
+        share: false,
       },
       {
         title: "주간 KPI 3축 — 분석 입구",
@@ -123,6 +125,7 @@ const SECTIONS = [
         updated: "2026-08-24 14:00",
         pinned: true,
         tags: ["3축", "BigQuery", "상시"],
+        share: false,
       },
       {
         title: "공유 · 메시지 — 왜 실패하나",
@@ -134,6 +137,7 @@ const SECTIONS = [
         updated: "2026-08-19 08:55",
         pinned: false,
         tags: ["공유", "축3", "BigQuery"],
+        share: false,
       },
       {
         title: "토너먼트 — 생성 · 수락률",
@@ -145,6 +149,7 @@ const SECTIONS = [
         updated: "2026-08-18 18:20",
         pinned: false,
         tags: ["토너먼트", "축3", "BigQuery"],
+        share: false,
       },
       {
         title: "토너 초대 — 시도는 2배, 유입률은 절반",
@@ -156,6 +161,7 @@ const SECTIONS = [
         updated: "2026-08-19 09:54",
         pinned: false,
         tags: ["초대", "축3", "BigQuery"],
+        share: false,
       },
       {
         title: "NRU 0~10분 — 6개 프로젝트 온보딩 비교",
@@ -167,6 +173,7 @@ const SECTIONS = [
         updated: "2026-08-18 18:10",
         pinned: false,
         tags: ["온보딩", "축2", "BigQuery"],
+        share: false,
       },
       {
         title: "5프로젝트 소셜 코드 대조표",
@@ -189,6 +196,7 @@ const SECTIONS = [
         updated: "2026-08-18 18:10",
         pinned: false,
         tags: ["로딩", "축2", "정본"],
+        share: false,
       },
       {
         title: "전면광고 지면 — 4개 프로젝트 플로우 비교",
@@ -200,6 +208,7 @@ const SECTIONS = [
         updated: "2026-08-14 09:57",
         pinned: false,
         tags: ["광고", "축1", "코드 실측"],
+        share: false,
       },
       {
         title: "스토리 머지 — 개발 TODO",
@@ -326,6 +335,7 @@ const SECTIONS = [
         updated: "2026-08-20 10:47",
         pinned: false,
         tags: ["토너먼트", "공유", "BigQuery"],
+        share: false,
       },
       {
         title: "토너먼트 생성 실패 복구 — 수정 전/후",
@@ -337,6 +347,7 @@ const SECTIONS = [
         updated: "2026-08-20 09:19",
         pinned: false,
         tags: ["토너먼트", "BigQuery"],
+        share: false,
       },
     ],
   },
@@ -447,6 +458,7 @@ const SECTIONS = [
         updated: "2026-08-24 14:00",
         pinned: false,
         tags: ["아트", "정본"],
+        share: false,
       },
       {
         title: "코인매치 커밋 히스토리 — 왜 이렇게 고쳤나",
@@ -480,6 +492,7 @@ const SECTIONS = [
         updated: "2026-08-20 10:05",
         pinned: false,
         tags: ["토너먼트", "이식"],
+        share: false,
       },
     ],
   },
