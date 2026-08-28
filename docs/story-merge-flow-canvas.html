@@ -139,6 +139,14 @@
   .n-title { font-size: 14.5px; font-weight: 650; letter-spacing: -.012em; line-height: 1.25; padding-right: 46px; }
   .n-ko { font-size: 11px; color: var(--ink-2); }
 
+  /* 스파인 칸 — 재생 순서 11개는 한 줄짜리로 낮게 그린다 (v1.2).
+     일반 카드 높이(56~66)로 두면 11칸이 660px 을 먹어 월드가 세로로 길어지고
+     fit 줌에서 제목이 9px 밑으로 떨어진다. 역할 한 줄(ko)은 지면 팝업에 그대로 있다.
+     위쪽 3px 색띠는 그대로 둔다 — 대사·태스크·삽화가 색 리듬으로 읽히는 지점이다. */
+  .node.rung { padding: 6px 10px 7px; gap: 0; }
+  .node.rung .n-title { font-size: 13px; padding-right: 10px; }
+  .node.rung .n-ko { display: none; }
+
   /* 칩 = 이 지면에서 열리는 다른 지면. 화살표 대신 소속으로 표현한다. */
   .n-chips {
     display: flex; flex-wrap: wrap; gap: 4px 5px; align-items: center;
@@ -1568,7 +1576,7 @@
   const N = [
     /* ── 부팅 · 라우팅 · 데이터 계약 ────────────────────────────── */
     {
-      id: "intro", cat: "entry", kind: "씬", gate: true, x: 80, y: 208, w: 300,
+      id: "intro", cat: "entry", kind: "씬", gate: true, x: 590, y: 107, w: 300,
       title: "intro.fire", ko: "부팅 씬",
       file: "assets/scene/intro.fire · assets/script/game/Base/BaseIntro.ts:126",
       acts: [
@@ -1597,7 +1605,7 @@
       ]
     },
     {
-      id: "router", cat: "entry", kind: "로직", x: 80, y: 334, w: 300,
+      id: "router", cat: "entry", kind: "로직", x: 590, y: 189, w: 300,
       title: "moveToNext()", ko: "진입 분기",
       file: "assets/script/game/Base/BaseIntro.ts:399",
       acts: [
@@ -1616,7 +1624,7 @@
       ]
     },
     {
-      id: "data", chips: ["d_node", "d_dialogue", "d_video", "d_stillcut"], cat: "data", kind: "묶음", gate: true, x: 590, y: 232, w: 300,
+      id: "data", chips: ["d_node", "d_dialogue", "d_video", "d_stillcut"], cat: "data", kind: "묶음", gate: true, x: 80, y: 381, w: 300,
       title: "StoryDataLoader", ko: "데이터 계약",
       file: "assets/script/game/story/data/StoryDataLoader.ts",
       acts: [
@@ -1722,7 +1730,7 @@
     },
     /* ── 스토리 지면 · 인트로 영상 · 러너 · 노드 스파인 ────────── */
     {
-      id: "story", cat: "story", kind: "지면", x: 1100, y: 145, w: 300,
+      id: "story", cat: "story", kind: "지면", x: 590, y: 379, w: 300,
       title: "ViewStory", ko: "스토리 진입 지면",
       file: "assets/script/game/story/ViewStory.ts · assets/bundle/view/ViewStory.prefab",
       acts: [
@@ -1753,7 +1761,7 @@
       ]
     },
     {
-      id: "introvideo", cat: "story", kind: "로직", gate: true, x: 1100, y: 273, w: 300,
+      id: "introvideo", cat: "story", kind: "로직", gate: true, x: 1100, y: 421, w: 300,
       title: "StoryIntroVideoPlayer", ko: "인트로 영상 · 게이트",
       file: "assets/script/game/story/StoryIntroVideoPlayer.ts · StoryIntroGate.ts",
       acts: [
@@ -1781,7 +1789,7 @@
       ]
     },
     {
-      id: "runner", cat: "story", kind: "로직", gate: true, x: 1100, y: 399, w: 300,
+      id: "runner", cat: "story", kind: "로직", gate: true, x: 590, y: 463, w: 300,
       title: "StoryNodeRunner", ko: "노드 러너",
       file: "assets/script/game/story/StoryNodeRunner.ts",
       acts: [
@@ -1815,31 +1823,20 @@
           ["사라진 것", "chatMessageRows[] · chatPortraitNodes[] · chatPortraitSprites[] · chatBubbleRoots[] · chatBubbleSprites[] · chatSpeakerLabels[] · chatDialogueLabels[] — 대사 행이 풀 생성으로 옮겨가면서 배열 7개가 통째로 빠졌다"],
           ["꾸미기", "storyFlowerVaseObject · storyTableSettingObject 도 제거됐다 (#19)"],
           ["문맥에 추가", "flowsIntoStillcut — 다음 노드가 스틸컷이면 마지막 대사와 삽화를 한 호흡으로 붙인다"]
-        ]}
-      ]
-    },
-    {
-      id: "spine", chips: ["n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11"], cat: "story", kind: "묶음", x: 1610, y: 120, w: 300,
-      title: "노드 11개", ko: "스토리 스파인",
-      file: "assets/bundle/data/story_node.json · StoryNodeRunner.runNodes()",
-      acts: [
-        ["dialogue 노드", "createPresentationContext() → presentDialogue(context)"],
-        ["stillcut 노드", "presentStillcut(node)"],
-        ["task 노드", "presentTask(node) → PopupTask → 머지 보드"]
-      ],
-      detail: [
-        { h: "구성", rows: [
+        ]},
+        { h: "노드 11개 구성 — story_node.json", rows: [
           ["dialogue 6개", "1 · 3 · 5 · 7 · 9 · 11 — 씬 4개(tutorial_0 · 1_1_begin · 1_2_begin · 1_2_end)를 파트로 나눠 쓴다"],
           ["task 3개", "2 clean_kitchen · 4 task_1_1 · 8 set_table — 완료 기준은 셋 다 머지 1회"],
           ["stillcut 2개", "6 sc_rafa_tools · 10 sc_detective"],
           ["채팅 빌드에서", "11개를 하나씩 재생한다. 삽화 노드는 채팅 피드 안에 끼워 넣는다"],
           ["스틸컷 빌드에서", "씬이 node_order 1 · 3 · 5 에만 붙고(자기 대사 파일 기준) 뒤 노드를 삼킨다"],
-          ["캐스트", "Rosie · Poppy · Brett · Rafa · Narration (로즈우드 캐스트 통일 #18)"]
+          ["캐스트", "Rosie · Poppy · Brett · Rafa · Narration (로즈우드 캐스트 통일 #18)"],
+          ["맵에서는", "v1.2 부터 이 11개를 카드로 펴서 스파인에 세로로 놓는다 — 칩으로 접으면 재생 순서가 안 보인다"]
         ]}
       ]
     },
     {
-      id: "chatrow", cat: "story", kind: "로직", x: 80, y: 978, w: 300,
+      id: "chatrow", cat: "story", kind: "로직", x: 80, y: 948, w: 300,
       title: "ChatMessageRow", ko: "채팅 행 · 캐릭터 테마",
       file: "assets/script/game/story/presentation/ChatMessageRow.ts · StoryCharacterTheme.ts",
       acts: [
@@ -1878,7 +1875,7 @@
       ]
     },
     {
-      id: "shell", cat: "story", kind: "로직", x: 590, y: 760, w: 300,
+      id: "shell", cat: "story", kind: "로직", x: 80, y: 1046, w: 300,
       title: "FullscreenStoryShell", ko: "전체화면 연출 껍데기",
       file: "assets/script/game/story/presentation/fullscreen/FullscreenStoryShell.ts",
       acts: [
@@ -1904,10 +1901,10 @@
       ]
     },
     /* ── 스토리 노드 11개 (칩) ──────────────────────────────────
-       story_node.json 실측에서 생성했다 (gen_nodes.py).
+       story_node.json 실측에서 생성했다 (gen_nodes.py). 순서가 곧 재생 순서다.
        손으로 적은 것은 '왜 그런가' 한 줄뿐이다. */
     {
-      id: "n1", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      id: "n1", rung: true, cat: "story", kind: "dialogue", x: 590, y: 639, w: 300,
       title: "노드 01 · 대사", ko: "tutorial_0 파트 1 · 대사 10줄",
       file: "assets/bundle/data/story_node.json #1 · StoryNodeRunner.runNode()",
       acts: [
@@ -1929,7 +1926,7 @@
       ]
     },
     {
-      id: "n2", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
+      id: "n2", rung: true, cat: "task", kind: "task", x: 590, y: 698, w: 300,
       title: "노드 02 · 태스크", ko: "Tidy the Kitchen · merge",
       file: "assets/bundle/data/story_node.json #2 · StoryNodeRunner.runNode()",
       acts: [
@@ -1950,7 +1947,7 @@
       ]
     },
     {
-      id: "n3", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      id: "n3", rung: true, cat: "story", kind: "dialogue", x: 590, y: 757, w: 300,
       title: "노드 03 · 대사", ko: "1_1_begin 파트 1 · 대사 14줄",
       file: "assets/bundle/data/story_node.json #3 · StoryNodeRunner.runNode()",
       acts: [
@@ -1972,7 +1969,7 @@
       ]
     },
     {
-      id: "n4", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
+      id: "n4", rung: true, cat: "task", kind: "task", x: 590, y: 816, w: 300,
       title: "노드 04 · 태스크", ko: "None of Your Business · decorate",
       file: "assets/bundle/data/story_node.json #4 · StoryNodeRunner.runNode()",
       acts: [
@@ -1993,7 +1990,7 @@
       ]
     },
     {
-      id: "n5", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      id: "n5", rung: true, cat: "story", kind: "dialogue", x: 590, y: 875, w: 300,
       title: "노드 05 · 대사", ko: "1_2_begin 파트 1 · 대사 2줄",
       file: "assets/bundle/data/story_node.json #5 · StoryNodeRunner.runNode()",
       acts: [
@@ -2015,7 +2012,7 @@
       ]
     },
     {
-      id: "n6", chip: true, cat: "story", kind: "stillcut", x: 0, y: 0, w: 300,
+      id: "n6", rung: true, cat: "mode", kind: "stillcut", x: 590, y: 934, w: 300,
       title: "노드 06 · 스틸컷", ko: "Rafa with Tools · 1_2_begin step 3 자리",
       file: "assets/bundle/data/story_node.json #6 · StoryNodeRunner.runNode()",
       acts: [
@@ -2034,7 +2031,7 @@
       ]
     },
     {
-      id: "n7", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      id: "n7", rung: true, cat: "story", kind: "dialogue", x: 590, y: 993, w: 300,
       title: "노드 07 · 대사", ko: "1_2_begin 파트 2 · 대사 3줄",
       file: "assets/bundle/data/story_node.json #7 · StoryNodeRunner.runNode()",
       acts: [
@@ -2056,7 +2053,7 @@
       ]
     },
     {
-      id: "n8", chip: true, cat: "story", kind: "task", x: 0, y: 0, w: 300,
+      id: "n8", rung: true, cat: "task", kind: "task", x: 590, y: 1052, w: 300,
       title: "노드 08 · 태스크", ko: "Something Doesn't Add Up · decorate",
       file: "assets/bundle/data/story_node.json #8 · StoryNodeRunner.runNode()",
       acts: [
@@ -2077,7 +2074,7 @@
       ]
     },
     {
-      id: "n9", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      id: "n9", rung: true, cat: "story", kind: "dialogue", x: 590, y: 1111, w: 300,
       title: "노드 09 · 대사", ko: "1_2_end 파트 1 · 대사 7줄",
       file: "assets/bundle/data/story_node.json #9 · StoryNodeRunner.runNode()",
       acts: [
@@ -2099,7 +2096,7 @@
       ]
     },
     {
-      id: "n10", chip: true, cat: "story", kind: "stillcut", x: 0, y: 0, w: 300,
+      id: "n10", rung: true, cat: "mode", kind: "stillcut", x: 590, y: 1170, w: 300,
       title: "노드 10 · 스틸컷", ko: "Rosie Investigates · 1_2_end step 8 자리",
       file: "assets/bundle/data/story_node.json #10 · StoryNodeRunner.runNode()",
       acts: [
@@ -2118,7 +2115,7 @@
       ]
     },
     {
-      id: "n11", chip: true, cat: "story", kind: "dialogue", x: 0, y: 0, w: 300,
+      id: "n11", rung: true, cat: "story", kind: "dialogue", x: 590, y: 1229, w: 300,
       title: "노드 11 · 대사", ko: "1_2_end 파트 2 · 대사 1줄",
       file: "assets/bundle/data/story_node.json #11 · StoryNodeRunner.runNode()",
       acts: [
@@ -2136,6 +2133,24 @@
           ["끝 줄", "I'll find out what happened here!"],
           ["스틸컷 빌드에서는", "이 노드에 배정된 씬이 없다 (STILLCUT_SCENE_NODE_ORDERS 는 1 · 3 · 5 뿐)"],
           ["왜 이렇게 되나", "마지막 노드. 끝나면 COMPLETE [CHAT] 11 / 11 이 뜬다."]
+        ]}
+      ]
+    },
+    {
+      id: "complete", cat: "story", kind: "로직", gate: true, x: 590, y: 1382, w: 300,
+      title: "COMPLETE 11 / 11", ko: "노드 주파 종료",
+      file: "assets/script/game/story/StoryNodeRunner.ts · runNodes() 끝",
+      acts: [
+        ["루프를 빠져나오면", "completedNodeOrders.length !== data.nodes.length 면 throw — 11개를 다 밟았는지 검증한다"],
+        ["연출 정리", "presentation.dispose() → this.presentation = null"],
+        ["화면 표시", "statusLabel.string = COMPLETE [MODE] 11 / 11 NODES"]
+      ],
+      detail: [
+        { h: "무엇으로 끝나는가", rows: [
+          ["도달 검증", "완료한 node_order 개수와 story_node.json 행 수를 대조한다. 스틸컷 빌드에서 씬이 뒤 노드를 삼켜도 삼킨 노드를 completeNode(node, true) 로 세므로 개수는 맞는다"],
+          ["구성", "대사 6 · 태스크 3 · 삽화 2"],
+          ["모드 표기", "COMPLETE 뒤 대괄호는 STORY_PRESENTATION_MODE 를 대문자로 찍은 것 — 지금 활성 빌드는 CHAT"],
+          ["그 다음", "없다. 로비도 다음 지면도 아직 없는 프로토라 여기서 멈춘다"]
         ]}
       ]
     },
@@ -2234,7 +2249,7 @@
       ]
     },
     {
-      id: "stillplan", cat: "mode", kind: "로직", x: 590, y: 888, w: 300,
+      id: "stillplan", cat: "mode", kind: "로직", x: 80, y: 1144, w: 300,
       title: "StillcutScenePlan", ko: "컷 플랜 · 크로스페이드",
       file: "assets/script/game/story/presentation/stillcut/StillcutScenePlan.ts · StillcutStorySource.ts",
       acts: [
@@ -2259,7 +2274,7 @@
       ]
     },
     {
-      id: "profile", cat: "mode", kind: "빌드", x: 590, y: 1016, w: 300,
+      id: "profile", cat: "mode", kind: "빌드", x: 80, y: 699, w: 300,
       title: "story-build-profile.js", ko: "빌드 프로파일",
       file: "scripts/story-build-profile.js · story-build-profiles/*.json",
       acts: [
@@ -2286,7 +2301,7 @@
        v1.0 의 '골드 루프' 는 사라졌다. BUG-006 에서 완료 기준을 머지 1회로 통일하면서
        StoryTaskEconomy.ts 가 삭제되고 PopupTask · ViewMergeBoard 의 인자도 노드 하나로 줄었다. */
     {
-      id: "taskloop", cat: "task", kind: "로직", gate: true, x: 1100, y: 761, w: 300,
+      id: "taskloop", cat: "task", kind: "로직", gate: true, x: 1100, y: 824, w: 300,
       title: "presentTask()", ko: "태스크 루프",
       file: "assets/script/game/story/StoryNodeRunner.ts:presentTask",
       acts: [
@@ -2312,7 +2327,7 @@
       ]
     },
     {
-      id: "task", cat: "task", kind: "지면", x: 1100, y: 887, w: 300,
+      id: "task", cat: "task", kind: "지면", x: 1100, y: 920, w: 300,
       title: "PopupTask", ko: "태스크 안내 팝업",
       file: "assets/script/game/popup/PopupTask.ts · assets/bundle/popup/PopupTask.prefab",
       acts: [
@@ -2336,7 +2351,7 @@
       ]
     },
     {
-      id: "merge", cat: "task", kind: "지면", x: 1100, y: 1015, w: 300,
+      id: "merge", cat: "task", kind: "지면", x: 1100, y: 1018, w: 300,
       title: "ViewMergeBoard", ko: "머지 보드",
       file: "assets/script/game/story/ViewMergeBoard.ts · assets/bundle/view/ViewMergeBoard.prefab",
       acts: [
@@ -2374,7 +2389,7 @@
     },
     /* ── 시스템 · 공통 ───────────────────────────────────────── */
     {
-      id: "common", chips: ["p_error", "p_toast", "p_setting", "p_privacy", "p_lang", "p_switch", "p_promo"], cat: "system", kind: "묶음", gate: true, x: 1610, y: 720, w: 300,
+      id: "common", chips: ["p_error", "p_toast", "p_setting", "p_privacy", "p_lang", "p_switch", "p_promo"], cat: "system", kind: "묶음", gate: true, x: 1100, y: 97, w: 300,
       title: "공통 팝업", ko: "프리팹 미존재 · 코드 계약만",
       file: "assets/script/common/view/ViewCreator.ts",
       acts: [
@@ -2476,7 +2491,7 @@
       detail: [{ h: "메모", rows: [["관리", "PromotionManager(62줄)가 대상 게임 목록을 들고 있다"]]}]
     },
     {
-      id: "platform", chips: ["pf_fb", "pf_tiktok", "pf_toss", "pf_google", "pf_crazy", "pf_youtube", "pf_samsung", "pf_base"], cat: "system", kind: "묶음", x: 1610, y: 951, w: 300,
+      id: "platform", chips: ["pf_fb", "pf_tiktok", "pf_toss", "pf_google", "pf_crazy", "pf_youtube", "pf_samsung", "pf_base"], cat: "system", kind: "묶음", x: 80, y: 96, w: 300,
       title: "플랫폼 어댑터", ko: "BasePlatform 파생 8종",
       file: "assets/script/common/PlatformSelector.ts · assets/script/game/Base/",
       acts: [
@@ -2567,52 +2582,65 @@
 
   /* 띠 라벨 — 같은 밀도에서도 덜 난잡해 보이게 (flowmap-v2-guide §3-2).
      좌표는 layout.py 가 실측 높이로 계산한 띠 상단이다. */
-  const BANDLABEL = [{"y": 120, "text": "부팅 · 인트로 영상 · 데이터 · 스토리 노드"}, {"y": 720, "text": "연출 모드 · 태스크 · 시스템"}];
+  const BANDLABEL = [{"y": 96, "text": "1 · 부팅"}, {"y": 379, "text": "2 · 스토리 진입"}, {"y": 639, "text": "3 · 노드 재생 11"}, {"y": 1382, "text": "4 · 종료"}];
 
 
-  /* 카드 사이 흐름 — 화면이 바뀌거나 제어가 넘어가는 이동만 그린다.
-     카드 안에서 펼치는 것(노드 칩 · 모드 칩 · 공통 팝업)은 화살표가 아니라 칩이다.
+  /* 카드 사이 흐름 — v1.2 부터 **재생 순서가 세로 스파인**이다.
+     가운데 줄기(trunk)는 위에서 아래로 한 번도 끊기지 않는다: 부팅 → 진입 → 노드 11 → 종료.
+     노드 사이 화살표는 라벨을 안 붙인다 (간격 26px 에 글자가 안 들어가고, 붙이면 줄기가 안 보인다).
+     좌 레일은 그 단계가 **읽는 것**, 우 레일은 **여는 지면**이다.
      kind: trunk 주 흐름 · branch 분기 · back 되돌아오는 길 · (없음) 곁가지 */
   const E = [
-    /* 주 흐름 — 켜서 스토리가 끝날 때까지 한 줄로 이어지는 길 */
+    /* ── 줄기 : 부팅 → 진입 ───────────────────────────────── */
     { a: "intro", b: "router", kind: "trunk", label: "waitAll() → moveToNext()" },
     { a: "router", b: "story", kind: "trunk", label: "moveToBasic() → showViewStory()" },
     { a: "story", b: "runner", kind: "trunk", label: "onEnable() → run()" },
-    { a: "runner", b: "spine", kind: "trunk", label: "runNodes(data, presentation)" },
+    { a: "runner", b: "n1", kind: "trunk", label: "runNodes(data, presentation)" },
 
-    /* 인트로 영상 — 러너와 겹쳐 돌고 게이트로만 만난다 (BUG-009) */
+    /* ── 줄기 : 노드 11개 (라벨 없음 — 이 열이 곧 재생 순서다) ── */
+    { a: "n1", b: "n2", kind: "trunk" },
+    { a: "n2", b: "n3", kind: "trunk" },
+    { a: "n3", b: "n4", kind: "trunk" },
+    { a: "n4", b: "n5", kind: "trunk" },
+    { a: "n5", b: "n6", kind: "trunk" },
+    { a: "n6", b: "n7", kind: "trunk" },
+    { a: "n7", b: "n8", kind: "trunk" },
+    { a: "n8", b: "n9", kind: "trunk" },
+    { a: "n9", b: "n10", kind: "trunk" },
+    { a: "n10", b: "n11", kind: "trunk" },
+    { a: "n11", b: "complete", kind: "trunk", label: "11개 도달 검증 → COMPLETE" },
+
+    /* ── 태스크 갈래 : 노드 3개가 같은 루프로 나갔다 온다 ────── */
+    { a: "n2", b: "taskloop", kind: "branch", label: "presentTask(node)" },
+    { a: "n4", b: "taskloop", kind: "branch" },
+    { a: "n8", b: "taskloop", kind: "branch" },
+    { a: "taskloop", b: "task", kind: "trunk", label: "showPopupTask(node)" },
+    { a: "task", b: "merge", kind: "trunk", label: "onClickStart() → showViewMergeBoard(node)" },
+    { a: "merge", b: "taskloop", kind: "back", label: "waitForCompletion() → false 면 다시" },
+
+    /* ── 인트로 영상 : 러너와 겹쳐 돌고 게이트로만 만난다 (BUG-009) ── */
     { a: "story", b: "introvideo", kind: "branch", label: "start() → armIntroGate()" },
     { a: "introvideo", b: "runner", kind: "back", label: "markIntroFinished() → waitForIntro() 해제" },
 
-    /* 러너가 첫 대사 전에 거는 것 */
+    /* ── 러너가 첫 대사 전에 거는 것 ───────────────────────── */
     { a: "runner", b: "data", kind: "branch", label: "await loadStoryData()" },
     { a: "runner", b: "mode", kind: "branch", label: "createStoryPresentation() → getMode() 대조" },
 
-    /* 연출 갈래 */
-    { a: "spine", b: "chatrow", label: "dialogue 노드 → 채팅 빌드" },
-    { a: "spine", b: "shell", label: "dialogue 노드 → 전체화면 빌드" },
+    /* ── 연출 레일 : 빌드가 모드를 고정하고, 모드가 부품을 고른다 ── */
+    { a: "profile", b: "mode", label: "STORY_PRESENTATION_MODE 로 고정" },
     { a: "mode", b: "chatrow", label: "chat 이 쓰는 행 · 테마" },
     { a: "mode", b: "shell", label: "stillcut · video 공용 껍데기" },
     { a: "mode", b: "stillplan", label: "컷 플랜 · 크로스페이드" },
-    { a: "mode", b: "profile", label: "빌드가 모드를 고정한다" },
-    { a: "chatrow", b: "spine", kind: "back", label: "대사가 끝나면 다음 노드" },
-    { a: "shell", b: "spine", kind: "back", label: "씬이 끝나면 다음 노드" },
 
-    /* 태스크 갈래 — 골드 루프가 아니라 머지 1회 */
-    { a: "spine", b: "taskloop", kind: "branch", label: "task 노드 → presentTask()" },
-    { a: "taskloop", b: "task", kind: "trunk", label: "showPopupTask(node)" },
-    { a: "task", b: "merge", kind: "trunk", label: "onClickStart() → showViewMergeBoard(node)" },
-    { a: "merge", b: "taskloop", kind: "back", label: "waitForCompletion() → boolean" },
-    { a: "taskloop", b: "spine", kind: "back", label: "머지 1회 완료 → 다음 노드" },
-
-    /* 시스템 */
-    { a: "intro", b: "platform", label: "createPlatformInstance()" }
+    /* ── 시스템 : 어디서나 열린다. 부팅 옆에 세워 둔다 ───────── */
+    { a: "intro", b: "platform", label: "createPlatformInstance()" },
+    { a: "intro", b: "common", label: "실패하면 showPopupError()" }
   ];
 
   const CATNAME = {
     entry: "부팅 · 라우팅",
-    story: "스토리 지면 · 노드",
-    mode: "연출 모드",
+    story: "스토리 지면 · 대사 노드",
+    mode: "연출 모드 · 삽화 노드",
     task: "태스크 · 머지",
     data: "데이터 계약",
     system: "시스템 · 공통"
@@ -2621,7 +2649,7 @@
   /* 사슬에 이 메소드가 보이면 그 카드로 건너뛰는 버튼을 붙인다 */
   const JUMP = {
     moveToNext: "router", moveToBasic: "story",
-    showViewStory: "story", run: "runner", runNodes: "spine",
+    showViewStory: "story", run: "runner", runNodes: "runner",
     loadStoryData: "data", createStoryPresentation: "mode",
     armIntroGate: "introvideo", markIntroFinished: "introvideo",
     waitForIntro: "introvideo", finishIntro: "introvideo",
@@ -2904,7 +2932,7 @@
      대신 **노드 데이터 · 연출 모드 · 태스크 루프**가 그 자리를 차지한다.
      배지를 눌러 노드 표로 넘어간다 — 맵 구조는 안 건드린다. */
   const CTXNODE = {
-    spine:     "노드 11개 · 두 빌드 대조",
+    runner:    "노드 11개 · 두 빌드 대조",
     taskloop:  "태스크 루프 상태 기계",
     mode:      "연출 모드 3종 대조",
     data:      "데이터 계약 전량",
@@ -2941,7 +2969,8 @@
   CARDS.forEach(function (n) {
     const el = document.createElement("button");
     el.type = "button";
-    el.className = "node cat-" + n.cat + (n.gate ? " gate" : "") + (n.chips ? " has-chips" : "");
+    el.className = "node cat-" + n.cat + (n.gate ? " gate" : "") + (n.chips ? " has-chips" : "")
+      + (n.rung ? " rung" : "");
     el.style.left = n.x + "px";
     el.style.top = n.y + "px";
     el.style.width = n.w + "px";
@@ -3047,9 +3076,10 @@
     const out = [];
     rows.forEach(function (n) {
       const last = out[out.length - 1];
-      /* 임계값은 layout.GAP_Y 보다 커야 한다. 작으면 한 열의 카드가 서로 다른 띠로
-         갈라져 배선이 무너진다 (코인 매치 v2 에서 GAP_Y 74 vs 임계 60 으로 실제로 겪음). */
-      if (last && n.y < last.bot + 150) {
+      /* 임계값은 레인 안 세로 간격(layout.RAIL_GAP_Y 40 · SPINE_GAP_Y 26)보다 크고
+         띠 간격(layout.BAND_Y 120)보다 작아야 한다. 크면 재생 단계가 한 띠로 뭉쳐
+         띠 사이 가로 통로가 사라지고, 작으면 한 레인이 여러 띠로 갈라져 배선이 무너진다. */
+      if (last && n.y < last.bot + 100) {
         last.bot = Math.max(last.bot, n.y + n.h);
         last.top = Math.min(last.top, n.y);
       } else {
@@ -3095,6 +3125,12 @@
     const fwd = b.x + b.w / 2 > a.x + a.w / 2;
     const L = 34;              /* 월드 왼쪽 여백 통로 */
     const p = [];
+    /* v1.2 : **세로 이웃이면 곧장 위→아래로 잇는다.**
+       같은 띠라는 이유로 좌우(r→l) 경로를 먼저 고르면 세로 스파인이 옆으로 돌아 나간다.
+       가로 범위가 겹치고 한쪽이 다른 쪽 아래에 있을 때만 쓴다. */
+    const xLap = a.x < b.x + b.w && b.x < a.x + a.w;
+    if (xLap && b.y >= a.y + a.h - 4) p.push({ ad: "b", bd: "t" });
+    else if (xLap && a.y >= b.y + b.h - 4) p.push({ ad: "t", bd: "b" });
     if (ib > ia) p.push({ ad: "b", bd: "t", mid: gapBelow(ia) });
     else if (ib < ia) p.push({ ad: "t", bd: "b", mid: gapAbove(ia) });
     else p.push(fwd ? { ad: "r", bd: "l" } : { ad: "l", bd: "r" });

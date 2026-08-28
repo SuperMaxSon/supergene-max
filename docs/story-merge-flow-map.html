@@ -36,8 +36,11 @@
           이 프로토는 지면이 <b>4개</b>(<code>intro.fire</code> · <code>ViewStory</code> ·
           <code>ViewMergeBoard</code> · <code>PopupTask</code>)뿐이라 지면 오픈맵을 그대로 옮기면
           빈 맵이 됩니다. 정보가 있는 축은 <b>스토리 노드 11개가 연출 모드에 따라 어떻게 소비되는가</b>와
-          <b>태스크가 머지 1회를 끝낼 때까지 도는 루프</b>입니다. 그래서 맵의 카드를 지면이 아니라
-          <b>부팅 · 데이터 · 스토리 노드 · 연출 모드 · 태스크 · 시스템</b> 여섯 계층으로 잡았습니다.
+          <b>태스크가 머지 1회를 끝낼 때까지 도는 루프</b>입니다.
+          <b>v1.2 에서 맵을 세로로 세웠습니다</b> — 가운데 줄기가 <b>실제 재생 순서</b>
+          (켜짐 → 진입 → 노드 1~11 → 종료)이고, 왼쪽은 그 단계가 <b>읽는 것</b>,
+          오른쪽은 그 단계가 <b>여는 지면</b>입니다. 노드 11개는 카드 안에 접지 않고
+          <b>줄기 위에 11칸으로 펴 놨습니다</b>.
           <b>1단</b> 오픈맵으로 전체를 훑고, <b>2단</b> 카드를 누르면 <b>주요 이동 경로 3~5개</b>가 뜹니다 —
           지면 카드에는 프리팹을 직접 파싱해 그린 <b>720&times;1280 세로 와이어프레임</b>이 함께 붙습니다.
           전체 버튼과 내부 분기는 그 아래 <b>접힘</b>에 있고 제목에 개수를 적어 뒀습니다.
@@ -50,10 +53,10 @@
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--plan)">스토리 머지 프로토</span>
           <span class="tag">story-merge-proto-client · main 브랜치 코드 실측</span>
-          <span class="tag">기준 커밋 002df73ad (2026-08-27)</span>
-          <span class="tag">카드 17 + 칩 33 · 흐름 22</span>
+          <span class="tag">기준 커밋 002df73ad · HEAD 0bc42e5 재확인</span>
+          <span class="tag">카드 28 + 칩 22 · 흐름 31</span>
           <span class="tag">활성 빌드 <b>chat</b></span>
-          <span class="tag">v1.1 · 2026-08-27</span>
+          <span class="tag">v1.2 · 2026-08-28</span>
         </div>
       </div>
     </header>
@@ -64,9 +67,9 @@
 
         <div class="stat-row">
           <div class="stat" style="--acc: var(--plan)">
-            <div class="stat-num">17<span class="stat-unit">장</span></div>
-            <div class="stat-name">맵 카드 (+ 칩 33개)</div>
-            <div class="stat-sub">지면 4 · 로직 10 · 묶음 3 · 띠 2개로 접음</div>
+            <div class="stat-num">28<span class="stat-unit">장</span></div>
+            <div class="stat-name">맵 카드 (+ 칩 22개)</div>
+            <div class="stat-sub">세로 줄기 16 · 좌 레일 6 · 우 레일 6 · 재생 단계 4띠</div>
           </div>
           <div class="stat" style="--acc: var(--analysis)">
             <div class="stat-num">11<span class="stat-unit">개</span></div>
@@ -86,7 +89,7 @@
           <div class="stat" style="--acc: var(--deploy)">
             <div class="stat-num">117<span class="stat-unit">개</span></div>
             <div class="stat-name">메소드 → 한 줄 동작 사전</div>
-            <div class="stat-sub">검색 색인 923항목의 본문이기도 하다</div>
+            <div class="stat-sub">검색 색인 926항목의 본문이기도 하다</div>
           </div>
         </div>
 
@@ -125,6 +128,27 @@
               이라, 어느 모드로 빌드했는지가 곧 그 빌드의 정체입니다.
             </p>
           </div>
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">v1.2 &mdash; 맵을 세로로 세웠습니다</div>
+            <p>
+              v1.1 까지는 카드를 <strong>역할별로 묶어 가로 격자</strong>에 놓고, 화면 비율에 맞춰
+              8열을 4+4 두 띠로 접었습니다. 그러다 보니 주 흐름이 첫 띠 오른쪽 끝에서 끊기고
+              둘째 띠 왼쪽으로 점프해, <strong>전체 흐름을 위에서 아래로 훑을 수가 없었습니다</strong>.
+              더 큰 문제는 이 게임의 실제 순서인 <strong>노드 11개가 카드 한 장 안에 칩으로 접혀
+              있었다</strong>는 점입니다 &mdash; 클릭하지 않으면 보이는 재생 단계가 1개뿐이었습니다.
+            </p>
+            <p>
+              v1.2 는 배치 축을 <strong>재생 순서</strong>로 바꿨습니다. 가운데 줄기는
+              <code>intro.fire</code> 부터 <code>COMPLETE 11 / 11</code> 까지
+              <strong>한 번도 끊기지 않고 아래로만</strong> 흐릅니다(주 흐름 17개 전부 하향 · 띠 역행 0).
+              노드 11칸은 종류별로 색이 다릅니다 &mdash; <strong>대사(파랑) · 태스크(초록) ·
+              삽화(보라)</strong> 가 번갈아 나오는 리듬이 곧 이 게임의 진행입니다.
+              태스크 노드 3개는 오른쪽 <code>presentTask()</code> &rarr; <code>PopupTask</code> &rarr;
+              <code>ViewMergeBoard</code> 로 나갔다 돌아옵니다.
+              바뀐 것은 <strong>1단 배치뿐</strong>이고, 2단 카드 내용 &middot; 접힘 정책 &middot; 검색은
+              그대로입니다 (색인 923 &rarr; 926항목).
+            </p>
+          </div>
           <div class="note" style="--acc: var(--validate)">
             <div class="note-title">이 그림이 어디서 나왔나</div>
             <p>
@@ -150,7 +174,7 @@
             <div class="note-title">검색 &mdash; 접힘 안까지 열어 준다</div>
             <p>
               맵 오른쪽 위 검색창(단축키 <strong>/</strong> &middot; <code>Ctrl/Cmd+K</code>)에서
-              <strong>923개 항목</strong>을 찾습니다. 걸리는 것은 <strong>카드 이름</strong>(<code>ChatMessageRow</code> &middot;
+              <strong>926개 항목</strong>을 찾습니다. 걸리는 것은 <strong>카드 이름</strong>(<code>ChatMessageRow</code> &middot;
               &ldquo;머지 보드&rdquo;) &middot; <strong>메소드</strong>(<code>waitForIntro</code>) &middot;
               <strong>프리팹</strong>(<code>PopupTask.prefab</code>) &middot; <strong>프리팹 노드 이름</strong>(<code>StillcutSurfaceA</code>) &middot;
               <strong>버튼 라벨</strong>입니다. 메소드 설명문까지 같이 뒤지므로 이름이 정확히 기억나지 않아도 걸립니다.
@@ -665,7 +689,8 @@
             <p>
               틀린 것은 카드 <strong>2장</strong>(골드 경제 &middot; 스테이지 반영)뿐이고,
               대신 <strong>2장</strong>(인트로 영상 &middot; 채팅 행)이 새로 생겼습니다.
-              카드 수는 17장 그대로입니다.
+              카드 수는 그때 17장 그대로였습니다 &mdash; v1.2 에서 노드 11개를 줄기 위에 펴고
+              종료 카드를 더해 <strong>28장</strong>이 됐습니다.
             </p>
           </div>
         </div>
@@ -678,7 +703,10 @@
             <div class="note-title">실측한 것</div>
             <p>
               <code>story-merge-proto-client</code> <strong>main</strong> 브랜치 커밋
-              <code>002df73ad</code>(2026-08-27) 기준입니다. 프리팹 3장과 <code>intro.fire</code> 를 파싱해
+              <code>002df73ad</code>(2026-08-27) 기준입니다. 이후 커밋 <code>0bc42e5</code> 는
+              애니메이션 <code>.anim</code> &middot; 이펙트 프리팹만 추가해 스크립트 &middot;
+              <code>assets/bundle</code> 데이터 &middot; 맵이 파싱하는 프리팹 3장은 그대로였습니다.
+              프리팹 3장과 <code>intro.fire</code> 를 파싱해
               화면 요소 <strong>112개</strong>를 뽑았고(접은 뒤 96개 노출),
               데이터는 파일에서 직접 읽어 표를 생성했습니다 &mdash;
               <code>story_node</code> 11행 &middot; <code>story_dialogue</code> 37행 &middot;
