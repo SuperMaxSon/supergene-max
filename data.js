@@ -21,6 +21,15 @@
      허브가 아니라 문서 본문에 쓴다. 카드 desc 에는 CSS 2줄 클램프가 걸려 있어
      길게 써도 잘려 보이기만 한다. 태그는 최대 3개 — 지금 태그는 필터가 아니라
      라벨이므로 많아질수록 스캔만 방해한다.
+     --------------------------------------------------------------------------
+   ★★★ 태그 축은 3개다 — **근거 / 주제 / 성격**. 축마다 최대 1개씩, 카드당 3개 이하.
+     근거 = 코드 실측 · BigQuery · 프리팹 실측 · 커밋 히스토리
+     주제 = 토너먼트 · 공유 · 초대 · 광고 · 온보딩 · 로딩 · 컨텍스트 · 로그 · 아트 · 데코 · 머지 · 인프라 · 정산 · 네트워크 오류 · FB 플랫폼
+     성격 = 상시 · 정본 · 임시 · 이식 · 인터랙티브 · 레퍼런스 · 역기획 · 착수 점검
+     (주간 KPI 계열만 3축 · 축1 · 축2 · 축3 을 따로 쓴다)
+     **섹션 라벨과 프로젝트 칩이 이미 말하는 것은 태그로 적지 않는다.**
+     그래서 "QA" · "전후비교" · "레퍼런스"(다이어그램) · "스토리머지" · "4프로젝트" 같은
+     태그를 뺐다. 대신 app.js 의 검색 색인에 섹션 라벨을 넣어 검색은 그대로 잡히게 했다.
    --------------------------------------------------------------------------
    ★ 카드를 추가·수정했으면 아래 SITE.updated 와 index.html 의
      <script src="data.js?v=YYYYMMDDHHMM"> 를 **같은 시각으로** 함께 고칠 것.
@@ -30,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-28 17:25",
+  updated: "2026-08-28 17:55",
 };
 
 /* --------------------------------------------------------------------------
@@ -69,7 +78,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-27 17:13",
         pinned: false,
-        tags: ["인프라", "AWS", "레퍼런스"],
+        tags: ["인프라", "레퍼런스"],
       },
       {
         title: "스토리 머지 — 로그 적용 매트릭스",
@@ -80,7 +89,7 @@ const SECTIONS = [
         version: "v2.1",
         updated: "2026-08-28 12:05",
         pinned: false,
-        tags: ["로그 설계", "스토리 머지", "크로스프로젝트"],
+        tags: ["로그", "코드 실측"],
       },
       {
         title: "FB 게이밍 탭 복귀 지면 — 노출 조사 히스토리",
@@ -91,7 +100,7 @@ const SECTIONS = [
         version: "v2.0",
         updated: "2026-08-26 09:56",
         pinned: false,
-        tags: ["FB 플랫폼", "소셜", "크로스프로젝트", "코드 실측"],
+        tags: ["FB 플랫폼", "공유", "코드 실측"],
       },
       {
         title: "광고 유입 NRU 첫터치 — 원인 규명",
@@ -102,7 +111,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-20 18:52",
         pinned: false,
-        tags: ["UA", "NRU", "BigQuery", "크로스프로젝트"],
+        tags: ["광고", "온보딩", "BigQuery"],
       },
       {
         title: "주간 KPI 3축 — 분석 입구",
@@ -113,7 +122,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-24 14:00",
         pinned: true,
-        tags: ["3축", "상시", "BigQuery"],
+        tags: ["3축", "BigQuery", "상시"],
       },
       {
         title: "공유 · 메시지 — 왜 실패하나",
@@ -124,7 +133,7 @@ const SECTIONS = [
         version: "v5.2",
         updated: "2026-08-19 08:55",
         pinned: false,
-        tags: ["축3", "공유", "퍼널"],
+        tags: ["공유", "축3", "BigQuery"],
       },
       {
         title: "토너먼트 — 생성 · 수락률",
@@ -135,7 +144,7 @@ const SECTIONS = [
         version: "v9.0",
         updated: "2026-08-18 18:20",
         pinned: false,
-        tags: ["축3", "토너먼트", "수락률"],
+        tags: ["토너먼트", "축3", "BigQuery"],
       },
       {
         title: "토너 초대 — 시도는 2배, 유입률은 절반",
@@ -146,7 +155,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-19 09:54",
         pinned: false,
-        tags: ["축3", "초대", "유입률"],
+        tags: ["초대", "축3", "BigQuery"],
       },
       {
         title: "NRU 0~10분 — 6개 프로젝트 온보딩 비교",
@@ -157,7 +166,7 @@ const SECTIONS = [
         version: "v4.2",
         updated: "2026-08-18 18:10",
         pinned: false,
-        tags: ["축2", "NRU", "온보딩"],
+        tags: ["온보딩", "축2", "BigQuery"],
       },
       {
         title: "5프로젝트 소셜 코드 대조표",
@@ -168,7 +177,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-19 08:55",
         pinned: false,
-        tags: ["축3", "코드대조", "5프로젝트"],
+        tags: ["공유", "코드 실측", "정본"],
       },
       {
         title: "로딩 속도 — 3개 프로젝트 비교",
@@ -179,7 +188,7 @@ const SECTIONS = [
         version: "v2.3",
         updated: "2026-08-18 18:10",
         pinned: false,
-        tags: ["축2", "로딩", "정본"],
+        tags: ["로딩", "축2", "정본"],
       },
       {
         title: "전면광고 지면 — 4개 프로젝트 플로우 비교",
@@ -190,7 +199,7 @@ const SECTIONS = [
         version: "v1.9",
         updated: "2026-08-14 09:57",
         pinned: false,
-        tags: ["축1", "광고", "4프로젝트"],
+        tags: ["광고", "축1", "코드 실측"],
       },
       {
         title: "스토리 머지 — 개발 TODO",
@@ -201,7 +210,7 @@ const SECTIONS = [
         version: "v2.3",
         updated: "2026-08-28 10:20",
         pinned: false,
-        tags: ["착수 점검", "역기획", "스토리머지", "시스템 언팩", "인게임·아웃게임", "아이템 도감", "머지2 용어"],
+        tags: ["머지", "역기획", "착수 점검"],
       },
     ],
   },
@@ -220,7 +229,7 @@ const SECTIONS = [
         version: "v10.4",
         updated: "2026-08-28 10:24",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "UI", "컨텍스트", "인터랙티브", "검색"],
+        tags: ["프리팹 실측", "인터랙티브"],
       },
       {
         title: "코인매치 전체 지면 플로우 맵",
@@ -231,7 +240,7 @@ const SECTIONS = [
         version: "v2.1",
         updated: "2026-08-28 15:00",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "인터랙티브", "검색"],
+        tags: ["프리팹 실측", "인터랙티브"],
       },
       {
         title: "코지 전체 지면 플로우 맵",
@@ -242,7 +251,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-28 16:40",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "인터랙티브"],
+        tags: ["프리팹 실측", "인터랙티브"],
       },
       {
         title: "마종 전체 지면 플로우 맵",
@@ -253,7 +262,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-28 16:40",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "인터랙티브"],
+        tags: ["프리팹 실측", "인터랙티브"],
       },
       {
         title: "퍼블마 전체 지면 플로우 맵",
@@ -264,7 +273,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-28 17:10",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "인터랙티브"],
+        tags: ["프리팹 실측", "인터랙티브"],
       },
       {
         title: "스토리머지 전체 지면 플로우 맵",
@@ -275,7 +284,7 @@ const SECTIONS = [
         version: "v1.2",
         updated: "2026-08-28 09:11",
         pinned: false,
-        tags: ["레퍼런스", "플로우", "스토리머지"],
+        tags: ["프리팹 실측", "인터랙티브"],
       },
     ],
   },
@@ -294,7 +303,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-28 12:21",
         pinned: false,
-        tags: ["토너먼트", "전후비교", "KPI"],
+        tags: ["토너먼트", "BigQuery"],
       },
       {
         title: "전환 지면 중복 제거 — 바이럴 검증",
@@ -305,7 +314,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-24 16:08",
         pinned: false,
-        tags: ["컨텍스트전환", "바이럴", "전후비교"],
+        tags: ["컨텍스트", "BigQuery"],
       },
       {
         title: "토너먼트 공유 실패 — 수정 전/후",
@@ -316,7 +325,7 @@ const SECTIONS = [
         version: "v3.6",
         updated: "2026-08-20 10:47",
         pinned: false,
-        tags: ["토너먼트", "공유", "전후비교"],
+        tags: ["토너먼트", "공유", "BigQuery"],
       },
       {
         title: "토너먼트 생성 실패 복구 — 수정 전/후",
@@ -327,7 +336,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-20 09:19",
         pinned: false,
-        tags: ["토너먼트", "생성", "전후비교"],
+        tags: ["토너먼트", "BigQuery"],
       },
     ],
   },
@@ -346,7 +355,7 @@ const SECTIONS = [
         version: "v9.0",
         updated: "2026-08-19 10:07",
         pinned: true,
-        tags: ["QA", "트래커", "상시"],
+        tags: ["상시", "커밋 히스토리"],
         share: false,
       },
       {
@@ -358,7 +367,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-13 18:40",
         pinned: false,
-        tags: ["QA", "토너먼트", "참가"],
+        tags: ["토너먼트", "컨텍스트"],
         share: false,
       },
       {
@@ -370,7 +379,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-13 17:13",
         pinned: false,
-        tags: ["QA", "토너먼트", "네트워크오류"],
+        tags: ["토너먼트", "네트워크 오류"],
         share: false,
       },
       {
@@ -382,7 +391,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-13 17:13",
         pinned: false,
-        tags: ["QA", "재도전", "정산"],
+        tags: ["정산", "광고"],
         share: false,
       },
       {
@@ -394,7 +403,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-13 17:13",
         pinned: false,
-        tags: ["QA", "나가기", "전면광고"],
+        tags: ["광고"],
         share: false,
       },
       {
@@ -406,7 +415,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-13 17:13",
         pinned: false,
-        tags: ["QA", "SPEC-038", "초대"],
+        tags: ["초대", "토너먼트"],
         share: false,
       },
     ],
@@ -426,7 +435,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-24 14:00",
         pinned: false,
-        tags: ["임시", "아트", "프리팹구조", "데코", "머지"],
+        tags: ["아트", "데코", "임시"],
       },
       {
         title: "머지 웹 프로젝트 — 아트 인계 · 이미지 관리",
@@ -437,7 +446,7 @@ const SECTIONS = [
         version: "v6.0",
         updated: "2026-08-24 14:00",
         pinned: false,
-        tags: ["아트", "리소스", "인계규격", "부팅예산", "머지"],
+        tags: ["아트", "정본"],
       },
       {
         title: "코인매치 커밋 히스토리 — 왜 이렇게 고쳤나",
@@ -448,7 +457,7 @@ const SECTIONS = [
         version: "v1.0",
         updated: "2026-08-25 15:25",
         pinned: false,
-        tags: ["커밋", "작업기록", "코인매치"],
+        tags: ["커밋 히스토리", "상시"],
       },
       {
         title: "솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나",
@@ -459,7 +468,7 @@ const SECTIONS = [
         version: "v10.0",
         updated: "2026-08-27 12:03",
         pinned: false,
-        tags: ["커밋", "작업기록", "diff실측"],
+        tags: ["커밋 히스토리", "상시"],
       },
       {
         title: "토너먼트 생성 복구 판정 정규화 — 다른 프로젝트 이식",
@@ -470,7 +479,7 @@ const SECTIONS = [
         version: "v3.5",
         updated: "2026-08-20 10:05",
         pinned: false,
-        tags: ["이식", "토너먼트", "4프로젝트"],
+        tags: ["토너먼트", "이식"],
       },
     ],
   },

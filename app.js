@@ -33,7 +33,7 @@
     return /^https?:\/\//.test(url);
   }
 
-  function buildCard(card, accent) {
+  function buildCard(card, accent, secLabel) {
     var url = card.url || "#";
     var a = el("a", "card" + (card.pinned ? " is-pinned" : ""));
     a.href = url;
@@ -77,10 +77,13 @@
     });
     if (foot.childNodes.length) a.appendChild(foot);
 
+    /* 섹션 라벨을 색인에 넣는다. "QA" · "전후비교" 처럼 섹션이 이미 말하는 태그를
+       카드에서 뺐기 때문에, 이게 없으면 그 단어로 검색했을 때 카드가 사라진다. */
     a.dataset.search = [
       card.title,
       card.desc,
       proj ? proj.name : "",
+      secLabel || "",
       (card.tags || []).join(" "),
     ]
       .join(" ")
@@ -117,36 +120,169 @@
 
     var list = el("div", "cards");
     cards.forEach(function (c) {
-      list.appendChild(buildCard(c, sec.accent));
+      list.appendChild(buildCard(c, sec.accent, sec.label));
     });
     s.appendChild(list);
     main.appendChild(s);
   });
 
-  /* ---------- 검색 ---------- */
+
+  /* ---------- 태그 · 프로젝트 그룹 보기 ----------
+     섹션 보기와 같은 카드를 다른 축으로 묶어 리스트로 편다.
+     한 카드가 태그 3개면 세 그룹에 나온다 — 필터가 아니라 라벨 브라우징이라 정상이다.
+     카드 그리드 대신 한 줄짜리 행을 쓰는 이유: 축을 바꿔 보는 목적이 "재고 확인"이라
+     설명문보다 개수와 목록이 먼저 읽혀야 한다. */
+
+  var grouped = document.getElementById("grouped");
+  var viewtabs = document.getElementById("viewtabs");
+
+  /* 카드 → 속한 섹션 정보. 그룹 보기에서도 섹션 accent 를 쓰기 위해 같이 들고 다닌다. */
+  var ENTRIES = [];
+  SECTIONS.forEach(function (sec) {
+    (sec.cards || []).forEach(function (c) {
+      if (c.share === false) return;
+      ENTRIES.push({ card: c, sec: sec });
+    });
+  });
+
+  function buildRow(e) {
+    var url = e.card.url || "#";
+    var a = el("a", "row");
+    a.href = url;
+    var proj =
+      typeof PROJECTS !== "undefined" && e.card.project
+        ? PROJECTS[e.card.project]
+        : null;
+    a.style.setProperty(
+      "--acc",
+      "var(" + (proj ? proj.token : "--" + e.sec.accent) + ")"
+    );
+    if (isExternal(url)) {
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+    }
+    if (proj) a.appendChild(el("span", "row-proj", proj.name));
+    a.appendChild(el("span", "row-title", e.card.title));
+    /* 섹션은 그룹 보기에서 축이 아니므로 행마다 작게 남겨 어디 문서인지 잃지 않게 한다. */
+    a.appendChild(el("span", "row-sec", e.sec.label));
+    if (e.card.status) {
+      var st = el("span", "status", e.card.status);
+      st.setAttribute("data-status", e.card.status);
+      a.appendChild(st);
+    }
+    if (e.card.updated) a.appendChild(el("span", "row-date", e.card.updated.slice(0, 10)));
+    a.dataset.search = [
+      e.card.title,
+      e.card.desc,
+      proj ? proj.name : "",
+      e.sec.label,
+      (e.card.tags || []).join(" "),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return a;
+  }
+
+  /* keyOf 가 카드 하나에서 그룹 키 배열을 뽑는다 (태그는 여러 개, 프로젝트는 하나). */
+  function buildGroups(mode) {
+    var map = {};
+    var order = [];
+    ENTRIES.forEach(function (e) {
+      var keys =
+        mode === "tag"
+          ? e.card.tags || []
+          : [
+              typeof PROJECTS !== "undefined" && e.card.project && PROJECTS[e.card.project]
+                ? PROJECTS[e.card.project].name
+                : "프로젝트 없음",
+            ];
+      if (!keys.length) keys = ["태그 없음"];
+      keys.forEach(function (k) {
+        if (!map[k]) {
+          map[k] = [];
+          order.push(k);
+        }
+        map[k].push(e);
+      });
+    });
+    /* 큰 묶음부터 — 재고 확인이 목적이라 개수가 스캔 순서가 된다. 같으면 가나다순. */
+    order.sort(function (a, b) {
+      return map[b].length - map[a].length || a.localeCompare(b, "ko");
+    });
+    return { map: map, order: order };
+  }
+
+  function renderGroups(mode) {
+    grouped.innerHTML = "";
+    var g = buildGroups(mode);
+    g.order.forEach(function (key) {
+      var sec = el("section", "group");
+      var head = el("div", "group-head");
+      head.appendChild(el("h2", "group-title", key));
+      head.appendChild(el("span", "group-count", String(g.map[key].length)));
+      sec.appendChild(head);
+      var rows = el("div", "rows");
+      g.map[key].forEach(function (e) {
+        rows.appendChild(buildRow(e));
+      });
+      sec.appendChild(rows);
+      grouped.appendChild(sec);
+    });
+  }
+
+  var view = "section";
+
+  function setView(next) {
+    view = next;
+    var isSection = next === "section";
+    main.hidden = !isSection;
+    grouped.hidden = isSection;
+    if (nav.parentNode) nav.parentNode.hidden = !isSection; /* nav.nav — 섹션 보기 전용 */
+    if (!isSection) renderGroups(next);
+    if (viewtabs) {
+      Array.prototype.slice.call(viewtabs.children).forEach(function (b) {
+        b.classList.toggle("is-active", b.dataset.view === next);
+        b.setAttribute("aria-selected", b.dataset.view === next ? "true" : "false");
+      });
+    }
+    applySearch();
+  }
+
+  if (viewtabs) {
+    viewtabs.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-view]");
+      if (b) setView(b.dataset.view);
+    });
+  }
+
+  /* ---------- 검색 ----------
+     섹션 · 그룹 두 보기가 같은 질의를 쓴다. 보이는 쪽만 훑고, 비는 묶음은 통째로 접는다. */
 
   var search = document.getElementById("search");
   var empty = document.getElementById("empty");
 
-  if (search) {
-    search.addEventListener("input", function () {
-      var q = search.value.trim().toLowerCase();
-      var anyVisible = false;
+  function applySearch() {
+    var q = search ? search.value.trim().toLowerCase() : "";
+    var anyVisible = false;
+    var boxSel = view === "section" ? ".section" : ".group";
+    var itemSel = view === "section" ? ".card" : ".row";
+    var root = view === "section" ? main : grouped;
 
-      document.querySelectorAll(".section").forEach(function (sec) {
-        var shown = 0;
-        sec.querySelectorAll(".card").forEach(function (card) {
-          var hit = !q || card.dataset.search.indexOf(q) !== -1;
-          card.classList.toggle("is-hidden", !hit);
-          if (hit) shown++;
-        });
-        sec.classList.toggle("is-hidden", shown === 0);
-        if (shown) anyVisible = true;
+    root.querySelectorAll(boxSel).forEach(function (box) {
+      var shown = 0;
+      box.querySelectorAll(itemSel).forEach(function (it) {
+        var hit = !q || it.dataset.search.indexOf(q) !== -1;
+        it.classList.toggle("is-hidden", !hit);
+        if (hit) shown++;
       });
-
-      if (empty) empty.style.display = anyVisible ? "none" : "block";
+      box.classList.toggle("is-hidden", shown === 0);
+      if (shown) anyVisible = true;
     });
+
+    if (empty) empty.style.display = anyVisible ? "none" : "block";
   }
+
+  if (search) search.addEventListener("input", applySearch);
 
   /* ---------- 스크롤스파이 ---------- */
 
