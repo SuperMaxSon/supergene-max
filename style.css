@@ -1986,11 +1986,61 @@ figure.shot figcaption .src {
   --smg: #4d7c0f; /* 스토리 머지 — 올리브 */
 }
 
+/* v2: 9열째(삽입 타이밍)를 뺐다. 남은 8열은 대역 + 계열 + 판정 6개라
+   .wrap--wide(1040px) 안에 들어간다 — 이전에는 min-width 1180px 이 컨테이너를
+   넘겨 마지막 열이 가로 스크롤 밖으로 밀렸다. 근거는 계열 셀 아래 .gmx-sub 로 접었다. */
 .gmx table {
-  min-width: 1180px;
+  min-width: 860px;
 }
 .gmx thead th:nth-child(2) {
-  min-width: 190px;
+  min-width: 300px;
+}
+/* 대역 코드가 "1110~1220" 처럼 길어 기본 폭에서 두 줄로 접힌다. */
+.gmx td:nth-child(1) {
+  white-space: nowrap;
+}
+
+/* 헤더 고정. .table-scroll 은 overflow-x:auto 라 overflow-y 도 auto 로 계산되고,
+   그 결과 이 박스 자체가 스크롤 컨테이너가 된다 — 안쪽 sticky thead 는 페이지가
+   아니라 이 박스에 붙는다. 그래서 박스에 max-height 를 줘 세로 스크롤을 이 안으로
+   끌어와야 34행을 훑는 내내 헤더가 남는다. 판정 열이 이모지 한 글자뿐이라
+   헤더를 잃으면 3번째 ✅ 가 머지인지 코인인지 알 방법이 없다. */
+.gmx {
+  max-height: 72vh;
+  overflow-y: auto;
+}
+
+/* 기본 thead th 는 position: relative 라 덮어써야 한다. 배경은 이미 불투명
+   (surface-2 / 게임별 16% 틴트)이라 행이 비쳐 보이지 않는다. */
+.gmx thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* 커밋 히스토리 툴바는 검색 필드가 남는 폭을 먹어 건수 pill 이 오른쪽에 붙는다.
+   여기는 칩만 있어 그 역할을 할 요소가 없으므로 직접 밀어낸다. */
+.mx-toolbar .ch-count {
+  margin-left: auto;
+}
+
+/* 계열 셀의 근거 한 줄. 별도 열로 두면 다시 폭이 터진다. */
+.gmx-sub {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+/* 이미 호출문이 심겨 있는 행. 판정(✅/❌)과는 다른 축이라 색이 아니라 명도로 낮춘다.
+   td 배경을 덮어써야 .gmx 의 열별 6% 틴트를 이긴다. */
+/* .gmx 를 앞에 붙여야 열별 틴트(.gmx td:nth-child(n)) 보다 특이도가 높다. */
+.gmx tbody tr.is-wired td {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+.gmx tbody tr.is-wired:hover td {
+  background: var(--surface-3);
 }
 
 /* 게임 열 헤더 — 식별색 글자 + 16% 틴트 */
