@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-31 09:02",
+  updated: "2026-08-31 17:49",
 };
 
 /* --------------------------------------------------------------------------
@@ -70,6 +70,17 @@ const SECTIONS = [
     accent: "analysis",
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
+      {
+        title: "채팅 캐릭터 애니메이션 용량 산출기",
+        desc: "캐릭터와 감정이 늘면 용량이 어디까지 가나. 프레임 시퀀스 · 노드 트랜스폼 · Spine 세 방식을 같은 조건에 놓고 계산한다.",
+        url: "docs/chat-anim-size-calc.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-08-31 17:49",
+        pinned: false,
+        project: "smg",
+        tags: ["코드 실측", "아트", "인터랙티브"],
+      },
       {
         title: "게임 장르별 AWS 아키텍처 — 2024",
         desc: "메가존이 준 설명 없는 구성도 4장을 다시 그렸다. 장르 차이는 결국 \"게임 서버가 상태를 갖느냐\" 한 축에서 갈린다.",
@@ -467,7 +478,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v0.1",
-        updated: "2026-08-31 09:02",
+        updated: "2026-08-31 17:49",
         pinned: false,
         tags: ["커밋 히스토리", "상시"],
       },

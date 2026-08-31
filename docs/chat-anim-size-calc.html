@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>채팅 캐릭터 애니메이션 용량 산출기</title>
+    <meta
+      name="description"
+      content="캐릭터 수 · 감정 수 · 프레임 수 · 해상도를 넣으면 프레임 시퀀스 · 노드 트랜스폼 애니메이션 · 스켈레탈(Spine) 세 방식의 용량을 표로 비교한다. 계수는 story-merge-proto-client · solitaire-tripeaks-client · puzzle-omg 실측값."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#calc">산출기</a>
+        <a class="nav-back" href="#scale">스케일</a>
+        <a class="nav-back" href="#basis">계수 근거</a>
+        <a class="nav-back" href="#scope">확인 범위</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 리소스 용량</div>
+        <h1 class="doc-title">채팅 캐릭터 애니메이션 용량 산출기</h1>
+        <p class="doc-lede">
+          캐릭터와 감정 표현이 <b>앞으로 늘어날 때</b> 용량이 어디까지 가는지 보는 문서입니다.
+          같은 연출을 만드는 세 가지 방식 &mdash; <b>프레임 시퀀스</b> ·
+          <b>노드 트랜스폼 애니메이션</b> · <b>스켈레탈(Spine)</b> &mdash; 을 같은 조건에 놓고 비교합니다.
+          계수는 전부 사내 리포 실측값이고, 아래 입력을 바꾸면 표가 즉시 다시 계산됩니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
+          <span class="tag">프레임 시퀀스 = story-merge-proto-client 272장 전수 실측</span>
+          <span class="tag">노드 트랜스폼 = solitaire-tripeaks-client 루나 실측</span>
+          <span class="tag">스켈레탈 = puzzle-omg Spine 5세트 실측</span>
+          <span class="tag">v1.0 · 2026-08-31</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+
+      <!-- 이 문서의 본체. 입력 격자 바로 아래에 결과 표를 붙여서
+           값을 고치는 손과 결과를 읽는 눈이 같은 화면 안에 있게 한다. -->
+      <section class="doc-section" id="calc">
+        <h2 class="doc-h2">
+          산출기
+          <span class="doc-h2-sub">값을 고치면 아래 표 전부가 다시 계산됩니다</span>
+        </h2>
+
+        <div class="calc-grid">
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-chars">캐릭터 수</label>
+            <input class="calc-in" id="i-chars" type="number" min="1" max="200" step="1" value="4" />
+          </div>
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-emo">캐릭터당 감정 수</label>
+            <input class="calc-in" id="i-emo" type="number" min="1" max="200" step="1" value="10" />
+          </div>
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-frames">감정당 프레임 수</label>
+            <input class="calc-in" id="i-frames" type="number" min="1" max="600" step="1" value="17" />
+          </div>
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-w">해상도 가로</label>
+            <input class="calc-in" id="i-w" type="number" min="16" max="4096" step="1" value="304" /><span class="calc-unit">px</span>
+          </div>
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-h">해상도 세로</label>
+            <input class="calc-in" id="i-h" type="number" min="16" max="4096" step="1" value="288" /><span class="calc-unit">px</span>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>계수 조정 — 기본값은 실측치입니다</summary>
+          <div class="fold-body">
+            <div class="calc-grid calc-grid--sub">
+              <div class="calc-cell" style="--acc: var(--analysis)">
+                <label class="calc-label" for="i-den">프레임 픽셀 밀도</label>
+                <input class="calc-in" id="i-den" type="number" min="0.01" max="4" step="0.001" value="0.316" /><span class="calc-unit">B/px</span>
+              </div>
+              <div class="calc-cell" style="--acc: var(--validate)">
+                <label class="calc-label" for="i-nb">노드 base</label>
+                <input class="calc-in" id="i-nb" type="number" min="0" max="9999" step="0.1" value="71.5" /><span class="calc-unit">KB</span>
+              </div>
+              <div class="calc-cell" style="--acc: var(--validate)">
+                <label class="calc-label" for="i-ne">노드 감정당</label>
+                <input class="calc-in" id="i-ne" type="number" min="0" max="9999" step="0.1" value="21.6" /><span class="calc-unit">KB</span>
+              </div>
+              <div class="calc-cell" style="--acc: var(--deploy)">
+                <label class="calc-label" for="i-sb">Spine base</label>
+                <input class="calc-in" id="i-sb" type="number" min="0" max="9999" step="0.1" value="27.1" /><span class="calc-unit">KB</span>
+              </div>
+              <div class="calc-cell" style="--acc: var(--deploy)">
+                <label class="calc-label" for="i-se">Spine 감정당</label>
+                <input class="calc-in" id="i-se" type="number" min="0" max="9999" step="0.1" value="6.9" /><span class="calc-unit">KB</span>
+              </div>
+            </div>
+            <p class="calc-label" style="margin: 4px 2px 0">
+              노드 · Spine 계수는 <b>304&times;288 기준값</b>입니다. 해상도를 바꾸면 세 방식 모두 면적에 비례해 자동 보정됩니다.
+            </p>
+          </div>
+        </details>
+
+        <div class="table-scroll" style="--acc: var(--smg)">
+          <table>
+            <thead>
+              <tr>
+                <th>방식</th>
+                <th>구조</th>
+                <th style="text-align: right">감정당</th>
+                <th style="text-align: right">캐릭터당</th>
+                <th style="text-align: right">전체</th>
+                <th style="text-align: right">배수</th>
+              </tr>
+            </thead>
+            <tbody id="t-main"></tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              <b>감정당</b>은 감정 하나를 더 붙일 때 늘어나는 용량(한계비용)입니다. 총량을 감정 수로 나눈 평균이 아닙니다.
+              프레임 시퀀스는 감정마다 이미지 전체를 새로 저장하니 <b>한계비용 = 감정당 전량</b>이지만, 나머지 둘은
+              베이스 텍스처를 공유하고 눈·입 변형과 키프레임만 추가하므로 한계비용이 훨씬 작습니다.
+              그래서 <b>감정이 늘수록 배수가 커집니다</b> &mdash; 이 표의 배수는 고정값이 아닙니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">프레임 수가 어디에 걸리는지</div>
+            <p>
+              프레임 수는 <b>프레임 시퀀스에만</b> 곱해집니다. 노드 트랜스폼과 스켈레탈은 프레임이 아니라
+              <b>키프레임</b>으로 저장하고, 그 사이는 런타임에 보간하기 때문에 애니메이션을 길게 늘려도 용량이 거의 그대로입니다.
+              실측이 이걸 그대로 보여줍니다 &mdash; 솔리테어 루나는 채팅 얼굴보다 프레임 환산이 <b>13배 많은데</b> 용량은 <b>1/12</b>입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 배수가 고정이 아니라는 걸 말로만 하면 안 믿긴다.
+           감정 축과 프레임 축을 각각 흘려서 어디서 격차가 벌어지는지 직접 보게 한다. -->
+      <section class="doc-section" id="scale">
+        <h2 class="doc-h2">
+          스케일
+          <span class="doc-h2-sub">감정이 늘 때 · 프레임이 늘 때 각각 어떻게 벌어지나</span>
+        </h2>
+
+        <h3 class="calc-label" style="font-size: 13px; margin: 0 2px 7px">
+          감정 수 축 &mdash; 캐릭터당 용량 (프레임 수 · 해상도는 위 입력값 고정)
+        </h3>
+        <div class="table-scroll" style="--acc: var(--validate)">
+          <table>
+            <thead>
+              <tr>
+                <th>감정 수</th>
+                <th style="text-align: right">프레임 시퀀스</th>
+                <th style="text-align: right">노드 트랜스폼</th>
+                <th style="text-align: right">스켈레탈</th>
+                <th style="text-align: right">노드 배수</th>
+                <th style="text-align: right">Spine 배수</th>
+              </tr>
+            </thead>
+            <tbody id="t-emo"></tbody>
+          </table>
+        </div>
+
+        <h3 class="calc-label" style="font-size: 13px; margin: 16px 2px 7px">
+          프레임 수 축 &mdash; 캐릭터당 용량 (감정 수 · 해상도는 위 입력값 고정)
+        </h3>
+        <div class="table-scroll" style="--acc: var(--deploy)">
+          <table>
+            <thead>
+              <tr>
+                <th>프레임 수</th>
+                <th style="text-align: right">30fps 환산 길이</th>
+                <th style="text-align: right">프레임 시퀀스</th>
+                <th style="text-align: right">노드 트랜스폼</th>
+                <th style="text-align: right">스켈레탈</th>
+              </tr>
+            </thead>
+            <tbody id="t-frm"></tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">프레임 축 표에서 봐야 할 것</div>
+            <p>
+              노드 트랜스폼과 스켈레탈 열이 <b>움직이지 않습니다.</b> 오타가 아니라 이 방식들의 성질입니다.
+              프레임 시퀀스만 프레임 수에 정비례하므로, 연출을 더 길게 가거나 더 부드럽게 갈수록
+              방식 간 격차는 일방적으로 커집니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 계수를 그냥 "실측값"이라고만 하면 재현이 안 된다.
+           어느 리포 어느 경로에서 몇 개를 세어 나온 값인지 표로 남긴다. -->
+      <section class="doc-section" id="basis">
+        <h2 class="doc-h2">
+          계수 근거
+          <span class="doc-h2-sub">기본값이 어느 실측에서 나왔나</span>
+        </h2>
+
+        <div class="table-scroll" style="--acc: var(--smg)">
+          <table>
+            <thead>
+              <tr>
+                <th>계수</th>
+                <th style="text-align: right">값</th>
+                <th>출처</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>프레임 픽셀 밀도</td>
+                <td style="text-align: right">0.316 B/px</td>
+                <td>
+                  <code>story-merge-proto-client</code> · <code>assets/bundle/chat/animation/</code>
+                  PNG 272장 전수. 304&times;288 · 감정당 17장 · 감정 16종 · 7.64&nbsp;MB.
+                  장당 27.7&nbsp;KB &divide; 87,552&nbsp;px
+                </td>
+              </tr>
+              <tr>
+                <td>노드 base 71.5 KB</td>
+                <td style="text-align: right">head 3종</td>
+                <td>
+                  <code>solitaire-tripeaks-client</code> · <code>art/solitaire_texture/ingame/extra/</code>
+                  <code>head</code> 22.1 + <code>head_down</code> 23.8 + <code>head_down_02</code> 25.6
+                </td>
+              </tr>
+              <tr>
+                <td>노드 감정당 21.6 KB</td>
+                <td style="text-align: right">변형 12.8 + 클립 8.8</td>
+                <td>
+                  같은 경로 <code>eyes_*</code> · <code>head_down_eyes*</code> 8종 51.3&nbsp;KB &divide; 4상태,
+                  <code>art/animation/reward_box_cat_*.anim</code> 4종 35.1&nbsp;KB &divide; 4
+                </td>
+              </tr>
+              <tr>
+                <td>Spine base 27.1 KB</td>
+                <td style="text-align: right">회귀 절편</td>
+                <td>
+                  <code>puzzle-omg</code> · <code>art/animation/NoCompress/spine/</code> 5세트
+                  (감정 1·1·4·4·5개 / 29.7·38.5·49.4·58.8·62.3&nbsp;KB) 선형회귀
+                </td>
+              </tr>
+              <tr>
+                <td>Spine 감정당 6.9 KB</td>
+                <td style="text-align: right">회귀 기울기</td>
+                <td>같은 5세트. PNG + JSON + <code>.atlas</code> 합산 기준</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="calc-label" style="font-size: 13px; margin: 16px 2px 7px">
+          같은 조건으로 맞춘 세 방식 원본 실측
+        </h3>
+        <div class="table-scroll" style="--acc: var(--analysis)">
+          <table>
+            <thead>
+              <tr>
+                <th>방식 · 대상</th>
+                <th style="text-align: right">표시 크기</th>
+                <th style="text-align: right">감정 수</th>
+                <th style="text-align: right">감정당 키프레임</th>
+                <th style="text-align: right">30fps 환산</th>
+                <th style="text-align: right">총 용량</th>
+                <th style="text-align: right">감정당</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>프레임 시퀀스 · 채팅 얼굴</td>
+                <td style="text-align: right">304&times;288</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right">17</td>
+                <td style="text-align: right">17</td>
+                <td style="text-align: right">1.85 MB</td>
+                <td style="text-align: right">462 KB</td>
+              </tr>
+              <tr>
+                <td>노드 트랜스폼 · 솔리테어 루나</td>
+                <td style="text-align: right">~150&times;180</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right">56</td>
+                <td style="text-align: right">226</td>
+                <td style="text-align: right">158 KB</td>
+                <td style="text-align: right">40 KB</td>
+              </tr>
+              <tr>
+                <td>스켈레탈 · puzzle-omg green</td>
+                <td style="text-align: right">320&times;296</td>
+                <td style="text-align: right">4</td>
+                <td style="text-align: right">34</td>
+                <td style="text-align: right">59</td>
+                <td style="text-align: right">49.4 KB</td>
+                <td style="text-align: right">12 KB</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--smg)">
+            <div class="note-title">비교가 성립하는 이유</div>
+            <p>
+              puzzle-omg <code>green</code>은 스켈레톤이 <b>320&times;296</b>으로 채팅 얼굴 304&times;288과 거의 같은 크기이고,
+              감정도 <b>4개</b>(angry · beam · happy · mission)로 같습니다. 리그 구성도 같습니다 &mdash;
+              베이스 몸통 하나에 눈·입 변형을 얹는 방식이고, 솔리테어 루나도
+              <code>head</code> / <code>eyes_front</code> / <code>eyes_up</code> / <code>eyes_close</code> 로 동일한 구조입니다.
+              반면 <b>루나는 표시 크기가 채팅 얼굴의 1/3 면적</b>이라 원본 용량을 그대로 쓰면 과소평가가 됩니다.
+              그래서 산출기는 계수를 304&times;288 로 정규화해 두었습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">방식 이름</div>
+            <p>
+              <b>노드 트랜스폼 애니메이션</b>은 노드 트리로 파츠를 분리하고
+              <code>cc.Animation</code> 으로 <code>position</code> / <code>scale</code> / <code>angle</code> /
+              <code>opacity</code> 키프레임만 찍는 방식입니다. 솔리테어 루나 클립 7종 전부 <code>spriteFrame</code> 키가
+              <b>0개</b>인 걸로 확인했습니다. Spine 처럼 보이지만 <b>외부 툴도 런타임도 쓰지 않습니다.</b>
+              &ldquo;본 애니메이션&rdquo;은 틀린 이름입니다 &mdash; 실제 본이 없고 노드 계층 트랜스폼뿐입니다.
+              세 방식 중 아래 둘이 <b>컷아웃 애니메이션</b>에 속하고, 프레임 시퀀스는 아닙니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="scope">
+        <div class="foot">
+          <b>확인 범위</b>
+          <b>프레임 시퀀스</b> &mdash; <code>story-merge-proto-client</code> 워킹트리
+          <code>assets/bundle/chat/</code> PNG 272장 · <code>.anim</code> 16종 전수(2026-08-31).
+          클립 3건이 프레임 수와 어긋나 있습니다 &mdash; <code>brett_neutral</code> 은 키 15개로
+          <code>00016</code>·<code>00017</code> 2장이 미사용, <code>poppy_neutral</code> 은 키 18개로
+          <code>00001</code> 을 두 번 참조합니다. 루프 길이도 각각 1.000s / 1.200s 로 나머지 1.133s 와 다릅니다.
+          이 문서의 계수는 <b>PNG 17장 기준</b>이라 해당 건과 무관합니다.
+          <b>노드 트랜스폼</b> &mdash; <code>solitaire-tripeaks-client</code> 루나(리워드 박스 고양이) 실측.
+          파츠 텍스처가 1.603&nbsp;B/px 로 사내에서 압축이 가장 비효율적이어서,
+          이 계수는 <b>보수적(높게 잡힌)</b> 값입니다.
+          <b>스켈레탈</b> &mdash; <code>puzzle-omg</code> 5세트가 사내에 존재하는 캐릭터 Spine <b>전부</b>입니다.
+          솔리테어 · 코지 · 마종 · 블록블라스트 · 스페이스블라스트는 <code>.atlas</code> 0개이고,
+          각 리포의 <code>common/ui/SpinePlayerOnEnable.ts</code> 는 붙일 에셋이 없는 템플릿 보일러플레이트입니다.
+          coin-match <code>gold_pig</code>(221&nbsp;KB)은 감정 표현이 아닌 연출용이라 회귀에서 제외했습니다.
+          <b>모든 용량은 10진(1&nbsp;KB = 1,000&nbsp;B)</b>이며 소스 파일 기준입니다. GPU 텍스처 메모리는
+          압축이 풀려 별도로 계산해야 합니다 &mdash; 채팅 얼굴은 감정당 5.95&nbsp;MB, 16감정 전체 95.3&nbsp;MB 입니다.
+        </div>
+      </section>
+
+    </main>
+
+    <script>
+      /* 계수를 한 곳에 모아두고 입력 → 계산 → 표 렌더를 한 함수로 돌린다.
+         표가 3개라 각각 다시 그리는 대신 한 번에 갱신한다. */
+      (function () {
+        var REF_PX = 304 * 288; // 계수 정규화 기준 해상도
+        var EMO_STEPS = [1, 2, 4, 6, 8, 10, 15, 20];
+        var FRM_STEPS = [9, 12, 17, 24, 30, 45, 60];
+
+        var ids = ["chars", "emo", "frames", "w", "h", "den", "nb", "ne", "sb", "se"];
+        var el = {};
+        ids.forEach(function (k) {
+          el[k] = document.getElementById("i-" + k);
+        });
+
+        function num(k, min, fallback) {
+          var v = parseFloat(el[k].value);
+          if (!isFinite(v) || v < min) return fallback;
+          return v;
+        }
+
+        /* KB 단위로 계산하고 표시 직전에만 MB 로 올린다. 중간에 단위를
+           섞으면 배수 계산에서 실수가 난다. */
+        function fmt(kb) {
+          if (kb >= 1000) return (kb / 1000).toFixed(2) + " MB";
+          if (kb >= 100) return kb.toFixed(0) + " KB";
+          return kb.toFixed(1) + " KB";
+        }
+
+        function mult(a, b) {
+          if (!b) return "—";
+          return (a / b).toFixed(1) + "×";
+        }
+
+        function read() {
+          var w = num("w", 16, 304);
+          var h = num("h", 16, 288);
+          return {
+            chars: Math.round(num("chars", 1, 4)),
+            emo: Math.round(num("emo", 1, 10)),
+            frames: Math.round(num("frames", 1, 17)),
+            w: w,
+            h: h,
+            k: (w * h) / REF_PX, // 면적 보정 계수
+            den: num("den", 0.001, 0.316),
+            nb: num("nb", 0, 71.5),
+            ne: num("ne", 0, 21.6),
+            sb: num("sb", 0, 27.1),
+            se: num("se", 0, 6.9),
+          };
+        }
+
+        /* 감정 수를 인자로 받게 해서 메인 표와 스케일 표가 같은 함수를 쓴다. */
+        function perChar(v, emo, frames) {
+          var perFrame = (v.w * v.h * v.den) / 1000; // KB
+          return {
+            seqEmo: perFrame * frames,
+            seq: perFrame * frames * emo,
+            node: (v.nb + v.ne * emo) * v.k,
+            spine: (v.sb + v.se * emo) * v.k,
+          };
+        }
+
+        function td(x, right) {
+          return "<td" + (right ? ' style="text-align: right"' : "") + ">" + x + "</td>";
+        }
+
+        function render() {
+          var v = read();
+          var c = perChar(v, v.emo, v.frames);
+          var perFrame = (v.w * v.h * v.den) / 1000;
+
+          // 표 1 — 세 방식 비교
+          var rows = [
+            {
+              name: "프레임 시퀀스",
+              struct:
+                fmt(perFrame) + " &times; " + v.frames + "프레임 &times; 감정 수",
+              emo: c.seqEmo,
+              char: c.seq,
+            },
+            {
+              name: "노드 트랜스폼 애니메이션",
+              struct:
+                "base " + fmt(v.nb * v.k) + " + 감정당 " + fmt(v.ne * v.k),
+              emo: v.ne * v.k,
+              char: c.node,
+            },
+            {
+              name: "스켈레탈 (Spine)",
+              struct:
+                "base " + fmt(v.sb * v.k) + " + 감정당 " + fmt(v.se * v.k),
+              emo: v.se * v.k,
+              char: c.spine,
+            },
+          ];
+          document.getElementById("t-main").innerHTML = rows
+            .map(function (r) {
+              return (
+                "<tr>" +
+                td(r.name) +
+                td(r.struct) +
+                td(fmt(r.emo), 1) +
+                td(fmt(r.char), 1) +
+                td(fmt(r.char * v.chars), 1) +
+                td(mult(c.seq, r.char), 1) +
+                "</tr>"
+              );
+            })
+            .join("");
+
+          // 표 2 — 감정 수 축. 현재 입력값과 같은 행은 굵게 눈에 걸리게 한다.
+          document.getElementById("t-emo").innerHTML = EMO_STEPS.map(function (e) {
+            var r = perChar(v, e, v.frames);
+            var here = e === v.emo;
+            return (
+              "<tr" + (here ? ' style="font-weight:700"' : "") + ">" +
+              td(e + "감정" + (here ? " ←" : "")) +
+              td(fmt(r.seq), 1) +
+              td(fmt(r.node), 1) +
+              td(fmt(r.spine), 1) +
+              td(mult(r.seq, r.node), 1) +
+              td(mult(r.seq, r.spine), 1) +
+              "</tr>"
+            );
+          }).join("");
+
+          // 표 3 — 프레임 수 축. 노드·Spine 열이 안 움직이는 걸 보여주는 게 목적.
+          document.getElementById("t-frm").innerHTML = FRM_STEPS.map(function (f) {
+            var r = perChar(v, v.emo, f);
+            var here = f === v.frames;
+            return (
+              "<tr" + (here ? ' style="font-weight:700"' : "") + ">" +
+              td(f + "프레임" + (here ? " ←" : "")) +
+              td((f / 30).toFixed(2) + "s", 1) +
+              td(fmt(r.seq), 1) +
+              td(fmt(r.node), 1) +
+              td(fmt(r.spine), 1) +
+              "</tr>"
+            );
+          }).join("");
+        }
+
+        ids.forEach(function (k) {
+          el[k].addEventListener("input", render);
+        });
+        render();
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>
