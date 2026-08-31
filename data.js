@@ -7,7 +7,7 @@
      desc:    "한 줄 설명",           // 선택 · 한 문장 90자 이내 (아래 ★★)
      url:     "https://... 또는 docs/xxx.html",  // 필수 (없으면 "#")
      status:  "Live" | "진행중" | "완료" | "초안",
-     version: "v4.0",
+     version: "v4.1",
      updated: "2026-08-07 10:48",     // 날짜 + 시각(HH:MM)
      pinned:  true,                  // 상단 강조
      tags:    ["태그", "태그"],        // 최대 3개
@@ -217,7 +217,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v3.5",
-        updated: "2026-08-31 17:30",
+        updated: "2026-08-31 18:15",
         pinned: false,
         tags: ["머지", "역기획", "착수 점검"],
       },
