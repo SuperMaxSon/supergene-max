@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-08-28 21:10",
+  updated: "2026-08-31 09:02",
 };
 
 /* --------------------------------------------------------------------------
@@ -211,13 +211,13 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "스토리 머지 — 개발 TODO",
-        desc: "2머지 한 벌을 인게임 8·아웃게임 11 묶음으로 갈라 있음 21 / 개선 24 / 없음 99 로 표시한 TODO 매트릭스. 아이템은 타입 8·상태 6·액션 3·체인 3 네 축으로, 생성기 3종·체인 구조 3종은 필요한 저장 필드까지 도식으로 폅니다.",
+        title: "스토리 머지 — 역기획 TODO",
+        desc: "목표는 Gossip Harbor 급. 레퍼런스 위키의 Game Mechanics 디렉터리를 정본으로 시스템 21개를 세우고(개선 4 / 없음 17) L0~L4 레이어로 접었습니다. 값이 이미 맞는 건 XP 15 하나뿐입니다.",
         url: "docs/story-merge-kickoff.html",
         project: "smg",
         status: "초안",
-        version: "v2.3",
-        updated: "2026-08-28 10:20",
+        version: "v3.0",
+        updated: "2026-08-31 11:20",
         pinned: false,
         tags: ["머지", "역기획", "착수 점검"],
       },
@@ -459,6 +459,17 @@ const SECTIONS = [
         pinned: false,
         tags: ["아트", "정본"],
         share: false,
+      },
+      {
+        title: "스토리머지 커밋 히스토리 — 왜 이렇게 고쳤나",
+        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 틀만 세워 둔 상태 — 수록 0건, 첫 커밋부터 채운다.",
+        url: "docs/commit-history-story-merge.html",
+        project: "smg",
+        status: "초안",
+        version: "v0.1",
+        updated: "2026-08-31 09:02",
+        pinned: false,
+        tags: ["커밋 히스토리", "상시"],
       },
       {
         title: "코인매치 커밋 히스토리 — 왜 이렇게 고쳤나",

@@ -15,6 +15,9 @@
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#goal">목표</a>
+        <a class="nav-back" href="#sys">시스템 20</a>
+        <a class="nav-back" href="#layer">레이어</a>
         <a class="nav-back" href="#todo">TODO</a>
         <a class="nav-back" href="#item">아이템</a>
         <a class="nav-back" href="#ref">레퍼런스 대조</a>
@@ -28,36 +31,198 @@
 
     <header class="doc-header">
       <div class="wrap wrap--wide">
-        <div class="doc-eyebrow">개발 · TODO / 구현 가이드</div>
-        <h1 class="doc-title">스토리 머지 — 개발 TODO</h1>
+        <div class="doc-eyebrow">역기획 · Gossip Harbor</div>
+        <h1 class="doc-title">스토리 머지 — 역기획 TODO</h1>
         <p class="doc-lede">
-          <b>무엇을 만들 것인가</b>(기능 갭 · 로드맵)와 <b>어떻게 내보낼 것인가</b>(리소스 · 플랫폼)를
-          한 장으로 합쳤습니다. 맨 앞이 <b>인게임 · 아웃게임 TODO</b>이고, 그 뒤로
-          아이템 · 구현 규칙 · 에셋 · 플랫폼 · 착수 순서가 붙습니다.
-        </p>
-        <p class="doc-lede">
-          <b>2머지 한 벌을 만들려면 무엇이 필요하고, 지금 코드는 어디까지 와 있는가.</b>
-          인게임 8 · 아웃게임 11 묶음을 <b>있음 21 / 개선 24 / 없음 99</b> 로 갈랐습니다.
-          그 다음이 <b>어떻게 구현하는가</b> — 아이템 기믹 도감과, 기능 하나를 붙일 때 타야 하는 관문 7개.
-          기믹 도감은 <b>Merge Mansion 위키 원문에서 규칙과 수치를 옮겨</b> 다시 썼고,
-          그 7종이 공통으로 요구하는 것을 <b>레퍼런스 대조</b>에서 선결조건 6개로 접었습니다.
+          목표는 <b>Gossip Harbor 급 머지게임</b>입니다.
+          이 문서의 TODO 를 다 하면 거기에 도달하도록, <b>레퍼런스를 시스템 단위로 분해해 우리 코드와 맞댄</b> 문서입니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--plan)">스토리 머지 프로토</span>
-          <span class="tag">기능 갭 = main 코드 실측 · 커밋 002df73</span>
+          <span class="tag">레퍼런스 = gossip-harbor.fandom.com · api.php 원문</span>
+          <span class="tag">기믹 대조 = merge-mansion.fandom.com · api.php 원문</span>
+          <span class="tag">우리 코드 = main 커밋 002df73 · SimpleMergeBoardModel.ts 실측</span>
+          <span class="tag">우리 데이터 = story_node.json 11 · story_dialogue.json 37</span>
           <span class="tag">이미지 120.20MB 542장 전수 실측</span>
           <span class="tag">플랫폼 함정 = solitaire-tripeaks-client 실측</span>
-          <span class="tag">시스템 언팩 = 2머지 풀셋 기준 · 코어 우선</span>
-          <span class="tag">구현 규칙 = merge-series-impl-rules</span>
-          <span class="tag">아이템 용어 = Travel Town · Merge Mansion · Gossip Harbor 커뮤니티 · 위키 실측</span>
-          <span class="tag">기믹 7종 = merge-mansion.fandom.com api.php 위키텍스트 원문</span>
-          <span class="tag">보드 상수 = SimpleMergeBoardModel.ts 실측</span>
-          <span class="tag">v2.4 · 2026-08-31</span>
+          <span class="tag">v3.0 · 2026-08-31</span>
         </div>
       </div>
     </header>
 
     <main class="wrap wrap--wide">
+
+      <!-- 역기획의 출발점. 목표를 "Gossip Harbor 급"이라고만 하면 판정이 안 되므로
+           축 6개로 쪼개 숫자로 못 박는다. -->
+      <section class="doc-section" id="goal">
+        <h2 class="doc-h2">도달 판정 <span class="doc-h2-sub">무엇이 되면 "머지하버급"인가</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th style="width: 16%">축</th><th style="width: 26%">Gossip Harbor</th>
+                <th style="width: 26%">지금</th><th>도달 기준</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>보드 운용</b></td><td>칸을 꽉 채워 쓰고, 공간 부족이 과금 동력</td>
+                <td>42칸 중 <b>5개 제한</b></td><td>칸 수 = 보유 상한</td></tr>
+              <tr><td><b>생성기</b></td><td>음식 · 비음식 · 사이드퀘스트 3계열</td>
+                <td><b>1종</b> · 셀 8 고정</td><td>계열 3 · 데이터로 배치</td></tr>
+              <tr><td><b>체인 깊이</b></td><td>주 체인 10레벨 이상</td>
+                <td><b>3</b> <span class="tag">코드 상수</span></td><td>체인 테이블이 상한을 정함</td></tr>
+              <tr><td><b>재화</b></td><td>에너지 · 코인 · 젬 · XP</td>
+                <td>XP 값만 있음</td><td>4종 원장 + 소비처</td></tr>
+              <tr><td><b>진행</b></td><td>챕터 = 파트 10개, 파트마다 코인 소모</td>
+                <td>퀘스트 3 · 노드 11</td><td>주문 완료로 진행</td></tr>
+              <tr><td><b>아이템 상태</b></td><td>버블 · 얼음 · 쿨타임 · 잠금</td>
+                <td>없음 <code>cells: number[]</code></td><td>셀이 객체</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 레퍼런스의 Game Mechanics 디렉터리를 그대로 옮겨 우리 상태를 얹는다.
+           목록을 우리가 짜면 빠뜨리므로 저쪽 목차를 정본으로 쓴다. -->
+      <section class="doc-section" id="sys">
+        <h2 class="doc-h2">시스템 20 <span class="doc-h2-sub">Gossip Harbor <code>Game Mechanics</code> 디렉터리 = 만들 것의 전량</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 6%">L</th><th style="width: 15%">시스템</th>
+                <th style="width: 38%">핵심 규칙 · 실수치</th>
+                <th style="width: 22%">우리 현재</th><th>판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>L0</td><td><b>Kitchen Board</b></td>
+                <td>영구 보드 1 + 이벤트 보드 N. 영구만 인벤토리를 가짐</td>
+                <td>보드 1 · 42칸 · 동시 5개</td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span></td></tr>
+              <tr><td>L0</td><td><b>Generators</b><span class="cnote">별도 페이지</span></td>
+                <td>음식 · 비음식 · 사이드퀘스트 3계열. 무에너지 생성기(오렌지 나무)도 있음</td>
+                <td>1종 · 셀 8 고정</td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span></td></tr>
+              <tr><td>L0</td><td><b>Timers</b></td>
+                <td>연속 사용 시 생성기 쿨타임. 모래시계 <b>Lv1 −10분 · Lv2 −20분</b></td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L0</td><td><b>Bubbles</b></td>
+                <td>생성기 사용 시 확률로 추가 아이템. 광고 · 젬 · 즉시 터뜨려 코인.
+                  방치하면 몇 분 뒤 코인</td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L0</td><td><b>Frozen Items</b></td>
+                <td>레벨 30쯤 해금. 머지할 때 얼음 생성 — 몇 레벨 위 아이템을 요구하고
+                  <b>8~10분</b> 유지, 만료되면 코인</td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L0</td><td><b>Inventory</b></td>
+                <td>기본 <b>5슬롯</b>. 6번째부터 젬 <b>50 · 55 · 65 · 80</b>…
+                  생성기 부품 전용 창고는 슬롯 제한 없음</td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L1</td><td><b>Energy</b></td>
+                <td>상한 <b>100</b> · <b>2분당 +1</b> · 행동당 1.
+                  부스트 켜면 레벨을 건너뛰는 대신 더 소비</td>
+                <td>없음 — 무제한 탭</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L1</td><td><b>Sell Prices</b></td>
+                <td><b>레벨당 +1 코인</b>. Lv1 은 판매 불가 — 버리기만</td>
+                <td>코인 개념 없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L1</td><td><b>XP</b></td>
+                <td>챕터 1파트 완료마다 <b>15 XP</b>. 누적되면 아이템 2종 보상</td>
+                <td><code>reward_1_item: exp · 15</code>
+                  <span class="tag">값 일치</span> 누적 · 레벨 없음</td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span></td></tr>
+              <tr><td>L2</td><td><b>Chores</b></td>
+                <td>스토리 진행 단위. 챕터북 <b>10파트 = 인게임 1일</b>,
+                  파트마다 코인 소모, 매주 하루씩 추가</td>
+                <td>퀘스트 3 · 노드 11 · 코인 소모 없음</td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span></td></tr>
+              <tr><td>L2</td><td><b>Orders</b></td>
+                <td>손님 주문 완료가 진행의 축. 주문이 코인 · 도구 · 포인트를 돌려줌</td>
+                <td>없음 — <code>task_ref</code> 문자열뿐</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L2</td><td><b>Restaurant Goals</b></td>
+                <td><b>7일 · 하루 5목표</b>. 당일과 이전 날짜만 수령 가능</td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L2</td><td><b>Seasons</b></td>
+                <td>시즌 단위 진행 트랙</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L3</td><td><b>Item Store</b></td>
+                <td>데일리 스페셜 + 핫세일. 버블 가격이 핫세일가와 같음</td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L3</td><td><b>Gem Store</b></td>
+                <td>젬 환전 · 즉시 완성</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L3</td><td><b>Gift Shop</b></td>
+                <td>선물 상점</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L3</td><td><b>Ads</b></td>
+                <td>버블 개봉 · 에너지 등 보상형 훅</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L4</td><td><b>Card Collecting</b></td>
+                <td>카드 수집 이벤트</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L4</td><td><b>Star Store</b></td>
+                <td>중복 카드 교환. <b>100장 → 오더 케이스 + 언커먼 팩</b>,
+                  <b>200장 → 에너지 50</b></td>
+                <td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L4</td><td><b>Brimwave Community</b></td>
+                <td>커뮤니티 · 관계도 보상</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td>L4</td><td><b>Flaming Frenzy</b></td>
+                <td>상시 운영 이벤트</td><td>없음</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <div class="note-title">집계</div>
+          21개 중 <b>개선 4 · 없음 17</b>. 우리 값이 레퍼런스와 <b>이미 일치하는 건 XP 15 하나</b>입니다.
+        </div>
+      </section>
+
+      <!-- 20개를 평평한 목록으로 두면 착수 순서가 안 나온다. 의존으로 층을 나눈다. -->
+      <section class="doc-section" id="layer">
+        <h2 class="doc-h2">레이어 <span class="doc-h2-sub">아래층이 없으면 위층은 붙지 않는다</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th style="width: 8%">층</th><th style="width: 17%">이름</th>
+                <th style="width: 10%">시스템</th><th style="width: 30%">이 층이 세우는 것</th>
+                <th>아래층 없이 붙이면</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>L0</b></td><td>보드 코어</td><td>6</td>
+                <td>셀 객체 · 체인 테이블 · 서버 시각 타이머</td>
+                <td>—<span class="cnote">최하층</span></td></tr>
+              <tr><td><b>L1</b></td><td>재화</td><td>3</td>
+                <td>에너지 · 코인 · 젬 · XP 원장</td>
+                <td>소비처가 없어 수치가 의미를 못 가짐</td></tr>
+              <tr><td><b>L2</b></td><td>진행</td><td>4</td>
+                <td>주문 · 챕터 · 목표 트랙</td>
+                <td>보상을 줄 재화가 없음</td></tr>
+              <tr><td><b>L3</b></td><td>상점 · 과금</td><td>4</td>
+                <td>구매 · 광고 · 환전</td>
+                <td>팔 것도 살 이유도 없음</td></tr>
+              <tr><td><b>L4</b></td><td>라이브옵스</td><td>4</td>
+                <td>이벤트 · 카드 · 커뮤니티</td>
+                <td>붙일 코어 루프가 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">지금 위치</div>
+          우리는 <b>L0 도 아직 아닙니다.</b> 보드는 있지만 셀이 <code>number</code>,
+          체인은 코드 상수, 타이머는 없습니다.
+          L0 의 선결조건 6개는 <b>§레퍼런스 대조</b>에 있습니다.
+        </div>
+      </section>
       <!-- 합치는 이유가 이 섹션이다. 두 문서에 각각 "정해야 할 것"이 있었고,
            결정 목록이 흩어진 게 가장 비싼 상태라 하나로 모았다. -->
       <section class="doc-section" id="todo">

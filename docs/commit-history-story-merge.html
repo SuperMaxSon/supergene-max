@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>스토리머지 커밋 히스토리 — 왜 이렇게 고쳤나</title>
+    <meta
+      name="description"
+      content="커밋 문구로 훑고, 필요한 것만 펼쳐 왜 그렇게 고쳤는지 확인하는 목록. story-merge-proto-client 기록 시작 전 — 틀만 준비된 상태."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light5" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#howto">행 추가하는 법</a>
+        <!-- 커밋이 쌓이면 여기에 주 단위 앵커를 앞쪽에 끼워 넣는다:
+             <a class="nav-back" href="#w0831">8/31 ~ 9/4</a>
+             앵커 대상은 반드시 같은 페이지의 section id 로 존재해야 한다. -->
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">도구 · 작업 기록</div>
+        <h1 class="doc-title">스토리머지 커밋 히스토리 — 왜 이렇게 고쳤나</h1>
+        <p class="doc-lede">
+          커밋 문구로 훑고, 궁금한 것만 눌러서 펼칩니다. 위 칸에 키워드를 넣으면 즉시 좁혀지고,
+          <b>영역 태그</b>를 누르면 그것만 남습니다(같은 줄 안에서는 여러 개 선택 = 합집합,
+          검색어와는 교집합). 같은 날 같은 주제 커밋과 <b>되돌림 쌍</b>은 <b>하나로 묶여</b> 보이고,
+          묶음 라벨에는 실측 <b>순 효과</b>를 적습니다 — 커밋 목록만 보면 되돌아간 작업을 오해하기 때문입니다.
+          <b>지금은 기록이 0건입니다.</b> 코인매치·솔리테어 문서와 같은 틀을 미리 세워 둔 것이고,
+          커밋을 올리는 대로 한 줄씩 채웁니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">story-merge-proto-client</span>
+          <span class="tag">수록 커밋 0건 · 기록 시작 전</span>
+          <span class="tag">근거는 git 실측만 · 추정 사유는 쓰지 않음</span>
+          <span class="tag">v0.1 · 2026-08-31</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- 필터 바. nav 아래에 sticky 로 붙어 스크롤 중에도 바로 좁힐 수 있다.
+           행이 0건이어도 그대로 둔다 — 첫 행을 넣는 순간 손댈 곳 없이 동작해야 하기 때문. -->
+      <div class="ch-toolbar">
+        <div class="ch-field">
+          <svg class="ch-ico" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="2" />
+            <path d="M13.5 13.5 L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <input
+            class="ch-search"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="커밋 문구 · 해시 · 파일명 · 작성자 · 사유로 검색"
+            aria-label="커밋 필터"
+          />
+          <span class="ch-kbd">/</span>
+          <button class="ch-clear" type="button" aria-label="검색어 지우기">&times;</button>
+        </div>
+        <button class="ch-mode" type="button" aria-pressed="true" title="같은 날 같은 주제 커밋과 되돌림 쌍을 하나로 묶습니다">
+          묶어 보기
+        </button>
+        <span class="ch-count">0건</span>
+      </div>
+
+      <!-- 범례 = 필터. 색 설명 칩을 그대로 버튼으로 쓴다.
+           영역 축은 스토리머지 코드베이스에 맞춰 미리 정해 뒀다 — 코인매치의
+           소셜 · 네트워크 · 토너먼트는 이 프로젝트에 없어서 빼고, 스토리 · 채팅 ·
+           스틸컷 · 머지 · 꾸미기를 넣었다. 아래 스크립트의 ACC 맵과 같은 값이어야
+           묶음 헤더 색이 어긋나지 않는다. -->
+      <div class="ch-legend" data-axis="area" role="group" aria-label="영역 필터">
+        <button class="ch-chip ch-chip--all" type="button" data-axis-all="area" aria-pressed="true">전체</button>
+        <button class="ch-chip" type="button" data-area="스토리" aria-pressed="false" style="--acc: var(--smg)">스토리</button>
+        <button class="ch-chip" type="button" data-area="채팅" aria-pressed="false" style="--acc: var(--coz)">채팅</button>
+        <button class="ch-chip" type="button" data-area="스틸컷" aria-pressed="false" style="--acc: var(--mah)">스틸컷</button>
+        <button class="ch-chip" type="button" data-area="머지" aria-pressed="false" style="--acc: var(--sol)">머지</button>
+        <button class="ch-chip" type="button" data-area="꾸미기" aria-pressed="false" style="--acc: var(--plan)">꾸미기</button>
+        <button class="ch-chip" type="button" data-area="UI" aria-pressed="false" style="--acc: var(--validate)">UI</button>
+        <button class="ch-chip" type="button" data-area="리소스" aria-pressed="false" style="--acc: var(--warn)">리소스</button>
+        <button class="ch-chip" type="button" data-area="로그" aria-pressed="false" style="--acc: var(--balance)">로그</button>
+        <button class="ch-chip" type="button" data-area="빌드" aria-pressed="false" style="--acc: var(--deploy)">빌드</button>
+        <button class="ch-chip" type="button" data-area="기타" aria-pressed="false" style="--acc: var(--text-dim)">기타</button>
+      </div>
+
+      <!-- 작성자 축은 **일부러 지금 그리지 않는다.** 행이 0건이라 칩을 누르면 전부 사라져
+           고장난 것처럼 보인다. 두 명 이상이 실제로 등장하면 아래 주석을 풀고
+           style 의 색 토큰만 사람마다 다르게 배정하면 된다 — 스크립트는 이미
+           data-axis="who" 를 영역과 별개 축(줄 사이 AND)으로 다룬다.
+      <div class="ch-legend" data-axis="who" role="group" aria-label="작성자 필터">
+        <button class="ch-chip ch-chip--all" type="button" data-axis-all="who" aria-pressed="true">전체</button>
+        <button class="ch-chip" type="button" data-who="Max" aria-pressed="false" style="--acc: var(--analysis)">Max <span class="ch-chip-n">0</span></button>
+      </div>
+      -->
+
+      <!-- ────────────────────────────────────────────────────────────────
+           커밋 행이 들어올 자리. 주(week) 단위 section 을 **행이 생길 때** 만든다.
+           빈 section 을 미리 두면 아래 필터 스크립트가 "보이는 행 0" 으로 보고
+           ch-hide 로 접어 버려서 제목만 남은 유령이 된다.
+
+           <section class="doc-section" data-ch-sec id="w0831">
+             <h2 class="doc-h2">8/31 ~ 9/4 <span class="doc-h2-sub">1건</span></h2>
+             <div class="ch-list">
+               <details class="ch" data-area="채팅" data-who="Max" style="--acc: var(--coz)">
+                 <summary>
+                   <span class="ch-who" style="--acc: var(--analysis)">Max</span>
+                   <span class="ch-what">커밋 제목 그대로</span>
+                   <span class="ch-id">08-31 · a1b2c3d4</span>
+                 </summary>
+                 <div class="ch-body">
+                   <dl>
+                     <dt>언제</dt>
+                     <dd>2026-08-31 14:02</dd>
+                     <dt>어디서</dt>
+                     <dd><code>ViewChat.ts</code> · <code>chat_Poppy_left.prefab</code></dd>
+                     <dt>규모</dt>
+                     <dd>2 files changed, 12 insertions(+), 3 deletions(-)</dd>
+                     <dt>작업</dt>
+                     <dd>무엇이 문제였고 왜 이렇게 고쳤는지. 근거가 없으면 "확인 필요"로 둔다.</dd>
+                   </dl>
+                 </div>
+               </details>
+             </div>
+           </section>
+
+           같은 날 같은 주제이거나 되돌림 쌍이면 두 행에 같은
+           data-group="08-31·한 줄 주제" 를 준다. 묶음 헤더는 런타임에 만들어지고,
+           헤더 색은 멤버 **다수 영역**을 따른다.
+           ──────────────────────────────────────────────────────────────── -->
+
+      <!-- 스크립트가 제어하는 ch-empty 는 "필터를 걸었는데 결과가 0" 일 때만 뜬다.
+           아무것도 안 누른 첫 화면의 0건은 그걸로 설명이 안 되므로 note 를 따로 둔다. -->
+      <div class="notes">
+        <div class="note" style="--acc: var(--smg)">
+          <div class="note-title">아직 기록된 커밋이 없습니다</div>
+          <p>
+            이 페이지는 <strong>틀만 세워 둔 상태</strong>입니다. 위의 검색·영역 필터·묶어 보기는
+            지금도 그대로 동작하고, 첫 행을 넣는 순간 손댈 곳 없이 걸립니다.
+            리포에는 다른 작성자의 커밋이 이미 쌓여 있지만, 사유를 적을 근거 원본
+            (<code>_ignore/history.md</code>)이 아직 없어 <strong>추정으로 채우지 않았습니다</strong> —
+            커밋 문구만 옮겨 적으면 "왜 고쳤나"가 빠져 이 문서의 존재 이유가 사라지기 때문입니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="ch-empty">일치하는 커밋이 없습니다. 키워드를 줄여보세요.</div>
+
+      <!-- 이 section 에는 data-ch-sec 를 주지 않는다. 필터 스크립트는
+           data-ch-sec 가 붙은 section 만 "행이 사라지면 접는" 대상으로 본다.
+           설명 섹션까지 접히면 필터를 건 순간 페이지가 통째로 비어 버린다. -->
+      <section class="doc-section" id="howto">
+        <h2 class="doc-h2">행 추가하는 법 <span class="doc-h2-sub">필드 4개 + 축 2개</span></h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>자리</th>
+                <th>무엇을 적나</th>
+                <th>어디서 얻나</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>data-area</code></td>
+                <td>영역 — 위 범례 10개 중 하나. 오타가 나면 그 칩으로는 영원히 안 잡힌다</td>
+                <td>바뀐 파일이 속한 계통</td>
+              </tr>
+              <tr>
+                <td><code>data-who</code></td>
+                <td>작성자 표기. 같은 사람이 <code>EricSupergene</code> / <code>Eric Kim</code> 처럼 갈리면 하나로 통일</td>
+                <td><code>git log --format=%an</code></td>
+              </tr>
+              <tr>
+                <td><code>data-group</code></td>
+                <td>같은 날 같은 주제·되돌림 쌍에만. <code>MM-DD·주제</code> 형식, 없으면 아예 뺀다</td>
+                <td>사람 판단</td>
+              </tr>
+              <tr>
+                <td><code>.ch-what</code></td>
+                <td>커밋 제목 그대로. 다듬지 않는다 — 리포에서 <code>git log</code> 로 찾을 때의 열쇠다</td>
+                <td><code>%s</code></td>
+              </tr>
+              <tr>
+                <td><code>.ch-id</code></td>
+                <td><code>MM-DD · 짧은해시</code></td>
+                <td><code>%ad</code> · <code>%h</code></td>
+              </tr>
+              <tr>
+                <td>언제 / 어디서 / 규모</td>
+                <td>커밋 시각 · 바뀐 파일 · <code>--shortstat</code> 한 줄</td>
+                <td>전부 git 실측</td>
+              </tr>
+              <tr>
+                <td>작업</td>
+                <td><b>왜 그렇게 고쳤는지.</b> 근거가 없으면 지어내지 말고 <code>확인 필요</code></td>
+                <td>이슈 번호 · 작업 문서 · 본인 기억</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 이렇게 읽는 이유</div>
+            <p>
+              앞의 다섯은 <strong>git 에서 기계적으로 뽑히는 값</strong>이고, 마지막 "작업" 하나만 사람이 씁니다.
+              문서의 가치는 전부 그 한 줄에 있습니다 — 나머지는 <code>git log</code> 로도 볼 수 있으니까요.
+              그래서 근거 없는 사유를 채워 넣는 것이 <strong>비워 두는 것보다 나쁩니다.</strong>
+              나중에 그 줄을 믿고 판단하게 되기 때문입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">묶음(<code>data-group</code>)을 쓰는 경우</div>
+            <p>
+              하나는 <strong>같은 날 같은 주제로 쪼개진 커밋</strong>, 하나는 <strong>되돌림 쌍</strong>입니다.
+              특히 두 번째가 중요한데, 목록만 보면 되돌린 작업이 "한 일"로 두 번 세어집니다.
+              묶음 라벨에는 커밋 제목이 아니라 <strong>순 효과</strong>(결국 무엇이 남았나)를 적습니다.
+              한 커밋만 있는 주제에는 붙이지 않습니다 — 멤버 1개짜리 묶음은 접힘 한 단계만 늘립니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div class="foot">
+        <b>확인 범위</b> <code>story-merge-proto-client</code> <code>origin/main</code>.
+        현재 <b>수록 커밋 0건</b> — 페이지 골격 · 검색 · 영역 필터 · 묶기까지만 준비된 템플릿이다.
+        <b>미확인</b> 리포에 이미 올라온 다른 작성자의 커밋은 사유 근거(<code>_ignore/history.md</code>)가
+        없어 수록하지 않았다. 지어낸 사유는 쓰지 않는다.
+        <b>원본</b> 앞으로의 원본은 <code>story-merge-proto-client/_ignore/history.md</code> 이며,
+        그 파일이 생기면 이 페이지는 <b>생성물</b>이 된다 — 그때부터는 직접 편집하지 말고
+        원본을 고친 뒤 다시 생성한다.
+      </div>
+    </main>
+
+    <script src="../app.js?v=light5"></script>
+    <script>
+      /* 커밋 필터 — 축이 셋이고 서로 AND/OR로 물린다.
+         - 검색(문자열, AND): 요약 줄 + 펼친 본문 전체 + 영역명(data-area).
+           파일명이나 심볼로 찾는 경우가 많아 본문을 빼면 검색이 무의미해진다.
+         - 영역 태그(OR): 아무것도 안 눌리면 전체. 검색과는 AND.
+           검색어에 "이벤트"를 치는 것과 달리 본문에 그 단어가 든 다른 영역 행이 안 딸려온다.
+         - 묶기: 같은 날 같은 주제(data-group)를 details.ch-group 하나로 접는다.
+           묶음은 런타임에만 만들고 원본 행 순서는 list._orig에 그대로 남겨,
+           토글을 끄면 이전 버전과 완전히 같은 평면 목록으로 되돌아간다.
+         - 요약 줄에 없고 본문에만 걸린 행은 자동으로 펼친다. 안 그러면
+           "왜 이 행이 남았는지" 알 수 없어 사용자가 다시 하나씩 눌러야 한다.
+         - 하이라이트는 dd/dt/.ch-what 안의 텍스트 노드에만 적용해 code 태그와
+           DOM 구조를 깨지 않는다. */
+      (function () {
+        var input = document.querySelector(".ch-search");
+        if (!input) return;
+        var toolbar = document.querySelector(".ch-toolbar");
+        var clear = document.querySelector(".ch-clear");
+        var mode = document.querySelector(".ch-mode");
+        var chips = Array.prototype.slice.call(document.querySelectorAll(".ch-chip"));
+
+        var rows = Array.prototype.slice.call(document.querySelectorAll("details.ch"));
+        var sections = Array.prototype.slice.call(
+          /* 커밋 행을 담은 주(week) 섹션만 접기 대상이다. 설명 섹션(#howto)에는
+             data-ch-sec 가 없어서, 필터로 행이 다 사라져도 그대로 남는다. */
+          document.querySelectorAll("main .doc-section[data-ch-sec]")
+        );
+        var count = document.querySelector(".ch-count");
+        var empty = document.querySelector(".ch-empty");
+
+        /* 묶음 헤더의 색은 멤버 **다수 영역**을 따른다. 첫 멤버 색을 쓰면
+           채팅3 + 리소스1 같은 묶음에서 헤더만 리소스색이 되어 어긋난다.
+           키는 위 ch-legend 의 data-area 와, 값은 그 칩의 --acc 와 같아야 한다. */
+        var ACC = {"스토리": "var(--smg)", "채팅": "var(--coz)", "스틸컷": "var(--mah)", "머지": "var(--sol)", "꾸미기": "var(--plan)", "UI": "var(--validate)", "리소스": "var(--warn)", "로그": "var(--balance)", "빌드": "var(--deploy)", "기타": "var(--text-dim)"};
+
+        rows.forEach(function (row) {
+          var head = row.querySelector("summary").textContent;
+          row._head = ((row.dataset.area || "") + " " + (row.dataset.who || "") + " " + head).toLowerCase();
+          row._all = (row._head + " " + row.textContent).toLowerCase();
+          row._subs = Array.prototype.slice.call(
+            row.querySelectorAll(".ch-what, .ch-body dt, .ch-body dd")
+          );
+        });
+
+        /* ---- 묶음 만들기 ------------------------------------------------
+           data-group="MM-DD·주제" 를 단위로 details.ch-group 을 만들어 둔다.
+           만드는 것과 붙이는 것을 분리해서, 토글은 DOM 재배치만 하면 되게 한다. */
+        var lists = Array.prototype.slice.call(document.querySelectorAll(".ch-list"));
+        var groups = [];
+
+        lists.forEach(function (list) {
+          list._orig = Array.prototype.slice.call(list.children);
+          var made = {};
+          list._orig.forEach(function (row) {
+            var key = row.dataset.group;
+            if (!key) return;
+            if (made[key]) {
+              made[key]._members.push(row);
+              return;
+            }
+            // 주제명 안에도 ·가 들어갈 수 있다(말풍선·스틸컷 정렬) — 첫 ·에서만 자른다
+            var cut = key.indexOf("·");
+            var parts = [key.slice(0, cut), key.slice(cut + 1)];
+            var g = document.createElement("details");
+            g.className = "ch-group";
+            g._members = [row];
+            g._key = key;
+            var sum = document.createElement("summary");
+            sum.innerHTML =
+              '<span class="ch-group-tag">묶음</span>' +
+              '<span class="ch-group-name"></span>' +
+              '<span class="ch-group-count"></span>' +
+              '<span class="ch-id"></span>';
+            sum.querySelector(".ch-group-name").textContent = parts[1] || key;
+            sum.querySelector(".ch-id").textContent = parts[0];
+            g.appendChild(sum);
+            g._count = sum.querySelector(".ch-group-count");
+            made[key] = g;
+            groups.push(g);
+          });
+          list._groups = Object.keys(made).map(function (k) {
+            return made[k];
+          });
+        });
+
+        groups.forEach(function (g) {
+          var tally = {};
+          var top = "";
+          g._members.forEach(function (row) {
+            var a = row.dataset.area || "";
+            tally[a] = (tally[a] || 0) + 1;
+            if (!top || tally[a] > tally[top]) top = a;
+          });
+          g.style.setProperty("--acc", ACC[top] || "var(--text-dim)");
+        });
+
+        var grouped = false;
+
+        function setGrouped(on) {
+          grouped = on;
+          lists.forEach(function (list) {
+            if (!list._groups.length) return;
+            if (!on) {
+              // 원본 순서 그대로 되돌린다 — 묶음 사이에 끼어 있던 낱개 행 위치까지 복원된다
+              list._orig.forEach(function (row) {
+                list.appendChild(row);
+              });
+              list._groups.forEach(function (g) {
+                if (g.parentNode === list) list.removeChild(g);
+              });
+              return;
+            }
+            var placed = {};
+            list._orig.forEach(function (row) {
+              var key = row.dataset.group;
+              if (!key) {
+                list.appendChild(row);
+                return;
+              }
+              var g = list._groups.filter(function (x) {
+                return x._key === key;
+              })[0];
+              if (!placed[key]) {
+                list.appendChild(g); // 묶음은 첫 멤버가 있던 자리에 들어간다
+                placed[key] = true;
+              }
+              g.appendChild(row);
+            });
+          });
+          if (mode) mode.setAttribute("aria-pressed", on ? "true" : "false");
+        }
+
+        function clearMarks(row) {
+          row._subs.forEach(function (el) {
+            var marks = el.querySelectorAll("mark.ch-hit");
+            if (!marks.length) return;
+            Array.prototype.forEach.call(marks, function (m) {
+              m.replaceWith(document.createTextNode(m.textContent));
+            });
+            el.normalize();
+          });
+        }
+
+        function mark(row, terms) {
+          row._subs.forEach(function (el) {
+            var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            var nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(function (node) {
+              var text = node.nodeValue;
+              var lower = text.toLowerCase();
+              var hits = [];
+              terms.forEach(function (t) {
+                var from = 0;
+                var at;
+                while ((at = lower.indexOf(t, from)) !== -1) {
+                  hits.push([at, at + t.length]);
+                  from = at + t.length;
+                }
+              });
+              if (!hits.length) return;
+              hits.sort(function (a, b) { return a[0] - b[0]; });
+              var frag = document.createDocumentFragment();
+              var cursor = 0;
+              hits.forEach(function (h) {
+                if (h[0] < cursor) return; // 겹치는 구간은 앞선 것만 남긴다
+                if (h[0] > cursor) frag.appendChild(document.createTextNode(text.slice(cursor, h[0])));
+                var m = document.createElement("mark");
+                m.className = "ch-hit";
+                m.textContent = text.slice(h[0], h[1]);
+                frag.appendChild(m);
+                cursor = h[1];
+              });
+              if (cursor < text.length) frag.appendChild(document.createTextNode(text.slice(cursor)));
+              node.replaceWith(frag);
+            });
+          });
+        }
+
+        /* 축이 둘이다 — 영역(data-area) · 작성자(data-who).
+           작성자 범례는 지금 주석 처리해 뒀지만(행 0건), 로직은 그대로 살려 둔다.
+           범례 주석만 풀면 바로 두 축이 된다. 한 줄 안은 OR, 줄 사이는 AND. */
+        function activeOn(axis) {
+          return chips
+            .filter(function (c) {
+              return c.dataset[axis] && c.getAttribute("aria-pressed") === "true";
+            })
+            .map(function (c) {
+              return c.dataset[axis];
+            });
+        }
+        function axisOf(chip) {
+          return chip.dataset.area ? "area" : chip.dataset.who ? "who" : null;
+        }
+
+        function apply() {
+          var q = input.value.trim().toLowerCase();
+          var terms = q ? q.split(/\s+/) : [];
+          var areas = activeOn("area");
+          var whos = activeOn("who");
+          var narrowed = terms.length > 0 || areas.length > 0 || whos.length > 0;
+          var shown = 0;
+
+          rows.forEach(function (row) {
+            clearMarks(row);
+            var hit =
+              terms.every(function (t) { return row._all.indexOf(t) !== -1; }) &&
+              (!areas.length || areas.indexOf(row.dataset.area || "") !== -1) &&
+              (!whos.length || whos.indexOf(row.dataset.who || "") !== -1);
+            row.classList.toggle("ch-hide", !hit);
+            if (!hit) { row.open = false; return; }
+            shown++;
+            if (!terms.length) { row.open = false; return; }
+            mark(row, terms);
+            // 요약 줄만으로 설명되지 않는 매치는 펼쳐서 근거를 보여준다
+            row.open = !terms.every(function (t) { return row._head.indexOf(t) !== -1; });
+          });
+
+          // 묶음은 남은 멤버 수를 그대로 보여준다. 0이면 헤더만 남는 유령이 되므로 숨긴다.
+          groups.forEach(function (g) {
+            if (!grouped) return;
+            var visible = g._members.filter(function (row) {
+              return !row.classList.contains("ch-hide");
+            }).length;
+            g.classList.toggle("ch-hide", visible === 0);
+            g._count.textContent = visible + "건";
+            // 검색으로 좁힌 결과는 묶음 안에 숨어 있으면 못 보므로 펼친다.
+            // 태그만 눌렀을 때는 접힌 채로 건수만 갱신한다(훑는 밀도를 유지).
+            g.open = terms.length > 0 && visible > 0;
+          });
+
+          sections.forEach(function (sec) {
+            var visible = sec.querySelectorAll("details.ch:not(.ch-hide)").length;
+            sec.classList.toggle("ch-hide", visible === 0);
+            var sub = sec.querySelector(".doc-h2-sub");
+            if (sub) sub.textContent = visible + "건";
+          });
+
+          if (toolbar) {
+            toolbar.classList.toggle("is-filled", terms.length > 0);
+            toolbar.classList.toggle("is-picked", narrowed);
+          }
+          count.textContent = narrowed ? shown + " / " + rows.length + "건" : rows.length + "건";
+          count.classList.toggle("ch-zero", narrowed && shown === 0);
+          if (empty) empty.classList.toggle("is-on", narrowed && shown === 0);
+        }
+
+        chips.forEach(function (chip) {
+          chip.addEventListener("click", function () {
+            /* '전체' 칩은 **자기 줄만** 되돌린다. 두 축을 한꺼번에 지우면
+               "작성자만 좁혀 둔 상태"를 영역 전체 버튼이 날려버린다. */
+            var legend = chip.closest(".ch-legend");
+            var mine = chips.filter(function (c) { return c.closest(".ch-legend") === legend; });
+            var axis = legend.dataset.axis === "who" ? "who" : "area";
+            if (!axisOf(chip)) {
+              mine.forEach(function (c) {
+                c.setAttribute("aria-pressed", axisOf(c) ? "false" : "true");
+              });
+            } else {
+              chip.setAttribute(
+                "aria-pressed",
+                chip.getAttribute("aria-pressed") === "true" ? "false" : "true"
+              );
+              mine[0].setAttribute("aria-pressed", activeOn(axis).length > 0 ? "false" : "true");
+            }
+            apply();
+          });
+        });
+
+        if (mode) {
+          mode.addEventListener("click", function () {
+            setGrouped(!grouped);
+            apply();
+          });
+        }
+
+        input.addEventListener("input", apply);
+        if (clear) {
+          clear.addEventListener("click", function () {
+            input.value = "";
+            apply();
+            input.focus();
+          });
+        }
+        input.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") { input.value = ""; apply(); }
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); input.focus(); }
+        });
+
+        setGrouped(true);
+        apply();
+      })();
+    </script>
+  </body>
+</html>
