@@ -19,8 +19,10 @@
         <a class="nav-back" href="#sys">시스템 20</a>
         <a class="nav-back" href="#layer">레이어</a>
         <a class="nav-back" href="#todo">TODO</a>
-        <a class="nav-back" href="#item">아이템</a>
-        <a class="nav-back" href="#ref">레퍼런스 대조</a>
+        <a class="nav-back" href="#board">L0 보드</a>
+        <a class="nav-back" href="#econ">L1 재화</a>
+        <a class="nav-back" href="#prog">L2 진행</a>
+        <a class="nav-back" href="#gap">선결조건</a>
         <a class="nav-back" href="#howto">구현 규칙</a>
         <a class="nav-back" href="#asset">에셋</a>
         <a class="nav-back" href="#platform">플랫폼</a>
@@ -45,7 +47,7 @@
           <span class="tag">우리 데이터 = story_node.json 11 · story_dialogue.json 37</span>
           <span class="tag">이미지 120.20MB 542장 전수 실측</span>
           <span class="tag">플랫폼 함정 = solitaire-tripeaks-client 실측</span>
-          <span class="tag">v3.0 · 2026-08-31</span>
+          <span class="tag">v3.1 · 2026-08-31</span>
         </div>
       </div>
     </header>
@@ -499,569 +501,171 @@
         </details>
       </section>
 
-      <section class="doc-section" id="item">
-        <h2 class="doc-h2">아이템 기믹 · 타입 <span class="doc-h2-sub">IN-2 · IN-3 을 펼친 것</span></h2>
-
-        <h3 class="doc-h2-sub">아이템 해부도 — 왜 셀이 <code>number</code> 면 안 되는가</h3>
-        <div class="table-scroll">
-          <svg viewBox="0 0 720 300" width="720" height="300" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>아이템 인스턴스가 들고 있어야 하는 타입 9종과 상태 6종</title>
-            <text x="131" y="34" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text)">타입 — 무엇인가</text>
-            <text x="589" y="34" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text)">상태 — 지금 어떤가</text>
-
-            <g font-size="11" font-weight="700" fill="#fff" text-anchor="middle">
-              <rect x="6" y="48" width="250" height="30" rx="6" fill="var(--warn)" /><text x="131" y="67">일반 — 머지 대상</text>
-              <rect x="6" y="84" width="250" height="30" rx="6" fill="var(--warn)" /><text x="131" y="103">생성기 3종 — 에너지형 · 자동형 · 충전식</text>
-              <rect x="6" y="120" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="139">소모품 — 탭하면 효과 후 사라짐</text>
-              <rect x="6" y="156" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="175">상자 — 열면 재화 · 도구 배출</text>
-              <rect x="6" y="192" width="250" height="30" rx="6" fill="var(--bad)" /><text x="131" y="211">자물쇠 · 조합기 · 판매</text>
-            </g>
-
-            <rect x="286" y="48" width="148" height="174" rx="10" fill="var(--surface)" stroke="var(--text)" stroke-width="2" />
-            <text x="360" y="76" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text)">아이템 인스턴스</text>
-            <g font-size="11" fill="var(--text-dim)" text-anchor="middle">
-              <text x="360" y="104">itemId</text>
-              <text x="360" y="126">chainId · level</text>
-              <text x="360" y="148">charges</text>
-              <text x="360" y="170">state</text>
-              <text x="360" y="192">cooldownEndAt</text>
-              <text x="360" y="212">reservedBy</text>
-            </g>
-
-            <g font-size="11" font-weight="700" fill="#fff" text-anchor="middle">
-              <rect x="464" y="48" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="65">버블 — 광고 · 젬으로 터뜨림</text>
-              <rect x="464" y="78" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="95">잠금 — 열쇠 나올 때까지 머지 불가</text>
-              <rect x="464" y="108" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="125">충전 — charges 잔량</text>
-              <rect x="464" y="138" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="155">쿨타임 — 회복 대기</text>
-              <rect x="464" y="168" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="185">신규 — NEW 뱃지</text>
-              <rect x="464" y="198" width="250" height="26" rx="6" fill="var(--bad)" /><text x="589" y="215">주문 지정 — 제출 대기</text>
-            </g>
-
-            <g stroke="var(--border)" stroke-width="2">
-              <path d="M256 63 H286 M256 99 H286 M256 135 H286 M256 171 H286 M256 207 H286" />
-              <path d="M434 61 H464 M434 91 H464 M434 121 H464 M434 151 H464 M434 181 H464 M434 211 H464" />
-            </g>
-
-            <rect x="6" y="244" width="708" height="44" rx="8" fill="var(--surface-3)" stroke="var(--bad)" stroke-dasharray="4 3" />
-            <text x="20" y="262" font-size="11" font-weight="800" fill="var(--bad)">현재</text>
-            <text x="20" y="280" font-size="11" fill="var(--text-dim)">cells: number[] — 셀 하나가 레벨 숫자 하나. 위 11칸 중 담기는 건 level 하나뿐이다.</text>
-            <text x="700" y="271" text-anchor="end" font-size="11" font-weight="700" fill="var(--bad)">주황 = 프로토 수준 · 빨강 = 코드 0줄</text>
-          </svg>
-        </div>
-
-        <h3 class="doc-h2-sub">생성기 3종 — 무엇이 다른가</h3>
-        <div class="table-scroll">
-          <svg viewBox="0 0 720 250" width="720" height="250" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>생성기 3종의 동작 차이와 공통 성질</title>
-            <g font-size="11" text-anchor="middle">
-              <!-- 에너지형 -->
-              <text x="6" y="38" text-anchor="start" font-size="12" font-weight="800" fill="var(--warn)">에너지형</text>
-              <rect x="96" y="20" width="60" height="26" rx="13" fill="var(--warn)" /><text x="126" y="37" fill="#fff" font-weight="700">탭</text>
-              <rect x="170" y="20" width="86" height="26" rx="13" fill="var(--warn)" /><text x="213" y="37" fill="#fff" font-weight="700">에너지 −1</text>
-              <rect x="270" y="20" width="70" height="26" rx="13" fill="var(--warn)" /><text x="305" y="37" fill="#fff" font-weight="700">산출</text>
-              <text x="356" y="38" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 재고 무한. 게이트는 에너지뿐 <tspan font-weight="800">← 현재 이것만 있음</tspan></text>
-
-              <!-- 자동형 -->
-              <text x="6" y="93" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">자동형</text>
-              <rect x="96" y="75" width="76" height="26" rx="13" fill="var(--bad)" /><text x="134" y="92" fill="#fff" font-weight="700">에너지 0</text>
-              <rect x="186" y="75" width="70" height="26" rx="13" fill="var(--bad)" /><text x="221" y="92" fill="#fff" font-weight="700">쿨타임</text>
-              <rect x="270" y="75" width="118" height="26" rx="13" fill="var(--bad)" /><text x="329" y="92" fill="#fff" font-weight="700">인접 빈 칸에 산출</text>
-              <text x="404" y="93" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 빈 칸이 게이트. 보드가 차면 스스로 멈춘다</text>
-
-              <!-- 충전식 -->
-              <text x="6" y="148" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">충전식</text>
-              <rect x="96" y="130" width="106" height="26" rx="13" fill="var(--bad)" /><text x="149" y="147" fill="#fff" font-weight="700">배출 2 &times; 충전 3</text>
-              <rect x="216" y="130" width="70" height="26" rx="13" fill="var(--bad)" /><text x="251" y="147" fill="#fff" font-weight="700">최대 6</text>
-              <rect x="300" y="130" width="60" height="26" rx="13" fill="var(--bad)" /><text x="330" y="147" fill="#fff" font-weight="700">소진</text>
-              <rect x="374" y="130" width="86" height="26" rx="13" fill="var(--bad)" /><text x="417" y="147" fill="#fff" font-weight="700">시간 회복</text>
-              <path d="M460 143 H486 M486 143 V119 H149 V130" stroke="var(--bad)" stroke-width="2" fill="none" />
-              <text x="496" y="148" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 재고가 게이트</text>
-
-              <!-- 공통 성질 -->
-              <text x="6" y="203" text-anchor="start" font-size="12" font-weight="800" fill="var(--text-dim)">레벨업</text>
-              <rect x="96" y="185" width="56" height="26" rx="13" fill="var(--text-faint)" /><text x="124" y="202" fill="#fff" font-weight="700">Lv1</text>
-              <text x="164" y="203" font-size="13" font-weight="800" fill="var(--text-dim)">+</text>
-              <rect x="176" y="185" width="56" height="26" rx="13" fill="var(--text-faint)" /><text x="204" y="202" fill="#fff" font-weight="700">Lv1</text>
-              <rect x="252" y="185" width="56" height="26" rx="13" fill="var(--text-faint)" /><text x="280" y="202" fill="#fff" font-weight="700">Lv2</text>
-              <text x="324" y="203" text-anchor="start" font-size="11" fill="var(--text-dim)">→ <tspan font-weight="800">셋 다 갖는 성질</tspan>. 생성기도 체인 구성원이다</text>
-            </g>
-            <text x="6" y="232" font-size="11" fill="var(--text-faint)">요구하는 저장 필드가 다르다 — 자동형 cooldownEndAt · 충전식 charges/maxCharges · 공통 level. 하나만 만들면 나머지가 스키마 마이그레이션이 된다.</text>
-            <text x="6" y="246" font-size="11" fill="var(--text-faint)">충전 · 쿨타임 타이머는 보관함에 들어가면 멈춘다. 넣은 시각을 같이 들고 있지 않으면 꺼낼 때 계산이 안 된다.</text>
-          </svg>
-        </div>
-        <!-- 아이콘 스프라이트. 페이지 안에서 <use href="#ic-*"> 로 재사용한다.
-             바깥 svg 에 색을 주면 currentColor 로 내려간다 — 색 = 구현 현재 상태(주황 프로토 / 빨강 코드 0줄 / 회색 컷). -->
-        <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute; overflow: hidden">
-          <defs>
-            <symbol id="ic-energy" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M18.5 3 7 18h6.5l-2 11L25 13.5h-6.5z" />
-            </symbol>
-            <symbol id="ic-coin" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <circle cx="16" cy="16" r="11.5" />
-              <circle cx="16" cy="16" r="6.5" stroke-width="1.3" />
-              <path d="M9 10.5a10 10 0 0 1 3-2.5" stroke-width="1.3" stroke-linecap="round" />
-            </symbol>
-            <symbol id="ic-gem" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M5.5 13 10 6.5h12L26.5 13 16 26.5z" />
-              <path d="M5.5 13h21M12 13l4 13.5M20 13l-4 13.5M10 6.5 12 13M22 6.5 20 13" stroke-width="1.1" />
-            </symbol>
-            <symbol id="ic-xp" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M16 3.5l3.8 7.9 8.7 1.2-6.3 6.1 1.5 8.6-7.7-4.1-7.7 4.1 1.5-8.6L3.5 12.6l8.7-1.2z" />
-            </symbol>
-            <symbol id="ic-timer" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M16 3.5c5.2 5.2 7.5 9.4 7.5 13.5a7.5 7.5 0 0 1-15 0c0-4.1 2.3-8.3 7.5-13.5z" />
-              <path d="M16 12.5V18l3.5 2" stroke-width="1.4" stroke-linecap="round" />
-            </symbol>
-            <symbol id="ic-obstacle" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M16 28.5V14" stroke-linecap="round" />
-              <path d="M16 19c-6 0-8.5-3.5-8.5-8.5 5.5 0 8.5 3 8.5 8.5z" />
-              <path d="M16 16.5c0-5 3-8.5 8.5-8.5 0 4.5-2.5 8.5-8.5 8.5z" />
-            </symbol>
-            <symbol id="ic-slot" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <rect x="3.5" y="3.5" width="11" height="11" rx="2.5" />
-              <rect x="17.5" y="3.5" width="11" height="11" rx="2.5" stroke-dasharray="3 2.5" />
-              <rect x="3.5" y="17.5" width="11" height="11" rx="2.5" stroke-dasharray="3 2.5" />
-              <rect x="18.5" y="21" width="10" height="7.5" rx="2" />
-              <path d="M21 21v-1.8a2.5 2.5 0 0 1 5 0V21" stroke-width="1.5" />
-            </symbol>
-            <symbol id="ic-booster" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M16 2.5c4.2 4.2 6.3 8.4 6.3 13.5L16 22.5 9.7 16c0-5.1 2.1-9.3 6.3-13.5z" />
-              <circle cx="16" cy="13" r="2.6" stroke-width="1.5" />
-              <path d="M10.5 22 6.5 29.5 13 26M21.5 22l4 7.5-6.5-3.5" stroke-width="1.5" />
-            </symbol>
-            <symbol id="ic-pass" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M7.5 4h17v23.5L16 21l-8.5 6.5z" />
-              <path d="M16 9.5l1.8 3.7 4.1.6-3 2.9.7 4-3.6-1.9-3.6 1.9.7-4-3-2.9 4.1-.6z" stroke-width="1.2" />
-            </symbol>
-            <symbol id="ic-token" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path d="M3.5 9.5h25V14a3 3 0 0 0 0 6v4.5h-25V20a3 3 0 0 0 0-6z" />
-              <path d="M14 11.5v11" stroke-width="1.4" stroke-dasharray="2.5 2.5" />
-            </symbol>
-          </defs>
-        </svg>
-
-        <h3 class="doc-h2-sub">아이템 기믹 도감 — Merge Mansion 위키 실측 7종</h3>
-
-        <div class="note" style="--acc: var(--analysis)">
-          <div class="note-title">출처 — 추정이 아니라 원문</div>
-          아래 규칙과 수치는 <b>merge-mansion.fandom.com 의 위키텍스트 원문</b>에서 옮긴 것입니다.
-          본문(<code>/wiki/…</code>)은 Cloudflare 챌린지로 막혀 있어 <code>api.php</code> 로 원문을 받았습니다.
-          읽은 문서: <code>Game Mechanics</code> · <code>Double Bubble</code> · <code>Cobwebs</code> ·
-          <code>Inventory</code> · <code>Supercharge</code> · <code>Energy</code> ·
-          <code>Time Skip Booster</code> · <code>Gold Coins</code> · <code>Category:Sources</code>.
-          <br /><br />
-          <b>주의</b>: 커뮤니티 위키 기준이고 Merge Mansion 은 계속 업데이트 중입니다.
-          <b>기믹의 구조를 옮기는 용도로는 충분하지만 밸런스 수치를 그대로 베끼면 안 됩니다.</b>
-        </div>
-
+      <!-- 아래는 레퍼런스 시스템을 층별로 편 것. #sys 가 목록이라면 여기는
+           "그래서 무슨 필드가 필요한가"까지 내려간다. -->
+      <section class="doc-section" id="board">
+        <h2 class="doc-h2">L0 · 보드 코어 <span class="doc-h2-sub">규칙 → 필요한 필드</span></h2>
         <div class="table-scroll">
           <table>
             <thead>
-              <tr>
-                <th style="width: 13%">기믹</th>
-                <th style="width: 30%">규칙 (원문 기준)</th>
-                <th style="width: 17%">실수치</th>
-                <th style="width: 10%">현재</th>
-                <th>우리에게 필요한 것</th>
-              </tr>
+              <tr><th style="width: 13%">시스템</th><th style="width: 32%">Gossip Harbor 규칙</th>
+                <th style="width: 27%">필요한 필드</th><th>우리 현재</th></tr>
             </thead>
             <tbody>
-              <tr>
-                <td><b>더블 버블</b><span class="cnote">Double Bubble</span></td>
-                <td>머지할 때 가끔 생성. 안에는 <b>방금 머지된 결과물의 복제본</b>.
-                  성질상 Lv1 은 들어갈 수 없고, 레벨별로 생성 가능 여부를 따로 설정.
-                  탭 제거든 만료든 <b>Gold Coins Lv3 로 변환</b></td>
-                <td>수명 1~5분<span class="cnote">젬 비용 구간별 · 아래 표</span></td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td>셀에 <code>bubble{itemLevel, gemCost, expiresAt}</code> · 젬 재화 ·
-                  머지 시 확률 판정 · <b>서버 시각 만료</b> · 체인 데이터에 레벨별 젬 비용 칼럼</td>
-              </tr>
-              <tr>
-                <td><b>거미줄</b><span class="cnote">Cobwebs</span></td>
-                <td>이동 · 판매 불가. <b>같은 종류의 거미줄 없는 아이템과 머지</b>해야 풀림(또는 젬 제거).
-                  <b>게임 시작 시 모든 아이템이 거미줄</b>이고, 상자 아래 아이템도 항상 거미줄</td>
-                <td>—</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td>셀에 <code>cobwebbed</code> · <b>이동 거부 / 머지 허용</b>이라는 비대칭 규칙
-                  (지금 <code>move()</code> 는 둘을 한 경로로 처리) · <b>초기 보드 배치 데이터</b></td>
-              </tr>
-              <tr>
-                <td><b>보관함</b><span class="cnote">Inventory</span></td>
-                <td>안 쓰는 아이템 대피처. <b>넣으면 재충전이 멈춤 — 타이머 정지</b>.
-                  항상 다음 빈 슬롯에 들어가고 내부 재배치 불가</td>
-                <td>태스크 3-3 해금</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td>보드와 별도 슬롯 배열 · <b>타이머 일시정지</b> —
-                  <code>expiresAt</code> 절대 시각만 저장하면 정지를 표현할 수 없어
-                  <b>남은 시간도 같이</b> 들고 있어야 함</td>
-              </tr>
-              <tr>
-                <td><b>슈퍼차지</b><span class="cnote">Supercharge</span></td>
-                <td>산출물이 한 단계 위로 나오는 대신 에너지를 더 씀.
-                  하이퍼차지는 두 단계 위</td>
-                <td><b>+1레벨 = 에너지 2</b><span class="cnote">+2레벨 = 에너지 4 (기본 1)</span></td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td><b>에너지가 선행</b>. 그리고 산출이 Lv1 고정이 아니라
-                  <b>레벨을 인자로 받는 함수</b>여야 함 — 지금은
-                  <code>cells[i] = 1</code> 로 1이 상수</td>
-              </tr>
-              <tr>
-                <td><b>에너지</b><span class="cnote">Energy</span></td>
-                <td>생성기 탭 게이트. 시간 회복이며 상한을 넘겨 보유하는 건 구매 · 버블로만</td>
-                <td><b>상한 100 · 2분당 1</b><span class="cnote">완충 3시간 20분</span></td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td>재화 저장소 · <b>서버 시각 기준 회복</b>(마지막 갱신 + 경과분÷2) ·
-                  상한과 초과 보유의 분리</td>
-              </tr>
-              <tr>
-                <td><b>타임 스킵</b><span class="cnote">Time Skip Booster</span></td>
-                <td><b>상태 3개가 각각 규칙이 다름</b>(아래 표). 활성화하면
-                  <b>있는 보드의 시간만</b> 스킵. <b>더블 버블은 영향 없음</b></td>
-                <td>Lv1~4 = 1 · 2 · 4 · 8시간</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td><code>type</code> 과 <b>직교하는 <code>state</code></b> ·
-                  타이머가 <b>보드에 귀속</b>돼 있어야 함</td>
-              </tr>
-              <tr>
-                <td><b>상자 · 크레이트</b><span class="cnote">Boxes</span></td>
-                <td>보드 시작 시 칸을 채움. <b>옆 칸에서 아무 머지나 일어나면 열림</b>.
-                  상자마다 아래에 거미줄 아이템이 하나씩</td>
-                <td>—</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td>
-                <td><b>머지 이벤트가 인접 칸에 파급되는 경로</b> — 지금 <code>move()</code> 는
-                  출발 · 도착 두 칸만 건드리고 끝나 주변에 알리는 통지가 없음.
-                  자동 생성기의 인접 산출과 같은 요구사항</td>
-              </tr>
+              <tr><td><b>보드</b></td>
+                <td>영구 보드 1 + 이벤트 보드 N. 한 칸 한 아이템. 칸이 곧 보유 상한</td>
+                <td><code>cells: Cell[]</code> · <code>boardId</code></td>
+                <td>42칸인데 <code>POOL_SIZE = 5</code> 로 5개 제한</td></tr>
+              <tr><td><b>아이템</b></td>
+                <td>체인 · 레벨로 식별. 레벨마다 이름과 스프라이트가 다름</td>
+                <td><code>chainId</code> · <code>level</code></td>
+                <td><code>cells[i]</code> 숫자가 레벨 — 체인 구분 없음</td></tr>
+              <tr><td><b>체인</b></td>
+                <td>주 체인 10레벨 이상. 상한은 콘텐츠 데이터</td>
+                <td>체인 테이블 · <code>maxLevel</code></td>
+                <td><code>sourceTier &gt;= 3</code> 코드 상수</td></tr>
+              <tr><td><b>생성기</b></td>
+                <td>음식 · 비음식 · 사이드퀘스트 3계열.
+                  오렌지 나무처럼 <b>에너지 없이 시간으로 재생</b>하는 것도 있음</td>
+                <td><code>producedBy</code> · 산출 테이블 · <code>nextSpawnAt</code></td>
+                <td>셀 8 고정 · 산출칸 <code>[10,19,22,31,33]</code> 고정</td></tr>
+              <tr><td><b>타이머</b></td>
+                <td>연속 사용 시 생성기 쿨타임. 모래시계 <b>Lv1 −10분 · Lv2 −20분</b></td>
+                <td><code>cooldownEndAt</code> <span class="tag">서버 시각</span></td>
+                <td>없음</td></tr>
+              <tr><td><b>버블</b></td>
+                <td>생성기 사용 시 확률로 추가 아이템. 광고 · 젬 · 즉시 코인.
+                  방치하면 몇 분 뒤 코인. 가격은 핫세일가와 동일</td>
+                <td><code>bubble{level, gemCost, expiresAt}</code></td>
+                <td>없음</td></tr>
+              <tr><td><b>얼음</b></td>
+                <td>레벨 30쯤 해금. 머지할 때 생성되며 <b>몇 레벨 위</b> 아이템을 요구.
+                  <b>8~10분</b> 뒤 코인으로 바뀜</td>
+                <td><code>frozen{requiredLevel, expiresAt}</code></td>
+                <td>없음</td></tr>
+              <tr><td><b>인벤토리</b></td>
+                <td>기본 <b>5슬롯</b>, 6번째부터 젬 <b>50 · 55 · 65 · 80</b>…
+                  <b>넣으면 타이머 정지</b>. 부품 전용 창고는 슬롯 무제한</td>
+                <td>슬롯 배열 · <code>remainingMs</code>
+                  <span class="cnote">절대시각만으로는 정지를 못 담는다</span></td>
+                <td>없음</td></tr>
+              <tr><td><b>판매</b></td>
+                <td><b>레벨당 +1 코인</b>. Lv1 은 판매 불가 — 버리기만</td>
+                <td><code>sellValue</code> = f(level)</td>
+                <td>없음</td></tr>
             </tbody>
           </table>
         </div>
-
-        <h3 class="doc-h2-sub">더블 버블 수명 — 젬 비용 구간이 정한다</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th style="width: 20%">최소 비용</th><th style="width: 20%">최대 비용</th>
-                <th style="width: 14%">수명</th><th>읽는 법</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>젬 1</td><td>젬 14</td><td><b>1분</b></td>
-                <td rowspan="5">비싼 아이템일수록 오래 남는다 —
-                  <b>개봉을 고민할 시간을 비용에 비례해서 준다</b>.
-                  수명을 아이템 레벨이 아니라 <b>젬 비용</b>에 묶은 게 핵심으로,
-                  가격을 바꾸면 노출 시간이 따라 바뀌는 구조다</td></tr>
-              <tr><td>젬 15</td><td>젬 39</td><td><b>2분</b></td></tr>
-              <tr><td>젬 40</td><td>젬 99</td><td><b>3분</b></td></tr>
-              <tr><td>젬 100</td><td>젬 299</td><td><b>4분</b></td></tr>
-              <tr><td>젬 300</td><td>—</td><td><b>5분</b></td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3 class="doc-h2-sub">타임 스킵 부스터 — 같은 아이템, 상태별로 다른 규칙</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th style="width: 22%">상태</th><th style="width: 14%">판매</th>
-                <th style="width: 14%">머지</th><th>비고</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><b>파편</b> Shards</td>
-                <td><span class="pill" style="--acc: var(--ok)">가능</span></td>
-                <td><span class="pill" style="--acc: var(--ok)">가능</span></td>
-                <td>—</td></tr>
-              <tr><td><b>비활성 부스터</b></td>
-                <td><span class="pill" style="--acc: var(--bad)">불가</span></td>
-                <td><span class="pill" style="--acc: var(--ok)">가능</span></td>
-                <td>더블탭으로 활성화</td></tr>
-              <tr><td><b>활성 부스터</b></td>
-                <td colspan="2" style="text-align: center">활성화 즉시 소멸</td>
-                <td>Lv1~4 = 1 · 2 · 4 · 8시간 스킵</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="note" style="--acc: var(--warn)">
-          <div class="note-title">이 표가 우리 설계에 주는 제약 — <code>type</code> 하나로는 안 된다</div>
-          같은 타임 스킵 부스터인데 <b>파편은 팔 수 있고 비활성은 못 팝니다</b>.
-          아이템 타입을 <code>enum</code> 하나로 잡으면 이 차이를 담을 곳이 없습니다.
-          <br /><br />
-          같은 문제가 분류에서도 나옵니다. 실제 위키의 아이템 타입은 <b>다중값</b>입니다 —
-          <code>type = Drop Item&lt;br&gt;Currency</code> 처럼 Gold Coins 는
-          <b>Drop Item 이면서 Currency</b>이고 Energy 도 마찬가지입니다.
-          <b><code>type: string[]</code> 과, 그와 직교하는 <code>state</code> 두 축이 필요합니다.</b>
-        </div>
-
-        <h3 class="doc-h2-sub">체인 구조 3종 — 단일 · 내포 · 결합</h3>
-        <div class="table-scroll">
-          <svg viewBox="0 0 720 206" width="720" height="206" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>체인 구조 3종 — 단일 · 내포 · 결합</title>
-            <g font-size="11" text-anchor="middle">
-              <!-- 단일 -->
-              <text x="6" y="34" text-anchor="start" font-size="12" font-weight="800" fill="var(--warn)">단일</text>
-              <rect x="86" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="112" y="33" fill="#fff" font-weight="700">Lv1</text>
-              <rect x="150" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="176" y="33" fill="#fff" font-weight="700">Lv2</text>
-              <rect x="214" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="240" y="33" fill="#fff" font-weight="700">Lv3</text>
-              <text x="284" y="34" font-size="13" font-weight="800" fill="var(--text-dim)">…</text>
-              <rect x="302" y="16" width="52" height="26" rx="13" fill="var(--warn)" /><text x="328" y="33" fill="#fff" font-weight="700">LvN</text>
-              <text x="370" y="34" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 일직선 <tspan font-weight="800">← 프로토가 가진 유일한 형태(Lv3 상한)</tspan></text>
-
-              <!-- 내포 -->
-              <text x="6" y="94" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">내포</text>
-              <rect x="86" y="76" width="86" height="26" rx="13" fill="var(--bad)" /><text x="129" y="93" fill="#fff" font-weight="700">체인A LvN</text>
-              <rect x="186" y="76" width="96" height="26" rx="13" fill="var(--text-faint)" /><text x="234" y="93" fill="#fff" font-weight="700">= 생성기 B</text>
-              <rect x="296" y="76" width="86" height="26" rx="13" fill="var(--bad)" /><text x="339" y="93" fill="#fff" font-weight="700">체인B Lv1</text>
-              <text x="396" y="94" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 체인 끝이 다음 체인의 생성기가 된다. 진행 게이트</text>
-
-              <!-- 결합 -->
-              <text x="6" y="154" text-anchor="start" font-size="12" font-weight="800" fill="var(--bad)">결합</text>
-              <rect x="86" y="126" width="86" height="26" rx="13" fill="var(--bad)" /><text x="129" y="143" fill="#fff" font-weight="700">체인A LvN</text>
-              <rect x="86" y="158" width="86" height="26" rx="13" fill="var(--bad)" /><text x="129" y="175" fill="#fff" font-weight="700">체인C LvN</text>
-              <path d="M172 139 H202 M172 171 H202 M202 139 V171 M202 155 H228" stroke="var(--bad)" stroke-width="2" fill="none" />
-              <rect x="228" y="142" width="96" height="26" rx="13" fill="var(--bad)" /><text x="276" y="159" fill="#fff" font-weight="700">최종 아이템</text>
-              <text x="340" y="159" text-anchor="start" font-size="11" fill="var(--text-dim)">→ 서로 다른 두 체인을 합쳐야 나온다. 재료 chainId 목록이 필요하다</text>
-            </g>
-            <text x="6" y="200" font-size="11" fill="var(--text-faint)">셋 다 보드 오브젝트가 아니라 체인 데이터가 정한다 — chainId · level · 재료 chainId 목록. 보드에 기계를 놓는 문제가 아니라 테이블 스키마 문제다.</text>
-          </svg>
-        </div>
-
-        <h3 class="doc-h2-sub">아이템 기믹 — IN-2 · IN-3 펼침
-          <span class="cnote">위 도감이 다루지 않는 것만 — 생성기 3종 · 소모품 · 조합기 · 판매 · 체인 3종</span></h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th style="width: 8%">축</th><th style="width: 16%">이름</th><th style="width: 40%">하는 일</th><th>현재</th></tr>
-            </thead>
-            <tbody>
-              <tr><td rowspan="7">타입</td><td><b>일반</b></td><td>머지 대상. 체인의 구성원</td>
-                <td><span class="pill" style="--acc: var(--warn)">개선</span> 1종 · 3레벨</td></tr>
-              <tr><td><b>생성기 — 에너지형</b></td><td>탭 → 에너지 소비 → 산출. 재고 무한</td>
-                <td><span class="pill" style="--acc: var(--warn)">개선</span> 이것만 있음 · 셀 8 고정</td></tr>
-              <tr><td><b>생성기 — 자동형</b></td><td>에너지 0. 쿨타임마다 인접 빈 칸에 스스로 산출 — 보드가 차면 멈춘다</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>생성기 — 충전식</b></td><td>배출량 &times; 충전 횟수 = 최대 보유량. 소진 후 시간 회복</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>소모품</b></td><td>탭 → 효과 후 소모. 만능(무엇과도 머지) · 분할(한 단계 아래 2개로) · 에너지 회복 · 산출 부스트</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>자물쇠</b></td><td>머지 · 이동 불가. 해당 아이템을 만들면 열쇠가 나와 풀린다</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>조합기</b></td><td>서로 다른 두 체인의 아이템을 넣으면 최종 아이템이 나온다 — 결합 체인을 보드 오브젝트로 세운 형태</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td rowspan="2">상태</td><td><b>잠금</b></td><td>열쇠가 나올 때까지 대기 — 거미줄과 달리 해제 조건이 <b>다른 아이템</b>이다</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>충전 · 쿨타임 · 신규 · 주문 지정</b></td><td>아이템 인스턴스가 들고 있어야 하는 런타임 상태</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span> — 셀이 <code>number</code> 하나라 담을 자리가 없음</td></tr>
-              <tr><td rowspan="2">액션</td><td><b>판매</b></td><td>레벨에 비례한 코인. 1레벨은 판매 불가 · 보드에 머지 짝이 남아 있으면 판매 불가 · 판매 직후 되돌리기</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>버리기</b></td><td>판매가 막힌 1레벨 정리용. 코인 없음</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td rowspan="3">체인</td><td><b>단일</b></td><td>Lv1 → LvN 일직선</td>
-                <td><span class="pill" style="--acc: var(--warn)">개선</span> Lv3 상한 하드코딩</td></tr>
-              <tr><td><b>내포</b></td><td>체인 끝이 다음 체인의 생성기가 된다</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-              <tr><td><b>결합</b></td><td>서로 다른 두 체인을 합쳐야 최종 아이템이 나온다</td>
-                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-
       </section>
 
-      <!-- 레퍼런스 대조 섹션. 기믹을 하나씩 붙이는 순서로 접근하면 매번 같은 벽에
-           부딪히기 때문에, 7종이 요구하는 것을 겹쳐서 선결조건으로 접는다. -->
-      <section class="doc-section" id="ref">
-        <h2 class="doc-h2">레퍼런스 대조
-          <span class="doc-h2-sub">Merge Mansion 과의 거리 — 규모 · 공통 선결조건</span></h2>
-
-        <h3 class="doc-h2-sub">규모 비교 — 숫자로 본 거리</h3>
+      <section class="doc-section" id="econ">
+        <h2 class="doc-h2">L1 · 재화 <span class="doc-h2-sub">획득과 소비가 짝이 맞아야 성립한다</span></h2>
         <div class="table-scroll">
           <table>
             <thead>
-              <tr><th style="width: 22%">항목</th><th style="width: 21%">Merge Mansion</th>
-                <th style="width: 21%">스토리 머지 프로토</th><th>비고</th></tr>
+              <tr><th style="width: 11%">재화</th><th style="width: 26%">획득</th>
+                <th style="width: 26%">소비</th><th style="width: 16%">수치</th><th>우리 현재</th></tr>
             </thead>
             <tbody>
-              <tr><td><b>보드 크기</b></td><td>7 &times; 9 = <b>63</b>칸</td>
-                <td>6 &times; 7 = <b>42</b>칸</td><td>칸 수는 비슷한 급</td></tr>
-              <tr><td><b>동시 보유 아이템</b></td><td>칸당 1개 — 최대 63</td>
-                <td><b>5개</b> <code>MERGE_ITEM_POOL_SIZE</code></td>
-                <td>42칸인데 5개 — 사실상 보드가 아니다</td></tr>
-              <tr><td><b>생성기 종류</b></td>
-                <td><b>60종</b> <span class="tag">Category:Sources</span></td>
-                <td><b>1종</b> · 셀 <code>8</code> 고정</td><td>—</td></tr>
-              <tr><td><b>체인 최대 레벨</b></td><td>Apple Tree <b>12</b> · Yarn 11+</td>
-                <td><b>3</b> <span class="tag">코드 상수</span></td>
-                <td><code>sourceTier &gt;= 3</code></td></tr>
-              <tr><td><b>에너지</b></td><td>상한 100 · 2분당 1</td>
-                <td>없음 — 무제한 탭</td><td>과금 · 리텐션 축이 통째로 없음</td></tr>
-              <tr><td><b>아이템 상태</b></td><td>거미줄 · 버블 · 충전 · 부스터 활성</td>
-                <td>없음 — <code>cells: number[]</code></td><td>—</td></tr>
+              <tr><td><b>에너지</b></td>
+                <td>시간 회복 · 상자 · 광고 · 구매</td>
+                <td>생성기 탭 1회당 1</td>
+                <td>상한 <b>100</b> · <b>2분당 +1</b></td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span> 무제한 탭</td></tr>
+              <tr><td><b>코인</b></td>
+                <td>주문 완료 · 판매 · 버블/얼음 만료</td>
+                <td>챕터 파트 진행</td>
+                <td>판매가 = 레벨당 +1</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td><b>젬</b></td>
+                <td>보상 · 구매</td>
+                <td>버블 개봉 · 인벤토리 슬롯 · 즉시 완성</td>
+                <td>슬롯 6번째 50젬</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+              <tr><td><b>XP</b></td>
+                <td>챕터 1파트 완료</td>
+                <td>누적 → 아이템 2종 보상</td>
+                <td><b>15 / 파트</b></td>
+                <td><span class="pill" style="--acc: var(--warn)">개선</span>
+                  <code>exp 15</code> <span class="tag">값 일치</span> 누적 없음</td></tr>
             </tbody>
           </table>
         </div>
-
-        <div class="note" style="--acc: var(--bad)">
-          <div class="note-title">가장 눈에 띄는 한 줄 — 42칸 보드에 아이템 5개</div>
-          Merge Mansion 은 63칸을 꽉 채워 쓰고, <b>공간 부족 자체가 보관함 · 판매 · 슬롯 확장 과금의 동력</b>입니다.
-          우리는 <code>MERGE_ITEM_POOL_SIZE = 5</code> 때문에 <b>공간 압박이라는 게임성이 존재하지 않습니다</b>.
-          이건 밸런스 값이 아니라 <b>오브젝트 풀 크기가 게임 규칙을 대신하고 있는 것</b>이라,
-          기믹을 붙이기 전에 먼저 걷어내야 합니다.
-        </div>
-
-        <h3 class="doc-h2-sub">공통 선결조건 — 기믹 7종이 요구하는 것을 겹치면</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th style="width: 20%">선결조건</th><th style="width: 9%">요구 기믹</th>
-                <th style="width: 28%">이게 없으면</th><th>어떤 기믹이 요구하나</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>POOL_SIZE 제거</b></td>
-                <td><b>7 / 7</b></td>
-                <td>공간 압박이 없어 기믹의 존재 이유가 사라진다</td>
-                <td>전부 — 보관함 · 판매는 특히 무의미해진다</td>
-              </tr>
-              <tr>
-                <td><b>셀을 객체로</b><span class="cnote">number[] → object[]</span></td>
-                <td><b>6 / 7</b></td>
-                <td>상태 · 타이머 · 플래그를 담을 자리가 없다</td>
-                <td>버블 · 거미줄 · 보관함 · 타임스킵 · 상자 · 슈퍼차지</td>
-              </tr>
-              <tr>
-                <td><b>서버 시각 타이머</b></td>
-                <td><b>4 / 7</b></td>
-                <td>클라 시계 조작으로 전부 우회된다</td>
-                <td>버블 만료 · 에너지 회복 · 재충전 · 타임스킵</td>
-              </tr>
-              <tr>
-                <td><b>재화 시스템</b><span class="cnote">에너지 · 코인 · 젬</span></td>
-                <td><b>4 / 7</b></td>
-                <td>소비 · 개봉 · 판매가 전부 성립하지 않는다</td>
-                <td>에너지 · 슈퍼차지 · 버블 개봉 · 거미줄 제거</td>
-              </tr>
-              <tr>
-                <td><b>type 과 직교하는 state</b></td>
-                <td><b>3 / 7</b></td>
-                <td>같은 아이템의 상태별 규칙 차이를 표현하지 못한다</td>
-                <td>타임스킵 · 거미줄 · 버블</td>
-              </tr>
-              <tr>
-                <td><b>인접 칸 통지</b></td>
-                <td><b>2 / 7</b></td>
-                <td>머지가 주변에 파급되지 않는다</td>
-                <td>상자 개봉 · 자동 생성기</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
         <div class="note">
-          <div class="note-title">읽는 법 — 기믹 목록이 아니라 작업 목록으로</div>
-          기믹을 <b>하나씩 붙이는 순서</b>로 접근하면 매번 같은 벽에 부딪힙니다.
-          7종이 요구하는 것을 겹쳐보면 <b>실제 작업 항목은 6개뿐</b>이고, 그중
-          <b>POOL_SIZE 제거 · 셀 객체화 · 서버 시각 타이머 · 재화</b> 네 가지가
-          4~7개 기믹에 동시에 걸려 있습니다.
-          <br /><br />
-          즉 다음 스텝은 "버블을 만들자"가 아니라
-          <b>"풀 크기를 걷어내고 셀을 객체로 바꾸고 타이머와 재화를 세우자"</b>이고,
-          그게 끝나면 기믹 7종은 대부분 <b>규칙 구현</b>만 남습니다 —
-          규칙과 수치는 위 도감에 이미 다 있습니다.
-        </div>
-
-        <div class="note" style="--acc: var(--validate)">
-          <div class="note-title">이 대조가 다루지 않은 것</div>
-          이벤트 아이템 · 리더보드 · 상점 · 결제는 읽지 않았습니다.
-          또 <code>Category:Sources</code> 의 60종은 <b>메인 보드와 이벤트 보드가 섞인 수</b>라
-          메인 보드만의 생성기 수는 이보다 적습니다. 규모의 자릿수를 보는 용도로만 쓰십시오.
+          <div class="note-title">순환</div>
+          <b>에너지 → 아이템 → 주문 → 코인 → 챕터 진행 → XP</b>.
+          우리는 이 고리에서 <b>에너지와 코인 두 마디가 비어</b> 있어 순환이 닫히지 않습니다.
         </div>
       </section>
 
+      <section class="doc-section" id="prog">
+        <h2 class="doc-h2">L2 · 진행 <span class="doc-h2-sub">무엇이 플레이어를 내일 다시 오게 하는가</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th style="width: 15%">시스템</th><th style="width: 38%">Gossip Harbor</th>
+                <th>우리 현재</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>Chores</b><span class="cnote">스토리</span></td>
+                <td>챕터북 <b>10파트 = 인게임 1일</b>. 파트마다 코인 소모, 완료 보상은 XP.
+                  <b>매주 하루씩 추가</b></td>
+                <td>퀘스트 3 · 노드 11 · 코인 소모 없음 · 추가 파이프 없음</td></tr>
+              <tr><td><b>Orders</b><span class="cnote">주문</span></td>
+                <td>손님 주문 완료가 진행의 축. 코인 · 도구 · 포인트를 돌려줌</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span>
+                  <code>task_ref</code> 문자열뿐 — 요구 아이템 목록이 없음</td></tr>
+              <tr><td><b>Restaurant Goals</b></td>
+                <td><b>7일 · 하루 5목표</b>. 당일과 이전 날짜만 수령</td>
+                <td><span class="pill" style="--acc: var(--bad)">없음</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">여기가 스토리 머지의 정체성</div>
+          Gossip Harbor 는 <b>주문을 채우는 행위가 곧 스토리 진행</b>입니다.
+          우리는 스토리 노드와 태스크가 <b>문자열로만 연결</b>돼 있어 둘이 분리돼 있습니다.
+          <code>task_ref</code> 에 요구 아이템 목록을 붙이는 것이 이 층의 첫 작업입니다.
+        </div>
+      </section>
+
+      <section class="doc-section" id="gap">
+        <h2 class="doc-h2">선결조건 <span class="doc-h2-sub">위 시스템들이 공통으로 요구하는 것</span></h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th style="width: 20%">선결조건</th><th style="width: 9%">요구</th>
+                <th style="width: 28%">이게 없으면</th><th>막히는 것</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>POOL_SIZE 제거</b></td><td><b>전부</b></td>
+                <td>공간 압박이 없어 기믹의 존재 이유가 사라진다</td>
+                <td>인벤토리 · 판매 · 슬롯 과금</td></tr>
+              <tr><td><b>셀을 객체로</b><span class="cnote">number[] → Cell[]</span></td><td><b>6</b></td>
+                <td>상태 · 타이머 · 플래그를 담을 자리가 없다</td>
+                <td>버블 · 얼음 · 쿨타임 · 인벤토리 · 생성기</td></tr>
+              <tr><td><b>체인 테이블</b></td><td><b>5</b></td>
+                <td>아이템을 가리킬 식별자가 없다</td>
+                <td>주문 · 판매가 · 생성기 산출 · 도감</td></tr>
+              <tr><td><b>서버 시각 타이머</b></td><td><b>4</b></td>
+                <td>클라 시계 조작으로 전부 우회된다</td>
+                <td>에너지 회복 · 쿨타임 · 버블 · 얼음</td></tr>
+              <tr><td><b>재화 원장</b></td><td><b>4</b></td>
+                <td>소비 · 개봉 · 판매가 성립하지 않는다</td>
+                <td>에너지 · 코인 · 젬 전부</td></tr>
+              <tr><td><b>인접 칸 통지</b></td><td><b>2</b></td>
+                <td>머지가 주변에 파급되지 않는다</td>
+                <td>상자 개봉 · 자동 생성기</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="--acc: var(--bad)">
+          <div class="note-title">지금 위치</div>
+          여섯 개 중 <b>하나도 되어 있지 않습니다.</b> L1 위층을 먼저 손대면 매번 여기로 되돌아옵니다.
+        </div>
+      </section>
 
       <section class="doc-section" id="howto">
-        <h3 class="doc-h2-sub">재화 도감 — OUT-1 펼침</h3>
-        <div class="table-scroll">
-          <svg viewBox="0 0 720 108" width="720" height="108" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>재화 6종 아이콘</title>
-            <use href="#ic-energy" x="45" y="8" width="30" height="30" style="color: var(--bad)" />
-            <text x="60" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">에너지</text>
-            <text x="60" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">생성기 탭 게이트</text>
-            <text x="60" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">상한 · 시간회복</text>
-            <use href="#ic-coin" x="165" y="8" width="30" height="30" style="color: var(--warn)" />
-            <text x="180" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">코인</text>
-            <text x="180" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">오더 보상 → 데코</text>
-            <text x="180" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">coin = 0 하드코딩</text>
-            <use href="#ic-xp" x="285" y="8" width="30" height="30" style="color: var(--bad)" />
-            <text x="300" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">경험치 · 레벨</text>
-            <text x="300" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">오더 제출로 누적</text>
-            <text x="300" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">레벨업 → 상한↑</text>
-            <use href="#ic-gem" x="405" y="8" width="30" height="30" style="color: var(--text-faint)" />
-            <text x="420" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">보석</text>
-            <text x="420" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">환전 · 즉시완성</text>
-            <text x="420" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">훅만 · 이번 컷</text>
-            <use href="#ic-token" x="525" y="8" width="30" height="30" style="color: var(--text-faint)" />
-            <text x="540" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">이벤트 재화</text>
-            <text x="540" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">이벤트 보드 전용</text>
-            <text x="540" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">컷</text>
-            <use href="#ic-pass" x="645" y="8" width="30" height="30" style="color: var(--text-faint)" />
-            <text x="660" y="54" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">패스 포인트</text>
-            <text x="660" y="68" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">시즌패스 트랙</text>
-            <text x="660" y="80" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">컷</text>
-            <text x="2" y="100" font-size="11" fill="var(--text-faint)">이번 3개월은 왼쪽 3종까지 — 에너지 · 코인 · 경험치. 나머지는 원장 필드만 예약하고 UI 는 만들지 않는다.</text>
-          </svg>
-        </div>
-
-        <details class="fold">
-          <summary>레퍼런스에는 있으나 이번에 뺀 기믹 4종 — 왜 뺐는가</summary>
-          <div class="fold-body">
-        <div class="table-scroll">
-          <svg viewBox="0 0 720 112" width="720" height="112" role="img" style="display: block; max-width: 100%; height: auto">
-            <title>레퍼런스에는 있으나 이번 스코프에서 뺀 기믹 4종</title>
-            <use href="#ic-timer" x="73" y="8" width="34" height="34" style="color: var(--text-faint)" />
-            <text x="90" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">타이머 · 부화</text>
-            <text x="90" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">배치 후 시간 경과</text>
-            <text x="90" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">→ 자동 변환</text>
-            <use href="#ic-obstacle" x="253" y="8" width="34" height="34" style="color: var(--text-faint)" />
-            <text x="270" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">장애물</text>
-            <text x="270" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">머지 대상 아님</text>
-            <text x="270" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">제거해야 슬롯 확보</text>
-            <use href="#ic-slot" x="433" y="8" width="34" height="34" style="color: var(--text-faint)" />
-            <text x="450" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">잠긴 보드 슬롯</text>
-            <text x="450" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">진행도로 보드 확장</text>
-            <text x="450" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">셀 수가 변수가 됨</text>
-            <use href="#ic-booster" x="613" y="8" width="34" height="34" style="color: var(--text-faint)" />
-            <text x="630" y="58" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--text)">부스터 · 툴</text>
-            <text x="630" y="72" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">리롤 · 즉시완성</text>
-            <text x="630" y="84" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">슬롯 정리</text>
-            <text x="2" y="104" font-size="11" fill="var(--text-faint)">뺀 이유는 난이도가 아니라 파급 — 넷 다 보드 규칙(셀 수 · 점유 · 시간)을 바꿔 저장 스키마를 다시 깬다.</text>
-          </svg>
-        </div>
-          </div>
-        </details>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">이 도감을 읽는 법</div>
-            <p>
-              도감은 <strong>레퍼런스 기준 전량을 먼저 깔고</strong> 그 위에 우리 코드의 현재 상태를 색으로 얹는 방식입니다.
-              재화 6종 중 주황은 <strong>코인 한 칸뿐</strong>이고(<code>coin = 0</code> 하드코딩) 나머지는 코드가 0줄입니다.
-            </p>
-            <p>
-              아이콘은 판정 대상이 아니라 <strong>합의용 도식</strong>입니다. 실제 아트 스펙은 §리소스의 1024 상한 규칙을 따르고,
-              아이템 아이콘은 1024 이하라 아틀라스가 통일해 줍니다 — 즉 이 도감은 물량 산정용이지 납품 스펙이 아닙니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">왜 종류를 이렇게까지 쪼개 세나</div>
-            <p>
-              「머지 아이템」이 한 덩어리로 보이면 견적이 1종으로 잡힙니다. 실제로는
-              <strong>탭 반응 · 저장 필드 · 해제 조건이 각각 다릅니다</strong> —
-              생성기 3종만 해도 필요한 필드가 <code>charges</code> · <code>cooldownEndAt</code> · <code>level</code> 로 갈립니다.
-              하나만 만들고 나중에 나머지를 붙이면 그때마다 <b>보드 저장 스키마 마이그레이션</b>이 됩니다.
-              쪼개 세는 건 그 갈라짐을 미리 세기 위한 것이고, 그 결론이 §레퍼런스 대조의 <b>선결조건 6개</b>입니다.
-            </p>
-          </div>
-        </div>
-
         <h2 class="doc-h2">구현 규칙 <span class="doc-h2-sub">기능 하나를 붙일 때 타야 하는 경로 — merge-series-impl-rules</span></h2>
 
 
@@ -1139,7 +743,7 @@
           <div class="note" style="--acc: var(--bad)">
             <div class="note-title">먼저 손대야 하는 3가지 — 나머지 전부의 선행</div>
             <p>
-              <b>① 셀 자료형</b> — 지금 셀은 <code>number</code>(레벨) 하나라 위 상태 6종을 담을 자리가 없습니다.
+              <b>① 셀 자료형</b> — 지금 셀은 <code>number</code>(레벨) 하나라 §L0 보드 코어가 요구하는 상태 필드를 담을 자리가 없습니다.
               <code>Cell { itemId, charges, state }</code> 로 바꾸는 게 IN-2 · IN-3 · IN-7 의 공통 선행입니다.
             </p>
             <p>
@@ -1459,7 +1063,7 @@
             </thead>
             <tbody>
               <tr><td><b>0</b></td><td>셀 자료형 교체 — <code>number[]</code> → <code>Cell { itemId, charges, state }</code></td>
-                <td>IN-1 · IN-2 · IN-3 · IN-7 의 공통 선행. 아이템 상태 6종이 담길 자리가 지금 없다</td></tr>
+                <td>버블 · 얼음 · 쿨타임 · 인벤토리의 공통 선행. 상태를 담을 자리가 지금 없다</td></tr>
               <tr><td><b>0</b></td><td>인게임↔아웃게임 계약 재설계</td>
                 <td>현재 <code>waitForCompletion(): Promise&lt;boolean&gt;</code> 하나. 에너지 소비 · 오더 제출 · 재화 획득 · 인벤토리 출납이 전부 여길 지난다. 게다가 버튼 콜백에서만 resolve 라 다른 경로로 닫히면 영구 대기</td></tr>
               <tr><td><b>0</b></td><td>재화 원장 — <code>grant / spend(type, amount, reason)</code></td>
