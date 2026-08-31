@@ -7,7 +7,7 @@
      desc:    "한 줄 설명",           // 선택 · 한 문장 90자 이내 (아래 ★★)
      url:     "https://... 또는 docs/xxx.html",  // 필수 (없으면 "#")
      status:  "Live" | "진행중" | "완료" | "초안",
-     version: "v3.5",
+     version: "v4.0",
      updated: "2026-08-07 10:48",     // 날짜 + 시각(HH:MM)
      pinned:  true,                  // 상단 강조
      tags:    ["태그", "태그"],        // 최대 3개
@@ -212,12 +212,12 @@ const SECTIONS = [
       },
       {
         title: "스토리 머지 — 역기획 TODO",
-        desc: "목표는 Gossip Harbor 급. 레퍼런스 위키를 정본으로 시스템 21개를 세우고(개선 4 / 없음 17) L0 보드 · L1 재화 · L2 진행으로 층을 갈라 필요한 필드까지 내렸습니다. 선결조건 6개는 아직 하나도 안 돼 있습니다.",
+        desc: "목표는 Gossip Harbor 급. 레퍼런스 위키를 정본으로 시스템 21개를 세우고 L0~L4 로 층을 갈랐습니다. 개발 계획을 한 섹션으로 합쳤고, 리소스는 92.3MB 실측 + 로딩 타이밍 + 800KB 예산 대비로 다시 썼습니다.",
         url: "docs/story-merge-kickoff.html",
         project: "smg",
         status: "초안",
         version: "v3.5",
-        updated: "2026-08-31 15:45",
+        updated: "2026-08-31 17:30",
         pinned: false,
         tags: ["머지", "역기획", "착수 점검"],
       },
