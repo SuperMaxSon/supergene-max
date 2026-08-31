@@ -34,7 +34,7 @@
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">3개 리포 코드 실측</span>
-          <span class="tag">v1.1 · 2026-08-31</span>
+          <span class="tag">v1.2 · 2026-08-31</span>
         </div>
       </div>
     </header>
@@ -56,7 +56,7 @@
               </div>
             </div>
           </div>
-          <div class="calc-cell" style="--acc: var(--smg)">
+          <div class="calc-cell" style="--acc: var(--validate)">
             <label class="calc-label" for="i-emo">캐릭터당 감정 수</label>
             <div class="calc-row">
               <input class="calc-in" id="i-emo" type="number" min="1" max="200" step="1" value="10" />
@@ -66,7 +66,7 @@
               </div>
             </div>
           </div>
-          <div class="calc-cell" style="--acc: var(--smg)">
+          <div class="calc-cell" style="--acc: var(--deploy)">
             <label class="calc-label" for="i-frames">감정당 프레임 수</label>
             <div class="calc-row">
               <input class="calc-in" id="i-frames" type="number" min="1" max="600" step="1" value="17" />
@@ -191,7 +191,7 @@
       <section class="doc-section" id="scale">
         <h2 class="doc-h2">
           스케일
-          <span class="doc-h2-sub">색칠된 행이 현재 입력값</span>
+          <span class="doc-h2-sub">칠해진 행이 현재 입력값 — 위 입력 칸과 같은 색</span>
         </h2>
 
         <h3 class="calc-label" style="font-size: 13px; margin: 0 2px 7px">감정 수 축 · 캐릭터당</h3>
@@ -373,6 +373,7 @@
         var REF_PX = 304 * 288; // 계수 정규화 기준 해상도
         var EMO_STEPS = [1, 2, 4, 6, 8, 10, 15, 20];
         var FRM_STEPS = [9, 12, 17, 24, 30, 45, 60];
+        var NOW = ' <span class="calc-now">현재</span>'; // 표의 --acc 색을 그대로 받는다
 
         var ids = ["chars", "emo", "frames", "w", "h", "den", "nb", "ne", "sb", "se"];
         var el = {};
@@ -467,9 +468,10 @@
 
           document.getElementById("t-emo").innerHTML = EMO_STEPS.map(function (e) {
             var r = perChar(v, e, v.frames);
+            var here = e === v.emo;
             return (
-              '<tr class="' + (e === v.emo ? "calc-here" : "") + '">' +
-              td(e + "감정") + td(fmt(r.seq), 1) + td(fmt(r.node), 1) +
+              '<tr class="' + (here ? "calc-here" : "") + '">' +
+              td(e + "감정" + (here ? NOW : "")) + td(fmt(r.seq), 1) + td(fmt(r.node), 1) +
               td(fmt(r.spine), 1) + td(mult(r.seq, r.node), 1) +
               td(mult(r.seq, r.spine), 1) + "</tr>"
             );
@@ -477,9 +479,10 @@
 
           document.getElementById("t-frm").innerHTML = FRM_STEPS.map(function (f) {
             var r = perChar(v, v.emo, f);
+            var here = f === v.frames;
             return (
-              '<tr class="' + (f === v.frames ? "calc-here" : "") + '">' +
-              td(f + "프레임") + td((f / 30).toFixed(2) + "s", 1) +
+              '<tr class="' + (here ? "calc-here" : "") + '">' +
+              td(f + "프레임" + (here ? NOW : "")) + td((f / 30).toFixed(2) + "s", 1) +
               td(fmt(r.seq), 1) + td(fmt(r.node), 1) + td(fmt(r.spine), 1) + "</tr>"
             );
           }).join("");

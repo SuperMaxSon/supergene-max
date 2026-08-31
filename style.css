@@ -2238,23 +2238,28 @@ figure.shot figcaption .src {
 }
 
 /* ==========================================================================
-   용량 산출기 입력 컨트롤 — 2026-08-31 추가 (append only)
-   docs/chat-anim-size-calc.html 전용. 숫자 입력이 필요한 문서가 처음이라
-   새로 만들었다. 기존 클래스는 하나도 건드리지 않았다.
-   .ch-field 를 재활용하지 않은 이유: 그쪽은 sticky 툴바 안의 flex:1 검색
-   pill 이라 라벨 자리가 없고, 4~6개를 격자로 세울 수 없다.
+   용량 산출기 — 2026-08-31 추가 (append only, 기존 클래스 무수정)
+   최초 사용처: docs/chat-anim-size-calc.html
+
+   v2: 격자(auto-fit)를 버리고 한 줄 flex 로 고정했다. auto-fit 은 폭이 좁아지면
+   칸을 아래로 접어서 입력 5개가 세로로 쌓였다 — 산출기는 한 줄로 훑는 물건이라
+   좁으면 접히는 대신 가로로 스크롤되는 게 맞다.
    ========================================================================== */
 
 .calc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-  gap: 10px;
-  margin: 0 0 14px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding-bottom: 2px;
+  overflow-x: auto;
 }
 
 .calc-cell {
   --acc: var(--analysis);
-  padding: 9px 13px 10px;
+  flex: 1 1 0;
+  min-width: 138px;
+  padding: 8px 11px 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -2268,24 +2273,49 @@ figure.shot figcaption .src {
     var(--shadow);
 }
 
+/* 라벨은 한 줄로 묶어둔다. 줄바꿈되면 칸마다 높이가 달라져 줄이 흐트러진다. */
 .calc-label {
   display: block;
   margin-bottom: 1px;
+  overflow: hidden;
   color: var(--text-dim);
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-/* 스피너를 지운다 — 값을 눈으로 읽는 게 목적이라 화살표가 자리만 먹는다. */
+.calc-label .calc-unit {
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.calc-unit {
+  margin-left: 3px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.calc-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 스피너를 지운 대신 업/다운 버튼을 직접 둔다 — 값을 눌러 훑는 쓰임이 많은데
+   네이티브 화살표는 작고 hover 로만 떠서 부족했다. */
 .calc-in {
+  flex: 1;
+  min-width: 0;
   width: 100%;
   border: 0;
   padding: 0;
   background: none;
-  color: var(--text);
+  color: var(--acc);
   font-family: inherit;
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   -webkit-appearance: none;
@@ -2302,11 +2332,36 @@ figure.shot figcaption .src {
   margin: 0;
 }
 
-.calc-unit {
-  margin-left: 3px;
-  color: var(--text-faint);
-  font-size: 12.5px;
-  font-weight: 600;
+.calc-step {
+  flex: none;
+  display: flex;
+  gap: 3px;
+}
+
+.calc-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.calc-btn:hover {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 14%, var(--surface-2));
+  color: var(--acc);
+}
+
+.calc-btn:active {
+  transform: translateY(1px);
 }
 
 /* 계수 묶음은 본 입력보다 한 단 낮게 보여야 해서 배경을 눕히고 글자를 줄였다. */
@@ -2316,68 +2371,31 @@ figure.shot figcaption .src {
 }
 
 .calc-grid--sub .calc-in {
-  font-size: 16px;
-}
-
-/* 스피너를 지운 대신 업/다운 버튼을 직접 둔다. 값을 눌러 훑는 쓰임이
-   많아서 네이티브 화살표(작고 hover 로만 뜸)로는 부족했다. */
-.calc-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.calc-row .calc-in {
-  flex: 1;
-  min-width: 0;
-}
-
-.calc-step {
-  flex: none;
-  display: flex;
-  gap: 4px;
-}
-
-.calc-btn {
-  width: 27px;
-  height: 27px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-family: inherit;
   font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
-.calc-btn:hover {
-  border-color: var(--acc);
-  background: color-mix(in srgb, var(--acc) 12%, var(--surface-2));
-  color: var(--acc);
-}
-
-.calc-btn:active {
-  transform: translateY(1px);
-}
-
-/* 스케일 표에서 "지금 입력한 값"이 어느 행인지 즉시 잡히게 한다.
-   tr:hover 규칙보다 특이도가 높아야 해서 [style*="--acc"] 를 함께 물린다. */
+/* 현재 입력값 행. 표마다 --acc 가 달라서 감정축·프레임축이 서로 다른 색으로
+   칠해진다 — 입력 칸 색과 같은 색이라 어느 입력이 어느 표를 움직이는지 보인다.
+   tr:hover 규칙보다 특이도가 높아야 해서 [style*="--acc"] 를 함께 물렸다. */
 .table-scroll[style*="--acc"] tbody tr.calc-here td {
-  background: color-mix(in srgb, var(--acc) 12%, var(--surface));
+  background: color-mix(in srgb, var(--acc) 14%, var(--surface));
   font-weight: 700;
 }
 
 .table-scroll[style*="--acc"] tbody tr.calc-here td:first-child {
-  box-shadow: inset 4px 0 0 var(--acc);
+  box-shadow: inset 5px 0 0 var(--acc);
   color: var(--acc);
 }
 
-/* 단위가 라벨 안으로 들어간 경우 — 라벨(11.5px)보다 커 보이면 안 된다. */
-.calc-label .calc-unit {
-  font-size: 10.5px;
-  font-weight: 500;
+.calc-now {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--acc);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  vertical-align: 1px;
 }
