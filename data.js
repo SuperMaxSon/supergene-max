@@ -79,7 +79,7 @@ const SECTIONS = [
         updated: "2026-09-01 10:58",
         pinned: false,
         project: "smg",
-        tags: ["코드 실측", "데코", "인터랙티브"],
+        tags: ["데코", "인터랙티브"],
       },
       {
         title: "채팅 캐릭터 애니메이션 용량 계산기",
