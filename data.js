@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 11:44",
+  updated: "2026-09-01 11:48",
 };
 
 /* --------------------------------------------------------------------------
@@ -86,8 +86,8 @@ const SECTIONS = [
         desc: "파츠 11장짜리 아이소메트릭 집으로 등장 연출 7종을 실제 타이밍에 돌려보고, 레이어 순서를 프리팹 트리에서 끌어서 바꿔본다.",
         url: "docs/deco-tween-iso.html",
         status: "완료",
-        version: "v1.4",
-        updated: "2026-09-01 11:44",
+        version: "v1.5",
+        updated: "2026-09-01 11:48",
         pinned: false,
         project: "smg",
         tags: ["데코", "인터랙티브"],
@@ -264,6 +264,17 @@ const SECTIONS = [
         updated: "2026-09-01 10:56",
         pinned: false,
         tags: ["머지", "리소스", "실측 추적"],
+      },
+      {
+        title: "머지 플로우 시뮬레이터",
+        desc: "노드 11개와 대사 37행을 그대로 태워 돌립니다. 보드는 직접 플레이하고 대화는 탭으로 넘기면서, 어느 화살표에서 받고 어디서 램에 올릴지를 메모리 곡선으로 정합니다 — 회색선이 지금 코드.",
+        url: "docs/merge-flow-sim.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-01 11:48",
+        pinned: false,
+        tags: ["머지", "로딩 설계", "인터랙티브"],
       },
     ],
   },
