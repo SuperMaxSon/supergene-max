@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v3.8 &middot; 2026-09-01</span>
+          <span class="tag">v3.9 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -91,6 +91,18 @@
               <span class="calc-step">
                 <button class="calc-btn" type="button" data-for="i-inner" data-dir="1">▲</button>
                 <button class="calc-btn" type="button" data-for="i-inner" data-dir="-1">▼</button>
+              </span>
+            </div>
+          </div>
+          <!-- 등장하는 것은 움직이기만 하는 게 아니라 떠오르듯 들어와야 한다.
+               트윈 길이의 앞 몇 %를 opacity 0 -> 255 에 쓸지. 0 이면 처음부터 불투명. -->
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-fade">페이드 인 <span class="calc-unit">% · 트윈 대비</span></label>
+            <div class="calc-row">
+              <input class="calc-in" id="i-fade" type="number" min="0" max="100" step="5" value="40" />
+              <span class="calc-step">
+                <button class="calc-btn" type="button" data-for="i-fade" data-dir="1">▲</button>
+                <button class="calc-btn" type="button" data-for="i-fade" data-dir="-1">▼</button>
               </span>
             </div>
           </div>
@@ -473,7 +485,7 @@
         var PRESETS = [
           { id: "drop", name: "위에서 낙하", key: "node.y", ease: "bounceOut",
             par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 420, min: 40, max: 1400, step: 20 }],
-            apply: function (p, t, e, fn, P) { return { ty: -(1 - e) * P.h, op: 1 }; } },
+            apply: function (p, t, e, fn, P) { return { ty: -(1 - e) * P.h, op: fadeOp(t) }; } },
 
           /* 낙하 구간은 quadIn 고정이다 — 공통 이징이 bounce 계열이면 착지 전에 통통 튀어서
              "착지하자마자 띠용" 이 안 나온다. 공통 이징은 착지 뒤 복원(띠용)에만 쓴다. */
@@ -483,17 +495,17 @@
                   { k: "fall", label: "낙하 비중", unit: "%", v: 72, min: 40, max: 90, step: 2 }],
             apply: function (p, t, e0, fn, P) {
               var r = P.fall / 100;
-              if (t < r) return { ty: -(1 - E.quadIn(t / r)) * P.h, op: 1 };
+              if (t < r) return { ty: -(1 - E.quadIn(t / r)) * P.h, op: fadeOp(t) };
               var k = (t - r) / (1 - r), d = 1 - P.sq;
               var sy = k < 0.35 ? 1 - d * (k / 0.35) : P.sq + d * fn((k - 0.35) / 0.65);
-              return { ty: 0, sx: 1 + (1 - sy) * 0.8, sy: sy, op: 1 };
+              return { ty: 0, sx: 1 + (1 - sy) * 0.8, sy: sy, op: fadeOp(t) };
             } },
 
           { id: "pop", name: "아래에서 팝", key: "scale", ease: "backOut",
             par: [{ k: "s0", label: "시작 스케일", unit: "", v: 0.25, min: 0, max: 1, step: 0.05 },
                   { k: "rise", label: "솟는 거리", unit: "px", v: 0, min: 0, max: 140, step: 2 }],
             apply: function (p, t, e, fn, P) {
-              return { ty: (1 - t) * P.rise, s: P.s0 + (1 - P.s0) * e, op: Math.min(1, t * 3) };
+              return { ty: (1 - t) * P.rise, s: P.s0 + (1 - P.s0) * e, op: fadeOp(t) };
             } },
 
           { id: "fadeIn", name: "페이드 인", key: "opacity", ease: "sineOut",
@@ -512,7 +524,7 @@
                   { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
             apply: function (p, t, e, fn, P) {
               var w = p.bb.w * e * P.rg;
-              return { clip: rectPath(P.st ? p.bb.x + p.bb.w - w : p.bb.x, p.bb.y, w, p.bb.h) };
+              return { op: fadeOp(t), clip: rectPath(P.st ? p.bb.x + p.bb.w - w : p.bb.x, p.bb.y, w, p.bb.h) };
             } },
 
           { id: "fillV", name: "Fill 세로", key: "FillType.VERTICAL", ease: "quadOut",
@@ -521,7 +533,7 @@
                   { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
             apply: function (p, t, e, fn, P) {
               var h = p.bb.h * e * P.rg;
-              return { clip: rectPath(p.bb.x, P.st ? p.bb.y : p.bb.y + p.bb.h - h, p.bb.w, h) };
+              return { op: fadeOp(t), clip: rectPath(p.bb.x, P.st ? p.bb.y : p.bb.y + p.bb.h - h, p.bb.w, h) };
             } }
         ];
 
@@ -559,6 +571,19 @@
               body.replace(/^/gm, "            ").replace(/^\s+$/gm, "") + "\n" +
               "        });\n    });\n}" + (tail || "");
           }
+          var F = fadeSec().toFixed(2);
+          /* 움직임과 페이드는 길이가 다르다 — parallel 로 같이 돌린다.
+             페이드 인을 0 으로 두면 그냥 불투명하게 시작하므로 이 껍데기를 안 씌운다. */
+          function motion(lines) {
+            if (fade() <= 0) {
+              return "cc.tween(node)\n    .delay(delay + step * j)\n" +
+                lines.map(function (l) { return "    " + l; }).join("\n") + "\n    .start();";
+            }
+            return "cc.tween(node)\n    .delay(delay + step * j)\n    .parallel(\n        cc.tween()\n" +
+              lines.map(function (l) { return "            " + l; }).join("\n") + ",\n" +
+              "        cc.tween().to(" + F + ", { opacity: 255 })\n    )\n    .start();";
+          }
+          var op0 = "node.opacity = " + (fade() > 0 ? "0" : "255") + ";";
           var sp = "const sprite = node.getComponent(cc.Sprite);\nsprite.type = cc.Sprite.Type.FILLED;\n";
           /* Fill 은 방향이 값 두 개로 갈린다 — 시작점과 채우는 부호. */
           function fill(axis, dirs) {
@@ -566,21 +591,27 @@
             return wrap("private playFill" + (axis === "HORIZONTAL" ? "Horizontal" : "Vertical"),
               sp + "sprite.fillType = cc.Sprite.FillType." + axis + ";\n" +
               "sprite.fillStart = " + (back ? 1 : 0) + ";      // " + (back ? dirs[1] : dirs[0]) + "\n" +
-              "sprite.fillRange = 0;\n\ncc.tween(sprite)\n    .delay(delay + step * j)\n    .to(" + D +
-              ", { fillRange: " + (back ? "-" : "") + P.rg + " }, { easing: " + Q + " })\n    .start();");
+              "sprite.fillRange = 0;\n" + op0 + "\n\ncc.tween(sprite)\n    .delay(delay + step * j)\n    .to(" + D +
+              ", { fillRange: " + (back ? "-" : "") + P.rg + " }, { easing: " + Q + " })\n    .start();" +
+              (fade() > 0
+                ? "\n\n// 채우기는 sprite, 페이드는 node 라 트윈을 나눈다\ncc.tween(node)\n    .delay(delay + step * j)\n    .to(" +
+                  F + ", { opacity: 255 })\n    .start();"
+                : ""));
           }
           var tw = tweenSec(), fallSec = tw * (P.fall || 72) / 100, rest = tw - fallSec;
           var map = {
             drop: "/** 오브젝트가 순서대로 위에서 떨어진다 */\n" + wrap("private playDropIn",
-"const endY = node.y;\nnode.y = endY + " + P.h + ";          // 화면 밖까지 올려둔다\nnode.opacity = 255;\n\ncc.tween(node)\n    .delay(delay + step * j)\n    .to(" + D + ", { y: endY }, { easing: " + Q + " })\n    .start();"),
+"const endY = node.y;\nnode.y = endY + " + P.h + ";          // 화면 밖까지 올려둔다\n" + op0 + "\n\n" +
+motion([".to(" + D + ", { y: endY }, { easing: " + Q + " })"])),
             squash: "/** 낙하는 가속(quadIn)으로 안 튀게 떨어뜨리고, 착지하는 즉시 한 번만 눌렀다 편다.\n *  앵커는 이미지 하단 끝 (0.5, 0) — 발이 바닥에 붙은 채로 눌린다. */\n" + wrap("private playDropWithSquash",
-"const endY = node.y;\nnode.y = endY + " + P.h + ";\n\ncc.tween(node)\n    .delay(delay + step * j)\n    .to(" + fallSec.toFixed(2) + ", { y: endY }, { easing: \"quadIn\" })   // 튀지 않는다\n    .to(" + (rest * 0.35).toFixed(2) + ", { scaleY: " + P.sq + ", scaleX: " + (1 + (1 - P.sq) * 0.8).toFixed(2) + " })\n    .to(" + (rest * 0.65).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: " + Q + " })\n    .start();"),
+"const endY = node.y;\nnode.y = endY + " + P.h + ";\n" + op0 + "\n\n" + motion([
+".to(" + fallSec.toFixed(2) + ", { y: endY }, { easing: \"quadIn\" })   // 튀지 않는다",
+".to(" + (rest * 0.35).toFixed(2) + ", { scaleY: " + P.sq + ", scaleX: " + (1 + (1 - P.sq) * 0.8).toFixed(2) + " })",
+".to(" + (rest * 0.65).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: " + Q + " })"])),
             pop: "/** 제자리에서 솟아오른다 */\n" + wrap("private playPopIn",
-(P.rise ? "const endY = node.y;\n" : "") + "node.setScale(" + P.s0 + ");\nnode.opacity = 0;\n" +
-(P.rise ? "node.y = endY - " + P.rise + ";          // 바닥 아래에서 올라온다\n" : "") +
-"\ncc.tween(node)\n    .delay(delay + step * j)\n    .call(() => { node.opacity = 255; })\n" +
-"    .to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easing: " + Q + " })\n" +
-"    .start();",
+(P.rise ? "const endY = node.y;\n" : "") + "node.setScale(" + P.s0 + ");\n" + op0 + "\n" +
+(P.rise ? "node.y = endY - " + P.rise + ";          // 바닥 아래에서 올라온다\n" : "") + "\n" +
+motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easing: " + Q + " })"]),
 "\n\n// 2.4 의 scale 은 단일 값(균등)이다. 축을 나누려면 scaleX / scaleY"),
             fadeIn: wrap("private playFadeIn",
 "node.opacity = " + P.a0 + ";\n\ncc.tween(node)\n    .delay(delay + step * j)\n    .to(" + D + ", { opacity: " + P.a1 + " }, { easing: " + Q + " })\n    .start();",
@@ -655,6 +686,7 @@
           dur: document.getElementById("i-dur"),
           stg: document.getElementById("i-stg"),
           inner: document.getElementById("i-inner"),
+          fade: document.getElementById("i-fade"),
           ease: document.getElementById("i-ease"),
           total: document.getElementById("o-total")
         };
@@ -729,6 +761,11 @@
            스프라이트 하나의 트윈 길이다. 그래서 root 가 끝나는 시각은 늘 보간 시간이다. */
         function inner() { var v = parseFloat(el.inner.value); return isFinite(v) && v > 0 ? Math.min(60, v) : 0; }
         function span() { return duration() * inner() / 100; }
+        /* 어느 연출이든 등장은 페이드 인을 함께 탄다 — 트윈 앞 몇 %를 opacity 에 쓴다.
+           opacity 를 직접 다루는 페이드 인 · 아웃 연출만 예외다. */
+        function fade() { var v = parseFloat(el.fade.value); return isFinite(v) && v > 0 ? Math.min(100, v) : 0; }
+        function fadeSec() { return tweenSec() * fade() / 100; }
+        function fadeOp(t) { var r = fade() / 100; return r <= 0 ? 1 : Math.min(1, t / r); }
         function tweenSec() { return duration() - span(); }
         /* 딜레이는 오브젝트 root 사이의 간격이다. root 하나가 곧 연출 하나이고,
            그 안의 스프라이트는 같은 딜레이 · 같은 보간으로 함께 움직인다.
@@ -964,7 +1001,7 @@
           if (state.loop && !state.playing) playAll();
         });
         document.getElementById("resetArea").addEventListener("click", clearArea);
-        [el.dur, el.stg, el.inner].forEach(function (i) { i.addEventListener("input", function () { refresh(); renderRows(); }); });
+        [el.dur, el.stg, el.inner, el.fade].forEach(function (i) { i.addEventListener("input", function () { refresh(); renderRows(); }); });
         el.ease.addEventListener("change", function () { refresh(); if (!state.playing) replay(); });
 
         /* 업/다운 버튼 — input 의 step · min · max 를 그대로 따른다. */
@@ -1122,6 +1159,7 @@
         treeHint.innerHTML =
           "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 뒤에 놓일수록 카메라에 가깝고, 이 순서는 아트 리소스 트리 그대로 <b>고정</b>입니다." +
           "<br />딜레이(초)는 <b>root 사이의 간격</b>이라 root 행에서만 고칩니다 — 첫 root 는 기준(0)이라 칸이 없습니다." +
+          "<br />등장은 어떤 연출이든 <b>페이드 인을 함께</b> 탑니다 — 트윈 앞부분을 opacity 에 씁니다(0 이면 처음부터 불투명)." +
           "<br />보간 시간 1초는 <b>root 하나가 등장하는 시간</b>입니다. 그 1초 안에서 스프라이트가 <b>레이어 순서대로 조금씩 늦게</b> 들어오고(root 안 시차), 0 으로 두면 한꺼번에 움직입니다." +
           "<br />수리형은 낡은 상태가 처음부터 놓여 있다가, 제 차례에 <b>공통 딜레이만큼 걸쳐 흐려져 지워지고</b> 그 뒤에 새 것이 들어옵니다." +
           "<br />행이나 무대에 얹으면 그 파츠만 남고, ◉ 로 숨깁니다. 오브젝트 유형은 아트 인계 문서의 네 가지 — <b>배치형 · 수리형 · 건설형 · 선택형</b> — 을 하나씩 깔아 뒀습니다.";
@@ -1287,6 +1325,7 @@
             "export const DECO_APPEAR_TWEEN_SEC    = " + tweenSec().toFixed(2) + ";   // 스프라이트 하나의 트윈 길이",
             "export const DECO_APPEAR_STAGGER_SEC  = " + stagger().toFixed(3) + ";   // root 사이 간격",
             "export const DECO_APPEAR_INNER_SPAN   = " + span().toFixed(2) + ";   // root 안 시차 총량",
+            "export const DECO_APPEAR_FADE_SEC     = " + fadeSec().toFixed(2) + ";   // 등장 페이드 인 길이",
             'export const DECO_APPEAR_EASING       = "' + el.ease.value + '";'
           ];
           (ps.par || []).forEach(function (d) {
