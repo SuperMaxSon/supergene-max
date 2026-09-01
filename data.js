@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 14:52",
+  updated: "2026-09-01 14:56",
 };
 
 /* --------------------------------------------------------------------------
@@ -76,8 +76,8 @@ const SECTIONS = [
         url: "docs/merge-feedback-anim.html",
         project: "smg",
         status: "초안",
-        version: "v2.3",
-        updated: "2026-09-01 14:37",
+        version: "v2.4",
+        updated: "2026-09-01 14:56",
         pinned: false,
         tags: ["연출", "튜닝 도구", "인터랙티브"],
       },
@@ -97,7 +97,7 @@ const SECTIONS = [
         desc: "캐릭터와 감정이 늘면 용량이 어디까지 가나. 프레임 시퀀스 · 노드 트랜스폼 · Spine 세 방식을 같은 조건에 놓고 계산한다.",
         url: "docs/chat-anim-size-calc.html",
         status: "완료",
-        version: "v1.7",
+        version: "v1.8",
         updated: "2026-09-01 10:31",
         pinned: false,
         project: "smg",
@@ -260,7 +260,7 @@ const SECTIONS = [
         url: "docs/story-merge-resource-budget.html",
         project: "smg",
         status: "추적",
-        version: "v1.7",
+        version: "v1.8",
         updated: "2026-09-01 10:56",
         pinned: false,
         tags: ["머지", "리소스", "실측 추적"],

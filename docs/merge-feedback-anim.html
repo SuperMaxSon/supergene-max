@@ -19,6 +19,7 @@
         <a class="nav-back" href="#icon">아이콘</a>
         <a class="nav-back" href="#action">액션 6</a>
         <a class="nav-back" href="#text">텍스트 3</a>
+        <a class="nav-back" href="#float">문구 5</a>
         <a class="nav-back" href="#gap">누락 5</a>
         <span class="nav-spacer"></span>
       </div>
@@ -40,7 +41,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v2.3 · 2026-09-01 14:37</span>
+          <span class="tag" id="mfx-ver">v2.4 · 2026-09-01 14:56</span>
         </div>
       </div>
     </header>
@@ -204,6 +205,31 @@
           <span class="doc-h2-sub">패널이 아니라 누른 칩 위로 떠오르는 문구 — 연달아 눌러도 겹쳐 뜬다</span>
         </h2>
         <div id="mfx-text-list"></div>
+      </section>
+
+      <section class="doc-section" id="float">
+        <h2 class="doc-h2">
+          문구 애니메이션 5종
+          <span class="doc-h2-sub">같은 문구를 다섯 가지로 띄워 본다 — 위 3종은 여기서 하나를 골라 쓴다</span>
+        </h2>
+        <div class="notes" style="margin-bottom: 16px">
+          <div class="note">
+            <div class="note-title">고르는 기준은 "얼마나 자주 뜨는가" 하나</div>
+            <p>
+              위의 <strong>텍스트 연출 3종</strong>은 <strong>언제</strong> 띄우는지를 정하고,
+              여기 <strong>5종</strong>은 <strong>어떻게</strong> 뜨는지를 정합니다.
+              그래서 문구의 시간·이징·거리 값은 이 다섯 카드에만 있고, B1·B2·B3 은
+              <strong>문구 스타일</strong> 한 줄로 그중 하나를 가리킵니다 —
+              같은 값을 세 군데에 복사해 두면 한 번 바꿀 때마다 세 번 어긋납니다.
+            </p>
+            <p>
+              자주 뜰수록 조용해야 하고(<code>F4</code>), 어쩌다 한 번 뜰수록 크게 움직여도 됩니다
+              (<code>F3</code> · <code>F5</code>). 판단이 안 서면 <code>F1</code> 이 기본값입니다.
+              <code>F5</code> 만 글자 수만큼 노드를 먹으니 <strong>1회성 축하</strong> 밖으로 나가면 안 됩니다.
+            </p>
+          </div>
+        </div>
+        <div id="mfx-float-list"></div>
       </section>
 
       <section class="doc-section" id="gap">
@@ -437,32 +463,151 @@
           return st;
         }
 
-        /* 떠오르는 문구 (floating text / damage popup) — RPG 에서 아이템 먹을 때 뜨는 그 텍스트다.
-           패널이 아니라 글자만 뜬다. 좌우로 흩뿌리지 않는다. 클릭한 칩 바로 위에서
-           수직으로만 움직인다: 팝인 → 유지 → 떠오르며 소멸.
-           연타로 여러 개가 동시에 뜰 때만 겹쳐 읽히지 않도록 시작 높이를 계단처럼 올린다
-           (stack=0 이면 완전히 같은 자리에서 뜬다). */
-        function floatText(st, text, at, P, good) {
-          P = P || {};
-          var inSec = P.textInSec != null ? P.textInSec : 0.22;
-          var hold = P.textHold != null ? P.textHold : 0.45;
-          var outSec = P.textOutSec != null ? P.textOutSec : 0.45;
-          var rise = P.textRise != null ? P.textRise : 16;
-          var drift = P.textDrift != null ? P.textDrift : 34;
-          var gap = P.textGap != null ? P.textGap : 34;
-          var stack = P.textStack != null ? P.textStack : 14;
+        /* ──────────────────────────────────────────────────────────────────
+           문구 애니메이션 (floating text / damage popup) 5종.
 
-          /* 살아 있는 문구 수만큼만 계단을 올린다. 다 사라지면 다시 0 단이다. */
-          st.floatLive = (st.floatLive || 0) + 1;
-          var n = st.floatLive - 1;
+           "언제 띄우나" 는 텍스트 연출 3종이 정하고, "어떻게 뜨나" 는 여기가 정한다.
+           그래서 스타일 값은 f1~f5 한 군데에만 있고, B1·B2·B3 은 그중 하나를 고른다.
+           전부 노드 하나에 cc.tween 을 거는 방식이라 코코스로 그대로 옮겨진다
+           (F5 만 글자 수만큼 Label 노드가 필요하다).
+           ────────────────────────────────────────────────────────────────── */
+        var FLOAT_STYLES = [
+          ["rise",  "F1 상승 페이드"],
+          ["arc",   "F2 포물선 튐"],
+          ["punch", "F3 임팩트 스탬프"],
+          ["slide", "F4 슬라이드 인"],
+          ["wave",  "F5 글자 웨이브"],
+        ];
+        var STYLE_PARAM = { rise: "f1", arc: "f2", punch: "f3", slide: "f4", wave: "f5" };
+
+        /* 연타로 겹칠 때만 시작 높이를 계단처럼 올린다. 다 사라지면 다시 0 단이다.
+           좌우로 흩뿌리지 않는다 — 산개는 전투처럼 초당 수십 개가 뜨는 판의 변형이다. */
+        function floatSlot(st) { st.floatLive = (st.floatLive || 0) + 1; return st.floatLive - 1; }
+        function floatDone(st, t) { t.kill(); st.floatLive = Math.max(0, (st.floatLive || 1) - 1); }
+        function floatNode(st, text, good) {
           var t = st.spr('<div class="mfx-float' + (good ? " is-good" : "") + '">' + text + "</div>");
-          var x0 = at.x, y0 = at.y + gap + n * stack;
-          t.set({ x: x0, y: y0, a: 0, sx: 0.6, sy: 0.6 });
           t.el.style.zIndex = 30;
-          return t.to(inSec, { y: y0 + rise, a: 1, sx: 1, sy: 1 }, P.textInEase || "backOut")
-            .then(function () { return wait(hold); })
-            .then(function () { return t.to(outSec, { y: y0 + rise + drift, a: 0 }, P.textOutEase || "quadOut"); })
-            .then(function () { t.kill(); st.floatLive = Math.max(0, (st.floatLive || 1) - 1); });
+          return t;
+        }
+        function gv(S, k, d) { return S && S[k] != null ? S[k] : d; }
+
+        /* F1 · 상승 페이드 — 기본형. 팝인 → 유지 → 떠오르며 소멸. */
+        function floatRise(st, text, at, S, good) {
+          var n = floatSlot(st);
+          var t = floatNode(st, text, good);
+          var y0 = at.y + gv(S, "gap", 34) + n * gv(S, "stack", 14);
+          var rise = gv(S, "rise", 16);
+          t.set({ x: at.x, y: y0, a: 0, sx: 0.6, sy: 0.6 });
+          return t.to(gv(S, "inSec", 0.22), { y: y0 + rise, a: 1, sx: 1, sy: 1 }, gv(S, "inEase", "backOut"))
+            .then(function () { return wait(gv(S, "hold", 0.45)); })
+            .then(function () { return t.to(gv(S, "outSec", 0.45), { y: y0 + rise + gv(S, "drift", 34), a: 0 }, gv(S, "outEase", "quadOut")); })
+            .then(function () { floatDone(st, t); });
+        }
+
+        /* F2 · 포물선 튐 — 위로 던져 올렸다가 중력에 지는 곡선.
+           상승은 감속(quadOut), 하강은 가속(quadIn) 이어야 무게가 생긴다.
+           x 는 전 구간 등속으로 조금 흐른다 — 그래야 던진 방향이 읽힌다. */
+        function floatArc(st, text, at, S, good) {
+          var n = floatSlot(st);
+          var t = floatNode(st, text, good);
+          var y0 = at.y + gv(S, "gap", 30) + n * gv(S, "stack", 12);
+          var side = gv(S, "sideX", 14), up = gv(S, "upRise", 46), drop = gv(S, "fallDrop", 22);
+          var upSec = gv(S, "upSec", 0.30), fallSec = gv(S, "fallSec", 0.42);
+          var total = upSec + fallSec, sp = gv(S, "startScale", 0.5);
+          t.set({ x: at.x, y: y0, a: 0, sx: sp, sy: sp });
+          /* x 이동은 상승·하강과 별개로 한 번에 건다 — 두 구간으로 쪼개면 꺾여 보인다 */
+          t.to(total, { x: at.x + side }, "linear");
+          t.to(gv(S, "popSec", 0.14), { a: 1, sx: 1, sy: 1 }, gv(S, "popEase", "backOut"));
+          return t.to(upSec, { y: y0 + up }, gv(S, "upEase", "quadOut"))
+            .then(function () { return wait(gv(S, "apexHold", 0.06)); })
+            .then(function () {
+              t.to(gv(S, "fadeSec", 0.28), { a: 0 }, "quadIn");
+              return t.to(fallSec, { y: y0 + up - drop }, gv(S, "fallEase", "quadIn"));
+            })
+            .then(function () { floatDone(st, t); });
+        }
+
+        /* F3 · 임팩트 스탬프 — 큰 데서 확 조여 꽂힌다. 거부·경고처럼
+           "지금 이걸 읽어라" 가 목적일 때. 이동이 거의 없어야 무게가 산다. */
+        function floatPunch(st, text, at, S, good) {
+          var n = floatSlot(st);
+          var t = floatNode(st, text, good);
+          var y0 = at.y + gv(S, "gap", 38) + n * gv(S, "stack", 16);
+          var big = gv(S, "startScale", 1.9);
+          t.set({ x: at.x, y: y0, a: 0, sx: big, sy: big });
+          return t.to(gv(S, "inSec", 0.12), { sx: gv(S, "dipScale", 0.92), sy: gv(S, "dipScale", 0.92), a: 1 }, gv(S, "inEase", "quadOut"))
+            .then(function () { return t.to(gv(S, "settleSec", 0.14), { sx: 1, sy: 1 }, gv(S, "settleEase", "backOut")); })
+            .then(function () { return wait(gv(S, "hold", 0.6)); })
+            .then(function () {
+              var out = gv(S, "outScale", 1.18);
+              return t.to(gv(S, "outSec", 0.24), { sx: out, sy: out, a: 0 }, gv(S, "outEase", "quadIn"));
+            })
+            .then(function () { floatDone(st, t); });
+        }
+
+        /* F4 · 슬라이드 인 — 오버슛도 스케일도 없다. 아래에서 조용히 올라와
+           조용히 사라진다. 자주 뜨는 상태 고지용 — 튀면 그게 소음이 된다. */
+        function floatSlide(st, text, at, S, good) {
+          var n = floatSlot(st);
+          var t = floatNode(st, text, good);
+          var y0 = at.y + gv(S, "gap", 34) + n * gv(S, "stack", 14);
+          var from = gv(S, "fromY", 20);
+          t.set({ x: at.x, y: y0 - from, a: 0, sx: 1, sy: 1 });
+          return t.to(gv(S, "inSec", 0.24), { y: y0, a: 1 }, gv(S, "inEase", "quadOut"))
+            .then(function () { return wait(gv(S, "hold", 0.7)); })
+            .then(function () { return t.to(gv(S, "outSec", 0.36), { y: y0 + gv(S, "drift", 14), a: 0 }, gv(S, "outEase", "quadIn")); })
+            .then(function () { floatDone(st, t); });
+        }
+
+        /* F5 · 글자 웨이브 — 글자가 순서대로 튀어 오른다. 레벨업·해금처럼
+           1회성 축하에만 쓴다. 글자 수만큼 노드가 늘어나니 상시 연출에는 금지. */
+        function floatWave(st, text, at, S, good) {
+          var n = floatSlot(st);
+          var chars = String(text).split("");
+          var inner = chars.map(function (c) {
+            return '<span class="ch">' + (c === " " ? "&nbsp;" : c) + "</span>";
+          }).join("");
+          var t = floatNode(st, inner, good);
+          var y0 = at.y + gv(S, "gap", 34) + n * gv(S, "stack", 16);
+          t.set({ x: at.x, y: y0, a: 1, sx: 1, sy: 1 });
+          var spans = t.el.querySelectorAll(".ch");
+          var stagger = gv(S, "stagger", 0.045), rise = gv(S, "charRise", 14);
+          var inSec = gv(S, "charInSec", 0.16), backSec = gv(S, "settleSec", 0.18);
+          var inEase = gv(S, "charInEase", "quadOut"), backEase = gv(S, "settleEase", "backOut");
+          var legs = [];
+          Array.prototype.forEach.call(spans, function (sp, i) {
+            /* CSS 를 건드리지 않고 인라인으로 세운다 — 이 문서의 스타일시트는
+               다른 작업과 공유라 여기서 늘리지 않는다 */
+            sp.style.display = "inline-block";
+            sp.style.opacity = "0";
+            legs.push(
+              wait(i * stagger)
+                .then(function () {
+                  return tw(inSec, inEase, function (e) {
+                    sp.style.opacity = String(e);
+                    sp.style.transform = "translateY(" + (-rise * e) + "px)";
+                  });
+                })
+                .then(function () {
+                  return tw(backSec, backEase, function (e) {
+                    sp.style.transform = "translateY(" + (-rise * (1 - e)) + "px)";
+                  });
+                })
+            );
+          });
+          return Promise.all(legs)
+            .then(function () { return wait(gv(S, "hold", 0.5)); })
+            .then(function () { return t.to(gv(S, "outSec", 0.40), { y: y0 + gv(S, "drift", 30), a: 0 }, gv(S, "outEase", "quadOut")); })
+            .then(function () { floatDone(st, t); });
+        }
+
+        var FLOAT_FN = { rise: floatRise, arc: floatArc, punch: floatPunch, slide: floatSlide, wave: floatWave };
+
+        /* 텍스트 연출 3종이 부르는 입구. 스타일만 고르면 값은 그 스타일 카드에서 온다. */
+        function floatText(st, text, at, P, good) {
+          var style = (P && P.textStyle) || "rise";
+          var fn = FLOAT_FN[style] || floatRise;
+          return fn(st, text, at, V[STYLE_PARAM[style]] || {}, good);
         }
         /* 판때기가 없으므로 "옆면 두께" 는 접지 그림자의 오프셋으로 표현한다. */
         function plateEdge(s, px) {
@@ -759,6 +904,10 @@
             { k:"landSX",     label:"착지 가로",     v:1.16, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_X" },
             { k:"landSY",     label:"착지 세로",     v:0.86, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_Y" },
             { k:"landOutSec", label:"착지 복귀",     v:0.15, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_HOP_LAND_OUT_SEC" },
+            { k:"refillSec",  label:"창고 보충 대기",v:1.0,  min:0,    max:10, step:0.1,  unit:"s",                                     cfg:"MERGE_SHELF_REFILL_SEC",         note:"꺼낸 순간부터 센다" },
+            { k:"refillPopSec",label:"창고 보충 팝인",v:0.22,min:0.02, max:1.5,step:0.01, unit:"s", easeK:"refillPopEase",ease:"backOut",cfg:"MERGE_SHELF_REFILL_POP_SEC" },
+            { k:"lingerSec",  label:"보드 잔존",     v:2.0,  min:0,    max:10, step:0.1,  unit:"s",                                     cfg:"MERGE_HOP_LINGER_SEC",           note:"착지한 순간부터 센다 · 무대용" },
+            { k:"vanishSec",  label:"보드 소멸",     v:0.28, min:0.02, max:2,  step:0.01, unit:"s", easeK:"vanishEase", ease:"quadIn",  cfg:"MERGE_HOP_VANISH_SEC" },
           ],
           a6: [
             { k:"boxInSec",   label:"상자 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"boxInEase",  ease:"quadOut", cfg:"MERGE_COIN_BOX_IN_SEC" },
@@ -782,13 +931,7 @@
             { k:"pressSX",    label:"응답 가로",     v:1.05, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_X" },
             { k:"pressSY",    label:"응답 세로",     v:0.95, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_Y" },
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
-            { k:"textInSec",  label:"문구 등장",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"textInEase", ease:"backOut", cfg:"MERGE_FLOAT_TEXT_IN_SEC" },
-            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE",          note:"수직으로만 움직인다" },
-            { k:"textHold",   label:"문구 유지",     v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_TEXT_HOLD_SEC" },
-            { k:"textOutSec", label:"문구 퇴장",     v:0.45, min:0.02, max:2, step:0.01, unit:"s", easeK:"textOutEase",ease:"quadOut", cfg:"MERGE_FLOAT_TEXT_OUT_SEC" },
-            { k:"textDrift",  label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_DRIFT",         note:"떠오르며 사라진다" },
-            { k:"textGap",    label:"칩과의 간격",   v:34,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_GAP",           note:"클릭한 칩 위" },
-            { k:"textStack",  label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_STACK",         note:"동시에 뜬 문구끼리 겹치지 않게 위로" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
           ],
           b2: [
             { k:"dimAlpha",   label:"감광 투명도",   v:0.45, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_CHARGING_DIM",             note:"코코스 opacity 115 ≈ 0.45" },
@@ -799,13 +942,7 @@
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
             { k:"punchScale", label:"게이지 펀치",   v:1.12, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_GAUGE_PUNCH_SCALE" },
             { k:"punchOutSec",label:"게이지 펀치 복귀",v:0.16,min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_GAUGE_PUNCH_SEC" },
-            { k:"textInSec",  label:"문구 등장",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"textInEase", ease:"backOut", cfg:"MERGE_FLOAT_TEXT_IN_SEC" },
-            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE",          note:"수직으로만 움직인다" },
-            { k:"textHold",   label:"문구 유지",     v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_TEXT_HOLD_SEC" },
-            { k:"textOutSec", label:"문구 퇴장",     v:0.45, min:0.02, max:2, step:0.01, unit:"s", easeK:"textOutEase",ease:"quadOut", cfg:"MERGE_FLOAT_TEXT_OUT_SEC" },
-            { k:"textDrift",  label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_DRIFT",         note:"떠오르며 사라진다" },
-            { k:"textGap",    label:"칩과의 간격",   v:34,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_GAP",           note:"클릭한 칩 위" },
-            { k:"textStack",  label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_STACK",         note:"동시에 뜬 문구끼리 겹치지 않게 위로" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"slide", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
             { k:"remainSec",  label:"문구의 남은 시간",v:12, min:1,    max:999,step:1,   unit:"초",                                    cfg:"(런타임 값)" },
           ],
           b3: [
@@ -816,13 +953,60 @@
             { k:"angleA",     label:"회전 1차",      v:9,    min:0,    max:45, step:1,   unit:"°",                                     cfg:"MERGE_LOCK_ROTATE_ANGLE",        note:"−9° → +9° → −5°" },
             { k:"angleB",     label:"회전 2차",      v:5,    min:0,    max:45, step:1,   unit:"°",                                     cfg:"MERGE_LOCK_ROTATE_ANGLE_2" },
             { k:"backSec",    label:"회전 복귀",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"backOut", cfg:"MERGE_LOCK_ROTATE_BACK_SEC" },
-            { k:"textInSec",  label:"문구 등장",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"textInEase", ease:"backOut", cfg:"MERGE_FLOAT_TEXT_IN_SEC" },
-            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE",          note:"수직으로만 움직인다" },
-            { k:"textHold",   label:"문구 유지",     v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_TEXT_HOLD_SEC" },
-            { k:"textOutSec", label:"문구 퇴장",     v:0.45, min:0.02, max:2, step:0.01, unit:"s", easeK:"textOutEase",ease:"quadOut", cfg:"MERGE_FLOAT_TEXT_OUT_SEC" },
-            { k:"textDrift",  label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_DRIFT",         note:"떠오르며 사라진다" },
-            { k:"textGap",    label:"칩과의 간격",   v:34,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_GAP",           note:"클릭한 칩 위" },
-            { k:"textStack",  label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_STACK",         note:"동시에 뜬 문구끼리 겹치지 않게 위로" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
+          ],
+          f1: [
+            { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_GAP",           note:"누른 칩 위 시작 높이" },
+            { k:"inSec",      label:"등장",          v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"inEase",     ease:"backOut", cfg:"MERGE_FLOAT_RISE_IN_SEC" },
+            { k:"rise",       label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_POP",           note:"수직으로만 움직인다" },
+            { k:"hold",       label:"유지",          v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_RISE_HOLD_SEC" },
+            { k:"outSec",     label:"퇴장",          v:0.45, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"MERGE_FLOAT_RISE_OUT_SEC" },
+            { k:"drift",      label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_DRIFT" },
+            { k:"stack",      label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_STACK",         note:"0 이면 같은 자리에서 겹친다" },
+          ],
+          f2: [
+            { k:"gap",        label:"칩과의 간격",   v:30,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_GAP" },
+            { k:"startScale", label:"시작 크기",     v:0.5,  min:0.1,  max:2,  step:0.05,unit:"×",                                     cfg:"MERGE_FLOAT_ARC_START_SCALE" },
+            { k:"popSec",     label:"팝인",          v:0.14, min:0.02, max:1,  step:0.01, unit:"s", easeK:"popEase",    ease:"backOut", cfg:"MERGE_FLOAT_ARC_POP_SEC",        note:"상승과 동시에 돈다" },
+            { k:"upSec",      label:"상승",          v:0.30, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"upEase",     ease:"quadOut", cfg:"MERGE_FLOAT_ARC_UP_SEC",         note:"감속이어야 정점이 생긴다" },
+            { k:"upRise",     label:"상승 높이",     v:46,   min:4,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_UP" },
+            { k:"apexHold",   label:"정점 정지",     v:0.06, min:0,    max:0.6,step:0.01, unit:"s",                                     cfg:"MERGE_FLOAT_ARC_APEX_SEC",       note:"아주 짧게 — 무게가 생긴다" },
+            { k:"fallSec",    label:"하강",          v:0.42, min:0.02, max:2,  step:0.01, unit:"s", easeK:"fallEase",   ease:"quadIn",  cfg:"MERGE_FLOAT_ARC_FALL_SEC",       note:"가속이어야 중력으로 읽힌다" },
+            { k:"fallDrop",   label:"하강 낙차",     v:22,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_DROP" },
+            { k:"sideX",      label:"옆으로 흐름",   v:14,   min:-80,  max:80, step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_SIDE",           note:"던진 방향. 0 이면 수직" },
+            { k:"fadeSec",    label:"소멸",          v:0.28, min:0.02, max:2,  step:0.01, unit:"s",                                     cfg:"MERGE_FLOAT_ARC_FADE_SEC",       note:"하강과 겹쳐 돈다" },
+            { k:"stack",      label:"연타 계단",     v:12,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_STACK" },
+          ],
+          f3: [
+            { k:"gap",        label:"칩과의 간격",   v:38,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_GAP" },
+            { k:"startScale", label:"시작 크기",     v:1.9,  min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_START_SCALE",  note:"크게 시작해 조인다" },
+            { k:"inSec",      label:"조임",          v:0.12, min:0.02, max:1,  step:0.01, unit:"s", easeK:"inEase",     ease:"quadOut", cfg:"MERGE_FLOAT_PUNCH_IN_SEC" },
+            { k:"dipScale",   label:"언더슛 크기",   v:0.92, min:0.6,  max:1,  step:0.01,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_DIP",          note:"1 을 지나쳐야 꽂히는 맛이 난다" },
+            { k:"settleSec",  label:"안착",          v:0.14, min:0.02, max:1,  step:0.01, unit:"s", easeK:"settleEase", ease:"backOut", cfg:"MERGE_FLOAT_PUNCH_SETTLE_SEC" },
+            { k:"hold",       label:"유지",          v:0.60, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_PUNCH_HOLD_SEC",     note:"읽히라고 띄우는 거라 길다" },
+            { k:"outSec",     label:"퇴장",          v:0.24, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadIn",  cfg:"MERGE_FLOAT_PUNCH_OUT_SEC" },
+            { k:"outScale",   label:"퇴장 크기",     v:1.18, min:0.5,  max:3,  step:0.02,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_OUT_SCALE",    note:"커지며 사라진다 — 흩어지는 느낌" },
+            { k:"stack",      label:"연타 계단",     v:16,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_STACK" },
+          ],
+          f4: [
+            { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_GAP" },
+            { k:"fromY",      label:"시작 아래로",   v:20,   min:0,    max:100,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_FROM",         note:"여기서 올라온다" },
+            { k:"inSec",      label:"등장",          v:0.24, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"inEase",     ease:"quadOut", cfg:"MERGE_FLOAT_SLIDE_IN_SEC",       note:"오버슛 없음 — back 계열 금지" },
+            { k:"hold",       label:"유지",          v:0.70, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_SLIDE_HOLD_SEC" },
+            { k:"outSec",     label:"퇴장",          v:0.36, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadIn",  cfg:"MERGE_FLOAT_SLIDE_OUT_SEC" },
+            { k:"drift",      label:"퇴장 상승",     v:14,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_DRIFT",        note:"거의 안 움직인다" },
+            { k:"stack",      label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_STACK" },
+          ],
+          f5: [
+            { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_GAP" },
+            { k:"stagger",    label:"글자 간격",     v:0.045,min:0,    max:0.4,step:0.005,unit:"s",                                    cfg:"MERGE_FLOAT_WAVE_STAGGER",       note:"글자 하나씩 밀리는 시간" },
+            { k:"charInSec",  label:"글자 상승",     v:0.16, min:0.02, max:1,  step:0.01, unit:"s", easeK:"charInEase", ease:"quadOut", cfg:"MERGE_FLOAT_WAVE_UP_SEC" },
+            { k:"charRise",   label:"글자 높이",     v:14,   min:2,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_RISE" },
+            { k:"settleSec",  label:"글자 복귀",     v:0.18, min:0.02, max:1,  step:0.01, unit:"s", easeK:"settleEase", ease:"backOut", cfg:"MERGE_FLOAT_WAVE_BACK_SEC" },
+            { k:"hold",       label:"유지",          v:0.50, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_WAVE_HOLD_SEC" },
+            { k:"outSec",     label:"퇴장",          v:0.40, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"MERGE_FLOAT_WAVE_OUT_SEC" },
+            { k:"drift",      label:"퇴장 상승",     v:30,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_DRIFT" },
+            { k:"stack",      label:"연타 계단",     v:16,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_STACK" },
           ],
           c1: [
             { k:"snapSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"snapEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
@@ -854,10 +1038,7 @@
             { k:"sparkCount", label:"스파크 개수",   v:8,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
           ],
           c4: [
-            { k:"stampInSec", label:"스탬프 등장",   v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"stampEase",  ease:"backOut", cfg:"MERGE_MAX_STAMP_IN_SEC" },
-            { k:"stampStart", label:"스탬프 시작 크기",v:1.7,min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_MAX_STAMP_START_SCALE" },
-            { k:"stampHold",  label:"스탬프 유지",   v:0.75, min:0.1,  max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_MAX_STAMP_HOLD_SEC" },
-            { k:"stampOutSec",label:"스탬프 소멸",   v:0.20, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"stampOutEase",ease:"quadIn", cfg:"MERGE_MAX_STAMP_OUT_SEC" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
             { k:"hitInSec",   label:"대상 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"hitEase",    ease:"quadOut", cfg:"MERGE_MAX_HIT_IN_SEC" },
             { k:"hitSX",      label:"대상 가로",     v:1.10, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_X" },
             { k:"hitSY",      label:"대상 세로",     v:0.90, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_Y" },
@@ -877,9 +1058,7 @@
             { k:"slotInSec",  label:"슬롯 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"slotEase",   ease:"quadOut", cfg:"MERGE_SLOT_HIT_IN_SEC" },
             { k:"slotScale",  label:"슬롯 반응 크기",v:1.14, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_SLOT_HIT_SCALE" },
             { k:"slotOutSec", label:"슬롯 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"slotOutEase",ease:"backOut", cfg:"MERGE_SLOT_HIT_OUT_SEC" },
-            { k:"stampSec",   label:"완료 스탬프",   v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"stampEase",  ease:"backOut", cfg:"MERGE_DELIVERY_STAMP_SEC" },
-            { k:"stampStart", label:"스탬프 시작 크기",v:1.8,min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_DELIVERY_STAMP_START" },
-            { k:"stampAngle", label:"스탬프 각도",   v:-7,   min:-45,  max:45, step:1,   unit:"°",                                     cfg:"MERGE_DELIVERY_STAMP_ANGLE" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
           ],
         };
 
@@ -890,6 +1069,7 @@
           V[id] = {};
           PARAMS[id].forEach(function (d) {
             if (d.v != null) V[id][d.k] = d.v;
+            if (d.sv != null) V[id][d.k] = d.sv;     // 숫자가 아니라 선택지인 값
             if (d.easeK) V[id][d.easeK] = d.ease;
           });
         });
@@ -1151,29 +1331,54 @@
         /* A5 · 더블탭 — 창고에서 보드로 ------------------------------------ */
         DEMOS.a5 = function (host) {
           var st = makeStage(host, { cols: 4, rows: 3, shelf: 3 }), P = V.a5;
-          var N = 12, cells = new Array(N), OCCUPIED = [0, 1, 4, 5, 8, 9];
+          var N = 12, cells = new Array(N), era = 0;
 
           function freeCell() { for (var i = 0; i < N; i++) if (!cells[i]) return i; return -1; }
 
+          /* 창고 슬롯 하나에 아이템을 세운다. 슬롯 번호를 들고 있어야
+             꺼낸 뒤 그 자리에 다시 채울 수 있다. */
+          function shelfItem(i) {
+            var at = st.at(st.shelfSlots[i]);
+            var t = st.tile("mfx-product", (i % 3) + 1);
+            t.set({ x: at.x, y: at.y });
+            t.slotIndex = i;
+            t.fromShelf = true;
+            tappify(st, t, {
+              press: false,
+              windowMs: function () { return P.windowMs; },
+              movePx: function () { return P.movePx; },
+              onTap: function () { return squash(t, P.tapInSec, P.tapScale, P.tapScale, P.tapOutSec, P.tapOutEase, P.tapInEase); },
+              onDoubleTap: function () { return send(t); },
+            });
+            return t;
+          }
+
           function reset() {
+            era++;                                   // 예약된 보충·소멸을 전부 무효로 만든다
             st.clear();
             cells = new Array(N);
-            OCCUPIED.forEach(function (i) {
-              var p = st.cellPos(i);
-              cells[i] = st.tile("mfx-product", (i % 2) + 1).set({ x: p.x, y: p.y });
+            for (var i = 0; i < st.shelfSlots.length; i++) shelfItem(i);
+          }
+
+          /* 꺼낸 자리는 비워 두지 않는다 — 창고가 비면 다음에 뭘 눌러야 할지 사라진다 */
+          function refill(i) {
+            var my = era;
+            return wait(P.refillSec).then(function () {
+              if (my !== era) return;
+              var t = shelfItem(i);
+              t.set({ sx: 0.4, sy: 0.4, a: 0 });
+              return t.to(P.refillPopSec, { sx: 1, sy: 1, a: 1 }, P.refillPopEase);
             });
-            st.shelfSlots.forEach(function (slot, i) {
-              var at = st.at(slot);
-              var t = st.tile("mfx-product", (i % 3) + 1);
-              t.set({ x: at.x, y: at.y });
-              t.fromShelf = true;
-              tappify(st, t, {
-                press: false,
-                windowMs: function () { return P.windowMs; },
-                movePx: function () { return P.movePx; },
-                onTap: function () { return squash(t, P.tapInSec, P.tapScale, P.tapScale, P.tapOutSec, P.tapOutEase, P.tapInEase); },
-                onDoubleTap: function () { return send(t); },
-              });
+          }
+
+          /* 보드에 올라간 것은 잠깐 있다 사라진다 — 무대를 비워야 계속 눌러 볼 수 있다 */
+          function vanish(t, cell) {
+            var my = era;
+            return wait(P.lingerSec).then(function () {
+              if (my !== era) return;
+              if (cells[cell] === t) cells[cell] = null;
+              return t.to(P.vanishSec, { sx: 0.5, sy: 0.5, a: 0 }, P.vanishEase)
+                .then(function () { t.kill(); });
             });
           }
 
@@ -1187,12 +1392,14 @@
             st.cellEls[cell].classList.add("is-hl");
             var from = { x: t.x, y: t.y }, to = st.cellPos(cell);
             t.el.style.zIndex = 8;
+            refill(t.slotIndex);                     // 슬롯이 빈 그 순간부터 센다
             t.to(0.12, { sx: 1.1, sy: 1.1 }, "backOut").then(function () { return t.to(0.2, { sx: 1, sy: 1 }, "quadIn"); });
             return flyBezier(t, from, to, P.hopSec, P.liftRatio, P.minLift, P.hopEase).then(function () {
               st.cellEls[cell].classList.remove("is-hl");
               t.el.style.zIndex = "";
               t.home = { x: to.x, y: to.y };
               t.cell = cell;
+              vanish(t, cell);                       // 착지한 순간부터 센다
               return squash(t, P.landInSec, P.landSX, P.landSY, P.landOutSec, P.landOutEase, P.landInEase);
             });
           }
@@ -1205,7 +1412,7 @@
             var t = function () { return squash(first, P.tapInSec, P.tapScale, P.tapScale, P.tapOutSec, P.tapOutEase, P.tapInEase); };
             return t().then(function () { return wait(0.07); }).then(t).then(function () { return send(first); });
           }
-          return { st: st, reset: reset, play: play, hint: "창고의 아이템을 두 번 빠르게 눌러 보세요 · 보드 빈 칸으로 올라갑니다" };
+          return { st: st, reset: reset, play: play, hint: "창고의 아이템을 두 번 빠르게 눌러 보세요 · 빈 보드로 올라갑니다" };
         };
 
         /* A6 · 재화 획득 ----------------------------------------------------- */
@@ -1343,6 +1550,40 @@
           function play() { reset(); return deny(); }
           return { st: st, reset: reset, play: play, hint: "가운데 자물쇠를 눌러 보세요" };
         };
+
+        /* ── 문구 애니메이션 5종 -----------------------------------------------
+           무대는 전부 같다. 칩 하나, 누르면 그 스타일로 문구가 뜬다.
+           같은 조건에서 비교해야 "어느 쪽이 이 게임에 맞나" 가 말로 나온다. */
+        function floatDemo(style, text, hint) {
+          return function (host) {
+            var st = makeStage(host, { cols: 3, rows: 2 }), chip, CI = 4;
+            function reset() {
+              st.clear();
+              var p = st.cellPos(CI);
+              chip = st.tile("mfx-product", 2);
+              chip.set({ x: p.x, y: p.y });
+              tappify(st, chip, { onTap: shout });
+            }
+            function shout() {
+              return FLOAT_FN[style](st, text, { x: chip.x, y: chip.y }, V[STYLE_PARAM[style]]);
+            }
+            /* 시연은 세 번 연달아 친다 — 겹칠 때 어떻게 보이는지가 이 연출의 절반이다 */
+            function play() {
+              reset();
+              return Promise.all([
+                shout(),
+                wait(0.22).then(shout),
+                wait(0.44).then(shout),
+              ]);
+            }
+            return { st: st, reset: reset, play: play, hint: hint };
+          };
+        }
+        DEMOS.f1 = floatDemo("rise",  "보드가 꽉 찼어요", "칩을 눌러 보세요 · 연달아 누르면 계단처럼 쌓입니다");
+        DEMOS.f2 = floatDemo("arc",   "+120",            "칩을 눌러 보세요 · 던져 올린 뒤 떨어집니다");
+        DEMOS.f3 = floatDemo("punch", "빈 칸이 없어요",   "칩을 눌러 보세요 · 크게 시작해 조여 꽂힙니다");
+        DEMOS.f4 = floatDemo("slide", "충전중 · 12초",    "칩을 눌러 보세요 · 튀지 않고 조용히 지나갑니다");
+        DEMOS.f5 = floatDemo("wave",  "레벨 12 해금!",     "칩을 눌러 보세요 · 글자가 순서대로 튑니다");
 
         /* C1 · 드롭 거부 ----------------------------------------------------- */
         DEMOS.c1 = function (host) {
@@ -1511,13 +1752,8 @@
             });
           }
           function maxed(a, b) {
-            var pb = { x: b.home.x, y: b.home.y };
-            var stamp = st.spr('<div class="mfx-stamp">MAX</div>');
-            stamp.set({ x: pb.x, y: pb.y + 44, sx: P.stampStart, sy: P.stampStart, a: 0 });
-            stamp.to(P.stampInSec, { sx: 1, sy: 1, a: 1 }, P.stampEase)
-              .then(function () { return wait(P.stampHold); })
-              .then(function () { return stamp.to(P.stampOutSec, { a: 0 }, P.stampOutEase); })
-              .then(function () { stamp.kill(); });
+            /* 도장이 아니라 단순 텍스트다 — 이 문서의 문구는 전부 같은 5종을 쓴다 */
+            floatText(st, "최대 단계예요", { x: b.home.x, y: b.home.y }, P);
             /* 부정이 아니라 상태 고지 — 흔들림을 거부(C1)보다 약하게 준다 */
             return Promise.all([
               snapBack(st, a, null).then(function () { return shake(a, P.shakeAmp, P.shakeSec); }),
@@ -1572,27 +1808,26 @@
             });
           }
           function deliver(t) {
-            var from = { x: t.x, y: t.y }, to = st.at(panel);
+            var from = { x: t.x, y: t.y }, to = st.at(panel), mine = 0;
             t.el.style.zIndex = 5;
             t.to(P.raiseSec, { sx: P.raiseScale, sy: P.raiseScale }, P.raiseEase)
               .then(function () { return t.to(P.shrinkSec, { sx: P.shrinkScale, sy: P.shrinkScale }, P.shrinkEase); });
             return flyBezier(t, from, to, P.flightSec, P.liftRatio, P.minLift, P.flightEase).then(function () {
               t.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { t.kill(); });
               done++;
+              mine = done;                         // 내가 몇 번째로 도착했는지 그 자리에서 박아 둔다
               cnt.textContent = done + " / " + NEED;
               return nodePunch(panel, P.slotInSec, P.slotScale, P.slotOutSec, P.slotOutEase, P.slotEase);
             }).then(function () {
-              if (done < NEED) return null;
+              /* done 을 여기서 읽으면 셋 다 3 을 본다 — 펀치가 끝날 즈음엔 이미 다 도착해 있다 */
+              if (mine < NEED) return null;
               panel.classList.add("is-done");
               var to2 = st.at(panel);
-              var stamp = st.spr('<div class="mfx-stamp" style="color:#1E5A55;border-color:#1E5A55">완료</div>');
-              stamp.set({ x: to2.x, y: to2.y, sx: P.stampStart, sy: P.stampStart, a: 0, rot: P.stampAngle - 3 });
+              /* 도장을 찍지 않는다 — 완료도 그냥 문구다 */
               return Promise.all([
-                stamp.to(P.stampSec, { sx: 1, sy: 1, a: 1, rot: P.stampAngle }, P.stampEase),
+                floatText(st, "미션 완료!", to2, P, true),
                 sparks(st, to2, 8, "#7FC9BA", 0.34, 40, "quadOut"),
-              ]).then(function () { return wait(0.9); })
-                .then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); })
-                .then(function () { stamp.kill(); reset(); });
+              ]).then(function () { reset(); });
             });
           }
           function play() {
@@ -1900,6 +2135,103 @@
 "    CClog.log(\"ViewMergeBoard > locked item tapped, unlock at \" + unlockLevel);\n" +
 "}" },
 
+          { group: "float", id: "f1", no: "F1", title: "상승 페이드 · Rise & Fade", state: "part", label: "기본형 · 어디든 무난",
+            why: "가장 표준적인 <b>floating text</b> 입니다. 팝인 → 유지 → 떠오르며 소멸, 세 구간이 전부고 이동은 <b>수직뿐</b>입니다. 좌우 산개는 이 연출의 필수 요소가 아니라 <b>초당 수십 개가 뜨는 전투 게임에서만 쓰는 변형</b>이라, 한 번에 한두 개 뜨는 머지 보드에서는 오히려 \"튀었다\"로 안 읽힙니다. 고를 게 없을 때 이걸 고르면 틀리지 않습니다.",
+            code:
+"// 노드 하나에 트윈 두 개. 가장 싸고 가장 안 틀린다.\n" +
+"private playFloatRise(node: cc.Node, text: string, at: cc.Vec2, slot: number): void {\n" +
+"    const label = PoolManager.get(\"MergeFloatText\", this.effectRoot) as MergeFloatText;\n" +
+"    label.setText(text);\n" +
+"    const y0 = at.y + MERGE_FLOAT_RISE_GAP + slot * MERGE_FLOAT_RISE_STACK;\n" +
+"    label.node.setPosition(at.x, y0);\n" +
+"    label.node.setScale(0.6);\n" +
+"    label.node.opacity = 0;\n" +
+"    cc.tween(label.node)\n" +
+"        .to(MERGE_FLOAT_RISE_IN_SEC, { y: y0 + MERGE_FLOAT_RISE_POP, scale: 1, opacity: 255 }, { easing: \"backOut\" })\n" +
+"        .delay(MERGE_FLOAT_RISE_HOLD_SEC)\n" +
+"        .to(MERGE_FLOAT_RISE_OUT_SEC, { y: y0 + MERGE_FLOAT_RISE_POP + MERGE_FLOAT_RISE_DRIFT, opacity: 0 }, { easing: \"quadOut\" })\n" +
+"        .call(() => PoolManager.returnObject(label))\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "float", id: "f2", no: "F2", title: "포물선 튐 · Arc Pop", state: "part", label: "보상 · 획득",
+            why: "위로 <b>던져 올렸다가</b> 중력에 집니다. 핵심은 이징 방향입니다 — 상승은 <b>감속(quadOut)</b>, 하강은 <b>가속(quadIn)</b> 이어야 정점이 생기고 무게가 붙습니다. 둘 다 같은 이징을 쓰면 그냥 위아래로 움직이는 글자가 됩니다. 옆으로 흐르는 값을 주면 \"어느 쪽에서 나왔는지\"가 남아서, <b>재화 획득</b>처럼 출처가 중요한 자리에 맞습니다. 옆 흐름 0 이면 순수 수직 포물선입니다.",
+            code:
+"// 상승·하강을 한 트윈으로 묶으면 정점이 뭉갠다. 반드시 두 구간으로 쪼갠다.\n" +
+"private async playFloatArc(node: cc.Node, at: cc.Vec2, slot: number): Promise<void> {\n" +
+"    const y0 = at.y + MERGE_FLOAT_ARC_GAP + slot * MERGE_FLOAT_ARC_STACK;\n" +
+"    node.setPosition(at.x, y0);\n" +
+"    node.setScale(MERGE_FLOAT_ARC_START_SCALE);\n" +
+"    node.opacity = 0;\n" +
+"    const total = MERGE_FLOAT_ARC_UP_SEC + MERGE_FLOAT_ARC_FALL_SEC;\n" +
+"    cc.tween(node).to(total, { x: at.x + MERGE_FLOAT_ARC_SIDE }).start();        // x 는 등속으로 따로\n" +
+"    cc.tween(node).to(MERGE_FLOAT_ARC_POP_SEC, { scale: 1, opacity: 255 }, { easing: \"backOut\" }).start();\n" +
+"    await CCact.asyncTween(cc.tween(node)\n" +
+"        .to(MERGE_FLOAT_ARC_UP_SEC, { y: y0 + MERGE_FLOAT_ARC_UP }, { easing: \"quadOut\" })   // 감속 = 정점\n" +
+"        .delay(MERGE_FLOAT_ARC_APEX_SEC));\n" +
+"    if (!node.isValid) return;\n" +
+"    cc.tween(node).to(MERGE_FLOAT_ARC_FADE_SEC, { opacity: 0 }, { easing: \"quadIn\" }).start();\n" +
+"    await CCact.asyncTween(cc.tween(node)\n" +
+"        .to(MERGE_FLOAT_ARC_FALL_SEC, { y: y0 + MERGE_FLOAT_ARC_UP - MERGE_FLOAT_ARC_DROP }, { easing: \"quadIn\" }));\n" +
+"}" },
+
+          { group: "float", id: "f3", no: "F3", title: "임팩트 스탬프 · Punch In", state: "part", label: "거부 · 경고",
+            why: "크게 시작해서 <b>확 조여 꽂힙니다</b>. 1 배를 그냥 향하는 게 아니라 <b>0.92 까지 지나쳤다가</b> 되돌아와야 \"찍혔다\"로 읽힙니다 — 이게 도장의 문법입니다. 이동이 거의 없는 대신 유지가 길어서, <b>반드시 읽어야 하는</b> 고지(빈 칸 없음 · 최대 단계)에 맞습니다. 대신 자주 뜨면 그만큼 자주 시야를 뺏으니 상시 상태에는 쓰지 않습니다. 퇴장에서 살짝 <b>커지며</b> 사라지는 게 포인트고, 줄어들며 사라지면 \"취소됐다\"로 읽힙니다.",
+            code:
+"// 1 을 지나쳐 언더슛했다가 backOut 으로 되돌아온다 — 이게 \"꽂히는\" 맛이다.\n" +
+"private playFloatPunch(node: cc.Node, at: cc.Vec2, slot: number): void {\n" +
+"    const y0 = at.y + MERGE_FLOAT_PUNCH_GAP + slot * MERGE_FLOAT_PUNCH_STACK;\n" +
+"    node.setPosition(at.x, y0);\n" +
+"    node.setScale(MERGE_FLOAT_PUNCH_START_SCALE);\n" +
+"    node.opacity = 0;\n" +
+"    cc.tween(node)\n" +
+"        .to(MERGE_FLOAT_PUNCH_IN_SEC, { scale: MERGE_FLOAT_PUNCH_DIP, opacity: 255 }, { easing: \"quadOut\" })\n" +
+"        .to(MERGE_FLOAT_PUNCH_SETTLE_SEC, { scale: 1 }, { easing: \"backOut\" })\n" +
+"        .delay(MERGE_FLOAT_PUNCH_HOLD_SEC)\n" +
+"        .to(MERGE_FLOAT_PUNCH_OUT_SEC, { scale: MERGE_FLOAT_PUNCH_OUT_SCALE, opacity: 0 }, { easing: \"quadIn\" })\n" +
+"        .call(() => PoolManager.returnObject(node.getComponent(MergeFloatText)))\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "float", id: "f4", no: "F4", title: "슬라이드 인 · Slide Fade", state: "part", label: "상시 상태 고지",
+            why: "<b>오버슛도 스케일 변화도 없습니다.</b> 아래에서 조용히 올라와 조용히 사라집니다. 재미없어 보이는 게 목적입니다 — <b>자주 뜨는 문구</b>(충전중 · 남은 시간)는 튈수록 소음이 되고, 유저는 세 번째부터 그걸 방해로 인식합니다. 이징에 <code>back</code> 계열을 쓰면 이 연출의 의미가 사라지니 <code>quadOut</code> 을 유지하세요. 50대+ 대상이라 읽는 시간이 필요해서 유지가 다섯 중 가장 깁니다.",
+            code:
+"// back 계열 금지. 튀는 순간 \"알림\"이 아니라 \"이벤트\"로 읽힌다.\n" +
+"private playFloatSlide(node: cc.Node, at: cc.Vec2, slot: number): void {\n" +
+"    const y0 = at.y + MERGE_FLOAT_SLIDE_GAP + slot * MERGE_FLOAT_SLIDE_STACK;\n" +
+"    node.setPosition(at.x, y0 - MERGE_FLOAT_SLIDE_FROM);\n" +
+"    node.setScale(1);\n" +
+"    node.opacity = 0;\n" +
+"    cc.tween(node)\n" +
+"        .to(MERGE_FLOAT_SLIDE_IN_SEC, { y: y0, opacity: 255 }, { easing: \"quadOut\" })\n" +
+"        .delay(MERGE_FLOAT_SLIDE_HOLD_SEC)\n" +
+"        .to(MERGE_FLOAT_SLIDE_OUT_SEC, { y: y0 + MERGE_FLOAT_SLIDE_DRIFT, opacity: 0 }, { easing: \"quadIn\" })\n" +
+"        .call(() => PoolManager.returnObject(node.getComponent(MergeFloatText)))\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "float", id: "f5", no: "F5", title: "글자 웨이브 · Per-char Wave", state: "none", label: "축하 · 1회성 전용",
+            why: "글자가 순서대로 튀어 오릅니다. 다섯 중 유일하게 <b>노드가 글자 수만큼 필요합니다</b> — <code>cc.Label</code> 하나로는 글자별 트윈이 안 걸려서, 글자마다 Label 노드를 만들어 <code>PoolManager</code> 로 돌려야 합니다. 8 글자면 노드 8 개, 동시 3 개가 뜨면 24 개입니다. 그래서 <b>레벨업 · 해금처럼 한 번씩만 뜨는 자리에만</b> 씁니다. 상시 문구에 쓰면 드로우콜 예산을 이것 하나가 먹습니다. 글자 간격이 0.06 을 넘으면 문장이 <b>읽히기 전에</b> 앞 글자가 내려앉아서 오히려 읽기 힘들어집니다.",
+            code:
+"// 글자 수만큼 노드가 뜬다. 상시 연출에 쓰지 말 것 — 1회성 축하 전용.\n" +
+"private async playFloatWave(text: string, at: cc.Vec2, slot: number): Promise<void> {\n" +
+"    const y0 = at.y + MERGE_FLOAT_WAVE_GAP + slot * MERGE_FLOAT_WAVE_STACK;\n" +
+"    const root = PoolManager.get(\"MergeFloatWave\", this.effectRoot) as MergeFloatWave;\n" +
+"    const chars = root.layout(text, at.x, y0);          // 글자마다 Label 노드 하나\n" +
+"    await Promise.all(chars.map(async (ch, i) => {\n" +
+"        await CCts.delay(i * MERGE_FLOAT_WAVE_STAGGER);\n" +
+"        if (!ch.isValid) return;\n" +
+"        await CCact.asyncTween(cc.tween(ch)\n" +
+"            .to(MERGE_FLOAT_WAVE_UP_SEC, { y: ch.y + MERGE_FLOAT_WAVE_RISE }, { easing: \"quadOut\" })\n" +
+"            .to(MERGE_FLOAT_WAVE_BACK_SEC, { y: ch.y }, { easing: \"backOut\" }));\n" +
+"    }));\n" +
+"    if (!root.isValid) return;\n" +
+"    await CCts.delay(MERGE_FLOAT_WAVE_HOLD_SEC);\n" +
+"    await CCact.asyncTween(cc.tween(root.node)\n" +
+"        .to(MERGE_FLOAT_WAVE_OUT_SEC, { y: y0 + MERGE_FLOAT_WAVE_DRIFT, opacity: 0 }, { easing: \"quadOut\" }));\n" +
+"    PoolManager.returnObject(root);\n" +
+"}" },
+
           { group: "gap", id: "c1", no: "C1", title: "드롭 거부 · 병합 실패", state: "none", label: "없음 · 우선순위 1",
             why: "지금 <b>endItemDrag()</b> 의 else 분기는 <b>item.node.setPosition(원위치)</b> 한 줄입니다. 머지 보드에서 가장 자주 일어나는 입력 결과가 <b>순간이동</b>으로 처리되고 있습니다. 유저는 자기가 뭘 잘못했는지 모른 채 같은 실수를 반복합니다. <b>여섯 개 중 이것부터 넣어야 합니다.</b>",
             code:
@@ -2005,15 +2337,15 @@
 "\n" +
 "    await Promise.all(flights);\n" +
 "    if (!this.isValid) return;\n" +
-"    this.spawnStamp(\"MergeDeliveryStamp\", slotNode.getPosition());\n" +
+"    this.showFloatText(Localization.getString(\"merge_mission_clear\"), slotNode);  // 도장 아님 — 같은 문구 연출\n" +
 "    GameSound.play(\"FX_GAME_CLEAR\", slotNode);\n" +
 "}" },          { group: "gap", id: "c4", no: "C5", title: "최대 단계 도달", state: "none", label: "없음 · 우선순위 5",
-            why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라 부정이 아니라 도장으로 알려야 합니다.",
+            why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라, 붉은 거부음과 흔들림 대신 <b>문구</b>로 알립니다. 별도의 도장 프리팹을 만들지 않고 다른 문구와 같은 <b>F3 임팩트 스탬프</b> 를 씁니다 — 연출이 하나 늘면 만들 것도 튜닝할 것도 하나 늘어납니다.",
             code:
 "private async playMaxTierFeedback(item: MergeBoardDragItem, target: MergeBoardDragItem, sourceCell: number): Promise<void> {\n" +
 "    // 부정이 아니라 상태 고지 — FX_TILE_ERROR 를 쓰지 않는다\n" +
 "    GameSound.play(\"FX_ITEM_HINT\", target.node);\n" +
-"    this.spawnStamp(\"MergeMaxStamp\", target.node.getPosition());\n" +
+"    this.showFloatText(Localization.getString(\"merge_max_tier\"), target.node);   // 도장 아님 — 같은 문구 연출\n" +
 "    cc.tween(target.node)\n" +
 "        .to(0.06, { scaleX: 1.10, scaleY: 0.90 }, { easing: \"quadOut\" })\n" +
 "        .to(0.18, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
@@ -2051,6 +2383,13 @@
                 cfg: d.cfg, value: fmtNum(vals[d.k]),
                 label: d.label + (d.unit ? " (" + d.unit + ")" : ""),
                 changed: vals[d.k] !== d.v, base: fmtNum(d.v),
+              });
+            }
+            if (d.sv != null) {
+              out.push({
+                cfg: d.cfg, value: '"' + vals[d.k] + '"',
+                label: d.label,
+                changed: vals[d.k] !== d.sv, base: '"' + d.sv + '"',
               });
             }
             if (d.easeK) {
@@ -2168,8 +2507,19 @@
             tdL.textContent = d.label;
             var tdV = document.createElement("td");
             tdV.className = "mfx-vcell";
-            var input = null;
-            if (d.v != null) {
+            var input = null, pick = null;
+            if (d.opts) {
+              /* 숫자가 아닌 값도 여기서 고른다 — 문구 스타일이 그렇다 */
+              pick = document.createElement("select");
+              pick.className = "mfx-sel";
+              (d.opts === "FLOAT_STYLES" ? FLOAT_STYLES : d.opts).forEach(function (o) {
+                var op = document.createElement("option");
+                op.value = o[0]; op.textContent = o[1];
+                if (o[0] === vals[d.k]) op.selected = true;
+                pick.appendChild(op);
+              });
+              tdV.appendChild(pick);
+            } else if (d.v != null) {
               input = document.createElement("input");
               input.type = "number";
               input.className = "mfx-in";
@@ -2199,7 +2549,9 @@
             tb.appendChild(tr);
 
             function mark() {
-              var diff = (d.v != null && vals[d.k] !== d.v) || (d.easeK && vals[d.easeK] !== d.ease);
+              var diff = (d.v != null && vals[d.k] !== d.v) ||
+                (d.sv != null && vals[d.k] !== d.sv) ||
+                (d.easeK && vals[d.easeK] !== d.ease);
               tr.classList.toggle("is-changed", !!diff);
             }
             if (input) {
@@ -2211,8 +2563,9 @@
               });
               input.addEventListener("blur", function () { input.value = vals[d.k]; });
             }
+            if (pick) pick.addEventListener("change", function () { vals[d.k] = pick.value; mark(); });
             if (sel) sel.addEventListener("change", function () { vals[d.easeK] = sel.value; mark(); });
-            rowEls.push({ d: d, input: input, sel: sel, mark: mark });
+            rowEls.push({ d: d, input: input, pick: pick, sel: sel, mark: mark });
           });
           table.appendChild(tb);
           scroll.appendChild(table);
@@ -2242,10 +2595,12 @@
           resetBtn.addEventListener("click", function () {
             defs.forEach(function (d) {
               if (d.v != null) vals[d.k] = d.v;
+              if (d.sv != null) vals[d.k] = d.sv;
               if (d.easeK) vals[d.easeK] = d.ease;
             });
             rowEls.forEach(function (r) {
               if (r.input) r.input.value = vals[r.d.k];
+              if (r.pick) r.pick.value = vals[r.d.k];
               if (r.sel) r.sel.value = vals[r.d.easeK];
               r.mark();
             });
@@ -2273,6 +2628,7 @@
         var lists = {
           action: document.getElementById("mfx-action-list"),
           text: document.getElementById("mfx-text-list"),
+          float: document.getElementById("mfx-float-list"),
           gap: document.getElementById("mfx-gap-list"),
         };
         CATALOG.forEach(function (spec) { lists[spec.group].appendChild(buildCard(spec)); });
