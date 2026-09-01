@@ -35,7 +35,7 @@
           <span class="pill" style="--acc: var(--plan)">스토리 머지 프로토</span>
           <span class="tag">이미지 542장 PIL 스캔 · 2026-08-27</span>
           <span class="tag">기준작 = 코지타일(1차) · 솔리테어(2차) gz 실측</span>
-          <span class="tag">문서 v1.4 · 2026-09-01 갱신</span>
+          <span class="tag">문서 v1.5 · 2026-09-01 갱신</span>
         </div>
       </div>
     </header>
@@ -252,12 +252,15 @@
 
         <div class="notes">
           <div class="note" style="--acc: var(--plan)">
-            <div class="note-title">다운로드와 메모리는 별개다</div>
+            <div class="note-title">다운로드와 메모리는 별개다 — 메모리는 해상도로만 정해진다</div>
             <p>
-              <code>bundle.preload()</code> 는 바이트만 받아 캐시에 넣습니다 — 디코딩하지 않으므로
-              <b>메모리를 거의 쓰지 않습니다</b>. <code>bundle.load()</code> 가 디코딩과 에셋 생성을 하고,
-              여기서 메모리와 메인 스레드를 씁니다. 그래서 <b>다운로드는 미리, 디코딩은 필요할 때</b>가 됩니다.
-              60MB 예산은 <code>load</code> 된 것만 세면 됩니다.
+              다운로드는 <b>압축된 파일 바이트</b>를 캐시에 넣는 것이고, 메모리는 그것을
+              <b>픽셀 배열로 펼친</b> 것입니다 — <code>가로 × 세로 × 4바이트</code>.
+              <b>파일 크기와 무관하고 오직 해상도로만 정해집니다.</b>
+              <code>bundle.preload()</code> 는 앞쪽만, <code>bundle.load()</code> 가 디코딩까지 합니다.
+              그래서 <b>다운로드는 미리, 디코딩은 필요할 때</b>가 되고,
+              60MB 예산은 <code>load</code> 된 것만 셉니다.
+              <b>JPEG 전환은 다운로드만 줄이고 메모리는 1바이트도 줄이지 못합니다</b> — 줄이려면 해상도를 낮춰야 합니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--validate)">
@@ -282,6 +285,42 @@
           </div>
         </div>
 
+
+
+        <h3 class="doc-h2-sub">파일 대 메모리 — 같은 에셋의 두 가지 크기</h3>
+
+        <div class="table-scroll" style="--acc: var(--bad)">
+          <table>
+            <thead>
+              <tr><th style="width: 30%">대상</th><th style="width: 14%">해상도</th>
+                <th style="width: 14%">파일</th><th style="width: 16%">메모리</th>
+                <th style="width: 8%">배수</th><th>뜻</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>스틸컷 1장 <span class="cnote"><code>bundle/storyStillcut</code> · JPEG</span></td>
+                <td>720×1280</td><td>147 KB</td><td><b>3.52 MB</b></td>
+                <td><b>24×</b></td>
+                <td>메모리는 JPEG 압축률을 모른다 — 펼치면 같다</td></tr>
+              <tr><td><b>스틸컷 27장 전부</b> <span class="cnote">해제 없이 다 올릴 경우</span></td>
+                <td>720×1280</td><td>3.98 MB</td><td><b>94.9 MB</b></td>
+                <td><b>24×</b></td>
+                <td><span class="mx mx-bad"></span> 이것 하나로 <b>60MB 예산 초과</b>. 해제가 선택이 아닌 이유</td></tr>
+              <tr><td>대화 애니 1장 <span class="cnote"><code>bundle/chat</code> 상한 규격</span></td>
+                <td>1024×1024</td><td>~27 KB</td><td><b>4.00 MB</b></td>
+                <td><b>152×</b></td>
+                <td><span class="mx mx-warn">△</span> 아틀라스로 묶어도 총 픽셀 수는 그대로</td></tr>
+              <tr><td>머지 아이템 <span class="cnote">현재 원본 · 셀은 약 110px</span></td>
+                <td>820×668</td><td colspan="2">셀 대비 <b>약 7배 과대</b></td>
+                <td><span class="mx mx-warn">△</span></td>
+                <td>표시 크기에 맞추면 메모리가 <b>1/45</b> 로 준다 <span class="cnote">3.52MB → 48KB</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="legend">
+          <span style="color: var(--bad)">메모리 = 가로 × 세로 × 4B — 파일 포맷·압축률과 무관</span>
+          <span style="color: var(--text-dim)">파일을 줄이면 로딩이 빨라지고, 해상도를 줄여야 메모리가 준다</span>
+        </div>
 
         <h3 class="doc-h2-sub">그룹별 목표 시점 — 무엇을 언제 받고, 언제 올리고, 언제 내리는가</h3>
 

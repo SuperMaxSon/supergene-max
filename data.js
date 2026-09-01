@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 10:58",
+  updated: "2026-09-01 11:01",
 };
 
 /* --------------------------------------------------------------------------
@@ -70,6 +70,17 @@ const SECTIONS = [
     accent: "analysis",
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
+      {
+        title: "아이소메트릭 데코 파츠 등장 연출",
+        desc: "데코가 배치될 때 쓸 등장 연출 8종을 파츠 10개짜리 집으로 실제 타이밍에 돌려본다. 보간 시간을 바꾸면 Cocos 코드가 같이 바뀐다.",
+        url: "docs/deco-tween-iso.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-09-01 10:58",
+        pinned: false,
+        project: "smg",
+        tags: ["코드 실측", "데코", "인터랙티브"],
+      },
       {
         title: "채팅 캐릭터 애니메이션 용량 계산기",
         desc: "캐릭터와 감정이 늘면 용량이 어디까지 가나. 프레임 시퀀스 · 노드 트랜스폼 · Spine 세 방식을 같은 조건에 놓고 계산한다.",
@@ -238,7 +249,7 @@ const SECTIONS = [
         url: "docs/story-merge-resource-budget.html",
         project: "smg",
         status: "추적",
-        version: "v1.4",
+        version: "v1.5",
         updated: "2026-09-01 10:56",
         pinned: false,
         tags: ["머지", "리소스", "실측 추적"],

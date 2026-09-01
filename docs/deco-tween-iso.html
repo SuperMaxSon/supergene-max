@@ -146,12 +146,12 @@
 
             <!-- 7. 굴뚝 -->
             <g id="p-chimney" class="iso-part">
-              <polygon points="350,102 332,111 332,181 350,151" fill="#8E5647" />
-              <polygon points="314,102 332,111 332,181 314,172" fill="#A06550" />
-              <polygon points="332,93 350,102 332,111 314,102" fill="#C08A6E" />
-              <polygon points="353,95 332,106 332,113 353,102" fill="#6A3E32" />
-              <polygon points="311,95 332,106 332,113 311,102" fill="#74443A" />
-              <polygon points="332,84 353,95 332,106 311,95" fill="#8A5240" />
+              <polygon points="346,132 332,139 332,177 346,153" fill="#8E5647" />
+              <polygon points="318,132 332,139 332,177 318,170" fill="#A06550" />
+              <polygon points="332,125 346,132 332,139 318,132" fill="#C08A6E" />
+              <polygon points="348,126 332,134 332,140 348,132" fill="#6A3E32" />
+              <polygon points="316,126 332,134 332,140 316,132" fill="#74443A" />
+              <polygon points="332,118 348,126 332,134 316,126" fill="#8A5240" />
             </g>
 
             <!-- 8. 현관문 -->
@@ -326,3 +326,294 @@
         걸 수 있고, 자식 노드를 가진 파츠에는 그대로 쓸 수 없습니다.
       </div>
     </main>
+
+    <script>
+      /* 아이소메트릭 데코 파츠 트윈 시연.
+         이징은 cc.tween 이 쓰는 공식을 그대로 옮겼다 — 엔진과 타이밍을 맞추기 위해서다.
+         파츠는 SVG <g> 이고, 화면에서의 변형(translate/scale/opacity)과 clip-path 를
+         프레임마다 직접 찍는다. CSS 애니메이션을 안 쓰는 이유는 stagger 순번과
+         진행률을 Cocos 의 delay(i * 간격) 와 같은 방식으로 계산해야 하기 때문이다. */
+      (function () {
+        "use strict";
+
+        var PARTS = [
+          { id: "ground",  label: "지면" },
+          { id: "base",    label: "기단" },
+          { id: "wallL",   label: "좌측 벽" },
+          { id: "wallR",   label: "우측 벽" },
+          { id: "roofL",   label: "지붕 좌면" },
+          { id: "roofR",   label: "지붕 우면" },
+          { id: "chimney", label: "굴뚝" },
+          { id: "door",    label: "문" },
+          { id: "window",  label: "창문" },
+          { id: "yard",    label: "조경" }
+        ];
+
+        var E = {
+          linear:     function (t) { return t; },
+          sineOut:    function (t) { return Math.sin((t * Math.PI) / 2); },
+          quadOut:    function (t) { return 1 - (1 - t) * (1 - t); },
+          cubicOut:   function (t) { var u = 1 - t; return 1 - u * u * u; },
+          backOut:    function (t) { var c1 = 1.70158, c3 = c1 + 1, u = t - 1; return 1 + c3 * u * u * u + c1 * u * u; },
+          elasticOut: function (t) { if (t === 0 || t === 1) return t; var p = 0.3; return Math.pow(2, -10 * t) * Math.sin(((t - p / 4) * 2 * Math.PI) / p) + 1; },
+          bounceOut:  function (t) {
+            var n = 7.5625, d = 2.75;
+            if (t < 1 / d) return n * t * t;
+            if (t < 2 / d) { t -= 1.5 / d; return n * t * t + 0.75; }
+            if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + 0.9375; }
+            t -= 2.625 / d; return n * t * t + 0.984375;
+          }
+        };
+
+        function rectPath(x, y, w, h) {
+          if (w <= 0 || h <= 0) return "M0 0 Z";
+          return "M" + x + " " + y + " H" + (x + w) + " V" + (y + h) + " H" + x + " Z";
+        }
+        function wedgePath(b, t) {
+          if (t <= 0) return "M0 0 Z";
+          if (t >= 0.999) return rectPath(b.x, b.y, b.w, b.h);
+          var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+          var R = Math.sqrt(b.w * b.w + b.h * b.h);
+          var a = t * Math.PI * 2;
+          return "M" + cx + " " + cy + " L" + cx + " " + (cy - R) +
+                 " A" + R + " " + R + " 0 " + (t > 0.5 ? 1 : 0) + " 1 " +
+                 (cx + R * Math.sin(a)) + " " + (cy - R * Math.cos(a)) + " Z";
+        }
+
+        /* Cocos 2.4 에서 기본으로 되는 것만 남겼다. 4방향 fill 은 FillType 에 없어서 뺐다. */
+        var PRESETS = [
+          { id: "drop", name: "위에서 낙하", key: "node.y", ease: "bounceOut",
+            hint: "미션 보상이나 신규 파츠가 쏟아질 때. 파츠 간격 60~90ms 가 “다다다”로 읽히는 구간이고, 아이소에서는 지면 → 기단 → 벽 → 지붕 순서로 떨어져야 조립되는 것처럼 보인다.",
+            apply: function (p, t, e) { return { ty: -(1 - e) * p.fall, op: 1 }; } },
+
+          { id: "squash", name: "낙하 + 착지 스쿼시", key: "y + scale", ease: "bounceOut",
+            hint: "떨어진 뒤 바닥에서 한 번 눌렸다 펴진다. 지붕 · 벽처럼 덩치 큰 파츠에 무게감을 줄 때. 앵커 Y = 0 이 전제다.",
+            apply: function (p, t, e0, fn) {
+              if (t < 0.72) { return { ty: -(1 - fn(t / 0.72)) * p.fall, op: 1 }; }
+              var k = (t - 0.72) / 0.28;
+              var sy = k < 0.4 ? 1 - 0.18 * (k / 0.4) : 0.82 + 0.18 * E.backOut((k - 0.4) / 0.6);
+              return { ty: 0, sx: 1 + (1 - sy) * 0.8, sy: sy, op: 1 };
+            } },
+
+          { id: "pop", name: "아래에서 팝", key: "scale", ease: "backOut",
+            hint: "머지 결과물이 제자리에서 솟는 느낌. 배치 확정 순간에 가장 잘 붙는다. 아이소에서는 바닥 마름모 중앙이 앵커여야 파츠가 공중에 뜨지 않는다.",
+            apply: function (p, t, e) { return { ty: (1 - t) * 26, s: 0.25 + 0.75 * e, op: Math.min(1, t * 3) }; } },
+
+          { id: "fadeIn", name: "페이드 인", key: "opacity 0→255", ease: "sineOut",
+            hint: "눈에 안 띄게 들어와야 하는 배경 소품용. 가장 싸고, 파츠가 많아도 프레임이 안 흔들린다.",
+            apply: function (p, t, e) { return { op: e }; } },
+
+          { id: "fadeOut", name: "페이드 아웃", key: "opacity 255→0", ease: "sineOut",
+            hint: "교체 · 철거 연출. 다음 파츠를 겹쳐 띄울 거면 이 트윈이 끝나기 전에 시작해야 빈 자리가 안 생긴다.",
+            apply: function (p, t, e) { return { op: 1 - e }; } },
+
+          { id: "fillH", name: "Fill 가로", key: "FillType.HORIZONTAL", ease: "quadOut",
+            hint: "좌 → 우로 채워진다. 셰이더 없이 cc.Sprite 를 FILLED 로 두고 fillRange 만 트윈하면 된다. 잘리는 선은 화면 기준 수직선이라 아이소 축과 어긋난다.",
+            apply: function (p, t, e) { return { clip: rectPath(p.bb.x, p.bb.y, p.bb.w * e, p.bb.h) }; } },
+
+          { id: "fillV", name: "Fill 세로", key: "FillType.VERTICAL", ease: "quadOut",
+            hint: "아래 → 위로 차오른다. 건물이 “지어지는” 느낌에 제일 가깝지만, 보시다시피 지붕 사면을 따라가지 않고 화면 수평선으로 잘린다.",
+            apply: function (p, t, e) { return { clip: rectPath(p.bb.x, p.bb.y + p.bb.h * (1 - e), p.bb.w, p.bb.h * e) }; } },
+
+          { id: "fillR", name: "Fill 라디얼", key: "FillType.RADIAL", ease: "linear",
+            hint: "쿨타임 게이지에 쓰는 그 방식. 데코 등장에는 과하지만 “완성 도장” 같은 마무리 연출에는 쓸 만하다.",
+            apply: function (p, t, e) { return { clip: wedgePath(p.bb, e) }; } }
+        ];
+
+        function CODE(id, d, s, e) {
+          var D = d.toFixed(2), S = s.toFixed(3), Q = '"' + e + '"';
+          var head = "parts.forEach((node, i) => {";
+          var sp = "\n        const sprite = node.getComponent(cc.Sprite);\n        sprite.type = cc.Sprite.Type.FILLED;\n";
+          var map = {
+            drop:
+"/** 파츠가 조립 순서대로 위에서 떨어진다 */\nprivate playDropIn(parts: cc.Node[]): void {\n    " + head +
+"\n        const endY = node.y;\n        node.y = endY + 640;          // 화면 밖까지 올려둔다\n        node.opacity = 255;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + D + ", { y: endY }, { easing: " + Q + " })\n            .start();\n    });\n}",
+            squash:
+"/** 낙하 후 착지 스쿼시 — 앵커 Y = 0 이 전제다 */\nprivate playDropWithSquash(parts: cc.Node[]): void {\n    " + head +
+"\n        const endY = node.y;\n        node.y = endY + 640;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + (d * 0.72).toFixed(2) + ", { y: endY }, { easing: " + Q + " })\n            .to(" + (d * 0.11).toFixed(2) + ", { scaleY: 0.82, scaleX: 1.14 })\n            .to(" + (d * 0.17).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: \"backOut\" })\n            .start();\n    });\n}",
+            pop:
+"/** 제자리에서 솟아오른다 */\nprivate playPopIn(parts: cc.Node[]): void {\n    " + head +
+"\n        node.setScale(0.25);\n        node.opacity = 0;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .call(() => { node.opacity = 255; })\n            .to(" + D + ", { scale: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 2.4 의 scale 은 단일 값(균등)이다. 축을 나누려면 scaleX / scaleY",
+            fadeIn:
+"private playFadeIn(parts: cc.Node[]): void {\n    " + head +
+"\n        node.opacity = 0;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + D + ", { opacity: 255 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 자식까지 같이 흐려지려면 부모의 cascadeOpacity 를 켤 것",
+            fadeOut:
+"private playFadeOut(parts: cc.Node[]): void {\n    " + head +
+"\n        cc.Tween.stopAllByTarget(node);   // 진행 중인 트윈부터 정리\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + D + ", { opacity: 0 }, { easing: " + Q + " })\n            .call(() => { node.active = false; })\n            .start();\n    });\n}",
+            fillH:
+"private playFillHorizontal(parts: cc.Node[]): void {\n    " + head + sp +
+"        sprite.fillType = cc.Sprite.FillType.HORIZONTAL;\n        sprite.fillStart = 0;      // 우 → 좌 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다",
+            fillV:
+"private playFillVertical(parts: cc.Node[]): void {\n    " + head + sp +
+"        sprite.fillType = cc.Sprite.FillType.VERTICAL;\n        sprite.fillStart = 0;      // 위 → 아래 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다",
+            fillR:
+"private playFillRadial(parts: cc.Node[]): void {\n    " + head + sp +
+"        sprite.fillType = cc.Sprite.FillType.RADIAL;\n        sprite.fillCenter = cc.v2(0.5, 0.5);\n        sprite.fillStart = 0.25;   // 12시에서 시작\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}"
+          };
+          return map[id];
+        }
+
+        function highlight(src) {
+          var esc = src.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return esc.replace(
+            /(\/\*\*?[\s\S]*?\*\/|\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|\b(const|private|void|return|null|true|false)\b|\b(\d+\.?\d*)\b/g,
+            function (m, com, str, kw, num) {
+              if (com) return '<span class="c">' + com + "</span>";
+              if (str) return '<span class="s">' + str + "</span>";
+              if (kw) return '<span class="k">' + kw + "</span>";
+              return '<span class="n">' + num + "</span>";
+            }
+          );
+        }
+
+        var SVGNS = "http://www.w3.org/2000/svg";
+        var defs = document.getElementById("clipdefs");
+        var VIEW_TOP = 60;
+
+        var metas = PARTS.map(function (p) {
+          var el = document.getElementById("p-" + p.id);
+          var b = el.getBBox(), pad = 4;
+          var bb = { x: b.x - pad, y: b.y - pad, w: b.width + pad * 2, h: b.height + pad * 2 };
+          var cp = document.createElementNS(SVGNS, "clipPath");
+          cp.setAttribute("id", "clip-" + p.id);
+          cp.setAttribute("clipPathUnits", "userSpaceOnUse");
+          var path = document.createElementNS(SVGNS, "path");
+          cp.appendChild(path);
+          defs.appendChild(cp);
+          el.setAttribute("clip-path", "url(#clip-" + p.id + ")");
+          /* 낙하 거리는 파츠마다 다르다 — 제 바닥이 화면 위로 완전히 빠지는 만큼만 올린다. */
+          return { el: el, path: path, bb: bb, full: rectPath(bb.x, bb.y, bb.w, bb.h), fall: bb.y + bb.h - VIEW_TOP + 30, label: p.label };
+        });
+
+        var el = {
+          presets: document.getElementById("presets"),
+          chips: document.getElementById("chips"),
+          play: document.getElementById("play"),
+          loop: document.getElementById("loop"),
+          prog: document.getElementById("prog"),
+          code: document.getElementById("code"),
+          hint: document.getElementById("hint"),
+          hintTitle: document.getElementById("hint-title"),
+          dur: document.getElementById("i-dur"),
+          stg: document.getElementById("i-stg"),
+          ease: document.getElementById("i-ease"),
+          total: document.getElementById("o-total")
+        };
+
+        var chips = metas.map(function (m, i) {
+          var c = document.createElement("span");
+          c.className = "tag";
+          c.textContent = i + 1 + " " + m.label;
+          el.chips.appendChild(c);
+          return c;
+        });
+
+        var buttons = {};
+        PRESETS.forEach(function (ps) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "projbtn";
+          b.innerHTML = ps.name + ' <span class="projbtn-n">' + ps.key + "</span>";
+          b.addEventListener("click", function () { select(ps); play(); });
+          el.presets.appendChild(b);
+          buttons[ps.id] = b;
+        });
+
+        var state = { preset: PRESETS[0], t0: 0, playing: false, loop: false, raf: 0 };
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        function duration() { var v = parseFloat(el.dur.value); return isFinite(v) && v > 0 ? v : 1; }
+        function stagger() { var v = parseFloat(el.stg.value); return (isFinite(v) && v >= 0 ? v : 0) / 1000; }
+        function total() { return stagger() * (metas.length - 1) + duration(); }
+
+        function refresh() {
+          el.code.innerHTML = highlight(CODE(state.preset.id, duration(), stagger(), el.ease.value));
+          el.total.value = total().toFixed(2);
+        }
+
+        function select(ps) {
+          state.preset = ps;
+          Object.keys(buttons).forEach(function (k) { buttons[k].classList.toggle("is-active", k === ps.id); });
+          el.ease.value = ps.ease;
+          el.hint.textContent = ps.hint;
+          el.hintTitle.textContent = ps.name + " — 이 연출을 읽는 법";
+          refresh();
+        }
+
+        function paint(m, t) {
+          var c = Math.max(0, Math.min(1, t));
+          var fn = E[el.ease.value] || E.linear;
+          var p = state.preset.apply(m, c, fn(c), fn);
+          var sx = p.sx != null ? p.sx : p.s != null ? p.s : 1;
+          var sy = p.sy != null ? p.sy : p.s != null ? p.s : 1;
+          m.el.style.transform =
+            "translate(" + (p.tx || 0).toFixed(2) + "px," + (p.ty || 0).toFixed(2) + "px) scale(" + sx.toFixed(4) + "," + sy.toFixed(4) + ")";
+          m.el.style.opacity = (p.op != null ? p.op : 1).toFixed(3);
+          m.path.setAttribute("d", p.clip != null ? p.clip : m.full);
+        }
+
+        function frame(now) {
+          var d = duration(), s = stagger(), tt = total();
+          var elapsed = (now - state.t0) / 1000;
+          metas.forEach(function (m, i) {
+            var t = (elapsed - i * s) / d;
+            paint(m, t);
+            chips[i].className = t > 0 && t < 1 ? "pill" : "tag";
+          });
+          el.prog.style.width = Math.min(100, (elapsed / tt) * 100) + "%";
+          if (elapsed >= tt) {
+            state.playing = false;
+            el.play.textContent = "▶ 다시 재생";
+            chips.forEach(function (c) { c.className = "tag"; });
+            if (state.loop) setTimeout(play, 500);
+            return;
+          }
+          state.raf = requestAnimationFrame(frame);
+        }
+
+        function play() {
+          cancelAnimationFrame(state.raf);
+          refresh();
+          metas.forEach(function (m) { paint(m, 0); });
+          if (reduced) {
+            metas.forEach(function (m) { paint(m, 1); });
+            el.prog.style.width = "100%";
+            el.play.textContent = "▶ 다시 재생";
+            return;
+          }
+          state.playing = true;
+          el.play.textContent = "재생 중…";
+          state.t0 = performance.now();
+          state.raf = requestAnimationFrame(frame);
+        }
+
+        el.play.addEventListener("click", play);
+        el.loop.addEventListener("click", function () {
+          state.loop = !state.loop;
+          el.loop.classList.toggle("is-active", state.loop);
+          if (state.loop && !state.playing) play();
+        });
+        [el.dur, el.stg].forEach(function (i) { i.addEventListener("input", refresh); });
+        el.ease.addEventListener("change", function () { refresh(); if (!state.playing) play(); });
+
+        /* 업/다운 버튼 — input 의 step · min · max 를 그대로 따른다. */
+        Array.prototype.forEach.call(document.querySelectorAll(".calc-btn"), function (b) {
+          b.addEventListener("click", function () {
+            var t = document.getElementById(b.getAttribute("data-for"));
+            var step = parseFloat(t.step) || 1;
+            var next = (parseFloat(t.value) || 0) + step * parseFloat(b.getAttribute("data-dir"));
+            var dec = (String(step).split(".")[1] || "").length;
+            next = parseFloat(next.toFixed(dec + 1));
+            t.value = Math.max(parseFloat(t.min), Math.min(parseFloat(t.max), next));
+            refresh();
+          });
+        });
+
+        select(PRESETS[0]);
+        metas.forEach(function (m) { paint(m, 0); });
+        setTimeout(play, 300);
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>

@@ -213,3 +213,916 @@
         </div>
         <div id="mfx-gap-list"></div>
       </section>
+
+      <section class="doc-section" id="rule">
+        <h2 class="doc-h2">
+          구현 규약
+          <span class="doc-h2-sub">연출 하나하나보다 이 네 가지가 안 정해지면 나중에 전부 다시 만진다</span>
+        </h2>
+
+        <h3 style="font-size: 15px; margin: 4px 0 8px">1 · 인터럽트 — 연출 중에 또 누르면</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>연출</th><th>재입력이 들어오면</th><th>구현</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>눌림 · 릴리즈</td><td>즉시 덮어쓴다</td><td><code>cc.Tween.stopAllByTarget(node)</code> 후 새 트윈</td></tr>
+              <tr><td>생산물 비행</td><td>큐에 쌓고 <code>STAGGER</code> 만큼 밀어 동시에 여러 개가 난다</td><td>비행은 노드마다 독립 — 취소하지 않는다</td></tr>
+              <tr><td>드래그</td><td>선점. 진행 중이면 새 터치를 받지 않는다</td><td><code>dragOffsets.size &gt; 0</code> 이면 <code>beginItemDrag</code> 가 false</td></tr>
+              <tr><td>병합</td><td>결과 타일이 팝을 끝낼 때까지 그 셀은 입력 잠금</td><td><code>await</code> 후 잠금 해제. <code>isValid</code> 체크 필수</td></tr>
+              <tr><td>토스트</td><td>같은 종류면 갱신, 다른 종류면 이전 것을 즉시 걷는다</td><td>토스트 루트에 한 개만 — 기존 것 <code>returnObject()</code></td></tr>
+              <tr><td>재화 수집</td><td>중첩 허용. 카운터는 마지막 목표값 하나로 수렴</td><td><code>TweenNumber.number</code> 세터가 이미 이 동작</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              정책이 갈리는 축은 하나입니다 — <strong>연출이 상태를 바꾸는가</strong>.
+              병합·드래그는 보드 데이터를 건드리므로 끝날 때까지 잠가야 하고,
+              눌림·토스트는 화면만 바꾸므로 언제든 덮어써도 됩니다.
+              지금 코드는 <code>cc.Tween.stopAllByTarget</code> 이 산발적으로만 불려서 이 구분이 없습니다.
+            </p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 22px 0 8px">2 · 사운드 훅 — 어느 프레임에 붙나</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>연출</th><th>호출 시점</th><th>키</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>클릭</td><td>눌림 시작 프레임 (릴리즈 아님)</td><td><code>FX_BUTTON</code></td></tr>
+              <tr><td>생산물 비행</td><td>스폰 순간 1회 + 착지 순간 1회</td><td><code>FX_APPEAR</code> → <code>FX_TILE_FALL</code></td></tr>
+              <tr><td>드래그</td><td>픽업 성립 시점. 이동 중엔 없음</td><td><code>FX_TILE_SELECT</code></td></tr>
+              <tr><td>병합</td><td>흡수가 끝나고 결과 팝이 시작되는 프레임</td><td><code>FX_TILE_MATCH</code></td></tr>
+              <tr><td>드롭 거부 · 잠김 · 재화 부족</td><td>거부가 확정된 즉시 (복귀 트윈보다 먼저)</td><td><code>FX_TILE_ERROR</code></td></tr>
+              <tr><td>재화 획득</td><td>산개 끝 1회 + 코인마다 도착 시</td><td><code>FX_COIN_MOVE</code> → <code>FX_COIN_GET</code></td></tr>
+              <tr><td>충전 완료 · 해금</td><td>팝 시작 프레임</td><td><code>FX_STAGE_UP</code> / <code>FX_PHOTO_UNLOCK</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">거부음은 트윈보다 먼저 친다</div>
+            <p>
+              복귀 트윈이 끝난 뒤에 소리를 내면 유저는 "실패했구나"를 0.26초 늦게 압니다.
+              <strong>거부 계열은 판정이 난 프레임에 소리부터 내고, 그 다음에 트윈을 시작</strong>합니다.
+              반대로 성공 계열(병합·획득)은 임팩트가 화면에 나타나는 프레임에 맞춰야 붙어 들립니다.
+              키 목록은 프로토에 이미 등록된 <code>FX_*</code> 실측 목록에서 골랐습니다.
+            </p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 22px 0 8px">3 · 성능 — 동시 트윈과 저사양 폴백</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>항목</th><th>상한 / 규칙</th><th>근거</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>동시 진행 트윈 노드</td><td>24개</td><td>드로우콜 ≤50 기준. 파티클 1개당 노드 1개로 잡음</td></tr>
+              <tr><td>스파크 파티클</td><td>병합 1회당 7개, 동시 병합 시 3회까지만</td><td>연쇄 병합에서 폭발적으로 늘어남</td></tr>
+              <tr><td>코인 스프라이트</td><td>실제 수량과 무관하게 최대 8개</td><td>기존 <code>ItemGatheringAnimation</code> 과 같은 방식</td></tr>
+              <tr><td>저사양 폴백</td><td>파티클·링만 끈다. <b>지속시간은 그대로</b></td><td>시간이 바뀌면 <code>await</code> 뒤 로직 순서가 흔들린다</td></tr>
+              <tr><td>풀링</td><td>토스트 · 링 · 스파크 · 스탬프 전부 <code>PoolManager</code></td><td><code>cc.instantiate</code> 금지 규약</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 22px 0 8px">4 · 상수는 한 파일에</h3>
+        <details class="mfx-code" open>
+          <summary>MergeBoardPresentationConfig.ts — 추가할 상수</summary>
+          <pre><code>// 기존 파일 하단에 이어 붙인다. 값이 파일마다 흩어지면 튜닝이 불가능해진다.
+export const MERGE_FLIGHT_DURATION_SEC = 0.42;
+export const MERGE_FLIGHT_LIFT_RATIO = 0.38;
+export const MERGE_FLIGHT_MIN_LIFT = 70;
+export const MERGE_HOP_DURATION_SEC = 0.30;
+export const MERGE_HOP_LIFT_RATIO = 0.22;
+export const MERGE_HOP_MIN_LIFT = 42;
+
+export const MERGE_PICKUP_DURATION_SEC = 0.10;
+export const MERGE_PICKUP_SCALE = 1.08;
+export const MERGE_DRAG_FOLLOW_RATIO = 0.40;   // 60fps 기준. update(dt) 에서 프레임 독립 보정
+export const MERGE_SNAP_BACK_SEC = 0.26;
+
+export const MERGE_SQUASH_IN_SEC = 0.06;
+export const MERGE_SQUASH_OUT_SEC = 0.16;
+export const MERGE_SHAKE_DURATION_SEC = 0.30;
+export const MERGE_SHAKE_AMPLITUDE = 6;
+
+export const MERGE_TOAST_IN_SEC = 0.24;
+export const MERGE_TOAST_HOLD_SEC = 1.00;
+export const MERGE_TOAST_OUT_SEC = 0.20;
+export const MERGE_STAGGER_SEC = 0.04;</code></pre>
+        </details>
+        <details class="mfx-code">
+          <summary>CCmath.ts — 3차 베지어 한 줄 추가</summary>
+          <pre><code>// 곡선 이동은 전부 이 함수 하나를 쓴다. cc.bezierTo 는 cc.Action 이라
+// cc.tween 체인과 섞이지 않아 프로젝트가 이미 쓰는 TweenRatio 패턴을 그대로 간다.
+static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): cc.Vec2 {
+    const u = 1 - t;
+    const a = u * u * u;
+    const b = 3 * u * u * t;
+    const c = 3 * u * t * t;
+    const d = t * t * t;
+    return cc.v2(
+        a * p0.x + b * p1.x + c * p2.x + d * p3.x,
+        a * p0.y + b * p1.y + c * p2.y + d * p3.y,
+    );
+}</code></pre>
+        </details>
+
+        <div class="foot">
+          <b>확인 범위</b>
+          <code>PRESS 0.12</code> · <code>POP_IN 0.18</code> · <code>MERGE_POP 0.20</code> ·
+          <code>IDLE_BOB 0.8</code> 네 값과 셀·타일 치수, <code>FX_*</code> 사운드 키 목록,
+          <code>CCact</code> · <code>TweenRatio</code> · <code>TweenNumber</code> ·
+          <code>ItemGatheringAnimation</code> 의 존재 여부는
+          <code>story-merge-proto-client</code> main 브랜치 코드 실측입니다.
+          그 밖의 시간·이징·진폭은 이 문서가 제안하는 값이고, 아직 코드에 없습니다.
+          무대의 트윈 엔진은 Cocos <code>cc.easing</code> 과 같은 수식을 다시 구현한 것이라
+          문서에서 보는 곡선이 엔진에서 나오는 곡선과 같습니다.
+        </div>
+      </section>
+    </main>
+
+    <script>
+      /* ======================================================================
+         트윈 엔진. Cocos 2.4 cc.easing 과 같은 수식을 다시 구현했다 —
+         문서에서 보는 곡선과 엔진에서 나오는 곡선이 같아야 타이밍 얘기가 성립한다.
+         ====================================================================== */
+      (function () {
+        "use strict";
+
+        var EASE = {
+          linear: function (t) { return t; },
+          quadIn: function (t) { return t * t; },
+          quadOut: function (t) { return 1 - (1 - t) * (1 - t); },
+          quadInOut: function (t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; },
+          sineInOut: function (t) { return -(Math.cos(Math.PI * t) - 1) / 2; },
+          circIn: function (t) { return 1 - Math.sqrt(1 - t * t); },
+          circOut: function (t) { return Math.sqrt(1 - Math.pow(t - 1, 2)); },
+          backIn: function (t) { return 2.70158 * t * t * t - 1.70158 * t * t; },
+          backOut: function (t) { return 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2); },
+        };
+
+        var SPEED = 1;
+        var LOOP = false;
+        var jobs = [];
+        var ticks = [];
+        var lastTs = 0;
+
+        function frame(ts) {
+          if (!lastTs) lastTs = ts;
+          var dt = Math.min(0.05, (ts - lastTs) / 1000) * SPEED;
+          lastTs = ts;
+          var live = [];
+          for (var i = 0; i < jobs.length; i++) {
+            var j = jobs[i];
+            if (j.dead) continue;
+            j.t += dt;
+            var r = j.dur <= 0 ? 1 : Math.min(1, j.t / j.dur);
+            j.fn(j.ease(r), r);
+            if (r >= 1) j.res(); else live.push(j);
+          }
+          jobs = live;
+          for (var k = 0; k < ticks.length; k++) ticks[k](dt);
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+
+        function tw(dur, ease, fn) {
+          return new Promise(function (res) {
+            jobs.push({ t: 0, dur: dur, ease: EASE[ease] || EASE.linear, fn: fn, res: res });
+          });
+        }
+        function wait(d) { return tw(d, "linear", function () {}); }
+        function addTick(f) { ticks.push(f); }
+        function delTick(f) { var i = ticks.indexOf(f); if (i >= 0) ticks.splice(i, 1); }
+
+        function bez3(p0, p1, p2, p3, t) {
+          var u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+          return {
+            x: a * p0.x + b * p1.x + c * p2.x + d * p3.x,
+            y: a * p0.y + b * p1.y + c * p2.y + d * p3.y,
+          };
+        }
+
+        /* Cocos 노드처럼 x/y(중앙 원점 · y 위쪽 +) · scaleX/Y · angle · opacity 를 갖는다. */
+        function Spr(layer, html, cls) {
+          this.el = document.createElement("div");
+          this.el.className = "mfx-spr" + (cls ? " " + cls : "");
+          this.el.innerHTML = html;
+          layer.appendChild(this.el);
+          this.x = 0; this.y = 0; this.sx = 1; this.sy = 1; this.rot = 0; this.a = 1;
+          this.apply();
+        }
+        Spr.prototype.apply = function () {
+          this.el.style.transform =
+            "translate(-50%,-50%) translate(" + this.x + "px," + -this.y + "px) rotate(" +
+            this.rot + "deg) scale(" + this.sx + "," + this.sy + ")";
+          this.el.style.opacity = this.a;
+        };
+        Spr.prototype.set = function (p) { for (var k in p) this[k] = p[k]; this.apply(); return this; };
+        Spr.prototype.to = function (dur, props, ease) {
+          var self = this, from = {}, k;
+          for (k in props) from[k] = self[k];
+          return tw(dur, ease, function (e) {
+            for (var q in props) self[q] = from[q] + (props[q] - from[q]) * e;
+            self.apply();
+          }).then(function () { return self; });
+        };
+        Spr.prototype.kill = function () { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); };
+
+        /* 공통 조각 ------------------------------------------------------- */
+        function squash(s, dIn, sx, sy, dOut, ease) {
+          return s.to(dIn, { sx: sx, sy: sy }, "quadOut").then(function () {
+            return s.to(dOut, { sx: 1, sy: 1 }, ease || "backOut");
+          });
+        }
+        function shake(s, amp, dur) {
+          var x0 = s.x, st = dur / 6;
+          return s.to(st, { x: x0 + amp }, "quadOut")
+            .then(function () { return s.to(st, { x: x0 - amp * 0.7 }, "quadOut"); })
+            .then(function () { return s.to(st, { x: x0 + amp * 0.45 }, "quadOut"); })
+            .then(function () { return s.to(st, { x: x0 - amp * 0.25 }, "quadOut"); })
+            .then(function () { return s.to(st * 2, { x: x0 }, "backOut"); });
+        }
+        function flyBezier(s, from, to, dur, liftRatio, minLift) {
+          var dist = Math.hypot(to.x - from.x, to.y - from.y);
+          var lift = Math.max(minLift, dist * liftRatio);
+          var c1 = { x: from.x, y: from.y + lift };
+          var c2 = { x: to.x, y: to.y + lift * 0.6 };
+          return tw(dur, "quadInOut", function (e) {
+            var p = bez3(from, c1, c2, to, e);
+            s.x = p.x; s.y = p.y; s.apply();
+          }).then(function () { return { c1: c1, c2: c2, lift: lift }; });
+        }
+
+        /* 무대 ------------------------------------------------------------ */
+        var CELL = 72, GAP = 5, PITCH = CELL + GAP;
+        var TINT = ["none", "hue-rotate(-28deg) saturate(1.15)", "hue-rotate(-62deg) saturate(1.25)", "hue-rotate(155deg) saturate(1.1)"];
+
+        function elm(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
+        function tileHTML(icon, lv, cls) {
+          return '<div class="mfx-tile' + (cls ? " " + cls : "") + '"><div class="plate"></div>' +
+            '<svg viewBox="0 0 66 66"><use href="#' + icon + '"></use></svg>' +
+            (lv ? '<span class="lv">' + lv + "</span>" : "") + "</div>";
+        }
+
+        function makeStage(host, spec) {
+          var wrap = elm("div");
+          wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px";
+
+          var hud = null, hudNum = null, buy = null;
+          if (spec.hud) {
+            hud = elm("div", "mfx-hud");
+            hud.innerHTML = '<span class="dot"></span><span class="n">1,240</span>';
+            hudNum = hud.querySelector(".n");
+            var top = elm("div");
+            top.style.cssText = "display:flex;align-items:center;gap:10px";
+            top.appendChild(hud);
+            if (spec.buy) { buy = elm("div", "mfx-buy"); buy.textContent = "속도 UP · 300"; top.appendChild(buy); }
+            wrap.appendChild(top);
+          }
+
+          var board = elm("div", "mfx-board");
+          var cells = elm("div", "mfx-cells");
+          cells.style.gridTemplateColumns = "repeat(" + spec.cols + "," + CELL + "px)";
+          var cellEls = [];
+          for (var i = 0; i < spec.cols * spec.rows; i++) { var c = elm("div", "mfx-cell"); cells.appendChild(c); cellEls.push(c); }
+          var layer = elm("div", "mfx-layer");
+          board.appendChild(cells);
+          board.appendChild(layer);
+          wrap.appendChild(board);
+          host.appendChild(wrap);
+
+          var st = {
+            wrap: wrap, board: board, layer: layer, cellEls: cellEls, hud: hud, hudNum: hudNum, buy: buy,
+            cols: spec.cols, rows: spec.rows, pool: [],
+            cellPos: function (i) {
+              var col = i % spec.cols, row = Math.floor(i / spec.cols);
+              return { x: (col - (spec.cols - 1) / 2) * PITCH, y: ((spec.rows - 1) / 2 - row) * PITCH };
+            },
+            spr: function (html, cls) { var s = new Spr(layer, html, cls); st.pool.push(s); return s; },
+            tile: function (icon, lv, cls) {
+              var s = st.spr(tileHTML(icon, lv, cls));
+              if (lv) s.el.querySelector("svg").style.filter = TINT[Math.min(lv, TINT.length) - 1];
+              return s;
+            },
+            at: function (node) {
+              var a = node.getBoundingClientRect(), b = layer.getBoundingClientRect();
+              return { x: a.left + a.width / 2 - (b.left + b.width / 2), y: -(a.top + a.height / 2 - (b.top + b.height / 2)) };
+            },
+            clear: function () {
+              for (var i = 0; i < st.pool.length; i++) st.pool[i].kill();
+              st.pool = [];
+              for (var k = 0; k < cellEls.length; k++) cellEls[k].classList.remove("is-hl");
+              board.style.transform = "";
+              board.dataset.sx = 0;
+              if (hud) hud.style.transform = "";
+              if (buy) buy.style.transform = "";
+            },
+          };
+          return st;
+        }
+
+        function toast(st, text, good, hold) {
+          var t = st.spr('<div class="mfx-toast' + (good ? " is-good" : "") + '">' + text + "</div>");
+          var rest = st.layer.clientHeight / 2 + 30;
+          t.set({ y: rest - 16, a: 0, sx: 0.86, sy: 0.86 });
+          return t.to(0.24, { y: rest, a: 1, sx: 1, sy: 1 }, "backOut")
+            .then(function () { return wait(hold == null ? 1.0 : hold); })
+            .then(function () { return t.to(0.2, { y: rest + 14, a: 0 }, "quadIn"); })
+            .then(function () { t.kill(); });
+        }
+        function nodeShake(node, amp, dur) {
+          var step = dur / 6, seq = [amp, -amp * 0.7, amp * 0.45, -amp * 0.25, 0], p = Promise.resolve(), cur = 0;
+          seq.forEach(function (to, i) {
+            p = p.then(function () {
+              var from = cur; cur = to;
+              return tw(i === 4 ? step * 2 : step, i === 4 ? "backOut" : "quadOut", function (e) {
+                node.style.transform = "translateX(" + (from + (to - from) * e) + "px)";
+              });
+            });
+          });
+          return p;
+        }
+        function plateEdge(s, px) {
+          var p = s.el.querySelector(".plate");
+          if (p) p.style.boxShadow = "0 " + px + "px 0 var(--wood700)";
+        }
+        function sparks(st, at, n, color) {
+          var list = [];
+          for (var i = 0; i < n; i++) {
+            (function (i) {
+              var sp = st.spr('<div class="mfx-spark"></div>');
+              if (color) sp.el.firstChild.style.background = color;
+              sp.set({ x: at.x, y: at.y, sx: 0.4, sy: 0.4 });
+              var ang = (Math.PI * 2 * i) / n - Math.PI / 2, r = 40 + (i % 2) * 12;
+              list.push(sp.to(0.34, {
+                x: at.x + Math.cos(ang) * r, y: at.y + Math.sin(ang) * r, sx: 0.1, sy: 0.1, a: 0,
+              }, "quadOut").then(function () { sp.kill(); }));
+            })(i);
+          }
+          return Promise.all(list);
+        }
+        /* 베지어 가이드 — 제어점이 어디 있는지 보여야 곡선 얘기가 된다. */
+        function guide(st, from, c1, c2, to) {
+          var w = st.layer.clientWidth, h = st.layer.clientHeight;
+          function P(p) { return w / 2 + p.x + "," + (h / 2 - p.y); }
+          var s = st.spr('<svg width="' + w + '" height="' + h + '" style="overflow:visible">' +
+            '<path d="M ' + P(from) + " C " + P(c1) + " " + P(c2) + " " + P(to) +
+            '" fill="none" stroke="#B57F4E" stroke-width="2" stroke-dasharray="5 5" opacity=".8"></path>' +
+            '<circle cx="' + (w / 2 + c1.x) + '" cy="' + (h / 2 - c1.y) + '" r="3.5" fill="#FF6B5B"></circle>' +
+            '<circle cx="' + (w / 2 + c2.x) + '" cy="' + (h / 2 - c2.y) + '" r="3.5" fill="#FF6B5B"></circle></svg>');
+          s.apply = function () {};
+          s.el.style.transform = "translate(-50%,-50%)";
+          s.el.style.opacity = 0;
+          return s;
+        }
+
+        function nodePunch(node, dIn, sc, dOut) {
+          return tw(dIn, "quadOut", function (e) { node.style.transform = "scale(" + (1 + (sc - 1) * e) + ")"; })
+            .then(function () {
+              return tw(dOut, "backOut", function (e) { node.style.transform = "scale(" + (sc + (1 - sc) * e) + ")"; });
+            });
+        }
+        function mix(a, b, e) { return "rgb(" + Math.round(a[0] + (b[0] - a[0]) * e) + "," + Math.round(a[1] + (b[1] - a[1]) * e) + "," + Math.round(a[2] + (b[2] - a[2]) * e) + ")"; }
+        var WOOD = [122, 78, 43], CORAL = [225, 80, 63];
+
+        /* ======================================================================
+           데모 15종
+           ====================================================================== */
+        var DEMOS = {};
+
+        /* A1 · 클릭 --------------------------------------------------------- */
+        DEMOS.a1 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2 }), gen;
+          function reset() {
+            st.clear();
+            gen = st.tile("mfx-producer");
+            var p = st.cellPos(4);
+            gen.set({ x: p.x, y: p.y });
+            plateEdge(gen, 3);
+          }
+          function play() {
+            reset();
+            var p = st.cellPos(4);
+            plateEdge(gen, 1);
+            return Promise.all([gen.to(0.12, { y: p.y - 3 }, "quadOut"), gen.to(0.12, { sx: 1.06, sy: 0.94 }, "quadOut")])
+              .then(function () { return wait(0.08); })
+              .then(function () {
+                plateEdge(gen, 3);
+                return Promise.all([
+                  gen.to(0.12, { y: p.y }, "quadOut"),
+                  gen.to(0.08, { sx: 0.95, sy: 1.07 }, "quadOut").then(function () { return gen.to(0.18, { sx: 1, sy: 1 }, "backOut"); }),
+                ]);
+              });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* A2 · 생산물 비행 -------------------------------------------------- */
+        DEMOS.a2 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), gen, GI = 4, TI = 10;
+          function reset() {
+            st.clear();
+            gen = st.tile("mfx-producer");
+            var p = st.cellPos(GI);
+            gen.set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            var from = st.cellPos(GI), to = st.cellPos(TI);
+            var dist = Math.hypot(to.x - from.x, to.y - from.y);
+            var lift = Math.max(70, dist * 0.38);
+            var g = guide(st, from, { x: from.x, y: from.y + lift }, { x: to.x, y: to.y + lift * 0.6 }, to);
+            plateEdge(gen, 1);
+            return gen.to(0.12, { y: from.y - 3 }, "quadOut").then(function () {
+              plateEdge(gen, 3);
+              gen.to(0.18, { y: from.y }, "backOut");
+              tw(0.15, "quadOut", function (e) { g.el.style.opacity = e * 0.9; });
+              var item = st.tile("mfx-product", 1);
+              item.set({ x: from.x, y: from.y, sx: 0.5, sy: 0.5 });
+              item.el.style.zIndex = 5;
+              item.to(0.15, { sx: 1.14, sy: 1.14 }, "backOut").then(function () { return item.to(0.27, { sx: 1, sy: 1 }, "quadIn"); });
+              return flyBezier(item, from, to, 0.42, 0.38, 70).then(function () {
+                tw(0.3, "quadIn", function (e) { g.el.style.opacity = 0.9 * (1 - e); }).then(function () { g.kill(); });
+                return squash(item, 0.06, 1.18, 0.84, 0.16);
+              });
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* A3 · 드래그 ------------------------------------------------------- */
+        DEMOS.a3 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, shadow, SI = 5, DI = 10;
+          function reset() {
+            st.clear();
+            var p = st.cellPos(SI);
+            shadow = st.spr('<div class="mfx-shadow"></div>');
+            shadow.set({ x: p.x, y: p.y - 30, a: 0.5 });
+            tile = st.tile("mfx-product", 2);
+            tile.set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            var from = st.cellPos(SI), to = st.cellPos(DI);
+            var ghost = st.spr(tileHTML("mfx-product", 0, "is-ghost"));
+            ghost.set({ x: from.x, y: from.y, a: 0 });
+            var finger = st.spr('<div class="mfx-finger"></div>');
+            finger.set({ x: from.x, y: from.y, a: 0 });
+            tile.el.style.zIndex = 6;
+
+            return Promise.all([
+              tile.to(0.1, { sx: 1.08, sy: 1.08, y: from.y + 6 }, "backOut"),
+              shadow.to(0.1, { sx: 1.3, sy: 1.3, a: 0.32 }, "quadOut"),
+              ghost.to(0.1, { a: 0.55 }, "quadOut"),
+              finger.to(0.1, { a: 1 }, "quadOut"),
+            ]).then(function () {
+              /* 손가락은 직선, 타일은 지연 추종. 프레임 독립 보간이라 60fps 아니어도 같은 느낌. */
+              var FOLLOW = 0.4;
+              var follow = function (dt) {
+                var k = 1 - Math.pow(1 - FOLLOW, dt * 60);
+                tile.x += (finger.x - tile.x) * k;
+                tile.y += (finger.y + 6 - tile.y) * k;
+                tile.rot += ((finger.x - tile.x) * 0.16 - tile.rot) * k;
+                tile.apply();
+                shadow.set({ x: tile.x, y: tile.y - 36 });
+              };
+              addTick(follow);
+              var path = [{ x: from.x + 40, y: from.y - 55 }, { x: to.x - 24, y: to.y + 34 }, { x: to.x, y: to.y }];
+              var p = Promise.resolve();
+              path.forEach(function (b) {
+                p = p.then(function () {
+                  var a = { x: finger.x, y: finger.y };
+                  return tw(0.3, "quadInOut", function (e) { finger.set({ x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e }); });
+                });
+              });
+              return p.then(function () { return wait(0.12); }).then(function () {
+                delTick(follow);
+                finger.to(0.12, { a: 0 }, "quadIn");
+                ghost.to(0.12, { a: 0 }, "quadIn");
+                return Promise.all([
+                  tile.to(0.14, { x: to.x, y: to.y, sx: 1, sy: 1, rot: 0 }, "quadOut"),
+                  shadow.to(0.14, { x: to.x, y: to.y - 30, sx: 1, sy: 1, a: 0.5 }, "quadOut"),
+                ]);
+              }).then(function () { return squash(tile, 0.06, 1.14, 0.88, 0.16); });
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* A4 · 병합 --------------------------------------------------------- */
+        DEMOS.a4 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2 }), src, dst, SI = 3, DI = 4;
+          function reset() {
+            st.clear();
+            var a = st.cellPos(SI), b = st.cellPos(DI);
+            dst = st.tile("mfx-product", 2); dst.set({ x: b.x, y: b.y });
+            src = st.tile("mfx-product", 2); src.set({ x: a.x, y: a.y });
+          }
+          function play() {
+            reset();
+            var b = st.cellPos(DI);
+            return src.to(0.14, { x: b.x, y: b.y, sx: 0.55, sy: 0.55, a: 0 }, "quadIn").then(function () {
+              src.kill();
+              var ring = st.spr('<div class="mfx-ring"></div>');
+              ring.set({ x: b.x, y: b.y, sx: 0.5, sy: 0.5 });
+              ring.to(0.3, { sx: 1.9, sy: 1.9, a: 0 }, "quadOut").then(function () { ring.kill(); });
+              dst.el.querySelector(".lv").textContent = "3";
+              dst.el.querySelector("svg").style.filter = TINT[2];
+              dst.set({ sx: 0.78, sy: 0.78 });
+              return dst.to(0.07, { sx: 1.24, sy: 0.82 }, "quadOut");
+            }).then(function () {
+              return Promise.all([dst.to(0.2, { sx: 1, sy: 1 }, "backOut"), sparks(st, b, 7)]);
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* A5 · 더블탭 자동 이동 --------------------------------------------- */
+        DEMOS.a5 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, SI = 8, TI = 2;
+          function reset() {
+            st.clear();
+            var p = st.cellPos(SI);
+            tile = st.tile("mfx-product", 2);
+            tile.set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            var from = st.cellPos(SI), to = st.cellPos(TI);
+            return squash(tile, 0.06, 0.92, 0.92, 0.1)
+              .then(function () { return wait(0.07); })
+              .then(function () { return squash(tile, 0.06, 0.92, 0.92, 0.1); })
+              .then(function () {
+                st.cellEls[TI].classList.add("is-hl");
+                tile.el.style.zIndex = 5;
+                tile.to(0.12, { sx: 1.1, sy: 1.1 }, "backOut").then(function () { return tile.to(0.2, { sx: 1, sy: 1 }, "quadIn"); });
+                return flyBezier(tile, from, to, 0.3, 0.22, 42);
+              })
+              .then(function () {
+                st.cellEls[TI].classList.remove("is-hl");
+                return squash(tile, 0.05, 1.16, 0.86, 0.15);
+              });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* A6 · 재화 획득 ----------------------------------------------------- */
+        DEMOS.a6 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), chest;
+          function reset() {
+            st.clear();
+            var p = st.cellPos(4);
+            chest = st.tile("mfx-producer");
+            chest.set({ x: p.x, y: p.y });
+            if (st.hudNum) st.hudNum.textContent = "1,240";
+          }
+          function play() {
+            reset();
+            var src = st.cellPos(4);
+            return squash(chest, 0.07, 1.14, 0.88, 0.16).then(function () {
+              var target = st.at(st.hud), N = 6, all = [];
+              for (var i = 0; i < N; i++) {
+                (function (i) {
+                  all.push(wait(i * 0.04).then(function () {
+                    var c = st.spr('<div class="mfx-coin"></div>');
+                    c.set({ x: src.x, y: src.y });
+                    var ang = -Math.PI / 2 + (i - (N - 1) / 2) * 0.42;
+                    return c.to(0.26, {
+                      x: src.x + Math.cos(ang) * 52, y: src.y + Math.sin(ang) * 52 + 48, sx: 1.25, sy: 1.25,
+                    }, "circOut").then(function () {
+                      return c.to(0.34, { x: target.x, y: target.y, sx: 0.8, sy: 0.8 }, "circIn");
+                    }).then(function () {
+                      c.kill();
+                      if (i === 0 && st.hudNum) {
+                        tw(0.5, "quadOut", function (e) { st.hudNum.textContent = Math.round(1240 + 300 * e).toLocaleString(); });
+                      }
+                      return nodePunch(st.hud, 0.05, 1.09, 0.12);
+                    });
+                  }));
+                })(i);
+              }
+              return Promise.all(all);
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* B1 · 보드가 꽉 참 -------------------------------------------------- */
+        DEMOS.b1 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), gen, GI = 4;
+          function reset() {
+            st.clear();
+            for (var i = 0; i < 12; i++) {
+              if (i === GI) continue;
+              var p = st.cellPos(i);
+              st.tile("mfx-product", (i % 3) + 1).set({ x: p.x, y: p.y });
+            }
+            gen = st.tile("mfx-producer");
+            var g = st.cellPos(GI);
+            gen.set({ x: g.x, y: g.y });
+          }
+          function play() {
+            reset();
+            var g = st.cellPos(GI);
+            plateEdge(gen, 1);
+            return gen.to(0.12, { y: g.y - 3 }, "quadOut").then(function () {
+              plateEdge(gen, 3);
+              gen.to(0.12, { y: g.y }, "quadOut");
+              /* 거부는 소리(FX_TILE_ERROR)부터 → 원인 노드 흔들림 → 보드 프레임 → 문구 */
+              return Promise.all([
+                shake(gen, 6, 0.3),
+                nodeShake(st.board, 5, 0.3),
+                toast(st, "보드가 꽉 찼어요", false, 1.1),
+              ]);
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* B2 · 충전중 -------------------------------------------------------- */
+        DEMOS.b2 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2 }), gen, gauge, fill, lbl, alive = false;
+          function reset() {
+            alive = false;
+            st.clear();
+            var p = st.cellPos(4);
+            gen = st.tile("mfx-producer");
+            gen.set({ x: p.x, y: p.y, a: 0.45 });
+            gauge = st.spr('<div class="mfx-gauge"><i></i></div>');
+            gauge.set({ x: p.x, y: p.y - 42 });
+            fill = gauge.el.querySelector("i");
+            lbl = st.spr('<div class="mfx-chg">충전중</div>');
+            lbl.set({ x: p.x, y: p.y - 58 });
+          }
+          function play() {
+            reset();
+            alive = true;
+            /* 점은 기존 CCact.playCommaEffect 와 같은 0.25s 4단 사이클 */
+            var n = 0;
+            (function dots() {
+              if (!alive) return;
+              lbl.el.firstChild.textContent = "충전중" + "...".slice(0, n % 4);
+              n++;
+              wait(0.25).then(dots);
+            })();
+            /* 대기 상태의 생산자는 숨만 쉰다 — 수확 가능할 때보다 확실히 조용하게 */
+            (function breathe() {
+              if (!alive) return;
+              gen.to(0.8, { sy: 0.97, sx: 1.02 }, "sineInOut")
+                .then(function () { return alive ? gen.to(0.8, { sy: 1, sx: 1 }, "sineInOut") : null; })
+                .then(function () { if (alive) breathe(); });
+            })();
+            return tw(2.6, "linear", function (e) { fill.style.width = e * 100 + "%"; }).then(function () { alive = false; });
+          }
+          return { st: st, reset: reset, play: play, stop: function () { alive = false; } };
+        };
+
+        /* B3 · 레벨 n 에 해금 ------------------------------------------------ */
+        DEMOS.b3 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2 }), lock;
+          function reset() {
+            st.clear();
+            var a = st.cellPos(3), b = st.cellPos(5);
+            st.tile("mfx-product", 2).set({ x: a.x, y: a.y });
+            st.tile("mfx-product", 1).set({ x: b.x, y: b.y });
+            var p = st.cellPos(4);
+            lock = st.tile("mfx-lock", 0, "is-locked");
+            lock.set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            plateEdge(lock, 1);
+            return lock.to(0.1, { sx: 0.94, sy: 0.94 }, "quadOut").then(function () {
+              plateEdge(lock, 3);
+              lock.to(0.14, { sx: 1, sy: 1 }, "backOut");
+              /* 자물쇠는 흔드는 게 아니라 돌린다 — "잠겨서 안 열린다" 는 회전이 더 읽힌다 */
+              return Promise.all([
+                lock.to(0.08, { rot: -9 }, "quadOut")
+                  .then(function () { return lock.to(0.08, { rot: 9 }, "quadOut"); })
+                  .then(function () { return lock.to(0.08, { rot: -5 }, "quadOut"); })
+                  .then(function () { return lock.to(0.12, { rot: 0 }, "backOut"); }),
+                toast(st, "레벨 12에 해금돼요", false, 1.1),
+              ]);
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* C1 · 드롭 거부 ----------------------------------------------------- */
+        DEMOS.c1 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, SI = 5, TI = 6;
+          function reset() {
+            st.clear();
+            var t = st.cellPos(TI);
+            st.tile("mfx-product", 3).set({ x: t.x, y: t.y });
+            var p = st.cellPos(SI);
+            tile = st.tile("mfx-product", 1);
+            tile.set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            var from = st.cellPos(SI), to = st.cellPos(TI);
+            tile.el.style.zIndex = 6;
+            return tile.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut")
+              .then(function () { return tile.to(0.34, { x: to.x, y: to.y + 8 }, "quadInOut"); })
+              .then(function () {
+                st.cellEls[TI].style.outline = "3px solid #E1503F";
+                st.cellEls[TI].style.outlineOffset = "-3px";
+                /* 판정이 난 프레임에 거부음 → 그 다음 복귀 트윈 */
+                return Promise.all([
+                  tile.to(0.26, { x: from.x, y: from.y, sx: 1, sy: 1 }, "backOut"),
+                  wait(0.18).then(function () { st.cellEls[TI].style.outline = ""; }),
+                ]);
+              })
+              .then(function () { return shake(tile, 5, 0.24); });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* C2 · 병합 가능 대상 하이라이트 ------------------------------------- */
+        DEMOS.c2 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, ring, alive = false, SI = 9, MI = 2, XI = 1;
+          function reset() {
+            alive = false;
+            st.clear();
+            var m = st.cellPos(MI), x = st.cellPos(XI);
+            st.tile("mfx-product", 2).set({ x: m.x, y: m.y });
+            st.tile("mfx-product", 3).set({ x: x.x, y: x.y });
+            var p = st.cellPos(SI);
+            tile = st.tile("mfx-product", 2);
+            tile.set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            alive = true;
+            var from = st.cellPos(SI), m = st.cellPos(MI);
+            tile.el.style.zIndex = 6;
+            return tile.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut").then(function () {
+              /* 같은 레벨 타일에만 링이 뜬다 — 손가락 아래에서 "이것과 합쳐진다" 가 보여야 한다 */
+              ring = st.spr('<div class="mfx-ring"></div>');
+              ring.set({ x: m.x, y: m.y, sx: 0.9, sy: 0.9, a: 0 });
+              ring.to(0.14, { a: 1, sx: 1.02, sy: 1.02 }, "backOut");
+              (function pulse() {
+                if (!alive) return;
+                ring.to(0.45, { sx: 1.14, sy: 1.14, a: 0.45 }, "sineInOut")
+                  .then(function () { return alive ? ring.to(0.45, { sx: 0.98, sy: 0.98, a: 1 }, "sineInOut") : null; })
+                  .then(function () { if (alive) pulse(); });
+              })();
+              return tile.to(0.5, { x: m.x, y: m.y + 10 }, "quadInOut");
+            }).then(function () { return wait(0.9); }).then(function () {
+              alive = false;
+              ring.to(0.16, { a: 0, sx: 1.3, sy: 1.3 }, "quadOut").then(function () { ring.kill(); });
+              return tile.to(0.26, { x: from.x, y: from.y, sx: 1, sy: 1 }, "backOut");
+            });
+          }
+          return { st: st, reset: reset, play: play, stop: function () { alive = false; } };
+        };
+
+        /* C3 · 충전 완료 ----------------------------------------------------- */
+        DEMOS.c3 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2 }), gen, gauge, fill, alive = false;
+          function reset() {
+            alive = false;
+            st.clear();
+            var p = st.cellPos(4);
+            gen = st.tile("mfx-producer");
+            gen.set({ x: p.x, y: p.y, a: 0.45 });
+            gauge = st.spr('<div class="mfx-gauge"><i></i></div>');
+            gauge.set({ x: p.x, y: p.y - 42 });
+            fill = gauge.el.querySelector("i");
+            fill.style.width = "78%";
+          }
+          function play() {
+            reset();
+            var p = st.cellPos(4);
+            return tw(0.7, "linear", function (e) { fill.style.width = 78 + 22 * e + "%"; }).then(function () {
+              gauge.to(0.18, { a: 0, sy: 0.4 }, "quadIn").then(function () { gauge.kill(); });
+              gen.set({ a: 1 });
+              return squash(gen, 0.08, 1.18, 0.84, 0.22);
+            }).then(function () {
+              var badge = st.spr('<div class="mfx-badge">!</div>');
+              badge.set({ x: p.x + 26, y: p.y + 30, sx: 0, sy: 0 });
+              alive = true;
+              return badge.to(0.2, { sx: 1, sy: 1 }, "backOut").then(function () {
+                /* 수확 가능 상태의 대기는 충전중보다 확실히 크게 — 시선을 부른다 */
+                (function bob() {
+                  if (!alive) return;
+                  badge.to(0.42, { y: p.y + 36 }, "sineInOut")
+                    .then(function () { return alive ? badge.to(0.42, { y: p.y + 30 }, "sineInOut") : null; })
+                    .then(function () { if (alive) bob(); });
+                })();
+                return Promise.all([
+                  sparks(st, p, 8, "#7FC9BA"),
+                  gen.to(0.5, { sy: 1.05, sx: 1.05 }, "sineInOut").then(function () { return gen.to(0.5, { sy: 1, sx: 1 }, "sineInOut"); }),
+                ]);
+              });
+            });
+          }
+          return { st: st, reset: reset, play: play, stop: function () { alive = false; } };
+        };
+
+        /* C4 · 최대 단계 ----------------------------------------------------- */
+        DEMOS.c4 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2 }), a, b, AI = 3, BI = 4;
+          function reset() {
+            st.clear();
+            var pa = st.cellPos(AI), pb = st.cellPos(BI);
+            b = st.tile("mfx-product", 4); b.set({ x: pb.x, y: pb.y });
+            a = st.tile("mfx-product", 4); a.set({ x: pa.x, y: pa.y });
+          }
+          function play() {
+            reset();
+            var pa = st.cellPos(AI), pb = st.cellPos(BI);
+            a.el.style.zIndex = 6;
+            return a.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut")
+              .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
+              .then(function () {
+                var stamp = st.spr('<div class="mfx-stamp">MAX</div>');
+                stamp.set({ x: pb.x, y: pb.y + 44, sx: 1.7, sy: 1.7, a: 0 });
+                stamp.to(0.14, { sx: 1, sy: 1, a: 1 }, "backOut").then(function () {
+                  return wait(0.75).then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); });
+                }).then(function () { stamp.kill(); });
+                return Promise.all([
+                  a.to(0.26, { x: pa.x, y: pa.y, sx: 1, sy: 1 }, "backOut").then(function () { return shake(a, 4, 0.22); }),
+                  squash(b, 0.06, 1.1, 0.9, 0.18),
+                ]);
+              });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* C5 · 재화 부족 ----------------------------------------------------- */
+        DEMOS.c5 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 2, hud: true, buy: true });
+          function reset() {
+            st.clear();
+            if (st.hudNum) st.hudNum.textContent = "120";
+            if (st.hud) st.hud.style.background = "";
+            var p = st.cellPos(4);
+            st.tile("mfx-producer").set({ x: p.x, y: p.y });
+          }
+          function play() {
+            reset();
+            return nodePunch(st.buy, 0.06, 0.94, 0.1).then(function () {
+              return Promise.all([
+                nodeShake(st.buy, 6, 0.28),
+                /* 원인은 버튼이 아니라 잔액이다 — 카운터가 같이 붉어져야 어디를 봐야 하는지 안다 */
+                tw(0.1, "quadOut", function (e) { st.hud.style.background = mix(WOOD, CORAL, e); })
+                  .then(function () { return tw(0.4, "quadIn", function (e) { st.hud.style.background = mix(CORAL, WOOD, e); }); }),
+                toast(st, "코인이 부족해요", false, 1.0),
+              ]);
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
+
+        /* C6 · 미션 납품 ----------------------------------------------------- */
+        DEMOS.c6 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), slot, items = [], SLOT = 1, SRC = [8, 9, 10];
+          function reset() {
+            st.clear();
+            items = [];
+            var s = st.cellPos(SLOT);
+            slot = st.tile("mfx-mission");
+            slot.set({ x: s.x, y: s.y });
+            SRC.forEach(function (i) {
+              var p = st.cellPos(i);
+              var t = st.tile("mfx-product", 3);
+              t.set({ x: p.x, y: p.y });
+              items.push({ spr: t, from: p });
+            });
+          }
+          function play() {
+            reset();
+            var to = st.cellPos(SLOT);
+            var all = items.map(function (it, i) {
+              return wait(i * 0.06).then(function () {          /* STAGGER 0.06 — 납품은 코인보다 느리게 */
+                it.spr.el.style.zIndex = 5;
+                it.spr.to(0.14, { sx: 1.12, sy: 1.12 }, "backOut").then(function () { return it.spr.to(0.3, { sx: 0.72, sy: 0.72 }, "quadIn"); });
+                return flyBezier(it.spr, it.from, to, 0.44, 0.3, 60);
+              }).then(function () {
+                it.spr.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { it.spr.kill(); });
+                return squash(slot, 0.06, 1.16, 0.86, 0.16);
+              });
+            });
+            return Promise.all(all).then(function () {
+              var stamp = st.spr('<div class="mfx-stamp" style="color:#1E5A55;border-color:#1E5A55">완료</div>');
+              stamp.set({ x: to.x, y: to.y, sx: 1.8, sy: 1.8, a: 0, rot: -10 });
+              return Promise.all([
+                stamp.to(0.16, { sx: 1, sy: 1, a: 1, rot: -7 }, "backOut"),
+                sparks(st, to, 8, "#7FC9BA"),
+              ]).then(function () { return wait(0.8); }).then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); });
+            });
+          }
+          return { st: st, reset: reset, play: play };
+        };
