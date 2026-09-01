@@ -20,7 +20,6 @@
         <a class="nav-back" href="#action">액션 6</a>
         <a class="nav-back" href="#text">텍스트 3</a>
         <a class="nav-back" href="#gap">누락 5</a>
-        <a class="nav-back" href="#rule">규약</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -41,7 +40,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v2.2 · 2026-09-01 13:40</span>
+          <span class="tag" id="mfx-ver">v2.3 · 2026-09-01 14:37</span>
         </div>
       </div>
     </header>
@@ -98,7 +97,7 @@
         </div>
         <button type="button" class="mfx-btn is-primary" id="mfx-copyall">전체 설정 복사</button>
         <button type="button" class="mfx-btn" id="mfx-resetall">전부 기본값</button>
-        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 바꾸면 옆 무대가 그 값으로 놉니다. 타일은 <b>직접 누르고 끌 수 있고, 연달아 눌러 겹쳐 볼 수 있습니다.</b></span>
+        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 바꾸면 옆 무대가 그 값으로 놉니다. 타일은 <b>언제나 직접 누르고 끌 수 있습니다</b> — 자동 재생은 없고, 시연은 버튼을 눌렀을 때만 돕니다.</span>
       </div>
 
       <section class="doc-section" id="token">
@@ -224,133 +223,6 @@
           </div>
         </div>
         <div id="mfx-gap-list"></div>
-      </section>
-
-      <section class="doc-section" id="rule">
-        <h2 class="doc-h2">
-          구현 규약
-          <span class="doc-h2-sub">연출 하나하나보다 이 네 가지가 안 정해지면 나중에 전부 다시 만진다</span>
-        </h2>
-
-        <h3 style="font-size: 15px; margin: 4px 0 8px">1 · 인터럽트 — 연출 중에 또 누르면</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th>연출</th><th>재입력이 들어오면</th><th>구현</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>눌림 · 릴리즈</td><td>즉시 덮어쓴다</td><td><code>cc.Tween.stopAllByTarget(node)</code> 후 새 트윈</td></tr>
-              <tr><td>생산물 비행</td><td>큐에 쌓고 <code>STAGGER</code> 만큼 밀어 동시에 여러 개가 난다</td><td>비행은 노드마다 독립 — 취소하지 않는다</td></tr>
-              <tr><td>드래그</td><td>선점. 진행 중이면 새 터치를 받지 않는다</td><td><code>dragOffsets.size &gt; 0</code> 이면 <code>beginItemDrag</code> 가 false</td></tr>
-              <tr><td>병합</td><td>결과 타일이 팝을 끝낼 때까지 그 셀은 입력 잠금</td><td><code>await</code> 후 잠금 해제. <code>isValid</code> 체크 필수</td></tr>
-              <tr><td>떠오르는 문구</td><td>겹쳐 띄운다. 순번마다 조금씩 어긋나게</td><td>풀에서 꺼내 쓰고 각자 끝나면 <code>returnObject()</code></td></tr>
-              <tr><td>재화 수집</td><td>중첩 허용. 카운터는 마지막 목표값 하나로 수렴</td><td><code>TweenNumber.number</code> 세터가 이미 이 동작</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">이 표를 읽는 법</div>
-            <p>
-              정책이 갈리는 축은 하나입니다 — <strong>연출이 상태를 바꾸는가</strong>.
-              병합·드래그는 보드 데이터를 건드리므로 끝날 때까지 잠가야 하고,
-              눌림·토스트는 화면만 바꾸므로 언제든 덮어써도 됩니다.
-              지금 코드는 <code>cc.Tween.stopAllByTarget</code> 이 산발적으로만 불려서 이 구분이 없습니다.
-            </p>
-          </div>
-        </div>
-
-        <h3 style="font-size: 15px; margin: 22px 0 8px">2 · 사운드 훅 — 어느 프레임에 붙나</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th>연출</th><th>호출 시점</th><th>키</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>클릭</td><td>눌림 시작 프레임 (릴리즈 아님)</td><td><code>FX_BUTTON</code></td></tr>
-              <tr><td>생산물 비행</td><td>스폰 순간 1회 + 착지 순간 1회</td><td><code>FX_APPEAR</code> → <code>FX_TILE_FALL</code></td></tr>
-              <tr><td>드래그</td><td>픽업 성립 시점. 이동 중엔 없음</td><td><code>FX_TILE_SELECT</code></td></tr>
-              <tr><td>병합</td><td>흡수가 끝나고 결과 팝이 시작되는 프레임</td><td><code>FX_TILE_MATCH</code></td></tr>
-              <tr><td>드롭 거부 · 최대 단계</td><td>거부가 확정된 즉시 (복귀 트윈보다 먼저)</td><td><code>FX_TILE_ERROR</code></td></tr>
-              <tr><td>충전중 클릭 노티</td><td>눌린 프레임. 거부음이 아니다</td><td><code>FX_ITEM_HINT</code></td></tr>
-              <tr><td>재화 획득</td><td>산개 끝 1회 + 코인마다 도착 시</td><td><code>FX_COIN_MOVE</code> → <code>FX_COIN_GET</code></td></tr>
-              <tr><td>충전 완료 · 해금</td><td>팝 시작 프레임</td><td><code>FX_STAGE_UP</code> / <code>FX_PHOTO_UNLOCK</code></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">거부음은 트윈보다 먼저 친다</div>
-            <p>
-              복귀 트윈이 끝난 뒤에 소리를 내면 유저는 "실패했구나"를 0.26초 늦게 압니다.
-              <strong>거부 계열은 판정이 난 프레임에 소리부터 내고, 그 다음에 트윈을 시작</strong>합니다.
-              반대로 성공 계열(병합·획득)은 임팩트가 화면에 나타나는 프레임에 맞춰야 붙어 들립니다.
-              키 목록은 프로토에 이미 등록된 <code>FX_*</code> 실측 목록에서 골랐습니다.
-            </p>
-          </div>
-        </div>
-
-        <h3 style="font-size: 15px; margin: 22px 0 8px">3 · 성능 — 동시 트윈과 저사양 폴백</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th>항목</th><th>상한 / 규칙</th><th>근거</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>동시 진행 트윈 노드</td><td>24개</td><td>드로우콜 ≤50 기준. 파티클 1개당 노드 1개로 잡음</td></tr>
-              <tr><td>스파크 파티클</td><td>병합 1회당 7개, 동시 병합 시 3회까지만</td><td>연쇄 병합에서 폭발적으로 늘어남</td></tr>
-              <tr><td>코인 스프라이트</td><td>실제 수량과 무관하게 최대 8개</td><td>기존 <code>ItemGatheringAnimation</code> 과 같은 방식</td></tr>
-              <tr><td>저사양 폴백</td><td>파티클·링만 끈다. <b>지속시간은 그대로</b></td><td>시간이 바뀌면 <code>await</code> 뒤 로직 순서가 흔들린다</td></tr>
-              <tr><td>풀링</td><td>토스트 · 링 · 스파크 · 스탬프 전부 <code>PoolManager</code></td><td><code>cc.instantiate</code> 금지 규약</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3 style="font-size: 15px; margin: 22px 0 8px">4 · 상수는 한 파일에</h3>
-        <details class="mfx-code" open>
-          <summary>MergeBoardPresentationConfig.ts — 추가할 상수</summary>
-          <pre><code>// 기존 파일 하단에 이어 붙인다. 값이 파일마다 흩어지면 튜닝이 불가능해진다.
-export const MERGE_FLIGHT_DURATION_SEC = 0.42;
-export const MERGE_FLIGHT_LIFT_RATIO = 0.38;
-export const MERGE_FLIGHT_MIN_LIFT = 70;
-export const MERGE_HOP_DURATION_SEC = 0.30;
-export const MERGE_HOP_LIFT_RATIO = 0.22;
-export const MERGE_HOP_MIN_LIFT = 42;
-
-export const MERGE_PICKUP_DURATION_SEC = 0.10;
-export const MERGE_PICKUP_SCALE = 1.08;
-export const MERGE_DRAG_FOLLOW_RATIO = 0.40;   // 60fps 기준. update(dt) 에서 프레임 독립 보정
-export const MERGE_SNAP_BACK_SEC = 0.26;
-
-export const MERGE_SQUASH_IN_SEC = 0.06;
-export const MERGE_SQUASH_OUT_SEC = 0.16;
-export const MERGE_SHAKE_DURATION_SEC = 0.30;
-export const MERGE_SHAKE_AMPLITUDE = 6;
-
-export const MERGE_FLOAT_TEXT_IN_SEC = 0.22;
-export const MERGE_FLOAT_TEXT_HOLD_SEC = 0.45;
-export const MERGE_FLOAT_TEXT_OUT_SEC = 0.45;
-export const MERGE_FLOAT_TEXT_RISE = 16;      // 등장하며 튀어 오르는 거리
-export const MERGE_FLOAT_TEXT_DRIFT = 34;     // 사라지며 떠오르는 거리
-export const MERGE_FLOAT_TEXT_GAP = 34;       // 누른 칩과 문구 사이
-export const MERGE_STAGGER_SEC = 0.04;</code></pre>
-        </details>
-        <details class="mfx-code">
-          <summary>CCmath.ts — 3차 베지어 한 줄 추가</summary>
-          <pre><code>// 곡선 이동은 전부 이 함수 하나를 쓴다. cc.bezierTo 는 cc.Action 이라
-// cc.tween 체인과 섞이지 않아 프로젝트가 이미 쓰는 TweenRatio 패턴을 그대로 간다.
-static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): cc.Vec2 {
-    const u = 1 - t;
-    const a = u * u * u;
-    const b = 3 * u * u * t;
-    const c = 3 * u * t * t;
-    const d = t * t * t;
-    return cc.v2(
-        a * p0.x + b * p1.x + c * p2.x + d * p3.x,
-        a * p0.y + b * p1.y + c * p2.y + d * p3.y,
-    );
-}</code></pre>
-        </details>
 
         <div class="foot">
           <b>확인 범위</b>
@@ -364,6 +236,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           문서에서 보는 곡선이 엔진에서 나오는 곡선과 같습니다.
         </div>
       </section>
+
     </main>
 
     <script>
@@ -564,9 +437,11 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           return st;
         }
 
-        /* 떠오르는 문구 — RPG 에서 아이템 먹을 때 뜨는 그 텍스트다.
-           패널이 아니라 글자만 뜬다. 클릭한 칩 위에서 시작해 살짝 튀어 오른 뒤
-           천천히 떠오르며 사라진다. 여러 개가 동시에 떠도 되게 서로 조금씩 어긋난다. */
+        /* 떠오르는 문구 (floating text / damage popup) — RPG 에서 아이템 먹을 때 뜨는 그 텍스트다.
+           패널이 아니라 글자만 뜬다. 좌우로 흩뿌리지 않는다. 클릭한 칩 바로 위에서
+           수직으로만 움직인다: 팝인 → 유지 → 떠오르며 소멸.
+           연타로 여러 개가 동시에 뜰 때만 겹쳐 읽히지 않도록 시작 높이를 계단처럼 올린다
+           (stack=0 이면 완전히 같은 자리에서 뜬다). */
         function floatText(st, text, at, P, good) {
           P = P || {};
           var inSec = P.textInSec != null ? P.textInSec : 0.22;
@@ -575,17 +450,19 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           var rise = P.textRise != null ? P.textRise : 16;
           var drift = P.textDrift != null ? P.textDrift : 34;
           var gap = P.textGap != null ? P.textGap : 34;
+          var stack = P.textStack != null ? P.textStack : 14;
 
-          st.floatSeq = (st.floatSeq || 0) + 1;
-          var n = st.floatSeq % 3;
+          /* 살아 있는 문구 수만큼만 계단을 올린다. 다 사라지면 다시 0 단이다. */
+          st.floatLive = (st.floatLive || 0) + 1;
+          var n = st.floatLive - 1;
           var t = st.spr('<div class="mfx-float' + (good ? " is-good" : "") + '">' + text + "</div>");
-          var x0 = at.x + (n - 1) * 10, y0 = at.y + gap + n * 12;
+          var x0 = at.x, y0 = at.y + gap + n * stack;
           t.set({ x: x0, y: y0, a: 0, sx: 0.6, sy: 0.6 });
           t.el.style.zIndex = 30;
           return t.to(inSec, { y: y0 + rise, a: 1, sx: 1, sy: 1 }, P.textInEase || "backOut")
             .then(function () { return wait(hold); })
             .then(function () { return t.to(outSec, { y: y0 + rise + drift, a: 0 }, P.textOutEase || "quadOut"); })
-            .then(function () { t.kill(); });
+            .then(function () { t.kill(); st.floatLive = Math.max(0, (st.floatLive || 1) - 1); });
         }
         /* 판때기가 없으므로 "옆면 두께" 는 접지 그림자의 오프셋으로 표현한다. */
         function plateEdge(s, px) {
@@ -699,6 +576,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           var limX = ((st.cols - 1) * PITCH) / 2, limY = ((st.rows - 1) * PITCH) / 2;
 
           spr.el.addEventListener("pointerdown", function (e) {
+            st.userTook = true;                     // 손이 닿으면 반복 시연은 멈춘다
             if (st.playing || dragging) return;
             e.preventDefault();
             try { spr.el.setPointerCapture(e.pointerId); } catch (err) {}
@@ -905,11 +783,12 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             { k:"pressSY",    label:"응답 세로",     v:0.95, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_Y" },
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
             { k:"textInSec",  label:"문구 등장",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"textInEase", ease:"backOut", cfg:"MERGE_FLOAT_TEXT_IN_SEC" },
-            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE" },
+            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE",          note:"수직으로만 움직인다" },
             { k:"textHold",   label:"문구 유지",     v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_TEXT_HOLD_SEC" },
             { k:"textOutSec", label:"문구 퇴장",     v:0.45, min:0.02, max:2, step:0.01, unit:"s", easeK:"textOutEase",ease:"quadOut", cfg:"MERGE_FLOAT_TEXT_OUT_SEC" },
             { k:"textDrift",  label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_DRIFT",         note:"떠오르며 사라진다" },
             { k:"textGap",    label:"칩과의 간격",   v:34,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_GAP",           note:"클릭한 칩 위" },
+            { k:"textStack",  label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_STACK",         note:"동시에 뜬 문구끼리 겹치지 않게 위로" },
           ],
           b2: [
             { k:"dimAlpha",   label:"감광 투명도",   v:0.45, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_CHARGING_DIM",             note:"코코스 opacity 115 ≈ 0.45" },
@@ -921,10 +800,12 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             { k:"punchScale", label:"게이지 펀치",   v:1.12, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_GAUGE_PUNCH_SCALE" },
             { k:"punchOutSec",label:"게이지 펀치 복귀",v:0.16,min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_GAUGE_PUNCH_SEC" },
             { k:"textInSec",  label:"문구 등장",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"textInEase", ease:"backOut", cfg:"MERGE_FLOAT_TEXT_IN_SEC" },
+            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE",          note:"수직으로만 움직인다" },
             { k:"textHold",   label:"문구 유지",     v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_TEXT_HOLD_SEC" },
             { k:"textOutSec", label:"문구 퇴장",     v:0.45, min:0.02, max:2, step:0.01, unit:"s", easeK:"textOutEase",ease:"quadOut", cfg:"MERGE_FLOAT_TEXT_OUT_SEC" },
             { k:"textDrift",  label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_DRIFT",         note:"떠오르며 사라진다" },
             { k:"textGap",    label:"칩과의 간격",   v:34,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_GAP",           note:"클릭한 칩 위" },
+            { k:"textStack",  label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_STACK",         note:"동시에 뜬 문구끼리 겹치지 않게 위로" },
             { k:"remainSec",  label:"문구의 남은 시간",v:12, min:1,    max:999,step:1,   unit:"초",                                    cfg:"(런타임 값)" },
           ],
           b3: [
@@ -936,10 +817,12 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             { k:"angleB",     label:"회전 2차",      v:5,    min:0,    max:45, step:1,   unit:"°",                                     cfg:"MERGE_LOCK_ROTATE_ANGLE_2" },
             { k:"backSec",    label:"회전 복귀",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"backOut", cfg:"MERGE_LOCK_ROTATE_BACK_SEC" },
             { k:"textInSec",  label:"문구 등장",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"textInEase", ease:"backOut", cfg:"MERGE_FLOAT_TEXT_IN_SEC" },
+            { k:"textRise",   label:"등장 상승",     v:16,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_RISE",          note:"수직으로만 움직인다" },
             { k:"textHold",   label:"문구 유지",     v:0.45, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_TEXT_HOLD_SEC" },
             { k:"textOutSec", label:"문구 퇴장",     v:0.45, min:0.02, max:2, step:0.01, unit:"s", easeK:"textOutEase",ease:"quadOut", cfg:"MERGE_FLOAT_TEXT_OUT_SEC" },
             { k:"textDrift",  label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_DRIFT",         note:"떠오르며 사라진다" },
             { k:"textGap",    label:"칩과의 간격",   v:34,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_GAP",           note:"클릭한 칩 위" },
+            { k:"textStack",  label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_TEXT_STACK",         note:"동시에 뜬 문구끼리 겹치지 않게 위로" },
           ],
           c1: [
             { k:"snapSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"snapEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
@@ -1605,6 +1488,8 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
         /* C4 · 최대 단계 ----------------------------------------------------- */
         DEMOS.c4 = function (host) {
           var st = makeStage(host, { cols: 3, rows: 2 }), P = V.c4, a, b, AI = 3, BI = 4;
+          /* 최고 레벨끼리라 두 칩이 똑같이 생겼다. 어느 쪽을 잡아야 하는지 알 수 없으면
+             "드래그가 안 된다" 로 읽힌다 — 그래서 둘 다 끌 수 있게 한다. */
           function reset() {
             st.clear();
             var pa = st.cellPos(AI), pb = st.cellPos(BI);
@@ -1612,16 +1497,21 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             b.set({ x: pb.x, y: pb.y });
             a = st.tile("mfx-product", 4);
             a.set({ x: pa.x, y: pa.y });
-            dragify(st, a, {
+            hook(a, b);
+            hook(b, a);
+          }
+          /* 끈 칩(mover)이 상대 칩(other) 위에서 놓이면 최대 단계 고지 */
+          function hook(mover, other) {
+            dragify(st, mover, {
               onDrop: function (cell) {
-                if (cell === BI) return maxed();
-                if (cell < 0 || cell === a.cell) return snapBack(st, a, null);
-                return settle(st, a, cell, null);
+                if (cell === other.cell) return maxed(mover, other);
+                if (cell < 0 || cell === mover.cell) return snapBack(st, mover, null);
+                return settle(st, mover, cell, null);
               },
             });
           }
-          function maxed() {
-            var pb = st.cellPos(BI);
+          function maxed(a, b) {
+            var pb = { x: b.home.x, y: b.home.y };
             var stamp = st.spr('<div class="mfx-stamp">MAX</div>');
             stamp.set({ x: pb.x, y: pb.y + 44, sx: P.stampStart, sy: P.stampStart, a: 0 });
             stamp.to(P.stampInSec, { sx: 1, sy: 1, a: 1 }, P.stampEase)
@@ -1640,10 +1530,10 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             a.el.style.zIndex = 6;
             return a.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut")
               .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
-              .then(maxed)
+              .then(function () { return maxed(a, b); })
               .then(function () { a.el.style.zIndex = ""; });
           }
-          return { st: st, reset: reset, play: play, hint: "최고 레벨끼리 겹쳐 보세요" };
+          return { st: st, reset: reset, play: play, hint: "두 칩 다 끌 수 있습니다 · 하나를 다른 하나 위에 놓아 보세요" };
         };
 
         /* C6 · 미션 납품 — 보드 밖 미션 노드로 날아간다 ---------------------- */
@@ -2369,11 +2259,14 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           entry.btn.disabled = true;
           entry.btn.textContent = "재생 중";
           entry.demo.st.playing = true;              // 시연 중에만 손을 막는다
-          Promise.resolve(entry.demo.play()).then(function () {
+          /* catch 가 없으면 시연이 한 번 튕겼을 때 playing 이 true 로 남아
+             그 카드의 드래그·클릭이 영구히 죽는다. 반드시 풀어 준다. */
+          Promise.resolve(entry.demo.play()).catch(function () {}).then(function () {
             entry.demo.st.playing = false;
             entry.btn.disabled = false;
             entry.btn.textContent = "시연 재생";
-            if (LOOP) setTimeout(function () { run(entry); }, 700);
+            if (LOOP && !entry.demo.st.userTook) setTimeout(function () { run(entry); }, 700);
+            entry.demo.st.userTook = false;
           });
         }
 
@@ -2434,20 +2327,9 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           if (LOOP) running.forEach(function (e) { if (!e.btn.disabled) run(e); });
         });
 
-        /* 화면에 들어오면 한 번만 자동 재생. 모션 축소 설정이면 자동 재생하지 않는다. */
-        var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (!reduce && "IntersectionObserver" in window) {
-          var io = new IntersectionObserver(function (entries) {
-            entries.forEach(function (en) {
-              if (!en.isIntersecting) return;
-              var entry = running.filter(function (r) { return r.btn.closest(".mfx-item") === en.target; })[0];
-              if (!entry || entry.played) return;
-              entry.played = true;
-              run(entry);
-            });
-          }, { threshold: 0.45 });
-          Array.prototype.forEach.call(document.querySelectorAll(".mfx-item"), function (n) { io.observe(n); });
-        }
+        /* 스크롤 자동 재생은 뺐다. 시연이 도는 동안에는 st.playing 이 손을 막는데,
+           스크롤만 해도 재생이 걸리니 "왜 드래그가 안 되지" 가 된다.
+           이 문서는 읽는 문서가 아니라 만지는 문서라 손이 항상 우선이다. */
       })();
     </script>
     <script src="../app.js"></script>
