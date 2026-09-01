@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 15:20",
+  updated: "2026-09-01 15:31",
 };
 
 /* --------------------------------------------------------------------------
@@ -260,8 +260,8 @@ const SECTIONS = [
         url: "docs/story-merge-resource-budget.html",
         project: "smg",
         status: "추적",
-        version: "v1.9",
-        updated: "2026-09-01 15:03",
+        version: "v2.0",
+        updated: "2026-09-01 15:31",
         pinned: false,
         tags: ["머지", "리소스", "실측 추적"],
       },
@@ -271,8 +271,8 @@ const SECTIONS = [
         url: "docs/merge-flow-sim.html",
         project: "smg",
         status: "초안",
-        version: "v2.0",
-        updated: "2026-09-01 15:10",
+        version: "v2.1",
+        updated: "2026-09-01 15:31",
         pinned: false,
         tags: ["머지", "메모리 계측", "인터랙티브"],
       },

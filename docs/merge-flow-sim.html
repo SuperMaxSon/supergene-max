@@ -39,7 +39,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">클라이언트 코드 · uuid 그래프 실측</span>
           <span class="tag">노드 11 · 대사 37 · 감정 16</span>
-          <span class="tag">v1.0 · 2026-09-01</span>
+          <span class="tag">v2.1 · 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -149,6 +149,9 @@
               <code>CCres.ts:333</code> 의 <code>decRef()</code> 는 주석,
               <code>PoolManager</code> 에는 maker 를 파기하는 API 가 없습니다 &mdash;
               <b>한 번 올라가면 세션 끝까지 내려오지 않습니다.</b>
+              <span class="cnote">에셋 용량 · 메모리 환산 · 해제 호출 전수 조사 등
+              <b>실측 수치의 정본은 <a href="story-merge-resource-budget.html#res">리소스 예산</a> 문서</b>입니다 &mdash;
+              이 페이지는 그 수치로 현재 동작을 그립니다.</span>
             </p>
           </div>
           <div class="note" style="--acc: var(--warn)">
@@ -162,6 +165,8 @@
               <code>chat/ data/ objectPool/ …</code> 는 전부 내부 디렉터리라
               <b>폴더 단위 언로드가 구조적으로 불가능</b>합니다.
               곡선을 내리려면 이 둘을 먼저 끊어야 합니다.
+              <span class="cnote">이 둘이 선결 조건인 이유와 구간별 예산은
+              <a href="story-merge-resource-budget.html#res">리소스 예산</a> 문서에 있습니다.</span>
             </p>
           </div>
         </div>
@@ -419,14 +424,17 @@
 
         <div class="notes">
           <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">예산 문서와 어긋나는 곳 하나</div>
+            <div class="note-title">다 본 인트로 영상이 끝까지 램에 남는다</div>
             <p>
-              <a href="story-merge-resource-budget.html">리소스 예산</a> 문서는
-              <code>bundle/storyIntro</code> 3.51MB 를 <b>&ldquo;참조 0 · 번들에서 제거&rdquo;</b> 로
-              적고 있습니다. 그런데 uuid <code>e110bae9-0a36-4fc1-91b9-d4d35c060858</code> 을 찾으면
-              <code>assets/bundle/view/ViewStory.prefab</code> 이 <b>직접 참조</b>하고 있고
-              <code>StoryIntroVideoPlayer</code> 가 이것을 재생합니다. 즉 제거 대상이 아니라
-              <b>인트로 창의 비용</b>입니다. 예산 문서 정정이 필요합니다.
+              리소스 패널을 크기순으로 세우면 보입니다 &mdash; <code>bundle/storyIntro</code> 3.51MB 가
+              스토리가 끝날 때까지 램에 남습니다. <code>assets/bundle/view/ViewStory.prefab</code> 이
+              uuid <code>e110bae9…</code> 로 직접 참조하고 <code>StoryIntroVideoPlayer</code> 가 재생하는데,
+              재생이 끝나도 프리팹이 물고 있어서 내릴 수가 없습니다. 그 결과 대사 구간 내내
+              <b>&ldquo;현재 감정 하나&rdquo; 다음으로 무거운 것이 다 본 인트로 영상</b>입니다.
+              프리팹 참조를 끊고 코드 로드로 바꾸면 <code>decRef()</code> 로 내릴 수 있습니다.
+              <span class="cnote">이 발견으로
+              <a href="story-merge-resource-budget.html#res">리소스 예산</a> 문서의
+              &ldquo;참조 0 · 번들에서 제거&rdquo; 판정이 정정됐습니다(v1.9).</span>
             </p>
             <p>
               그리고 리소스 패널을 크기순으로 세워 보면 하나 더 보입니다 &mdash;
