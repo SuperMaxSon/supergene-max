@@ -32,6 +32,9 @@
           움직일 때마다 <b>무엇을 받고 무엇을 램에 올리는지</b>가 위 곡선에 그려집니다 —
           <span style="color: var(--asis); font-weight: 700">회색이 지금 코드</span>,
           <span style="color: var(--smg); font-weight: 700">올리브가 토글을 켠 결과</span>입니다.
+          <b>대화는 감정 단위로 쪼개 올린다고 전제</b>했습니다 &mdash; 누가 언제 어떤 감정으로
+          말하는지가 <code>story_dialogue.json</code> 에 확정돼 있어 예측이 아니라 조회이기 때문입니다.
+          남은 결정은 <b>얼마나 앞서 받고 언제 내리느냐</b>뿐이라 그것만 토글로 남겼습니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
@@ -69,10 +72,10 @@
         <!-- 토글이 곧 조작부다. 각 토글의 "현재 코드" 쪽에 회색 '현재' 배지를 달아
              지금 무엇이 돌아가고 있는지를 매번 다시 읽지 않아도 되게 했다. -->
         <div class="sim-bar">
-          <span class="sim-bar-l">감정 분리</span>
+          <span class="sim-bar-l">전제</span>
           <div class="sim-grp">
-            <button type="button" class="sim-tg" data-tg="split" aria-pressed="false">감정 단위</button>
-            <span class="sim-now" id="sim-now-split">현재 = 끔 · 통짜</span>
+            <span class="pill" style="--acc: var(--smg)">대화는 감정 단위로 쪼개 로딩</span>
+            <span class="sim-now">현재 코드는 통짜 — 회색선</span>
           </div>
           <span class="sim-bar-l">롤링</span>
           <div class="sim-grp">
@@ -82,8 +85,8 @@
           </div>
           <span class="sim-bar-l">해제</span>
           <div class="sim-grp">
-            <button type="button" class="sim-tg" data-tg="free" aria-pressed="false">지난 감정 반납</button>
-            <span class="sim-now">현재 = 없음</span>
+            <button type="button" class="sim-tg" data-tg="free" aria-pressed="true">지난 감정 반납</button>
+            <span class="sim-now">현재 코드엔 없음</span>
           </div>
           <span class="sim-bar-l">프리로드 창</span>
           <div class="sim-grp">
@@ -166,14 +169,55 @@
               <b>한 번 올라가면 세션 끝까지 내려오지 않습니다.</b>
             </p>
           </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">해제를 켜려면 번들 분할이 먼저다</div>
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">쪼개는 것만으로는 오히려 더 기다린다 &mdash; 창을 켜야 준다</div>
             <p>
-              <code>assets/bundle.meta</code> 만 <code>isBundle: true</code> 이고
-              하위 <code>chat/ data/ objectPool/ storyIntro/ …</code> 는 전부 내부 디렉터리입니다.
-              <b>폴더 단위 언로드가 구조적으로 불가능</b>합니다. 위 토글의 &ldquo;해제&rdquo;와
-              &ldquo;감정 단위&rdquo;는 <b>번들 분할과 <code>objectPool/chat.prefab</code> 의 정적 참조를
-              끊는 작업이 선행됐을 때</b>의 결과를 그립니다.
+              세 회선 모두에서 같은 모양이 나옵니다. 감정 단위로 쪼개면 메모리는
+              <b>96.5 &rarr; 23.7MB</b> 로 떨어지지만, <b>대기는 늘어납니다</b> &mdash;
+              통짜 한 번에 받던 것을 대사마다 나눠 받게 되기 때문입니다.
+              <b>프리로드 창을 켜야</b> 비로소 대기가 줄어듭니다. 즉 쪼개기와 미리 받기는
+              둘 중 하나를 고르는 문제가 아니라 <b>같이 가야 하는 한 쌍</b>입니다.
+            </p>
+            <div class="table-scroll" style="--acc: var(--ok); margin-top: 10px">
+              <table>
+                <thead><tr><th style="width: 34%">총 대기</th>
+                  <th style="text-align: right">3G 0.75</th>
+                  <th style="text-align: right">4G 3</th>
+                  <th style="text-align: right">WiFi 8</th></tr></thead>
+                <tbody>
+                  <tr><td>현재 코드 <span class="cnote">통짜 · 창 없음</span></td>
+                    <td class="num">18.3초</td><td class="num">5.3초</td><td class="num">2.6초</td></tr>
+                  <tr><td>쪼개기만 <span class="cnote">창 없음</span></td>
+                    <td class="num" style="color: var(--bad)">21.6초</td>
+                    <td class="num" style="color: var(--bad)">6.6초</td>
+                    <td class="num" style="color: var(--bad)">3.5초</td></tr>
+                  <tr><td>+ 인트로 창</td>
+                    <td class="num">14.1초</td><td class="num">2.9초</td><td class="num">2.1초</td></tr>
+                  <tr><td>+ 머지 보드 창까지</td>
+                    <td class="num" style="color: var(--ok)"><b>6.7초</b></td>
+                    <td class="num" style="color: var(--ok)"><b>2.9초</b></td>
+                    <td class="num" style="color: var(--ok)"><b>2.1초</b></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="margin-top: 10px">
+              <b>4G 이상에서는 인트로 창 하나로 끝납니다</b> &mdash; 영상 8초 &times; 3MB/s = 24MB 라
+              필요한 것을 그 안에서 다 받습니다. <b>머지 보드 창이 필요해지는 건 3G</b> 입니다
+              (14.1 &rarr; 6.7초). 회선을 3G로 놓고 창을 하나씩 켜 보면 그 차이가 곡선 아래
+              빨간 막대로 보입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">전제가 성립하려면 선행 작업 두 개가 있다</div>
+            <p>
+              올리브 곡선은 <b>대화가 감정 단위로 쪼개져 있다</b>고 전제합니다. 지금 코드에서 그게
+              안 되는 이유는 두 가지입니다 &mdash;
+              <b>①</b> <code>objectPool/chat.prefab</code> 이 캐릭터 프리팹 8개를 <b>정적 참조</b>해서
+              화자와 무관하게 트리 전체가 딸려옵니다.
+              <b>②</b> <code>assets/bundle.meta</code> 만 <code>isBundle: true</code> 이고 하위
+              <code>chat/ data/ objectPool/ …</code> 는 전부 내부 디렉터리라
+              <b>폴더 단위 언로드가 구조적으로 불가능</b>합니다.
+              이 둘을 끊는 것이 위 토글을 켤 수 있게 되는 조건입니다.
             </p>
           </div>
         </div>
@@ -287,6 +331,53 @@
                 <td>Rosie confident</td><td class="num">1</td><td class="num">5.7 MB</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <h3 class="doc-h2-sub">캐릭터 · 감정 첫 등장 &mdash; 쪼개도 되는 근거</h3>
+
+        <div class="table-scroll" style="--acc: var(--ok)">
+          <table>
+            <thead>
+              <tr><th style="width: 14%">캐릭터</th>
+                <th style="width: 14%">첫 등장</th>
+                <th style="width: 16%; text-align: right">전체 몇 번째 대사</th>
+                <th style="width: 22%">앞에 놓인 유휴 구간</th>
+                <th>감정</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>Rosie</b></td><td>노드 1 <code>tutorial_0/1</code></td><td>1번째</td>
+                <td><span class="mx mx-warn">부팅 · 인트로 영상뿐</span></td>
+                <td>worried · sad · confident · neutral · happy <span class="cnote">angry 는 노드 3</span></td></tr>
+              <tr><td><b>Poppy</b></td><td>노드 1 <code>tutorial_0/1</code></td><td>4번째</td>
+                <td><span class="mx mx-warn">같은 노드 안</span></td>
+                <td>neutral · excited</td></tr>
+              <tr><td><b>Brett</b></td><td>노드 3 <code>1_1_begin/1</code></td><td><b>14번째</b></td>
+                <td><span class="mx mx-ok">노드 2 머지 보드</span></td>
+                <td>awkward · neutral · surprised · sad</td></tr>
+              <tr><td><b>Rafa</b></td><td>노드 5 <code>1_2_begin/1</code></td><td><b>28번째</b></td>
+                <td><span class="mx mx-ok">노드 2 · 4 머지 보드</span></td>
+                <td>happy <span class="cnote">neutral·worried 는 노드 7 · serious 는 노드 9</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">튜토리얼에 필요한 건 7감정 39.7MB, 올리는 건 16감정 90.8MB</div>
+            <p>
+              노드 1 <code>tutorial_0/1</code> 에 나오는 사람은 <b>Rosie 와 Poppy 둘</b>이고
+              감정은 <b>7개 = 39.7MB</b> 입니다. 그런데 지금은 그 앞에서 <b>16감정 90.8MB</b> 를
+              전부 올립니다 &mdash; 그 순간 안 쓰는 것이 <b>9감정 51.1MB</b> 입니다.
+              <b>Brett 은 14번째, Rafa 는 28번째 대사에서야 처음 말합니다.</b>
+              그 사이에 <b>노드 2 · 4 의 머지 보드</b>가 통째로 놓여 있으므로,
+              둘의 리소스는 &ldquo;미리 받을 수 있는가&rdquo;를 따질 필요조차 없이 <b>받을 시간이 남습니다.</b>
+            </p>
+            <p>
+              그리고 <b>캐릭터 단위로 쪼개도 부족합니다</b> &mdash; Rosie 혼자 6감정 <b>34.1MB</b> 이고,
+              튜토리얼에서 쓰는 건 그중 5개입니다. 캐릭터가 10명이 되면 캐릭터 단위는 바로 깨집니다.
+              쪼개는 단위는 <b>감정(5.68MB)</b> 이어야 합니다.
+            </p>
+          </div>
         </div>
 
         <div class="notes">
@@ -617,7 +708,10 @@
         }
 
         /* ---- 상태 ---------------------------------------------------------- */
-        var pol = { split: false, roll: 3, free: false, introWin: false, boardWin: false, bw: 3, deco: true };
+        /* 쪼개기는 토글이 아니라 전제다 — 누가 언제 말하는지가 story_dialogue.json 에
+           확정돼 있으므로 감정 단위 로딩은 예측이 아니라 조회로 성립한다.
+           남은 결정은 "얼마나 앞서 받고, 언제 내리느냐" 뿐이라 그것만 토글로 남겼다. */
+        var pol = { split: true, roll: 3, free: true, introWin: false, boardWin: false, bw: 3, deco: true };
         var ASIS = { split: false, roll: 3, free: false, introWin: false, boardWin: false, bw: 3, deco: false };
         var cur = 0, runTo = null, runAsis = null, autoTimer = null;
 
@@ -1040,7 +1134,6 @@
           var k = b.getAttribute("data-tg");
           pol[k] = !pol[k];
           b.setAttribute("aria-pressed", String(pol[k]));
-          $("sim-now-split").textContent = pol.split ? "현재 코드 아님" : "현재 = 끔 · 통짜";
           refresh();
         });
         /* 하나만 고르는 그룹 */
