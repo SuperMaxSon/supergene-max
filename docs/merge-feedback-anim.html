@@ -34,7 +34,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v3.2 · 2026-09-01 15:33</span>
+          <span class="tag" id="mfx-ver">v3.3 · 2026-09-01 15:41</span>
         </div>
       </div>
     </header>
@@ -809,7 +809,7 @@
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
             { k:"punchScale", label:"게이지 펀치",   v:1.12, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_GAUGE_PUNCH_SCALE" },
             { k:"punchOutSec",label:"게이지 펀치 복귀",v:0.16,min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_GAUGE_PUNCH_SEC" },
-            { k:"remainSec",  label:"남은 시간",     v:12,   min:1,    max:999,step:1,   unit:"초",                                    cfg:"(런타임 값)",                    note:"문구에 들어가는 숫자" },
+            { k:"remainSec",  label:"남은 시간",     v:12,   min:1,    max:999,step:0.1, unit:"초",                                    cfg:"(런타임 값)",                    note:"문구에 들어가는 숫자" },
           ],
           b3: [
             { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
@@ -1384,7 +1384,7 @@
               gen.to(P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
                 .then(function () { return gen.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
               nodePunch(gauge.el.firstChild, 0.08, P.punchScale, P.punchOutSec, P.punchEase),
-              floatText(st, "충전 중 " + Math.round(P.remainSec) + "초", { x: gen.x, y: gen.y }, P),
+              floatText(st, "충전 중 " + fmtNum(P.remainSec) + "초", { x: gen.x, y: gen.y }, P),
             ]);
           }
           function play() { reset(); return notify(); }
@@ -1413,7 +1413,7 @@
                 .then(function () { return lock.to(P.stepSec, { rot: P.angleA }, P.rotEase); })
                 .then(function () { return lock.to(P.stepSec, { rot: -P.angleB }, P.rotEase); })
                 .then(function () { return lock.to(P.backSec, { rot: 0 }, P.backEase); }),
-              floatText(st, "Lv." + Math.round(P.unlockLv) + " 해금", { x: lock.x, y: lock.y }, P),
+              floatText(st, "Lv." + fmtNum(P.unlockLv) + " 해금", { x: lock.x, y: lock.y }, P),
             ]);
           }
           function play() { reset(); return deny(); }
@@ -2272,7 +2272,20 @@
               input = document.createElement("input");
               input.type = "number";
               input.className = "mfx-in";
-              input.min = d.min; input.max = d.max; input.step = d.step;
+              input.min = d.min; input.max = d.max;
+              /* step 을 그대로 걸면 12.5 같은 값이 브라우저 검증에서 막힌다.
+                 화살표 간격은 d.step 으로 두되 입력 자체는 어떤 소수든 받는다. */
+              input.step = "any";
+              input.addEventListener("keydown", function (e) {
+                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                e.preventDefault();
+                var cur = parseFloat(input.value);
+                if (!isFinite(cur)) cur = d.v;
+                var next = cur + (e.key === "ArrowUp" ? d.step : -d.step);
+                next = Math.round(next * 1000) / 1000;
+                input.value = clampV(next, d.min, d.max);
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+              });
               input.value = vals[d.k];
               tdV.appendChild(input);
               if (d.unit) { var u = elm("span", "mfx-u"); u.textContent = d.unit; tdV.appendChild(u); }
@@ -2308,9 +2321,7 @@
               input.addEventListener("input", function () {
                 var n = parseFloat(input.value);
                 if (!isFinite(n)) return;
-                n = clampV(n, d.min, d.max);
-                if (d.step >= 1) n = Math.round(n);   // 초·px·개 는 정수다. 소수점을 숨기지 않는다
-                vals[d.k] = n;
+                vals[d.k] = clampV(n, d.min, d.max);   // 소수점 그대로 받는다
                 after();
               });
               input.addEventListener("blur", function () { input.value = vals[d.k]; });
