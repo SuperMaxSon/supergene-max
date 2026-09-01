@@ -6,10 +6,10 @@
     <title>아이소메트릭 데코 영역 — 등장 연출 · 레이어</title>
     <meta
       name="description"
-      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)와 등장 순서는 프리팹 트리에서 끌어서 바꿀 수 있다."
+      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)와 등장 순서는 프리팹 트리에서 오브젝트 root 를 끌어 바꿀 수 있다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso21" />
+    <link rel="stylesheet" href="../style.css?v=iso22" />
   </head>
   <body>
     <nav class="nav">
@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v2.0 &middot; 2026-09-01</span>
+          <span class="tag">v2.1 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -304,7 +304,7 @@
           <span style="color: var(--deploy)">필수 · 변경 금지 — 오브젝트 · 상태 (세이브 키)</span>
           <span style="color: var(--validate)">필수 — 순서 · 앵커</span>
           <span style="color: var(--analysis)">컴포넌트</span>
-          <span style="color: var(--balance)">이미지 리소스 — 끌어서 순서 변경</span>
+          <span style="color: var(--balance)">이미지 리소스 — 오브젝트에 딸려 움직인다</span>
           <span style="color: var(--text-faint)">구조선 · 설명</span>
         </div>
             <div class="table-scroll">
@@ -604,7 +604,7 @@
           b.type = "button";
           b.className = "projbtn";
           b.innerHTML = ps.name + ' <span class="projbtn-n">' + ps.key + "</span>";
-          b.addEventListener("click", function () { select(ps); play(); });
+          b.addEventListener("click", function () { select(ps); replay(); });
           el.presets.appendChild(b);
           buttons[ps.id] = b;
         });
@@ -787,6 +787,13 @@
           el.play.textContent = "배치 중…";
           playSet(ids, true);
         }
+        /* 지금 놓여 있는 것만 같은 순서로 다시 재생한다 — 빈 영역이면 코드만 갱신한다. */
+        function replay() {
+          var ids = metas.filter(function (m) { return placed[m.id]; }).map(function (m) { return m.id; });
+          if (!ids.length) { refresh(); return; }
+          playSet(ids, true);
+        }
+
         /* 뒤 단계에서 치워지는 스프라이트(수리형 s0)는 전체 배치에서 건너뛴다 */
         function hasLater(o, i) {
           for (var j = i + 1; j < o.steps.length; j++) {
@@ -804,7 +811,7 @@
         });
         document.getElementById("resetArea").addEventListener("click", clearArea);
         [el.dur, el.stg].forEach(function (i) { i.addEventListener("input", function () { refresh(); renderRows(); }); });
-        el.ease.addEventListener("change", function () { refresh(); if (!state.playing) play(); });
+        el.ease.addEventListener("change", function () { refresh(); if (!state.playing) replay(); });
 
         /* 업/다운 버튼 — input 의 step · min · max 를 그대로 따른다. */
         Array.prototype.forEach.call(document.querySelectorAll(".calc-btn"), function (b) {
@@ -824,8 +831,9 @@
            두 축을 각각 끌어서 바꾼다.
              레이어 모드 = SVG <g> 의 순서(그리기 순서) — Cocos 의 siblingIndex
              등장 모드   = metas 배열 순서(stagger)     — delay(i * 간격) 의 i
-           드래그는 HTML5 DnD 대신 포인터 이벤트로 직접 짰다. 터치가 되고,
-           끄는 동안 이웃 행이 실제로 비켜서 어디에 꽂히는지 보이기 때문이다. */
+           두 축 모두 끄는 단위는 오브젝트 root 다. 스프라이트는 프리팹 안의 조립 순서라
+           오브젝트를 넘어 다니지 않는다 — 넘어 다니면 깊이가 오브젝트 단위로 정렬되지 않는다.
+           드래그는 HTML5 DnD 대신 포인터 이벤트로 직접 짰다. 터치가 되기 때문이다. */
         /* 오브젝트 유형은 아트 인계 문서(데코 영역 아트 리소스 트리)의 네 가지를 그대로 쓴다.
            구조는 네 유형이 전부 같다 — 오브젝트 → 상태 노드 → 이미지 · 앵커. */
         var OBJ = {
@@ -898,16 +906,15 @@
             : '<span class="pill" style="--acc: var(--ok)">정렬 이상 없음</span>';
         }
 
-        /* 등장 모드에서는 등장하지 않는 파츠(지면)를 위에 고정해 둔다 — 끌 수 없다. */
+        /* 등장 모드에서도 지면은 등장하지 않으므로 BG 블록으로 위에 남겨 둔다. */
         function rowList() {
           if (mode === "layer") return layerOrder();
           var seq = seqOrder();
           return layerOrder().filter(function (id) { return seq.indexOf(id) < 0; }).concat(seq);
         }
-        function fixedCount() { return mode === "seq" ? rowList().length - metas.length : 0; }
 
-        /* 오브젝트가 바뀌는 자리마다 머리행을 끼운다. 스프라이트를 다른 오브젝트 사이로
-           끌어 넣으면 머리행이 그 자리에서 다시 나오므로, 깊이가 섞인 게 눈에 보인다. */
+        /* 오브젝트가 바뀌는 자리마다 머리행을 끼운다 — 끄는 손잡이가 이 머리행이다.
+           딜레이 ms 입력칸은 실제로 놓인 노드에만 둔다. 비어 있는 자리의 값은 못 고친다. */
         function renderRows() {
           var o = rowList(), lay = layerOrder(), prev = null;
           rowsBox.innerHTML = "";
@@ -917,9 +924,9 @@
               var ob = OBJ[m.o];
               var n = o.filter(function (x) { return LAYER[x].o === m.o; }).length;
               var h = document.createElement("div");
-              h.className = "iso-row is-obj" + (mode === "layer" && m.o !== "bg" ? " is-move" : " is-locked");
+              h.className = "iso-row is-obj" + (m.o !== "bg" ? " is-move" : " is-locked");
               h.setAttribute("data-obj", m.o);
-              if (mode === "layer" && m.o !== "bg") h.tabIndex = 0;
+              if (m.o !== "bg") h.tabIndex = 0;
               h.innerHTML =
                 '<span class="tw">├─ </span><span></span>' +
                 '<span class="nm">' + ob.code + "</span>" +
@@ -929,21 +936,19 @@
               prev = m.o;
             }
             var d = document.createElement("div");
-            d.className = "iso-row" + (hidden[id] ? " is-off" : "") +
-              (mode === "seq" && !si ? " is-fixed" : "") + (mode === "layer" ? " is-locked" : "") +
+            d.className = "iso-row is-locked" + (hidden[id] ? " is-off" : "") +
               (id !== "ground" && !placed[id] ? " is-empty" : "");
-            d.tabIndex = 0;
             d.setAttribute("data-id", id);
             d.innerHTML =
               '<span class="tw">   ' + (last ? "└─ " : "├─ ") + "</span>" +
-              '<button class="iso-eye" type="button" tabindex="-1" aria-label="' + m.desc + ' 숨기기 · 보이기">' +
+              '<button class="iso-eye" type="button" aria-label="' + m.desc + ' 숨기기 · 보이기">' +
               (hidden[id] ? "◌" : "◉") + "</button>" +
               '<span class="nm">' + m.name + "</span>" +
               '<span class="ds">' + m.desc + "</span>" +
               '<span class="sq">' + (mode === "layer"
                 ? (si ? "등장 " + si : "등장 없음")
                 : "레이어 " + (lay.indexOf(id) + 1)) + "</span>" +
-              (si && inFull(id)
+              (si && inFull(id) && placed[id]
                 ? '<span class="dl"><input class="iso-dly' + (DLY[id] != null ? " is-set" : "") +
                   '" type="number" min="0" max="20000" step="50" value="' + delayMs(id) +
                   '" aria-label="' + m.desc + ' 딜레이 ms" /><i>ms</i></span>'
@@ -971,21 +976,13 @@
         function applySeq(ids) {
           metas.sort(function (a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
           renderRows();
-          play();
-        }
-        function commit(ids, from, to) {
-          ids.splice(to, 0, ids.splice(from, 1)[0]);
-          if (mode === "layer") applyLayer(ids);
-          else applySeq(ids);
+          replay();
         }
 
-        /* ---- 포인터 드래그 ---- */
         /* ---- 드래그 -----------------------------------------------------------
-           축마다 끄는 단위가 다르다.
-             레이어 모드 = 오브젝트 root 단위. 깊이 정렬은 오브젝트끼리의 문제이고,
-                          오브젝트 안 스프라이트 순서는 프리팹 조립이지 정렬 축이 아니다.
-                          BG(부지)는 언제나 맨 아래 — 끌 수 없다.
-             등장 모드   = 스프라이트 단위. delay 가 노드별이므로 노드로 끈다. */
+           두 축 모두 <b>오브젝트 root</b> 단위로만 옮긴다. 스프라이트는 프리팹 안의
+           조립 순서라 오브젝트를 넘어 다닐 수 없고, root 를 끌면 블록째 따라온다.
+           BG(부지)는 어느 축에서도 맨 위 고정이다. */
         function midOf(el2) { var b = el2.getBoundingClientRect(); return b.top + b.height / 2; }
 
         /* 머리행 + 그 아래 스프라이트 행들 = 한 블록 */
@@ -994,52 +991,52 @@
           while (n && !n.hasAttribute("data-obj")) { out.push(n); n = n.nextElementSibling; }
           return out;
         }
-        /* 현재 그리기 순서를 오브젝트별로 묶는다 */
-        function objBlocks() {
+        /* 순서 배열을 오브젝트별로 묶는다 */
+        function groupBy(ids) {
           var map = {}, order = [];
-          layerOrder().forEach(function (id) {
+          ids.forEach(function (id) {
             var k = LAYER[id].o;
             if (!map[k]) { map[k] = []; order.push(k); }
             map[k].push(id);
           });
           return { map: map, order: order };
         }
+        function objKeys() {
+          var src = mode === "layer" ? layerOrder() : seqOrder();
+          return groupBy(src).order.filter(function (k) { return k !== "bg"; });
+        }
+        /* 오브젝트 순서만 갈아끼운다 — 블록 안 스프라이트 순서는 손대지 않는다. */
         function applyObjOrder(keys) {
-          var b = objBlocks(), ids = [];
-          ["bg"].concat(keys.filter(function (k) { return k !== "bg"; })).forEach(function (k) {
-            ids = ids.concat(b.map[k] || []);
-          });
-          applyLayer(ids);
+          if (mode === "layer") {
+            var b = groupBy(layerOrder()), ids = [];
+            ["bg"].concat(keys).forEach(function (k) { ids = ids.concat(b.map[k] || []); });
+            applyLayer(ids);
+            return;
+          }
+          var g = groupBy(seqOrder()), out = [];
+          keys.forEach(function (k) { out = out.concat(g.map[k] || []); });
+          applySeq(out);
+        }
+        function moveObj(key, from, to) {
+          var keys = objKeys();
+          keys.splice(to, 0, keys.splice(from, 1)[0]);
+          applyObjOrder(keys);
         }
 
         var drag = null;
-        function shift() {
-          drag.rows.forEach(function (r, i) {
-            if (r === drag.row) return;
-            var t = 0;
-            if (drag.from < drag.to && i > drag.from && i <= drag.to) t = -drag.h;
-            else if (drag.from > drag.to && i >= drag.to && i < drag.from) t = drag.h;
-            r.style.transform = t ? "translateY(" + t + "px)" : "";
-          });
+        function heads() {
+          return Array.prototype.slice.call(rowsBox.querySelectorAll("[data-obj]"))
+            .filter(function (h) { return h.getAttribute("data-obj") !== "bg"; });
         }
         function endDrag() {
           if (!drag) return;
           var d = drag;
           drag = null;
-          (d.block || d.rows).forEach(function (r) { r.style.transform = ""; r.style.transition = ""; });
+          d.block.forEach(function (r) { r.style.transform = ""; r.style.transition = ""; });
           d.row.classList.remove("is-drag");
           Array.prototype.forEach.call(rowsBox.children, function (r) { r.classList.remove("is-over"); });
-          if (d.to !== d.from) {
-            if (d.kind === "obj") {
-              var keys = d.heads.map(function (h) { return h.getAttribute("data-obj"); });
-              keys.splice(d.to, 0, keys.splice(d.from, 1)[0]);
-              applyObjOrder(keys);
-            } else {
-              commit(d.rows.map(function (r) { return r.getAttribute("data-id"); }), d.from, d.to);
-            }
-          }
-          var sel = d.kind === "obj" ? '[data-obj="' + d.id + '"]' : '[data-id="' + d.id + '"]';
-          var r2 = rowsBox.querySelector(sel);
+          if (d.to !== d.from) moveObj(d.id, d.from, d.to);
+          var r2 = rowsBox.querySelector('[data-obj="' + d.id + '"]');
           if (r2) r2.focus();
         }
 
@@ -1047,25 +1044,12 @@
           if (ev.button !== 0) return;
           var row = ev.target.closest(".iso-row");
           if (!row || ev.target.closest(".iso-eye") || ev.target.closest("input")) return;
-
-          if (mode === "layer") {
-            var key = row.getAttribute("data-obj");
-            if (!key || key === "bg") return;          /* 스프라이트 행 · BG 는 못 끈다 */
-            var heads = Array.prototype.slice.call(rowsBox.querySelectorAll("[data-obj]"))
-              .filter(function (h) { return h.getAttribute("data-obj") !== "bg"; });
-            var i0 = heads.indexOf(row);
-            drag = { kind: "obj", row: row, id: key, block: blockOf(row), heads: heads,
-                     from: i0, to: i0, y0: ev.clientY, mids: heads.map(midOf) };
-          } else {
-            if (row.classList.contains("is-fixed") || row.hasAttribute("data-obj")) return;
-            var rows = Array.prototype.slice.call(rowsBox.children)
-              .filter(function (r) { return !r.classList.contains("is-obj"); });
-            var i = rows.indexOf(row);
-            drag = { kind: "sprite", row: row, rows: rows, id: row.getAttribute("data-id"),
-                     from: i, to: i, y0: ev.clientY, h: row.offsetHeight, lo: fixedCount(),
-                     mids: rows.map(midOf) };
-          }
-          if (drag.block) drag.block.forEach(function (r) { r.style.transition = "none"; });
+          var key = row.getAttribute("data-obj");
+          if (!key || key === "bg") return;      /* 스프라이트 행 · BG 는 못 끈다 */
+          var hs = heads(), i0 = hs.indexOf(row);
+          drag = { row: row, id: key, block: blockOf(row), heads: hs,
+                   from: i0, to: i0, y0: ev.clientY, mids: hs.map(midOf) };
+          drag.block.forEach(function (r) { r.style.transition = "none"; });
           row.setPointerCapture(ev.pointerId);
           row.classList.add("is-drag");
           ev.preventDefault();
@@ -1074,22 +1058,13 @@
         rowsBox.addEventListener("pointermove", function (ev) {
           if (!drag) return;
           var dy = ev.clientY - drag.y0;
-          if (drag.kind === "obj") {
-            drag.block.forEach(function (r) { r.style.transform = "translateY(" + dy + "px)"; });
-            var to = 0;
-            for (var j = 0; j < drag.mids.length; j++) if (ev.clientY > drag.mids[j]) to = j;
-            to = Math.max(0, Math.min(drag.heads.length - 1, to));
-            if (to !== drag.to) {
-              drag.to = to;
-              drag.heads.forEach(function (h, j) { h.classList.toggle("is-over", j === to && h !== drag.row); });
-            }
-            return;
-          }
-          drag.row.style.transform = "translateY(" + dy + "px)";
-          var t2 = drag.lo;
-          for (var k = drag.lo; k < drag.mids.length; k++) if (ev.clientY > drag.mids[k]) t2 = k;
-          t2 = Math.max(drag.lo, Math.min(drag.rows.length - 1, t2));
-          if (t2 !== drag.to) { drag.to = t2; shift(); }
+          drag.block.forEach(function (r) { r.style.transform = "translateY(" + dy + "px)"; });
+          var to = 0;
+          for (var j = 0; j < drag.mids.length; j++) if (ev.clientY > drag.mids[j]) to = j;
+          to = Math.max(0, Math.min(drag.heads.length - 1, to));
+          if (to === drag.to) return;
+          drag.to = to;
+          drag.heads.forEach(function (h, j) { h.classList.toggle("is-over", j === to && h !== drag.row); });
         });
         rowsBox.addEventListener("pointerup", endDrag);
         rowsBox.addEventListener("pointercancel", endDrag);
@@ -1126,32 +1101,18 @@
           renderRows();
         });
 
-        /* ---- 키보드: 포커스 후 ↑ ↓ ---- */
+        /* ---- 키보드: root 행 포커스 후 ↑ ↓ ---- */
         rowsBox.addEventListener("keydown", function (ev) {
           var row = ev.target.closest(".iso-row");
           if (!row || (ev.key !== "ArrowUp" && ev.key !== "ArrowDown")) return;
-          var d = ev.key === "ArrowUp" ? -1 : 1;
-          if (mode === "layer") {
-            var key = row.getAttribute("data-obj");
-            if (!key || key === "bg") return;
-            ev.preventDefault();
-            var keys = objBlocks().order.filter(function (k) { return k !== "bg"; });
-            var i0 = keys.indexOf(key), j0 = i0 + d;
-            if (j0 < 0 || j0 >= keys.length) return;
-            keys.splice(j0, 0, keys.splice(i0, 1)[0]);
-            applyObjOrder(keys);
-            var h = rowsBox.querySelector('[data-obj="' + key + '"]');
-            if (h) h.focus();
-            return;
-          }
-          if (row.hasAttribute("data-obj")) return;
+          var key = row.getAttribute("data-obj");
+          if (!key || key === "bg") return;
           ev.preventDefault();
-          var ids = rowList(), id = row.getAttribute("data-id");
-          var i = ids.indexOf(id), j = i + d, lo = fixedCount();
-          if (i < lo || j < lo || j >= ids.length) return;
-          commit(ids, i, j);
-          var r = rowsBox.querySelector('[data-id="' + id + '"]');
-          if (r) r.focus();
+          var keys = objKeys(), i0 = keys.indexOf(key), j0 = i0 + (ev.key === "ArrowUp" ? -1 : 1);
+          if (j0 < 0 || j0 >= keys.length) return;
+          moveObj(key, i0, j0);
+          var h = rowsBox.querySelector('[data-obj="' + key + '"]');
+          if (h) h.focus();
         });
 
         /* ---- 모드 전환 · 초기화 ---- */
@@ -1160,9 +1121,10 @@
           document.getElementById("modeLayer").classList.toggle("is-active", m === "layer");
           document.getElementById("modeSeq").classList.toggle("is-active", m === "seq");
           treeHint.innerHTML = (m === "layer"
-            ? "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 오브젝트 <b>root</b> 를 끌어 옮깁니다 — 안의 스프라이트는 함께 따라오고, BG(부지)는 맨 아래 고정입니다."
-            : "<b>delay(i × 파츠 간격) 의 배열 순서입니다.</b> 끌면 그 순서로 다시 재생합니다.") +
-            "<br />끌어 옮기고(↑ ↓ 키도 됩니다), 행이나 무대에 얹으면 그 파츠만 남으며, ◉ 로 숨깁니다." +
+            ? "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 뒤에 놓일수록 카메라에 가깝습니다."
+            : "<b>delay 배열의 순서입니다.</b> 옮기면 그 순서로 다시 재생합니다.") +
+            "<br />두 축 모두 <b>오브젝트 root</b> 만 끌어 옮깁니다(↑ ↓ 키도 됩니다) — 안의 스프라이트는 블록째 따라오고, BG(부지)는 맨 위 고정입니다." +
+            "<br />행이나 무대에 얹으면 그 파츠만 남고, ◉ 로 숨깁니다. 딜레이 ms 는 배치된 노드에서만 고칩니다." +
             "<br />오브젝트 유형은 아트 인계 문서의 네 가지 — <b>배치형 · 수리형 · 건설형 · 선택형</b> — 을 하나씩 깔아 뒀습니다.";
           renderRows();
         }
