@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v3.7 &middot; 2026-09-01</span>
+          <span class="tag">v3.8 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -119,6 +119,11 @@
         <!-- 연출마다 만질 값이 다르다. 공통 칸(보간 시간 · root 간 딜레이 · 이징) 아래에
              선택된 연출의 값만 갈아 끼운다. -->
         <div class="calc-grid calc-grid--sub" id="subParams"></div>
+
+        <!-- 값은 여기서 만지는데 복사 버튼이 코드 섹션에만 있으면 화면을 내려야 한다 -->
+        <div class="projbar iso-modebar" style="--acc: var(--smg)">
+          <button class="mfx-btn" type="button" data-copy="vals">연출 값 복사</button>
+        </div>
 
         <div class="iso-split">
           <div>
@@ -343,7 +348,7 @@
         </h2>
         <div class="projbar iso-modebar" style="--acc: var(--smg)">
           <button class="mfx-btn is-primary" type="button" id="copyCode">코드 복사</button>
-          <button class="mfx-btn" type="button" id="copyVals">연출 값 복사</button>
+          <button class="mfx-btn" type="button" data-copy="vals">연출 값 복사</button>
         </div>
         <pre class="iso-code"><code id="code-out"></code></pre>
       </section>
@@ -1271,7 +1276,8 @@
         document.getElementById("copyCode").addEventListener("click", function () {
           copyText(CODE(state.preset.id, duration(), stagger(), el.ease.value), this);
         });
-        document.getElementById("copyVals").addEventListener("click", function () {
+        /* 무대 · 코드 두 자리에 같은 버튼이 있다 — 쓰는 글은 하나다. */
+        function valsText() {
           var ps = state.preset, P = PV[ps.id];
           var out = [
             "// DecoAppearConfig.ts — 데코 등장 연출값",
@@ -1291,7 +1297,10 @@
           });
           out.push("");
           out.push(delayArray().replace(/\n$/, ""));
-          copyText(out.join("\n"), this);
+          return out.join("\n");
+        }
+        Array.prototype.forEach.call(document.querySelectorAll('[data-copy="vals"]'), function (b) {
+          b.addEventListener("click", function () { copyText(valsText(), b); });
         });
 
         select(PRESETS[0]);
