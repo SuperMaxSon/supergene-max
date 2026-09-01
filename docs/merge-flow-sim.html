@@ -106,25 +106,27 @@
         </div>
 
         <div class="sim-verdict">
-          <div class="sim-v" style="--acc: var(--bad)">
-            <div class="sim-v-name">최대 동시 메모리</div>
-            <div class="sim-v-row">
-              <span class="sim-v-num" id="sim-v-mem">—<span class="sim-v-unit">MB</span></span>
-              <span class="sim-v-asis" id="sim-v-mem-asis"></span>
-            </div>
+          <!-- 통 = "지금 얼마나 찼나". 채움은 플레이헤드를 따라 움직이고,
+               가는 눈금선이 그 정책의 최댓값이다. 60MB 는 뚜껑이라 초과는 위로 삐져나온다. -->
+          <div class="sim-gaugebox">
+            <div class="sim-v-name">메모리 · 60MB 예산 <span style="float: right; font-weight: 700; color: var(--text-faint)">채움 = 지금 · 선 = 최대</span></div>
+            <svg id="sim-bars" viewBox="0 0 320 196" role="img"></svg>
+            <div class="sim-glegend" id="sim-glegend"></div>
           </div>
-          <div class="sim-v" style="--acc: var(--warn)">
-            <div class="sim-v-name">총 대기 (스톨)</div>
-            <div class="sim-v-row">
-              <span class="sim-v-num" id="sim-v-stall">—<span class="sim-v-unit">초</span></span>
-              <span class="sim-v-asis" id="sim-v-stall-asis"></span>
+          <div class="sim-vcol">
+            <div class="sim-v" style="--acc: var(--warn)">
+              <div class="sim-v-name">총 대기 (스톨)</div>
+              <div class="sim-v-row">
+                <span class="sim-v-num" id="sim-v-stall">—<span class="sim-v-unit">초</span></span>
+                <span class="sim-v-asis" id="sim-v-stall-asis"></span>
+              </div>
             </div>
-          </div>
-          <div class="sim-v" style="--acc: var(--analysis)">
-            <div class="sim-v-name">총 다운로드</div>
-            <div class="sim-v-row">
-              <span class="sim-v-num" id="sim-v-dl">—<span class="sim-v-unit">MB</span></span>
-              <span class="sim-v-asis" id="sim-v-dl-asis"></span>
+            <div class="sim-v" style="--acc: var(--analysis)">
+              <div class="sim-v-name">총 다운로드</div>
+              <div class="sim-v-row">
+                <span class="sim-v-num" id="sim-v-dl">—<span class="sim-v-unit">MB</span></span>
+                <span class="sim-v-asis" id="sim-v-dl-asis"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -505,24 +507,45 @@
           Rosie_neutral: 0.452, Rosie_sad: 0.460, Rosie_worried: 0.455,
         };
 
+        /* 색 그룹 — 통 · 곡선 · 패널이 전부 이 색을 쓴다.
+           쌓는 순서는 아래가 오래 남는 것, 위가 자주 갈리는 것.
+           그래야 "다 본 인트로 영상이 계속 깔려 있다" 가 그림으로 보인다. */
+        var GRPS = [
+          { k: "sys",   name: "보드 · UI",   c: "var(--ok)" },
+          { k: "intro", name: "인트로 영상", c: "var(--deploy)" },
+          { k: "deco",  name: "데코",        c: "var(--validate)" },
+          { k: "cut",   name: "스틸컷",      c: "var(--analysis)" },
+          { k: "chat",  name: "대화 감정",   c: "var(--plan)" },
+        ];
+        var GC = {};
+        GRPS.forEach(function (g) { GC[g.k] = g.c; });
+
         var RES = {};
         Object.keys(EMO_FILE).forEach(function (k) {
-          RES["e:" + k] = { name: k, file: EMO_FILE[k], mem: EMO_MEM, emo: true };
+          RES["e:" + k] = { name: k, file: EMO_FILE[k], mem: EMO_MEM, emo: true, g: "chat" };
         });
         [
-          { id: "data",      name: "data/*.json 3",              file: 0.04, mem: 0.04 },
-          { id: "viewstory", name: "view/ViewStory.prefab",       file: 0.24, mem: 0.24 },
-          { id: "introvid",  name: "storyIntro mp4",              file: 3.50, mem: 3.50 },
-          { id: "chatui",    name: "chat/ui 15경로",              file: 0.34, mem: 0.34 },
-          { id: "chatpool",  name: "objectPool/chat 트리 272장",  file: 7.35, mem: 90.83 },
-          { id: "stillcut",  name: "chat/stillcut 2장",           file: 1.30, mem: 1.30 },
-          { id: "board",     name: "ViewMergeBoard + gameplay",   file: 0.23, mem: 0.23 },
-          { id: "popup",     name: "popup/PopupTask.prefab",      file: 0.03, mem: 0.03 },
-          { id: "deco",      name: "데코 씬 · 오브젝트",           file: 2.00, mem: 8.00, assumed: true },
-          { id: "catalog",   name: "데코 카탈로그 (게이트)",        file: 6.00, mem: 24.00, assumed: true },
-          { id: "chapter",   name: "다음 챕터",                    file: 8.00, mem: 0, assumed: true },
-          { id: "portrait",  name: "chat/portrait 16장",          file: 1.40, mem: 0, dead: true },
+          { id: "data",      name: "data/*.json 3",              file: 0.04, mem: 0.04, g: "sys" },
+          { id: "viewstory", name: "view/ViewStory.prefab",       file: 0.24, mem: 0.24, g: "sys" },
+          { id: "introvid",  name: "storyIntro mp4",              file: 3.50, mem: 3.50, g: "intro" },
+          { id: "chatui",    name: "chat/ui 15경로",              file: 0.34, mem: 0.34, g: "chat" },
+          { id: "chatpool",  name: "objectPool/chat 트리 272장",  file: 7.35, mem: 90.83, g: "chat" },
+          { id: "stillcut",  name: "chat/stillcut 2장",           file: 1.30, mem: 1.30, g: "cut" },
+          { id: "board",     name: "ViewMergeBoard + gameplay",   file: 0.23, mem: 0.23, g: "sys" },
+          { id: "popup",     name: "popup/PopupTask.prefab",      file: 0.03, mem: 0.03, g: "sys" },
+          { id: "deco",      name: "데코 씬 · 오브젝트",           file: 2.00, mem: 8.00, assumed: true, g: "deco" },
+          { id: "catalog",   name: "데코 카탈로그 (게이트)",        file: 6.00, mem: 24.00, assumed: true, g: "deco" },
+          { id: "chapter",   name: "다음 챕터",                    file: 8.00, mem: 0, assumed: true, g: "sys" },
+          { id: "portrait",  name: "chat/portrait 16장",          file: 1.40, mem: 0, dead: true, g: "chat" },
         ].forEach(function (r) { RES[r.id] = r; });
+
+        /* 어느 스텝의 메모리 스냅샷을 그룹별 MB 로 접는다 */
+        function groupMem(m) {
+          var o = {};
+          GRPS.forEach(function (g) { o[g.k] = 0; });
+          Object.keys(m).forEach(function (id) { o[RES[id].g] += RES[id].mem; });
+          return o;
+        }
 
         /* story_dialogue.json 37행 — scene/part/step/speaker/direction/anim/text_en */
         var L = function (sc, p, sp, dir, anim, tx) {
@@ -760,19 +783,38 @@
           var bl = el("text", { x: W - R, y: y(BUDGET) - 5, "font-size": 10, "text-anchor": "end", fill: "var(--bad)", "font-weight": 800 });
           bl.textContent = "메모리 예산 60MB"; svg.appendChild(bl);
 
-          function path(run, close) {
+          function line(run) {
             var d = "";
             for (var i = 0; i < n; i++) {
               var px = x(i), py = y(run.pts[i].mem);
               d += (i === 0 ? "M" : "L") + px.toFixed(1) + " " + py.toFixed(1);
               if (i < n - 1) d += "L" + x(i + 1).toFixed(1) + " " + py.toFixed(1);
             }
-            if (close) d += "L" + x(n - 1).toFixed(1) + " " + y(0) + "L" + L0 + " " + y(0) + "Z";
             return d;
           }
-          svg.appendChild(el("path", { d: path(runTo, true), fill: "color-mix(in srgb, var(--smg) 12%, transparent)", stroke: "none" }));
-          svg.appendChild(el("path", { d: path(runAsis, false), fill: "none", stroke: "var(--asis)", "stroke-width": 2.4 }));
-          svg.appendChild(el("path", { d: path(runTo, false), fill: "none", stroke: "var(--smg)", "stroke-width": 2.6 }));
+          /* 총합 선 하나로는 "뭐가 차지하는지" 가 안 보인다. 그룹별로 쌓아 두께로 읽힌다.
+             통(sim-bars)과 같은 색이라 두 그림이 한 언어가 된다. */
+          var gm = runTo.pts.map(function (p) { return groupMem(p.m); });
+          var base = new Array(n).fill(0);
+          GRPS.forEach(function (g) {
+            var top = base.map(function (b, i) { return b + gm[i][g.k]; });
+            var d = "";
+            for (var i = 0; i < n; i++) {
+              d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + " " + y(top[i]).toFixed(1);
+              if (i < n - 1) d += "L" + x(i + 1).toFixed(1) + " " + y(top[i]).toFixed(1);
+            }
+            for (var j = n - 1; j >= 0; j--) {
+              if (j < n - 1) d += "L" + x(j + 1).toFixed(1) + " " + y(base[j]).toFixed(1);
+              d += "L" + x(j).toFixed(1) + " " + y(base[j]).toFixed(1);
+            }
+            d += "Z";
+            svg.appendChild(el("path", { d: d, fill: g.c, opacity: 0.5, stroke: "none" }));
+            base = top;
+          });
+          /* 현재 코드 선은 면적 위로 확실히 떠야 한다 — 굵기와 흰 테두리로 띄운다 */
+          svg.appendChild(el("path", { d: line(runAsis), fill: "none", stroke: "#fff", "stroke-width": 5, opacity: 0.8 }));
+          svg.appendChild(el("path", { d: line(runAsis), fill: "none", stroke: "var(--asis)", "stroke-width": 2.8 }));
+          svg.appendChild(el("path", { d: line(runTo), fill: "none", stroke: "var(--smg)", "stroke-width": 2 }));
 
           /* 스톨 — 축 아래 빨간 막대. 기다림은 숨기지 않는다 */
           for (var i = 0; i < n; i++) {
@@ -795,10 +837,10 @@
           svg.appendChild(el("circle", { cx: x(cur), cy: y(runTo.pts[cur].mem), r: 4.5, fill: "var(--smg)", stroke: "#fff", "stroke-width": 2 }));
 
           /* 범례 */
-          var lg = [["var(--asis)", "현재 코드"], ["var(--smg)", "토글 적용"], ["var(--bad)", "대기(스톨)"]];
+          var lg = [["var(--asis)", "현재 코드"], ["var(--smg)", "토글 적용 합계"], ["var(--bad)", "대기(스톨)"]];
           lg.forEach(function (p, i) {
-            svg.appendChild(el("rect", { x: L0 + i * 96, y: H - 12, width: 14, height: 3, rx: 1.5, fill: p[0] }));
-            var t3 = el("text", { x: L0 + i * 96 + 19, y: H - 8, "font-size": 9.5, fill: "var(--text-dim)", "font-weight": 700 });
+            svg.appendChild(el("rect", { x: L0 + i * 108, y: H - 12, width: 14, height: 3, rx: 1.5, fill: p[0] }));
+            var t3 = el("text", { x: L0 + i * 108 + 19, y: H - 8, "font-size": 9.5, fill: "var(--text-dim)", "font-weight": 700 });
             t3.textContent = p[1]; svg.appendChild(t3);
           });
 
@@ -811,14 +853,80 @@
         }
 
         function drawVerdict() {
-          $("sim-v-mem").innerHTML = runTo.maxMem.toFixed(1) + '<span class="sim-v-unit">MB</span>';
           $("sim-v-stall").innerHTML = runTo.stall.toFixed(1) + '<span class="sim-v-unit">초</span>';
           $("sim-v-dl").innerHTML = runTo.dl.toFixed(1) + '<span class="sim-v-unit">MB</span>';
-          var over = (runAsis.maxMem / BUDGET * 100).toFixed(0);
-          $("sim-v-mem-asis").innerHTML = "현재 <b>" + runAsis.maxMem.toFixed(1) + "MB · 예산의 " + over + "%</b>";
           $("sim-v-stall-asis").textContent = "현재 " + runAsis.stall.toFixed(1) + "초";
           $("sim-v-dl-asis").textContent = "현재 " + runAsis.dl.toFixed(1) + "MB";
         }
+
+        /* 통 두 개. 곡선이 "언제" 를 맡고 통이 "지금 얼마나" 를 맡는다.
+           같은 눈금(0~top)을 쓰므로 곡선 높이와 통 채움이 같은 자로 읽힌다. */
+        var bars = $("sim-bars");
+        function drawBars() {
+          while (bars.firstChild) bars.removeChild(bars.firstChild);
+          var W = 320, H = 196, L0 = 30, T = 16, B = 34, BW = 62;
+          var top = Math.max(100, runAsis.maxMem * 1.06, runTo.maxMem * 1.12);
+          var y = function (v) { return T + (H - T - B) * (1 - v / top); };
+          var y0 = y(0);
+
+          [0, 30, 60, 90].forEach(function (v) {
+            if (v > top) return;
+            bars.appendChild(el("line", { x1: L0, x2: W - 6, y1: y(v), y2: y(v), stroke: "var(--border)", "stroke-width": 1 }));
+            var tx = el("text", { x: L0 - 5, y: y(v) + 3.5, "font-size": 9, "text-anchor": "end", fill: "var(--text-faint)", "font-weight": 700 });
+            tx.textContent = v; bars.appendChild(tx);
+          });
+
+          [{ run: runAsis, x: L0 + 24, lab: "현재 코드", col: "var(--asis)" },
+           { run: runTo,   x: L0 + 152, lab: "제안",     col: "var(--smg)" }].forEach(function (b) {
+            var snap = b.run.pts[cur], gm = groupMem(snap.m), total = snap.mem;
+            var acc = 0;
+            GRPS.forEach(function (g) {
+              var v = gm[g.k];
+              if (v <= 0.001) return;
+              bars.appendChild(el("rect", {
+                x: b.x, y: y(acc + v), width: BW, height: Math.max(0.6, y(acc) - y(acc + v)),
+                fill: g.c, opacity: 0.88,
+              }));
+              acc += v;
+            });
+            /* 통 윤곽 — 채움이 0 이어도 통은 서 있어야 "비었다" 가 읽힌다 */
+            bars.appendChild(el("rect", { x: b.x, y: y(top), width: BW, height: y0 - y(top), fill: "none", stroke: "var(--border)", "stroke-width": 1 }));
+            /* 예산 초과분을 빨갛게 덮는다 */
+            if (total > BUDGET) {
+              bars.appendChild(el("rect", { x: b.x, y: y(total), width: BW, height: y(BUDGET) - y(total),
+                fill: "color-mix(in srgb, var(--bad) 30%, transparent)", stroke: "var(--bad)", "stroke-width": 1.4 }));
+            }
+            /* 가는 눈금선 = 그 정책의 최댓값 */
+            bars.appendChild(el("line", { x1: b.x - 5, x2: b.x + BW + 5, y1: y(b.run.maxMem), y2: y(b.run.maxMem),
+              stroke: "var(--text)", "stroke-width": 1.4, "stroke-dasharray": "4 3" }));
+            var mx = el("text", { x: b.x + BW + 7, y: y(b.run.maxMem) + 3, "font-size": 8.5, fill: "var(--text-dim)", "font-weight": 800 });
+            mx.textContent = "최대 " + b.run.maxMem.toFixed(0); bars.appendChild(mx);
+            /* 지금 값 · 이름 */
+            var nv = el("text", { x: b.x + BW / 2, y: T - 4, "font-size": 12, "text-anchor": "middle",
+              fill: total > BUDGET ? "var(--bad)" : b.col, "font-weight": 800 });
+            nv.textContent = total.toFixed(1) + "MB"; bars.appendChild(nv);
+            var nl = el("text", { x: b.x + BW / 2, y: y0 + 14, "font-size": 10, "text-anchor": "middle", fill: "var(--text-dim)", "font-weight": 800 });
+            nl.textContent = b.lab; bars.appendChild(nl);
+            var pc = el("text", { x: b.x + BW / 2, y: y0 + 26, "font-size": 9, "text-anchor": "middle",
+              fill: total > BUDGET ? "var(--bad)" : "var(--text-faint)", "font-weight": 700 });
+            pc.textContent = (total / BUDGET * 100).toFixed(0) + "%"; bars.appendChild(pc);
+          });
+
+          /* 뚜껑 — 60MB. 두 통을 가로지른다 */
+          bars.appendChild(el("line", { x1: L0, x2: W - 6, y1: y(BUDGET), y2: y(BUDGET),
+            stroke: "var(--bad)", "stroke-width": 2, "stroke-dasharray": "6 4" }));
+          var bl = el("text", { x: W - 6, y: y(BUDGET) - 4, "font-size": 9, "text-anchor": "end", fill: "var(--bad)", "font-weight": 800 });
+          bl.textContent = "60MB"; bars.appendChild(bl);
+        }
+
+        /* 색 범례는 한 번만 그린다 */
+        (function () {
+          var box = $("sim-glegend");
+          if (!box) return;
+          box.innerHTML = GRPS.map(function (g) {
+            return '<span><i style="background:' + g.c + '"></i>' + g.name + "</span>";
+          }).join("");
+        })();
 
         var KCOL = { sys: "var(--text-faint)", dlg: "var(--analysis)", task: "var(--balance)", cut: "var(--plan)" };
         function drawRail() {
@@ -886,7 +994,7 @@
             var st = GRP.filter(function (q) { return q.st === x.st; })[0].cls;
             var row = document.createElement("div");
             row.className = "sim-r" + (x.r.assumed ? " is-assumed" : "") + (x.r.dead ? " is-dead" : "");
-            row.style.setProperty("--acc", x.r.assumed ? "var(--warn)" : "var(--smg)");
+            row.style.setProperty("--acc", GC[x.r.g]);
             row.innerHTML = '<span class="sim-st ' + st + '"></span>' +
               '<span class="sim-r-n">' + x.r.name + "</span>" +
               '<span class="sim-r-mb">' + (x.st === 2 ? x.r.mem.toFixed(2) : x.r.file.toFixed(2)) + "MB</span>";
@@ -1155,7 +1263,7 @@
           cur = Math.max(0, Math.min(STEPS.length - 1, i));
           board = null;
           stageEl.onclick = null;
-          drawGraph(); drawRail(); drawRes(); drawEv(); renderStage();
+          drawGraph(); drawBars(); drawRail(); drawRes(); drawEv(); renderStage();
         }
         function next() { if (cur < STEPS.length - 1) goto(cur + 1); else stopAuto(); }
         function refresh() { recompute(); goto(cur); }
