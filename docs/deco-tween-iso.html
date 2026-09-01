@@ -6,10 +6,10 @@
     <title>아이소메트릭 데코 영역 — 등장 연출 · 레이어</title>
     <meta
       name="description"
-      content="아이소메트릭 데코 영역 하나(오브젝트 6개 · 이미지 16장)로 등장 연출 7종을 실제 타이밍으로 돌려본다. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)와 등장 순서는 프리팹 트리에서 끌어서 바꿀 수 있다."
+      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)와 등장 순서는 프리팹 트리에서 끌어서 바꿀 수 있다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso18" />
+    <link rel="stylesheet" href="../style.css?v=iso19" />
   </head>
   <body>
     <nav class="nav">
@@ -28,11 +28,12 @@
         <h1 class="doc-title">아이소메트릭 데코 영역 — 등장 연출 · 레이어</h1>
         <p class="doc-lede">
           데코레이션이 배치될 때 쓸 등장 연출을 <b>실제 타이밍 그대로</b> 돌려봅니다.
-          데코 영역 하나를 <b>오브젝트 6개 &middot; 이미지 16장</b>으로 쪼개 두고, 보간 시간 &middot;
-          파츠 간격 &middot; 이징을 바꾸면 아래 코드가 같이 바뀝니다. <b>부지(지면 타일)는 이미 깔려
-          있는 무대라 애니메이션에서 빼고</b>, 그 위에 올라오는 15장만 등장시킵니다.
-          오브젝트는 아트 인계 문서의 네 유형 &mdash; <b>배치형 &middot; 수리형 &middot; 건설형 &middot;
-          선택형</b> &mdash; 을 하나씩 깔았습니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
+          <b>영역은 비어 있는 상태에서 시작합니다.</b> 게임과 같이 미션을 하나씩 눌러야
+          오브젝트가 등장합니다 &mdash; 아트 인계 문서의 네 유형을 그대로 깔았습니다.
+          <b>배치형</b>은 한 번에 놓이고, <b>건설형</b>(집)은 터 &rarr; 벽 &rarr; 지붕으로 자라며,
+          <b>수리형</b>(분수)은 낡은 것이 먼저 놓였다가 고쳐지고, <b>선택형</b>(가로등)은
+          카드 3장 중 하나를 고릅니다. 보간 시간 &middot; 파츠 간격 &middot; 이징과 연출별 값을
+          바꾸면 아래 코드가 같이 바뀌고, 그대로 복사할 수 있습니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
           실었습니다 &mdash; 엔진이 기본 지원하지 않는 것은 뺐습니다.
         </p>
         <div class="doc-meta">
@@ -41,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v1.7 &middot; 2026-09-01</span>
+          <span class="tag">v1.8 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -54,7 +55,7 @@
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
           무대
-          <span class="doc-h2-sub">데코 영역 1개 · 오브젝트 6개 · 이미지 16장 (등장 15장) · 아이소메트릭 2:1</span>
+          <span class="doc-h2-sub">데코 영역 1개 · 오브젝트 6개 · 이미지 19장 (완성 시 15장) · 아이소메트릭 2:1</span>
         </h2>
 
         <div class="projbar" id="presets" style="--acc: var(--smg)"></div>
@@ -101,6 +102,10 @@
             </div>
           </div>
         </div>
+
+        <!-- 연출마다 만질 값이 다르다. 공통 칸(보간 시간 · 간격 · 이징) 아래에
+             선택된 연출의 값만 갈아 끼운다. -->
+        <div class="calc-grid calc-grid--sub" id="subParams"></div>
 
         <div class="iso-split">
           <div>
@@ -194,7 +199,18 @@
 
 
 
-            <!-- L11. o0020 분수 — basin -->
+            <!-- L11. o0020 분수 — basin_broken (s0 · 망가진 상태) -->
+            <g id="p-basinBroken" class="iso-part">
+              <polygon points="200,388 234,371 234,383 200,400" fill="#878E95" />
+              <polygon points="162,369 200,388 200,400 162,381" fill="#9AA1A8" />
+              <polygon points="200,350 238,369 200,388 162,369" fill="#AEB4BB" />
+              <polygon points="238,369 228,374 234,383" fill="#8FB055" />
+              <polygon points="200,356 226,369 200,382 174,369" fill="#6A7178" />
+              <path d="M200 350 L205 362 L197 370 L206 379" stroke="#5A6167" stroke-width="2.5" fill="none" stroke-linejoin="round" />
+              <path d="M176 372 L184 378" stroke="#5A6167" stroke-width="2" />
+            </g>
+
+            <!-- L12. o0020 분수 — basin (s1 · 고친 상태) -->
             <g id="p-basin" class="iso-part">
               <polygon points="200,388 238,369 238,381 200,400" fill="#98A0A9" />
               <polygon points="162,369 200,388 200,400 162,381" fill="#B0B8C0" />
@@ -226,12 +242,28 @@
               <rect x="405" y="332" width="2.5" height="52" fill="#8F959C" />
             </g>
 
-            <!-- L15. o0040 가로등 — lantern -->
-            <g id="p-lantern" class="iso-part">
+            <!-- L16~18. o0040 가로등 — 등 3종 (선택형 s1_a / s1_b / s1_c) -->
+            <g id="p-lanternA" class="iso-part">
               <ellipse cx="408" cy="337" rx="16" ry="9" fill="#F7E9B0" opacity=".45" />
               <polygon points="394,326 408,334 408,346 394,338" fill="#E8C86A" />
               <polygon points="422,326 408,334 408,346 422,338" fill="#D0AC55" />
               <polygon points="408,318 422,326 408,334 394,326" fill="#F5E29A" />
+              <rect x="406" y="312" width="4" height="8" fill="#6A6F76" />
+            </g>
+
+            <g id="p-lanternB" class="iso-part">
+              <ellipse cx="408" cy="337" rx="16" ry="9" fill="#CFE9F5" opacity=".45" />
+              <polygon points="394,326 408,334 408,346 394,338" fill="#9BC9DC" />
+              <polygon points="422,326 408,334 408,346 422,338" fill="#7FAFC4" />
+              <polygon points="408,318 422,326 408,334 394,326" fill="#CFE8F2" />
+              <rect x="406" y="312" width="4" height="8" fill="#6A6F76" />
+            </g>
+
+            <g id="p-lanternC" class="iso-part">
+              <ellipse cx="408" cy="337" rx="16" ry="9" fill="#F7D9C0" opacity=".45" />
+              <polygon points="394,326 408,334 408,346 394,338" fill="#E09B72" />
+              <polygon points="422,326 408,334 408,346 422,338" fill="#C67F58" />
+              <polygon points="408,318 422,326 408,334 394,326" fill="#F5C7A6" />
               <rect x="406" y="312" width="4" height="8" fill="#6A6F76" />
             </g>
 
@@ -248,14 +280,16 @@
 
         <div class="bar" style="--acc: var(--smg)"><i id="prog"></i></div>
 
-        <div class="projbar" style="--acc: var(--smg)">
-          <button class="projbtn is-active" type="button" id="play">▶ 재생</button>
-          <button class="projbtn" type="button" id="loop">반복</button>
-        </div>
+        <!-- 머지 게임의 데코 영역과 같은 흐름 — 영역은 비어 있고, 미션을 하나씩
+             눌러야 오브젝트가 등장한다. 건설형은 여러 번, 선택형은 카드를 고른다. -->
+        <div class="projbar" id="missions" style="--acc: var(--smg)"></div>
+        <div class="iso-cards" id="cards" hidden></div>
 
-        <!-- 조립 순서는 파츠 목록이 아니라 stagger 의 순번이다. 재생 중 지금 어느
-             파츠가 움직이는지 여기서 읽힌다. -->
-        <div class="projbar" id="chips" style="--acc: var(--smg)"></div>
+        <div class="projbar" style="--acc: var(--smg)">
+          <button class="projbtn" type="button" id="play">▶ 전체 배치</button>
+          <button class="projbtn" type="button" id="loop">반복</button>
+          <button class="projbtn" type="button" id="resetArea">영역 비우기</button>
+        </div>
           </div>
 
           <!-- 레이어를 무대 옆에 둔다 — 끌면서 결과를 같은 화면에서 봐야 하므로
@@ -295,6 +329,10 @@
           코드
           <span class="doc-h2-sub">위 파라미터가 그대로 들어간 Cocos Creator 2.4 구현</span>
         </h2>
+        <div class="projbar iso-modebar" style="--acc: var(--smg)">
+          <button class="mfx-btn is-primary" type="button" id="copyCode">코드 복사</button>
+          <button class="mfx-btn" type="button" id="copyVals">연출 값 복사</button>
+        </div>
         <pre class="iso-code"><code id="code-out"></code></pre>
       </section>
 
@@ -378,11 +416,14 @@
           { id: "chimney", label: "굴뚝" },
           { id: "door",    label: "문" },
           { id: "window",  label: "창문" },
+          { id: "basinBroken", label: "망가진 받침" },
           { id: "basin",   label: "분수 받침" },
           { id: "water",   label: "분수 물" },
           { id: "bench",   label: "벤치" },
           { id: "post",    label: "가로등 기둥" },
-          { id: "lantern", label: "가로등 등" },
+          { id: "lanternA", label: "등 · 황동" },
+          { id: "lanternB", label: "등 · 청동" },
+          { id: "lanternC", label: "등 · 적동" },
           { id: "tree",    label: "나무" },
           { id: "fence",   label: "울타리" }
         ];
@@ -409,32 +450,57 @@
         }
 
         /* Cocos 2.4 에서 기본으로 되는 것만 남겼다. 4방향 fill 은 FillType 에 없어서 뺐다. */
+        /* 연출마다 만질 값이 다르다. par 에 정의하면 무대 아래 칸으로 뜨고,
+           apply 와 코드 스니펫이 같은 값을 읽는다. */
         var PRESETS = [
           { id: "drop", name: "위에서 낙하", key: "node.y", ease: "bounceOut",
-            apply: function (p, t, e) { return { ty: -(1 - e) * p.fall, op: 1 }; } },
+            par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 420, min: 40, max: 1400, step: 20 }],
+            apply: function (p, t, e, fn, P) { return { ty: -(1 - e) * P.h, op: 1 }; } },
 
           { id: "squash", name: "낙하 + 착지 스쿼시", key: "y + scale", ease: "bounceOut",
-            apply: function (p, t, e0, fn) {
-              if (t < 0.72) { return { ty: -(1 - fn(t / 0.72)) * p.fall, op: 1 }; }
-              var k = (t - 0.72) / 0.28;
-              var sy = k < 0.4 ? 1 - 0.18 * (k / 0.4) : 0.82 + 0.18 * E.backOut((k - 0.4) / 0.6);
+            par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 420, min: 40, max: 1400, step: 20 },
+                  { k: "sq", label: "스쿼시 세기", unit: "scaleY", v: 0.82, min: 0.5, max: 1, step: 0.02 },
+                  { k: "fall", label: "낙하 비중", unit: "%", v: 72, min: 40, max: 90, step: 2 }],
+            apply: function (p, t, e0, fn, P) {
+              var r = P.fall / 100;
+              if (t < r) return { ty: -(1 - fn(t / r)) * P.h, op: 1 };
+              var k = (t - r) / (1 - r), d = 1 - P.sq;
+              var sy = k < 0.4 ? 1 - d * (k / 0.4) : P.sq + d * E.backOut((k - 0.4) / 0.6);
               return { ty: 0, sx: 1 + (1 - sy) * 0.8, sy: sy, op: 1 };
             } },
 
           { id: "pop", name: "아래에서 팝", key: "scale", ease: "backOut",
-            apply: function (p, t, e) { return { ty: (1 - t) * 26, s: 0.25 + 0.75 * e, op: Math.min(1, t * 3) }; } },
+            par: [{ k: "s0", label: "시작 스케일", unit: "", v: 0.25, min: 0, max: 1, step: 0.05 },
+                  { k: "rise", label: "솟는 거리", unit: "px", v: 26, min: 0, max: 140, step: 2 }],
+            apply: function (p, t, e, fn, P) {
+              return { ty: (1 - t) * P.rise, s: P.s0 + (1 - P.s0) * e, op: Math.min(1, t * 3) };
+            } },
 
-          { id: "fadeIn", name: "페이드 인", key: "opacity 0→255", ease: "sineOut",
-            apply: function (p, t, e) { return { op: e }; } },
+          { id: "fadeIn", name: "페이드 인", key: "opacity", ease: "sineOut",
+            par: [{ k: "a0", label: "시작 opacity", unit: "", v: 0, min: 0, max: 255, step: 5 },
+                  { k: "a1", label: "끝 opacity", unit: "", v: 255, min: 0, max: 255, step: 5 }],
+            apply: function (p, t, e, fn, P) { return { op: (P.a0 + (P.a1 - P.a0) * e) / 255 }; } },
 
-          { id: "fadeOut", name: "페이드 아웃", key: "opacity 255→0", ease: "sineOut",
-            apply: function (p, t, e) { return { op: 1 - e }; } },
+          { id: "fadeOut", name: "페이드 아웃", key: "opacity", ease: "sineOut",
+            par: [{ k: "a0", label: "시작 opacity", unit: "", v: 255, min: 0, max: 255, step: 5 },
+                  { k: "a1", label: "끝 opacity", unit: "", v: 0, min: 0, max: 255, step: 5 }],
+            apply: function (p, t, e, fn, P) { return { op: (P.a0 + (P.a1 - P.a0) * e) / 255 }; } },
 
           { id: "fillH", name: "Fill 가로", key: "FillType.HORIZONTAL", ease: "quadOut",
-            apply: function (p, t, e) { return { clip: rectPath(p.bb.x, p.bb.y, p.bb.w * e, p.bb.h) }; } },
+            par: [{ k: "st", label: "fillStart", unit: "0 좌→우 · 1 우→좌", v: 0, min: 0, max: 1, step: 1 },
+                  { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
+            apply: function (p, t, e, fn, P) {
+              var w = p.bb.w * e * P.rg;
+              return { clip: rectPath(P.st ? p.bb.x + p.bb.w - w : p.bb.x, p.bb.y, w, p.bb.h) };
+            } },
 
           { id: "fillV", name: "Fill 세로", key: "FillType.VERTICAL", ease: "quadOut",
-            apply: function (p, t, e) { return { clip: rectPath(p.bb.x, p.bb.y + p.bb.h * (1 - e), p.bb.w, p.bb.h * e) }; } }
+            par: [{ k: "st", label: "fillStart", unit: "0 아래→위 · 1 위→아래", v: 0, min: 0, max: 1, step: 1 },
+                  { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
+            apply: function (p, t, e, fn, P) {
+              var h = p.bb.h * e * P.rg;
+              return { clip: rectPath(p.bb.x, P.st ? p.bb.y : p.bb.y + p.bb.h - h, p.bb.w, h) };
+            } }
         ];
 
         function CODE(id, d, s, e) {
@@ -501,7 +567,8 @@
 
         var el = {
           presets: document.getElementById("presets"),
-          chips: document.getElementById("chips"),
+          missions: document.getElementById("missions"),
+          cards: document.getElementById("cards"),
           play: document.getElementById("play"),
           loop: document.getElementById("loop"),
           prog: document.getElementById("prog"),
@@ -512,18 +579,7 @@
           total: document.getElementById("o-total")
         };
 
-        var chips = [];
-        function renderChips() {
-          el.chips.innerHTML = "";
-          chips = metas.map(function (m, i) {
-            var c = document.createElement("span");
-            c.className = "tag";
-            c.textContent = i + 1 + " " + m.label;
-            el.chips.appendChild(c);
-            return c;
-          });
-        }
-        renderChips();
+
 
         var buttons = {};
         PRESETS.forEach(function (ps) {
@@ -539,9 +595,41 @@
         var state = { preset: PRESETS[0], t0: 0, playing: false, loop: false, raf: 0 };
         var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+        /* 연출별 값. 재생할 때마다 여기서 읽으므로 값을 바꾸면 다음 재생부터 반영된다. */
+        var PV = {};
+        PRESETS.forEach(function (ps) {
+          PV[ps.id] = {};
+          (ps.par || []).forEach(function (d) { PV[ps.id][d.k] = d.v; });
+        });
+        function par() { return PV[state.preset.id]; }
+
+        function renderPar() {
+          var ps = state.preset, box = document.getElementById("subParams");
+          box.innerHTML = "";
+          (ps.par || []).forEach(function (d) {
+            var cell = document.createElement("div");
+            cell.className = "calc-cell";
+            cell.style.setProperty("--acc", "var(--plan)");
+            cell.innerHTML =
+              '<label class="calc-label">' + d.label +
+              (d.unit ? ' <span class="calc-unit">' + d.unit + "</span>" : "") + "</label>" +
+              '<div class="calc-row"><input class="calc-in" type="number" min="' + d.min +
+              '" max="' + d.max + '" step="' + d.step + '" value="' + PV[ps.id][d.k] + '" /></div>';
+            var input = cell.querySelector("input");
+            input.addEventListener("input", function () {
+              var n = parseFloat(input.value);
+              if (!isFinite(n)) return;
+              PV[ps.id][d.k] = Math.max(d.min, Math.min(d.max, n));
+              refresh();
+            });
+            input.addEventListener("blur", function () { input.value = PV[ps.id][d.k]; });
+            box.appendChild(cell);
+          });
+        }
+
         function duration() { var v = parseFloat(el.dur.value); return isFinite(v) && v > 0 ? v : 1; }
         function stagger() { var v = parseFloat(el.stg.value); return (isFinite(v) && v >= 0 ? v : 0) / 1000; }
-        function total() { return stagger() * (metas.length - 1) + duration(); }
+        function total() { return stagger() * Math.max(0, fullIds().length - 1) + duration(); }
 
         function refresh() {
           el.code.innerHTML = highlight(CODE(state.preset.id, duration(), stagger(), el.ease.value));
@@ -552,13 +640,14 @@
           state.preset = ps;
           Object.keys(buttons).forEach(function (k) { buttons[k].classList.toggle("is-active", k === ps.id); });
           el.ease.value = ps.ease;
+          renderPar();
           refresh();
         }
 
         function paint(m, t) {
           var c = Math.max(0, Math.min(1, t));
           var fn = E[el.ease.value] || E.linear;
-          var p = state.preset.apply(m, c, fn(c), fn);
+          var p = state.preset.apply(m, c, fn(c), fn, par());
           var sx = p.sx != null ? p.sx : p.s != null ? p.s : 1;
           var sy = p.sy != null ? p.sy : p.s != null ? p.s : 1;
           m.el.style.transform =
@@ -567,47 +656,109 @@
           m.path.setAttribute("d", p.clip != null ? p.clip : m.full);
         }
 
+        /* 재생 단위는 "미션 하나"다. queue 에 든 스프라이트만 stagger 로 등장하고,
+           이미 배치된 것은 t = 1 상태로 그대로 남는다. */
+        var placed = {};
+        var queue = [];
+
         function frame(now) {
-          var d = duration(), s = stagger(), tt = total();
+          var d = duration(), s = stagger();
+          var tt = s * Math.max(0, queue.length - 1) + d;
           var elapsed = (now - state.t0) / 1000;
-          metas.forEach(function (m, i) {
-            var t = (elapsed - i * s) / d;
-            paint(m, t);
-            chips[i].className = t > 0 && t < 1 ? "pill" : "tag";
-          });
+          queue.forEach(function (m, i) { paint(m, (elapsed - i * s) / d); });
           el.prog.style.width = Math.min(100, (elapsed / tt) * 100) + "%";
           if (elapsed >= tt) {
             state.playing = false;
-            el.play.textContent = "▶ 다시 재생";
-            chips.forEach(function (c) { c.className = "tag"; });
-            if (state.loop) setTimeout(play, 500);
+            queue.forEach(function (m) { paint(m, 1); });
+            el.play.textContent = "▶ 전체 배치";
+            if (state.loop) setTimeout(playAll, 600);
             return;
           }
           state.raf = requestAnimationFrame(frame);
         }
 
-        function play() {
+        /* ids 를 등장 순서(metas 순)로 정렬해 재생한다. */
+        function playSet(ids) {
           cancelAnimationFrame(state.raf);
           refresh();
-          metas.forEach(function (m) { paint(m, 0); });
-          if (reduced) {
-            metas.forEach(function (m) { paint(m, 1); });
+          queue = metas.filter(function (m) { return ids.indexOf(m.id) >= 0; });
+          queue.forEach(function (m) {
+            placed[m.id] = true;
+            m.el.classList.remove("is-empty");
+            paint(m, 0);
+          });
+          renderMissions();
+          renderRows();
+          if (reduced || !queue.length) {
+            queue.forEach(function (m) { paint(m, 1); });
             el.prog.style.width = "100%";
-            el.play.textContent = "▶ 다시 재생";
             return;
           }
           state.playing = true;
-          el.play.textContent = "재생 중…";
           state.t0 = performance.now();
           state.raf = requestAnimationFrame(frame);
         }
 
-        el.play.addEventListener("click", play);
+        function unplace(ids) {
+          ids.forEach(function (id) {
+            placed[id] = false;
+            document.getElementById("p-" + id).classList.add("is-empty");
+          });
+        }
+
+        function clearArea() {
+          cancelAnimationFrame(state.raf);
+          state.playing = false;
+          queue = [];
+          placed = {};
+          OBJS.forEach(function (o) { o.done = 0; o.pick = null; });
+          Object.keys(LAYER).forEach(function (id) {
+            if (id === "ground") return;
+            document.getElementById("p-" + id).classList.add("is-empty");
+          });
+          el.prog.style.width = "0%";
+          el.cards.hidden = true;
+          renderMissions();
+          renderRows();
+          refresh();
+        }
+
+        /* 전체 배치 — 영역을 비우고 완성 상태를 순서대로 한 번에 놓는다.
+           선택형은 고른 것이 없으면 첫 카드로 둔다. */
+        function playAll() {
+          clearArea();
+          var ids = [];
+          OBJS.forEach(function (o) {
+            if (o.choices) {
+              o.pick = o.pick || o.choices[0].id;
+              o.done = 1;
+              ids = ids.concat(pickOf(o).add);
+            } else {
+              o.done = o.steps.length;
+              o.steps.forEach(function (st, i) {
+                if (i === o.steps.length - 1 || !hasLater(o, i)) ids = ids.concat(st.add);
+              });
+            }
+          });
+          el.play.textContent = "배치 중…";
+          playSet(ids);
+        }
+        /* 뒤 단계에서 치워지는 스프라이트(수리형 s0)는 전체 배치에서 건너뛴다 */
+        function hasLater(o, i) {
+          for (var j = i + 1; j < o.steps.length; j++) {
+            var dr = o.steps[j].drop || [];
+            for (var k = 0; k < dr.length; k++) if (o.steps[i].add.indexOf(dr[k]) >= 0) return true;
+          }
+          return false;
+        }
+
+        el.play.addEventListener("click", playAll);
         el.loop.addEventListener("click", function () {
           state.loop = !state.loop;
           el.loop.classList.toggle("is-active", state.loop);
-          if (state.loop && !state.playing) play();
+          if (state.loop && !state.playing) playAll();
         });
+        document.getElementById("resetArea").addEventListener("click", clearArea);
         [el.dur, el.stg].forEach(function (i) { i.addEventListener("input", refresh); });
         el.ease.addEventListener("change", function () { refresh(); if (!state.playing) play(); });
 
@@ -635,10 +786,10 @@
            구조는 네 유형이 전부 같다 — 오브젝트 → 상태 노드 → 이미지 · 앵커. */
         var OBJ = {
           bg:    { code: "BG",    label: "배경 · 부지", type: "",       state: "" },
-          house: { code: "o0010", label: "집",          type: "건설형", state: "s3" },
-          fount: { code: "o0020", label: "분수",        type: "수리형", state: "s1" },
+          house: { code: "o0010", label: "집",          type: "건설형", state: "s1~s3" },
+          fount: { code: "o0020", label: "분수",        type: "수리형", state: "s0~s1" },
           bench: { code: "o0030", label: "벤치",        type: "배치형", state: "s1" },
-          lamp:  { code: "o0040", label: "가로등",      type: "선택형", state: "s1_b" },
+          lamp:  { code: "o0040", label: "가로등",      type: "선택형", state: "s1_a·b·c" },
           tree:  { code: "o0050", label: "나무",        type: "배치형", state: "s1" },
           fence: { code: "o0060", label: "울타리",      type: "배치형", state: "s1" }
         };
@@ -653,11 +804,14 @@
           roofL:   { o: "house", name: "roof_l",  desc: "지붕 좌면" },
           roofR:   { o: "house", name: "roof_r",  desc: "지붕 우면" },
           chimney: { o: "house", name: "chimney", desc: "굴뚝" },
-          basin:   { o: "fount", name: "basin",   desc: "받침 · 수조" },
+          basinBroken: { o: "fount", name: "basin_broken", desc: "망가진 받침 (s0)" },
+          basin:   { o: "fount", name: "basin",   desc: "받침 · 수조 (s1)" },
           water:   { o: "fount", name: "water",   desc: "물 · 물기둥" },
           bench:   { o: "bench", name: "bench",   desc: "벤치" },
           post:    { o: "lamp",  name: "post",    desc: "기둥 · 받침" },
-          lantern: { o: "lamp",  name: "lantern", desc: "등 · 불빛" },
+          lanternA: { o: "lamp", name: "lantern_a", desc: "등 — 황동 (s1_a)" },
+          lanternB: { o: "lamp", name: "lantern_b", desc: "등 — 청동 (s1_b)" },
+          lanternC: { o: "lamp", name: "lantern_c", desc: "등 — 적동 (s1_c)" },
           fence:   { o: "fence", name: "fence",   desc: "울타리" }
         };
         var svg = document.getElementById("scene");
@@ -693,7 +847,7 @@
           else if (at.chimney < at.roofL || at.chimney < at.roofR) bad = "굴뚝이 지붕에 묻힙니다";
           else if (at.fence < at.chimney) bad = "울타리가 집 뒤로 들어갑니다";
           else if (at.water < at.basin) bad = "물이 수조 뒤로 들어갑니다";
-          else if (at.lantern < at.post) bad = "등이 기둥 뒤로 들어갑니다";
+          else if (Math.min(at.lanternA, at.lanternB, at.lanternC) < at.post) bad = "등이 기둥 뒤로 들어갑니다";
           else if (at.basin < at.chimney || at.bench < at.chimney || at.post < at.chimney) bad = "앞마당 오브젝트가 집 뒤로 들어갑니다";
           verdictEl.innerHTML = bad
             ? '<span class="pill" style="--acc: var(--bad)">' + bad + "</span>"
@@ -729,7 +883,8 @@
               prev = m.o;
             }
             var d = document.createElement("div");
-            d.className = "iso-row" + (hidden[id] ? " is-off" : "") + (mode === "seq" && !si ? " is-fixed" : "");
+            d.className = "iso-row" + (hidden[id] ? " is-off" : "") +
+              (mode === "seq" && !si ? " is-fixed" : "") + (id !== "ground" && !placed[id] ? " is-empty" : "");
             d.tabIndex = 0;
             d.setAttribute("data-id", id);
             d.innerHTML =
@@ -752,7 +907,6 @@
         }
         function applySeq(ids) {
           metas.sort(function (a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
-          renderChips();
           renderRows();
           play();
         }
@@ -873,7 +1027,6 @@
           });
           hidden = {};
           metas.sort(function (a, b) { return DEFAULT_SEQ.indexOf(a.id) - DEFAULT_SEQ.indexOf(b.id); });
-          renderChips();
           applyLayer(DEFAULT_LAYER.slice());
         });
 
@@ -901,9 +1054,153 @@
 
         setMode("layer");
 
+        /* ---- 미션 -----------------------------------------------------------
+           머지 게임의 데코 영역과 같다 — 영역은 비어 있고, 미션을 하나 끝낼 때마다
+           오브젝트가 등장한다. 유형이 곧 진행 방식이다.
+             배치형 = 한 번에 놓인다        수리형 = 망가진 것 → 고친 것
+             건설형 = 단계별로 자란다        선택형 = 카드 3장 중 하나를 고른다 */
+        var OBJS = [
+          { key: "tree", steps: [{ state: "s1", name: "나무 심기", add: ["tree"] }] },
+          { key: "house", steps: [
+              { state: "s1", name: "터 다지기", add: ["base"] },
+              { state: "s2", name: "벽 세우기", add: ["wallL", "wallR", "door", "window"] },
+              { state: "s3", name: "지붕 얹기", add: ["roofL", "roofR", "chimney"] }] },
+          { key: "fount", steps: [
+              { state: "s0", name: "낡은 분수 발견", add: ["basinBroken"] },
+              { state: "s1", name: "분수 수리", add: ["basin", "water"], drop: ["basinBroken"] }] },
+          { key: "bench", steps: [{ state: "s1", name: "벤치 놓기", add: ["bench"] }] },
+          { key: "lamp", choices: [
+              { id: "a", state: "s1_a", label: "황동 등", add: ["post", "lanternA"], c: ["#F5E29A", "#E8C86A", "#D0AC55"] },
+              { id: "b", state: "s1_b", label: "청동 등", add: ["post", "lanternB"], c: ["#CFE8F2", "#9BC9DC", "#7FAFC4"] },
+              { id: "c", state: "s1_c", label: "적동 등", add: ["post", "lanternC"], c: ["#F5C7A6", "#E09B72", "#C67F58"] }] },
+          { key: "fence", steps: [{ state: "s1", name: "울타리 두르기", add: ["fence"] }] }
+        ];
+        OBJS.forEach(function (o) { o.done = 0; o.pick = null; });
+        function pickOf(o) {
+          for (var i = 0; i < o.choices.length; i++) if (o.choices[i].id === o.pick) return o.choices[i];
+          return o.choices[0];
+        }
+        function fullIds() {
+          var ids = [];
+          OBJS.forEach(function (o) {
+            if (o.choices) { ids = ids.concat(pickOf(o).add); return; }
+            o.steps.forEach(function (st, i) { if (!hasLater(o, i)) ids = ids.concat(st.add); });
+          });
+          return ids;
+        }
+
+        function renderMissions() {
+          el.missions.innerHTML = "";
+          OBJS.forEach(function (o, oi) {
+            var ob = OBJ[o.key];
+            var n = o.choices ? 1 : o.steps.length;
+            var doneAll = o.done >= n;
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "projbtn" + (doneAll ? " is-active" : "");
+            var next = o.choices
+              ? (doneAll ? pickOf(o).label : "디자인 고르기")
+              : (doneAll ? "완료" : o.steps[o.done].name);
+            b.innerHTML = ob.label + ' <span class="projbtn-n">' + ob.type + " · " + next +
+              (n > 1 ? " " + Math.min(o.done + (doneAll ? 0 : 1), n) + "/" + n : "") + "</span>";
+            b.addEventListener("click", function () { runMission(oi); });
+            el.missions.appendChild(b);
+          });
+        }
+
+        function runMission(oi) {
+          var o = OBJS[oi];
+          if (o.choices) { openCards(oi); return; }
+          if (o.done >= o.steps.length) {           /* 완료된 미션은 다시 눌러 되감는다 */
+            unplace(o.steps.reduce(function (a, st) { return a.concat(st.add); }, []));
+            o.done = 0;
+            renderMissions();
+            renderRows();
+            return;
+          }
+          var st = o.steps[o.done];
+          if (st.drop) unplace(st.drop);
+          o.done += 1;
+          el.cards.hidden = true;
+          playSet(st.add);
+        }
+
+        function openCards(oi) {
+          var o = OBJS[oi];
+          el.cards.hidden = false;
+          el.cards.innerHTML = "";
+          o.choices.forEach(function (ch) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "iso-card" + (o.pick === ch.id ? " is-active" : "");
+            b.innerHTML =
+              '<svg viewBox="0 0 40 40" aria-hidden="true">' +
+              '<polygon points="6,16 20,24 20,36 6,28" fill="' + ch.c[1] + '" />' +
+              '<polygon points="34,16 20,24 20,36 34,28" fill="' + ch.c[2] + '" />' +
+              '<polygon points="20,8 34,16 20,24 6,16" fill="' + ch.c[0] + '" />' +
+              "</svg><span class=\"t\"><b>" + ch.state + "</b><span>" + ch.label + "</span></span>";
+            b.addEventListener("click", function () {
+              if (o.pick && o.pick !== ch.id) unplace(pickOf(o).add);
+              o.pick = ch.id;
+              o.done = 1;
+              el.cards.hidden = true;
+              playSet(ch.add);
+            });
+            el.cards.appendChild(b);
+          });
+        }
+
+        /* ---- 복사 (merge-feedback-anim.html 의 copyText 를 그대로 씀) ---- */
+        function copyText(text, btn) {
+          function done() {
+            var old = btn.textContent;
+            btn.textContent = "복사됨";
+            btn.classList.add("is-done");
+            setTimeout(function () { btn.textContent = old; btn.classList.remove("is-done"); }, 1300);
+          }
+          function fallback() {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.cssText = "position:fixed;top:-9999px";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); done(); } catch (e) {}
+            document.body.removeChild(ta);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, fallback);
+            return;
+          }
+          fallback();
+        }
+        function stampNow() {
+          var d = new Date(), z = function (n) { return (n < 10 ? "0" : "") + n; };
+          return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()) + " " + z(d.getHours()) + ":" + z(d.getMinutes());
+        }
+        document.getElementById("copyCode").addEventListener("click", function () {
+          copyText(CODE(state.preset.id, duration(), stagger(), el.ease.value), this);
+        });
+        document.getElementById("copyVals").addEventListener("click", function () {
+          var ps = state.preset, P = PV[ps.id];
+          var out = [
+            "// DecoAppearConfig.ts — 데코 등장 연출값",
+            "// " + ps.name + " · 데코 영역 시연 무대에서 맞춘 값 · " + stampNow(),
+            "",
+            "export const DECO_APPEAR_DURATION_SEC = " + duration().toFixed(2) + ";   // 보간 시간",
+            "export const DECO_APPEAR_STAGGER_SEC  = " + stagger().toFixed(3) + ";   // 파츠 간격",
+            'export const DECO_APPEAR_EASING       = "' + el.ease.value + '";'
+          ];
+          (ps.par || []).forEach(function (d) {
+            var key = ("DECO_APPEAR_" + d.k).toUpperCase();
+            while (key.length < 37) key += " ";
+            out.push("export const " + key + " = " + P[d.k] + ";   // " + d.label +
+              (d.unit ? " (" + d.unit + ")" : "") + (P[d.k] !== d.v ? "   ← 기본 " + d.v : ""));
+          });
+          copyText(out.join("\n"), this);
+        });
+
         select(PRESETS[0]);
-        metas.forEach(function (m) { paint(m, 0); });
-        setTimeout(play, 300);
+        clearArea();
       })();
     </script>
     <script src="../app.js"></script>
