@@ -9,7 +9,7 @@
       content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)와 등장 순서는 프리팹 트리에서 끌어서 바꿀 수 있다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso20" />
+    <link rel="stylesheet" href="../style.css?v=iso21" />
   </head>
   <body>
     <nav class="nav">
@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v1.9 &middot; 2026-09-01</span>
+          <span class="tag">v2.0 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -917,7 +917,9 @@
               var ob = OBJ[m.o];
               var n = o.filter(function (x) { return LAYER[x].o === m.o; }).length;
               var h = document.createElement("div");
-              h.className = "iso-row is-obj";
+              h.className = "iso-row is-obj" + (mode === "layer" && m.o !== "bg" ? " is-move" : " is-locked");
+              h.setAttribute("data-obj", m.o);
+              if (mode === "layer" && m.o !== "bg") h.tabIndex = 0;
               h.innerHTML =
                 '<span class="tw">├─ </span><span></span>' +
                 '<span class="nm">' + ob.code + "</span>" +
@@ -928,7 +930,8 @@
             }
             var d = document.createElement("div");
             d.className = "iso-row" + (hidden[id] ? " is-off" : "") +
-              (mode === "seq" && !si ? " is-fixed" : "") + (id !== "ground" && !placed[id] ? " is-empty" : "");
+              (mode === "seq" && !si ? " is-fixed" : "") + (mode === "layer" ? " is-locked" : "") +
+              (id !== "ground" && !placed[id] ? " is-empty" : "");
             d.tabIndex = 0;
             d.setAttribute("data-id", id);
             d.innerHTML =
@@ -977,6 +980,38 @@
         }
 
         /* ---- 포인터 드래그 ---- */
+        /* ---- 드래그 -----------------------------------------------------------
+           축마다 끄는 단위가 다르다.
+             레이어 모드 = 오브젝트 root 단위. 깊이 정렬은 오브젝트끼리의 문제이고,
+                          오브젝트 안 스프라이트 순서는 프리팹 조립이지 정렬 축이 아니다.
+                          BG(부지)는 언제나 맨 아래 — 끌 수 없다.
+             등장 모드   = 스프라이트 단위. delay 가 노드별이므로 노드로 끈다. */
+        function midOf(el2) { var b = el2.getBoundingClientRect(); return b.top + b.height / 2; }
+
+        /* 머리행 + 그 아래 스프라이트 행들 = 한 블록 */
+        function blockOf(head) {
+          var out = [head], n = head.nextElementSibling;
+          while (n && !n.hasAttribute("data-obj")) { out.push(n); n = n.nextElementSibling; }
+          return out;
+        }
+        /* 현재 그리기 순서를 오브젝트별로 묶는다 */
+        function objBlocks() {
+          var map = {}, order = [];
+          layerOrder().forEach(function (id) {
+            var k = LAYER[id].o;
+            if (!map[k]) { map[k] = []; order.push(k); }
+            map[k].push(id);
+          });
+          return { map: map, order: order };
+        }
+        function applyObjOrder(keys) {
+          var b = objBlocks(), ids = [];
+          ["bg"].concat(keys.filter(function (k) { return k !== "bg"; })).forEach(function (k) {
+            ids = ids.concat(b.map[k] || []);
+          });
+          applyLayer(ids);
+        }
+
         var drag = null;
         function shift() {
           drag.rows.forEach(function (r, i) {
@@ -991,33 +1026,70 @@
           if (!drag) return;
           var d = drag;
           drag = null;
-          d.rows.forEach(function (r) { r.style.transform = ""; });
+          (d.block || d.rows).forEach(function (r) { r.style.transform = ""; r.style.transition = ""; });
           d.row.classList.remove("is-drag");
-          if (d.to !== d.from) commit(d.rows.map(function (r) { return r.getAttribute("data-id"); }), d.from, d.to);
-          var r2 = rowsBox.querySelector('[data-id="' + d.id + '"]');
+          Array.prototype.forEach.call(rowsBox.children, function (r) { r.classList.remove("is-over"); });
+          if (d.to !== d.from) {
+            if (d.kind === "obj") {
+              var keys = d.heads.map(function (h) { return h.getAttribute("data-obj"); });
+              keys.splice(d.to, 0, keys.splice(d.from, 1)[0]);
+              applyObjOrder(keys);
+            } else {
+              commit(d.rows.map(function (r) { return r.getAttribute("data-id"); }), d.from, d.to);
+            }
+          }
+          var sel = d.kind === "obj" ? '[data-obj="' + d.id + '"]' : '[data-id="' + d.id + '"]';
+          var r2 = rowsBox.querySelector(sel);
           if (r2) r2.focus();
         }
+
         rowsBox.addEventListener("pointerdown", function (ev) {
           if (ev.button !== 0) return;
           var row = ev.target.closest(".iso-row");
-          if (!row || row.classList.contains("is-fixed") || ev.target.closest(".iso-eye") || ev.target.closest("input")) return;
-          var rows = Array.prototype.slice.call(rowsBox.children).filter(function (r) { return !r.classList.contains("is-obj"); });
-          var i = rows.indexOf(row);
-          drag = { row: row, rows: rows, id: row.getAttribute("data-id"), from: i, to: i,
-                   y0: ev.clientY, h: row.offsetHeight, lo: fixedCount(),
-                   mids: rows.map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2; }) };
+          if (!row || ev.target.closest(".iso-eye") || ev.target.closest("input")) return;
+
+          if (mode === "layer") {
+            var key = row.getAttribute("data-obj");
+            if (!key || key === "bg") return;          /* 스프라이트 행 · BG 는 못 끈다 */
+            var heads = Array.prototype.slice.call(rowsBox.querySelectorAll("[data-obj]"))
+              .filter(function (h) { return h.getAttribute("data-obj") !== "bg"; });
+            var i0 = heads.indexOf(row);
+            drag = { kind: "obj", row: row, id: key, block: blockOf(row), heads: heads,
+                     from: i0, to: i0, y0: ev.clientY, mids: heads.map(midOf) };
+          } else {
+            if (row.classList.contains("is-fixed") || row.hasAttribute("data-obj")) return;
+            var rows = Array.prototype.slice.call(rowsBox.children)
+              .filter(function (r) { return !r.classList.contains("is-obj"); });
+            var i = rows.indexOf(row);
+            drag = { kind: "sprite", row: row, rows: rows, id: row.getAttribute("data-id"),
+                     from: i, to: i, y0: ev.clientY, h: row.offsetHeight, lo: fixedCount(),
+                     mids: rows.map(midOf) };
+          }
+          if (drag.block) drag.block.forEach(function (r) { r.style.transition = "none"; });
           row.setPointerCapture(ev.pointerId);
           row.classList.add("is-drag");
           ev.preventDefault();
         });
+
         rowsBox.addEventListener("pointermove", function (ev) {
           if (!drag) return;
           var dy = ev.clientY - drag.y0;
+          if (drag.kind === "obj") {
+            drag.block.forEach(function (r) { r.style.transform = "translateY(" + dy + "px)"; });
+            var to = 0;
+            for (var j = 0; j < drag.mids.length; j++) if (ev.clientY > drag.mids[j]) to = j;
+            to = Math.max(0, Math.min(drag.heads.length - 1, to));
+            if (to !== drag.to) {
+              drag.to = to;
+              drag.heads.forEach(function (h, j) { h.classList.toggle("is-over", j === to && h !== drag.row); });
+            }
+            return;
+          }
           drag.row.style.transform = "translateY(" + dy + "px)";
-          var to = drag.lo;
-          for (var k = drag.lo; k < drag.mids.length; k++) if (ev.clientY > drag.mids[k]) to = k;
-          to = Math.max(drag.lo, Math.min(drag.rows.length - 1, to));
-          if (to !== drag.to) { drag.to = to; shift(); }
+          var t2 = drag.lo;
+          for (var k = drag.lo; k < drag.mids.length; k++) if (ev.clientY > drag.mids[k]) t2 = k;
+          t2 = Math.max(drag.lo, Math.min(drag.rows.length - 1, t2));
+          if (t2 !== drag.to) { drag.to = t2; shift(); }
         });
         rowsBox.addEventListener("pointerup", endDrag);
         rowsBox.addEventListener("pointercancel", endDrag);
@@ -1058,9 +1130,24 @@
         rowsBox.addEventListener("keydown", function (ev) {
           var row = ev.target.closest(".iso-row");
           if (!row || (ev.key !== "ArrowUp" && ev.key !== "ArrowDown")) return;
+          var d = ev.key === "ArrowUp" ? -1 : 1;
+          if (mode === "layer") {
+            var key = row.getAttribute("data-obj");
+            if (!key || key === "bg") return;
+            ev.preventDefault();
+            var keys = objBlocks().order.filter(function (k) { return k !== "bg"; });
+            var i0 = keys.indexOf(key), j0 = i0 + d;
+            if (j0 < 0 || j0 >= keys.length) return;
+            keys.splice(j0, 0, keys.splice(i0, 1)[0]);
+            applyObjOrder(keys);
+            var h = rowsBox.querySelector('[data-obj="' + key + '"]');
+            if (h) h.focus();
+            return;
+          }
+          if (row.hasAttribute("data-obj")) return;
           ev.preventDefault();
           var ids = rowList(), id = row.getAttribute("data-id");
-          var i = ids.indexOf(id), j = i + (ev.key === "ArrowUp" ? -1 : 1), lo = fixedCount();
+          var i = ids.indexOf(id), j = i + d, lo = fixedCount();
           if (i < lo || j < lo || j >= ids.length) return;
           commit(ids, i, j);
           var r = rowsBox.querySelector('[data-id="' + id + '"]');
@@ -1073,9 +1160,9 @@
           document.getElementById("modeLayer").classList.toggle("is-active", m === "layer");
           document.getElementById("modeSeq").classList.toggle("is-active", m === "seq");
           treeHint.innerHTML = (m === "layer"
-            ? "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 끌면 무대에 바로 쌓입니다."
+            ? "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 오브젝트 <b>root</b> 를 끌어 옮깁니다 — 안의 스프라이트는 함께 따라오고, BG(부지)는 맨 아래 고정입니다."
             : "<b>delay(i × 파츠 간격) 의 배열 순서입니다.</b> 끌면 그 순서로 다시 재생합니다.") +
-            "<br />행을 끌어 옮기고(↑ ↓ 키도 됩니다), 행이나 무대에 얹으면 그 파츠만 남으며, ◉ 로 숨깁니다." +
+            "<br />끌어 옮기고(↑ ↓ 키도 됩니다), 행이나 무대에 얹으면 그 파츠만 남으며, ◉ 로 숨깁니다." +
             "<br />오브젝트 유형은 아트 인계 문서의 네 가지 — <b>배치형 · 수리형 · 건설형 · 선택형</b> — 을 하나씩 깔아 뒀습니다.";
           renderRows();
         }
