@@ -6,16 +6,17 @@
     <title>아이소메트릭 데코 파츠 등장 연출</title>
     <meta
       name="description"
-      content="집 한 채와 마당을 아이소메트릭 파츠 11장으로 쪼개서, 부지 위에 올라오는 데코 10개의 등장 연출 7종을 실제 타이밍으로 돌려본다. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀐다. 부지는 고정이고 그 위 데코만 등장한다."
+      content="집 한 채와 마당을 아이소메트릭 파츠 11장으로 쪼개서, 등장 연출 7종을 실제 타이밍으로 돌려본다. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)는 프리팹 트리에서 끌어서 바꿀 수 있다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso13" />
+    <link rel="stylesheet" href="../style.css?v=iso14" />
   </head>
   <body>
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#stage">무대</a>
+        <a class="nav-back" href="#layer">레이어</a>
         <a class="nav-back" href="#code">코드</a>
         <a class="nav-back" href="#support">지원 범위</a>
         <span class="nav-spacer"></span>
@@ -39,7 +40,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v1.3 &middot; 2026-09-01</span>
+          <span class="tag">v1.4 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -79,7 +80,7 @@
             </div>
           </div>
           <div class="calc-cell" style="--acc: var(--smg)">
-            <label class="calc-label" for="i-ease">이징</label>
+            <label class="calc-label" for="i-ease">Easing</label>
             <div class="calc-row">
               <select class="calc-in" id="i-ease">
                 <option value="bounceOut">bounceOut</option>
@@ -204,6 +205,39 @@
              파츠가 움직이는지 여기서 읽힌다. -->
         <div class="projbar" id="chips" style="--acc: var(--smg)"></div>
 
+      </section>
+
+      <!-- deco-area-prefab-structure.html 의 프리팹 트리를 그대로 가져왔다.
+           거기서 "object 하위 노드 순서가 곧 깊이 정렬 순서"라고 정해 뒀으므로,
+           여기서는 그 순서를 실제로 끌어서 바꾸고 무대에 바로 반영되게 한다. -->
+      <section class="doc-section" id="layer">
+        <h2 class="doc-h2">
+          레이어
+          <span class="doc-h2-sub">s1 하위 노드 순서가 곧 깊이 정렬 순서 &mdash; 끌어서 바꾸면 무대에 바로 반영됩니다</span>
+        </h2>
+
+        <div class="legend">
+          <span style="color: var(--deploy)">필수 · 변경 금지 — 오브젝트 · 상태 (세이브 키)</span>
+          <span style="color: var(--validate)">필수 — 순서 · 앵커</span>
+          <span style="color: var(--analysis)">컴포넌트</span>
+          <span style="color: var(--balance)">이미지 리소스 — 끌어서 순서 변경</span>
+          <span style="color: var(--text-faint)">구조선 · 설명</span>
+        </div>
+
+        <div class="table-scroll">
+          <div class="iso-tree" id="tree">
+            <div class="fx"><span></span><span style="color: var(--deploy)"><b>o0010</b></span><span><span style="color: var(--analysis)">[DecoObject]</span> 오브젝트 — 집 · 이름이 세이브 키</span></div>
+            <div class="fx"><span>├── </span><span style="color: var(--validate)"><b>anchor_talk</b></span><span>말풍선 · 미션 아이콘 생성 좌표</span></div>
+            <div class="fx"><span>├── </span><span style="color: var(--validate)"><b>anchor_cam</b></span><span>카메라 이동 목표 좌표</span></div>
+            <div class="fx"><span>└── </span><span style="color: var(--deploy)"><b>s1</b></span><span><span style="color: var(--analysis)">[cc.Animation]</span> 상태 컨테이너 — 아래 11장이 이 상태의 이미지 리소스</span></div>
+            <div id="rows"></div>
+          </div>
+        </div>
+
+        <div class="projbar" style="--acc: var(--smg)">
+          <button class="projbtn" type="button" id="resetOrder">기본 순서로</button>
+          <span id="verdict"></span>
+        </div>
       </section>
 
       <section class="doc-section" id="code">
@@ -529,6 +563,130 @@
             refresh();
           });
         });
+
+
+        /* ---- 레이어 트리: 끌어서 그리기 순서 바꾸기 ----
+           SVG 의 <g> 순서가 곧 레이어다. 행을 옮기면 <g> 를 그 순서로 다시 붙인다.
+           등장 순서(PARTS)는 건드리지 않는다 — 레이어와 등장 순서는 다른 축이다. */
+        var LAYER = {
+          ground:  { name: "ground",  desc: "지면 타일 — 부지",     seq: 0 },
+          tree:    { name: "tree",    desc: "나무",                 seq: 9 },
+          base:    { name: "base",    desc: "기단",                 seq: 1 },
+          wallL:   { name: "wall_l",  desc: "좌측 벽 (+y 면)",      seq: 2 },
+          wallR:   { name: "wall_r",  desc: "우측 벽 (+x 면)",      seq: 3 },
+          door:    { name: "door",    desc: "현관문",               seq: 7 },
+          window:  { name: "window",  desc: "창문 2개",             seq: 8 },
+          roofL:   { name: "roof_l",  desc: "지붕 좌면",            seq: 4 },
+          roofR:   { name: "roof_r",  desc: "지붕 우면",            seq: 5 },
+          chimney: { name: "chimney", desc: "굴뚝",                 seq: 6 },
+          fence:   { name: "fence",   desc: "울타리",               seq: 10 }
+        };
+        var svg = document.getElementById("scene");
+        var rowsBox = document.getElementById("rows");
+        var verdictEl = document.getElementById("verdict");
+
+        function currentOrder() {
+          return Array.prototype.map.call(svg.querySelectorAll("g.iso-part"), function (g) { return g.id.slice(2); });
+        }
+        var DEFAULT_ORDER = currentOrder();
+
+        /* 뒤에 그릴수록(=배열 뒤쪽) 앞에 보인다. 규칙을 어기면 무엇이 깨지는지 한 줄로 말해준다. */
+        function verdict() {
+          var o = currentOrder(), at = {};
+          o.forEach(function (id, i) { at[id] = i; });
+          var bad = null;
+          if (at.ground !== 0) bad = "지면이 다른 파츠를 덮습니다";
+          else if (at.tree > at.base) bad = "나무가 집 앞으로 나옵니다";
+          else if (at.base > at.wallL || at.base > at.wallR) bad = "기단이 벽을 덮습니다";
+          else if (at.wallL > at.wallR) bad = "좌측 벽이 우측 벽을 덮습니다 — 모서리가 뒤집힙니다";
+          else if (at.door > at.roofL || at.window > at.roofL || at.window > at.roofR) bad = "문 · 창문이 지붕보다 위 — 처마를 뚫고 나옵니다";
+          else if (at.roofL > at.roofR) bad = "지붕 좌면이 우면을 덮습니다";
+          else if (at.chimney < at.roofL || at.chimney < at.roofR) bad = "굴뚝이 지붕에 묻힙니다";
+          else if (at.fence < at.chimney) bad = "울타리가 집 뒤로 들어갑니다";
+          verdictEl.innerHTML = bad
+            ? '<span class="pill" style="--acc: var(--bad)">' + bad + "</span>"
+            : '<span class="pill" style="--acc: var(--ok)">정렬 이상 없음</span>';
+        }
+
+        function renderRows() {
+          var o = currentOrder();
+          rowsBox.innerHTML = "";
+          o.forEach(function (id, i) {
+            var m = LAYER[id];
+            var d = document.createElement("div");
+            d.className = "iso-row";
+            d.draggable = true;
+            d.tabIndex = 0;
+            d.setAttribute("data-id", id);
+            d.innerHTML =
+              '<span class="tw">    ' + (i === o.length - 1 ? "└── " : "├── ") + "</span>" +
+              '<span class="nm">' + m.name + "</span>" +
+              '<span class="ds">' + m.desc + "</span>" +
+              '<span class="sq">' + (m.seq ? "등장 " + m.seq : "등장 없음") + "</span>";
+            rowsBox.appendChild(d);
+          });
+          verdict();
+        }
+
+        function applyOrder(ids) {
+          ids.forEach(function (id) { svg.appendChild(document.getElementById("p-" + id)); });
+          renderRows();
+        }
+
+        function move(id, delta) {
+          var o = currentOrder(), i = o.indexOf(id), j = i + delta;
+          if (j < 0 || j >= o.length) return;
+          o.splice(j, 0, o.splice(i, 1)[0]);
+          applyOrder(o);
+          var row = rowsBox.querySelector('[data-id="' + id + '"]');
+          if (row) row.focus();
+        }
+
+        var dragId = null;
+        rowsBox.addEventListener("dragstart", function (ev) {
+          var row = ev.target.closest(".iso-row");
+          if (!row) return;
+          dragId = row.getAttribute("data-id");
+          row.classList.add("is-drag");
+          ev.dataTransfer.effectAllowed = "move";
+          ev.dataTransfer.setData("text/plain", dragId);
+        });
+        rowsBox.addEventListener("dragend", function () {
+          dragId = null;
+          Array.prototype.forEach.call(rowsBox.children, function (r) { r.classList.remove("is-drag", "is-over"); });
+        });
+        rowsBox.addEventListener("dragover", function (ev) {
+          var row = ev.target.closest(".iso-row");
+          if (!row || !dragId) return;
+          ev.preventDefault();
+          ev.dataTransfer.dropEffect = "move";
+          Array.prototype.forEach.call(rowsBox.children, function (r) { r.classList.toggle("is-over", r === row); });
+        });
+        rowsBox.addEventListener("drop", function (ev) {
+          var row = ev.target.closest(".iso-row");
+          if (!row || !dragId) return;
+          ev.preventDefault();
+          var target = row.getAttribute("data-id");
+          if (target === dragId) return;
+          /* 방향 판정은 옮기기 전 인덱스로 한다 — 뺀 뒤의 인덱스로 재면
+             한 칸 아래로 끌 때 제자리에 다시 꽂혀 아무 일도 안 일어난다. */
+          var o = currentOrder();
+          var from = o.indexOf(dragId);
+          var to = o.indexOf(target);
+          o.splice(from, 1);
+          var t = o.indexOf(target);
+          o.splice(from < to ? t + 1 : t, 0, dragId);
+          applyOrder(o);
+        });
+        rowsBox.addEventListener("keydown", function (ev) {
+          var row = ev.target.closest(".iso-row");
+          if (!row) return;
+          if (ev.key === "ArrowUp") { ev.preventDefault(); move(row.getAttribute("data-id"), -1); }
+          if (ev.key === "ArrowDown") { ev.preventDefault(); move(row.getAttribute("data-id"), 1); }
+        });
+        document.getElementById("resetOrder").addEventListener("click", function () { applyOrder(DEFAULT_ORDER.slice()); });
+
+        renderRows();
 
         select(PRESETS[0]);
         metas.forEach(function (m) { paint(m, 0); });
