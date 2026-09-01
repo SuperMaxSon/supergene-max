@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 09:36",
+  updated: "2026-09-01 09:48",
 };
 
 /* --------------------------------------------------------------------------
@@ -71,12 +71,12 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
-        title: "채팅 캐릭터 애니메이션 용량 산출기",
+        title: "채팅 캐릭터 애니메이션 용량 계산기",
         desc: "캐릭터와 감정이 늘면 용량이 어디까지 가나. 프레임 시퀀스 · 노드 트랜스폼 · Spine 세 방식을 같은 조건에 놓고 계산한다.",
         url: "docs/chat-anim-size-calc.html",
         status: "완료",
-        version: "v1.5",
-        updated: "2026-09-01 09:36",
+        version: "v1.6",
+        updated: "2026-09-01 09:48",
         pinned: false,
         project: "smg",
         tags: ["코드 실측", "아트", "인터랙티브"],
