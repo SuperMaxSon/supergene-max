@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 14:51",
+  updated: "2026-09-01 14:52",
 };
 
 /* --------------------------------------------------------------------------
@@ -87,7 +87,7 @@ const SECTIONS = [
         url: "docs/deco-tween-iso.html",
         status: "완료",
         version: "v1.9",
-        updated: "2026-09-01 14:51",
+        updated: "2026-09-01 14:52",
         pinned: false,
         project: "smg",
         tags: ["데코", "인터랙티브"],

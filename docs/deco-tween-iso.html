@@ -510,12 +510,13 @@
           rows.sort(function (a, b) { return a.ms - b.ms; });
           var w = 0;
           rows.forEach(function (r) { w = Math.max(w, LAYER[r.id].name.length); });
-          return "/** 배치 순서와 노드별 딜레이 (ms) — 시연 무대에서 맞춘 값 */\n" +
+          return "/** 배치 순서와 노드별 딜레이 (ms) — 시연 무대에서 맞춘 값.\n" +
+            " *  parts 배열은 아래 주석과 같은 순서로 넣는다. */\n" +
             "const DELAY_MS: number[] = [\n" +
             rows.map(function (r) {
               var nm = LAYER[r.id].name;
               while (nm.length < w) nm += " ";
-              return "    " + r.ms + ",".replace(/$/, "") + "   // " + nm + "  " + OBJ[LAYER[r.id].o].code;
+              return "    " + r.ms + ",   // " + nm + "  " + OBJ[LAYER[r.id].o].code;
             }).join("\n") + "\n];\n\n";
         }
 
@@ -1254,6 +1255,8 @@
             out.push("export const " + key + " = " + P[d.k] + ";   // " + d.label +
               (d.unit ? " (" + d.unit + ")" : "") + (P[d.k] !== d.v ? "   ← 기본 " + d.v : ""));
           });
+          out.push("");
+          out.push(delayArray().replace(/\n$/, ""));
           copyText(out.join("\n"), this);
         });
 
