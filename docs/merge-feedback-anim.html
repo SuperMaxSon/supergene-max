@@ -9,7 +9,7 @@
       content="머지 보드에서 손가락이 닿는 모든 순간의 반응을 재생되는 무대로 모았다. 액션 6종 · 텍스트 3종 · 누락 제안 6종. 타이밍 표와 cc.tween 코드가 재생과 같은 값을 쓴다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=mfx2" />
+    <link rel="stylesheet" href="../style.css?v=mfx3" />
   </head>
   <body class="mfx">
     <nav class="nav">
@@ -168,6 +168,15 @@
         </div>
         <div class="notes">
           <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">판때기를 두지 않는다</div>
+            <p>
+              아이템에 네모 프레임을 씌우면 실제 게임의 <strong>생산자·생산물이 아니라 "타일"</strong> 로 읽혀
+              연출 검수가 엉뚱해집니다. 그래서 아트만 놓고, 판때기가 하던 <strong>접지감은 drop-shadow</strong> 로
+              옮겼습니다. 눌림의 옆면 두께(4→1px)도 이 그림자 오프셋이 대신합니다 —
+              프레임 없이도 "바닥에 붙었다"가 읽힙니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--balance)">
             <div class="note-title">레벨은 색으로 가른다</div>
             <p>
               생산물은 한 장의 SVG에 <code>hue-rotate</code> 만 걸어 레벨 1·2·3을 만듭니다.
@@ -471,7 +480,8 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
 
         function elm(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
         function tileHTML(icon, lv, cls) {
-          return '<div class="mfx-tile' + (cls ? " " + cls : "") + '"><div class="plate"></div>' +
+          // 판때기(.plate) 없음 — 아이콘 아트만 놓는다
+          return '<div class="mfx-tile' + (cls ? " " + cls : "") + '">' +
             '<svg viewBox="0 0 66 66"><use href="#' + icon + '"></use></svg>' +
             (lv ? '<span class="lv">' + lv + "</span>" : "") + "</div>";
         }
@@ -554,9 +564,11 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           });
           return p;
         }
+        /* 판때기가 없어졌으니 "옆면 두께" 는 접지 그림자의 오프셋으로 표현한다.
+           눌리면 그림자가 얇아져 바닥에 붙는다 — 원래 edge 4→1px 과 같은 신호. */
         function plateEdge(s, px) {
-          var p = s.el.querySelector(".plate");
-          if (p) p.style.boxShadow = "0 " + px + "px 0 var(--wood700)";
+          var t = s.el.querySelector(".mfx-tile");
+          if (t) t.style.filter = "drop-shadow(0 " + px + "px 0 rgba(122,78,43,.34))";
         }
         function sparks(st, at, n, color) {
           var list = [];
@@ -786,9 +798,11 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
 
         /* A2 · 생산물 비행 -------------------------------------------------- */
         DEMOS.a2 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), gen, used = [], GI = 4;
+          var st = makeStage(host, { cols: 4, rows: 3 }), gen, used = [], GI = 4, gen2 = 0;
           var ORDER = [10, 6, 2, 3, 7, 11, 9, 5, 1, 0, 8];
+          var LINGER_SEC = 2;          // 문서 데모용 — 눌러 볼수록 보드가 차면 연출을 못 본다
           function reset() {
+            gen2++;
             st.clear();
             used = [];
             gen = st.tile("mfx-producer");
@@ -809,14 +823,24 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             item.set({ x: from.x, y: from.y, sx: 0.5, sy: 0.5 });
             item.el.style.zIndex = 5;
             item.to(0.15, { sx: 1.14, sy: 1.14 }, "backOut").then(function () { return item.to(0.27, { sx: 1, sy: 1 }, "quadIn"); });
+            var myGen = gen2;
             return flyBezier(item, from, to, 0.42, 0.38, 70).then(function () {
               item.el.style.zIndex = "";
               tw(0.3, "quadIn", function (e) { g.el.style.opacity = 0.9 * (1 - e); }).then(function () { g.kill(); });
+              /* 정리는 기다리지 않는다 — 다음 클릭이 2초 묶이면 연달아 못 눌러 본다 */
+              wait(LINGER_SEC).then(function () {
+                if (myGen !== gen2) return;
+                item.to(0.24, { a: 0, sx: 0.6, sy: 0.6 }, "quadIn").then(function () {
+                  item.kill();
+                  var at = used.indexOf(cell);
+                  if (at >= 0) used.splice(at, 1);
+                });
+              });
               return squash(item, 0.06, 1.18, 0.84, 0.16);
             });
           }
           function play() { reset(); return spawn(); }
-          return { st: st, reset: reset, play: play, hint: "양동이를 누를 때마다 하나씩 날아갑니다" };
+          return { st: st, reset: reset, play: play, hint: "양동이를 누를 때마다 하나씩 날아갑니다 · 착지 2초 뒤 정리됩니다" };
         };
 
         /* A3 · 드래그 ------------------------------------------------------- */
