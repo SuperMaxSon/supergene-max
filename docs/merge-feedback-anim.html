@@ -6,10 +6,10 @@
     <title>머지 피드백 연출집</title>
     <meta
       name="description"
-      content="머지 보드 연출 값을 직접 만지며 맞추는 튜닝 도구. 액션 6종 · 텍스트 3종 · 누락 5종, 카드마다 표에서 시간·이징·세기를 바꾸고 cc.tween 상수로 복사한다."
+      content="머지 보드 연출 값을 직접 만지며 맞추는 튜닝 도구. 액션 6종 · 텍스트 3종 · 누락 5종, 카드마다 표에서 시간·이징·세기를 슬라이더나 숫자로 바꾸고 cc.tween 상수로 복사한다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=mfx8" />
+    <link rel="stylesheet" href="../style.css?v=mfx9" />
   </head>
   <body class="mfx">
     <nav class="nav">
@@ -27,14 +27,15 @@
         <div class="doc-eyebrow">기획 · 연출 규격</div>
         <h1 class="doc-title">머지 피드백 연출집</h1>
         <p class="doc-lede">
-          표의 값을 바꾸면 옆 무대가 그 값으로 놉니다. 타일은 직접 누르고 끌 수 있고,
+          표의 값은 숫자로 치거나 <b>슬라이더로 끌어서</b> 바꿉니다. 바꾸는 즉시 옆 무대가 그 값으로 놉니다.
+          타일은 직접 누르고 끌 수 있고,
           맞춘 값은 카드 머리의 <b>[설정 복사]</b> 로 <code>cc.tween</code> 상수째 가져갑니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v3.7 · 2026-09-01 16:04</span>
+          <span class="tag" id="mfx-ver">v3.8 · 2026-09-01 17:52</span>
         </div>
       </div>
     </header>
@@ -91,7 +92,7 @@
         </div>
         <button type="button" class="mfx-btn is-primary" id="mfx-copyall">전체 설정 복사</button>
         <button type="button" class="mfx-btn" id="mfx-resetall">전부 기본값</button>
-        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 바꾸면 옆 무대가 그 값으로 놉니다. 타일은 <b>언제나 직접 누르고 끌 수 있습니다</b> — 자동 재생은 없고, 시연은 버튼을 눌렀을 때만 돕니다.</span>
+        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 치거나 슬라이더를 끌면 옆 무대가 그 값으로 놉니다. 타일은 <b>언제나 직접 누르고 끌 수 있습니다</b> — 자동 재생은 없고, 시연은 버튼을 눌렀을 때만 돕니다.</span>
       </div>
 
       <section class="doc-section" id="action">
@@ -2256,7 +2257,7 @@
             tdL.textContent = d.label;
             var tdV = document.createElement("td");
             tdV.className = "mfx-vcell";
-            var input = null, pick = null;
+            var input = null, pick = null, range = null;
             if (d.opts) {
               /* 숫자가 아닌 값도 여기서 고른다 — 문구 스타일이 그렇다 */
               pick = document.createElement("select");
@@ -2289,6 +2290,18 @@
               input.value = vals[d.k];
               tdV.appendChild(input);
               if (d.unit) { var u = elm("span", "mfx-u"); u.textContent = d.unit; tdV.appendChild(u); }
+              /* 두 번째 손잡이. 숫자칸은 정밀 입력용으로 그대로 두고, 슬라이더는
+                 min~max 를 손으로 훑으며 "어디가 맞는지" 를 찾는 용도다.
+                 여기 step 은 d.step 을 그대로 걸어 눈금이 값과 같게 떨어지도록 한다 —
+                 숫자칸(step="any")에 12.5 같은 값을 치면 손잡이만 가까운 눈금에 붙고
+                 값 자체는 안 바뀐다. */
+              range = document.createElement("input");
+              range.type = "range";
+              range.className = "mfx-rng";
+              range.min = d.min; range.max = d.max; range.step = d.step;
+              range.value = vals[d.k];
+              range.setAttribute("aria-label", d.label);
+              tdV.appendChild(range);
             } else { tdV.textContent = "—"; }
             var tdE = document.createElement("td");
             var sel = null;
@@ -2310,11 +2323,16 @@
             tr.appendChild(tdL); tr.appendChild(tdV); tr.appendChild(tdE); tr.appendChild(tdN);
             tbody.appendChild(tr);
 
+            /* 값이 바뀌는 모든 경로(입력 · 슬라이더 · 카드 기본값 · 스타일 크로스 동기화)가
+               마지막에 이걸 부른다. 그래서 DOM 되맞추기도 여기 한 군데서 한다 —
+               지금 손대고 있는 쪽은 건드리지 않아야 커서가 튀거나 손잡이가 떨지 않는다. */
             function mark() {
               var diff = (d.v != null && vals[d.k] !== d.v) ||
                 (d.sv != null && vals[d.k] !== d.sv) ||
                 (d.easeK && vals[d.easeK] !== d.ease);
               tr.classList.toggle("is-changed", !!diff);
+              if (range && document.activeElement !== range) range.value = vals[d.k];
+              if (input && document.activeElement !== input) input.value = vals[d.k];
             }
             function after() { mark(); if (sid) broadcastStyle(sid); }
             if (input) {
@@ -2326,13 +2344,21 @@
               });
               input.addEventListener("blur", function () { input.value = vals[d.k]; });
             }
+            if (range) {
+              range.addEventListener("input", function () {
+                var n = parseFloat(range.value);
+                if (!isFinite(n)) return;
+                vals[d.k] = clampV(n, d.min, d.max);
+                after();
+              });
+            }
             if (pick) pick.addEventListener("change", function () {
               vals[d.k] = pick.value; mark();
               if (d.opts === "FLOAT_STYLES") renderStyle();   // 고른 스타일의 값 표로 갈아 끼운다
             });
             if (sel) sel.addEventListener("change", function () { vals[d.easeK] = sel.value; after(); });
             mark();                                  // 이미 기본값과 다르면 처음부터 표시돼야 한다
-            list.push({ d: d, input: input, pick: pick, sel: sel, mark: mark });
+            list.push({ d: d, input: input, range: range, pick: pick, sel: sel, mark: mark });
           }
 
           defs.forEach(function (d) { makeRow(d, vals, tb, rowEls); });
