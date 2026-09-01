@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v3.1 &middot; 2026-09-01</span>
+          <span class="tag">v3.2 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -72,9 +72,9 @@
             </div>
           </div>
           <div class="calc-cell" style="--acc: var(--smg)">
-            <label class="calc-label" for="i-stg">오브젝트 간 딜레이 <span class="calc-unit">ms · 공통</span></label>
+            <label class="calc-label" for="i-stg">오브젝트 간 딜레이 <span class="calc-unit">초 · 공통</span></label>
             <div class="calc-row">
-              <input class="calc-in" id="i-stg" type="number" min="0" max="2000" step="50" value="500" />
+              <input class="calc-in" id="i-stg" type="number" min="0" max="5" step="0.05" value="0.5" />
               <span class="calc-step">
                 <button class="calc-btn" type="button" data-for="i-stg" data-dir="1">▲</button>
                 <button class="calc-btn" type="button" data-for="i-stg" data-dir="-1">▼</button>
@@ -267,13 +267,17 @@
               <rect x="406" y="312" width="4" height="8" fill="#6A6F76" />
             </g>
 
-            <!-- L16. 울타리 — 부지 앞 모서리(그리드 x = 3)라 집보다 앞 -->
+            <!-- L16. 울타리 — 부지 앞 모서리(그리드 x = 3)라 집보다 앞.
+                 기둥 밑끝은 부지 모서리선 y = 310 + (560 - x) / 2 위에 정확히 올린다.
+                 밑끝이 이 선 아래로 내려가면 타일 밖에 떠 있는 것으로 보인다.
+                 가로대도 첫 기둥 ~ 끝 기둥 사이로만 놓는다 — 기둥 없이 더 뻗으면
+                 부지 모서리를 넘어 허공에 걸린다. -->
             <g id="p-fence" class="iso-part">
-              <polygon points="428,376 548,316 548,322 428,382" fill="#D9C7A6" />
-              <polygon points="428,390 548,330 548,336 428,396" fill="#D9C7A6" />
-              <rect x="434" y="362" width="9" height="38" fill="#E0CFAB" />
-              <rect x="474" y="342" width="9" height="38" fill="#E0CFAB" />
-              <rect x="514" y="322" width="9" height="38" fill="#E0CFAB" />
+              <rect x="434" y="333" width="9" height="38" fill="#E0CFAB" />
+              <rect x="474" y="313" width="9" height="38" fill="#E0CFAB" />
+              <rect x="514" y="293" width="9" height="38" fill="#E0CFAB" />
+              <polygon points="430,359 527,310.5 527,316.5 430,365" fill="#D9C7A6" />
+              <polygon points="430,345 527,296.5 527,302.5 430,351" fill="#D9C7A6" />
             </g>
           </svg>
         </div>
@@ -396,7 +400,7 @@
          이징은 cc.tween 이 쓰는 공식을 그대로 옮겼다 — 엔진과 타이밍을 맞추기 위해서다.
          파츠는 SVG <g> 이고, 화면에서의 변형(translate/scale/opacity)과 clip-path 를
          프레임마다 직접 찍는다. CSS 애니메이션을 안 쓰는 이유는 root 별 딜레이와
-         진행률을 Cocos 의 delay(OBJECT_DELAY_MS[i] / 1000) 과 같은 방식으로 계산해야 하기 때문이다. */
+         진행률을 Cocos 의 delay(OBJECT_DELAY_SEC[i]) 과 같은 방식으로 계산해야 하기 때문이다. */
       (function () {
         "use strict";
 
@@ -504,15 +508,16 @@
         ];
 
         /* 딜레이는 오브젝트 root 단위다 — root 순서대로 배열로 뽑아 그대로 쓰게 한다.
+           단위는 초다 — cc.tween 의 delay() 가 초를 받으므로 변환할 자리를 안 만든다.
            objects[i] 는 root i 아래의 스프라이트 노드 묶음이다. */
         function delayArray() {
-          var rows = objSeq().map(function (k) { return { k: k, ms: delayMs(k) }; });
+          var rows = objSeq().map(function (k) { return { k: k, ms: delaySec(k).toFixed(2) }; });
           rows.sort(function (a, b) { return a.ms - b.ms; });
           var w = 0;
           rows.forEach(function (r) { w = Math.max(w, String(r.ms).length); });
-          return "/** 오브젝트 root 사이의 딜레이 (ms) — 시연 무대에서 맞춘 값.\n" +
+          return "/** 오브젝트 root 사이의 딜레이 (초) — 시연 무대에서 맞춘 값.\n" +
             " *  objects[i] = root i 아래 스프라이트 묶음. 순서를 이 주석과 맞춘다. */\n" +
-            "const OBJECT_DELAY_MS: number[] = [\n" +
+            "const OBJECT_DELAY_SEC: number[] = [\n" +
             rows.map(function (r) {
               var ms = String(r.ms), nm = OBJ[r.k].code;
               while (ms.length < w) ms = " " + ms;
@@ -530,7 +535,7 @@
           function wrap(sig, body, tail) {
             return sig + "(objects: cc.Node[][]): void {\n" +
               "    objects.forEach((parts, i) => {\n" +
-              "        const delay = OBJECT_DELAY_MS[i] / 1000;   // 앞 root 와의 간격\n\n" +
+              "        const delay = OBJECT_DELAY_SEC[i];   // 앞 root 와의 간격(초)\n\n" +
               "        parts.forEach((node) => {\n" +
               body.replace(/^/gm, "            ").replace(/^\s+$/gm, "") + "\n" +
               "        });\n    });\n}" + (tail || "");
@@ -682,27 +687,28 @@
         }
 
         function duration() { var v = parseFloat(el.dur.value); return isFinite(v) && v > 0 ? v : 1; }
-        function stagger() { var v = parseFloat(el.stg.value); return (isFinite(v) && v >= 0 ? v : 0) / 1000; }
+        function stagger() { var v = parseFloat(el.stg.value); return isFinite(v) && v >= 0 ? v : 0; }
         /* 딜레이는 오브젝트 root 사이의 간격이다. root 하나가 곧 연출 하나이고,
            그 안의 스프라이트는 같은 딜레이 · 같은 보간으로 함께 움직인다.
            비워 두면 공통 간격 × root 순번(자동), 값을 넣으면 그 root 만 수동이다. */
         var DLY = {};
         function objSeq() { return OBJS.map(function (o) { return o.key; }); }
+        function round2(v) { return Math.round(v * 100) / 100; }
         function autoDelay() {
-          var s = stagger() * 1000, out = {};
-          objSeq().forEach(function (k, i) { out[k] = Math.round(i * s); });
+          var s = stagger(), out = {};
+          objSeq().forEach(function (k, i) { out[k] = round2(i * s); });
           return out;
         }
-        function delayMs(key) {
+        function delaySec(key) {
           if (DLY[key] != null) return DLY[key];
           var a = autoDelay()[key];
           return a == null ? 0 : a;
         }
-        function delayOf(id) { return delayMs(LAYER[id].o); }
+        function delayOf(id) { return delaySec(LAYER[id].o); }
         function total() {
           var mx = 0;
-          objSeq().forEach(function (k) { mx = Math.max(mx, delayMs(k)); });
-          return mx / 1000 + duration();
+          objSeq().forEach(function (k) { mx = Math.max(mx, delaySec(k)); });
+          return mx + duration();
         }
 
         function refresh() {
@@ -758,7 +764,7 @@
           cancelAnimationFrame(state.raf);
           refresh();
           queue = metas.filter(function (m) { return ids.indexOf(m.id) >= 0; });
-          queueD = queue.map(function (m) { return whole ? delayOf(m.id) / 1000 : 0; });
+          queueD = queue.map(function (m) { return whole ? delayOf(m.id) : 0; });
           var base = queueD.length ? Math.min.apply(null, queueD) : 0;
           queueD = queueD.map(function (v) { return v - base; });
           queue.forEach(function (m) {
@@ -934,19 +940,19 @@
                 '<span class="sq">' + (ob.state ? ob.state + " · " : "") + n + "장</span>" +
                 (objDone(key) && objSeq()[0] !== key
                   ? '<span class="dl"><input class="iso-dly' + (DLY[key] != null ? " is-set" : "") +
-                    '" type="number" min="0" max="20000" step="50" value="' + delayMs(key) +
-                    '" aria-label="' + ob.label + ' 딜레이 ms" /><i>ms</i></span>'
+                    '" type="number" min="0" max="20" step="0.05" value="' + delaySec(key) +
+                    '" aria-label="' + ob.label + ' 딜레이 초" /><i>초</i></span>'
                   : '<span class="dl"></span>');
               var inp = h.querySelector(".iso-dly");
               if (inp) {
                 inp.addEventListener("input", function () {
                   var v = parseFloat(inp.value);
                   if (!isFinite(v)) return;
-                  DLY[key] = Math.max(0, Math.min(20000, v));
+                  DLY[key] = round2(Math.max(0, Math.min(20, v)));
                   inp.classList.add("is-set");
                   refresh();
                 });
-                inp.addEventListener("blur", function () { inp.value = delayMs(key); });
+                inp.addEventListener("blur", function () { inp.value = delaySec(key); });
               }
               rowsBox.appendChild(h);
               prev = key;
@@ -1002,7 +1008,7 @@
         /* ---- 초기화 ---- */
         treeHint.innerHTML =
           "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 뒤에 놓일수록 카메라에 가깝고, 이 순서는 아트 리소스 트리 그대로 <b>고정</b>입니다." +
-          "<br />딜레이 ms 는 <b>root 사이의 간격</b>이라 root 행에서만 고칩니다 — 첫 root 는 기준(0)이라 칸이 없습니다." +
+          "<br />딜레이(초)는 <b>root 사이의 간격</b>이라 root 행에서만 고칩니다 — 첫 root 는 기준(0)이라 칸이 없습니다." +
           "<br />보간 시간 1초는 <b>root 하나가 등장하는 시간</b>이고, 그 안의 스프라이트는 같은 딜레이로 함께 움직입니다." +
           "<br />행이나 무대에 얹으면 그 파츠만 남고, ◉ 로 숨깁니다. 오브젝트 유형은 아트 인계 문서의 네 가지 — <b>배치형 · 수리형 · 건설형 · 선택형</b> — 을 하나씩 깔아 뒀습니다.";
         /* 순서는 고정이라 되돌릴 것이 없다 — 숨긴 파츠와 손댄 딜레이만 기본값으로 돌린다. */
