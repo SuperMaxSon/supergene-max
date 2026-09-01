@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>아이소메트릭 데코 파츠 등장 연출</title>
+    <meta
+      name="description"
+      content="집 한 채를 아이소메트릭 파츠 10개로 쪼개서 데코레이션 등장 연출 8종을 실제 타이밍으로 돌려본다. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀐다. Cocos 에서 되는 연출만 실었다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#stage">무대</a>
+        <a class="nav-back" href="#code">코드</a>
+        <a class="nav-back" href="#support">지원 범위</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 데코 연출</div>
+        <h1 class="doc-title">아이소메트릭 데코 파츠 등장 연출</h1>
+        <p class="doc-lede">
+          데코레이션이 배치될 때 쓸 등장 연출을 <b>실제 타이밍 그대로</b> 돌려봅니다.
+          집 한 채를 아이소메트릭 파츠 10개로 쪼개 두고, 보간 시간 &middot; 파츠 간격 &middot;
+          이징을 바꾸면 아래 코드가 같이 바뀝니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
+          실었습니다 &mdash; 엔진이 기본 지원하지 않는 것은 뺐습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
+          <span class="tag">Cocos 2.4 API 기준</span>
+          <span class="tag">데코</span>
+          <span class="tag">인터랙티브</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+
+      <!-- 프리셋 → 파라미터 → 무대 순서로 세로로 쌓는다. 손이 닿는 것과 눈이 보는 것을
+           같은 화면에 두려면 컨트롤이 무대 위에 있어야 한다(무대가 화면 아래로 밀리면
+           슬라이더를 만지면서 결과를 못 본다). -->
+      <section class="doc-section" id="stage">
+        <h2 class="doc-h2">
+          무대
+          <span class="doc-h2-sub">파츠 10개 · 아이소메트릭 2:1 · 조립 순서대로 등장</span>
+        </h2>
+
+        <div class="projbar" id="presets" style="--acc: var(--smg)"></div>
+
+        <div class="calc-grid" style="margin-top: 14px">
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-dur">보간 시간 <span class="calc-unit">초</span></label>
+            <div class="calc-row">
+              <input class="calc-in" id="i-dur" type="number" min="0.1" max="3" step="0.05" value="1" />
+              <span class="calc-step">
+                <button class="calc-btn" type="button" data-for="i-dur" data-dir="1">▲</button>
+                <button class="calc-btn" type="button" data-for="i-dur" data-dir="-1">▼</button>
+              </span>
+            </div>
+          </div>
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-stg">파츠 간격 <span class="calc-unit">ms</span></label>
+            <div class="calc-row">
+              <input class="calc-in" id="i-stg" type="number" min="0" max="400" step="10" value="60" />
+              <span class="calc-step">
+                <button class="calc-btn" type="button" data-for="i-stg" data-dir="1">▲</button>
+                <button class="calc-btn" type="button" data-for="i-stg" data-dir="-1">▼</button>
+              </span>
+            </div>
+          </div>
+          <div class="calc-cell" style="--acc: var(--smg)">
+            <label class="calc-label" for="i-ease">이징</label>
+            <div class="calc-row">
+              <select class="calc-in" id="i-ease">
+                <option value="bounceOut">bounceOut</option>
+                <option value="backOut">backOut</option>
+                <option value="elasticOut">elasticOut</option>
+                <option value="quadOut">quadOut</option>
+                <option value="cubicOut">cubicOut</option>
+                <option value="sineOut">sineOut</option>
+                <option value="linear">linear</option>
+              </select>
+            </div>
+          </div>
+          <div class="calc-cell" style="--acc: var(--warn)">
+            <label class="calc-label">전체 길이 <span class="calc-unit">초</span></label>
+            <div class="calc-row">
+              <input class="calc-in" id="o-total" type="text" value="1.54" readonly />
+            </div>
+          </div>
+        </div>
+
+        <div class="iso-stage">
+          <svg id="scene" viewBox="60 60 520 410" role="img"
+               aria-label="아이소메트릭 파츠 10개로 조립되는 집 데코레이션 미리보기">
+            <defs id="clipdefs"></defs>
+
+            <!-- 1. 지면 타일 -->
+            <g id="p-ground" class="iso-part">
+              <polygon points="320,430 560,310 560,322 320,442" fill="#5E7A36" />
+              <polygon points="80,310 320,430 320,442 80,322" fill="#6E8C40" />
+              <polygon points="320,190 560,310 320,430 80,310" fill="#8FB055" />
+              <polygon points="320,190 380,220 320,250 260,220" fill="#96B85C" opacity=".7" />
+              <path d="M150 320 l10 -5 10 5 -10 5 Z M470 300 l10 -5 10 5 -10 5 Z" fill="#7C9C48" />
+            </g>
+
+            <!-- 2. 기단 -->
+            <g id="p-base" class="iso-part">
+              <polygon points="330,238 450,298 330,358 210,298" fill="#000" opacity=".10" />
+              <polygon points="320,350 440,290 440,310 320,370" fill="#977F5E" />
+              <polygon points="200,290 320,350 320,370 200,310" fill="#AF9A72" />
+              <polygon points="320,230 440,290 320,350 200,290" fill="#C9B48C" />
+            </g>
+
+            <!-- 3. 좌측 벽 (+y 면) -->
+            <g id="p-wallL" class="iso-part">
+              <polygon points="200,290 320,350 320,240 200,180" fill="#F1E2C0" />
+              <path d="M200 254 L320 314" stroke="#E3D0A8" stroke-width="3" />
+            </g>
+
+            <!-- 4. 우측 벽 (+x 면) -->
+            <g id="p-wallR" class="iso-part">
+              <polygon points="320,350 440,290 440,180 320,240" fill="#D9C49B" />
+              <path d="M320 314 L440 254" stroke="#CBB48A" stroke-width="3" />
+            </g>
+
+            <!-- 5. 지붕 좌면 (마루에서 앞으로 내려오는 긴 사면) -->
+            <g id="p-roofL" class="iso-part">
+              <polygon points="182,185 320,254 350,125 290,95" fill="#4E9A93" />
+              <polygon points="182,185 320,254 320,262 182,193" fill="#3E7C77" />
+              <path d="M236 140 L374 209" stroke="#5CAAA2" stroke-width="3" opacity=".8" />
+            </g>
+
+            <!-- 6. 지붕 우면 (합각 삼각면) -->
+            <g id="p-roofR" class="iso-part">
+              <polygon points="320,254 458,185 350,125" fill="#3A7A74" />
+              <polygon points="320,254 458,185 458,193 320,262" fill="#2F6560" />
+            </g>
+
+            <!-- 7. 굴뚝 -->
+            <g id="p-chimney" class="iso-part">
+              <polygon points="350,102 332,111 332,181 350,151" fill="#8E5647" />
+              <polygon points="314,102 332,111 332,181 314,172" fill="#A06550" />
+              <polygon points="332,93 350,102 332,111 314,102" fill="#C08A6E" />
+              <polygon points="353,95 332,106 332,113 353,102" fill="#6A3E32" />
+              <polygon points="311,95 332,106 332,113 311,102" fill="#74443A" />
+              <polygon points="332,84 353,95 332,106 311,95" fill="#8A5240" />
+            </g>
+
+            <!-- 8. 현관문 -->
+            <g id="p-door" class="iso-part">
+              <polygon points="354,257 401,233 401,239 354,263" fill="#8F4A2C" />
+              <polygon points="356,332 399,310 399,240 356,262" fill="#B4623C" />
+              <polygon points="360,330 396,312 396,246 360,264" fill="#C06E46" />
+              <ellipse cx="391" cy="290" rx="3.4" ry="4.4" fill="#F0D28A" />
+            </g>
+
+            <!-- 9. 창문 2개 -->
+            <g id="p-window" class="iso-part">
+              <polygon points="230,260 266,278 266,228 230,210" fill="#A9D8E5" />
+              <path d="M248 219 L248 269 M230 235 L266 253" stroke="#EFE7CF" stroke-width="3.5" />
+              <polygon points="402,264 433,248 433,198 402,214" fill="#8FC7D8" />
+              <path d="M417 206 L417 256 M402 239 L433 223" stroke="#E2D3B4" stroke-width="3.5" />
+            </g>
+
+            <!-- 10. 조경 (나무 · 울타리) -->
+            <g id="p-yard" class="iso-part">
+              <polygon points="339,394 517,306 517,312 339,400" fill="#D9C7A6" />
+              <polygon points="339,408 517,320 517,326 339,414" fill="#D9C7A6" />
+              <rect x="345" y="380" width="9" height="38" fill="#E0CFAB" />
+              <rect x="398" y="353" width="9" height="38" fill="#E0CFAB" />
+              <rect x="450" y="327" width="9" height="38" fill="#E0CFAB" />
+              <rect x="503" y="300" width="9" height="38" fill="#E0CFAB" />
+              <ellipse cx="128" cy="312" rx="34" ry="15" fill="#000" opacity=".12" />
+              <rect x="122" y="262" width="12" height="50" rx="3" fill="#6B4A33" />
+              <ellipse cx="104" cy="262" rx="26" ry="22" fill="#8FAD4A" />
+              <ellipse cx="152" cy="262" rx="24" ry="20" fill="#8FAD4A" />
+              <ellipse cx="128" cy="238" rx="42" ry="36" fill="#7E9B3F" />
+              <path d="M108 224 a16 14 0 0 1 22 -8" stroke="#A2C05C" stroke-width="5" fill="none" stroke-linecap="round" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="bar" style="--acc: var(--smg)"><i id="prog"></i></div>
+
+        <div class="projbar" style="--acc: var(--smg)">
+          <button class="projbtn is-active" type="button" id="play">▶ 재생</button>
+          <button class="projbtn" type="button" id="loop">반복</button>
+        </div>
+
+        <!-- 조립 순서는 파츠 목록이 아니라 stagger 의 순번이다. 재생 중 지금 어느
+             파츠가 움직이는지 여기서 읽힌다. -->
+        <div class="projbar" id="chips" style="--acc: var(--smg)"></div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--smg)">
+            <div class="note-title" id="hint-title">이 연출을 읽는 법</div>
+            <p id="hint"></p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">아이소메트릭이라서 생기는 함정</div>
+            <p>
+              <b>Fill 계열은 아이소 축을 따라 차오르지 않습니다.</b>
+              <code>cc.Sprite</code> 의 FILLED 는 스프라이트의 <b>사각 영역</b>을 기준으로 자르기
+              때문에, 아이소 파츠에 걸면 화면 기준 수평선 &middot; 수직선으로 잘려 올라옵니다.
+              지붕 사면을 따라 비스듬히 차오르게 하려면 파츠를 그 각도로 미리 그려두거나
+              (아트에서 해결) 마스크를 써야 합니다. 위 무대에서 세로 Fill 을 눌러 보면
+              지붕이 사면이 아니라 수평으로 잘리는 게 그대로 보입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="code">
+        <h2 class="doc-h2">
+          코드
+          <span class="doc-h2-sub">위 파라미터가 그대로 들어간 Cocos Creator 2.4 구현</span>
+        </h2>
+        <pre class="iso-code"><code id="code"></code></pre>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">그대로 복사해 쓸 때</div>
+            <p>
+              <code>parts</code> 는 조립 순서대로 정렬된 파츠 노드 배열입니다 &mdash;
+              이 순서가 곧 <code>delay(i * 간격)</code> 의 순번이라, 배열을 섞으면 연출도 섞입니다.
+              연출 도중 유저가 화면을 누르면 <code>cc.Tween.stopAllByTarget(node)</code> 로
+              끊고 최종값을 바로 대입해 스킵시켜야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="support">
+        <h2 class="doc-h2">
+          지원 범위
+          <span class="doc-h2-sub">Cocos Creator 2.4 · 여기 있는 8종은 전부 엔진 기본 기능</span>
+        </h2>
+
+        <div class="table-scroll" style="--acc: var(--smg)">
+          <table>
+            <thead>
+              <tr>
+                <th>연출</th>
+                <th>손대는 것</th>
+                <th>추가 비용</th>
+                <th>주의</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>위에서 낙하</td>
+                <td><code>node.y</code> + <code>delay</code></td>
+                <td>없음</td>
+                <td>시작 y 를 화면 밖까지 올려야 잘려 들어오는 게 안 보인다</td>
+              </tr>
+              <tr>
+                <td>낙하 + 착지 스쿼시</td>
+                <td><code>y</code> → <code>scaleY</code> 연결</td>
+                <td>없음</td>
+                <td>앵커 Y = 0 이어야 바닥이 안 뜬다. 아이소 파츠는 접지면이 마름모라 앵커를 바닥 중앙에 맞춰 둘 것</td>
+              </tr>
+              <tr>
+                <td>아래에서 팝</td>
+                <td><code>scale</code> 0.25 → 1</td>
+                <td>없음</td>
+                <td>2.4 의 <code>scale</code> 은 단일 값(균등). 축을 나누려면 <code>scaleX</code> / <code>scaleY</code></td>
+              </tr>
+              <tr>
+                <td>페이드 인 / 아웃</td>
+                <td><code>node.opacity</code> 0 ↔ 255</td>
+                <td>없음</td>
+                <td>자식까지 같이 흐려지려면 부모의 <code>cascadeOpacity</code> 를 켤 것</td>
+              </tr>
+              <tr>
+                <td>Fill 가로 / 세로</td>
+                <td><code>Sprite.Type.FILLED</code> + <code>fillRange</code></td>
+                <td>정점 갱신</td>
+                <td>FILLED 는 SLICED(9-slice) 와 배타적이다. 아이소 파츠에서는 화면 축으로 잘린다</td>
+              </tr>
+              <tr>
+                <td>Fill 라디얼</td>
+                <td><code>FillType.RADIAL</code> + <code>fillCenter</code></td>
+                <td>정점 갱신</td>
+                <td>시작 각도는 <code>fillStart</code> &mdash; 12시부터면 0.25, 역방향은 <code>fillRange</code> 를 음수로</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">뺀 것 — 4방향 동시 fill</div>
+            <p>
+              처음 후보에 있던 <b>사방으로 퍼지는 fill</b> 은 뺐습니다.
+              <code>cc.Sprite.FillType</code> 에는 HORIZONTAL &middot; VERTICAL &middot; RADIAL
+              셋뿐이라 <b>엔진 기본으로는 안 됩니다.</b> <code>cc.Mask</code> 를 씌워 스케일하거나
+              커스텀 <code>.effect</code> 를 쓰면 흉내는 나지만, 마스크는 스텐실이라 파츠마다
+              드로우콜이 붙고 안쪽 배칭이 끊깁니다. 데코 파츠가 화면에 수십 개 깔리는 구조에서
+              감당할 비용이 아니라서, 되는 것만 남겼습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">타이밍을 정할 때 보는 숫자</div>
+            <p>
+              전체 길이 = <b>파츠 간격 × (파츠 수 − 1) + 보간 시간</b>.
+              기본값(1.00초 &middot; 60ms &middot; 10파츠)이면 <b>1.54초</b>입니다.
+              간격이 40ms 밑으로 내려가면 순서가 안 읽혀 그냥 동시에 나타난 것처럼 보이고,
+              100ms 위로 올라가면 마지막 파츠를 기다리는 느낌이 납니다.
+              보간 시간은 파츠 하나가 움직이는 시간이지 연출 전체 길이가 아닙니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div class="foot">
+        <b>확인 범위</b> 이 페이지의 이징 곡선은 <code>cc.tween</code> 이 쓰는 공식을 그대로 옮겨
+        계산해서 타이밍은 엔진과 같게 보입니다. 다만 실제 렌더 결과(아틀라스 배칭 &middot; 알파 &middot;
+        드로우콜)는 씬에서 한 번 확인해야 합니다. Fill 계열은 <b>스프라이트 한 장짜리 파츠</b>에만
+        걸 수 있고, 자식 노드를 가진 파츠에는 그대로 쓸 수 없습니다.
+      </div>
+    </main>
