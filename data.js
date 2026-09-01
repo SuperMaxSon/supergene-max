@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 10:31",
+  updated: "2026-09-01 10:29",
 };
 
 /* --------------------------------------------------------------------------
@@ -222,13 +222,35 @@ const SECTIONS = [
         share: false,
       },
       {
+        title: "스토리 머지 — 인게임 구현 범위",
+        desc: "지금 없는 인게임 기능만 구현한다는 전제로 걷어낸 판. 보드 세션 안 8묶음(IN-1~8) · 붙이기 전에 형태를 확정해야 하는 게이트 6개 · L0 보드 규칙에서 필요한 필드까지 · L1 재화 접점 · 기능 하나가 타야 하는 구현 관문 7개.",
+        url: "docs/story-merge-kickoff-slim.html",
+        project: "smg",
+        status: "초안",
+        version: "v5.0",
+        updated: "2026-09-01 00:00",
+        pinned: false,
+        tags: ["머지", "인게임", "착수 범위"],
+      },
+      {
+        title: "스토리 머지 — 리소스 예산",
+        desc: "값이 바뀌는 문서라 구현 범위에서 떼어 낸 추적본. assets 92.3MB · 씬/프리팹 미참조 63.3MB · 번들 1개 통짜 20.0MB · 부팅 차단 씬 에셋 83KB. 용량 순위 · 로딩 타이밍 · 기준작(코지타일 1차 · 솔리테어 2차) gz 실측선 대비까지. 재측정 요청이 오면 이 문서만 갱신합니다.",
+        url: "docs/story-merge-resource-budget.html",
+        project: "smg",
+        status: "추적",
+        version: "v1.0",
+        updated: "2026-09-01 00:00",
+        pinned: false,
+        tags: ["머지", "리소스", "실측 추적"],
+      },
+      {
         title: "스토리 머지 — 역기획 TODO",
-        desc: "목표는 Gossip Harbor 급. 레퍼런스 위키를 정본으로 시스템 21개를 세우고 L0~L4 로 층을 갈랐습니다. 개발 계획을 한 섹션으로 합쳤고, 리소스는 용량이 아니라 리드타임으로 봅니다 — 인트로 스킵 3초 안에 받아지는가.",
+        desc: "목표는 Gossip Harbor 급. 레퍼런스 위키를 정본으로 시스템 21개를 세우고 L0~L4 로 층을 갈랐습니다. 리소스는 용량이 아니라 로딩 타이밍으로 봅니다 — 게임 플로우 어디서 받고 어디서 메모리에 올리는가.",
         url: "docs/story-merge-kickoff.html",
         project: "smg",
         status: "초안",
-        version: "v3.5",
-        updated: "2026-08-31 19:40",
+        version: "v4.4",
+        updated: "2026-09-01 10:29",
         pinned: false,
         tags: ["머지", "역기획", "착수 점검"],
       },
