@@ -6,7 +6,7 @@
     <title>아이소메트릭 데코 파츠 등장 연출</title>
     <meta
       name="description"
-      content="집 한 채를 아이소메트릭 파츠 10개로 쪼개서 데코레이션 등장 연출 8종을 실제 타이밍으로 돌려본다. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀐다. Cocos 에서 되는 연출만 실었다."
+      content="집 한 채를 아이소메트릭 파츠 10장으로 쪼개서, 부지 위에 올라오는 데코 9개의 등장 연출 7종을 실제 타이밍으로 돌려본다. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀐다. 레이어(그리기 순서)와 등장 순서를 따로 정리했다."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
@@ -16,6 +16,7 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#stage">무대</a>
+        <a class="nav-back" href="#layer">레이어</a>
         <a class="nav-back" href="#code">코드</a>
         <a class="nav-back" href="#support">지원 범위</a>
         <span class="nav-spacer"></span>
@@ -28,8 +29,9 @@
         <h1 class="doc-title">아이소메트릭 데코 파츠 등장 연출</h1>
         <p class="doc-lede">
           데코레이션이 배치될 때 쓸 등장 연출을 <b>실제 타이밍 그대로</b> 돌려봅니다.
-          집 한 채를 아이소메트릭 파츠 10개로 쪼개 두고, 보간 시간 &middot; 파츠 간격 &middot;
-          이징을 바꾸면 아래 코드가 같이 바뀝니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
+          집 한 채를 아이소메트릭 파츠 10장으로 쪼개 두고, 보간 시간 &middot; 파츠 간격 &middot;
+          이징을 바꾸면 아래 코드가 같이 바뀝니다. <b>부지(지면 타일)는 이미 깔려 있는 무대라
+          애니메이션에서 빼고</b>, 그 위에 올라오는 데코 9개만 등장시킵니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
           실었습니다 &mdash; 엔진이 기본 지원하지 않는 것은 뺐습니다.
         </p>
         <div class="doc-meta">
@@ -37,6 +39,7 @@
           <span class="tag">Cocos 2.4 API 기준</span>
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
+          <span class="tag">v1.1 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -49,7 +52,7 @@
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
           무대
-          <span class="doc-h2-sub">파츠 10개 · 아이소메트릭 2:1 · 조립 순서대로 등장</span>
+          <span class="doc-h2-sub">레이어 10장 · 등장 9개 (지면 제외) · 아이소메트릭 2:1</span>
         </h2>
 
         <div class="projbar" id="presets" style="--acc: var(--smg)"></div>
@@ -92,17 +95,17 @@
           <div class="calc-cell" style="--acc: var(--warn)">
             <label class="calc-label">전체 길이 <span class="calc-unit">초</span></label>
             <div class="calc-row">
-              <input class="calc-in" id="o-total" type="text" value="1.54" readonly />
+              <input class="calc-in" id="o-total" type="text" value="1.48" readonly />
             </div>
           </div>
         </div>
 
         <div class="iso-stage">
           <svg id="scene" viewBox="60 60 520 410" role="img"
-               aria-label="아이소메트릭 파츠 10개로 조립되는 집 데코레이션 미리보기">
+               aria-label="아이소메트릭 파츠 10장으로 조립되는 집 데코레이션 미리보기">
             <defs id="clipdefs"></defs>
 
-            <!-- 1. 지면 타일 -->
+            <!-- L1. 지면 타일 -->
             <g id="p-ground" class="iso-part">
               <polygon points="320,430 560,310 560,322 320,442" fill="#5E7A36" />
               <polygon points="80,310 320,430 320,442 80,322" fill="#6E8C40" />
@@ -111,7 +114,7 @@
               <path d="M150 320 l10 -5 10 5 -10 5 Z M470 300 l10 -5 10 5 -10 5 Z" fill="#7C9C48" />
             </g>
 
-            <!-- 2. 기단 -->
+            <!-- L2. 기단 -->
             <g id="p-base" class="iso-part">
               <polygon points="330,238 450,298 330,358 210,298" fill="#000" opacity=".10" />
               <polygon points="320,350 440,290 440,310 320,370" fill="#977F5E" />
@@ -119,32 +122,46 @@
               <polygon points="320,230 440,290 320,350 200,290" fill="#C9B48C" />
             </g>
 
-            <!-- 3. 좌측 벽 (+y 면) -->
+            <!-- L3. 좌측 벽 (+y 면) -->
             <g id="p-wallL" class="iso-part">
               <polygon points="200,290 320,350 320,240 200,180" fill="#F1E2C0" />
               <path d="M200 254 L320 314" stroke="#E3D0A8" stroke-width="3" />
             </g>
 
-            <!-- 4. 우측 벽 (+x 면) -->
+            <!-- L4. 우측 벽 (+x 면) -->
             <g id="p-wallR" class="iso-part">
               <polygon points="320,350 440,290 440,180 320,240" fill="#D9C49B" />
               <path d="M320 314 L440 254" stroke="#CBB48A" stroke-width="3" />
             </g>
 
-            <!-- 5. 지붕 좌면 (마루에서 앞으로 내려오는 긴 사면) -->
+            <!-- L5. 현관문 -->
+            <g id="p-door" class="iso-part">
+              <polygon points="354,257 401,233 401,239 354,263" fill="#8F4A2C" />
+              <polygon points="356,332 399,310 399,240 356,262" fill="#B4623C" />
+              <polygon points="360,330 396,312 396,246 360,264" fill="#C06E46" />
+              <ellipse cx="391" cy="290" rx="3.4" ry="4.4" fill="#F0D28A" />
+            </g>
+            <!-- L6. 창문 2개 -->
+            <g id="p-window" class="iso-part">
+              <polygon points="230,276 266,294 266,244 230,226" fill="#A9D8E5" />
+              <path d="M248 235 L248 285 M230 251 L266 269" stroke="#EFE7CF" stroke-width="3.5" />
+              <polygon points="402,280 433,264 433,214 402,230" fill="#8FC7D8" />
+              <path d="M417 222 L417 272 M402 255 L433 239" stroke="#E2D3B4" stroke-width="3.5" />
+            </g>
+            <!-- L7. 지붕 좌면 (마루에서 앞으로 내려오는 긴 사면) -->
             <g id="p-roofL" class="iso-part">
               <polygon points="182,185 320,254 350,125 290,95" fill="#4E9A93" />
               <polygon points="182,185 320,254 320,262 182,193" fill="#3E7C77" />
               <path d="M236 140 L374 209" stroke="#5CAAA2" stroke-width="3" opacity=".8" />
             </g>
 
-            <!-- 6. 지붕 우면 (합각 삼각면) -->
+            <!-- L8. 지붕 우면 (합각 삼각면) -->
             <g id="p-roofR" class="iso-part">
               <polygon points="320,254 458,185 350,125" fill="#3A7A74" />
               <polygon points="320,254 458,185 458,193 320,262" fill="#2F6560" />
             </g>
 
-            <!-- 7. 굴뚝 -->
+            <!-- L9. 굴뚝 -->
             <g id="p-chimney" class="iso-part">
               <polygon points="346,132 332,139 332,177 346,153" fill="#8E5647" />
               <polygon points="318,132 332,139 332,177 318,170" fill="#A06550" />
@@ -154,23 +171,8 @@
               <polygon points="332,118 348,126 332,134 316,126" fill="#8A5240" />
             </g>
 
-            <!-- 8. 현관문 -->
-            <g id="p-door" class="iso-part">
-              <polygon points="354,257 401,233 401,239 354,263" fill="#8F4A2C" />
-              <polygon points="356,332 399,310 399,240 356,262" fill="#B4623C" />
-              <polygon points="360,330 396,312 396,246 360,264" fill="#C06E46" />
-              <ellipse cx="391" cy="290" rx="3.4" ry="4.4" fill="#F0D28A" />
-            </g>
 
-            <!-- 9. 창문 2개 -->
-            <g id="p-window" class="iso-part">
-              <polygon points="230,260 266,278 266,228 230,210" fill="#A9D8E5" />
-              <path d="M248 219 L248 269 M230 235 L266 253" stroke="#EFE7CF" stroke-width="3.5" />
-              <polygon points="402,264 433,248 433,198 402,214" fill="#8FC7D8" />
-              <path d="M417 206 L417 256 M402 239 L433 223" stroke="#E2D3B4" stroke-width="3.5" />
-            </g>
-
-            <!-- 10. 조경 (나무 · 울타리) -->
+            <!-- L10. 조경 (나무 · 울타리) -->
             <g id="p-yard" class="iso-part">
               <polygon points="339,394 517,306 517,312 339,400" fill="#D9C7A6" />
               <polygon points="339,408 517,320 517,326 339,414" fill="#D9C7A6" />
@@ -218,6 +220,120 @@
         </div>
       </section>
 
+      <!-- 레이어 표는 파츠 목록이 아니라 "그리기 순서" 다. 등장 순번을 한 칸 옆에 붙여
+           둘이 다른 축이라는 걸 표 자체로 보이게 했다. -->
+      <section class="doc-section" id="layer">
+        <h2 class="doc-h2">
+          레이어
+          <span class="doc-h2-sub">이미지 리소스 10장의 그리기 순서 &mdash; 등장 순서와는 다른 축</span>
+        </h2>
+
+        <div class="table-scroll" style="--acc: var(--smg)">
+          <table>
+            <thead>
+              <tr>
+                <th>레이어</th>
+                <th>파츠 (이미지 리소스)</th>
+                <th style="text-align: right">등장 순번</th>
+                <th style="text-align: right">면 수</th>
+                <th>이 자리인 이유</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>L1</td><td>지면 타일</td>
+                <td style="text-align: right">&mdash;</td><td style="text-align: right">5</td>
+                <td>부지는 이미 깔려 있는 무대다. 애니메이션에서 뺐다</td>
+              </tr>
+              <tr>
+                <td>L2</td><td>기단</td>
+                <td style="text-align: right">1</td><td style="text-align: right">4</td>
+                <td>집의 접지면. <b>접지 그림자를 이 파츠에 묶어야</b> 낙하 중에 그림자만 남아 뜨지 않는다</td>
+              </tr>
+              <tr>
+                <td>L3</td><td>좌측 벽 (+y 면)</td>
+                <td style="text-align: right">2</td><td style="text-align: right">2</td>
+                <td>카메라에서 먼 면이라 우측 벽보다 아래</td>
+              </tr>
+              <tr>
+                <td>L4</td><td>우측 벽 (+x 면)</td>
+                <td style="text-align: right">3</td><td style="text-align: right">2</td>
+                <td>가까운 면. 두 벽이 만나는 모서리를 이 면이 덮는다</td>
+              </tr>
+              <tr>
+                <td>L5</td><td>현관문</td>
+                <td style="text-align: right">7</td><td style="text-align: right">4</td>
+                <td>벽에 붙는 장식이라 벽 위. 단 <b>지붕보다는 아래</b>여야 처마 밑으로 들어간다</td>
+              </tr>
+              <tr>
+                <td>L6</td><td>창문 2개</td>
+                <td style="text-align: right">8</td><td style="text-align: right">4</td>
+                <td>좌 · 우 벽에 하나씩. 처마선에 가장 가까워서 레이어 사고가 제일 먼저 나는 자리</td>
+              </tr>
+              <tr>
+                <td>L7</td><td>지붕 좌면</td>
+                <td style="text-align: right">4</td><td style="text-align: right">3</td>
+                <td>처마가 벽 윗부분을 덮어야 해서 벽 · 문 · 창문보다 위</td>
+              </tr>
+              <tr>
+                <td>L8</td><td>지붕 우면</td>
+                <td style="text-align: right">5</td><td style="text-align: right">2</td>
+                <td>합각면이 좌면보다 카메라에 가깝다</td>
+              </tr>
+              <tr>
+                <td>L9</td><td>굴뚝</td>
+                <td style="text-align: right">6</td><td style="text-align: right">6</td>
+                <td>지붕면 위에 선다. 밑동은 지붕 아래로 잘려 들어가게 밑변을 사면 각도로 깎아 뒀다</td>
+              </tr>
+              <tr>
+                <td>L10</td><td>조경 (나무 · 울타리)</td>
+                <td style="text-align: right">9</td><td style="text-align: right">10</td>
+                <td>울타리가 부지 앞 모서리(그리드 x = 3)에 있어 집보다 앞</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">실제로 걸렸던 것 — 창문이 지붕 위로 올라와 있었다</div>
+            <p>
+              처음에는 파츠를 <b>등장 순서 그대로</b> 쌓았습니다. 그러면 창문(등장 8번)이
+              지붕(4 &middot; 5번)보다 위 레이어가 되고, 우측 창문 윗부분이 처마를 뚫고 나옵니다.
+              등장 순서와 레이어를 같은 배열로 관리하면 반드시 나는 사고입니다.
+              문 &middot; 창문을 지붕 <b>아래</b> 레이어로 내리고, 창문을 16px 낮춰 처마선에서
+              떼어 놓는 것으로 해결했습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--smg)">
+            <div class="note-title">Cocos 에서는 이렇게 나눕니다</div>
+            <p>
+              레이어는 <b>부모 아래 <code>siblingIndex</code></b>(또는 <code>node.zIndex</code>)가
+              정하고, 등장 순서는 <b><code>delay(i * 간격)</code> 의 배열 순서</b>가 정합니다.
+              <b>두 값을 한 배열로 묶지 마세요.</b> 레이어를 고치려고 노드 순서를 옮기면 등장 순서가
+              따라오고, 등장 순서를 바꾸면 화면이 무너집니다. 파츠 프리팹에 레이어 값을 상수로
+              박아 두고, 등장 순서는 별도 배열로 두는 편이 안전합니다.
+            </p>
+            <p style="margin-top: 10px">
+              아이소 정렬 규칙은 <b>(x + y) 가 클수록 카메라에 가깝다</b>입니다. 데코가 자유 배치되는
+              구조라면 배치 좌표에서 <code>zIndex</code> 를 계산해 넣어야 하고, 지금처럼 집 한 채가
+              고정 조합이면 위 표의 L1~L10 을 프리팹에 그대로 굳혀 두면 됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">Fill 을 쓰려면 파츠 = 이미지 1장이어야 합니다</div>
+            <p>
+              위 표의 &ldquo;면 수&rdquo;는 지금 파츠 하나가 몇 조각으로 그려져 있는지입니다.
+              <code>cc.Sprite</code> 의 FILLED 는 <b>스프라이트 한 장</b>에만 걸리므로,
+              굴뚝(6면) &middot; 조경(10조각)처럼 자식이 여러 개인 파츠에는 파츠 노드째로 걸 수 없습니다.
+              Fill 연출을 쓸 파츠는 아트에서 <b>한 장으로 합쳐서</b> 뽑아야 하고,
+              그러면 면별 명암은 이미지 안에 구워진 상태가 됩니다.
+              낙하 &middot; 팝 &middot; 페이드는 노드 속성이라 조각이 몇 개든 상관없습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section class="doc-section" id="code">
         <h2 class="doc-h2">
           코드
@@ -240,7 +356,7 @@
       <section class="doc-section" id="support">
         <h2 class="doc-h2">
           지원 범위
-          <span class="doc-h2-sub">Cocos Creator 2.4 · 여기 있는 8종은 전부 엔진 기본 기능</span>
+          <span class="doc-h2-sub">Cocos Creator 2.4 · 여기 있는 7종은 전부 엔진 기본 기능</span>
         </h2>
 
         <div class="table-scroll" style="--acc: var(--smg)">
@@ -284,19 +400,13 @@
                 <td>정점 갱신</td>
                 <td>FILLED 는 SLICED(9-slice) 와 배타적이다. 아이소 파츠에서는 화면 축으로 잘린다</td>
               </tr>
-              <tr>
-                <td>Fill 라디얼</td>
-                <td><code>FillType.RADIAL</code> + <code>fillCenter</code></td>
-                <td>정점 갱신</td>
-                <td>시작 각도는 <code>fillStart</code> &mdash; 12시부터면 0.25, 역방향은 <code>fillRange</code> 를 음수로</td>
-              </tr>
             </tbody>
           </table>
         </div>
 
         <div class="notes">
           <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">뺀 것 — 4방향 동시 fill</div>
+            <div class="note-title">뺀 것 — 4방향 fill · 라디얼</div>
             <p>
               처음 후보에 있던 <b>사방으로 퍼지는 fill</b> 은 뺐습니다.
               <code>cc.Sprite.FillType</code> 에는 HORIZONTAL &middot; VERTICAL &middot; RADIAL
@@ -305,12 +415,17 @@
               드로우콜이 붙고 안쪽 배칭이 끊깁니다. 데코 파츠가 화면에 수십 개 깔리는 구조에서
               감당할 비용이 아니라서, 되는 것만 남겼습니다.
             </p>
+            <p style="margin-top: 10px">
+              <b>Fill 라디얼</b>은 엔진에서는 되지만 뺐습니다. 시계 방향으로 쓸리는 모양이
+              쿨타임 게이지의 언어라 데코가 &ldquo;놓이는&rdquo; 연출로는 읽히지 않고,
+              아이소 파츠에 걸면 회전축이 스프라이트 사각형의 중심이라 집 중심과도 어긋납니다.
+            </p>
           </div>
           <div class="note" style="--acc: var(--validate)">
             <div class="note-title">타이밍을 정할 때 보는 숫자</div>
             <p>
-              전체 길이 = <b>파츠 간격 × (파츠 수 − 1) + 보간 시간</b>.
-              기본값(1.00초 &middot; 60ms &middot; 10파츠)이면 <b>1.54초</b>입니다.
+              전체 길이 = <b>파츠 간격 × (등장 파츠 수 − 1) + 보간 시간</b>.
+              기본값(1.00초 &middot; 60ms &middot; 등장 파츠 9개)이면 <b>1.48초</b>입니다.
               간격이 40ms 밑으로 내려가면 순서가 안 읽혀 그냥 동시에 나타난 것처럼 보이고,
               100ms 위로 올라가면 마지막 파츠를 기다리는 느낌이 납니다.
               보간 시간은 파츠 하나가 움직이는 시간이지 연출 전체 길이가 아닙니다.
@@ -336,8 +451,9 @@
       (function () {
         "use strict";
 
+        /* 지면 타일은 이 배열에 없다 — 부지는 이미 깔려 있고 그 위로 데코가 올라오는 것이라
+           애니메이션 대상이 아니다. 고정 배경이라 transform · clip 을 아예 안 건다. */
         var PARTS = [
-          { id: "ground",  label: "지면" },
           { id: "base",    label: "기단" },
           { id: "wallL",   label: "좌측 벽" },
           { id: "wallR",   label: "우측 벽" },
@@ -369,21 +485,11 @@
           if (w <= 0 || h <= 0) return "M0 0 Z";
           return "M" + x + " " + y + " H" + (x + w) + " V" + (y + h) + " H" + x + " Z";
         }
-        function wedgePath(b, t) {
-          if (t <= 0) return "M0 0 Z";
-          if (t >= 0.999) return rectPath(b.x, b.y, b.w, b.h);
-          var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-          var R = Math.sqrt(b.w * b.w + b.h * b.h);
-          var a = t * Math.PI * 2;
-          return "M" + cx + " " + cy + " L" + cx + " " + (cy - R) +
-                 " A" + R + " " + R + " 0 " + (t > 0.5 ? 1 : 0) + " 1 " +
-                 (cx + R * Math.sin(a)) + " " + (cy - R * Math.cos(a)) + " Z";
-        }
 
         /* Cocos 2.4 에서 기본으로 되는 것만 남겼다. 4방향 fill 은 FillType 에 없어서 뺐다. */
         var PRESETS = [
           { id: "drop", name: "위에서 낙하", key: "node.y", ease: "bounceOut",
-            hint: "미션 보상이나 신규 파츠가 쏟아질 때. 파츠 간격 60~90ms 가 “다다다”로 읽히는 구간이고, 아이소에서는 지면 → 기단 → 벽 → 지붕 순서로 떨어져야 조립되는 것처럼 보인다.",
+            hint: "미션 보상이나 신규 파츠가 쏟아질 때. 파츠 간격 60~90ms 가 “다다다”로 읽히는 구간이고, 깔려 있는 부지 위로 기단 → 벽 → 지붕 순서로 떨어져야 조립되는 것처럼 보인다.",
             apply: function (p, t, e) { return { ty: -(1 - e) * p.fall, op: 1 }; } },
 
           { id: "squash", name: "낙하 + 착지 스쿼시", key: "y + scale", ease: "bounceOut",
@@ -413,11 +519,7 @@
 
           { id: "fillV", name: "Fill 세로", key: "FillType.VERTICAL", ease: "quadOut",
             hint: "아래 → 위로 차오른다. 건물이 “지어지는” 느낌에 제일 가깝지만, 보시다시피 지붕 사면을 따라가지 않고 화면 수평선으로 잘린다.",
-            apply: function (p, t, e) { return { clip: rectPath(p.bb.x, p.bb.y + p.bb.h * (1 - e), p.bb.w, p.bb.h * e) }; } },
-
-          { id: "fillR", name: "Fill 라디얼", key: "FillType.RADIAL", ease: "linear",
-            hint: "쿨타임 게이지에 쓰는 그 방식. 데코 등장에는 과하지만 “완성 도장” 같은 마무리 연출에는 쓸 만하다.",
-            apply: function (p, t, e) { return { clip: wedgePath(p.bb, e) }; } }
+            apply: function (p, t, e) { return { clip: rectPath(p.bb.x, p.bb.y + p.bb.h * (1 - e), p.bb.w, p.bb.h * e) }; } }
         ];
 
         function CODE(id, d, s, e) {
@@ -445,10 +547,7 @@
 "        sprite.fillType = cc.Sprite.FillType.HORIZONTAL;\n        sprite.fillStart = 0;      // 우 → 좌 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다",
             fillV:
 "private playFillVertical(parts: cc.Node[]): void {\n    " + head + sp +
-"        sprite.fillType = cc.Sprite.FillType.VERTICAL;\n        sprite.fillStart = 0;      // 위 → 아래 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다",
-            fillR:
-"private playFillRadial(parts: cc.Node[]): void {\n    " + head + sp +
-"        sprite.fillType = cc.Sprite.FillType.RADIAL;\n        sprite.fillCenter = cc.v2(0.5, 0.5);\n        sprite.fillStart = 0.25;   // 12시에서 시작\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}"
+"        sprite.fillType = cc.Sprite.FillType.VERTICAL;\n        sprite.fillStart = 0;      // 위 → 아래 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다"
           };
           return map[id];
         }
