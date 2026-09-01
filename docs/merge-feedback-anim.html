@@ -95,7 +95,7 @@
           <button type="button" data-lp="0" aria-pressed="true">1회</button>
           <button type="button" data-lp="1" aria-pressed="false">반복</button>
         </div>
-        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">화면에 들어오면 한 번 자동 재생됩니다</span>
+        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">무대의 타일과 양동이는 <b>직접 누르고 끌 수 있습니다.</b> 시연 재생은 정답 타이밍을 한 번 보여 줍니다.</span>
       </div>
 
       <section class="doc-section" id="token">
@@ -260,6 +260,7 @@
               <tr><td>드래그</td><td>픽업 성립 시점. 이동 중엔 없음</td><td><code>FX_TILE_SELECT</code></td></tr>
               <tr><td>병합</td><td>흡수가 끝나고 결과 팝이 시작되는 프레임</td><td><code>FX_TILE_MATCH</code></td></tr>
               <tr><td>드롭 거부 · 잠김 · 재화 부족</td><td>거부가 확정된 즉시 (복귀 트윈보다 먼저)</td><td><code>FX_TILE_ERROR</code></td></tr>
+              <tr><td>충전중 클릭 노티</td><td>눌린 프레임. 거부음이 아니다</td><td><code>FX_ITEM_HINT</code></td></tr>
               <tr><td>재화 획득</td><td>산개 끝 1회 + 코인마다 도착 시</td><td><code>FX_COIN_MOVE</code> → <code>FX_COIN_GET</code></td></tr>
               <tr><td>충전 완료 · 해금</td><td>팝 시작 프레임</td><td><code>FX_STAGE_UP</code> / <code>FX_PHOTO_UNLOCK</code></td></tr>
             </tbody>
@@ -386,11 +387,12 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             if (j.dead) continue;
             j.t += dt;
             var r = j.dur <= 0 ? 1 : Math.min(1, j.t / j.dur);
-            j.fn(j.ease(r), r);
+            // 한 트윈이 던진 예외가 rAF 루프 전체를 멈추면 페이지의 모든 연출이 죽는다.
+            try { j.fn(j.ease(r), r); } catch (err) { r = 1; }
             if (r >= 1) j.res(); else live.push(j);
           }
           jobs = live;
-          for (var k = 0; k < ticks.length; k++) ticks[k](dt);
+          for (var k = 0; k < ticks.length; k++) { try { ticks[k](dt); } catch (err) {} }
           requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);
@@ -598,6 +600,148 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
         /* ======================================================================
            데모 15종
            ====================================================================== */
+        /* ======================================================================
+           상호작용 — 무대 위 스프라이트를 실제로 누르고 끌 수 있게 한다.
+           재생 버튼은 "정답 타이밍" 을 보여 주고, 손으로 만지는 건 이쪽이다.
+           ====================================================================== */
+        var DROP_LIMIT = 56;          // ViewMergeBoard.DROP_DISTANCE_LIMIT 실측값
+
+        function clampV(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+        function toLocal(st, e) {
+          var b = st.layer.getBoundingClientRect();
+          return { x: e.clientX - (b.left + b.width / 2), y: -(e.clientY - (b.top + b.height / 2)) };
+        }
+        function nearestCell(st, pos) {
+          var best = -1, bestD = Number.MAX_VALUE;
+          for (var i = 0; i < st.cols * st.rows; i++) {
+            var p = st.cellPos(i), d = Math.hypot(pos.x - p.x, pos.y - p.y);
+            if (d < bestD) { bestD = d; best = i; }
+          }
+          return bestD <= DROP_LIMIT ? best : -1;
+        }
+        function snapHome(st, spr) {
+          return spr.to(0.26, { x: spr.home.x, y: spr.home.y, sx: 1, sy: 1, rot: 0 }, "backOut");
+        }
+        function settle(st, spr, cell) {
+          var p = st.cellPos(cell);
+          spr.home = { x: p.x, y: p.y };
+          spr.cell = cell;
+          return spr.to(0.14, { x: p.x, y: p.y, sx: 1, sy: 1, rot: 0 }, "quadOut")
+            .then(function () { return squash(spr, 0.06, 1.14, 0.88, 0.16); });
+        }
+        function act(st, fn) {
+          if (st.busy) return Promise.resolve();
+          st.busy = true;
+          return Promise.resolve(fn()).then(function () { st.busy = false; }, function () { st.busy = false; });
+        }
+
+        /* 드래그 — 픽업 · 그림자 · 고스트 · 지연 추종 · 셀 스냅까지 한 곳에서 */
+        function dragify(st, spr, cfg) {
+          cfg = cfg || {};
+          spr.el.classList.add("is-hit", "is-drag");
+          spr.home = { x: spr.x, y: spr.y };
+          spr.cell = nearestCell(st, spr.home);
+          var dragging = false, off = { x: 0, y: 0 }, aim = { x: 0, y: 0 }, follow = null, ghost = null, hover = -1;
+          var limX = ((st.cols - 1) * PITCH) / 2, limY = ((st.rows - 1) * PITCH) / 2;
+
+          spr.el.addEventListener("pointerdown", function (e) {
+            if (st.busy || dragging) return;
+            e.preventDefault();
+            try { spr.el.setPointerCapture(e.pointerId); } catch (err) {}
+            var p = toLocal(st, e);
+            off = { x: spr.x - p.x, y: spr.y - p.y };
+            aim = { x: spr.x, y: spr.y };
+            dragging = true;
+            spr.el.style.zIndex = 20;
+            spr.to(0.10, { sx: 1.08, sy: 1.08 }, "backOut");
+            if (cfg.shadow) cfg.shadow.to(0.10, { sx: 1.3, sy: 1.3, a: 0.32 }, "quadOut");
+            if (cfg.ghost !== false) {
+              ghost = st.spr(tileHTML(cfg.ghostIcon || "mfx-product", 0, "is-ghost"));
+              ghost.set({ x: spr.home.x, y: spr.home.y, a: 0 });
+              ghost.to(0.10, { a: 0.55 }, "quadOut");
+            }
+            /* 손가락에 정확히 붙이지 않는다 — 지연 추종이 무게를 만든다 */
+            follow = function (dt) {
+              var k = 1 - Math.pow(1 - 0.4, dt * 60);
+              spr.x += (aim.x - spr.x) * k;
+              spr.y += (aim.y + 6 - spr.y) * k;
+              spr.rot += ((aim.x - spr.x) * 0.16 - spr.rot) * k;
+              spr.apply();
+              if (cfg.shadow) cfg.shadow.set({ x: spr.x, y: spr.y - 36 });
+            };
+            addTick(follow);
+          });
+
+          spr.el.addEventListener("pointermove", function (e) {
+            if (!dragging) return;
+            var p = toLocal(st, e);
+            aim = { x: clampV(p.x + off.x, -limX, limX), y: clampV(p.y + off.y, -limY, limY) };
+            var cell = nearestCell(st, aim);
+            if (cell !== hover) { hover = cell; if (cfg.onHover) cfg.onHover(cell); }
+          });
+
+          function release() {
+            if (!dragging) return;
+            dragging = false;
+            delTick(follow);
+            if (ghost) { var g = ghost; ghost = null; g.to(0.12, { a: 0 }, "quadIn").then(function () { g.kill(); }); }
+            if (cfg.shadow) cfg.shadow.to(0.14, { sx: 1, sy: 1, a: 0.5 }, "quadOut");
+            if (cfg.onHover) cfg.onHover(-1);
+            var cell = nearestCell(st, aim);
+            hover = -1;
+            act(st, function () {
+              return cfg.onDrop ? cfg.onDrop(cell) : snapHome(st, spr);
+            }).then(function () { spr.el.style.zIndex = ""; });
+          }
+          spr.el.addEventListener("pointerup", release);
+          spr.el.addEventListener("pointercancel", release);
+        }
+
+        /* 탭 — 눌림 피드백은 기본 제공, 탭/더블탭은 콜백 */
+        function tappify(st, spr, cfg) {
+          cfg = cfg || {};
+          spr.el.classList.add("is-hit");
+          spr.home = { x: spr.x, y: spr.y };
+          var down = null, lastTap = 0;
+
+          spr.el.addEventListener("pointerdown", function (e) {
+            if (st.busy) return;
+            e.preventDefault();
+            try { spr.el.setPointerCapture(e.pointerId); } catch (err) {}
+            down = toLocal(st, e);
+            if (cfg.press === false) return;
+            plateEdge(spr, 1);
+            spr.to(0.12, { y: spr.home.y - 3, sx: 1.06, sy: 0.94 }, "quadOut");
+          });
+
+          function up(e) {
+            if (!down) return;
+            var p = toLocal(st, e), moved = Math.hypot(p.x - down.x, p.y - down.y);
+            down = null;
+            if (cfg.press !== false) {
+              plateEdge(spr, 3);
+              spr.to(0.12, { y: spr.home.y }, "quadOut");
+              spr.to(0.08, { sx: 0.95, sy: 1.07 }, "quadOut")
+                .then(function () { return spr.to(0.18, { sx: 1, sy: 1 }, "backOut"); });
+            }
+            if (st.busy || moved >= 5) { lastTap = 0; return; }
+            var now = e.timeStamp || 0;
+            /* 손가락이 끌렸으면 탭이 아니다 — 드래그 중 오발을 막는 유일한 방어선 */
+            if (cfg.onDoubleTap && lastTap && now - lastTap <= 280) {
+              lastTap = 0;
+              act(st, function () { return cfg.onDoubleTap(); });
+              return;
+            }
+            lastTap = now;
+            if (cfg.onTap) act(st, function () { return cfg.onTap(); });
+          }
+          spr.el.addEventListener("pointerup", up);
+          spr.el.addEventListener("pointercancel", function () { down = null; });
+        }
+
+        /* ======================================================================
+           데모 15종 — reset() 이 무대를 세우고 wire() 가 손을 붙인다
+           ====================================================================== */
         var DEMOS = {};
 
         /* A1 · 클릭 --------------------------------------------------------- */
@@ -609,6 +753,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             var p = st.cellPos(4);
             gen.set({ x: p.x, y: p.y });
             plateEdge(gen, 3);
+            tappify(st, gen, {});
           }
           function play() {
             reset();
@@ -624,72 +769,86 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
                 ]);
               });
           }
-          return { st: st, reset: reset, play: play };
+          return { st: st, reset: reset, play: play, hint: "양동이를 눌러 보세요" };
         };
 
         /* A2 · 생산물 비행 -------------------------------------------------- */
         DEMOS.a2 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), gen, GI = 4, TI = 10;
+          var st = makeStage(host, { cols: 4, rows: 3 }), gen, used = [], GI = 4;
+          var ORDER = [10, 6, 2, 3, 7, 11, 9, 5, 1, 0, 8];
           function reset() {
             st.clear();
+            used = [];
             gen = st.tile("mfx-producer");
             var p = st.cellPos(GI);
             gen.set({ x: p.x, y: p.y });
+            tappify(st, gen, { onTap: function () { return spawn(); } });
           }
-          function play() {
-            reset();
-            var from = st.cellPos(GI), to = st.cellPos(TI);
-            var dist = Math.hypot(to.x - from.x, to.y - from.y);
-            var lift = Math.max(70, dist * 0.38);
+          function spawn() {
+            var free = ORDER.filter(function (c) { return used.indexOf(c) < 0; });
+            if (!free.length) { used = []; st.clear(); reset(); return; }
+            var cell = free[0];
+            used.push(cell);
+            var from = st.cellPos(GI), to = st.cellPos(cell);
+            var lift = Math.max(70, Math.hypot(to.x - from.x, to.y - from.y) * 0.38);
             var g = guide(st, from, { x: from.x, y: from.y + lift }, { x: to.x, y: to.y + lift * 0.6 }, to);
-            plateEdge(gen, 1);
-            return gen.to(0.12, { y: from.y - 3 }, "quadOut").then(function () {
-              plateEdge(gen, 3);
-              gen.to(0.18, { y: from.y }, "backOut");
-              tw(0.15, "quadOut", function (e) { g.el.style.opacity = e * 0.9; });
-              var item = st.tile("mfx-product", 1);
-              item.set({ x: from.x, y: from.y, sx: 0.5, sy: 0.5 });
-              item.el.style.zIndex = 5;
-              item.to(0.15, { sx: 1.14, sy: 1.14 }, "backOut").then(function () { return item.to(0.27, { sx: 1, sy: 1 }, "quadIn"); });
-              return flyBezier(item, from, to, 0.42, 0.38, 70).then(function () {
-                tw(0.3, "quadIn", function (e) { g.el.style.opacity = 0.9 * (1 - e); }).then(function () { g.kill(); });
-                return squash(item, 0.06, 1.18, 0.84, 0.16);
-              });
+            tw(0.15, "quadOut", function (e) { g.el.style.opacity = e * 0.9; });
+            var item = st.tile("mfx-product", 1);
+            item.set({ x: from.x, y: from.y, sx: 0.5, sy: 0.5 });
+            item.el.style.zIndex = 5;
+            item.to(0.15, { sx: 1.14, sy: 1.14 }, "backOut").then(function () { return item.to(0.27, { sx: 1, sy: 1 }, "quadIn"); });
+            return flyBezier(item, from, to, 0.42, 0.38, 70).then(function () {
+              item.el.style.zIndex = "";
+              tw(0.3, "quadIn", function (e) { g.el.style.opacity = 0.9 * (1 - e); }).then(function () { g.kill(); });
+              return squash(item, 0.06, 1.18, 0.84, 0.16);
             });
           }
-          return { st: st, reset: reset, play: play };
+          function play() { reset(); return spawn(); }
+          return { st: st, reset: reset, play: play, hint: "양동이를 누를 때마다 하나씩 날아갑니다" };
         };
 
         /* A3 · 드래그 ------------------------------------------------------- */
         DEMOS.a3 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), tile, shadow, SI = 5, DI = 10;
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, shadow, occupied = [1, 7], SI = 5;
           function reset() {
             st.clear();
+            occupied.forEach(function (i) {
+              var q = st.cellPos(i);
+              st.tile("mfx-product", 3).set({ x: q.x, y: q.y });
+            });
             var p = st.cellPos(SI);
             shadow = st.spr('<div class="mfx-shadow"></div>');
             shadow.set({ x: p.x, y: p.y - 30, a: 0.5 });
             tile = st.tile("mfx-product", 2);
             tile.set({ x: p.x, y: p.y });
+            dragify(st, tile, {
+              shadow: shadow,
+              onDrop: function (cell) {
+                if (cell < 0 || occupied.indexOf(cell) >= 0 || cell === tile.cell) return snapHome(st, tile);
+                var was = tile.cell;
+                return settle(st, tile, cell).then(function () {
+                  shadow.set({ x: tile.home.x, y: tile.home.y - 30 });
+                  if (was >= 0) return null;
+                });
+              },
+            });
           }
           function play() {
             reset();
-            var from = st.cellPos(SI), to = st.cellPos(DI);
+            var from = st.cellPos(SI), to = st.cellPos(10);
             var ghost = st.spr(tileHTML("mfx-product", 0, "is-ghost"));
             ghost.set({ x: from.x, y: from.y, a: 0 });
             var finger = st.spr('<div class="mfx-finger"></div>');
             finger.set({ x: from.x, y: from.y, a: 0 });
             tile.el.style.zIndex = 6;
-
             return Promise.all([
               tile.to(0.1, { sx: 1.08, sy: 1.08, y: from.y + 6 }, "backOut"),
               shadow.to(0.1, { sx: 1.3, sy: 1.3, a: 0.32 }, "quadOut"),
               ghost.to(0.1, { a: 0.55 }, "quadOut"),
               finger.to(0.1, { a: 1 }, "quadOut"),
             ]).then(function () {
-              /* 손가락은 직선, 타일은 지연 추종. 프레임 독립 보간이라 60fps 아니어도 같은 느낌. */
-              var FOLLOW = 0.4;
               var follow = function (dt) {
-                var k = 1 - Math.pow(1 - FOLLOW, dt * 60);
+                var k = 1 - Math.pow(1 - 0.4, dt * 60);
                 tile.x += (finger.x - tile.x) * k;
                 tile.y += (finger.y + 6 - tile.y) * k;
                 tile.rot += ((finger.x - tile.x) * 0.16 - tile.rot) * k;
@@ -707,44 +866,65 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
               });
               return p.then(function () { return wait(0.12); }).then(function () {
                 delTick(follow);
-                finger.to(0.12, { a: 0 }, "quadIn");
-                ghost.to(0.12, { a: 0 }, "quadIn");
+                finger.to(0.12, { a: 0 }, "quadIn").then(function () { finger.kill(); });
+                ghost.to(0.12, { a: 0 }, "quadIn").then(function () { ghost.kill(); });
+                tile.el.style.zIndex = "";
                 return Promise.all([
                   tile.to(0.14, { x: to.x, y: to.y, sx: 1, sy: 1, rot: 0 }, "quadOut"),
                   shadow.to(0.14, { x: to.x, y: to.y - 30, sx: 1, sy: 1, a: 0.5 }, "quadOut"),
                 ]);
-              }).then(function () { return squash(tile, 0.06, 1.14, 0.88, 0.16); });
+              }).then(function () {
+                tile.home = { x: to.x, y: to.y };
+                tile.cell = 10;
+                return squash(tile, 0.06, 1.14, 0.88, 0.16);
+              });
             });
           }
-          return { st: st, reset: reset, play: play };
+          return { st: st, reset: reset, play: play, hint: "가운데 타일을 끌어 보세요 · 빈 칸에만 놓입니다" };
         };
 
         /* A4 · 병합 --------------------------------------------------------- */
         DEMOS.a4 = function (host) {
           var st = makeStage(host, { cols: 3, rows: 2 }), src, dst, SI = 3, DI = 4;
+          function makeSource() {
+            var a = st.cellPos(SI);
+            src = st.tile("mfx-product", 2);
+            src.set({ x: a.x, y: a.y });
+            dragify(st, src, {
+              onDrop: function (cell) {
+                if (cell !== DI || !dst || dst.tier >= 4) return snapHome(st, src);
+                return merge();
+              },
+            });
+          }
           function reset() {
             st.clear();
-            var a = st.cellPos(SI), b = st.cellPos(DI);
-            dst = st.tile("mfx-product", 2); dst.set({ x: b.x, y: b.y });
-            src = st.tile("mfx-product", 2); src.set({ x: a.x, y: a.y });
+            var b = st.cellPos(DI);
+            dst = st.tile("mfx-product", 2);
+            dst.tier = 2;
+            dst.set({ x: b.x, y: b.y });
+            makeSource();
           }
-          function play() {
-            reset();
+          function merge() {
             var b = st.cellPos(DI);
             return src.to(0.14, { x: b.x, y: b.y, sx: 0.55, sy: 0.55, a: 0 }, "quadIn").then(function () {
               src.kill();
               var ring = st.spr('<div class="mfx-ring"></div>');
               ring.set({ x: b.x, y: b.y, sx: 0.5, sy: 0.5 });
               ring.to(0.3, { sx: 1.9, sy: 1.9, a: 0 }, "quadOut").then(function () { ring.kill(); });
-              dst.el.querySelector(".lv").textContent = "3";
-              dst.el.querySelector("svg").style.filter = TINT[2];
+              dst.tier = Math.min(4, dst.tier + 1);
+              dst.el.querySelector(".lv").textContent = String(dst.tier);
+              dst.el.querySelector("svg").style.filter = TINT[dst.tier - 1];
               dst.set({ sx: 0.78, sy: 0.78 });
               return dst.to(0.07, { sx: 1.24, sy: 0.82 }, "quadOut");
             }).then(function () {
               return Promise.all([dst.to(0.2, { sx: 1, sy: 1 }, "backOut"), sparks(st, b, 7)]);
+            }).then(function () { return wait(0.35); }).then(function () {
+              if (dst.tier < 4) makeSource();          // 계속 만져 볼 수 있게 하나 더 놓는다
             });
           }
-          return { st: st, reset: reset, play: play };
+          function play() { reset(); return merge(); }
+          return { st: st, reset: reset, play: play, hint: "왼쪽 타일을 오른쪽 같은 레벨 위로 끌어 보세요" };
         };
 
         /* A5 · 더블탭 자동 이동 --------------------------------------------- */
@@ -752,43 +932,52 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           var st = makeStage(host, { cols: 4, rows: 3 }), tile, SI = 8, TI = 2;
           function reset() {
             st.clear();
+            var q = st.cellPos(TI);
+            st.tile("mfx-product", 2).set({ x: q.x, y: q.y, a: 0.35 });
             var p = st.cellPos(SI);
             tile = st.tile("mfx-product", 2);
             tile.set({ x: p.x, y: p.y });
+            tappify(st, tile, { press: false, onTap: function () { return squash(tile, 0.06, 0.92, 0.92, 0.1); }, onDoubleTap: hop });
+          }
+          function hop() {
+            if (tile.cell === TI) return snapHome(st, tile);
+            var from = { x: tile.x, y: tile.y }, to = st.cellPos(TI);
+            st.cellEls[TI].classList.add("is-hl");
+            tile.el.style.zIndex = 5;
+            tile.to(0.12, { sx: 1.1, sy: 1.1 }, "backOut").then(function () { return tile.to(0.2, { sx: 1, sy: 1 }, "quadIn"); });
+            return flyBezier(tile, from, to, 0.3, 0.22, 42).then(function () {
+              st.cellEls[TI].classList.remove("is-hl");
+              tile.el.style.zIndex = "";
+              tile.home = { x: to.x, y: to.y };
+              tile.cell = TI;
+              return squash(tile, 0.05, 1.16, 0.86, 0.15);
+            });
           }
           function play() {
             reset();
-            var from = st.cellPos(SI), to = st.cellPos(TI);
             return squash(tile, 0.06, 0.92, 0.92, 0.1)
               .then(function () { return wait(0.07); })
               .then(function () { return squash(tile, 0.06, 0.92, 0.92, 0.1); })
-              .then(function () {
-                st.cellEls[TI].classList.add("is-hl");
-                tile.el.style.zIndex = 5;
-                tile.to(0.12, { sx: 1.1, sy: 1.1 }, "backOut").then(function () { return tile.to(0.2, { sx: 1, sy: 1 }, "quadIn"); });
-                return flyBezier(tile, from, to, 0.3, 0.22, 42);
-              })
-              .then(function () {
-                st.cellEls[TI].classList.remove("is-hl");
-                return squash(tile, 0.05, 1.16, 0.86, 0.15);
-              });
+              .then(hop);
           }
-          return { st: st, reset: reset, play: play };
+          return { st: st, reset: reset, play: play, hint: "아래 타일을 두 번 빠르게 눌러 보세요" };
         };
 
         /* A6 · 재화 획득 ----------------------------------------------------- */
         DEMOS.a6 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), chest;
+          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), chest, total = 1240;
           function reset() {
             st.clear();
+            total = 1240;
             var p = st.cellPos(4);
             chest = st.tile("mfx-producer");
             chest.set({ x: p.x, y: p.y });
             if (st.hudNum) st.hudNum.textContent = "1,240";
+            tappify(st, chest, { onTap: burst });
           }
-          function play() {
-            reset();
-            var src = st.cellPos(4);
+          function burst() {
+            var src = st.cellPos(4), from = total, to = total + 50 + Math.floor((total % 7) * 10);
+            total = to;
             return squash(chest, 0.07, 1.14, 0.88, 0.16).then(function () {
               var target = st.at(st.hud), N = 6, all = [];
               for (var i = 0; i < N; i++) {
@@ -797,24 +986,23 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
                     var c = st.spr('<div class="mfx-coin"></div>');
                     c.set({ x: src.x, y: src.y });
                     var ang = -Math.PI / 2 + (i - (N - 1) / 2) * 0.42;
-                    return c.to(0.26, {
-                      x: src.x + Math.cos(ang) * 52, y: src.y + Math.sin(ang) * 52 + 48, sx: 1.25, sy: 1.25,
-                    }, "circOut").then(function () {
-                      return c.to(0.34, { x: target.x, y: target.y, sx: 0.8, sy: 0.8 }, "circIn");
-                    }).then(function () {
-                      c.kill();
-                      if (i === 0 && st.hudNum) {
-                        tw(0.5, "quadOut", function (e) { st.hudNum.textContent = Math.round(1240 + 300 * e).toLocaleString(); });
-                      }
-                      return nodePunch(st.hud, 0.05, 1.09, 0.12);
-                    });
+                    return c.to(0.26, { x: src.x + Math.cos(ang) * 52, y: src.y + Math.sin(ang) * 52 + 48, sx: 1.25, sy: 1.25 }, "circOut")
+                      .then(function () { return c.to(0.34, { x: target.x, y: target.y, sx: 0.8, sy: 0.8 }, "circIn"); })
+                      .then(function () {
+                        c.kill();
+                        if (i === 0 && st.hudNum) {
+                          tw(0.5, "quadOut", function (e) { st.hudNum.textContent = Math.round(from + (to - from) * e).toLocaleString(); });
+                        }
+                        return nodePunch(st.hud, 0.05, 1.09, 0.12);
+                      });
                   }));
                 })(i);
               }
               return Promise.all(all);
             });
           }
-          return { st: st, reset: reset, play: play };
+          function play() { reset(); return burst(); }
+          return { st: st, reset: reset, play: play, hint: "양동이를 눌러 코인을 받아 보세요" };
         };
 
         /* B1 · 보드가 꽉 참 -------------------------------------------------- */
@@ -830,61 +1018,46 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             gen = st.tile("mfx-producer");
             var g = st.cellPos(GI);
             gen.set({ x: g.x, y: g.y });
+            tappify(st, gen, { onTap: deny });
           }
-          function play() {
-            reset();
-            var g = st.cellPos(GI);
-            plateEdge(gen, 1);
-            return gen.to(0.12, { y: g.y - 3 }, "quadOut").then(function () {
-              plateEdge(gen, 3);
-              gen.to(0.12, { y: g.y }, "quadOut");
-              /* 거부는 소리(FX_TILE_ERROR)부터 → 원인 노드 흔들림 → 보드 프레임 → 문구 */
-              return Promise.all([
-                shake(gen, 6, 0.3),
-                nodeShake(st.board, 5, 0.3),
-                toast(st, "보드가 꽉 찼어요", false, 1.1),
-              ]);
-            });
+          function deny() {
+            /* 거부는 소리(FX_TILE_ERROR)부터 → 원인 노드 흔들림 → 보드 프레임 → 문구 */
+            return Promise.all([
+              shake(gen, 6, 0.3),
+              nodeShake(st.board, 5, 0.3),
+              toast(st, "보드가 꽉 찼어요", false, 1.1),
+            ]);
           }
-          return { st: st, reset: reset, play: play };
+          function play() { reset(); return deny(); }
+          return { st: st, reset: reset, play: play, hint: "빈 칸이 없는 상태에서 양동이를 눌러 보세요" };
         };
 
-        /* B2 · 충전중 -------------------------------------------------------- */
+        /* B2 · 충전중 — 클릭했을 때 뜨는 텍스트 노티 ------------------------- */
         DEMOS.b2 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2 }), gen, gauge, fill, lbl, alive = false;
+          var st = makeStage(host, { cols: 3, rows: 2 }), gen, gauge, fill, remain = 12;
           function reset() {
-            alive = false;
             st.clear();
+            remain = 12;
             var p = st.cellPos(4);
             gen = st.tile("mfx-producer");
             gen.set({ x: p.x, y: p.y, a: 0.45 });
             gauge = st.spr('<div class="mfx-gauge"><i></i></div>');
             gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
-            lbl = st.spr('<div class="mfx-chg">충전중</div>');
-            lbl.set({ x: p.x, y: p.y + 62 });
+            fill.style.width = "38%";
+            tappify(st, gen, { onTap: notify });
           }
-          function play() {
-            reset();
-            alive = true;
-            /* 점은 기존 CCact.playCommaEffect 와 같은 0.25s 4단 사이클 */
-            var n = 0;
-            (function dots() {
-              if (!alive) return;
-              lbl.el.firstChild.textContent = "충전중" + "...".slice(0, n % 4);
-              n++;
-              wait(0.25).then(dots);
-            })();
-            /* 대기 상태의 생산자는 숨만 쉰다 — 수확 가능할 때보다 확실히 조용하게 */
-            (function breathe() {
-              if (!alive) return;
-              gen.to(0.8, { sy: 0.97, sx: 1.02 }, "sineInOut")
-                .then(function () { return alive ? gen.to(0.8, { sy: 1, sx: 1 }, "sineInOut") : null; })
-                .then(function () { if (alive) breathe(); });
-            })();
-            return tw(2.6, "linear", function (e) { fill.style.width = e * 100 + "%"; }).then(function () { alive = false; });
+          function notify() {
+            /* 충전중은 상태가 아니라 "지금 못 쓴다" 를 알려 주는 클릭 응답이다.
+               거부(B1)와 달리 흔들지 않는다 — 잘못한 게 아니라 기다리면 되는 일이라서. */
+            return Promise.all([
+              gen.to(0.12, { sx: 1.05, sy: 0.95 }, "quadOut").then(function () { return gen.to(0.18, { sx: 1, sy: 1 }, "backOut"); }),
+              nodePunch(gauge.el.firstChild, 0.08, 1.12, 0.16),   // Spr 래퍼가 아니라 안쪽 게이지를 친다
+              toast(st, "충전중이에요 · " + remain + "초 남음", false, 1.1),
+            ]);
           }
-          return { st: st, reset: reset, play: play, stop: function () { alive = false; } };
+          function play() { reset(); return notify(); }
+          return { st: st, reset: reset, play: play, hint: "충전중인(흐린) 양동이를 눌러 보세요" };
         };
 
         /* B3 · 레벨 n 에 해금 ------------------------------------------------ */
@@ -898,24 +1071,20 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             var p = st.cellPos(4);
             lock = st.tile("mfx-lock", 0, "is-locked");
             lock.set({ x: p.x, y: p.y });
+            tappify(st, lock, { onTap: deny });
           }
-          function play() {
-            reset();
-            plateEdge(lock, 1);
-            return lock.to(0.1, { sx: 0.94, sy: 0.94 }, "quadOut").then(function () {
-              plateEdge(lock, 3);
-              lock.to(0.14, { sx: 1, sy: 1 }, "backOut");
-              /* 자물쇠는 흔드는 게 아니라 돌린다 — "잠겨서 안 열린다" 는 회전이 더 읽힌다 */
-              return Promise.all([
-                lock.to(0.08, { rot: -9 }, "quadOut")
-                  .then(function () { return lock.to(0.08, { rot: 9 }, "quadOut"); })
-                  .then(function () { return lock.to(0.08, { rot: -5 }, "quadOut"); })
-                  .then(function () { return lock.to(0.12, { rot: 0 }, "backOut"); }),
-                toast(st, "레벨 12에 해금돼요", false, 1.1),
-              ]);
-            });
+          function deny() {
+            /* 자물쇠는 흔드는 게 아니라 돌린다 — "안 열린다" 는 회전이 더 읽힌다 */
+            return Promise.all([
+              lock.to(0.08, { rot: -9 }, "quadOut")
+                .then(function () { return lock.to(0.08, { rot: 9 }, "quadOut"); })
+                .then(function () { return lock.to(0.08, { rot: -5 }, "quadOut"); })
+                .then(function () { return lock.to(0.12, { rot: 0 }, "backOut"); }),
+              toast(st, "레벨 12에 해금돼요", false, 1.1),
+            ]);
           }
-          return { st: st, reset: reset, play: play };
+          function play() { reset(); return deny(); }
+          return { st: st, reset: reset, play: play, hint: "가운데 자물쇠를 눌러 보세요" };
         };
 
         /* C1 · 드롭 거부 ----------------------------------------------------- */
@@ -928,32 +1097,42 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             var p = st.cellPos(SI);
             tile = st.tile("mfx-product", 1);
             tile.set({ x: p.x, y: p.y });
+            dragify(st, tile, {
+              onDrop: function (cell) {
+                if (cell === TI) return reject();
+                if (cell < 0 || cell === tile.cell) return snapHome(st, tile);
+                return settle(st, tile, cell);
+              },
+            });
+          }
+          function reject() {
+            st.cellEls[TI].style.outline = "3px solid #E1503F";
+            st.cellEls[TI].style.outlineOffset = "-3px";
+            return Promise.all([
+              snapHome(st, tile),
+              wait(0.18).then(function () { st.cellEls[TI].style.outline = ""; }),
+            ]).then(function () { return shake(tile, 5, 0.24); });
           }
           function play() {
             reset();
-            var from = st.cellPos(SI), to = st.cellPos(TI);
+            var to = st.cellPos(TI);
             tile.el.style.zIndex = 6;
             return tile.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut")
               .then(function () { return tile.to(0.34, { x: to.x, y: to.y + 8 }, "quadInOut"); })
-              .then(function () {
-                st.cellEls[TI].style.outline = "3px solid #E1503F";
-                st.cellEls[TI].style.outlineOffset = "-3px";
-                /* 판정이 난 프레임에 거부음 → 그 다음 복귀 트윈 */
-                return Promise.all([
-                  tile.to(0.26, { x: from.x, y: from.y, sx: 1, sy: 1 }, "backOut"),
-                  wait(0.18).then(function () { st.cellEls[TI].style.outline = ""; }),
-                ]);
-              })
-              .then(function () { return shake(tile, 5, 0.24); });
+              .then(reject)
+              .then(function () { tile.el.style.zIndex = ""; });
           }
-          return { st: st, reset: reset, play: play };
+          return { st: st, reset: reset, play: play, hint: "레벨 1을 레벨 3 위로 끌어 보세요 · 거부됩니다" };
         };
 
         /* C2 · 병합 가능 대상 하이라이트 ------------------------------------- */
         DEMOS.c2 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), tile, ring, alive = false, SI = 9, MI = 2, XI = 1;
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, rings = {}, alive = true, SI = 9, MI = 2, XI = 1;
           function reset() {
-            alive = false;
+            /* 이전 링의 펄스 루프가 떨어진 노드를 계속 물고 있지 않게 먼저 끊는다 */
+            Object.keys(rings).forEach(function (k) { rings[k].dead = true; });
+            alive = true;
+            rings = {};
             st.clear();
             var m = st.cellPos(MI), x = st.cellPos(XI);
             st.tile("mfx-product", 2).set({ x: m.x, y: m.y });
@@ -961,36 +1140,56 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             var p = st.cellPos(SI);
             tile = st.tile("mfx-product", 2);
             tile.set({ x: p.x, y: p.y });
+            dragify(st, tile, {
+              onHover: function (cell) { setRing(cell === MI ? MI : -1); },
+              onDrop: function (cell) {
+                setRing(-1);
+                if (cell < 0 || cell === tile.cell) return snapHome(st, tile);
+                return snapHome(st, tile);
+              },
+            });
+          }
+          /* 링은 같은 레벨 타일에만 뜬다 — 아무 데나 뜨면 정보가 아니라 소음이다 */
+          function setRing(cell) {
+            Object.keys(rings).forEach(function (k) {
+              if (Number(k) === cell) return;
+              var r = rings[k];
+              delete rings[k];
+              r.dead = true;
+              r.to(0.16, { a: 0, sx: 1.3, sy: 1.3 }, "quadOut").then(function () { r.kill(); });
+            });
+            if (cell < 0 || rings[cell]) return;
+            var p = st.cellPos(cell);
+            var ring = st.spr('<div class="mfx-ring"></div>');
+            ring.set({ x: p.x, y: p.y, sx: 0.9, sy: 0.9, a: 0 });
+            rings[cell] = ring;
+            ring.to(0.14, { a: 1, sx: 1.02, sy: 1.02 }, "backOut");
+            (function pulse() {
+              if (ring.dead || !alive) return;
+              ring.to(0.45, { sx: 1.14, sy: 1.14, a: 0.45 }, "sineInOut")
+                .then(function () { return ring.dead ? null : ring.to(0.45, { sx: 0.98, sy: 0.98, a: 1 }, "sineInOut"); })
+                .then(function () { if (!ring.dead && alive) pulse(); });
+            })();
           }
           function play() {
             reset();
-            alive = true;
-            var from = st.cellPos(SI), m = st.cellPos(MI);
+            var m = st.cellPos(MI);
             tile.el.style.zIndex = 6;
             return tile.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut").then(function () {
-              /* 같은 레벨 타일에만 링이 뜬다 — 손가락 아래에서 "이것과 합쳐진다" 가 보여야 한다 */
-              ring = st.spr('<div class="mfx-ring"></div>');
-              ring.set({ x: m.x, y: m.y, sx: 0.9, sy: 0.9, a: 0 });
-              ring.to(0.14, { a: 1, sx: 1.02, sy: 1.02 }, "backOut");
-              (function pulse() {
-                if (!alive) return;
-                ring.to(0.45, { sx: 1.14, sy: 1.14, a: 0.45 }, "sineInOut")
-                  .then(function () { return alive ? ring.to(0.45, { sx: 0.98, sy: 0.98, a: 1 }, "sineInOut") : null; })
-                  .then(function () { if (alive) pulse(); });
-              })();
+              setRing(MI);
               return tile.to(0.5, { x: m.x, y: m.y + 10 }, "quadInOut");
             }).then(function () { return wait(0.9); }).then(function () {
-              alive = false;
-              ring.to(0.16, { a: 0, sx: 1.3, sy: 1.3 }, "quadOut").then(function () { ring.kill(); });
-              return tile.to(0.26, { x: from.x, y: from.y, sx: 1, sy: 1 }, "backOut");
+              setRing(-1);
+              tile.el.style.zIndex = "";
+              return snapHome(st, tile);
             });
           }
-          return { st: st, reset: reset, play: play, stop: function () { alive = false; } };
+          return { st: st, reset: reset, play: play, hint: "아래 레벨 2를 끌면 같은 레벨 위에서만 링이 뜹니다" };
         };
 
         /* C3 · 충전 완료 ----------------------------------------------------- */
         DEMOS.c3 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2 }), gen, gauge, fill, alive = false;
+          var st = makeStage(host, { cols: 3, rows: 2 }), gen, gauge, fill, badge, alive = false;
           function reset() {
             alive = false;
             st.clear();
@@ -1001,16 +1200,18 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
             fill.style.width = "78%";
+            badge = null;
+            tappify(st, gen, { press: false, onTap: complete });
           }
-          function play() {
-            reset();
+          function complete() {
+            if (alive) return Promise.resolve();
             var p = st.cellPos(4);
             return tw(0.7, "linear", function (e) { fill.style.width = 78 + 22 * e + "%"; }).then(function () {
               gauge.to(0.18, { a: 0, sy: 0.4 }, "quadIn").then(function () { gauge.kill(); });
               gen.set({ a: 1 });
               return squash(gen, 0.08, 1.18, 0.84, 0.22);
             }).then(function () {
-              var badge = st.spr('<div class="mfx-badge">!</div>');
+              badge = st.spr('<div class="mfx-badge">!</div>');
               badge.set({ x: p.x + 26, y: p.y + 30, sx: 0, sy: 0 });
               alive = true;
               return badge.to(0.2, { sx: 1, sy: 1 }, "backOut").then(function () {
@@ -1028,7 +1229,8 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
               });
             });
           }
-          return { st: st, reset: reset, play: play, stop: function () { alive = false; } };
+          function play() { reset(); return complete(); }
+          return { st: st, reset: reset, play: play, stop: function () { alive = false; }, hint: "양동이를 눌러 게이지를 끝까지 채워 보세요" };
         };
 
         /* C4 · 최대 단계 ----------------------------------------------------- */
@@ -1037,42 +1239,60 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           function reset() {
             st.clear();
             var pa = st.cellPos(AI), pb = st.cellPos(BI);
-            b = st.tile("mfx-product", 4); b.set({ x: pb.x, y: pb.y });
-            a = st.tile("mfx-product", 4); a.set({ x: pa.x, y: pa.y });
+            b = st.tile("mfx-product", 4);
+            b.set({ x: pb.x, y: pb.y });
+            a = st.tile("mfx-product", 4);
+            a.set({ x: pa.x, y: pa.y });
+            dragify(st, a, {
+              onDrop: function (cell) {
+                if (cell === BI) return maxed();
+                if (cell < 0 || cell === a.cell) return snapHome(st, a);
+                return settle(st, a, cell);
+              },
+            });
+          }
+          function maxed() {
+            var pb = st.cellPos(BI);
+            var stamp = st.spr('<div class="mfx-stamp">MAX</div>');
+            stamp.set({ x: pb.x, y: pb.y + 44, sx: 1.7, sy: 1.7, a: 0 });
+            stamp.to(0.14, { sx: 1, sy: 1, a: 1 }, "backOut")
+              .then(function () { return wait(0.75); })
+              .then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); })
+              .then(function () { stamp.kill(); });
+            /* 부정이 아니라 상태 고지 — 흔들림을 C1(5)보다 약하게 준다 */
+            return Promise.all([
+              snapHome(st, a).then(function () { return shake(a, 4, 0.22); }),
+              squash(b, 0.06, 1.1, 0.9, 0.18),
+            ]);
           }
           function play() {
             reset();
-            var pa = st.cellPos(AI), pb = st.cellPos(BI);
+            var pb = st.cellPos(BI);
             a.el.style.zIndex = 6;
             return a.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut")
               .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
-              .then(function () {
-                var stamp = st.spr('<div class="mfx-stamp">MAX</div>');
-                stamp.set({ x: pb.x, y: pb.y + 44, sx: 1.7, sy: 1.7, a: 0 });
-                stamp.to(0.14, { sx: 1, sy: 1, a: 1 }, "backOut").then(function () {
-                  return wait(0.75).then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); });
-                }).then(function () { stamp.kill(); });
-                return Promise.all([
-                  a.to(0.26, { x: pa.x, y: pa.y, sx: 1, sy: 1 }, "backOut").then(function () { return shake(a, 4, 0.22); }),
-                  squash(b, 0.06, 1.1, 0.9, 0.18),
-                ]);
-              });
+              .then(maxed)
+              .then(function () { a.el.style.zIndex = ""; });
           }
-          return { st: st, reset: reset, play: play };
+          return { st: st, reset: reset, play: play, hint: "최고 레벨끼리 겹쳐 보세요" };
         };
 
         /* C5 · 재화 부족 ----------------------------------------------------- */
         DEMOS.c5 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2, hud: true, buy: true });
+          var st = makeStage(host, { cols: 3, rows: 2, hud: true, buy: true }), wired = false;
           function reset() {
             st.clear();
             if (st.hudNum) st.hudNum.textContent = "120";
             if (st.hud) st.hud.style.background = "";
             var p = st.cellPos(4);
             st.tile("mfx-producer").set({ x: p.x, y: p.y });
+            if (!wired && st.buy) {
+              wired = true;
+              st.buy.classList.add("is-hit");
+              st.buy.addEventListener("click", function () { act(st, deny); });
+            }
           }
-          function play() {
-            reset();
+          function deny() {
             return nodePunch(st.buy, 0.06, 0.94, 0.1).then(function () {
               return Promise.all([
                 nodeShake(st.buy, 6, 0.28),
@@ -1083,48 +1303,79 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
               ]);
             });
           }
-          return { st: st, reset: reset, play: play };
+          function play() { reset(); return deny(); }
+          return { st: st, reset: reset, play: play, hint: "‘속도 UP · 300’ 버튼을 눌러 보세요 (잔액 120)" };
         };
 
-        /* C6 · 미션 납품 ----------------------------------------------------- */
+        /* C6 · 미션 납품 — 보드 밖 미션 노드로 날아간다 ---------------------- */
         DEMOS.c6 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), slot, items = [], SLOT = 1, SRC = [8, 9, 10];
+          var st = makeStage(host, { cols: 4, rows: 3 }), panel = null, cnt = null, done = 0, items = [];
+          var SRC = [8, 9, 10], NEED = 3;
+          function ensurePanel() {
+            if (panel) return;
+            panel = document.createElement("div");
+            panel.className = "mfx-slot";
+            panel.innerHTML =
+              '<svg viewBox="0 0 66 66"><use href="#mfx-mission"></use></svg>' +
+              '<span class="cnt">0 / 3</span>';
+            st.wrap.insertBefore(panel, st.board);
+            cnt = panel.querySelector(".cnt");
+          }
           function reset() {
+            ensurePanel();
             st.clear();
+            done = 0;
             items = [];
-            var s = st.cellPos(SLOT);
-            slot = st.tile("mfx-mission");
-            slot.set({ x: s.x, y: s.y });
+            cnt.textContent = "0 / 3";
+            panel.classList.remove("is-done");
+            panel.style.transform = "";
             SRC.forEach(function (i) {
               var p = st.cellPos(i);
               var t = st.tile("mfx-product", 3);
               t.set({ x: p.x, y: p.y });
-              items.push({ spr: t, from: p });
+              items.push(t);
+              /* 미션 슬롯은 보드 밖 노드라 셀 인덱스가 없다.
+                 보드 위쪽 밖으로 끌어 올리면 납품으로 본다. */
+              dragify(st, t, {
+                onDrop: function (cell) {
+                  if (t.y > st.layer.clientHeight / 2 - 24) return deliver(t);
+                  if (cell < 0 || cell === t.cell) return snapHome(st, t);
+                  return settle(st, t, cell);
+                },
+              });
+            });
+          }
+          function deliver(t) {
+            var from = { x: t.x, y: t.y }, to = st.at(panel);
+            t.el.style.zIndex = 5;
+            t.to(0.14, { sx: 1.12, sy: 1.12 }, "backOut").then(function () { return t.to(0.3, { sx: 0.72, sy: 0.72 }, "quadIn"); });
+            return flyBezier(t, from, to, 0.44, 0.3, 60).then(function () {
+              t.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { t.kill(); });
+              done++;
+              cnt.textContent = done + " / " + NEED;
+              return nodePunch(panel, 0.06, 1.14, 0.16);
+            }).then(function () {
+              if (done < NEED) return null;
+              panel.classList.add("is-done");
+              var to2 = st.at(panel);
+              var stamp = st.spr('<div class="mfx-stamp" style="color:#1E5A55;border-color:#1E5A55">완료</div>');
+              stamp.set({ x: to2.x, y: to2.y, sx: 1.8, sy: 1.8, a: 0, rot: -10 });
+              return Promise.all([
+                stamp.to(0.16, { sx: 1, sy: 1, a: 1, rot: -7 }, "backOut"),
+                sparks(st, to2, 8, "#7FC9BA"),
+              ]).then(function () { return wait(0.9); })
+                .then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); })
+                .then(function () { stamp.kill(); reset(); });
             });
           }
           function play() {
             reset();
-            var to = st.cellPos(SLOT);
-            var all = items.map(function (it, i) {
-              return wait(i * 0.06).then(function () {          /* STAGGER 0.06 — 납품은 코인보다 느리게 */
-                it.spr.el.style.zIndex = 5;
-                it.spr.to(0.14, { sx: 1.12, sy: 1.12 }, "backOut").then(function () { return it.spr.to(0.3, { sx: 0.72, sy: 0.72 }, "quadIn"); });
-                return flyBezier(it.spr, it.from, to, 0.44, 0.3, 60);
-              }).then(function () {
-                it.spr.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { it.spr.kill(); });
-                return squash(slot, 0.06, 1.16, 0.86, 0.16);
-              });
-            });
-            return Promise.all(all).then(function () {
-              var stamp = st.spr('<div class="mfx-stamp" style="color:#1E5A55;border-color:#1E5A55">완료</div>');
-              stamp.set({ x: to.x, y: to.y, sx: 1.8, sy: 1.8, a: 0, rot: -10 });
-              return Promise.all([
-                stamp.to(0.16, { sx: 1, sy: 1, a: 1, rot: -7 }, "backOut"),
-                sparks(st, to, 8, "#7FC9BA"),
-              ]).then(function () { return wait(0.8); }).then(function () { return stamp.to(0.2, { a: 0 }, "quadIn"); });
-            });
+            /* STAGGER 0.06 — 코인(0.04)보다 무거운 물건이라 조금 느리게 */
+            return Promise.all(items.map(function (t, i) {
+              return wait(i * 0.06).then(function () { return deliver(t); });
+            }));
           }
-          return { st: st, reset: reset, play: play };
+          return { st: st, reset: reset, play: play, hint: "타일을 보드 위쪽 미션판으로 끌어 올려 보세요" };
         };
 
         /* ======================================================================
@@ -1429,34 +1680,38 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
 "}" },
 
           { group: "text", id: "b2", no: "B2", title: "충전중", state: "none", label: "없음",
-            why: "충전중은 <b>말이 아니라 상태</b>입니다. 문구만 띄우면 유저는 얼마나 남았는지 모릅니다. 세 가지가 같이 가야 합니다 — <b>감광</b>(못 쓴다) · <b>게이지</b>(얼마나 남았다) · <b>조용한 숨쉬기</b>(죽은 게 아니다). 숨쉬기는 수확 가능 상태(C3)보다 <b>확실히 작게</b> 둬야 둘이 구분됩니다. 점 애니메이션은 이미 있는 <b>CCact.playCommaEffect</b> 를 그대로 씁니다.",
+            why: "충전중은 <b>클릭했을 때 뜨는 응답</b>입니다. 아직 못 쓰는 생산자를 눌렀을 때 왜 안 되는지를 그 자리에서 알려 줍니다. B1(보드 꽉참)과 결정적으로 다른 점이 하나 — <b>흔들지 않습니다.</b> 흔들림은 \"잘못했다\" 는 신호인데 충전중은 잘못한 게 아니라 <b>기다리면 되는 일</b>이라, 눌린 반응만 주고 문구로 남은 시간을 말합니다. 감광과 게이지는 누르기 전부터 켜 두는 배경 상태입니다.",
             rows: [
-              ["생산자 감광", "즉시", "—", "opacity 255 → 115"],
-              ["숨쉬기", "0.80s ×2", "sineInOut", "scale 1.02 / 0.97 — 수확 대기보다 작게"],
-              ["게이지", "남은 시간", "linear", "width 0 → 100% · 서버 시간 기준"],
-              ["점", "0.25s ×4단", "—", "CCact.playCommaEffect(label, 0.25)"],
+              ["배경 · 감광", "상시", "—", "opacity 255 → 115 · 못 쓴다는 표시"],
+              ["배경 · 게이지", "남은 시간", "linear", "width 0 → 100% · 서버 시간 기준"],
+              ["클릭 응답", "0.12 → 0.18s", "quadOut → backOut", "1.05/0.95 → 1 · <b>흔들림 없음</b>"],
+              ["게이지 펀치", "0.08 → 0.16s", "quadOut → backOut", "1.12 → 1 · 눈을 게이지로 보낸다"],
+              ["토스트", "0.24 / 1.10 / 0.20s", "backOut / quadIn", "충전중이에요 · 12초 남음"],
             ],
             code:
+"// 충전중인 생산자를 눌렀을 때 뜨는 응답. 거부(B1)와 달리 흔들지 않는다.\n" +
+"public onClickChargingGenerator(remainSec: number): void {\n" +
+"    GameSound.play(\"FX_ITEM_HINT\", this.generatorNode);        // FX_TILE_ERROR 아님\n" +
+"    cc.Tween.stopAllByTarget(this.generatorNode);\n" +
+"    cc.tween(this.generatorNode)\n" +
+"        .to(0.12, { scaleX: 1.05, scaleY: 0.95 }, { easing: \"quadOut\" })\n" +
+"        .to(POP_IN_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"\n" +
+"    this.punch(this.chargeGaugeNode);                          // 남은 시간이 어디 있는지 눈으로 잇는다\n" +
+"    this.showToast(Localization.getFormatString(\"merge_charging_remain\", Math.ceil(remainSec)));\n" +
+"    CClog.log(\"ViewMergeBoard > charging tapped, remain \" + Math.ceil(remainSec));\n" +
+"}\n" +
+"\n" +
+"// 감광과 게이지는 누르기 전부터 켜 두는 배경 상태다.\n" +
 "private applyChargingState(remainSec: number, totalSec: number): void {\n" +
 "    this.chargingRoot.active = true;\n" +
 "    this.generatorSprite.node.opacity = 115;\n" +
-"    CCact.playCommaEffect(this.chargingDotsLabel, 0.25);\n" +
-"\n" +
-"    // 게이지는 남은 시간만큼만 이어서 채운다 — 재진입해도 이어 붙는다\n" +
-"    const filled = 1 - remainSec / totalSec;\n" +
-"    this.chargeGaugeNode.width = GAUGE_FULL_WIDTH * filled;\n" +
+"    this.chargeGaugeNode.width = GAUGE_FULL_WIDTH * (1 - remainSec / totalSec);\n" +
 "    cc.Tween.stopAllByTarget(this.chargeGaugeNode);\n" +
 "    cc.tween(this.chargeGaugeNode)\n" +
 "        .to(remainSec, { width: GAUGE_FULL_WIDTH }, { easing: \"linear\" })\n" +
 "        .call(() => this.playChargeComplete())\n" +
-"        .start();\n" +
-"\n" +
-"    // 대기 중인 생산자도 살아 있다는 신호는 준다. 단, 수확 대기보다 작게.\n" +
-"    cc.Tween.stopAllByTarget(this.generatorNode);\n" +
-"    cc.tween(this.generatorNode)\n" +
-"        .repeatForever(cc.tween()\n" +
-"            .to(MERGE_BOARD_GENERATOR_BOB_DURATION_SEC, { scaleX: 1.02, scaleY: 0.97 }, { easing: \"sineInOut\" })\n" +
-"            .to(MERGE_BOARD_GENERATOR_BOB_DURATION_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"sineInOut\" }))\n" +
 "        .start();\n" +
 "}" },
 
@@ -1627,8 +1882,9 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
 "}" },
 
           { group: "gap", id: "c6", no: "C6", title: "미션 납품", state: "none", label: "없음 · 우선순위 4",
-            why: "머지의 보상 루프가 닫히는 지점입니다. 아이템이 미션 슬롯으로 <b>날아가서</b> 없어져야 \"납품했다\"가 되고, 슬롯이 매번 반응해야 몇 개가 들어갔는지 세어집니다. 비행은 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다.",
+            why: "핵심은 <b>목적지가 보드 밖</b>이라는 겁니다. 미션판은 보드의 자식이 아니라 <b>별도 노드</b>고, 아이템은 보드를 <b>벗어나서</b> 그쪽으로 날아갑니다. 보드 안에서 끝나면 \"어디로 갔는지\"가 안 남습니다. 부모가 다르니 목적지 좌표는 <b>CCnode.getTargetPos</b> 로 변환해야 하고, 이건 <b>ItemGatheringAnimation</b> 이 코인을 HUD 로 보낼 때 이미 쓰는 방식입니다. 비행 자체는 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다.",
             rows: [
+              ["목적지", "—", "—", "<b>보드 밖 미션 노드</b> · CCnode.getTargetPos 로 변환"],
               ["STAGGER", "0.06s", "—", "코인(0.04)보다 느리게"],
               ["들어올림", "0.14s", "backOut", "scale 1.12"],
               ["비행 중 축소", "0.30s", "quadIn", "1.12 → 0.72"],
@@ -1637,8 +1893,10 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
               ["완료 스탬프", "0.16s", "backOut", "scale 1.8 → 1 · 각도 −7°"],
             ],
             code:
+"// slotNode 는 gridRoot 의 자식이 아니다 — 보드 밖 미션판에 붙어 있다.\n" +
+"// 그래서 목적지는 반드시 좌표계를 옮겨서 받는다. 보드 좌표로 쓰면 엉뚱한 데로 난다.\n" +
 "private async playDelivery(items: MergeBoardDragItem[], slotNode: cc.Node): Promise<void> {\n" +
-"    const to = CCnode.getTargetPos(slotNode, this.gridRoot);\n" +
+"    const to = CCnode.getTargetPos(slotNode, this.gridRoot);   // 부모가 다른 노드 → 로컬 좌표 변환\n" +
 "    const flights = items.map(async (item, index) => {\n" +
 "        await CCts.delay(index * DELIVERY_STAGGER_SEC);    // 0.06\n" +
 "        const node = item.node;\n" +
@@ -1687,8 +1945,10 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           var host = elm("div");
           var btn = elm("button", "mfx-play");
           btn.type = "button";
-          btn.textContent = "재생";
+          btn.textContent = "시연 재생";
+          var hint = elm("div", "mfx-hint");
           stageCol.appendChild(host);
+          stageCol.appendChild(hint);
           stageCol.appendChild(btn);
 
           var detail = elm("div", "mfx-detail");
@@ -1725,6 +1985,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
 
           var demo = DEMOS[spec.id](host);
           demo.reset();
+          hint.textContent = demo.hint || "";
 
           var entry = { demo: demo, btn: btn, played: false };
           running.push(entry);
@@ -1736,9 +1997,11 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           if (entry.btn.disabled) return;
           entry.btn.disabled = true;
           entry.btn.textContent = "재생 중";
+          entry.demo.st.busy = true;                 // 시연 중에는 손으로 못 만지게 잠근다
           Promise.resolve(entry.demo.play()).then(function () {
+            entry.demo.st.busy = false;
             entry.btn.disabled = false;
-            entry.btn.textContent = "재생";
+            entry.btn.textContent = "시연 재생";
             if (LOOP) setTimeout(function () { run(entry); }, 700);
           });
         }
