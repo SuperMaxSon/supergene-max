@@ -9,7 +9,7 @@
       content="머지 보드에서 손가락이 닿는 모든 순간의 반응을 재생되는 무대로 모았다. 액션 6종 · 텍스트 3종 · 누락 제안 6종. 타이밍 표와 cc.tween 코드가 재생과 같은 값을 쓴다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=light1" />
+    <link rel="stylesheet" href="../style.css?v=mfx2" />
   </head>
   <body class="mfx">
     <nav class="nav">
@@ -606,6 +606,16 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
            ====================================================================== */
         var DROP_LIMIT = 56;          // ViewMergeBoard.DROP_DISTANCE_LIMIT 실측값
 
+        /* 손을 받는 속성은 CSS 가 아니라 여기서 직접 박는다.
+           레이어가 pointer-events:none 이라 이 한 줄이 빠지면 무대 전체가 죽는데,
+           style.css 는 캐시될 수 있어서 클릭 여부를 캐시에 맡기지 않는다. */
+        function hitStyle(el, cursor) {
+          el.style.pointerEvents = "auto";
+          el.style.touchAction = "none";
+          el.style.cursor = cursor;
+          el.style.userSelect = "none";
+          el.style.webkitUserSelect = "none";
+        }
         function clampV(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
         function toLocal(st, e) {
           var b = st.layer.getBoundingClientRect();
@@ -639,6 +649,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
         function dragify(st, spr, cfg) {
           cfg = cfg || {};
           spr.el.classList.add("is-hit", "is-drag");
+          hitStyle(spr.el, "grab");
           spr.home = { x: spr.x, y: spr.y };
           spr.cell = nearestCell(st, spr.home);
           var dragging = false, off = { x: 0, y: 0 }, aim = { x: 0, y: 0 }, follow = null, ghost = null, hover = -1;
@@ -701,6 +712,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
         function tappify(st, spr, cfg) {
           cfg = cfg || {};
           spr.el.classList.add("is-hit");
+          hitStyle(spr.el, "pointer");
           spr.home = { x: spr.x, y: spr.y };
           var down = null, lastTap = 0;
 
@@ -1289,6 +1301,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             if (!wired && st.buy) {
               wired = true;
               st.buy.classList.add("is-hit");
+              hitStyle(st.buy, "pointer");
               st.buy.addEventListener("click", function () { act(st, deny); });
             }
           }
