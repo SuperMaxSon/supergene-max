@@ -3207,14 +3207,14 @@ select.calc-in {
 /* 고정 행 — 끌 수 없는 상위 노드 */
 .iso-tree .fx {
   display: grid;
-  grid-template-columns: 5.4em 12em 1fr;
+  grid-template-columns: 5.4em 1.6em 12em 1fr;
   color: var(--text-dim);
   padding: 1px 5px;
 }
 
 .iso-row {
   display: grid;
-  grid-template-columns: 5.4em 12em 1fr auto;
+  grid-template-columns: 5.4em 1.6em 12em 1fr auto;
   align-items: center;
   gap: 0;
   padding: 1px 5px;
@@ -3331,6 +3331,108 @@ select.calc-in {
   line-height: 1.85;
 }
 
-.iso-split .iso-tree .fx { grid-template-columns: 4.4em 8.8em 1fr }
-.iso-split .iso-row { grid-template-columns: 4.4em 8.8em 1fr auto }
+.iso-split .iso-tree .fx { grid-template-columns: 4.4em 1.5em 8.8em 1fr }
+.iso-split .iso-row { grid-template-columns: 4.4em 1.5em 8.8em 1fr auto }
 .iso-split .iso-row .sq { padding-left: 8px }
+
+/* 떠오르는 문구 — 패널이 아니라 글자만 뜬다. RPG 아이템 획득 문구와 같은 문법이라
+   테두리 없이 크림색 외곽선으로 보드 위에서 읽히게 한다. */
+.mfx-float {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--wood700);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 4px var(--sand50), 0 0 4px var(--sand50), 0 2px 0 var(--sand50),
+    0 -2px 0 var(--sand50), 2px 0 0 var(--sand50), -2px 0 0 var(--sand50);
+}
+.mfx-float.is-good { color: var(--teal800); }
+
+/* 창고 — 보드 밖에 따로 선다. 여기 있는 아이템은 아직 보드 위에 없다는 뜻이라
+   빈 칸을 그대로 노출해 "자리" 가 보이게 둔다. */
+.mfx-shelf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--wood500) 18%, var(--sand50));
+  border: 2px solid var(--wood500);
+  box-shadow: 0 4px 0 var(--wood700);
+}
+.mfx-shelf .lbl {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--wood700);
+  margin-right: 4px;
+  letter-spacing: 0.04em;
+}
+.mfx-shelf .slot {
+  width: 66px;
+  height: 66px;
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--wood700) 12%, transparent);
+  box-shadow: inset 0 2px 0 rgba(122, 78, 43, 0.16);
+}
+
+/* --------------------------------------------------------------------------
+   레이어 트리 조작 — 포인터 드래그 · 숨김 · 무대와 상호 하이라이트
+   HTML5 DnD 를 버리고 포인터로 직접 끄는 이유: 터치가 되고, 끄는 동안 이웃 행이
+   실제로 비켜서 어디에 꽂히는지가 보인다. 그래서 행에 transition 과 transform 이
+   필요하고, 끌리는 행만 transition 을 끈다.
+   -------------------------------------------------------------------------- */
+.iso-modebar {
+  justify-content: flex-start;
+  margin: 0 0 8px;
+}
+
+.iso-hint {
+  margin: 0 0 9px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.iso-row {
+  position: relative;
+  background: transparent;
+  transition: transform 0.13s ease, background 0.12s;
+  touch-action: none;
+}
+
+.iso-row.is-drag {
+  z-index: 3;
+  transition: none;
+  border-style: solid;
+  border-color: var(--smg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  cursor: grabbing;
+}
+
+/* 행에 얹으면 무대의 그 파츠만 색이 남고 나머지는 빠진다 (그 반대도 된다).
+   무대 쪽은 inline opacity 를 애니메이션이 계속 덮어쓰므로 filter 로 처리한다. */
+.iso-row.is-lit { background: color-mix(in srgb, var(--smg) 12%, transparent) }
+#scene .iso-part { transition: filter 0.12s }
+#scene.has-lit .iso-part:not(.is-lit) { filter: grayscale(0.92) brightness(1.16) }
+.iso-part.is-off { display: none }
+
+.iso-row.is-off .nm,
+.iso-row.is-off .ds { opacity: 0.4; text-decoration: line-through }
+
+/* 등장 순서 모드에서 등장하지 않는 파츠(지면) — 끌 수 없다 */
+.iso-row.is-fixed { cursor: default; opacity: 0.65 }
+
+.iso-eye {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iso-eye:hover { color: var(--smg) }
+.iso-row.is-off .iso-eye { color: var(--bad) }
