@@ -6,7 +6,7 @@
     <title>머지 플로우 시뮬레이터</title>
     <meta
       name="description"
-      content="스토리 노드 11개와 실제 대사 37행을 그대로 태워 돌리는 플레이 가능한 플로우 시뮬레이터. 화살표마다 무엇을 받고 무엇을 램에 올리는지 메모리 곡선으로 보여준다. 회색선이 현재 코드, 컬러선이 제안."
+      content="스토리 노드 11개와 실제 대사 37행을 그대로 태워 돌리는 플레이 가능한 플로우 맵. 지금 코드가 각 단계에서 램을 얼마나 쓰는지를 곡선·통·단계별 MB 로 계측한다. 제안이 아니라 현재 상태."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=sim1" />
@@ -29,12 +29,11 @@
         <p class="doc-lede">
           <code>story_node.json</code> 11개와 <code>story_dialogue.json</code> 37행을 그대로 태워
           돌립니다. 머지 보드는 <b>직접 플레이할 수 있고</b>, 대화는 탭으로 넘깁니다.
-          움직일 때마다 <b>무엇을 받고 무엇을 램에 올리는지</b>가 위 곡선에 그려집니다 —
-          <span style="color: var(--asis); font-weight: 700">회색이 지금 코드</span>,
-          <span style="color: var(--smg); font-weight: 700">올리브가 토글을 켠 결과</span>입니다.
-          <b>대화는 감정 단위로 쪼개 올린다고 전제</b>했습니다 &mdash; 누가 언제 어떤 감정으로
-          말하는지가 <code>story_dialogue.json</code> 에 확정돼 있어 예측이 아니라 조회이기 때문입니다.
-          남은 결정은 <b>얼마나 앞서 받고 언제 내리느냐</b>뿐이라 그것만 토글로 남겼습니다.
+          움직일 때마다 <b>무엇을 받고 무엇을 램에 올리는지</b>가 곡선과 통에 그려집니다.
+          <b>이 페이지는 지금 코드가 하는 그대로만 그립니다</b> &mdash; 제안도 가정도 아니고
+          <b>현재 상태의 계측</b>입니다. 코드를 고친 뒤 다시 열어 곡선이 내려갔는지로
+          개선 여부를 봅니다. 고쳤을 때 어디까지 갈 수 있는지는 맨 아래
+          <a href="#num">근거</a> 섹션에 참고표로 따로 뒀습니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
@@ -69,37 +68,18 @@
 
     <main class="wrap wrap--wide">
       <section class="doc-section" id="sim">
-        <!-- 토글이 곧 조작부다. 각 토글의 "현재 코드" 쪽에 회색 '현재' 배지를 달아
-             지금 무엇이 돌아가고 있는지를 매번 다시 읽지 않아도 되게 했다. -->
+        <!-- 조작은 회선 하나뿐이다. 정책 토글을 두면 "제안" 이 생기고, 그러면 이 페이지가
+             현재 상태를 재는 자가 아니라 설득 자료가 된다. 재는 자에는 눈금만 있으면 된다. -->
         <div class="sim-bar">
-          <span class="sim-bar-l">전제</span>
-          <div class="sim-grp">
-            <span class="pill" style="--acc: var(--smg)">대화는 감정 단위로 쪼개 로딩</span>
-            <span class="sim-now">현재 코드는 통짜 — 회색선</span>
-          </div>
-          <span class="sim-bar-l">롤링</span>
-          <div class="sim-grp">
-            <button type="button" class="sim-tg" data-roll="1" aria-pressed="false">N+1</button>
-            <button type="button" class="sim-tg" data-roll="3" aria-pressed="true">N+3</button>
-            <button type="button" class="sim-tg" data-roll="99" aria-pressed="false">파트 전체</button>
-          </div>
-          <span class="sim-bar-l">해제</span>
-          <div class="sim-grp">
-            <button type="button" class="sim-tg" data-tg="free" aria-pressed="true">지난 감정 반납</button>
-            <span class="sim-now">현재 코드엔 없음</span>
-          </div>
-          <span class="sim-bar-l">프리로드 창</span>
-          <div class="sim-grp">
-            <button type="button" class="sim-tg" data-tg="introWin" aria-pressed="false">인트로 영상</button>
-            <button type="button" class="sim-tg" data-tg="boardWin" aria-pressed="false">머지 보드</button>
-            <span class="sim-now">현재 = 둘 다 끔</span>
-          </div>
           <span class="sim-bar-l">회선</span>
           <div class="sim-grp">
             <button type="button" class="sim-tg" data-bw="8" aria-pressed="false">WiFi</button>
             <button type="button" class="sim-tg" data-bw="3" aria-pressed="true">4G</button>
             <button type="button" class="sim-tg" data-bw="0.75" aria-pressed="false">3G</button>
           </div>
+          <span class="sim-bar-l" style="letter-spacing: 0; font-weight: 500">
+            이 페이지는 <b>지금 코드가 하는 그대로</b>만 그립니다. 고쳤을 때 어떻게 되는지는 아래 참고표에.
+          </span>
           <span class="nav-spacer" style="flex: 1"></span>
           <button type="button" class="mfx-play" id="sim-auto">자동 재생</button>
           <button type="button" class="sim-tg" id="sim-reset">↺ 처음부터</button>
@@ -109,20 +89,20 @@
           <!-- 통 = "지금 얼마나 찼나". 채움은 플레이헤드를 따라 움직이고,
                가는 눈금선이 그 정책의 최댓값이다. 60MB 는 뚜껑이라 초과는 위로 삐져나온다. -->
           <div class="sim-gaugebox">
-            <div class="sim-v-name">메모리 · 60MB 예산 <span style="float: right; font-weight: 700; color: var(--text-faint)">채움 = 지금 · 선 = 최대</span></div>
-            <svg id="sim-bars" viewBox="0 0 320 196" role="img"></svg>
+            <div class="sim-v-name">메모리 · 60MB 예산 <span style="float: right; font-weight: 700; color: var(--text-faint)">채움 = 지금 단계 · 선 = 최대</span></div>
+            <svg id="sim-bars" viewBox="0 0 300 196" role="img"></svg>
             <div class="sim-glegend" id="sim-glegend"></div>
           </div>
           <div class="sim-vcol">
             <div class="sim-v" style="--acc: var(--warn)">
-              <div class="sim-v-name">총 대기 (스톨) <span style="font-weight: 700; color: var(--text-faint)">· 한 바퀴 전체</span></div>
+              <div class="sim-v-name">여기까지 대기 (스톨)</div>
               <div class="sim-v-row">
                 <span class="sim-v-num" id="sim-v-stall">—<span class="sim-v-unit">초</span></span>
                 <span class="sim-v-asis" id="sim-v-stall-asis"></span>
               </div>
             </div>
             <div class="sim-v" style="--acc: var(--analysis)">
-              <div class="sim-v-name">총 다운로드 <span style="font-weight: 700; color: var(--text-faint)">· 한 바퀴 전체</span></div>
+              <div class="sim-v-name">여기까지 다운로드</div>
               <div class="sim-v-row">
                 <span class="sim-v-num" id="sim-v-dl">—<span class="sim-v-unit">MB</span></span>
                 <span class="sim-v-asis" id="sim-v-dl-asis"></span>
@@ -157,7 +137,7 @@
 
         <div class="notes">
           <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">회색선은 가정이 아니라 현재 동작이다</div>
+            <div class="note-title">이 곡선은 가정이 아니라 현재 동작이다</div>
             <p>
               <code>ChatBubbleStoryPresentation.preload()</code> 2단계
               (<code>:645-653</code>)가 <code>objectPool/chat.prefab</code> 을
@@ -171,55 +151,17 @@
               <b>한 번 올라가면 세션 끝까지 내려오지 않습니다.</b>
             </p>
           </div>
-          <div class="note" style="--acc: var(--ok)">
-            <div class="note-title">쪼개는 것만으로는 오히려 더 기다린다 &mdash; 창을 켜야 준다</div>
-            <p>
-              세 회선 모두에서 같은 모양이 나옵니다. 감정 단위로 쪼개면 메모리는
-              <b>96.5 &rarr; 23.7MB</b> 로 떨어지지만, <b>대기는 늘어납니다</b> &mdash;
-              통짜 한 번에 받던 것을 대사마다 나눠 받게 되기 때문입니다.
-              <b>프리로드 창을 켜야</b> 비로소 대기가 줄어듭니다. 즉 쪼개기와 미리 받기는
-              둘 중 하나를 고르는 문제가 아니라 <b>같이 가야 하는 한 쌍</b>입니다.
-            </p>
-            <div class="table-scroll" style="--acc: var(--ok); margin-top: 10px">
-              <table>
-                <thead><tr><th style="width: 34%">총 대기</th>
-                  <th style="text-align: right">3G 0.75</th>
-                  <th style="text-align: right">4G 3</th>
-                  <th style="text-align: right">WiFi 8</th></tr></thead>
-                <tbody>
-                  <tr><td>현재 코드 <span class="cnote">통짜 · 창 없음</span></td>
-                    <td class="num">18.3초</td><td class="num">5.3초</td><td class="num">2.6초</td></tr>
-                  <tr><td>쪼개기만 <span class="cnote">창 없음</span></td>
-                    <td class="num" style="color: var(--bad)">21.6초</td>
-                    <td class="num" style="color: var(--bad)">6.6초</td>
-                    <td class="num" style="color: var(--bad)">3.5초</td></tr>
-                  <tr><td>+ 인트로 창</td>
-                    <td class="num">14.1초</td><td class="num">2.9초</td><td class="num">2.1초</td></tr>
-                  <tr><td>+ 머지 보드 창까지</td>
-                    <td class="num" style="color: var(--ok)"><b>6.7초</b></td>
-                    <td class="num" style="color: var(--ok)"><b>2.9초</b></td>
-                    <td class="num" style="color: var(--ok)"><b>2.1초</b></td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p style="margin-top: 10px">
-              <b>4G 이상에서는 인트로 창 하나로 끝납니다</b> &mdash; 영상 8초 &times; 3MB/s = 24MB 라
-              필요한 것을 그 안에서 다 받습니다. <b>머지 보드 창이 필요해지는 건 3G</b> 입니다
-              (14.1 &rarr; 6.7초). 회선을 3G로 놓고 창을 하나씩 켜 보면 그 차이가 곡선 아래
-              빨간 막대로 보입니다.
-            </p>
-          </div>
           <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">전제가 성립하려면 선행 작업 두 개가 있다</div>
+            <div class="note-title">왜 이 모양인가 &mdash; 구조적 원인 둘</div>
             <p>
-              올리브 곡선은 <b>대화가 감정 단위로 쪼개져 있다</b>고 전제합니다. 지금 코드에서 그게
-              안 되는 이유는 두 가지입니다 &mdash;
-              <b>①</b> <code>objectPool/chat.prefab</code> 이 캐릭터 프리팹 8개를 <b>정적 참조</b>해서
-              화자와 무관하게 트리 전체가 딸려옵니다.
+              <b>①</b> <code>objectPool/chat.prefab</code> 이 캐릭터 프리팹 8개를 <b>정적 참조</b>합니다.
+              Cocos 는 프리팹을 <code>bundle.load</code> 하면 의존 트리를 통째로 끌어오므로
+              <b>누가 말하든 4명 &times; 16감정이 전부 딸려옵니다.</b> 코드가 &ldquo;누가 말하나&rdquo;를
+              물어보는 지점 자체가 없습니다.
               <b>②</b> <code>assets/bundle.meta</code> 만 <code>isBundle: true</code> 이고 하위
               <code>chat/ data/ objectPool/ …</code> 는 전부 내부 디렉터리라
               <b>폴더 단위 언로드가 구조적으로 불가능</b>합니다.
-              이 둘을 끊는 것이 위 토글을 켤 수 있게 되는 조건입니다.
+              곡선을 내리려면 이 둘을 먼저 끊어야 합니다.
             </p>
           </div>
         </div>
@@ -391,6 +333,51 @@
               둘 다 게임을 시작하고 <b>첫 5분 안에</b> 나옵니다. 즉 최악이 뒤가 아니라 앞에 있습니다.
               감정은 전수 17프레임 · 304&times;288 로 균일해서 개당 정확히
               <b>17 &times; 304 &times; 288 &times; 4 = 5.68MB</b> 입니다.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="doc-h2-sub">고치면 어디까지 가나 &mdash; 참고 계산치</h3>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">고치면 어디까지 가나 &mdash; 계산치 (참고)</div>
+            <p>
+              <b>아래는 위 시뮬레이터가 그리는 값이 아니라, 같은 모델에 고친 정책을 넣어
+              돌려 본 계산치입니다</b> &mdash; 현재 상태와 섞이지 않게 여기 따로 뒀습니다.
+              감정 단위로 쪼개면 메모리는 <b>96.5 &rarr; 23.7MB</b> 로 떨어지지만
+              <b>대기는 오히려 늘어납니다</b> &mdash; 통짜 한 번에 받던 것을 대사마다 나눠 받게
+              되기 때문입니다. <b>프리로드 창을 같이 열어야</b> 비로소 대기가 줄어듭니다.
+              쪼개기와 미리 받기는 택일이 아니라 <b>한 쌍</b>입니다.
+            </p>
+            <div class="table-scroll" style="--acc: var(--ok); margin-top: 10px">
+              <table>
+                <thead><tr><th style="width: 34%">총 대기</th>
+                  <th style="text-align: right">3G 0.75</th>
+                  <th style="text-align: right">4G 3</th>
+                  <th style="text-align: right">WiFi 8</th></tr></thead>
+                <tbody>
+                  <tr><td><b>현재 코드</b> <span class="cnote">위 시뮬레이터가 그리는 것</span></td>
+                    <td class="num">18.3초</td><td class="num">5.3초</td><td class="num">2.6초</td></tr>
+                  <tr><td>쪼개기만 <span class="cnote">창 없음</span></td>
+                    <td class="num" style="color: var(--bad)">21.6초</td>
+                    <td class="num" style="color: var(--bad)">6.6초</td>
+                    <td class="num" style="color: var(--bad)">3.5초</td></tr>
+                  <tr><td>+ 인트로 창</td>
+                    <td class="num">14.1초</td><td class="num">2.9초</td><td class="num">2.1초</td></tr>
+                  <tr><td>+ 머지 보드 창까지</td>
+                    <td class="num" style="color: var(--ok)"><b>6.7초</b></td>
+                    <td class="num" style="color: var(--ok)"><b>2.9초</b></td>
+                    <td class="num" style="color: var(--ok)"><b>2.1초</b></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="margin-top: 10px">
+              <b>4G 이상에서는 인트로 창 하나로 끝납니다</b> &mdash; 영상 8초 &times; 3MB/s = 24MB 라
+              필요한 것을 그 안에서 다 받습니다. <b>머지 보드 창이 필요해지는 건 3G</b> 입니다
+              (14.1 &rarr; 6.7초). 그런데 지금 코드는 <b>인트로 창부터 안 씁니다</b> &mdash;
+              <code>ViewStory.prefab</code> 의 <code>StoryRunner</code> 가 <code>_active:false</code> 라
+              로드가 영상 뒤로 밀립니다. <b>가장 값싼 한 수는 그 한 줄입니다.</b>
             </p>
           </div>
         </div>
@@ -657,6 +644,7 @@
         /* ---- 시뮬레이션 ---------------------------------------------------- */
         function simulate(pol) {
           var have = {}, mem = {}, memMB = 0, maxMem = 0, stallTotal = 0, dl = 0;
+          /* 배지가 "여기까지" 를 보여주려면 스텝마다 누적치를 찍어 둬야 한다 */
           var pts = [], evs = [];
 
           function download(id) {
@@ -690,7 +678,7 @@
           STEPS.forEach(function (s, i) {
             var ev = { pre: [], load: [], free: [], stall: 0 };
             if (s.ghost && !pol.deco) {
-              pts.push({ mem: memMB, stall: 0, m: Object.assign({}, mem), h: Object.assign({}, have) });
+              pts.push({ mem: memMB, stall: 0, cs: stallTotal, cd: dl, m: Object.assign({}, mem), h: Object.assign({}, have) });
               evs.push(ev); return;
             }
 
@@ -730,7 +718,7 @@
               });
             }
             /* 패널이 "지금 이 순간"을 그리려면 스텝마다 상태를 찍어 둬야 한다 */
-            pts.push({ mem: memMB, stall: ev.stall, m: Object.assign({}, mem), h: Object.assign({}, have) });
+            pts.push({ mem: memMB, stall: ev.stall, cs: stallTotal, cd: dl, m: Object.assign({}, mem), h: Object.assign({}, have) });
             evs.push(ev);
           });
 
@@ -738,18 +726,16 @@
         }
 
         /* ---- 상태 ---------------------------------------------------------- */
-        /* 쪼개기는 토글이 아니라 전제다 — 누가 언제 말하는지가 story_dialogue.json 에
-           확정돼 있으므로 감정 단위 로딩은 예측이 아니라 조회로 성립한다.
-           남은 결정은 "얼마나 앞서 받고, 언제 내리느냐" 뿐이라 그것만 토글로 남겼다. */
-        var pol = { split: true, roll: 3, free: true, introWin: false, boardWin: false, bw: 3, deco: true };
-        var ASIS = { split: false, roll: 3, free: false, introWin: false, boardWin: false, bw: 3, deco: false };
-        var cur = 0, runTo = null, runAsis = null, autoTimer = null;
+        /* 이 페이지는 "지금 코드가 하는 그대로" 하나만 그린다.
+           split=false  → objectPool/chat.prefab 통짜 로드 (감정 단위 없음)
+           free=false   → 해제 경로 없음 (bundle.release* 0건 · decRef 주석)
+           창 전부 false → 프리로드 창 미사용 (StoryRunner _active:false)
+           deco=false   → 데코 미구현
+           코드가 고쳐지면 여기 값만 바꾸면 그 상태가 그대로 그려진다. */
+        var pol = { split: false, roll: 3, free: false, introWin: false, boardWin: false, bw: 3, deco: false };
+        var cur = 0, runTo = null, autoTimer = null;
 
-        function recompute() {
-          ASIS.bw = pol.bw;
-          runTo = simulate(pol);
-          runAsis = simulate(ASIS);
-        }
+        function recompute() { runTo = simulate(pol); }
 
         /* ==================================================================
            그리기
@@ -767,7 +753,7 @@
           while (svg.firstChild) svg.removeChild(svg.firstChild);
           var W = 980, H = 250, L0 = 40, R = 12, T = 14, B = 42;
           var n = STEPS.length;
-          var top = Math.max(100, runAsis.maxMem * 1.08, runTo.maxMem * 1.15);
+          var top = Math.max(100, runTo.maxMem * 1.08);
           var x = function (i) { return L0 + (W - L0 - R) * (i / (n - 1)); };
           var y = function (v) { return T + (H - T - B) * (1 - v / top); };
 
@@ -811,10 +797,8 @@
             svg.appendChild(el("path", { d: d, fill: g.c, opacity: 0.72, stroke: "none" }));
             base = top;
           });
-          /* 흰 후광을 깔았더니 "면적 → 흰 띠 → 선" 3겹 대비가 생겨 선 하나가 세 줄로 보였다.
-             면적을 또렷하게(0.72) 하고 선은 중성 회색 실선 하나로 끝낸다. */
-          svg.appendChild(el("path", { d: line(runAsis), fill: "none", stroke: "var(--asis)", "stroke-width": 2.2 }));
-          svg.appendChild(el("path", { d: line(runTo), fill: "none", stroke: "var(--smg)", "stroke-width": 1.8 }));
+          /* 합계선 하나. 스택 위에 얹히므로 중성 회색으로 둔다 — 색을 주면 그룹색과 싸운다. */
+          svg.appendChild(el("path", { d: line(runTo), fill: "none", stroke: "var(--asis)", "stroke-width": 2 }));
 
           /* 스톨 — 축 아래 빨간 막대. 기다림은 숨기지 않는다 */
           for (var i = 0; i < n; i++) {
@@ -837,11 +821,14 @@
           svg.appendChild(el("circle", { cx: x(cur), cy: y(runTo.pts[cur].mem), r: 4.5, fill: "var(--smg)", stroke: "#fff", "stroke-width": 2 }));
 
           /* 범례 */
-          var lg = [["var(--asis)", "현재 코드"], ["var(--smg)", "토글 적용 합계"], ["var(--bad)", "대기(스톨)"]];
-          lg.forEach(function (p, i) {
-            svg.appendChild(el("rect", { x: L0 + i * 108, y: H - 12, width: 14, height: 3, rx: 1.5, fill: p[0] }));
-            var t3 = el("text", { x: L0 + i * 108 + 19, y: H - 8, "font-size": 9.5, fill: "var(--text-dim)", "font-weight": 700 });
+          var lg = [["var(--asis)", "메모리 합계"], ["var(--bad)", "대기(스톨)"]]
+            .concat(GRPS.map(function (g) { return [g.c, g.name]; }));
+          var lx = L0;
+          lg.forEach(function (p) {
+            svg.appendChild(el("rect", { x: lx, y: H - 12, width: 12, height: 4, rx: 2, fill: p[0] }));
+            var t3 = el("text", { x: lx + 16, y: H - 8, "font-size": 9.5, fill: "var(--text-dim)", "font-weight": 700 });
             t3.textContent = p[1]; svg.appendChild(t3);
+            lx += 22 + p[1].length * 10;
           });
 
           svg.onclick = function (e) {
@@ -852,11 +839,14 @@
           };
         }
 
+        /* 배지는 플레이헤드까지의 누적. 옆에 한 바퀴 전체값을 병기해
+           "지금 어디쯤 왔나" 와 "끝까지 가면 얼마나" 를 같이 읽게 한다. */
         function drawVerdict() {
-          $("sim-v-stall").innerHTML = runTo.stall.toFixed(1) + '<span class="sim-v-unit">초</span>';
-          $("sim-v-dl").innerHTML = runTo.dl.toFixed(1) + '<span class="sim-v-unit">MB</span>';
-          $("sim-v-stall-asis").textContent = "현재 " + runAsis.stall.toFixed(1) + "초";
-          $("sim-v-dl-asis").textContent = "현재 " + runAsis.dl.toFixed(1) + "MB";
+          var p = runTo.pts[cur];
+          $("sim-v-stall").innerHTML = p.cs.toFixed(1) + '<span class="sim-v-unit">초</span>';
+          $("sim-v-dl").innerHTML = p.cd.toFixed(1) + '<span class="sim-v-unit">MB</span>';
+          $("sim-v-stall-asis").textContent = "한 바퀴 " + runTo.stall.toFixed(1) + "초";
+          $("sim-v-dl-asis").textContent = "한 바퀴 " + runTo.dl.toFixed(1) + "MB";
         }
 
         /* 통 두 개. 곡선이 "언제" 를 맡고 통이 "지금 얼마나" 를 맡는다.
@@ -864,8 +854,8 @@
         var bars = $("sim-bars");
         function drawBars() {
           while (bars.firstChild) bars.removeChild(bars.firstChild);
-          var W = 320, H = 196, L0 = 30, T = 16, B = 34, BW = 62;
-          var top = Math.max(100, runAsis.maxMem * 1.06, runTo.maxMem * 1.12);
+          var W = 300, H = 196, L0 = 30, T = 16, B = 34, BW = 96;
+          var top = Math.max(100, runTo.maxMem * 1.06);
           var y = function (v) { return T + (H - T - B) * (1 - v / top); };
           var y0 = y(0);
 
@@ -876,8 +866,7 @@
             tx.textContent = v; bars.appendChild(tx);
           });
 
-          [{ run: runAsis, x: L0 + 24, lab: "현재 코드", col: "var(--asis)" },
-           { run: runTo,   x: L0 + 152, lab: "제안",     col: "var(--smg)" }].forEach(function (b) {
+          [{ run: runTo, x: L0 + 78, lab: "지금 코드", col: "var(--asis)" }].forEach(function (b) {
             var snap = b.run.pts[cur], gm = groupMem(snap.m), total = snap.mem;
             var acc = 0;
             GRPS.forEach(function (g) {
@@ -935,12 +924,17 @@
           RAIL.forEach(function (r, i) {
             var next = i + 1 < RAIL.length ? RAIL[i + 1].from : STEPS.length;
             var on = cur >= r.from && cur < next;
+            /* 단계별 메모리 — 그 단계 안에서의 최댓값. 곡선을 안 봐도 레일만으로
+               "어느 단계에서 얼마나 무거워지나" 가 읽혀야 한다. */
+            var mx = 0;
+            for (var k = r.from; k < next; k++) if (runTo.pts[k].mem > mx) mx = runTo.pts[k].mem;
             var b = document.createElement("button");
             b.type = "button";
             b.className = "sim-n" + (on ? " is-on" : "") + (r.ghost ? " is-ghost" : "");
             b.style.setProperty("--k", KCOL[r.kind]);
             b.innerHTML = '<span class="sim-dot"></span><span>' + r.name + "</span>" +
-              (r.ghost ? '<span class="sim-n-sub">데코 미구현</span>' : "");
+              '<span class="sim-n-sub" style="color:' + (mx > BUDGET ? "var(--bad)" : "var(--text-faint)") + '">' +
+              mx.toFixed(1) + "MB</span>";
             b.onclick = function () { goto(r.from); };
             box.appendChild(b);
           });
@@ -1071,10 +1065,10 @@
           if (s.k === "boot" || s.k === "view" || s.k === "intro") {
             var lbl = s.k === "boot" ? "부팅 · intro.fire" : s.k === "view" ? "ViewStory 프리팹 + 인트로 mp4" : "인트로 영상 재생 중";
             var sub = s.k === "intro"
-              ? (pol.introWin ? "이 " + DUR.intro + "초 동안 앞엣것을 받는다" : "현재 코드 — 이 창을 쓰지 않는다")
+              ? "이 " + DUR.intro + "초가 통째로 비어 있다 — StoryRunner 가 _active:false 라 로드가 영상 뒤로 밀린다"
               : "";
             setStage(stall + '<div class="sim-boot"><div class="sim-boot-bar"><i id="sim-pb"></i></div></div>' +
-              (sub ? '<div class="sim-cap" style="color:' + (pol.introWin ? "var(--ok)" : "var(--bad)") + '">' + sub + "</div>" : ""), lbl);
+              (sub ? '<div class="sim-cap" style="color: var(--bad)">' + sub + "</div>" : ""), lbl);
             var pb = $("sim-pb");
             if (pb) tw(0.9, "quadOut", function (v) { pb.style.width = (v * 100) + "%"; });
             return;
@@ -1268,18 +1262,6 @@
         function next() { if (cur < STEPS.length - 1) goto(cur + 1); else stopAuto(); }
         function refresh() { recompute(); goto(cur); }
 
-        function press(box, sel, fn) {
-          Array.prototype.forEach.call(document.querySelectorAll(sel), function (b) {
-            b.addEventListener("click", function () { fn(b); });
-          });
-        }
-        /* 켜고 끄는 토글 */
-        press(null, ".sim-tg[data-tg]", function (b) {
-          var k = b.getAttribute("data-tg");
-          pol[k] = !pol[k];
-          b.setAttribute("aria-pressed", String(pol[k]));
-          refresh();
-        });
         /* 하나만 고르는 그룹 */
         function radio(attr, apply) {
           var list = document.querySelectorAll(".sim-tg[" + attr + "]");
@@ -1291,7 +1273,6 @@
             });
           });
         }
-        radio("data-roll", function (v) { pol.roll = +v; });
         radio("data-bw", function (v) { pol.bw = +v; });
 
         $("sim-reset").onclick = function () { stopAuto(); goto(0); };
