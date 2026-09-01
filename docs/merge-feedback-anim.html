@@ -533,7 +533,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
 
         function toast(st, text, good, hold) {
           var t = st.spr('<div class="mfx-toast' + (good ? " is-good" : "") + '">' + text + "</div>");
-          var rest = st.layer.clientHeight / 2 + 30;
+          var rest = st.layer.clientHeight / 2 - 12;   // 보드 안쪽 상단 — 밖으로 나가면 무대가 잘라 먹는다
           t.set({ y: rest - 16, a: 0, sx: 0.86, sy: 0.86 });
           return t.to(0.24, { y: rest, a: 1, sx: 1, sy: 1 }, "backOut")
             .then(function () { return wait(hold == null ? 1.0 : hold); })
@@ -859,10 +859,10 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             gen = st.tile("mfx-producer");
             gen.set({ x: p.x, y: p.y, a: 0.45 });
             gauge = st.spr('<div class="mfx-gauge"><i></i></div>');
-            gauge.set({ x: p.x, y: p.y - 42 });
+            gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
             lbl = st.spr('<div class="mfx-chg">충전중</div>');
-            lbl.set({ x: p.x, y: p.y - 58 });
+            lbl.set({ x: p.x, y: p.y + 62 });
           }
           function play() {
             reset();
@@ -998,7 +998,7 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
             gen = st.tile("mfx-producer");
             gen.set({ x: p.x, y: p.y, a: 0.45 });
             gauge = st.spr('<div class="mfx-gauge"><i></i></div>');
-            gauge.set({ x: p.x, y: p.y - 42 });
+            gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
             fill.style.width = "78%";
           }
@@ -1126,3 +1126,681 @@ static bezier3(p0: cc.Vec2, p1: cc.Vec2, p2: cc.Vec2, p3: cc.Vec2, t: number): c
           }
           return { st: st, reset: reset, play: play };
         };
+
+        /* ======================================================================
+           카탈로그 — 설명 · 타이밍 표 · 코드. 데모의 값과 여기 값이 같아야 한다.
+           ====================================================================== */
+        var CATALOG = [
+          { group: "action", id: "a1", no: "A1", title: "클릭", state: "part", label: "부분 구현",
+            why: "눌림은 이미 <b>MergeBoardPressFeedback</b> 에 있습니다 — 얼굴이 3px 내려가고 옆면 두께가 4→1px 로 줄죠. 없는 건 <b>떼는 순간</b>입니다. 지금은 그냥 제자리로 돌아옵니다. 통통 튀는 감각은 누를 때가 아니라 <b>뗄 때의 오버슛</b>에서 나옵니다.",
+            rows: [
+              ["눌림 이동", "0.12s", "quadOut", "y −3px · 실측"],
+              ["눌림 스쿼시", "0.12s", "quadOut", "scaleX 1.06 / scaleY 0.94 · 제안"],
+              ["옆면 두께", "즉시", "—", "4px → 1px · 실측"],
+              ["릴리즈 복귀", "0.12s", "quadOut", "y 0 · 실측"],
+              ["릴리즈 오버슛", "0.08 → 0.18s", "quadOut → backOut", "0.95/1.07 → 1 · 제안"],
+            ],
+            code:
+"// MergeBoardPressFeedback.ts — setPressed() 에 릴리즈 오버슛을 얹는다.\n" +
+"private setPressed(pressed: boolean, animated: boolean): void {\n" +
+"    // ... 기존 face/edge 처리는 그대로 ...\n" +
+"    if (!animated) return;\n" +
+"    cc.Tween.stopAllByTarget(this.artworkNode);\n" +
+"    if (pressed) {\n" +
+"        cc.tween(this.artworkNode)\n" +
+"            .to(MERGE_BOARD_PRESS_DURATION_SEC, { scaleX: 1.06, scaleY: 0.94 }, { easing: \"quadOut\" })\n" +
+"            .start();\n" +
+"        return;\n" +
+"    }\n" +
+"    // 뗄 때만 반대 방향으로 한 번 지나쳤다 돌아온다 — 여기가 통통 튀는 지점\n" +
+"    cc.tween(this.artworkNode)\n" +
+"        .to(0.08, { scaleX: 0.95, scaleY: 1.07 }, { easing: \"quadOut\" })\n" +
+"        .to(POP_IN_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "action", id: "a2", no: "A2", title: "생산물이 튀어나와 보드로 (베지어)", state: "none", label: "없음",
+            why: "지금 <b>generateItem()</b> 은 빈 셀을 찾아 <b>setPosition</b> 후 그 자리에서 팝만 합니다. 생산자와 결과물 사이에 <b>인과가 화면에 없습니다.</b> 3차 베지어로 날리면 \"저 통에서 이게 나왔다\"가 눈으로 붙습니다. 점선과 붉은 점은 제어점 — 실제 게임에는 안 나옵니다.",
+            rows: [
+              ["생산자 눌림", "0.12s", "quadOut", "y −3px"],
+              ["스폰 팝", "0.15s", "backOut", "scale 0.5 → 1.14"],
+              ["비행", "0.42s", "quadInOut", "3차 베지어 · lift = max(70, 거리 × 0.38)"],
+              ["비행 중 축소", "0.27s", "quadIn", "1.14 → 1"],
+              ["착지 스쿼시", "0.06 → 0.16s", "quadOut → backOut", "1.18/0.84 → 1"],
+            ],
+            code:
+"// ViewMergeBoard.ts — cc.bezierTo 는 cc.Action 이라 tween 체인과 안 섞인다.\n" +
+"// 프로젝트가 이미 쓰는 TweenRatio + schedule 패턴을 그대로 간다.\n" +
+"private async flyToCell(item: cc.Node, from: cc.Vec2, to: cc.Vec2): Promise<void> {\n" +
+"    const distance = to.sub(from).mag();\n" +
+"    const lift = Math.max(MERGE_FLIGHT_MIN_LIFT, distance * MERGE_FLIGHT_LIFT_RATIO);\n" +
+"    const control1 = cc.v2(from.x, from.y + lift);\n" +
+"    const control2 = cc.v2(to.x, to.y + lift * 0.6);\n" +
+"    const ratio = new TweenRatio();\n" +
+"\n" +
+"    const follow = () => {\n" +
+"        if (!item.isValid) return;\n" +
+"        item.setPosition(CCmath.bezier3(from, control1, control2, to, ratio.tweenRatio));\n" +
+"    };\n" +
+"    this.schedule(follow, 0, cc.macro.REPEAT_FOREVER);\n" +
+"\n" +
+"    item.setScale(0.5);\n" +
+"    cc.tween(item)\n" +
+"        .to(0.15, { scale: 1.14 }, { easing: \"backOut\" })\n" +
+"        .to(0.27, { scale: 1 }, { easing: \"quadIn\" })\n" +
+"        .start();\n" +
+"    GameSound.play(\"FX_APPEAR\", item);\n" +
+"\n" +
+"    await CCact.asyncTween(\n" +
+"        cc.tween(ratio).to(MERGE_FLIGHT_DURATION_SEC, { tweenRatio: 1 }, { easing: \"quadInOut\" }),\n" +
+"        item,\n" +
+"    );\n" +
+"    this.unschedule(follow);\n" +
+"    if (!item.isValid) return;\n" +
+"    item.setPosition(to);\n" +
+"    GameSound.play(\"FX_TILE_FALL\", item);\n" +
+"    await this.playLandingSquash(item);\n" +
+"}\n" +
+"\n" +
+"private async playLandingSquash(node: cc.Node): Promise<void> {\n" +
+"    await CCact.asyncTween(\n" +
+"        cc.tween(node)\n" +
+"            .to(MERGE_SQUASH_IN_SEC, { scaleX: 1.18, scaleY: 0.84 }, { easing: \"quadOut\" })\n" +
+"            .to(MERGE_SQUASH_OUT_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" }),\n" +
+"        node,\n" +
+"    );\n" +
+"}" },
+
+          { group: "action", id: "a3", no: "A3", title: "드래그", state: "part", label: "부분 구현",
+            why: "지금은 <b>setScale(1.08)</b> 한 줄이고, 타일이 손가락에 <b>정확히</b> 붙습니다. 정확히 붙으면 무게가 사라져 종이를 미는 느낌이 납니다. 지연 추종 + 그림자 + 원래 자리 고스트, 세 가지가 같이 있어야 \"들어 올렸다\"가 됩니다.",
+            rows: [
+              ["픽업", "0.10s", "backOut", "scale 1.08 · y +6px"],
+              ["그림자 확대", "0.10s", "quadOut", "1.0 → 1.3배 · 투명도 0.5 → 0.32"],
+              ["출발지 고스트", "0.10s", "quadOut", "점선 타일 · 투명도 0.55"],
+              ["지연 추종", "매 프레임", "—", "k = 1 − (1 − 0.40)^(dt × 60)"],
+              ["기울기", "매 프레임", "—", "angle = (손가락 x − 타일 x) × 0.16"],
+              ["셀 스냅", "0.14s", "quadOut", "가장 가까운 셀 · 한계 56px"],
+              ["착지 스쿼시", "0.06 → 0.16s", "quadOut → backOut", "1.14/0.88 → 1"],
+            ],
+            code:
+"// MergeBoardDragItem 은 터치 좌표만 넘기고, 추종은 update(dt) 에서 돈다.\n" +
+"// 이벤트 시점에 lerp 하면 프레임 레이트에 따라 무게가 달라진다.\n" +
+"protected update(dt: number): void {\n" +
+"    if (!this.draggingItem) return;\n" +
+"    const node = this.draggingItem.node;\n" +
+"    const k = 1 - Math.pow(1 - MERGE_DRAG_FOLLOW_RATIO, dt * 60);\n" +
+"    const current = node.getPosition();\n" +
+"    const target = this.dragTargetPosition;\n" +
+"    node.setPosition(\n" +
+"        current.x + (target.x - current.x) * k,\n" +
+"        current.y + (target.y - current.y) * k,\n" +
+"    );\n" +
+"    node.angle += ((target.x - current.x) * 0.16 - node.angle) * k;\n" +
+"    this.dragShadowNode.setPosition(node.x, node.y - 36);\n" +
+"}\n" +
+"\n" +
+"public beginItemDrag(item: MergeBoardDragItem, localTouchPosition: cc.Vec2): boolean {\n" +
+"    if (this.dragOffsets.size > 0) return false;          // 드래그는 선점 — 겹치지 않는다\n" +
+"    if (!this.model || this.model.getTier(item.getCellIndex()) === 0) return false;\n" +
+"    // ... 기존 offset 계산 ...\n" +
+"    item.node.setSiblingIndex(this.gridRoot.childrenCount - 1);\n" +
+"    cc.tween(item.node)\n" +
+"        .to(MERGE_PICKUP_DURATION_SEC, { scale: MERGE_PICKUP_SCALE }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"    this.showDragGhost(this.getCellPosition(item.getCellIndex()));\n" +
+"    GameSound.play(\"FX_TILE_SELECT\", item.node);\n" +
+"    return true;\n" +
+"}" },
+
+          { group: "action", id: "a4", no: "A4", title: "병합", state: "part", label: "부분 구현",
+            why: "지금은 스프라이트를 바꾸고 <b>0.78 → 1 backOut</b> 팝 하나가 전부입니다. 없는 건 <b>흡수</b>입니다 — 두 개가 하나가 됐다는 사실이 화면에 안 남고, 사라진 타일은 그냥 <b>active = false</b> 로 꺼집니다. 흡수 → 임팩트 → 팝, 세 박자로 끊어야 합쳐진 게 보입니다.",
+            rows: [
+              ["흡수", "0.14s", "quadIn", "대상으로 이동 · scale 0.55 · 투명도 0"],
+              ["임팩트 링", "0.30s", "quadOut", "0.5 → 1.9배 · 투명도 0"],
+              ["결과 눌림", "0.07s", "quadOut", "1.24 / 0.82"],
+              ["결과 팝", "0.20s", "backOut", "→ 1 · 실측 MERGE_POP"],
+              ["스파크", "0.34s", "quadOut", "7개 · 반경 40~52px"],
+            ],
+            code:
+"private async playMerge(source: MergeBoardDragItem, target: MergeBoardDragItem, resultTier: number): Promise<void> {\n" +
+"    const targetPosition = target.node.getPosition();\n" +
+"    this.lockCell(target.getCellIndex());                 // 팝이 끝날 때까지 이 셀은 입력 잠금\n" +
+"\n" +
+"    await CCact.asyncTween(\n" +
+"        cc.tween(source.node).to(0.14, {\n" +
+"            position: cc.v3(targetPosition.x, targetPosition.y, 0),\n" +
+"            scale: 0.55,\n" +
+"            opacity: 0,\n" +
+"        }, { easing: \"quadIn\" }),\n" +
+"        source.node,\n" +
+"    );\n" +
+"    if (!this.isValid) return;\n" +
+"    source.node.active = false;\n" +
+"    source.node.opacity = 255;\n" +
+"\n" +
+"    this.spawnEffect(\"MergeImpactRing\", targetPosition);\n" +
+"    this.spawnEffect(\"MergeSparkBurst\", targetPosition);\n" +
+"    GameSound.play(\"FX_TILE_MATCH\", target.node);\n" +
+"\n" +
+"    target.setArtworkSpriteFrame(this.tierSpriteFrames[resultTier - 1]);\n" +
+"    target.node.setScale(0.78);\n" +
+"    await CCact.asyncTween(\n" +
+"        cc.tween(target.node)\n" +
+"            .to(0.07, { scaleX: 1.24, scaleY: 0.82 }, { easing: \"quadOut\" })\n" +
+"            .to(MERGE_POP_DURATION_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" }),\n" +
+"        target.node,\n" +
+"    );\n" +
+"    this.unlockCell(target.getCellIndex());\n" +
+"    CClog.log(\"ViewMergeBoard > merged into tier \" + resultTier);\n" +
+"}" },
+
+          { group: "action", id: "a5", no: "A5", title: "더블탭으로 특정 위치 이동", state: "none", label: "없음",
+            why: "<b>MergeBoardDragItem</b> 은 TOUCH_START/MOVE/END/CANCEL 만 듣습니다. 탭 판정도 더블탭 판정도 없습니다. 판정에서 중요한 건 <b>이동 거리</b>입니다 — 손가락이 조금이라도 끌렸으면 드래그로 봐야 하고, 그래야 드래그 도중 우발적 자동 이동이 안 납니다. 비행은 A2 와 같은 함수를 쓰되 <b>더 낮고 빠르게</b> 갑니다.",
+            rows: [
+              ["탭 1 · 2", "0.06 → 0.10s", "quadOut → backOut", "scale 0.92 → 1"],
+              ["더블탭 판정", "0.28s 이내", "—", "이동 4px 미만일 때만"],
+              ["목적지 셀", "즉시", "—", "점선 하이라이트 · 도착 시 해제"],
+              ["이동", "0.30s", "quadInOut", "베지어 · lift = max(42, 거리 × 0.22)"],
+              ["착지 스쿼시", "0.05 → 0.15s", "quadOut → backOut", "1.16/0.86 → 1"],
+            ],
+            code:
+"// MergeBoardDragItem.ts\n" +
+"private lastTapMs: number = 0;\n" +
+"private touchStartPosition: cc.Vec2 = null;\n" +
+"\n" +
+"private onTouchEnd(event: cc.Event.EventTouch): void {\n" +
+"    if (!this.isDragging || !this.owner) return;\n" +
+"    this.isDragging = false;\n" +
+"    if (this.isGenerator) { this.owner.generateItem(); return; }\n" +
+"\n" +
+"    const local = this.getLocalTouchPosition(event);\n" +
+"    const moved = this.touchStartPosition\n" +
+"        ? local.sub(this.touchStartPosition).mag()\n" +
+"        : Number.MAX_VALUE;\n" +
+"    const now = cc.director.getTotalTime();\n" +
+"\n" +
+"    // 손가락이 끌렸으면 무조건 드래그다 — 드래그 중 오발을 막는 유일한 방어선\n" +
+"    if (moved < DOUBLE_TAP_MOVE_LIMIT && now - this.lastTapMs <= DOUBLE_TAP_WINDOW_MS) {\n" +
+"        this.lastTapMs = 0;\n" +
+"        this.owner.autoPlaceItem(this);\n" +
+"        return;\n" +
+"    }\n" +
+"    this.lastTapMs = now;\n" +
+"    this.owner.endItemDrag(this, local);\n" +
+"}\n" +
+"\n" +
+"// ViewMergeBoard.ts — 목적지는 같은 레벨 타일, 없으면 가장 가까운 빈 셀\n" +
+"public async autoPlaceItem(item: MergeBoardDragItem): Promise<void> {\n" +
+"    const targetCell = this.model.findAutoPlaceCell(item.getCellIndex());\n" +
+"    if (targetCell < 0) return;\n" +
+"    this.setCellHighlight(targetCell, true);\n" +
+"    await this.flyToCell(item.node, item.node.getPosition(), this.getCellPosition(targetCell),\n" +
+"        MERGE_HOP_DURATION_SEC, MERGE_HOP_LIFT_RATIO, MERGE_HOP_MIN_LIFT);\n" +
+"    if (!this.isValid) return;\n" +
+"    this.setCellHighlight(targetCell, false);\n" +
+"    this.applyMove(item, targetCell);\n" +
+"}" },
+
+          { group: "action", id: "a6", no: "A6", title: "재화 먹을 때", state: "part", label: "부분 구현",
+            why: "코인이 날아가는 <b>ItemGatheringAnimation</b> 은 이미 있고 잘 돕니다. 빠진 건 <b>도착지</b>입니다 — 코인이 HUD 에 닿는데 HUD 는 아무 반응이 없습니다. 숫자가 굴러가고 카운터가 한 번 튀어야 \"내 것이 됐다\"가 완성됩니다. 카운터는 <b>첫 코인이 닿는 순간</b> 시작해야 합니다. 마지막 코인을 기다리면 늦습니다.",
+            rows: [
+              ["상자 반응", "0.07 → 0.16s", "quadOut → backOut", "1.14/0.88 → 1"],
+              ["산개", "0.26s", "circOut", "반경 52px · scale 1.25 · 실측 패턴"],
+              ["STAGGER", "0.04s", "—", "코인 간 시작 간격"],
+              ["추적", "0.34s", "circIn", "HUD 로 · scale 0.8 · 실측 패턴"],
+              ["카운터 롤링", "0.5s", "quadOut", "첫 코인 도착 시점에 시작"],
+              ["HUD 펀치", "0.05 → 0.12s", "quadOut → backOut", "1.09 → 1 · 코인마다"],
+            ],
+            code:
+"// 기존 ItemGatheringAnimation 을 그대로 쓰고, 콜백 두 개만 채운다.\n" +
+"private async playCoinGain(sourceNode: cc.Node, amount: number, nextTotal: number): Promise<void> {\n" +
+"    const gathering = PoolManager.get(ItemGatheringAnimation, ItemGatheringAnimation.objectNameCoin);\n" +
+"    gathering.node.setParent(this.effectRoot);\n" +
+"    gathering.node.setPosition(CCnode.getTargetPos(sourceNode, gathering.node));\n" +
+"\n" +
+"    await gathering.playTraceTarget(\n" +
+"        ItemGatheringAnimation.objectNameCoin,\n" +
+"        ItemGatheringAnimation.endAnimationNameCoin,\n" +
+"        Math.min(amount, COIN_SPRITE_LIMIT),        // 8개 상한 — 수량과 스프라이트 수를 분리\n" +
+"        this.coinHudNode,\n" +
+"        () => { this.coinTweenNumber.number = nextTotal; },   // 첫 코인 도착\n" +
+"        undefined,\n" +
+"    );\n" +
+"    if (!this.isValid) return;\n" +
+"    this.punch(this.coinHudNode);\n" +
+"}\n" +
+"\n" +
+"private punch(node: cc.Node): void {\n" +
+"    cc.Tween.stopAllByTarget(node);\n" +
+"    node.setScale(1);\n" +
+"    cc.tween(node)\n" +
+"        .to(0.05, { scale: 1.09 }, { easing: \"quadOut\" })\n" +
+"        .to(0.12, { scale: 1 }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "text", id: "b1", no: "B1", title: "보드가 꽉 참", state: "none", label: "없음",
+            why: "지금은 <b>instructionLabel.string</b> 이 조용히 바뀝니다. 화면 어딘가의 문구가 바뀌었다는 걸 유저는 못 봅니다. 순서가 중요합니다 — <b>거부음 → 원인 노드(생산자) 흔들림 → 보드 프레임 → 문구</b>. 원인이 먼저 흔들려야 \"저기가 문제구나\"로 시선이 갑니다.",
+            rows: [
+              ["거부음", "즉시", "—", "FX_TILE_ERROR · 트윈보다 먼저"],
+              ["생산자 흔들림", "0.30s", "quadOut ×4 → backOut", "진폭 6 → 4.2 → 2.7 → 1.5 → 0"],
+              ["보드 프레임", "0.30s", "동일", "진폭 5 · 생산자와 동시"],
+              ["토스트 등장", "0.24s", "backOut", "y +16 · scale 0.86 → 1"],
+              ["유지 → 퇴장", "1.10 → 0.20s", "quadIn", "y +14 · 투명도 0"],
+            ],
+            code:
+"private playBoardFullFeedback(): void {\n" +
+"    GameSound.play(\"FX_TILE_ERROR\", this.node);          // 판정 프레임에 먼저 친다\n" +
+"    this.playShake(this.generatorNode, MERGE_SHAKE_AMPLITUDE, MERGE_SHAKE_DURATION_SEC);\n" +
+"    this.playShake(this.boardFrameNode, 5, MERGE_SHAKE_DURATION_SEC);\n" +
+"    this.showToast(Localization.getString(\"merge_board_full\"));\n" +
+"}\n" +
+"\n" +
+"// 흔들림은 감쇠가 있어야 \"거부\" 로 읽힌다. 등폭 왕복은 그냥 진동으로 보인다.\n" +
+"private playShake(node: cc.Node, amplitude: number, duration: number): void {\n" +
+"    cc.Tween.stopAllByTarget(node);\n" +
+"    const origin = node.getPosition();\n" +
+"    const step = duration / 6;\n" +
+"    cc.tween(node)\n" +
+"        .to(step, { x: origin.x + amplitude }, { easing: \"quadOut\" })\n" +
+"        .to(step, { x: origin.x - amplitude * 0.7 }, { easing: \"quadOut\" })\n" +
+"        .to(step, { x: origin.x + amplitude * 0.45 }, { easing: \"quadOut\" })\n" +
+"        .to(step, { x: origin.x - amplitude * 0.25 }, { easing: \"quadOut\" })\n" +
+"        .to(step * 2, { x: origin.x }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"}\n" +
+"\n" +
+"private async showToast(message: string): Promise<void> {\n" +
+"    const toast = PoolManager.get(PooledObject, \"MergeToast\");\n" +
+"    toast.node.setParent(this.toastRoot);\n" +
+"    toast.getComponentInChildren(cc.Label).string = message;\n" +
+"    toast.node.setPosition(0, TOAST_REST_Y - 16);\n" +
+"    toast.node.opacity = 0;\n" +
+"    toast.node.setScale(0.86);\n" +
+"    await CCact.asyncTween(\n" +
+"        cc.tween(toast.node)\n" +
+"            .to(MERGE_TOAST_IN_SEC, { y: TOAST_REST_Y, opacity: 255, scale: 1 }, { easing: \"backOut\" })\n" +
+"            .delay(MERGE_TOAST_HOLD_SEC)\n" +
+"            .to(MERGE_TOAST_OUT_SEC, { y: TOAST_REST_Y + 14, opacity: 0 }, { easing: \"quadIn\" }),\n" +
+"        toast.node,\n" +
+"    );\n" +
+"    if (!toast.isValid) return;\n" +
+"    toast.returnObject();\n" +
+"}" },
+
+          { group: "text", id: "b2", no: "B2", title: "충전중", state: "none", label: "없음",
+            why: "충전중은 <b>말이 아니라 상태</b>입니다. 문구만 띄우면 유저는 얼마나 남았는지 모릅니다. 세 가지가 같이 가야 합니다 — <b>감광</b>(못 쓴다) · <b>게이지</b>(얼마나 남았다) · <b>조용한 숨쉬기</b>(죽은 게 아니다). 숨쉬기는 수확 가능 상태(C3)보다 <b>확실히 작게</b> 둬야 둘이 구분됩니다. 점 애니메이션은 이미 있는 <b>CCact.playCommaEffect</b> 를 그대로 씁니다.",
+            rows: [
+              ["생산자 감광", "즉시", "—", "opacity 255 → 115"],
+              ["숨쉬기", "0.80s ×2", "sineInOut", "scale 1.02 / 0.97 — 수확 대기보다 작게"],
+              ["게이지", "남은 시간", "linear", "width 0 → 100% · 서버 시간 기준"],
+              ["점", "0.25s ×4단", "—", "CCact.playCommaEffect(label, 0.25)"],
+            ],
+            code:
+"private applyChargingState(remainSec: number, totalSec: number): void {\n" +
+"    this.chargingRoot.active = true;\n" +
+"    this.generatorSprite.node.opacity = 115;\n" +
+"    CCact.playCommaEffect(this.chargingDotsLabel, 0.25);\n" +
+"\n" +
+"    // 게이지는 남은 시간만큼만 이어서 채운다 — 재진입해도 이어 붙는다\n" +
+"    const filled = 1 - remainSec / totalSec;\n" +
+"    this.chargeGaugeNode.width = GAUGE_FULL_WIDTH * filled;\n" +
+"    cc.Tween.stopAllByTarget(this.chargeGaugeNode);\n" +
+"    cc.tween(this.chargeGaugeNode)\n" +
+"        .to(remainSec, { width: GAUGE_FULL_WIDTH }, { easing: \"linear\" })\n" +
+"        .call(() => this.playChargeComplete())\n" +
+"        .start();\n" +
+"\n" +
+"    // 대기 중인 생산자도 살아 있다는 신호는 준다. 단, 수확 대기보다 작게.\n" +
+"    cc.Tween.stopAllByTarget(this.generatorNode);\n" +
+"    cc.tween(this.generatorNode)\n" +
+"        .repeatForever(cc.tween()\n" +
+"            .to(MERGE_BOARD_GENERATOR_BOB_DURATION_SEC, { scaleX: 1.02, scaleY: 0.97 }, { easing: \"sineInOut\" })\n" +
+"            .to(MERGE_BOARD_GENERATOR_BOB_DURATION_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"sineInOut\" }))\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "text", id: "b3", no: "B3", title: "레벨 n 에 해금 (잠긴 아이템 클릭)", state: "none", label: "없음",
+            why: "잠긴 것은 <b>흔드는</b> 게 아니라 <b>돌립니다</b>. 좌우로 미는 흔들림은 \"거부\"고, 자물쇠가 좌우로 돌아가는 건 \"안 열린다\"입니다 — 같은 거부여도 원인이 다르니 모양도 달라야 합니다. 문구에는 <b>몇 레벨</b>인지가 반드시 들어가야 하고, 그 숫자가 다음 목표가 됩니다.",
+            rows: [
+              ["눌림", "0.10 → 0.14s", "quadOut → backOut", "scale 0.94 → 1"],
+              ["회전", "0.08 ×3 → 0.12s", "quadOut → backOut", "−9° → 9° → −5° → 0°"],
+              ["토스트", "0.24 / 1.10 / 0.20s", "backOut / quadIn", "\"레벨 12에 해금돼요\""],
+            ],
+            code:
+"public onClickLockedItem(item: MergeBoardDragItem, unlockLevel: number): void {\n" +
+"    GameSound.play(\"FX_TILE_ERROR\", item.node);\n" +
+"    cc.Tween.stopAllByTarget(item.node);\n" +
+"    item.node.angle = 0;\n" +
+"    cc.tween(item.node)\n" +
+"        .to(0.08, { angle: -9 }, { easing: \"quadOut\" })\n" +
+"        .to(0.08, { angle: 9 }, { easing: \"quadOut\" })\n" +
+"        .to(0.08, { angle: -5 }, { easing: \"quadOut\" })\n" +
+"        .to(0.12, { angle: 0 }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"    this.showToast(Localization.getFormatString(\"merge_unlock_at_level\", unlockLevel));\n" +
+"    CClog.log(\"ViewMergeBoard > locked item tapped, unlock at \" + unlockLevel);\n" +
+"}" },
+
+          { group: "gap", id: "c1", no: "C1", title: "드롭 거부 · 병합 실패", state: "none", label: "없음 · 우선순위 1",
+            why: "지금 <b>endItemDrag()</b> 의 else 분기는 <b>item.node.setPosition(원위치)</b> 한 줄입니다. 머지 보드에서 가장 자주 일어나는 입력 결과가 <b>순간이동</b>으로 처리되고 있습니다. 유저는 자기가 뭘 잘못했는지 모른 채 같은 실수를 반복합니다. <b>여섯 개 중 이것부터 넣어야 합니다.</b>",
+            rows: [
+              ["거부음", "즉시", "—", "FX_TILE_ERROR · 복귀 트윈보다 먼저"],
+              ["대상 셀 표시", "0.18s 유지", "—", "붉은 아웃라인 3px"],
+              ["원위치 복귀", "0.26s", "backOut", "SNAP_BACK · scale 1.08 → 1"],
+              ["흔들림", "0.24s", "quadOut ×4 → backOut", "진폭 5 감쇠"],
+            ],
+            code:
+"// endItemDrag() 의 else 분기를 교체한다.\n" +
+"private async playRejectDrop(item: MergeBoardDragItem, sourceCell: number): Promise<void> {\n" +
+"    GameSound.play(\"FX_TILE_ERROR\", item.node);\n" +
+"    const node = item.node;\n" +
+"    const home = this.getCellPosition(sourceCell);\n" +
+"    await CCact.asyncTween(\n" +
+"        cc.tween(node).to(MERGE_SNAP_BACK_SEC, {\n" +
+"            position: cc.v3(home.x, home.y, 0),\n" +
+"            scale: 1,\n" +
+"        }, { easing: \"backOut\" }),\n" +
+"        node,\n" +
+"    );\n" +
+"    if (!node.isValid) return;\n" +
+"    this.playShake(node, 5, 0.24);\n" +
+"}" },
+
+          { group: "gap", id: "c2", no: "C2", title: "드래그 중 병합 가능 대상 하이라이트", state: "none", label: "없음 · 우선순위 2",
+            why: "머지 장르의 핵심 가독성 장치입니다. 손가락 아래에서 <b>무엇과 합쳐지는지</b>가 보여야 합니다. 링은 <b>같은 레벨 타일에만</b> 뜹니다 — 아무 데나 뜨면 정보가 아니라 소음입니다. 이게 있으면 C1(거부)이 애초에 덜 발생합니다.",
+            rows: [
+              ["링 등장", "0.14s", "backOut", "scale 0.9 → 1.02 · 투명도 0 → 1"],
+              ["펄스", "0.45s ×2 반복", "sineInOut", "scale 0.98 ↔ 1.14 · 투명도 1 ↔ 0.45"],
+              ["대상 이탈", "0.16s", "quadOut", "scale 1.3 · 투명도 0"],
+            ],
+            code:
+"// moveItemDrag() 안에서 매 이동마다 호출. 대상이 바뀔 때만 실제로 갱신한다.\n" +
+"private updateMergeHighlight(draggedTier: number, hoverCell: number): void {\n" +
+"    if (hoverCell === this.highlightedCell) return;\n" +
+"    this.setMergeHighlight(this.highlightedCell, false);\n" +
+"    this.highlightedCell = -1;\n" +
+"\n" +
+"    if (hoverCell < 0) return;\n" +
+"    if (this.model.getTier(hoverCell) !== draggedTier) return;   // 같은 레벨에만\n" +
+"    this.highlightedCell = hoverCell;\n" +
+"    this.setMergeHighlight(hoverCell, true);\n" +
+"    GameSound.play(\"FX_ITEM_HIGHLIGHT\", this.node);\n" +
+"}\n" +
+"\n" +
+"private setMergeHighlight(cellIndex: number, on: boolean): void {\n" +
+"    const ring = this.findRingNode(cellIndex);\n" +
+"    if (!ring) return;\n" +
+"    cc.Tween.stopAllByTarget(ring);\n" +
+"    if (!on) { ring.active = false; return; }\n" +
+"    ring.active = true;\n" +
+"    ring.setScale(0.9);\n" +
+"    ring.opacity = 0;\n" +
+"    cc.tween(ring)\n" +
+"        .to(0.14, { scale: 1.02, opacity: 255 }, { easing: \"backOut\" })\n" +
+"        .repeatForever(cc.tween()\n" +
+"            .to(0.45, { scale: 1.14, opacity: 115 }, { easing: \"sineInOut\" })\n" +
+"            .to(0.45, { scale: 0.98, opacity: 255 }, { easing: \"sineInOut\" }))\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "gap", id: "c3", no: "C3", title: "충전 완료 (대기 → 수확 가능)", state: "none", label: "없음 · 우선순위 3",
+            why: "요청 목록에 \"충전중\"은 있는데 <b>충전 완료</b>가 없습니다. 그런데 유저를 게임으로 다시 부르는 건 충전중이 아니라 <b>완료되는 순간</b>입니다. 게이지가 사라지고, 감광이 풀리고, 한 번 크게 튀고, 느낌표가 붙어 계속 까딱거려야 합니다 — 이 까딱거림이 B2 의 조용한 숨쉬기와 대비돼서 상태가 구분됩니다.",
+            rows: [
+              ["게이지 소멸", "0.18s", "quadIn", "scaleY 0.4 · 투명도 0"],
+              ["감광 해제", "즉시", "—", "opacity 115 → 255"],
+              ["완료 팝", "0.08 → 0.22s", "quadOut → backOut", "1.18/0.84 → 1"],
+              ["느낌표 뱃지", "0.20s", "backOut", "scale 0 → 1"],
+              ["뱃지 까딱임", "0.42s ×2 반복", "sineInOut", "y +6px — 대기 상태보다 크게"],
+              ["스파크", "0.34s", "quadOut", "8개 · 민트"],
+            ],
+            code:
+"private playChargeComplete(): void {\n" +
+"    cc.Tween.stopAllByTarget(this.chargingDotsLabel.node);\n" +
+"    this.chargingRoot.active = false;\n" +
+"    this.generatorSprite.node.opacity = 255;\n" +
+"    GameSound.play(\"FX_STAGE_UP\", this.generatorNode);\n" +
+"    this.spawnEffect(\"MergeReadySpark\", this.generatorNode.getPosition());\n" +
+"\n" +
+"    cc.Tween.stopAllByTarget(this.generatorNode);\n" +
+"    cc.tween(this.generatorNode)\n" +
+"        .to(0.08, { scaleX: 1.18, scaleY: 0.84 }, { easing: \"quadOut\" })\n" +
+"        .to(0.22, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
+"        .call(() => this.playGeneratorIdle())              // 기존 bob 으로 복귀\n" +
+"        .start();\n" +
+"\n" +
+"    const badge = this.readyBadgeNode;\n" +
+"    badge.active = true;\n" +
+"    badge.setScale(0);\n" +
+"    const restY = badge.getPosition().y;\n" +
+"    cc.tween(badge)\n" +
+"        .to(0.20, { scale: 1 }, { easing: \"backOut\" })\n" +
+"        .repeatForever(cc.tween()\n" +
+"            .to(0.42, { y: restY + 6 }, { easing: \"sineInOut\" })\n" +
+"            .to(0.42, { y: restY }, { easing: \"sineInOut\" }))\n" +
+"        .start();\n" +
+"}" },
+
+          { group: "gap", id: "c4", no: "C4", title: "최대 단계 도달", state: "none", label: "없음 · 우선순위 5",
+            why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라 부정이 아니라 도장으로 알려야 합니다.",
+            rows: [
+              ["MAX 스탬프", "0.14s", "backOut", "scale 1.7 → 1"],
+              ["유지 → 소멸", "0.75 → 0.20s", "quadIn", "투명도 0"],
+              ["대상 스쿼시", "0.06 → 0.18s", "quadOut → backOut", "1.10/0.90 → 1"],
+              ["원위치 복귀", "0.26s", "backOut", "SNAP_BACK 재사용"],
+              ["가벼운 흔들림", "0.22s", "quadOut ×4", "진폭 4 — C1(5)보다 약하게"],
+            ],
+            code:
+"private async playMaxTierFeedback(item: MergeBoardDragItem, target: MergeBoardDragItem, sourceCell: number): Promise<void> {\n" +
+"    // 부정이 아니라 상태 고지 — FX_TILE_ERROR 를 쓰지 않는다\n" +
+"    GameSound.play(\"FX_ITEM_HINT\", target.node);\n" +
+"    this.spawnStamp(\"MergeMaxStamp\", target.node.getPosition());\n" +
+"    cc.tween(target.node)\n" +
+"        .to(0.06, { scaleX: 1.10, scaleY: 0.90 }, { easing: \"quadOut\" })\n" +
+"        .to(0.18, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
+"        .start();\n" +
+"    await this.playRejectDrop(item, sourceCell);           // 복귀는 C1 과 같은 함수\n" +
+"}" },
+
+          { group: "gap", id: "c5", no: "C5", title: "재화 부족", state: "none", label: "없음 · 우선순위 6",
+            why: "버튼만 흔들면 유저는 <b>버튼이 고장났나</b> 로 읽습니다. 원인은 버튼이 아니라 <b>잔액</b>이라, HUD 카운터가 같이 붉어져야 시선이 그리로 갑니다. 이 연출이 상점 진입으로 이어지는 자연스러운 동선을 만듭니다.",
+            rows: [
+              ["버튼 눌림", "0.06 → 0.10s", "quadOut → backOut", "scale 0.94 → 1"],
+              ["버튼 흔들림", "0.28s", "quadOut ×4 → backOut", "진폭 6"],
+              ["HUD 붉게", "0.10s", "quadOut", "#7A4E2B → #E1503F"],
+              ["HUD 복귀", "0.40s", "quadIn", "→ #7A4E2B"],
+              ["토스트", "0.24 / 1.00 / 0.20s", "backOut / quadIn", "\"코인이 부족해요\""],
+            ],
+            code:
+"private playNotEnoughCoin(button: cc.Node): void {\n" +
+"    GameSound.play(\"FX_TILE_ERROR\", button);\n" +
+"    this.playShake(button, MERGE_SHAKE_AMPLITUDE, 0.28);\n" +
+"\n" +
+"    // 원인 노드를 같이 물들인다 — 어디를 봐야 하는지 알려주는 부분\n" +
+"    const hud = this.coinHudNode;\n" +
+"    cc.Tween.stopAllByTarget(hud);\n" +
+"    cc.tween(hud)\n" +
+"        .to(0.10, { color: cc.color(225, 80, 63) }, { easing: \"quadOut\" })\n" +
+"        .to(0.40, { color: cc.color(122, 78, 43) }, { easing: \"quadIn\" })\n" +
+"        .start();\n" +
+"    this.showToast(Localization.getString(\"merge_not_enough_coin\"));\n" +
+"}" },
+
+          { group: "gap", id: "c6", no: "C6", title: "미션 납품", state: "none", label: "없음 · 우선순위 4",
+            why: "머지의 보상 루프가 닫히는 지점입니다. 아이템이 미션 슬롯으로 <b>날아가서</b> 없어져야 \"납품했다\"가 되고, 슬롯이 매번 반응해야 몇 개가 들어갔는지 세어집니다. 비행은 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다.",
+            rows: [
+              ["STAGGER", "0.06s", "—", "코인(0.04)보다 느리게"],
+              ["들어올림", "0.14s", "backOut", "scale 1.12"],
+              ["비행 중 축소", "0.30s", "quadIn", "1.12 → 0.72"],
+              ["비행", "0.44s", "quadInOut", "베지어 · lift = max(60, 거리 × 0.30)"],
+              ["슬롯 반응", "0.06 → 0.16s", "quadOut → backOut", "1.16/0.86 → 1 · 개수마다"],
+              ["완료 스탬프", "0.16s", "backOut", "scale 1.8 → 1 · 각도 −7°"],
+            ],
+            code:
+"private async playDelivery(items: MergeBoardDragItem[], slotNode: cc.Node): Promise<void> {\n" +
+"    const to = CCnode.getTargetPos(slotNode, this.gridRoot);\n" +
+"    const flights = items.map(async (item, index) => {\n" +
+"        await CCts.delay(index * DELIVERY_STAGGER_SEC);    // 0.06\n" +
+"        const node = item.node;\n" +
+"        if (!node.isValid) return;\n" +
+"        node.setSiblingIndex(this.gridRoot.childrenCount - 1);\n" +
+"        cc.tween(node)\n" +
+"            .to(0.14, { scale: 1.12 }, { easing: \"backOut\" })\n" +
+"            .to(0.30, { scale: 0.72 }, { easing: \"quadIn\" })\n" +
+"            .start();\n" +
+"        await this.flyToCell(node, node.getPosition(), to, 0.44, 0.30, 60);\n" +
+"        if (!this.isValid) return;\n" +
+"        node.active = false;\n" +
+"        this.punch(slotNode);\n" +
+"        GameSound.play(\"FX_COIN_GET\", slotNode);\n" +
+"    });\n" +
+"\n" +
+"    await Promise.all(flights);\n" +
+"    if (!this.isValid) return;\n" +
+"    this.spawnStamp(\"MergeDeliveryStamp\", slotNode.getPosition());\n" +
+"    GameSound.play(\"FX_GAME_CLEAR\", slotNode);\n" +
+"}" },
+        ];
+
+        /* ======================================================================
+           렌더 — 카드 하나에 무대 / 설명 / 타이밍 표 / 코드
+           ====================================================================== */
+        var STATE_CLASS = { ok: "is-ok", part: "is-part", none: "is-none" };
+        var running = [];
+
+        function buildCard(spec) {
+          var item = elm("div", "mfx-item");
+
+          var head = elm("div", "mfx-head");
+          var no = elm("span", "mfx-no");
+          no.textContent = spec.no;
+          var h3 = document.createElement("h3");
+          h3.textContent = spec.title;
+          var state = elm("span", "mfx-state " + STATE_CLASS[spec.state]);
+          state.textContent = spec.label;
+          head.appendChild(no);
+          head.appendChild(h3);
+          head.appendChild(state);
+
+          var body = elm("div", "mfx-body");
+          var stageCol = elm("div", "mfx-stage");
+          var host = elm("div");
+          var btn = elm("button", "mfx-play");
+          btn.type = "button";
+          btn.textContent = "재생";
+          stageCol.appendChild(host);
+          stageCol.appendChild(btn);
+
+          var detail = elm("div", "mfx-detail");
+          var why = elm("p", "mfx-why");
+          why.innerHTML = spec.why;
+          detail.appendChild(why);
+
+          var scroll = elm("div", "table-scroll");
+          var table = document.createElement("table");
+          table.innerHTML =
+            "<thead><tr><th>구간</th><th>시간</th><th>이징</th><th>값</th></tr></thead><tbody>" +
+            spec.rows.map(function (r) {
+              return "<tr><td>" + r[0] + '</td><td style="text-align:right;font-variant-numeric:tabular-nums">' +
+                r[1] + '</td><td class="mfx-ez">' + r[2] + "</td><td>" + r[3] + "</td></tr>";
+            }).join("") + "</tbody>";
+          scroll.appendChild(table);
+          detail.appendChild(scroll);
+
+          var det = elm("details", "mfx-code");
+          var sum = document.createElement("summary");
+          sum.textContent = "Cocos 구현";
+          var pre = document.createElement("pre");
+          var codeEl = document.createElement("code");
+          codeEl.textContent = spec.code;      // textContent — 꺾쇠·화살표가 그대로 살아야 한다
+          pre.appendChild(codeEl);
+          det.appendChild(sum);
+          det.appendChild(pre);
+          detail.appendChild(det);
+
+          body.appendChild(stageCol);
+          body.appendChild(detail);
+          item.appendChild(head);
+          item.appendChild(body);
+
+          var demo = DEMOS[spec.id](host);
+          demo.reset();
+
+          var entry = { demo: demo, btn: btn, played: false };
+          running.push(entry);
+          btn.addEventListener("click", function () { run(entry); });
+          return item;
+        }
+
+        function run(entry) {
+          if (entry.btn.disabled) return;
+          entry.btn.disabled = true;
+          entry.btn.textContent = "재생 중";
+          Promise.resolve(entry.demo.play()).then(function () {
+            entry.btn.disabled = false;
+            entry.btn.textContent = "재생";
+            if (LOOP) setTimeout(function () { run(entry); }, 700);
+          });
+        }
+
+        var lists = {
+          action: document.getElementById("mfx-action-list"),
+          text: document.getElementById("mfx-text-list"),
+          gap: document.getElementById("mfx-gap-list"),
+        };
+        CATALOG.forEach(function (spec) { lists[spec.group].appendChild(buildCard(spec)); });
+
+        /* 아이콘 2종 소개 */
+        var iconRow = document.getElementById("mfx-iconrow");
+        [
+          { icon: "mfx-producer", lv: 0, name: "생산자 · Producer", sub: "탭하면 생산물을 뱉는다" },
+          { icon: "mfx-product", lv: 1, name: "생산물 · Product", sub: "레벨 1 — 드래그 · 병합 대상" },
+          { icon: "mfx-product", lv: 2, name: "생산물 레벨 2", sub: "hue-rotate −28°" },
+          { icon: "mfx-product", lv: 3, name: "생산물 레벨 3", sub: "hue-rotate −62°" },
+        ].forEach(function (d) {
+          var fig = document.createElement("figure");
+          fig.innerHTML = tileHTML(d.icon, d.lv);
+          if (d.lv) fig.querySelector("svg").style.filter = TINT[d.lv - 1];
+          var cap = document.createElement("figcaption");
+          cap.innerHTML = d.name + '<br><span style="font-weight:500;opacity:.75">' + d.sub + "</span>";
+          fig.appendChild(cap);
+          iconRow.appendChild(fig);
+        });
+
+        /* 툴바 ------------------------------------------------------------- */
+        function seg(id, apply) {
+          var box = document.getElementById(id);
+          box.addEventListener("click", function (e) {
+            var b = e.target.closest("button");
+            if (!b) return;
+            Array.prototype.forEach.call(box.querySelectorAll("button"), function (x) {
+              x.setAttribute("aria-pressed", String(x === b));
+            });
+            apply(b);
+          });
+        }
+        seg("mfx-speed", function (b) { SPEED = parseFloat(b.getAttribute("data-sp")); });
+        seg("mfx-loop", function (b) {
+          LOOP = b.getAttribute("data-lp") === "1";
+          if (LOOP) running.forEach(function (e) { if (!e.btn.disabled) run(e); });
+        });
+
+        /* 화면에 들어오면 한 번만 자동 재생. 모션 축소 설정이면 자동 재생하지 않는다. */
+        var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reduce && "IntersectionObserver" in window) {
+          var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+              if (!en.isIntersecting) return;
+              var entry = running.filter(function (r) { return r.btn.closest(".mfx-item") === en.target; })[0];
+              if (!entry || entry.played) return;
+              entry.played = true;
+              run(entry);
+            });
+          }, { threshold: 0.45 });
+          Array.prototype.forEach.call(document.querySelectorAll(".mfx-item"), function (n) { io.observe(n); });
+        }
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>

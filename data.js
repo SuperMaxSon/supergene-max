@@ -71,6 +71,17 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
+        title: "머지 피드백 연출집",
+        desc: "머지 보드에서 손가락이 닿는 모든 순간의 반응을 문서 안에서 재생되는 무대로 모았다. 요청받은 액션 6종 · 텍스트 3종에, 없으면 세트가 닫히지 않는 누락 6종을 붙였다. 타이밍 표와 cc.tween 코드가 재생과 같은 값을 쓴다.",
+        url: "docs/merge-feedback-anim.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-01 11:25",
+        pinned: false,
+        tags: ["연출", "코드 실측", "인터랙티브"],
+      },
+      {
         title: "아이소메트릭 데코 파츠 등장 연출",
         desc: "데코가 배치될 때 쓸 등장 연출 8종을 파츠 10개짜리 집으로 실제 타이밍에 돌려본다. 보간 시간을 바꾸면 Cocos 코드가 같이 바뀐다.",
         url: "docs/deco-tween-iso.html",
