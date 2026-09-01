@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-01 12:04",
+  updated: "2026-09-01 14:21",
 };
 
 /* --------------------------------------------------------------------------
@@ -86,7 +86,7 @@ const SECTIONS = [
         desc: "파츠 11장짜리 아이소메트릭 집으로 등장 연출 7종을 돌려본다. 레이어(그리기 순서)와 등장 순서를 각각 끌어서 바꾸고 파츠별로 숨겨볼 수 있다.",
         url: "docs/deco-tween-iso.html",
         status: "완료",
-        version: "v1.6",
+        version: "v1.7",
         updated: "2026-09-01 12:01",
         pinned: false,
         project: "smg",
@@ -260,7 +260,7 @@ const SECTIONS = [
         url: "docs/story-merge-resource-budget.html",
         project: "smg",
         status: "추적",
-        version: "v1.6",
+        version: "v1.7",
         updated: "2026-09-01 10:56",
         pinned: false,
         tags: ["머지", "리소스", "실측 추적"],

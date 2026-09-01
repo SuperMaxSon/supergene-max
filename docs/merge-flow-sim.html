@@ -842,18 +842,47 @@
           var order = ["data", "viewstory", "introvid", "chatui", "chatpool"]
             .concat(Object.keys(EMO_FILE).map(function (k) { return "e:" + k; }))
             .concat(["stillcut", "board", "popup", "deco", "catalog", "chapter", "portrait"]);
+          /* 지금 램에 올라간 것부터, 그 안에서 무거운 것부터 세운다.
+             목록이 30줄이라 상태로 먼저 갈라 두지 않으면 "지금 뭐가 물고 있나" 가 안 보인다. */
+          var snap = runTo.pts[cur];
+          var rows = [];
           order.forEach(function (id) {
             var r = RES[id];
             if (!pol.split && r.emo) return;
             if (pol.split && id === "chatpool") return;
-            var snap = runTo.pts[cur];
-            var st = snap.m[id] ? "is-mem" : (snap.h[id] ? "is-pre" : "");
+            rows.push({ id: id, r: r, st: snap.m[id] ? 2 : (snap.h[id] ? 1 : 0) });
+          });
+          rows.sort(function (a, b) {
+            if (b.st !== a.st) return b.st - a.st;
+            if (b.r.mem !== a.r.mem) return b.r.mem - a.r.mem;
+            return b.r.file - a.r.file;
+          });
+
+          var GRP = [
+            { st: 2, label: "올라감 · 메모리 차지", cls: "is-mem", col: "var(--smg)" },
+            { st: 1, label: "받음 · 네트워크만", cls: "is-pre", col: "var(--analysis)" },
+            { st: 0, label: "없음", cls: "", col: "var(--text-faint)" },
+          ];
+          var last = -1;
+          rows.forEach(function (x) {
+            if (x.st !== last) {
+              last = x.st;
+              var g = GRP.filter(function (q) { return q.st === x.st; })[0];
+              var sum = rows.filter(function (q) { return q.st === x.st; })
+                .reduce(function (t, q) { return t + (x.st === 2 ? q.r.mem : q.r.file); }, 0);
+              var gh = document.createElement("div");
+              gh.className = "sim-r-g";
+              gh.style.setProperty("--g", g.col);
+              gh.textContent = g.label + " · " + sum.toFixed(1) + "MB";
+              box.appendChild(gh);
+            }
+            var st = GRP.filter(function (q) { return q.st === x.st; })[0].cls;
             var row = document.createElement("div");
-            row.className = "sim-r" + (r.assumed ? " is-assumed" : "") + (r.dead ? " is-dead" : "");
-            row.style.setProperty("--acc", r.assumed ? "var(--warn)" : "var(--smg)");
+            row.className = "sim-r" + (x.r.assumed ? " is-assumed" : "") + (x.r.dead ? " is-dead" : "");
+            row.style.setProperty("--acc", x.r.assumed ? "var(--warn)" : "var(--smg)");
             row.innerHTML = '<span class="sim-st ' + st + '"></span>' +
-              '<span class="sim-r-n">' + r.name + "</span>" +
-              '<span class="sim-r-mb">' + r.mem.toFixed(2) + "MB</span>";
+              '<span class="sim-r-n">' + x.r.name + "</span>" +
+              '<span class="sim-r-mb">' + (x.st === 2 ? x.r.mem.toFixed(2) : x.r.file.toFixed(2)) + "MB</span>";
             box.appendChild(row);
           });
         }
