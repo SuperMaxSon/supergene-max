@@ -9,7 +9,7 @@
       content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간 · 파츠 간격 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 레이어(그리기 순서)와 등장 순서는 프리팹 트리에서 끌어서 바꿀 수 있다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso19" />
+    <link rel="stylesheet" href="../style.css?v=iso20" />
   </head>
   <body>
     <nav class="nav">
@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v1.8 &middot; 2026-09-01</span>
+          <span class="tag">v1.9 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -72,9 +72,9 @@
             </div>
           </div>
           <div class="calc-cell" style="--acc: var(--smg)">
-            <label class="calc-label" for="i-stg">파츠 간격 <span class="calc-unit">ms</span></label>
+            <label class="calc-label" for="i-stg">노드 간 딜레이 <span class="calc-unit">ms · 공통</span></label>
             <div class="calc-row">
-              <input class="calc-in" id="i-stg" type="number" min="0" max="400" step="10" value="60" />
+              <input class="calc-in" id="i-stg" type="number" min="0" max="2000" step="50" value="500" />
               <span class="calc-step">
                 <button class="calc-btn" type="button" data-for="i-stg" data-dir="1">▲</button>
                 <button class="calc-btn" type="button" data-for="i-stg" data-dir="-1">▼</button>
@@ -98,7 +98,7 @@
           <div class="calc-cell" style="--acc: var(--warn)">
             <label class="calc-label">전체 길이 <span class="calc-unit">초</span></label>
             <div class="calc-row">
-              <input class="calc-in" id="o-total" type="text" value="1.84" readonly />
+              <input class="calc-in" id="o-total" type="text" value="8.00" readonly />
             </div>
           </div>
         </div>
@@ -503,6 +503,22 @@
             } }
         ];
 
+        /* 전체 배치는 노드마다 딜레이가 다를 수 있다 — 배열로 뽑아 그대로 쓰게 한다. */
+        function delayArray() {
+          var ids = fullIds(), rows = [];
+          metas.forEach(function (m) { if (ids.indexOf(m.id) >= 0) rows.push({ id: m.id, ms: delayMs(m.id) }); });
+          rows.sort(function (a, b) { return a.ms - b.ms; });
+          var w = 0;
+          rows.forEach(function (r) { w = Math.max(w, LAYER[r.id].name.length); });
+          return "/** 배치 순서와 노드별 딜레이 (ms) — 시연 무대에서 맞춘 값 */\n" +
+            "const DELAY_MS: number[] = [\n" +
+            rows.map(function (r) {
+              var nm = LAYER[r.id].name;
+              while (nm.length < w) nm += " ";
+              return "    " + r.ms + ",".replace(/$/, "") + "   // " + nm + "  " + OBJ[LAYER[r.id].o].code;
+            }).join("\n") + "\n];\n\n";
+        }
+
         function CODE(id, d, s, e) {
           var D = d.toFixed(2), S = s.toFixed(3), Q = '"' + e + '"';
           var head = "parts.forEach((node, i) => {";
@@ -510,27 +526,27 @@
           var map = {
             drop:
 "/** 파츠가 조립 순서대로 위에서 떨어진다 */\nprivate playDropIn(parts: cc.Node[]): void {\n    " + head +
-"\n        const endY = node.y;\n        node.y = endY + 640;          // 화면 밖까지 올려둔다\n        node.opacity = 255;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + D + ", { y: endY }, { easing: " + Q + " })\n            .start();\n    });\n}",
+"\n        const endY = node.y;\n        node.y = endY + 640;          // 화면 밖까지 올려둔다\n        node.opacity = 255;\n\n        cc.tween(node)\n            .delay(DELAY_MS[i] / 1000)\n            .to(" + D + ", { y: endY }, { easing: " + Q + " })\n            .start();\n    });\n}",
             squash:
 "/** 낙하 후 착지 스쿼시 — 앵커는 이미지 하단 끝 (0.5, 0) */\nprivate playDropWithSquash(parts: cc.Node[]): void {\n    " + head +
-"\n        const endY = node.y;\n        node.y = endY + 640;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + (d * 0.72).toFixed(2) + ", { y: endY }, { easing: " + Q + " })\n            .to(" + (d * 0.11).toFixed(2) + ", { scaleY: 0.82, scaleX: 1.14 })\n            .to(" + (d * 0.17).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: \"backOut\" })\n            .start();\n    });\n}",
+"\n        const endY = node.y;\n        node.y = endY + 640;\n\n        cc.tween(node)\n            .delay(DELAY_MS[i] / 1000)\n            .to(" + (d * 0.72).toFixed(2) + ", { y: endY }, { easing: " + Q + " })\n            .to(" + (d * 0.11).toFixed(2) + ", { scaleY: 0.82, scaleX: 1.14 })\n            .to(" + (d * 0.17).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: \"backOut\" })\n            .start();\n    });\n}",
             pop:
 "/** 제자리에서 솟아오른다 */\nprivate playPopIn(parts: cc.Node[]): void {\n    " + head +
-"\n        node.setScale(0.25);\n        node.opacity = 0;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .call(() => { node.opacity = 255; })\n            .to(" + D + ", { scale: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 2.4 의 scale 은 단일 값(균등)이다. 축을 나누려면 scaleX / scaleY",
+"\n        node.setScale(0.25);\n        node.opacity = 0;\n\n        cc.tween(node)\n            .delay(DELAY_MS[i] / 1000)\n            .call(() => { node.opacity = 255; })\n            .to(" + D + ", { scale: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 2.4 의 scale 은 단일 값(균등)이다. 축을 나누려면 scaleX / scaleY",
             fadeIn:
 "private playFadeIn(parts: cc.Node[]): void {\n    " + head +
-"\n        node.opacity = 0;\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + D + ", { opacity: 255 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 자식까지 같이 흐려지려면 부모의 cascadeOpacity 를 켤 것",
+"\n        node.opacity = 0;\n\n        cc.tween(node)\n            .delay(DELAY_MS[i] / 1000)\n            .to(" + D + ", { opacity: 255 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 자식까지 같이 흐려지려면 부모의 cascadeOpacity 를 켤 것",
             fadeOut:
 "private playFadeOut(parts: cc.Node[]): void {\n    " + head +
-"\n        cc.Tween.stopAllByTarget(node);   // 진행 중인 트윈부터 정리\n\n        cc.tween(node)\n            .delay(i * " + S + ")\n            .to(" + D + ", { opacity: 0 }, { easing: " + Q + " })\n            .call(() => { node.active = false; })\n            .start();\n    });\n}",
+"\n        cc.Tween.stopAllByTarget(node);   // 진행 중인 트윈부터 정리\n\n        cc.tween(node)\n            .delay(DELAY_MS[i] / 1000)\n            .to(" + D + ", { opacity: 0 }, { easing: " + Q + " })\n            .call(() => { node.active = false; })\n            .start();\n    });\n}",
             fillH:
 "private playFillHorizontal(parts: cc.Node[]): void {\n    " + head + sp +
-"        sprite.fillType = cc.Sprite.FillType.HORIZONTAL;\n        sprite.fillStart = 0;      // 우 → 좌 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다",
+"        sprite.fillType = cc.Sprite.FillType.HORIZONTAL;\n        sprite.fillStart = 0;      // 우 → 좌 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(DELAY_MS[i] / 1000)\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다",
             fillV:
 "private playFillVertical(parts: cc.Node[]): void {\n    " + head + sp +
-"        sprite.fillType = cc.Sprite.FillType.VERTICAL;\n        sprite.fillStart = 0;      // 위 → 아래 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(i * " + S + ")\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다"
+"        sprite.fillType = cc.Sprite.FillType.VERTICAL;\n        sprite.fillStart = 0;      // 위 → 아래 는 fillStart = 1, fillRange = -1\n        sprite.fillRange = 0;\n\n        cc.tween(sprite)\n            .delay(DELAY_MS[i] / 1000)\n            .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n            .start();\n    });\n}\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다"
           };
-          return map[id];
+          return delayArray() + map[id];
         }
 
         function highlight(src) {
@@ -629,7 +645,29 @@
 
         function duration() { var v = parseFloat(el.dur.value); return isFinite(v) && v > 0 ? v : 1; }
         function stagger() { var v = parseFloat(el.stg.value); return (isFinite(v) && v >= 0 ? v : 0) / 1000; }
-        function total() { return stagger() * Math.max(0, fullIds().length - 1) + duration(); }
+        /* 노드별 딜레이. 비워 두면 공통 간격 × 순번(자동), 값을 넣으면 그 노드만 수동이다.
+           Cocos 쪽에서는 delay(DELAY_MS[i] / 1000) 한 줄로 그대로 옮겨진다. */
+        var DLY = {};
+        function autoDelay() {
+          var s = stagger() * 1000, ids = fullIds(), out = {}, n = 0;
+          metas.forEach(function (m) {
+            if (ids.indexOf(m.id) < 0) return;
+            out[m.id] = Math.round(n * s);
+            n += 1;
+          });
+          return out;
+        }
+        function inFull(id) { return fullIds().indexOf(id) >= 0; }
+        function delayMs(id) {
+          if (DLY[id] != null) return DLY[id];
+          var a = autoDelay()[id];
+          return a == null ? 0 : a;
+        }
+        function total() {
+          var ids = fullIds(), mx = 0;
+          ids.forEach(function (id) { mx = Math.max(mx, delayMs(id)); });
+          return mx / 1000 + duration();
+        }
 
         function refresh() {
           el.code.innerHTML = highlight(CODE(state.preset.id, duration(), stagger(), el.ease.value));
@@ -660,12 +698,13 @@
            이미 배치된 것은 t = 1 상태로 그대로 남는다. */
         var placed = {};
         var queue = [];
+        var queueD = [];
 
         function frame(now) {
-          var d = duration(), s = stagger();
-          var tt = s * Math.max(0, queue.length - 1) + d;
+          var d = duration();
+          var tt = Math.max.apply(null, queueD) + d;
           var elapsed = (now - state.t0) / 1000;
-          queue.forEach(function (m, i) { paint(m, (elapsed - i * s) / d); });
+          queue.forEach(function (m, i) { paint(m, (elapsed - queueD[i]) / d); });
           el.prog.style.width = Math.min(100, (elapsed / tt) * 100) + "%";
           if (elapsed >= tt) {
             state.playing = false;
@@ -678,10 +717,14 @@
         }
 
         /* ids 를 등장 순서(metas 순)로 정렬해 재생한다. */
-        function playSet(ids) {
+        /* whole = 전체 배치. 미션 하나를 놓을 때는 그 미션 안에서만 0 부터 센다. */
+        function playSet(ids, whole) {
           cancelAnimationFrame(state.raf);
           refresh();
           queue = metas.filter(function (m) { return ids.indexOf(m.id) >= 0; });
+          queueD = queue.map(function (m, i) { return whole ? delayMs(m.id) / 1000 : i * stagger(); });
+          var base = queueD.length ? Math.min.apply(null, queueD) : 0;
+          queueD = queueD.map(function (v) { return v - base; });
           queue.forEach(function (m) {
             placed[m.id] = true;
             m.el.classList.remove("is-empty");
@@ -741,7 +784,7 @@
             }
           });
           el.play.textContent = "배치 중…";
-          playSet(ids);
+          playSet(ids, true);
         }
         /* 뒤 단계에서 치워지는 스프라이트(수리형 s0)는 전체 배치에서 건너뛴다 */
         function hasLater(o, i) {
@@ -759,7 +802,7 @@
           if (state.loop && !state.playing) playAll();
         });
         document.getElementById("resetArea").addEventListener("click", clearArea);
-        [el.dur, el.stg].forEach(function (i) { i.addEventListener("input", refresh); });
+        [el.dur, el.stg].forEach(function (i) { i.addEventListener("input", function () { refresh(); renderRows(); }); });
         el.ease.addEventListener("change", function () { refresh(); if (!state.playing) play(); });
 
         /* 업/다운 버튼 — input 의 step · min · max 를 그대로 따른다. */
@@ -878,7 +921,7 @@
                 '<span class="tw">├─ </span><span></span>' +
                 '<span class="nm">' + ob.code + "</span>" +
                 '<span class="ds">' + ob.label + (ob.type ? ' <b class="ty">' + ob.type + "</b>" : "") + "</span>" +
-                '<span class="sq">' + (ob.state ? ob.state + " · " : "") + n + "장</span>";
+                '<span class="sq">' + (ob.state ? ob.state + " · " : "") + n + '장</span><span class="dl"></span>';
               rowsBox.appendChild(h);
               prev = m.o;
             }
@@ -895,7 +938,23 @@
               '<span class="ds">' + m.desc + "</span>" +
               '<span class="sq">' + (mode === "layer"
                 ? (si ? "등장 " + si : "등장 없음")
-                : "레이어 " + (lay.indexOf(id) + 1)) + "</span>";
+                : "레이어 " + (lay.indexOf(id) + 1)) + "</span>" +
+              (si && inFull(id)
+                ? '<span class="dl"><input class="iso-dly' + (DLY[id] != null ? " is-set" : "") +
+                  '" type="number" min="0" max="20000" step="50" value="' + delayMs(id) +
+                  '" aria-label="' + m.desc + ' 딜레이 ms" /><i>ms</i></span>'
+                : '<span class="dl">' + (si ? "<i>미포함</i>" : "") + "</span>");
+            var inp = d.querySelector(".iso-dly");
+            if (inp) {
+              inp.addEventListener("input", function () {
+                var n = parseFloat(inp.value);
+                if (!isFinite(n)) return;
+                DLY[id] = Math.max(0, Math.min(20000, n));
+                inp.classList.add("is-set");
+                refresh();
+              });
+              inp.addEventListener("blur", function () { inp.value = delayMs(id); });
+            }
             rowsBox.appendChild(d);
           });
           verdict();
@@ -940,7 +999,7 @@
         rowsBox.addEventListener("pointerdown", function (ev) {
           if (ev.button !== 0) return;
           var row = ev.target.closest(".iso-row");
-          if (!row || row.classList.contains("is-fixed") || ev.target.closest(".iso-eye")) return;
+          if (!row || row.classList.contains("is-fixed") || ev.target.closest(".iso-eye") || ev.target.closest("input")) return;
           var rows = Array.prototype.slice.call(rowsBox.children).filter(function (r) { return !r.classList.contains("is-obj"); });
           var i = rows.indexOf(row);
           drag = { row: row, rows: rows, id: row.getAttribute("data-id"), from: i, to: i,
@@ -1026,6 +1085,7 @@
             document.getElementById("p-" + id).classList.remove("is-off");
           });
           hidden = {};
+          DLY = {};
           metas.sort(function (a, b) { return DEFAULT_SEQ.indexOf(a.id) - DEFAULT_SEQ.indexOf(b.id); });
           applyLayer(DEFAULT_LAYER.slice());
         });
@@ -1051,8 +1111,6 @@
         document.getElementById("zoomOut").addEventListener("click", function () { setZoom(zoom / 1.25); });
         document.getElementById("zoomIn").addEventListener("click", function () { setZoom(zoom * 1.25); });
         document.getElementById("zoomReset").addEventListener("click", function () { setZoom(1); });
-
-        setMode("layer");
 
         /* ---- 미션 -----------------------------------------------------------
            머지 게임의 데코 영역과 같다 — 영역은 비어 있고, 미션을 하나 끝낼 때마다
@@ -1199,6 +1257,7 @@
           copyText(out.join("\n"), this);
         });
 
+        setMode("layer");
         select(PRESETS[0]);
         clearArea();
       })();
