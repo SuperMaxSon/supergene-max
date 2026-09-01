@@ -34,7 +34,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v3.3 · 2026-09-01 15:41</span>
+          <span class="tag" id="mfx-ver">v3.4 · 2026-09-01 15:50</span>
         </div>
       </div>
     </header>
@@ -349,7 +349,13 @@
 
         /* 연타로 겹칠 때만 시작 높이를 계단처럼 올린다. 다 사라지면 다시 0 단이다.
            좌우로 흩뿌리지 않는다 — 산개는 전투처럼 초당 수십 개가 뜨는 판의 변형이다. */
-        function floatSlot(st) { st.floatLive = (st.floatLive || 0) + 1; return st.floatLive - 1; }
+        /* 계단은 접힌다. 연타할수록 계속 위로 올라가면 문구가 보드를 떠나 버린다 —
+           정해진 단 수만 돌고 다시 아래에서 시작한다. */
+        function floatSlot(st, max) {
+          st.floatLive = (st.floatLive || 0) + 1;
+          var m = Math.max(1, Math.round(max || 3));
+          return (st.floatLive - 1) % m;
+        }
         function floatDone(st, t) { t.kill(); st.floatLive = Math.max(0, (st.floatLive || 1) - 1); }
         function floatNode(st, text, good) {
           var t = st.spr('<div class="mfx-float' + (good ? " is-good" : "") + '">' + text + "</div>");
@@ -360,7 +366,7 @@
 
         /* F1 · 상승 페이드 — 기본형. 팝인 → 유지 → 떠오르며 소멸. */
         function floatRise(st, text, at, S, good) {
-          var n = floatSlot(st);
+          var n = floatSlot(st, gv(S, "stackMax", 3));
           var t = floatNode(st, text, good);
           var y0 = at.y + gv(S, "gap", 34) + n * gv(S, "stack", 14);
           var rise = gv(S, "rise", 16);
@@ -375,7 +381,7 @@
            상승은 감속(quadOut), 하강은 가속(quadIn) 이어야 무게가 생긴다.
            x 는 전 구간 등속으로 조금 흐른다 — 그래야 던진 방향이 읽힌다. */
         function floatArc(st, text, at, S, good) {
-          var n = floatSlot(st);
+          var n = floatSlot(st, gv(S, "stackMax", 3));
           var t = floatNode(st, text, good);
           var y0 = at.y + gv(S, "gap", 30) + n * gv(S, "stack", 12);
           var side = gv(S, "sideX", 14), up = gv(S, "upRise", 46), drop = gv(S, "fallDrop", 22);
@@ -397,7 +403,7 @@
         /* F3 · 임팩트 스탬프 — 큰 데서 확 조여 꽂힌다. 거부·경고처럼
            "지금 이걸 읽어라" 가 목적일 때. 이동이 거의 없어야 무게가 산다. */
         function floatPunch(st, text, at, S, good) {
-          var n = floatSlot(st);
+          var n = floatSlot(st, gv(S, "stackMax", 3));
           var t = floatNode(st, text, good);
           var y0 = at.y + gv(S, "gap", 38) + n * gv(S, "stack", 16);
           var big = gv(S, "startScale", 1.9);
@@ -415,7 +421,7 @@
         /* F4 · 슬라이드 인 — 오버슛도 스케일도 없다. 아래에서 조용히 올라와
            조용히 사라진다. 자주 뜨는 상태 고지용 — 튀면 그게 소음이 된다. */
         function floatSlide(st, text, at, S, good) {
-          var n = floatSlot(st);
+          var n = floatSlot(st, gv(S, "stackMax", 3));
           var t = floatNode(st, text, good);
           var y0 = at.y + gv(S, "gap", 34) + n * gv(S, "stack", 14);
           var from = gv(S, "fromY", 20);
@@ -429,7 +435,7 @@
         /* F5 · 글자 웨이브 — 글자가 순서대로 튀어 오른다. 레벨업·해금처럼
            1회성 축하에만 쓴다. 글자 수만큼 노드가 늘어나니 상시 연출에는 금지. */
         function floatWave(st, text, at, S, good) {
-          var n = floatSlot(st);
+          var n = floatSlot(st, gv(S, "stackMax", 3));
           var chars = String(text).split("");
           var inner = chars.map(function (c) {
             return '<span class="ch">' + (c === " " ? "&nbsp;" : c) + "</span>";
@@ -830,6 +836,7 @@
             { k:"outSec",     label:"퇴장",          v:0.45, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"MERGE_FLOAT_RISE_OUT_SEC" },
             { k:"drift",      label:"퇴장 상승",     v:34,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_DRIFT" },
             { k:"stack",      label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_STACK",         note:"0 이면 같은 자리에서 겹친다" },
+            { k:"stackMax",   label:"계단 최대 단",   v:3,    min:1,    max:10, step:1,   unit:"단",                                    cfg:"MERGE_FLOAT_RISE_STACK_MAX",   note:"넘으면 다시 아래에서 — 계속 올라가지 않는다" },
           ],
           f2: [
             { k:"gap",        label:"칩과의 간격",   v:30,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_GAP" },
@@ -843,6 +850,7 @@
             { k:"sideX",      label:"옆으로 흐름",   v:14,   min:-80,  max:80, step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_SIDE",           note:"던진 방향. 0 이면 수직" },
             { k:"fadeSec",    label:"소멸",          v:0.28, min:0.02, max:2,  step:0.01, unit:"s",                                     cfg:"MERGE_FLOAT_ARC_FADE_SEC",       note:"하강과 겹쳐 돈다" },
             { k:"stack",      label:"연타 계단",     v:12,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_ARC_STACK" },
+            { k:"stackMax",   label:"계단 최대 단",   v:3,    min:1,    max:10, step:1,   unit:"단",                                    cfg:"MERGE_FLOAT_ARC_STACK_MAX",   note:"넘으면 다시 아래에서 — 계속 올라가지 않는다" },
           ],
           f3: [
             { k:"gap",        label:"칩과의 간격",   v:38,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_GAP" },
@@ -854,6 +862,7 @@
             { k:"outSec",     label:"퇴장",          v:0.24, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadIn",  cfg:"MERGE_FLOAT_PUNCH_OUT_SEC" },
             { k:"outScale",   label:"퇴장 크기",     v:1.18, min:0.5,  max:3,  step:0.02,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_OUT_SCALE",    note:"커지며 사라진다 — 흩어지는 느낌" },
             { k:"stack",      label:"연타 계단",     v:16,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_STACK" },
+            { k:"stackMax",   label:"계단 최대 단",   v:3,    min:1,    max:10, step:1,   unit:"단",                                    cfg:"MERGE_FLOAT_PUNCH_STACK_MAX",   note:"넘으면 다시 아래에서 — 계속 올라가지 않는다" },
           ],
           f4: [
             { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_GAP" },
@@ -863,6 +872,7 @@
             { k:"outSec",     label:"퇴장",          v:0.36, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadIn",  cfg:"MERGE_FLOAT_SLIDE_OUT_SEC" },
             { k:"drift",      label:"퇴장 상승",     v:14,   min:0,    max:120,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_DRIFT",        note:"거의 안 움직인다" },
             { k:"stack",      label:"연타 계단",     v:14,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_SLIDE_STACK" },
+            { k:"stackMax",   label:"계단 최대 단",   v:3,    min:1,    max:10, step:1,   unit:"단",                                    cfg:"MERGE_FLOAT_SLIDE_STACK_MAX",   note:"넘으면 다시 아래에서 — 계속 올라가지 않는다" },
           ],
           f5: [
             { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_GAP" },
@@ -874,6 +884,7 @@
             { k:"outSec",     label:"퇴장",          v:0.40, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"MERGE_FLOAT_WAVE_OUT_SEC" },
             { k:"drift",      label:"퇴장 상승",     v:30,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_DRIFT" },
             { k:"stack",      label:"연타 계단",     v:16,   min:0,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_STACK" },
+            { k:"stackMax",   label:"계단 최대 단",   v:3,    min:1,    max:10, step:1,   unit:"단",                                    cfg:"MERGE_FLOAT_WAVE_STACK_MAX",   note:"넘으면 다시 아래에서 — 계속 올라가지 않는다" },
           ],
           c1: [
             { k:"snapSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"snapEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
@@ -2397,8 +2408,10 @@
           body.appendChild(stageCol); body.appendChild(detail);
           item.appendChild(head); item.appendChild(body);
 
+          /* reset() 을 여기서 부르면 안 된다 — 카드가 아직 문서에 붙기 전이라
+             getBoundingClientRect() 가 전부 0 이고, 창고 슬롯처럼 화면 좌표를 읽어
+             자리를 잡는 것들이 죄다 무대 한가운데로 겹쳐 버린다. 붙인 뒤에 부른다. */
           var demo = DEMOS[spec.id](host);
-          demo.reset();
           hint.textContent = demo.hint || "";
 
           var entry = { demo: demo, btn: btn, played: false, spec: spec };
@@ -2453,6 +2466,10 @@
           gap: document.getElementById("mfx-gap-list"),
         };
         CATALOG.forEach(function (spec) { lists[spec.group].appendChild(buildCard(spec)); });
+        /* 문서에 다 붙고 레이아웃이 잡힌 다음에 첫 배치를 만든다 */
+        requestAnimationFrame(function () {
+          running.forEach(function (e) { e.demo.reset(); });
+        });
 
         /* 전체 복사 — 15개 섹션을 한 덩어리로. 파일 하나에 그대로 붙일 수 있게 */
         document.getElementById("mfx-copyall").addEventListener("click", function () {
