@@ -2409,3 +2409,381 @@ figure.shot figcaption .src {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* ==========================================================================
+   docs/deco-tween-iso.html — 아이소메트릭 데코 파츠 등장 연출 시연
+   2026-09-01 · 사용자 승인 후 append. 기존 규칙·클래스는 하나도 고치지 않았다.
+   컨트롤(calc-*) · 프리셋 버튼(projbtn) · 진행바(bar) · 칩(tag/pill) 은 전부
+   기존 것을 그대로 쓰고, 여기서는 "무대"와 "코드 블록"만 새로 정의한다.
+   ========================================================================== */
+
+/* 무대는 본문 카드보다 살짝 어둡게 깐다 — 순백 위에 올리면 아이소 세 면
+   (윗면 · 좌면 · 우면)의 명도차가 안 읽혀서 입체로 안 보인다. */
+.iso-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #eef1f6, #e4e9f0);
+  box-shadow: var(--shadow);
+}
+
+.iso-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 파츠는 제 바닥 중앙을 기준으로 스케일한다 — Cocos 에서 앵커를 (0.5, 0) 으로
+   두는 것과 같은 상태여야 착지 · 팝 연출이 엔진에서도 똑같이 보인다. */
+.iso-part {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+}
+
+/* 코드는 표가 아니라 그대로 복사해 가는 자리다. 가로 스크롤만 열어두고
+   색은 문서 토큰에서 그대로 가져온다 (라이트 테마 유지). */
+.iso-code {
+  margin: 0;
+  overflow-x: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.iso-code .k { color: var(--sol); font-weight: 600 }
+.iso-code .s { color: var(--ok) }
+.iso-code .n { color: var(--smg); font-weight: 600 }
+.iso-code .c { color: var(--text-faint); font-style: italic }
+
+/* select 도 calc-in 의 생김새를 그대로 쓴다 — 네이티브 화살표만 지운다. */
+select.calc-in {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   docs/merge-feedback-anim.html — 머지 피드백 연출집
+   연출을 글로 적으면 아무도 못 읽는다. 재생되는 무대를 문서 안에 넣어야
+   타이밍 얘기가 가능해진다. 그래서 이 문서만 "무대" 라는 컴포넌트를 갖는다.
+   무대 안쪽 색은 허브 토큰이 아니라 게임의 MERGE_BOARD_PALETTE 실제 값이다 —
+   여기서만 허브 팔레트를 벗어난다. 무대 밖(표·코드·설명)은 전부 허브 토큰.
+   ========================================================================== */
+.mfx {
+  --sand50: #fff6e8;
+  --sand200: #f2dcb6;
+  --wood500: #b57f4e;
+  --wood700: #7a4e2b;
+  --mint300: #a8ded2;
+  --mint400: #7fc9ba;
+  --teal800: #1e5a55;
+  --coral500: #ff6b5b;
+  --coral600: #e1503f;
+  --boardshadow: rgba(58, 32, 14, 0.28);
+}
+
+/* 항목 카드 — 머리(번호·이름·구현상태) / 무대 / 상세 3단 */
+.mfx-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.mfx-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-2);
+}
+
+.mfx-no {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--acc);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.mfx-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* 구현 상태는 이 문서의 핵심 정보다 — 무엇이 이미 있고 무엇이 비었는지.
+   판정 토큰(ok/warn/bad)을 그대로 빌려 표와 같은 언어로 읽히게 한다. */
+.mfx-state {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.mfx-state.is-ok { color: var(--ok); }
+.mfx-state.is-part { color: var(--warn); }
+.mfx-state.is-none { color: var(--bad); }
+
+.mfx-body {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .mfx-body { grid-template-columns: 372px minmax(0, 1fr); }
+}
+
+/* 무대 — 게임 화면이 문서 안에 들어온 자리. 따뜻한 색으로 확실히 구분한다. */
+.mfx-stage {
+  background: #f7e9cf;
+  border-right: 1px solid var(--border-soft);
+  padding: 16px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+}
+@media (max-width: 899px) {
+  .mfx-stage { border-right: 0; border-bottom: 1px solid var(--border-soft); }
+}
+
+.mfx-play {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  background: var(--wood700);
+  color: var(--sand50);
+  transition: background 0.12s;
+}
+.mfx-play::before { content: "▶"; font-size: 8px; margin-right: 6px; vertical-align: 1px; }
+.mfx-play:hover { background: var(--coral600); }
+.mfx-play:disabled { opacity: 0.45; cursor: default; }
+
+/* 보드 프레임. 치수는 MergeBoardPresentationConfig 실측값 —
+   셀 72 · 간격 5 · 타일 66 · 프레임 라운드 30 · 패딩 18/18/18/24.
+   문서에서 숫자를 바꾸면 코드와 문서가 갈라지므로 그대로 쓴다. */
+.mfx-board {
+  position: relative;
+  border-radius: 30px;
+  background: var(--sand50);
+  border: 1px solid #e0cba4;
+  box-shadow: 0 12px 0 -4px var(--boardshadow), 0 3px 10px rgba(58, 32, 14, 0.18);
+  padding: 18px 18px 24px;
+}
+.mfx-cells { display: grid; gap: 5px; }
+.mfx-cell {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: var(--sand200);
+  box-shadow: inset 0 2px 0 rgba(122, 78, 43, 0.13);
+}
+.mfx-cell.is-hl { outline: 2px dashed var(--wood500); outline-offset: -4px; }
+
+/* 스프라이트 레이어. 원점을 셀 격자의 중앙에 맞춰야 문서 좌표와
+   getCellPosition() 좌표가 같아진다 — 그래서 패딩만큼 안쪽으로 물린다. */
+.mfx-layer { position: absolute; top: 18px; left: 18px; right: 18px; bottom: 24px; pointer-events: none; }
+.mfx-spr { position: absolute; left: 50%; top: 50%; will-change: transform, opacity; }
+
+.mfx-tile { width: 66px; height: 66px; position: relative; }
+.mfx-tile .plate {
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  background: var(--sand50);
+  border: 2px solid var(--wood500);
+  box-shadow: 0 3px 0 var(--wood700);
+}
+.mfx-tile svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mfx-tile .lv {
+  position: absolute;
+  right: -3px;
+  bottom: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--teal800);
+  color: #fff;
+  border: 2px solid var(--sand50);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.mfx-tile.is-ghost .plate { background: transparent; border-style: dashed; box-shadow: none; }
+.mfx-tile.is-ghost svg { opacity: 0.28; }
+.mfx-tile.is-locked svg { filter: grayscale(1) brightness(0.8); }
+.mfx-tile.is-locked .plate { border-color: #9aa3a0; box-shadow: 0 3px 0 #6e7876; }
+
+.mfx-shadow { width: 52px; height: 14px; border-radius: 50%; background: var(--boardshadow); }
+.mfx-ring { width: 66px; height: 66px; border-radius: 50%; border: 4px solid var(--coral500); }
+.mfx-spark { width: 9px; height: 9px; border-radius: 50%; background: var(--coral500); }
+.mfx-coin {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f5c542;
+  border: 2px solid #c9922a;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.13);
+}
+.mfx-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--coral500);
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 24px;
+  text-align: center;
+  border: 2px solid var(--sand50);
+}
+.mfx-finger {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(30, 90, 85, 0.26);
+  border: 2px solid var(--teal800);
+}
+.mfx-stamp {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--coral600);
+  border: 3px solid var(--coral600);
+  border-radius: 8px;
+  padding: 1px 9px;
+  background: rgba(255, 246, 232, 0.92);
+  white-space: nowrap;
+}
+.mfx-toast {
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--wood700);
+  color: var(--sand50);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 5px 0 rgba(58, 32, 14, 0.3);
+  white-space: nowrap;
+}
+.mfx-toast.is-good { background: var(--teal800); }
+.mfx-gauge { width: 62px; height: 8px; border-radius: 4px; background: rgba(58, 32, 14, 0.2); overflow: hidden; }
+.mfx-gauge i { display: block; height: 100%; width: 0; background: var(--mint400); border-radius: 4px; }
+.mfx-chg { font-size: 11px; font-weight: 800; color: var(--wood700); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mfx-hud {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px 4px 5px;
+  border-radius: 999px;
+  background: var(--wood700);
+  color: var(--sand50);
+  font-weight: 800;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.mfx-hud .dot { width: 20px; height: 20px; border-radius: 50%; background: #f5c542; border: 2px solid #c9922a; }
+.mfx-buy {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--coral500);
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  border: 2px solid var(--coral600);
+  white-space: nowrap;
+}
+
+/* 상세 — 설명 · 타이밍 표 · 코드 */
+.mfx-detail { padding: 14px 16px 16px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.mfx-why { margin: 0; font-size: 13.5px; color: var(--text-dim); }
+.mfx-why b { color: var(--text); font-weight: 700; }
+.mfx-detail .table-scroll table { font-size: 12.5px; }
+.mfx-ez { color: var(--acc); font-weight: 700; }
+
+/* 코드는 접어 둔다 — 연출을 훑는 사람과 구현하는 사람의 동선이 다르다. */
+.mfx-code { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.mfx-code > summary {
+  cursor: pointer;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  list-style: none;
+}
+.mfx-code > summary::-webkit-details-marker { display: none; }
+.mfx-code > summary::before { content: "▸ "; color: var(--acc); }
+.mfx-code[open] > summary::before { content: "▾ "; }
+.mfx-code pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: #12211f;
+  color: #dceae7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+/* 재생 속도 바. 연출 리뷰는 0.25× 로 봐야 말이 통한다. */
+.mfx-bar {
+  position: sticky;
+  top: calc(var(--nav-h) + 8px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+}
+.mfx-bar-l { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--text-faint); }
+.mfx-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.mfx-seg button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 11px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.mfx-seg button:last-child { border-right: 0; }
+.mfx-seg button[aria-pressed="true"] { background: var(--smg); color: #fff; }
+
+/* 아이콘 2종 소개 */
+.mfx-icons { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 8px 0 4px; }
+.mfx-icons figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.mfx-icons .mfx-tile { transform: scale(1.3); margin: 12px 10px; }
+.mfx-icons figcaption { font-size: 11.5px; font-weight: 700; color: var(--wood700); }
