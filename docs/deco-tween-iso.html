@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v3.10 &middot; 2026-09-01</span>
+          <span class="tag">v3.11 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -144,7 +144,7 @@
                축소하면 무대 밖에서 떨어져 들어오는 구간까지 같이 보인다. -->
           <div class="iso-zoom">
             <button class="iso-zbtn" type="button" id="zoomOut" aria-label="축소">−</button>
-            <span class="iso-zval" id="zoomVal">100%</span>
+            <span class="iso-zval" id="zoomVal">50%</span>
             <button class="iso-zbtn" type="button" id="zoomIn" aria-label="확대">+</button>
             <button class="iso-zbtn is-wide" type="button" id="zoomReset">원본</button>
           </div>
@@ -1178,7 +1178,8 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
            viewBox 를 중심 기준으로 넓히고 좁힌다. 낙하 거리(fall)는 "화면 위로 완전히
            빠지는 높이"라서 보이는 범위가 바뀌면 같이 다시 잡아야 한다. */
         var VB = { x: 60, y: 60, w: 520, h: 410 };
-        var zoom = 1;
+        /* 기본은 50% — 영역 하나를 통째로 보는 눈높이다. "원본" 은 100% 로 돌린다. */
+        var zoom = 0.5;
         function applyZoom() {
           var w = VB.w / zoom, h = VB.h / zoom;
           var cx = VB.x + VB.w / 2, cy = VB.y + VB.h / 2;
@@ -1330,18 +1331,19 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
           ];
           (ps.par || []).forEach(function (d) {
             var key = ("DECO_APPEAR_" + d.k).toUpperCase();
-            while (key.length < 37) key += " ";
+            while (key.length < 24) key += " ";   /* 위 상수들과 = 위치를 맞춘다 */
             out.push("export const " + key + " = " + P[d.k] + ";   // " + d.label +
               (d.unit ? " (" + d.unit + ")" : "") + (P[d.k] !== d.v ? "   ← 기본 " + d.v : ""));
           });
-          out.push("");
-          out.push(delayArray().replace(/\n$/, ""));
+          /* root 별 딜레이 배열은 여기 안 넣는다 — 그건 오브젝트마다 다른 데이터이지
+             튜닝 상수가 아니다. 배열이 필요하면 코드 복사 쪽에 함께 나온다. */
           return out.join("\n");
         }
         Array.prototype.forEach.call(document.querySelectorAll('[data-copy="vals"]'), function (b) {
           b.addEventListener("click", function () { copyText(valsText(), b); });
         });
 
+        setZoom(zoom);
         select(PRESETS[0]);
         clearArea();
       })();
