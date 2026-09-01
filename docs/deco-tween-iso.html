@@ -6,10 +6,10 @@
     <title>아이소메트릭 데코 영역 — 등장 연출 · 레이어</title>
     <meta
       name="description"
-      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간(root 하나의 연출 시간) · 오브젝트 간 딜레이 · 이징을 바꾸면 Cocos Creator 2.4 코드가 같이 바뀌고, 깊이 순서는 프리팹 트리에서 오브젝트 root 를 끌어 바꿀 수 있다."
+      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간(root 하나의 연출 시간) · 오브젝트 간 딜레이 · 이징 · 연출별 값을 바꾸면 Cocos Creator 2.4 코드가 그 값 그대로 바뀐다. 깊이 순서는 아트 리소스 트리 그대로 고정이다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso22" />
+    <link rel="stylesheet" href="../style.css?v=iso23" />
   </head>
   <body>
     <nav class="nav">
@@ -42,7 +42,7 @@
           <span class="tag">데코</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v3.0 &middot; 2026-09-01</span>
+          <span class="tag">v3.1 &middot; 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -311,9 +311,8 @@
           </div>
         </div>
             <div class="projbar" style="--acc: var(--smg)">
-          <button class="projbtn" type="button" id="resetOrder">기본 순서로</button>
+          <button class="projbtn" type="button" id="resetOrder">숨김 · 딜레이 초기화</button>
               <a class="projbtn" href="deco-area-prefab-structure.html">아트 리소스 트리 원본 ↗</a>
-          <span id="verdict"></span>
         </div>
           </div>
         </div>
@@ -426,6 +425,7 @@
 
         var E = {
           linear:     function (t) { return t; },
+          quadIn:     function (t) { return t * t; },
           sineOut:    function (t) { return Math.sin((t * Math.PI) / 2); },
           quadOut:    function (t) { return 1 - (1 - t) * (1 - t); },
           cubicOut:   function (t) { var u = 1 - t; return 1 - u * u * u; },
@@ -453,21 +453,23 @@
             par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 420, min: 40, max: 1400, step: 20 }],
             apply: function (p, t, e, fn, P) { return { ty: -(1 - e) * P.h, op: 1 }; } },
 
-          { id: "squash", name: "낙하 + 착지 스쿼시", key: "y + scale", ease: "bounceOut",
+          /* 낙하 구간은 quadIn 고정이다 — 공통 이징이 bounce 계열이면 착지 전에 통통 튀어서
+             "착지하자마자 띠용" 이 안 나온다. 공통 이징은 착지 뒤 복원(띠용)에만 쓴다. */
+          { id: "squash", name: "낙하 + 착지 스쿼시", key: "y + scale", ease: "backOut",
             par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 420, min: 40, max: 1400, step: 20 },
                   { k: "sq", label: "스쿼시 세기", unit: "scaleY", v: 0.82, min: 0.5, max: 1, step: 0.02 },
                   { k: "fall", label: "낙하 비중", unit: "%", v: 72, min: 40, max: 90, step: 2 }],
             apply: function (p, t, e0, fn, P) {
               var r = P.fall / 100;
-              if (t < r) return { ty: -(1 - fn(t / r)) * P.h, op: 1 };
+              if (t < r) return { ty: -(1 - E.quadIn(t / r)) * P.h, op: 1 };
               var k = (t - r) / (1 - r), d = 1 - P.sq;
-              var sy = k < 0.4 ? 1 - d * (k / 0.4) : P.sq + d * E.backOut((k - 0.4) / 0.6);
+              var sy = k < 0.35 ? 1 - d * (k / 0.35) : P.sq + d * fn((k - 0.35) / 0.65);
               return { ty: 0, sx: 1 + (1 - sy) * 0.8, sy: sy, op: 1 };
             } },
 
           { id: "pop", name: "아래에서 팝", key: "scale", ease: "backOut",
             par: [{ k: "s0", label: "시작 스케일", unit: "", v: 0.25, min: 0, max: 1, step: 0.05 },
-                  { k: "rise", label: "솟는 거리", unit: "px", v: 26, min: 0, max: 140, step: 2 }],
+                  { k: "rise", label: "솟는 거리", unit: "px", v: 0, min: 0, max: 140, step: 2 }],
             apply: function (p, t, e, fn, P) {
               return { ty: (1 - t) * P.rise, s: P.s0 + (1 - P.s0) * e, op: Math.min(1, t * 3) };
             } },
@@ -483,7 +485,8 @@
             apply: function (p, t, e, fn, P) { return { op: (P.a0 + (P.a1 - P.a0) * e) / 255 }; } },
 
           { id: "fillH", name: "Fill 가로", key: "FillType.HORIZONTAL", ease: "quadOut",
-            par: [{ k: "st", label: "fillStart", unit: "0 좌→우 · 1 우→좌", v: 0, min: 0, max: 1, step: 1 },
+            par: [{ k: "st", label: "등장 방향", unit: "fillStart", v: 0,
+                    opt: [{ v: 0, label: "좌 → 우  (fillStart 0)" }, { v: 1, label: "우 → 좌  (fillStart 1)" }] },
                   { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
             apply: function (p, t, e, fn, P) {
               var w = p.bb.w * e * P.rg;
@@ -491,7 +494,8 @@
             } },
 
           { id: "fillV", name: "Fill 세로", key: "FillType.VERTICAL", ease: "quadOut",
-            par: [{ k: "st", label: "fillStart", unit: "0 아래→위 · 1 위→아래", v: 0, min: 0, max: 1, step: 1 },
+            par: [{ k: "st", label: "등장 방향", unit: "fillStart", v: 0,
+                    opt: [{ v: 0, label: "아래 → 위  (fillStart 0)" }, { v: 1, label: "위 → 아래  (fillStart 1)" }] },
                   { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
             apply: function (p, t, e, fn, P) {
               var h = p.bb.h * e * P.rg;
@@ -519,9 +523,10 @@
         }
 
         /* root 하나 = 연출 하나. 안의 스프라이트는 같은 delay · 같은 duration 으로 함께 간다.
-           그래서 바깥 루프가 오브젝트, 안쪽 루프가 그 오브젝트의 스프라이트다. */
+           그래서 바깥 루프가 오브젝트, 안쪽 루프가 그 오브젝트의 스프라이트다.
+           숫자는 전부 위 칸에서 맞춘 값이 그대로 박힌다 — 고쳐 쓸 곳이 없게. */
         function CODE(id, d, s, e) {
-          var D = d.toFixed(2), Q = '"' + e + '"';
+          var D = d.toFixed(2), Q = '"' + e + '"', P = PV[id] || {};
           function wrap(sig, body, tail) {
             return sig + "(objects: cc.Node[][]): void {\n" +
               "    objects.forEach((parts, i) => {\n" +
@@ -531,25 +536,37 @@
               "        });\n    });\n}" + (tail || "");
           }
           var sp = "const sprite = node.getComponent(cc.Sprite);\nsprite.type = cc.Sprite.Type.FILLED;\n";
+          /* Fill 은 방향이 값 두 개로 갈린다 — 시작점과 채우는 부호. */
+          function fill(axis, dirs) {
+            var back = P.st === 1;
+            return wrap("private playFill" + (axis === "HORIZONTAL" ? "Horizontal" : "Vertical"),
+              sp + "sprite.fillType = cc.Sprite.FillType." + axis + ";\n" +
+              "sprite.fillStart = " + (back ? 1 : 0) + ";      // " + (back ? dirs[1] : dirs[0]) + "\n" +
+              "sprite.fillRange = 0;\n\ncc.tween(sprite)\n    .delay(delay)\n    .to(" + D +
+              ", { fillRange: " + (back ? "-" : "") + P.rg + " }, { easing: " + Q + " })\n    .start();");
+          }
+          var fallSec = (d * (P.fall || 72) / 100), rest = d - fallSec;
           var map = {
             drop: "/** 오브젝트가 순서대로 위에서 떨어진다 */\n" + wrap("private playDropIn",
-"const endY = node.y;\nnode.y = endY + 640;          // 화면 밖까지 올려둔다\nnode.opacity = 255;\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + D + ", { y: endY }, { easing: " + Q + " })\n    .start();"),
-            squash: "/** 낙하 후 착지 스쿼시 — 앵커는 이미지 하단 끝 (0.5, 0) */\n" + wrap("private playDropWithSquash",
-"const endY = node.y;\nnode.y = endY + 640;\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + (d * 0.72).toFixed(2) + ", { y: endY }, { easing: " + Q + " })\n    .to(" + (d * 0.11).toFixed(2) + ", { scaleY: 0.82, scaleX: 1.14 })\n    .to(" + (d * 0.17).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: \"backOut\" })\n    .start();"),
+"const endY = node.y;\nnode.y = endY + " + P.h + ";          // 화면 밖까지 올려둔다\nnode.opacity = 255;\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + D + ", { y: endY }, { easing: " + Q + " })\n    .start();"),
+            squash: "/** 낙하는 가속(quadIn)으로 안 튀게 떨어뜨리고, 착지하는 즉시 한 번만 눌렀다 편다.\n *  앵커는 이미지 하단 끝 (0.5, 0) — 발이 바닥에 붙은 채로 눌린다. */\n" + wrap("private playDropWithSquash",
+"const endY = node.y;\nnode.y = endY + " + P.h + ";\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + fallSec.toFixed(2) + ", { y: endY }, { easing: \"quadIn\" })   // 튀지 않는다\n    .to(" + (rest * 0.35).toFixed(2) + ", { scaleY: " + P.sq + ", scaleX: " + (1 + (1 - P.sq) * 0.8).toFixed(2) + " })\n    .to(" + (rest * 0.65).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: " + Q + " })\n    .start();"),
             pop: "/** 제자리에서 솟아오른다 */\n" + wrap("private playPopIn",
-"node.setScale(0.25);\nnode.opacity = 0;\n\ncc.tween(node)\n    .delay(delay)\n    .call(() => { node.opacity = 255; })\n    .to(" + D + ", { scale: 1 }, { easing: " + Q + " })\n    .start();",
+(P.rise ? "const endY = node.y;\n" : "") + "node.setScale(" + P.s0 + ");\nnode.opacity = 0;\n" +
+(P.rise ? "node.y = endY - " + P.rise + ";          // 바닥 아래에서 올라온다\n" : "") +
+"\ncc.tween(node)\n    .delay(delay)\n    .call(() => { node.opacity = 255; })\n" +
+"    .to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easing: " + Q + " })\n" +
+"    .start();",
 "\n\n// 2.4 의 scale 은 단일 값(균등)이다. 축을 나누려면 scaleX / scaleY"),
             fadeIn: wrap("private playFadeIn",
-"node.opacity = 0;\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + D + ", { opacity: 255 }, { easing: " + Q + " })\n    .start();",
+"node.opacity = " + P.a0 + ";\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + D + ", { opacity: " + P.a1 + " }, { easing: " + Q + " })\n    .start();",
 "\n\n// 자식까지 같이 흐려지려면 부모의 cascadeOpacity 를 켤 것"),
             fadeOut: wrap("private playFadeOut",
-"cc.Tween.stopAllByTarget(node);   // 진행 중인 트윈부터 정리\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + D + ", { opacity: 0 }, { easing: " + Q + " })\n    .call(() => { node.active = false; })\n    .start();"),
-            fillH: wrap("private playFillHorizontal",
-sp + "sprite.fillType = cc.Sprite.FillType.HORIZONTAL;\nsprite.fillStart = 0;      // 우 → 좌 는 fillStart = 1, fillRange = -1\nsprite.fillRange = 0;\n\ncc.tween(sprite)\n    .delay(delay)\n    .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n    .start();",
-"\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다"),
-            fillV: wrap("private playFillVertical",
-sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;      // 위 → 아래 는 fillStart = 1, fillRange = -1\nsprite.fillRange = 0;\n\ncc.tween(sprite)\n    .delay(delay)\n    .to(" + D + ", { fillRange: 1 }, { easing: " + Q + " })\n    .start();",
-"\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다")
+"cc.Tween.stopAllByTarget(node);   // 진행 중인 트윈부터 정리\nnode.opacity = " + P.a0 + ";\n\ncc.tween(node)\n    .delay(delay)\n    .to(" + D + ", { opacity: " + P.a1 + " }, { easing: " + Q + " })\n    .call(() => { node.active = false; })\n    .start();"),
+            fillH: fill("HORIZONTAL", ["좌 → 우", "우 → 좌 는 fillStart 1 · fillRange 음수"]) +
+              "\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다",
+            fillV: fill("VERTICAL", ["아래 → 위", "위 → 아래 는 fillStart 1 · fillRange 음수"]) +
+              "\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다"
           };
           return delayArray() + map[id];
         }
@@ -631,9 +648,25 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
             var cell = document.createElement("div");
             cell.className = "calc-cell";
             cell.style.setProperty("--acc", "var(--plan)");
-            cell.innerHTML =
-              '<label class="calc-label">' + d.label +
-              (d.unit ? ' <span class="calc-unit">' + d.unit + "</span>" : "") + "</label>" +
+            var head = '<label class="calc-label">' + d.label +
+              (d.unit ? ' <span class="calc-unit">' + d.unit + "</span>" : "") + "</label>";
+            /* 방향처럼 고를 값은 숫자 칸이 아니라 목록으로 준다 — 0 · 1 만 보고는 못 고른다. */
+            if (d.opt) {
+              cell.innerHTML = head + '<div class="calc-row"><select class="calc-in">' +
+                d.opt.map(function (o) {
+                  return '<option value="' + o.v + '"' + (PV[ps.id][d.k] === o.v ? " selected" : "") +
+                    ">" + o.label + "</option>";
+                }).join("") + "</select></div>";
+              var sel = cell.querySelector("select");
+              sel.addEventListener("change", function () {
+                PV[ps.id][d.k] = parseFloat(sel.value);
+                refresh();
+                replay();
+              });
+              box.appendChild(cell);
+              return;
+            }
+            cell.innerHTML = head +
               '<div class="calc-row"><input class="calc-in" type="number" min="' + d.min +
               '" max="' + d.max + '" step="' + d.step + '" value="' + PV[ps.id][d.k] + '" /></div>';
             var input = cell.querySelector("input");
@@ -869,37 +902,13 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
         };
         var svg = document.getElementById("scene");
         var rowsBox = document.getElementById("rows");
-        var verdictEl = document.getElementById("verdict");
         var treeHint = document.getElementById("treeHint");
         var hidden = {};
 
         function layerOrder() {
           return Array.prototype.map.call(svg.querySelectorAll("g.iso-part"), function (g) { return g.id.slice(2); });
         }
-        var DEFAULT_LAYER = layerOrder();
 
-        /* 뒤에 그릴수록 앞에 보인다. 규칙을 어기면 무엇이 깨지는지 한 줄로 말해준다. */
-        function verdict() {
-          var o = layerOrder(), at = {};
-          o.forEach(function (id, i) { at[id] = i; });
-          var bad = null;
-          if (at.ground !== 0) bad = "지면이 다른 파츠를 덮습니다";
-          else if (at.tree > at.base) bad = "나무가 집 앞으로 나옵니다";
-          else if (at.base > at.wallL || at.base > at.wallR) bad = "기단이 벽을 덮습니다";
-          else if (at.wallL > at.wallR) bad = "좌측 벽이 우측 벽을 덮습니다 — 모서리가 뒤집힙니다";
-          else if (at.door > at.roofL || at.window > at.roofL || at.window > at.roofR) bad = "문 · 창문이 지붕보다 위 — 처마를 뚫고 나옵니다";
-          else if (at.roofL > at.roofR) bad = "지붕 좌면이 우면을 덮습니다";
-          else if (at.chimney < at.roofL || at.chimney < at.roofR) bad = "굴뚝이 지붕에 묻힙니다";
-          else if (at.fence < at.chimney) bad = "울타리가 집 뒤로 들어갑니다";
-          else if (at.water < at.basin) bad = "물이 수조 뒤로 들어갑니다";
-          else if (Math.min(at.lanternA, at.lanternB, at.lanternC) < at.post) bad = "등이 기둥 뒤로 들어갑니다";
-          else if (at.basin < at.chimney || at.bench < at.chimney || at.post < at.chimney) bad = "앞마당 오브젝트가 집 뒤로 들어갑니다";
-          verdictEl.innerHTML = bad
-            ? '<span class="pill" style="--acc: var(--bad)">' + bad + "</span>"
-            : '<span class="pill" style="--acc: var(--ok)">정렬 이상 없음</span>';
-        }
-
-        /* 등장 모드에서도 지면은 등장하지 않으므로 BG 블록으로 위에 남겨 둔다. */
         function objDone(key) {
           for (var i = 0; i < OBJS.length; i++) if (OBJS[i].key === key) return OBJS[i].done > 0;
           return false;
@@ -916,15 +925,14 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
               var ob = OBJ[m.o], key = m.o;
               var n = o.filter(function (x) { return LAYER[x].o === key; }).length;
               var h = document.createElement("div");
-              h.className = "iso-row is-obj" + (key !== "bg" ? " is-move" : " is-locked");
+              h.className = "iso-row is-obj is-locked";
               h.setAttribute("data-obj", key);
-              if (key !== "bg") h.tabIndex = 0;
               h.innerHTML =
                 '<span class="tw">├─ </span><span></span>' +
                 '<span class="nm">' + ob.code + "</span>" +
                 '<span class="ds">' + ob.label + (ob.type ? ' <b class="ty">' + ob.type + "</b>" : "") + "</span>" +
                 '<span class="sq">' + (ob.state ? ob.state + " · " : "") + n + "장</span>" +
-                (objDone(key)
+                (objDone(key) && objSeq()[0] !== key
                   ? '<span class="dl"><input class="iso-dly' + (DLY[key] != null ? " is-set" : "") +
                     '" type="number" min="0" max="20000" step="50" value="' + delayMs(key) +
                     '" aria-label="' + ob.label + ' 딜레이 ms" /><i>ms</i></span>'
@@ -957,96 +965,7 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
               '<span class="dl"></span>';
             rowsBox.appendChild(d);
           });
-          verdict();
         }
-
-        function applyLayer(ids) {
-          ids.forEach(function (id) { svg.appendChild(document.getElementById("p-" + id)); });
-          renderRows();
-        }
-
-        /* ---- 드래그 -----------------------------------------------------------
-           두 축 모두 <b>오브젝트 root</b> 단위로만 옮긴다. 스프라이트는 프리팹 안의
-           조립 순서라 오브젝트를 넘어 다닐 수 없고, root 를 끌면 블록째 따라온다.
-           BG(부지)는 어느 축에서도 맨 위 고정이다. */
-        function midOf(el2) { var b = el2.getBoundingClientRect(); return b.top + b.height / 2; }
-
-        /* 머리행 + 그 아래 스프라이트 행들 = 한 블록 */
-        function blockOf(head) {
-          var out = [head], n = head.nextElementSibling;
-          while (n && !n.hasAttribute("data-obj")) { out.push(n); n = n.nextElementSibling; }
-          return out;
-        }
-        /* 순서 배열을 오브젝트별로 묶는다 */
-        function groupBy(ids) {
-          var map = {}, order = [];
-          ids.forEach(function (id) {
-            var k = LAYER[id].o;
-            if (!map[k]) { map[k] = []; order.push(k); }
-            map[k].push(id);
-          });
-          return { map: map, order: order };
-        }
-        function objKeys() {
-          return groupBy(layerOrder()).order.filter(function (k) { return k !== "bg"; });
-        }
-        /* 오브젝트 순서만 갈아끼운다 — 블록 안 스프라이트 순서는 손대지 않는다. */
-        function applyObjOrder(keys) {
-          var b = groupBy(layerOrder()), ids = [];
-          ["bg"].concat(keys).forEach(function (k) { ids = ids.concat(b.map[k] || []); });
-          applyLayer(ids);
-        }
-        function moveObj(key, from, to) {
-          var keys = objKeys();
-          keys.splice(to, 0, keys.splice(from, 1)[0]);
-          applyObjOrder(keys);
-        }
-
-        var drag = null;
-        function heads() {
-          return Array.prototype.slice.call(rowsBox.querySelectorAll("[data-obj]"))
-            .filter(function (h) { return h.getAttribute("data-obj") !== "bg"; });
-        }
-        function endDrag() {
-          if (!drag) return;
-          var d = drag;
-          drag = null;
-          d.block.forEach(function (r) { r.style.transform = ""; r.style.transition = ""; });
-          d.row.classList.remove("is-drag");
-          Array.prototype.forEach.call(rowsBox.children, function (r) { r.classList.remove("is-over"); });
-          if (d.to !== d.from) moveObj(d.id, d.from, d.to);
-          var r2 = rowsBox.querySelector('[data-obj="' + d.id + '"]');
-          if (r2) r2.focus();
-        }
-
-        rowsBox.addEventListener("pointerdown", function (ev) {
-          if (ev.button !== 0) return;
-          var row = ev.target.closest(".iso-row");
-          if (!row || ev.target.closest(".iso-eye") || ev.target.closest("input")) return;
-          var key = row.getAttribute("data-obj");
-          if (!key || key === "bg") return;      /* 스프라이트 행 · BG 는 못 끈다 */
-          var hs = heads(), i0 = hs.indexOf(row);
-          drag = { row: row, id: key, block: blockOf(row), heads: hs,
-                   from: i0, to: i0, y0: ev.clientY, mids: hs.map(midOf) };
-          drag.block.forEach(function (r) { r.style.transition = "none"; });
-          row.setPointerCapture(ev.pointerId);
-          row.classList.add("is-drag");
-          ev.preventDefault();
-        });
-
-        rowsBox.addEventListener("pointermove", function (ev) {
-          if (!drag) return;
-          var dy = ev.clientY - drag.y0;
-          drag.block.forEach(function (r) { r.style.transform = "translateY(" + dy + "px)"; });
-          var to = 0;
-          for (var j = 0; j < drag.mids.length; j++) if (ev.clientY > drag.mids[j]) to = j;
-          to = Math.max(0, Math.min(drag.heads.length - 1, to));
-          if (to === drag.to) return;
-          drag.to = to;
-          drag.heads.forEach(function (h, j) { h.classList.toggle("is-over", j === to && h !== drag.row); });
-        });
-        rowsBox.addEventListener("pointerup", endDrag);
-        rowsBox.addEventListener("pointercancel", endDrag);
 
         /* ---- 행 ↔ 무대 상호 하이라이트 ---- */
         function lit(id, on) {
@@ -1058,7 +977,7 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
         }
         rowsBox.addEventListener("pointerover", function (ev) {
           var row = ev.target.closest(".iso-row");
-          if (row && !drag) lit(row.getAttribute("data-id"), true);
+          if (row) lit(row.getAttribute("data-id"), true);
         });
         rowsBox.addEventListener("pointerout", function (ev) {
           var row = ev.target.closest(".iso-row");
@@ -1066,7 +985,7 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
         });
         Array.prototype.forEach.call(svg.querySelectorAll("g.iso-part"), function (g) {
           var id = g.id.slice(2);
-          g.addEventListener("pointerenter", function () { if (!drag) lit(id, true); });
+          g.addEventListener("pointerenter", function () { lit(id, true); });
           g.addEventListener("pointerleave", function () { lit(id, false); });
         });
 
@@ -1080,33 +999,21 @@ sp + "sprite.fillType = cc.Sprite.FillType.VERTICAL;\nsprite.fillStart = 0;     
           renderRows();
         });
 
-        /* ---- 키보드: root 행 포커스 후 ↑ ↓ ---- */
-        rowsBox.addEventListener("keydown", function (ev) {
-          var row = ev.target.closest(".iso-row");
-          if (!row || (ev.key !== "ArrowUp" && ev.key !== "ArrowDown")) return;
-          var key = row.getAttribute("data-obj");
-          if (!key || key === "bg") return;
-          ev.preventDefault();
-          var keys = objKeys(), i0 = keys.indexOf(key), j0 = i0 + (ev.key === "ArrowUp" ? -1 : 1);
-          if (j0 < 0 || j0 >= keys.length) return;
-          moveObj(key, i0, j0);
-          var h = rowsBox.querySelector('[data-obj="' + key + '"]');
-          if (h) h.focus();
-        });
-
         /* ---- 초기화 ---- */
         treeHint.innerHTML =
-          "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 뒤에 놓일수록 카메라에 가깝습니다." +
-          "<br /><b>오브젝트 root</b> 만 끌어 옮깁니다(↑ ↓ 키도 됩니다) — 안의 스프라이트는 블록째 따라오고, BG(부지)는 맨 위 고정입니다." +
-          "<br />딜레이 ms 는 <b>root 사이의 간격</b>이라 root 행에서만 고칩니다. 보간 시간 1초는 <b>root 하나가 등장하는 시간</b>이고, 그 안의 스프라이트는 함께 움직입니다." +
+          "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 뒤에 놓일수록 카메라에 가깝고, 이 순서는 아트 리소스 트리 그대로 <b>고정</b>입니다." +
+          "<br />딜레이 ms 는 <b>root 사이의 간격</b>이라 root 행에서만 고칩니다 — 첫 root 는 기준(0)이라 칸이 없습니다." +
+          "<br />보간 시간 1초는 <b>root 하나가 등장하는 시간</b>이고, 그 안의 스프라이트는 같은 딜레이로 함께 움직입니다." +
           "<br />행이나 무대에 얹으면 그 파츠만 남고, ◉ 로 숨깁니다. 오브젝트 유형은 아트 인계 문서의 네 가지 — <b>배치형 · 수리형 · 건설형 · 선택형</b> — 을 하나씩 깔아 뒀습니다.";
+        /* 순서는 고정이라 되돌릴 것이 없다 — 숨긴 파츠와 손댄 딜레이만 기본값으로 돌린다. */
         document.getElementById("resetOrder").addEventListener("click", function () {
           Object.keys(hidden).forEach(function (id) {
             document.getElementById("p-" + id).classList.remove("is-off");
           });
           hidden = {};
           DLY = {};
-          applyLayer(DEFAULT_LAYER.slice());
+          renderRows();
+          refresh();
         });
 
         /* ---- 줌 ----
