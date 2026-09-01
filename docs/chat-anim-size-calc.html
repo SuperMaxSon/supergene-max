@@ -34,7 +34,7 @@
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">3개 리포 코드 실측</span>
-          <span class="tag">v1.6 · 2026-09-01</span>
+          <span class="tag">v1.7 · 2026-09-01</span>
         </div>
       </div>
     </header>
@@ -258,7 +258,7 @@
                 <th style="text-align: right">크기</th>
                 <th style="text-align: right">감정</th>
                 <th style="text-align: right">키프레임</th>
-                <th style="text-align: right">30fps 환산</th>
+                <th style="text-align: right">길이 &rarr; 30fps 프레임</th>
                 <th style="text-align: right">총량</th>
                 <th style="text-align: right">감정당</th>
               </tr>
@@ -269,16 +269,16 @@
                 <td style="text-align: right">304&times;288</td>
                 <td style="text-align: right">4</td>
                 <td style="text-align: right">17</td>
-                <td style="text-align: right">17</td>
+                <td style="text-align: right">0.57s &rarr; 17</td>
                 <td class="calc-val" style="text-align: right; --vc: var(--bad)">1.85 MB</td>
                 <td class="calc-val" style="text-align: right; --vc: var(--bad)">462 KB</td>
               </tr>
               <tr>
                 <td>노드 트랜스폼 · 솔리테어 루나</td>
-                <td style="text-align: right">~150&times;180</td>
+                <td style="text-align: right">154&times;147</td>
                 <td style="text-align: right">4</td>
                 <td style="text-align: right">56</td>
-                <td style="text-align: right">226</td>
+                <td style="text-align: right">7.53s &rarr; 226</td>
                 <td class="calc-val" style="text-align: right; --vc: var(--warn)">158 KB</td>
                 <td class="calc-val" style="text-align: right; --vc: var(--warn)">40 KB</td>
               </tr>
@@ -287,7 +287,7 @@
                 <td style="text-align: right">320&times;296</td>
                 <td style="text-align: right">4</td>
                 <td style="text-align: right">34</td>
-                <td style="text-align: right">59</td>
+                <td style="text-align: right">1.96s &rarr; 59</td>
                 <td class="calc-val" style="text-align: right; --vc: var(--ok)">49.4 KB</td>
                 <td class="calc-val" style="text-align: right; --vc: var(--ok)">12 KB</td>
               </tr>
@@ -412,6 +412,16 @@
         var REF_PX = 304 * 288; // 계수 정규화 기준 해상도
         var EMO_STEPS = [1, 2, 4, 6, 8, 10, 15, 20];
         var FRM_STEPS = [9, 12, 17, 24, 30, 45, 60];
+
+        /* 고정 스텝에 없는 값을 넣으면 강조할 행이 사라진다.
+           현재 값이 목록에 없으면 그 자리에 끼워 넣고 정렬한다. */
+        function steps(base, cur) {
+          var a = base.slice();
+          if (a.indexOf(cur) < 0) a.push(cur);
+          return a.sort(function (x, y) {
+            return x - y;
+          });
+        }
         var NOW = ' <span class="calc-now">현재</span>'; // 표의 --acc 색을 그대로 받는다
         var SEQ = "--bad", NODE = "--warn", SPINE = "--ok"; // 방식별 용량 색
 
@@ -516,7 +526,7 @@
             })
             .join("");
 
-          document.getElementById("t-emo").innerHTML = EMO_STEPS.map(function (e) {
+          document.getElementById("t-emo").innerHTML = steps(EMO_STEPS, v.emo).map(function (e) {
             var r = perChar(v, e, v.frames);
             var here = e === v.emo;
             return (
@@ -526,7 +536,7 @@
             );
           }).join("");
 
-          document.getElementById("t-frm").innerHTML = FRM_STEPS.map(function (f) {
+          document.getElementById("t-frm").innerHTML = steps(FRM_STEPS, v.frames).map(function (f) {
             var r = perChar(v, v.emo, f);
             var here = f === v.frames;
             return (
