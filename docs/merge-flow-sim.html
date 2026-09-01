@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>머지 플로우 시뮬레이터</title>
+    <meta
+      name="description"
+      content="스토리 노드 11개와 실제 대사 37행을 그대로 태워 돌리는 플레이 가능한 플로우 시뮬레이터. 화살표마다 무엇을 받고 무엇을 램에 올리는지 메모리 곡선으로 보여준다. 회색선이 현재 코드, 컬러선이 제안."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=sim1" />
+  </head>
+  <body class="mfx sim">
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#sim">시뮬레이터</a>
+        <a class="nav-back" href="#arrow">화살표</a>
+        <a class="nav-back" href="#num">근거</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">기획 · 로딩 설계</div>
+        <h1 class="doc-title">머지 플로우 시뮬레이터</h1>
+        <p class="doc-lede">
+          <code>story_node.json</code> 11개와 <code>story_dialogue.json</code> 37행을 그대로 태워
+          돌립니다. 머지 보드는 <b>직접 플레이할 수 있고</b>, 대화는 탭으로 넘깁니다.
+          움직일 때마다 <b>무엇을 받고 무엇을 램에 올리는지</b>가 위 곡선에 그려집니다 —
+          <span style="color: var(--asis); font-weight: 700">회색이 지금 코드</span>,
+          <span style="color: var(--smg); font-weight: 700">올리브가 토글을 켠 결과</span>입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
+          <span class="tag">클라이언트 코드 · uuid 그래프 실측</span>
+          <span class="tag">노드 11 · 대사 37 · 감정 16</span>
+          <span class="tag">v1.0 · 2026-09-01</span>
+        </div>
+      </div>
+    </header>
+
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="sim-producer" viewBox="0 0 66 66">
+          <path d="M14 23h38l-4.4 27.5a4.5 4.5 0 0 1-4.4 3.8H22.8a4.5 4.5 0 0 1-4.4-3.8z" fill="#B57F4E" />
+          <path d="M16.4 36h33.2l-.9 5.4H17.3z" fill="#7A4E2B" opacity=".38" />
+          <rect x="11" y="18.5" width="44" height="7.5" rx="3.75" fill="#7A4E2B" />
+          <ellipse cx="33" cy="22.2" rx="16.5" ry="4.4" fill="#A8DED2" />
+          <circle cx="25" cy="13.5" r="5.2" fill="#DFF3EE" />
+          <circle cx="37.5" cy="9.5" r="3.4" fill="#DFF3EE" opacity=".8" />
+          <circle cx="23.4" cy="12.2" r="1.5" fill="#fff" opacity=".9" />
+        </symbol>
+        <symbol id="sim-product" viewBox="0 0 66 66">
+          <rect x="11" y="19" width="44" height="30" rx="8.5" fill="#F2C879" />
+          <path d="M11 38h44v2.5a8.5 8.5 0 0 1-8.5 8.5h-27A8.5 8.5 0 0 1 11 40.5z" fill="#7FC9BA" />
+          <circle cx="22" cy="28" r="3.1" fill="#DCA84F" />
+          <circle cx="34" cy="32.5" r="2.3" fill="#DCA84F" />
+          <circle cx="44.5" cy="26.5" r="2.7" fill="#DCA84F" />
+          <rect x="15" y="22" width="13" height="3.6" rx="1.8" fill="#FBE6BA" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="sim">
+        <!-- 토글이 곧 조작부다. 각 토글의 "현재 코드" 쪽에 회색 '현재' 배지를 달아
+             지금 무엇이 돌아가고 있는지를 매번 다시 읽지 않아도 되게 했다. -->
+        <div class="sim-bar">
+          <span class="sim-bar-l">감정 분리</span>
+          <div class="sim-grp">
+            <button type="button" class="sim-tg" data-tg="split" aria-pressed="false">감정 단위</button>
+            <span class="sim-now" id="sim-now-split">현재 = 끔 · 통짜</span>
+          </div>
+          <span class="sim-bar-l">롤링</span>
+          <div class="sim-grp">
+            <button type="button" class="sim-tg" data-roll="1" aria-pressed="false">N+1</button>
+            <button type="button" class="sim-tg" data-roll="3" aria-pressed="true">N+3</button>
+            <button type="button" class="sim-tg" data-roll="99" aria-pressed="false">파트 전체</button>
+          </div>
+          <span class="sim-bar-l">해제</span>
+          <div class="sim-grp">
+            <button type="button" class="sim-tg" data-tg="free" aria-pressed="false">지난 감정 반납</button>
+            <span class="sim-now">현재 = 없음</span>
+          </div>
+          <span class="sim-bar-l">프리로드 창</span>
+          <div class="sim-grp">
+            <button type="button" class="sim-tg" data-tg="introWin" aria-pressed="false">인트로 영상</button>
+            <button type="button" class="sim-tg" data-tg="boardWin" aria-pressed="false">머지 보드</button>
+            <span class="sim-now">현재 = 둘 다 끔</span>
+          </div>
+          <span class="sim-bar-l">회선</span>
+          <div class="sim-grp">
+            <button type="button" class="sim-tg" data-bw="8" aria-pressed="false">WiFi</button>
+            <button type="button" class="sim-tg" data-bw="3" aria-pressed="true">4G</button>
+            <button type="button" class="sim-tg" data-bw="0.75" aria-pressed="false">3G</button>
+          </div>
+          <span class="nav-spacer" style="flex: 1"></span>
+          <button type="button" class="mfx-play" id="sim-auto">자동 재생</button>
+          <button type="button" class="sim-tg" id="sim-reset">↺ 처음부터</button>
+        </div>
+
+        <div class="sim-verdict">
+          <div class="sim-v" style="--acc: var(--bad)">
+            <div class="sim-v-name">최대 동시 메모리</div>
+            <div class="sim-v-row">
+              <span class="sim-v-num" id="sim-v-mem">—<span class="sim-v-unit">MB</span></span>
+              <span class="sim-v-asis" id="sim-v-mem-asis"></span>
+            </div>
+          </div>
+          <div class="sim-v" style="--acc: var(--warn)">
+            <div class="sim-v-name">총 대기 (스톨)</div>
+            <div class="sim-v-row">
+              <span class="sim-v-num" id="sim-v-stall">—<span class="sim-v-unit">초</span></span>
+              <span class="sim-v-asis" id="sim-v-stall-asis"></span>
+            </div>
+          </div>
+          <div class="sim-v" style="--acc: var(--analysis)">
+            <div class="sim-v-name">총 다운로드</div>
+            <div class="sim-v-row">
+              <span class="sim-v-num" id="sim-v-dl">—<span class="sim-v-unit">MB</span></span>
+              <span class="sim-v-asis" id="sim-v-dl-asis"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 그래프를 누르면 그 스텝으로 점프한다. 곡선이 곧 내비게이션이다. -->
+        <div class="sim-graph"><svg id="sim-svg" viewBox="0 0 980 250" role="img"></svg></div>
+
+        <div class="sim-body">
+          <div class="sim-col">
+            <div class="sim-col-h">플로우 · 노드 11</div>
+            <div class="sim-rail" id="sim-rail"></div>
+          </div>
+
+          <div class="sim-col">
+            <div class="sim-col-h" id="sim-stage-h">무대</div>
+            <div class="mfx-stage sim-stage" id="sim-stage"></div>
+          </div>
+
+          <div class="sim-col">
+            <div class="sim-col-h">리소스 상태 <span id="sim-memnow" style="float:right;font-weight:800"></span></div>
+            <div class="sim-res" id="sim-res"></div>
+            <div class="sim-ev">
+              <div class="sim-ev-h">이 화살표에서 일어난 일</div>
+              <div id="sim-ev"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">회색선은 가정이 아니라 현재 동작이다</div>
+            <p>
+              <code>ChatBubbleStoryPresentation.preload()</code> 2단계
+              (<code>:645-653</code>)가 <code>objectPool/chat.prefab</code> 을
+              <code>bundle.load(cc.Prefab)</code> 로 올립니다. 이 프리팹의 의존 트리를
+              uuid 로 직접 순회하면 <b>프리팹 9 · anim 18 · png 278장 · 파일 7.35MB</b> 이고,
+              그중 감정 애니 <b>272장</b>을 304&times;288&times;4 로 펼치면 <b>90.8MB</b> 입니다.
+              감정 단위 롤링은 코드에 없습니다.
+              그리고 <code>bundle.release*</code> 호출이 <b>전 코드베이스에 0건</b>,
+              <code>CCres.ts:333</code> 의 <code>decRef()</code> 는 주석,
+              <code>PoolManager</code> 에는 maker 를 파기하는 API 가 없습니다 &mdash;
+              <b>한 번 올라가면 세션 끝까지 내려오지 않습니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">해제를 켜려면 번들 분할이 먼저다</div>
+            <p>
+              <code>assets/bundle.meta</code> 만 <code>isBundle: true</code> 이고
+              하위 <code>chat/ data/ objectPool/ storyIntro/ …</code> 는 전부 내부 디렉터리입니다.
+              <b>폴더 단위 언로드가 구조적으로 불가능</b>합니다. 위 토글의 &ldquo;해제&rdquo;와
+              &ldquo;감정 단위&rdquo;는 <b>번들 분할과 <code>objectPool/chat.prefab</code> 의 정적 참조를
+              끊는 작업이 선행됐을 때</b>의 결과를 그립니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="arrow">
+        <h2 class="doc-h2">
+          화살표별 리소스
+          <span class="doc-h2-sub">받는다 = preload(네트워크만) · 올린다 = load(디코딩·메모리) · 내린다 = 메모리만</span>
+        </h2>
+        <div class="table-scroll" style="--acc: var(--smg)">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 20%">화살표</th>
+                <th style="width: 24%">받는다</th>
+                <th style="width: 22%">올린다</th>
+                <th style="width: 16%">내린다</th>
+                <th>지금 코드</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><b>부팅 → 인트로</b></td>
+                <td>엔진 · 스크립트 번들 · <code>intro.fire</code>+텍스처 6 · 번들 config · <code>objectPool/common</code></td>
+                <td>좌동 (차단)</td><td>&mdash;</td>
+                <td><span class="mx mx-ok">○</span> 유지</td></tr>
+              <tr><td><b>인트로 → ViewStory</b></td>
+                <td><code>view/ViewStory.prefab</code> 0.24MB + <b><code>storyIntro</code> mp4 3.5MB</b></td>
+                <td>좌동</td><td>&mdash;</td>
+                <td><span class="mx mx-warn">△</span> mp4 가 프리팹 직접 참조라 무조건 딸려온다</td></tr>
+              <tr><td><b>인트로 영상 재생 중</b><span class="cnote">유휴 창 ①</span></td>
+                <td class="mfx-ez">여기서 대화 감정 · 보드 · 데코를 받아야 한다</td>
+                <td>&mdash;</td><td>&mdash;</td>
+                <td><span class="mx mx-bad"></span> <b>창을 안 쓴다</b> &mdash; <code>StoryRunner</code> 가 <code>_active:false</code> 라 영상 후 직렬</td></tr>
+              <tr><td><b>스토리 진입 → 첫 대사</b></td>
+                <td><code>chat/ui</code> 15경로 0.34MB</td>
+                <td><b><code>objectPool/chat</code> 트리 278장 → 92.8MB</b></td>
+                <td>&mdash;</td>
+                <td><span class="mx mx-bad"></span> 16감정 전량을 한 번에</td></tr>
+              <tr><td><b>대사 넘김</b><span class="cnote">37회</span></td>
+                <td>다음 감정 (롤링 N+3)</td>
+                <td>현재 감정 1개 5.68MB</td>
+                <td>창 밖 감정</td>
+                <td><span class="mx mx-bad"></span> 이벤트 자체가 없다</td></tr>
+              <tr><td><b>태스크 → 보드</b></td>
+                <td>&mdash;</td>
+                <td><code>popup/PopupTask</code> 0.03 + <code>view/ViewMergeBoard</code>+gameplay 0.23MB</td>
+                <td>&mdash;</td>
+                <td><span class="mx mx-ok">○</span> <code>ViewManager.load()</code></td></tr>
+              <tr><td><b>보드 체류 중</b><span class="cnote">유휴 창 ②</span></td>
+                <td class="mfx-ez">데코 · 다음 감정 · 다음 챕터</td>
+                <td>&mdash;</td><td>&mdash;</td>
+                <td><span class="mx mx-bad"></span> <b>창을 안 쓴다</b></td></tr>
+              <tr><td><b>보드 → 데코</b></td>
+                <td>(보드 체류 중에 받아 둠)</td>
+                <td>데코 씬 · 오브젝트</td>
+                <td>보드 아이템</td>
+                <td><span class="mx mx-bad"></span> <b>데코 전 구간 미구현</b> &mdash; <code>gimmick:"decorate"</code> 노드 2개가 그대로 보드로 간다</td></tr>
+              <tr><td><b>스틸컷 노드</b></td>
+                <td>대화 직전 노드에서</td>
+                <td><code>chat/stillcut</code> 2장 1.3MB</td>
+                <td>노드 종료 시</td>
+                <td><span class="mx mx-warn">△</span> 챗 모드는 피드 인라인 · 해제 있으나 <code>dispose()</code> 1회뿐</td></tr>
+              <tr><td><b>데코 카탈로그 열기</b></td>
+                <td>여는 시점 <span class="cnote">게이트 — 예측 불가</span></td>
+                <td>즉시</td><td>닫을 때</td>
+                <td><span class="mx mx-bad"></span> 미구현</td></tr>
+              <tr><td><b>스토리 종료</b></td>
+                <td>&mdash;</td><td>&mdash;</td>
+                <td><code>uiFrames</code> 13장 + <code>stillcutFrame</code></td>
+                <td><span class="mx mx-bad"></span> 애니 278장은 대상 밖 · 이때 처음이자 마지막</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="legend">
+          <span style="color: var(--ok)">○ 시점이 이미 맞다</span>
+          <span style="color: var(--warn)">△ 호출은 있으나 시점/범위가 틀리다</span>
+          <span style="color: var(--bad)">호출 지점 자체가 없다</span>
+        </div>
+      </section>
+
+      <section class="doc-section" id="num">
+        <h2 class="doc-h2">
+          근거 수치
+          <span class="doc-h2-sub">실측과 가정을 섞지 않는다</span>
+        </h2>
+
+        <div class="table-scroll" style="--acc: var(--plan)">
+          <table>
+            <thead>
+              <tr><th style="width: 26%">노드</th><th style="width: 14%">씬 / 파트</th>
+                <th style="width: 8%; text-align: right">대사</th>
+                <th style="width: 30%">등장 감정</th>
+                <th style="width: 8%; text-align: right">감정</th><th style="text-align: right">전부 올리면</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1 <code>dialogue</code></td><td><code>tutorial_0/1</code></td><td class="num">10</td>
+                <td>Rosie worried·sad·confident·neutral·happy · Poppy neutral·excited</td>
+                <td class="num"><b>7</b></td><td class="num"><b>39.8 MB</b></td></tr>
+              <tr><td>3 <code>dialogue</code></td><td><code>1_1_begin/1</code></td><td class="num">14</td>
+                <td>Rosie angry·sad · Brett awkward·neutral·surprised·sad · Poppy excited</td>
+                <td class="num"><b>7</b></td><td class="num"><b>39.8 MB</b></td></tr>
+              <tr><td>5 <code>dialogue</code></td><td><code>1_2_begin/1</code></td><td class="num">2</td>
+                <td>Rosie happy · Rafa happy</td><td class="num">2</td><td class="num">11.4 MB</td></tr>
+              <tr><td>7 <code>dialogue</code></td><td><code>1_2_begin/2</code></td><td class="num">3</td>
+                <td>Rafa worried·neutral · Rosie sad</td><td class="num">3</td><td class="num">17.0 MB</td></tr>
+              <tr><td>9 <code>dialogue</code></td><td><code>1_2_end/1</code></td><td class="num">7</td>
+                <td>Rafa worried·serious·neutral · Rosie worried·sad·confident</td>
+                <td class="num">6</td><td class="num">34.1 MB</td></tr>
+              <tr><td>11 <code>dialogue</code></td><td><code>1_2_end/2</code></td><td class="num">1</td>
+                <td>Rosie confident</td><td class="num">1</td><td class="num">5.7 MB</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">"파트 최악 39.9MB" 가 어느 파트인지 특정됐다</div>
+            <p>
+              예산 문서는 파트 하나에 감정이 최대 7개 붙는다고만 적었습니다. 실제로 그 파트는
+              <b>노드 1 <code>tutorial_0/1</code> 과 노드 3 <code>1_1_begin/1</code></b> 두 곳이고,
+              둘 다 게임을 시작하고 <b>첫 5분 안에</b> 나옵니다. 즉 최악이 뒤가 아니라 앞에 있습니다.
+              감정은 전수 17프레임 · 304&times;288 로 균일해서 개당 정확히
+              <b>17 &times; 304 &times; 288 &times; 4 = 5.68MB</b> 입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-scroll" style="--acc: var(--validate)">
+          <table>
+            <thead>
+              <tr><th style="width: 34%">값</th><th style="width: 16%">수치</th>
+                <th style="width: 16%">종류</th><th>출처</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>objectPool/chat</code> 의존 트리</td><td>png 278 · 7.35MB</td>
+                <td><span class="mx mx-ok">실측</span></td><td>uuid 그래프 순회 (프리팹 9 · anim 18)</td></tr>
+              <tr><td>감정 1개 메모리</td><td>5.68MB</td>
+                <td><span class="mx mx-ok">실측</span></td><td>17프레임 &times; 304&times;288&times;4</td></tr>
+              <tr><td>감정 1개 파일</td><td>0.53MB</td>
+                <td><span class="mx mx-ok">실측</span></td><td><code>du</code> · 감정별 544K 내외</td></tr>
+              <tr><td><code>storyIntro</code> mp4</td><td>3.50MB</td>
+                <td><span class="mx mx-ok">실측</span></td><td>uuid <code>e110bae9…</code> → <code>view/ViewStory.prefab</code> 참조 1건</td></tr>
+              <tr><td><code>chat/ui</code> preload</td><td>15경로 0.34MB</td>
+                <td><span class="mx mx-ok">실측</span></td><td><code>collectPreloadPaths()</code> :616-632</td></tr>
+              <tr><td><code>chat/portrait</code></td><td>16장 1.40MB</td>
+                <td><span class="mx mx-ok">실측</span></td><td>uuid 스캔 <b>0건</b> — 진짜 미사용</td></tr>
+              <tr><td>데코 씬 · 오브젝트</td><td>파일 2.0 / 메모리 8.0MB</td>
+                <td><span class="mx mx-warn">가정</span></td><td>미구현 · 미측정. 자리를 비우면 화살표가 빈칸이 된다</td></tr>
+              <tr><td>데코 카탈로그</td><td>파일 6.0 / 메모리 24.0MB</td>
+                <td><span class="mx mx-warn">가정</span></td><td>미구현 · 미측정</td></tr>
+              <tr><td>다음 챕터</td><td>파일 8.0 / 메모리 0</td>
+                <td><span class="mx mx-warn">가정</span></td><td>받아만 둔다 — 메모리에 올리지 않는다</td></tr>
+              <tr><td>회선</td><td>WiFi 8 · 4G 3 · 3G 0.75 MB/s</td>
+                <td><span class="mx mx-warn">통상치</span></td><td>실측 아님. FB 인앱 + 모바일은 더 느릴 수 있다</td></tr>
+              <tr><td>디코딩 속도</td><td>100 MB/s</td>
+                <td><span class="mx mx-warn">가정</span></td><td>메인 스레드 · 메모리 바이트 기준</td></tr>
+              <tr><td>구간 길이</td><td>대사 2.5초 · 영상 8초 · 보드 15초</td>
+                <td><span class="mx mx-warn">가정</span></td><td>프리로드 창의 크기를 정하는 값</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">예산 문서와 어긋나는 곳 하나</div>
+            <p>
+              <a href="story-merge-resource-budget.html">리소스 예산</a> 문서는
+              <code>bundle/storyIntro</code> 3.51MB 를 <b>&ldquo;참조 0 · 번들에서 제거&rdquo;</b> 로
+              적고 있습니다. 그런데 uuid <code>e110bae9-0a36-4fc1-91b9-d4d35c060858</code> 을 찾으면
+              <code>assets/bundle/view/ViewStory.prefab</code> 이 <b>직접 참조</b>하고 있고
+              <code>StoryIntroVideoPlayer</code> 가 이것을 재생합니다. 즉 제거 대상이 아니라
+              <b>인트로 창의 비용</b>입니다. 예산 문서 정정이 필요합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      /* ======================================================================
+         트윈 엔진 — merge-feedback-anim.html 과 같은 수식을 쓴다.
+         두 문서의 연출이 갈리면 타이밍 얘기가 성립하지 않으므로 그대로 이식했다.
+         ====================================================================== */
+      (function () {
+        "use strict";
+
+        var EASE = {
+          linear: function (t) { return t; },
+          quadOut: function (t) { return 1 - (1 - t) * (1 - t); },
+          sineInOut: function (t) { return -(Math.cos(Math.PI * t) - 1) / 2; },
+          backOut: function (t) { return 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2); },
+        };
+        var SPEED = 1, jobs = [], lastTs = 0;
+        function frame(ts) {
+          if (!lastTs) lastTs = ts;
+          var dt = Math.min(0.05, (ts - lastTs) / 1000) * SPEED;
+          lastTs = ts;
+          var live = [];
+          for (var i = 0; i < jobs.length; i++) {
+            var j = jobs[i];
+            j.t += dt;
+            var r = j.dur <= 0 ? 1 : Math.min(1, j.t / j.dur);
+            try { j.fn(j.ease(r), r); } catch (e) { r = 1; }
+            if (r >= 1) j.res(); else live.push(j);
+          }
+          jobs = live;
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+        function tw(dur, ease, fn) {
+          return new Promise(function (res) {
+            jobs.push({ t: 0, dur: dur, ease: EASE[ease] || EASE.linear, fn: fn, res: res });
+          });
+        }
+
+        /* ====================================================================
+           데이터 — 전부 레포 실측값. 옮겨 적다 틀리는 걸 막으려고
+           story_node.json / story_dialogue.json 순서를 그대로 옮겼다.
+           ==================================================================== */
+
+        var FRAME_MB = 304 * 288 * 4 / 1048576;   /* 0.3339 — 전 감정 해상도 동일 */
+        var EMO_MEM = +(FRAME_MB * 17).toFixed(2); /* 5.68 */
+
+        /* 감정별 파일 용량(MB) — du 실측 */
+        var EMO_FILE = {
+          Brett_awkward: 0.436, Brett_neutral: 0.436, Brett_sad: 0.448, Brett_surprised: 0.443,
+          Poppy_excited: 0.503, Poppy_neutral: 0.504,
+          Rafa_happy: 0.447, Rafa_neutral: 0.450, Rafa_serious: 0.450, Rafa_worried: 0.450,
+          Rosie_angry: 0.449, Rosie_confident: 0.451, Rosie_happy: 0.450,
+          Rosie_neutral: 0.452, Rosie_sad: 0.460, Rosie_worried: 0.455,
+        };
+
+        var RES = {};
+        Object.keys(EMO_FILE).forEach(function (k) {
+          RES["e:" + k] = { name: k, file: EMO_FILE[k], mem: EMO_MEM, emo: true };
+        });
+        [
+          { id: "data",      name: "data/*.json 3",              file: 0.04, mem: 0.04 },
+          { id: "viewstory", name: "view/ViewStory.prefab",       file: 0.24, mem: 0.24 },
+          { id: "introvid",  name: "storyIntro mp4",              file: 3.50, mem: 3.50 },
+          { id: "chatui",    name: "chat/ui 15경로",              file: 0.34, mem: 0.34 },
+          { id: "chatpool",  name: "objectPool/chat 트리 272장",  file: 7.35, mem: 90.83 },
+          { id: "stillcut",  name: "chat/stillcut 2장",           file: 1.30, mem: 1.30 },
+          { id: "board",     name: "ViewMergeBoard + gameplay",   file: 0.23, mem: 0.23 },
+          { id: "popup",     name: "popup/PopupTask.prefab",      file: 0.03, mem: 0.03 },
+          { id: "deco",      name: "데코 씬 · 오브젝트",           file: 2.00, mem: 8.00, assumed: true },
+          { id: "catalog",   name: "데코 카탈로그 (게이트)",        file: 6.00, mem: 24.00, assumed: true },
+          { id: "chapter",   name: "다음 챕터",                    file: 8.00, mem: 0, assumed: true },
+          { id: "portrait",  name: "chat/portrait 16장",          file: 1.40, mem: 0, dead: true },
+        ].forEach(function (r) { RES[r.id] = r; });
+
+        /* story_dialogue.json 37행 — scene/part/step/speaker/direction/anim/text_en */
+        var L = function (sc, p, sp, dir, anim, tx) {
+          return { sc: sc, p: p, sp: sp, dir: dir, anim: anim, tx: tx };
+        };
+        var LINES = [
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_worried", "I can't believe it. The whole village has gone wild."),
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_sad", "No one cared for Rosewood after she passed?"),
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_confident", "First I need to know why this place was left behind."),
+          L("tutorial_0", 1, "Poppy", 2, "Poppy_neutral", "Mama!"),
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_neutral", "Yes, sweetie?"),
+          L("tutorial_0", 1, "Poppy", 2, "Poppy_neutral", "I'm sooo hungry!"),
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_neutral", "Let's see what I can find for you."),
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_happy", "How about some fresh bread?"),
+          L("tutorial_0", 1, "Poppy", 2, "Poppy_excited", "Yeah! I love bread!"),
+          L("tutorial_0", 1, "Rosie", 1, "Rosie_neutral", "I'll tidy Grandma Rosa's kitchen so I can bake."),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_angry", "Brett! You can't just walk into my mother's workshop."),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_angry", "Go back to your tea house and your perfect menu."),
+          L("1_1_begin", 1, "Brett", 2, "Brett_awkward", "Rosie, wait. You've got this all wrong."),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_angry", "I heard what you told Diane about my plans."),
+          L("1_1_begin", 1, "Brett", 2, "Brett_neutral", "That was business talk. People asked, I answered."),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_angry", "Right. Told them I'd be closed by autumn, I bet."),
+          L("1_1_begin", 1, "Brett", 2, "Brett_surprised", "Rosie, why won't you listen?"),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_sad", "I don't want to fight. You always have an answer."),
+          L("1_1_begin", 1, "Brett", 2, "Brett_sad", "I just wanted to see the old workshop. Is it—"),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_angry", "It's mine now, Brett. Mom left it to me."),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_angry", "Now go. I have work to do."),
+          L("1_1_begin", 1, "Brett", 2, "Brett_neutral", "All right. See you around, Rosie."),
+          L("1_1_begin", 1, "Poppy", 2, "Poppy_excited", "Mama! Was that Daddy? Why did he go?"),
+          L("1_1_begin", 1, "Rosie", 1, "Rosie_sad", "He had to get back to the shop."),
+          L("1_2_begin", 1, "Rosie", 1, "Rosie_happy", "Rafa! So glad you're here — with tools!"),
+          L("1_2_begin", 1, "Rafa", 2, "Rafa_happy", "A few boarded-up windows won't stop me."),
+          L("1_2_begin", 2, "Rafa", 2, "Rafa_worried", "Why is the whole town boarded up? What happened?"),
+          L("1_2_begin", 2, "Rosie", 1, "Rosie_sad", "People just left. After the market closed."),
+          L("1_2_begin", 2, "Rafa", 2, "Rafa_neutral", "Don't worry, Rosie. I'll fix it up."),
+          L("1_2_end", 1, "Rafa", 2, "Rafa_worried", "That market closing wasn't just bad luck, was it?"),
+          L("1_2_end", 1, "Rosie", 1, "Rosie_worried", "No. Something doesn't add up, and I'll find out."),
+          L("1_2_end", 1, "Rafa", 2, "Rafa_serious", "Maybe your mother crossed someone?"),
+          L("1_2_end", 1, "Rosie", 1, "Rosie_sad", "Maybe. But my mother lived here her whole life."),
+          L("1_2_end", 1, "Rosie", 1, "Rosie_sad", "And she was kind to everyone."),
+          L("1_2_end", 1, "Rafa", 2, "Rafa_neutral", "I know! People still talk about her."),
+          L("1_2_end", 1, "Rosie", 1, "Rosie_confident", "Time to pick up my old hobby. Solving mysteries."),
+          L("1_2_end", 2, "Rosie", 1, "Rosie_confident", "I'll find out what happened here!"),
+        ];
+
+        /* story_node.json 11행 */
+        var NODES = [
+          { o: 1,  t: "dialogue", sc: "tutorial_0", p: 1 },
+          { o: 2,  t: "task", id: "clean_kitchen", label: "Tidy the Kitchen", gim: "merge", por: "poppy" },
+          { o: 3,  t: "dialogue", sc: "1_1_begin", p: 1 },
+          { o: 4,  t: "task", id: "task_1_1", label: "None of Your Business", gim: "decorate", por: "brett" },
+          { o: 5,  t: "dialogue", sc: "1_2_begin", p: 1 },
+          { o: 6,  t: "stillcut", id: "sc_rafa_tools", label: "Rafa with Tools" },
+          { o: 7,  t: "dialogue", sc: "1_2_begin", p: 2 },
+          { o: 8,  t: "task", id: "set_table", label: "Something Doesn't Add Up", gim: "decorate", por: "rafa" },
+          { o: 9,  t: "dialogue", sc: "1_2_end", p: 1 },
+          { o: 10, t: "stillcut", id: "sc_detective", label: "Rosie Investigates" },
+          { o: 11, t: "dialogue", sc: "1_2_end", p: 2 },
+        ];
+
+        /* 구간 길이(초) — 가정. 프리로드 창의 크기를 정하는 값이다. */
+        var DUR = { boot: 3, view: 1, intro: 8, line: 2.5, popup: 2, board: 15, deco: 6, cut: 3 };
+        var DECODE = 100;   /* MB/s · 메모리 바이트 기준 — 가정 */
+        var BUDGET = 60;    /* MB */
+
+        /* ---- 스텝 타임라인 조립 -------------------------------------------- */
+        var STEPS = [];
+        var RAIL = [];
+        function pushStep(s) { STEPS.push(s); return STEPS.length - 1; }
+        function railRow(name, kind, from, ghost) {
+          RAIL.push({ name: name, kind: kind, from: from, ghost: !!ghost });
+        }
+
+        railRow("부팅 · intro.fire", "sys", pushStep({ k: "boot", t: DUR.boot, need: ["data"], arrow: "엔진 부팅 → 씬" }));
+        railRow("ViewStory 로드", "sys", pushStep({ k: "view", t: DUR.view, need: ["viewstory", "introvid"], arrow: "인트로 → ViewStory" }));
+        railRow("인트로 영상", "sys", pushStep({ k: "intro", t: DUR.intro, need: [], win: "introWin", arrow: "영상 재생 — 유휴 창 ①" }));
+
+        NODES.forEach(function (n) {
+          if (n.t === "dialogue") {
+            var rows = LINES.filter(function (l) { return l.sc === n.sc && l.p === n.p; });
+            var first = null;
+            rows.forEach(function (l, i) {
+              var ix = pushStep({ k: "line", t: DUR.line, need: ["chatui"], line: l, node: n,
+                arrow: i === 0 ? "스토리 진입 → 첫 대사" : "대사 넘김" });
+              if (first === null) first = ix;
+            });
+            railRow(n.o + " " + n.sc + "/" + n.p, "dlg", first);
+          } else if (n.t === "task") {
+            var a = pushStep({ k: "popup", t: DUR.popup, need: ["popup"], node: n, arrow: "노드 → PopupTask" });
+            pushStep({ k: "board", t: DUR.board, need: ["board"], node: n, win: "boardWin", arrow: "팝업 → 머지 보드 — 유휴 창 ②" });
+            if (n.gim === "decorate") {
+              pushStep({ k: "deco", t: DUR.deco, need: ["deco"], node: n, ghost: true, arrow: "보드 → 데코 (미구현)" });
+            }
+            railRow(n.o + " " + n.id, "task", a, n.gim === "decorate");
+          } else {
+            railRow(n.o + " " + n.id, "cut", pushStep({ k: "cut", t: DUR.cut, need: ["stillcut"], node: n, arrow: "스틸컷 노드" }));
+          }
+        });
+        railRow("COMPLETE 11 / 11", "sys", pushStep({ k: "done", t: 0, need: [], arrow: "스토리 종료 → dispose()" }));
+
+        /* 스텝의 실제 요구 목록. split 이 꺼지면 감정 전부가 통짜 하나로 바뀐다 —
+           이게 현재 코드(objectPool/chat.prefab 한 방 로드)의 모델이다. */
+        function needOf(s, pol) {
+          var n = s.need.slice();
+          if (s.k === "line") n.push(pol.split ? "e:" + s.line.anim : "chatpool");
+          return n;
+        }
+
+        /* ---- 시뮬레이션 ---------------------------------------------------- */
+        function simulate(pol) {
+          var have = {}, mem = {}, memMB = 0, maxMem = 0, stallTotal = 0, dl = 0;
+          var pts = [], evs = [];
+
+          function download(id) {
+            if (have[id]) return 0;
+            have[id] = 1; dl += RES[id].file; return RES[id].file;
+          }
+          function upcomingNeeds(from) {
+            var out = [], seen = {};
+            for (var i = from; i < STEPS.length; i++) {
+              if (STEPS[i].ghost && !pol.deco) continue;
+              needOf(STEPS[i], pol).forEach(function (id) {
+                if (!seen[id] && !have[id]) { seen[id] = 1; out.push(id); }
+              });
+            }
+            /* 다음 챕터는 어느 스텝도 요구하지 않는다 — 받아만 두고 메모리엔 안 올린다.
+               그래서 큐 맨 뒤에 붙인다: 앞엣것을 다 받고 남는 대역만 쓴다. */
+            if (!have.chapter) out.push("chapter");
+            return out;
+          }
+          /* 롤링 창 — 지금 감정 + 앞으로 나올 서로 다른 감정 roll 개까지만 남긴다 */
+          function keepSet(from) {
+            var keep = {}, cnt = 0;
+            for (var i = from; i < STEPS.length && cnt <= pol.roll; i++) {
+              if (STEPS[i].k !== "line") continue;
+              var id = "e:" + STEPS[i].line.anim;
+              if (!keep[id]) { keep[id] = 1; cnt++; }
+            }
+            return keep;
+          }
+
+          STEPS.forEach(function (s, i) {
+            var ev = { pre: [], load: [], free: [], stall: 0 };
+            if (s.ghost && !pol.deco) {
+              pts.push({ mem: memMB, stall: 0, m: Object.assign({}, mem), h: Object.assign({}, have) });
+              evs.push(ev); return;
+            }
+
+            /* ① 이번 스텝이 필요로 하는 것 — 못 받았으면 여기서 기다린다 */
+            needOf(s, pol).forEach(function (id) {
+              var r = RES[id];
+              if (!have[id]) { ev.stall += r.file / pol.bw; download(id); ev.pre.push(r.name + " (급히)"); }
+              if (!mem[id]) {
+                mem[id] = 1; memMB += r.mem;
+                ev.stall += r.mem / DECODE;
+                ev.load.push(r.name + " +" + r.mem.toFixed(2) + "MB");
+              }
+            });
+            stallTotal += ev.stall;
+            if (memMB > maxMem) maxMem = memMB;
+
+            /* ② 유휴 창 — 이 구간 길이만큼 앞엣것을 미리 받아 둔다 (메모리 0) */
+            if (s.win && pol[s.win]) {
+              var budget = s.t * pol.bw;
+              var up = upcomingNeeds(i + 1);
+              for (var u = 0; u < up.length && budget > 0; u++) {
+                var r2 = RES[up[u]];
+                if (r2.file > budget) break;
+                budget -= r2.file; download(up[u]); ev.pre.push(r2.name);
+              }
+            }
+
+            /* ③ 해제 — 메모리에서만 내린다. 받아둔 바이트는 그대로 둔다 */
+            if (pol.free) {
+              var keep = pol.split ? keepSet(i) : null;
+              Object.keys(mem).forEach(function (id) {
+                var r3 = RES[id], drop = false;
+                if (r3.emo && keep && !keep[id]) drop = true;
+                if (id === "deco" && s.k !== "deco") drop = true;
+                if (id === "stillcut" && s.k !== "cut") drop = true;
+                if (drop) { delete mem[id]; memMB -= r3.mem; ev.free.push(r3.name + " −" + r3.mem.toFixed(2) + "MB"); }
+              });
+            }
+            /* 패널이 "지금 이 순간"을 그리려면 스텝마다 상태를 찍어 둬야 한다 */
+            pts.push({ mem: memMB, stall: ev.stall, m: Object.assign({}, mem), h: Object.assign({}, have) });
+            evs.push(ev);
+          });
+
+          return { pts: pts, evs: evs, maxMem: maxMem, stall: stallTotal, dl: dl, mem: mem, have: have };
+        }
+
+        /* ---- 상태 ---------------------------------------------------------- */
+        var pol = { split: false, roll: 3, free: false, introWin: false, boardWin: false, bw: 3, deco: true };
+        var ASIS = { split: false, roll: 3, free: false, introWin: false, boardWin: false, bw: 3, deco: false };
+        var cur = 0, runTo = null, runAsis = null, autoTimer = null;
+
+        function recompute() {
+          ASIS.bw = pol.bw;
+          runTo = simulate(pol);
+          runAsis = simulate(ASIS);
+        }
+
+        /* ==================================================================
+           그리기
+           ================================================================== */
+        var $ = function (id) { return document.getElementById(id); };
+        var svg = $("sim-svg");
+        var NS = "http://www.w3.org/2000/svg";
+        function el(t, a) {
+          var n = document.createElementNS(NS, t);
+          for (var k in a) n.setAttribute(k, a[k]);
+          return n;
+        }
+
+        function drawGraph() {
+          while (svg.firstChild) svg.removeChild(svg.firstChild);
+          var W = 980, H = 250, L0 = 40, R = 12, T = 14, B = 42;
+          var n = STEPS.length;
+          var top = Math.max(100, runAsis.maxMem * 1.08, runTo.maxMem * 1.15);
+          var x = function (i) { return L0 + (W - L0 - R) * (i / (n - 1)); };
+          var y = function (v) { return T + (H - T - B) * (1 - v / top); };
+
+          /* 눈금 */
+          [0, 30, 60, 90].forEach(function (v) {
+            if (v > top) return;
+            svg.appendChild(el("line", { x1: L0, x2: W - R, y1: y(v), y2: y(v), stroke: "var(--border)", "stroke-width": 1 }));
+            var tx = el("text", { x: L0 - 6, y: y(v) + 3.5, "font-size": 9.5, "text-anchor": "end", fill: "var(--text-faint)", "font-weight": 700 });
+            tx.textContent = v; svg.appendChild(tx);
+          });
+          /* 60MB 예산선 */
+          svg.appendChild(el("line", { x1: L0, x2: W - R, y1: y(BUDGET), y2: y(BUDGET), stroke: "var(--bad)", "stroke-width": 1.6, "stroke-dasharray": "6 4" }));
+          var bl = el("text", { x: W - R, y: y(BUDGET) - 5, "font-size": 10, "text-anchor": "end", fill: "var(--bad)", "font-weight": 800 });
+          bl.textContent = "메모리 예산 60MB"; svg.appendChild(bl);
+
+          function path(run, close) {
+            var d = "";
+            for (var i = 0; i < n; i++) {
+              var px = x(i), py = y(run.pts[i].mem);
+              d += (i === 0 ? "M" : "L") + px.toFixed(1) + " " + py.toFixed(1);
+              if (i < n - 1) d += "L" + x(i + 1).toFixed(1) + " " + py.toFixed(1);
+            }
+            if (close) d += "L" + x(n - 1).toFixed(1) + " " + y(0) + "L" + L0 + " " + y(0) + "Z";
+            return d;
+          }
+          svg.appendChild(el("path", { d: path(runTo, true), fill: "color-mix(in srgb, var(--smg) 12%, transparent)", stroke: "none" }));
+          svg.appendChild(el("path", { d: path(runAsis, false), fill: "none", stroke: "var(--asis)", "stroke-width": 2.4 }));
+          svg.appendChild(el("path", { d: path(runTo, false), fill: "none", stroke: "var(--smg)", "stroke-width": 2.6 }));
+
+          /* 스톨 — 축 아래 빨간 막대. 기다림은 숨기지 않는다 */
+          for (var i = 0; i < n; i++) {
+            var st = runTo.pts[i].stall;
+            if (st < 0.05) continue;
+            var h = Math.min(20, st * 2.4);
+            svg.appendChild(el("rect", { x: x(i) - 2, y: H - B + 4, width: 4, height: h, rx: 1.5, fill: "var(--bad)" }));
+          }
+          /* 노드 구분선 + 이름 */
+          RAIL.forEach(function (r, ri) {
+            svg.appendChild(el("line", { x1: x(r.from), x2: x(r.from), y1: T, y2: H - B, stroke: "var(--border-soft)", "stroke-width": 1 }));
+            if (ri % 2 === 0) {
+              var t2 = el("text", { x: x(r.from) + 3, y: H - B + 15, "font-size": 8.5, fill: "var(--text-faint)", "font-weight": 700 });
+              t2.textContent = r.name.length > 13 ? r.name.slice(0, 13) : r.name;
+              svg.appendChild(t2);
+            }
+          });
+          /* 플레이헤드 */
+          svg.appendChild(el("line", { x1: x(cur), x2: x(cur), y1: T - 4, y2: H - B + 26, stroke: "var(--smg)", "stroke-width": 2 }));
+          svg.appendChild(el("circle", { cx: x(cur), cy: y(runTo.pts[cur].mem), r: 4.5, fill: "var(--smg)", stroke: "#fff", "stroke-width": 2 }));
+
+          /* 범례 */
+          var lg = [["var(--asis)", "현재 코드"], ["var(--smg)", "토글 적용"], ["var(--bad)", "대기(스톨)"]];
+          lg.forEach(function (p, i) {
+            svg.appendChild(el("rect", { x: L0 + i * 96, y: H - 12, width: 14, height: 3, rx: 1.5, fill: p[0] }));
+            var t3 = el("text", { x: L0 + i * 96 + 19, y: H - 8, "font-size": 9.5, fill: "var(--text-dim)", "font-weight": 700 });
+            t3.textContent = p[1]; svg.appendChild(t3);
+          });
+
+          svg.onclick = function (e) {
+            var b = svg.getBoundingClientRect();
+            var px = (e.clientX - b.left) / b.width * W;
+            var i = Math.round((px - L0) / (W - L0 - R) * (n - 1));
+            goto(Math.max(0, Math.min(n - 1, i)));
+          };
+        }
+
+        function drawVerdict() {
+          $("sim-v-mem").innerHTML = runTo.maxMem.toFixed(1) + '<span class="sim-v-unit">MB</span>';
+          $("sim-v-stall").innerHTML = runTo.stall.toFixed(1) + '<span class="sim-v-unit">초</span>';
+          $("sim-v-dl").innerHTML = runTo.dl.toFixed(1) + '<span class="sim-v-unit">MB</span>';
+          var over = (runAsis.maxMem / BUDGET * 100).toFixed(0);
+          $("sim-v-mem-asis").innerHTML = "현재 <b>" + runAsis.maxMem.toFixed(1) + "MB · 예산의 " + over + "%</b>";
+          $("sim-v-stall-asis").textContent = "현재 " + runAsis.stall.toFixed(1) + "초";
+          $("sim-v-dl-asis").textContent = "현재 " + runAsis.dl.toFixed(1) + "MB";
+        }
+
+        var KCOL = { sys: "var(--text-faint)", dlg: "var(--analysis)", task: "var(--balance)", cut: "var(--plan)" };
+        function drawRail() {
+          var box = $("sim-rail");
+          box.innerHTML = "";
+          RAIL.forEach(function (r, i) {
+            var next = i + 1 < RAIL.length ? RAIL[i + 1].from : STEPS.length;
+            var on = cur >= r.from && cur < next;
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "sim-n" + (on ? " is-on" : "") + (r.ghost ? " is-ghost" : "");
+            b.style.setProperty("--k", KCOL[r.kind]);
+            b.innerHTML = '<span class="sim-dot"></span><span>' + r.name + "</span>" +
+              (r.ghost ? '<span class="sim-n-sub">데코 미구현</span>' : "");
+            b.onclick = function () { goto(r.from); };
+            box.appendChild(b);
+          });
+        }
+
+        function drawRes() {
+          var box = $("sim-res");
+          box.innerHTML = "";
+          var mn = $("sim-memnow");
+          if (mn) {
+            mn.textContent = runTo.pts[cur].mem.toFixed(1) + " / 60MB";
+            mn.style.color = runTo.pts[cur].mem > BUDGET ? "var(--bad)" : "var(--ok)";
+          }
+          var order = ["data", "viewstory", "introvid", "chatui", "chatpool"]
+            .concat(Object.keys(EMO_FILE).map(function (k) { return "e:" + k; }))
+            .concat(["stillcut", "board", "popup", "deco", "catalog", "chapter", "portrait"]);
+          order.forEach(function (id) {
+            var r = RES[id];
+            if (!pol.split && r.emo) return;
+            if (pol.split && id === "chatpool") return;
+            var snap = runTo.pts[cur];
+            var st = snap.m[id] ? "is-mem" : (snap.h[id] ? "is-pre" : "");
+            var row = document.createElement("div");
+            row.className = "sim-r" + (r.assumed ? " is-assumed" : "") + (r.dead ? " is-dead" : "");
+            row.style.setProperty("--acc", r.assumed ? "var(--warn)" : "var(--smg)");
+            row.innerHTML = '<span class="sim-st ' + st + '"></span>' +
+              '<span class="sim-r-n">' + r.name + "</span>" +
+              '<span class="sim-r-mb">' + r.mem.toFixed(2) + "MB</span>";
+            box.appendChild(row);
+          });
+        }
+
+        function drawEv() {
+          var box = $("sim-ev");
+          var s = STEPS[cur], ev = runTo.evs[cur];
+          var h = '<div class="sim-ev-l"><span class="sim-ev-k" style="border-color:var(--border);color:var(--text-faint)">화살표</span><span>' + s.arrow + "</span></div>";
+          if (ev.stall >= 0.05) h += '<div class="sim-ev-l"><span class="sim-ev-k k-stall">대기</span><span>' + ev.stall.toFixed(2) + "초</span></div>";
+          ev.pre.forEach(function (t) { h += '<div class="sim-ev-l"><span class="sim-ev-k k-pre">받음</span><span>' + t + "</span></div>"; });
+          ev.load.forEach(function (t) { h += '<div class="sim-ev-l"><span class="sim-ev-k k-load">올림</span><span>' + t + "</span></div>"; });
+          ev.free.forEach(function (t) { h += '<div class="sim-ev-l"><span class="sim-ev-k k-free">내림</span><span>' + t + "</span></div>"; });
+          if (!ev.pre.length && !ev.load.length && !ev.free.length && ev.stall < 0.05)
+            h += '<div class="sim-ev-l"><span style="color:var(--text-faint)">리소스 이벤트 없음</span></div>';
+          box.innerHTML = h;
+        }
+
+        /* ==================================================================
+           무대 — 단계마다 다른 판을 세운다.
+           머지 보드는 ViewMergeBoard 실측 규칙 그대로 직접 플레이할 수 있다.
+           ================================================================== */
+        var COLS = 6, ROWS = 7, CELL = 72, GAP = 5, PITCH = CELL + GAP;
+        var GW = COLS * CELL + (COLS - 1) * GAP;   /* 457 */
+        var GH = ROWS * CELL + (ROWS - 1) * GAP;   /* 534 */
+        var GEN_IDX = 8, SPAWN = [10, 19, 22, 31, 33], POOL_MAX = 5, DROP_R = 56, TIER_MAX = 3;
+        var TINT = ["", "hue-rotate(-28deg)", "hue-rotate(-62deg)"];
+        var stageEl = $("sim-stage"), headEl = $("sim-stage-h");
+
+        function tileHTML(sym, tier) {
+          return '<div class="mfx-tile"><svg viewBox="0 0 66 66"><use href="#' + sym + '"/></svg>' +
+            (tier ? '<span class="lv">' + tier + "</span>" : "") + "</div>";
+        }
+        function Spr(layer, html, cls) {
+          this.el = document.createElement("div");
+          this.el.className = "mfx-spr" + (cls ? " " + cls : "");
+          this.el.innerHTML = html;
+          layer.appendChild(this.el);
+          this.x = 0; this.y = 0; this.s = 1; this.a = 1;
+          this.apply();
+        }
+        Spr.prototype.apply = function () {
+          this.el.style.transform = "translate(-50%,-50%) translate(" + this.x + "px," + -this.y + "px) scale(" + this.s + ")";
+          this.el.style.opacity = this.a;
+        };
+        Spr.prototype.set = function (x, y) { this.x = x; this.y = y; this.apply(); };
+
+        function cellX(i) { return (i % COLS) * PITCH + CELL / 2 - GW / 2; }
+        function cellY(i) { return GH / 2 - (Math.floor(i / COLS) * PITCH + CELL / 2); }
+        function nearestCell(x, y) {
+          var best = -1, bd = 1e9;
+          for (var i = 0; i < COLS * ROWS; i++) {
+            var dx = x - cellX(i), dy = y - cellY(i), d = Math.sqrt(dx * dx + dy * dy);
+            if (d < bd) { bd = d; best = i; }
+          }
+          return bd <= DROP_R ? best : -1;
+        }
+
+        function setStage(html, cap) {
+          stageEl.innerHTML = (cap ? '<div class="sim-cap">' + cap + "</div>" : "") + html;
+        }
+
+        function renderStage() {
+          var s = STEPS[cur], ev = runTo.evs[cur];
+          headEl.textContent = "무대 — " + s.arrow;
+
+          /* 대기가 있으면 그 사실을 판 위에 먼저 세운다. 숨기면 판단이 안 된다. */
+          var stall = ev.stall >= 0.05
+            ? '<div class="sim-stall"><i></i>로딩 ' + ev.stall.toFixed(2) + "초</div>"
+            : "";
+
+          if (s.k === "boot" || s.k === "view" || s.k === "intro") {
+            var lbl = s.k === "boot" ? "부팅 · intro.fire" : s.k === "view" ? "ViewStory 프리팹 + 인트로 mp4" : "인트로 영상 재생 중";
+            var sub = s.k === "intro"
+              ? (pol.introWin ? "이 " + DUR.intro + "초 동안 앞엣것을 받는다" : "현재 코드 — 이 창을 쓰지 않는다")
+              : "";
+            setStage(stall + '<div class="sim-boot"><div class="sim-boot-bar"><i id="sim-pb"></i></div></div>' +
+              (sub ? '<div class="sim-cap" style="color:' + (pol.introWin ? "var(--ok)" : "var(--bad)") + '">' + sub + "</div>" : ""), lbl);
+            var pb = $("sim-pb");
+            if (pb) tw(0.9, "quadOut", function (v) { pb.style.width = (v * 100) + "%"; });
+            return;
+          }
+
+          if (s.k === "line") {
+            var rows = "";
+            for (var i = Math.max(0, cur - 2); i <= cur; i++) {
+              if (STEPS[i].k !== "line") continue;
+              var l = STEPS[i].line, old = i < cur;
+              var face = '<div class="sim-face">' + l.sp + "</div>";
+              var bub = '<div class="sim-bub">' + l.tx + "</div>";
+              rows += '<div class="sim-msg' + (l.dir === 2 ? " is-r" : "") + (old ? " is-old" : "") + '">' +
+                face + bub + (old ? "" : '<span class="sim-emo">' + l.anim + "</span>") + "</div>";
+            }
+            setStage(stall + '<div class="sim-chat">' + rows + "</div>" +
+              '<div class="sim-cap" style="opacity:.7">탭하면 다음 대사</div>',
+              STEPS[cur].node.sc + " / " + STEPS[cur].node.p);
+            stageEl.onclick = function () { next(); };
+            return;
+          }
+
+          if (s.k === "popup") {
+            setStage(stall +
+              '<div class="mfx-board" style="padding:18px 22px;text-align:center;min-width:230px">' +
+              '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--wood700);opacity:.7">TASK</div>' +
+              '<div style="font-size:15px;font-weight:800;color:var(--wood700);margin:6px 0 10px">' + s.node.label + "</div>" +
+              '<div class="sim-face" style="width:52px;height:52px;margin:0 auto 10px">' + s.node.por + "</div>" +
+              '<button type="button" class="mfx-play" id="sim-start">START</button></div>', "PopupTask");
+            $("sim-start").onclick = function () { next(); };
+            return;
+          }
+
+          if (s.k === "board") { renderBoard(stall); return; }
+
+          if (s.k === "deco") {
+            setStage(stall + '<div class="sim-void">데코레이션 미구현<br />' +
+              '<span style="font-weight:600;font-size:11.5px">' + s.node.id + ' 은 <code>gimmick:"decorate"</code> 인데<br />' +
+              '코드가 gimmick 을 분기에 쓰지 않아 그대로 머지 보드로 갑니다.</span></div>' +
+              '<button type="button" class="mfx-play" id="sim-skip">넘어가기</button>', "데코 " + s.node.id);
+            $("sim-skip").onclick = function () { next(); };
+            return;
+          }
+
+          if (s.k === "cut") {
+            setStage(stall + '<div class="sim-cut">' + s.node.label + "</div>" +
+              '<div class="sim-cap" style="opacity:.7">탭하면 다음</div>', "스틸컷 " + s.node.id);
+            stageEl.onclick = function () { next(); };
+            return;
+          }
+
+          setStage('<div class="mfx-stamp">COMPLETE 11 / 11</div>' +
+            '<div class="sim-cap" style="margin-top:10px">여기서 <code>dispose()</code> 가 처음이자 마지막으로 돈다</div>', "");
+        }
+
+        /* ---- 머지 보드. ViewMergeBoard 실측 규칙 ---------------------------- */
+        var board = null;
+        function renderBoard(stall) {
+          var cells = "";
+          for (var i = 0; i < COLS * ROWS; i++) cells += '<div class="mfx-cell"></div>';
+          var scale = Math.min(1, (stageEl.clientWidth - 26) / (GW + 36));
+          setStage(stall +
+            '<div style="height:' + Math.round((GH + 42) * scale) + 'px">' +
+            '<div class="sim-scale" style="transform:scale(' + scale.toFixed(3) + ')">' +
+            '<div class="mfx-board"><div class="mfx-cells" style="grid-template-columns:repeat(' + COLS + "," + CELL + 'px)">' +
+            cells + '</div><div class="mfx-layer" id="sim-layer"></div></div></div></div>' +
+            '<div class="mfx-hud" id="sim-prog" style="margin-top:2px">0 / 1 MERGE</div>' +
+            '<button type="button" class="mfx-play" id="sim-clear" disabled>CLEAR</button>' +
+            '<div class="sim-cap" style="opacity:.7">양동이를 누르면 생산 · 같은 레벨끼리 끌어다 합치기</div>',
+            STEPS[cur].node.label);
+
+          var layer = $("sim-layer");
+          board = { items: [], merges: 0, scale: scale, layer: layer, busy: false };
+
+          var gen = new Spr(layer, tileHTML("sim-producer", 0), "is-hit");
+          gen.set(cellX(GEN_IDX), cellY(GEN_IDX));
+          gen.el.onclick = function () { generate(gen); };
+          /* 생성기 아이들 — repeatForever y ±3, 0.8s sineInOut (실측) */
+          (function bob() {
+            var base = cellY(GEN_IDX);
+            tw(0.8, "sineInOut", function (v) { gen.set(cellX(GEN_IDX), base + 3 - v * 6); })
+              .then(function () { return tw(0.8, "sineInOut", function (v) { gen.set(cellX(GEN_IDX), base - 3 + v * 6); }); })
+              .then(function () { if (board && board.layer === layer) bob(); });
+          })();
+
+          $("sim-clear").onclick = function () { next(); };
+        }
+
+        function occupied(idx) {
+          return board.items.filter(function (it) { return it.idx === idx; })[0];
+        }
+        function generate(gen) {
+          if (!board || board.busy) return;
+          tw(0.12, "quadOut", function (v) { gen.s = 1 - 0.06 * (v < 0.5 ? v * 2 : 2 - v * 2); gen.apply(); });
+          if (board.items.length >= POOL_MAX) { toast("보드가 가득 찼습니다"); return; }
+          var slot = -1;
+          for (var i = 0; i < SPAWN.length; i++) if (!occupied(SPAWN[i])) { slot = SPAWN[i]; break; }
+          if (slot < 0) { toast("보드가 가득 찼습니다"); return; }
+          addItem(slot, 1, true);
+        }
+        function addItem(idx, tier, pop) {
+          var sp = new Spr(board.layer, tileHTML("sim-product", tier), "is-hit is-drag");
+          sp.el.querySelector("svg").style.filter = TINT[tier - 1] || "";
+          sp.set(cellX(idx), cellY(idx));
+          var it = { idx: idx, tier: tier, sp: sp };
+          board.items.push(it);
+          bindDrag(it);
+          if (pop) { sp.s = 0.72; sp.apply(); tw(0.18, "backOut", function (v) { sp.s = 0.72 + 0.28 * v; sp.apply(); }); }
+          return it;
+        }
+        function toast(msg) {
+          var t = new Spr(board.layer, '<div class="mfx-toast">' + msg + "</div>");
+          t.set(0, 0); t.a = 0; t.apply();
+          tw(0.18, "backOut", function (v) { t.a = v; t.y = -10 + v * 10; t.apply(); })
+            .then(function () { return tw(0.7, "linear", function () {}); })
+            .then(function () { return tw(0.2, "quadOut", function (v) { t.a = 1 - v; t.apply(); }); })
+            .then(function () { if (t.el.parentNode) t.el.parentNode.removeChild(t.el); });
+        }
+        function bindDrag(it) {
+          var el0 = it.sp.el, start = null;
+          el0.addEventListener("pointerdown", function (e) {
+            if (board.busy) return;
+            e.preventDefault();
+            el0.setPointerCapture(e.pointerId);
+            start = { px: e.clientX, py: e.clientY, x: it.sp.x, y: it.sp.y };
+            el0.style.zIndex = 20;
+            tw(0.1, "quadOut", function (v) { it.sp.s = 1 + 0.08 * v; it.sp.apply(); });
+          });
+          el0.addEventListener("pointermove", function (e) {
+            if (!start) return;
+            it.sp.set(start.x + (e.clientX - start.px) / board.scale,
+                      start.y - (e.clientY - start.py) / board.scale);
+          });
+          el0.addEventListener("pointerup", function (e) {
+            if (!start) return;
+            start = null;
+            el0.style.zIndex = "";
+            tw(0.1, "quadOut", function (v) { it.sp.s = 1.08 - 0.08 * v; it.sp.apply(); });
+            drop(it);
+          });
+          el0.addEventListener("pointercancel", function () { start = null; drop(it); });
+        }
+        function drop(it) {
+          var target = nearestCell(it.sp.x, it.sp.y);
+          var back = function () {
+            tw(0.14, "quadOut", function (v) {
+              it.sp.set(it.sp.x + (cellX(it.idx) - it.sp.x) * v, it.sp.y + (cellY(it.idx) - it.sp.y) * v);
+            });
+          };
+          if (target < 0 || target === GEN_IDX) { back(); return; }
+          var other = occupied(target);
+          if (other && other !== it) {
+            if (other.tier === it.tier && it.tier < TIER_MAX) { doMerge(it, other, target); return; }
+            back(); return;
+          }
+          it.idx = target;
+          tw(0.12, "quadOut", function (v) {
+            it.sp.set(it.sp.x + (cellX(target) - it.sp.x) * v, it.sp.y + (cellY(target) - it.sp.y) * v);
+          });
+        }
+        function doMerge(a, b, idx) {
+          board.items = board.items.filter(function (x) { return x !== a; });
+          if (a.sp.el.parentNode) a.sp.el.parentNode.removeChild(a.sp.el);
+          b.tier += 1;
+          b.idx = idx;
+          b.sp.el.innerHTML = tileHTML("sim-product", b.tier);
+          var svgn = b.sp.el.querySelector("svg");
+          if (svgn) svgn.style.filter = TINT[b.tier - 1] || "";
+          b.sp.set(cellX(idx), cellY(idx));
+          /* 병합 — 스프라이트 교체 후 0.78 → 1, 0.2s backOut (실측) */
+          b.sp.s = 0.78; b.sp.apply();
+          tw(0.2, "backOut", function (v) { b.sp.s = 0.78 + 0.22 * v; b.sp.apply(); });
+          board.merges += 1;
+          var pr = $("sim-prog");
+          if (pr) pr.textContent = Math.min(1, board.merges) + " / 1 MERGE";
+          if (board.merges >= 1) {
+            var cb = $("sim-clear");
+            if (cb) cb.disabled = false;
+          }
+        }
+
+        /* ==================================================================
+           조작
+           ================================================================== */
+        function goto(i) {
+          cur = Math.max(0, Math.min(STEPS.length - 1, i));
+          board = null;
+          stageEl.onclick = null;
+          drawGraph(); drawRail(); drawRes(); drawEv(); renderStage();
+        }
+        function next() { if (cur < STEPS.length - 1) goto(cur + 1); else stopAuto(); }
+        function refresh() { recompute(); goto(cur); }
+
+        function press(box, sel, fn) {
+          Array.prototype.forEach.call(document.querySelectorAll(sel), function (b) {
+            b.addEventListener("click", function () { fn(b); });
+          });
+        }
+        /* 켜고 끄는 토글 */
+        press(null, ".sim-tg[data-tg]", function (b) {
+          var k = b.getAttribute("data-tg");
+          pol[k] = !pol[k];
+          b.setAttribute("aria-pressed", String(pol[k]));
+          $("sim-now-split").textContent = pol.split ? "현재 코드 아님" : "현재 = 끔 · 통짜";
+          refresh();
+        });
+        /* 하나만 고르는 그룹 */
+        function radio(attr, apply) {
+          var list = document.querySelectorAll(".sim-tg[" + attr + "]");
+          Array.prototype.forEach.call(list, function (b) {
+            b.addEventListener("click", function () {
+              Array.prototype.forEach.call(list, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+              apply(b.getAttribute(attr));
+              refresh();
+            });
+          });
+        }
+        radio("data-roll", function (v) { pol.roll = +v; });
+        radio("data-bw", function (v) { pol.bw = +v; });
+
+        $("sim-reset").onclick = function () { stopAuto(); goto(0); };
+        function stopAuto() {
+          if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+          $("sim-auto").textContent = "자동 재생";
+        }
+        $("sim-auto").onclick = function () {
+          if (autoTimer) { stopAuto(); return; }
+          $("sim-auto").textContent = "정지";
+          autoTimer = setInterval(function () {
+            if (cur >= STEPS.length - 1) { stopAuto(); return; }
+            /* 보드 구간은 자동으로 머지 1회를 해 준다 — 규칙은 그대로 통과시킨다 */
+            if (STEPS[cur].k === "board" && board && board.merges < 1) {
+              generate({ s: 1, apply: function () {}, set: function () {} });
+              generate({ s: 1, apply: function () {}, set: function () {} });
+              if (board.items.length >= 2) doMerge(board.items[1], board.items[0], board.items[0].idx);
+              return;
+            }
+            next();
+          }, 800);
+        };
+
+        window.addEventListener("resize", function () {
+          if (STEPS[cur].k === "board") renderStage();
+        });
+
+        recompute();
+        goto(0);
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>
