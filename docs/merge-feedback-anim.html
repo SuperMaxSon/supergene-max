@@ -34,7 +34,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v3.1 · 2026-09-01 15:26</span>
+          <span class="tag" id="mfx-ver">v3.2 · 2026-09-01 15:33</span>
         </div>
       </div>
     </header>
@@ -338,12 +338,6 @@
            전부 노드 하나에 cc.tween 을 거는 방식이라 코코스로 그대로 옮겨진다
            (F5 만 글자 수만큼 Label 노드가 필요하다).
            ────────────────────────────────────────────────────────────────── */
-        /* 문구의 {n} 은 런타임 값 자리다 — 코코스에서는 Localization.getFormatString 이 한다 */
-        function msgOf(P, n) {
-          var t = (P && P.msg) || "";
-          return n == null ? t : t.replace(/\{n\}/g, String(Math.round(n)));
-        }
-
         var FLOAT_STYLES = [
           ["rise",  "F1 상승 페이드"],
           ["arc",   "F2 포물선 튐"],
@@ -780,7 +774,6 @@
             { k:"refillPopSec",label:"창고 보충 팝인",v:0.22,min:0.02, max:1.5,step:0.01, unit:"s", easeK:"refillPopEase",ease:"backOut",cfg:"MERGE_SHELF_REFILL_POP_SEC" },
             { k:"lingerSec",  label:"보드 잔존",     v:2.0,  min:0,    max:10, step:0.1,  unit:"s",                                     cfg:"MERGE_HOP_LINGER_SEC",           note:"착지한 순간부터 센다 · 무대용" },
             { k:"vanishSec",  label:"보드 소멸",     v:0.28, min:0.02, max:2,  step:0.01, unit:"s", easeK:"vanishEase", ease:"quadIn",  cfg:"MERGE_HOP_VANISH_SEC" },
-            { k:"msg",        label:"문구",          tv:"공간이 부족해요", cfg:"(L10N merge_no_space)", note:"머지 장르 표준 문구" },
           ],
           a6: [
             { k:"boxInSec",   label:"상자 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"boxInEase",  ease:"quadOut", cfg:"MERGE_COIN_BOX_IN_SEC" },
@@ -800,15 +793,14 @@
             { k:"punchOutSec",label:"HUD 펀치 복귀", v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_HUD_PUNCH_SEC" },
           ],
           b1: [
-            { k:"msg",        label:"문구",          tv:"공간이 부족해요", cfg:"(L10N merge_no_space)", note:"머지 장르 표준 문구" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"pressInSec", label:"클릭 응답",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_DENY_TAP_IN_SEC",          note:"흔들지 않는다" },
             { k:"pressSX",    label:"응답 가로",     v:1.05, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_X" },
             { k:"pressSY",    label:"응답 세로",     v:0.95, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_Y" },
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
-            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
           ],
           b2: [
-            { k:"msg",        label:"문구",          tv:"충전 중 {n}초", cfg:"(L10N merge_charging)", note:"{n} 은 남은 시간" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"slide", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"dimAlpha",   label:"감광 투명도",   v:0.45, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_CHARGING_DIM",             note:"코코스 opacity 115 ≈ 0.45" },
             { k:"gaugeFill",  label:"게이지 표시량", v:38,   min:0,    max:100,step:1,   unit:"%",                                     cfg:"(무대 표시용)" },
             { k:"pressInSec", label:"클릭 응답",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_CHARGING_TAP_IN_SEC",      note:"흔들지 않는다" },
@@ -817,12 +809,11 @@
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
             { k:"punchScale", label:"게이지 펀치",   v:1.12, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_GAUGE_PUNCH_SCALE" },
             { k:"punchOutSec",label:"게이지 펀치 복귀",v:0.16,min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_GAUGE_PUNCH_SEC" },
-            { k:"textStyle",  label:"문구 스타일",   sv:"slide", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
-            { k:"remainSec",  label:"문구의 남은 시간",v:12, min:1,    max:999,step:1,   unit:"초",                                    cfg:"(런타임 값)" },
+            { k:"remainSec",  label:"남은 시간",     v:12,   min:1,    max:999,step:1,   unit:"초",                                    cfg:"(런타임 값)",                    note:"문구에 들어가는 숫자" },
           ],
           b3: [
-            { k:"msg",        label:"문구",          tv:"Lv.{n} 해금", cfg:"(L10N merge_unlock_lv)", note:"{n} 은 해금 레벨" },
-            { k:"unlockLv",   label:"해금 레벨",     v:12,   min:1,    max:99, step:1,   unit:"",                                      cfg:"(런타임 값)",                    note:"문구의 {n} 에 들어간다" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
+            { k:"unlockLv",   label:"해금 레벨",     v:12,   min:1,    max:99, step:1,   unit:"",                                      cfg:"(런타임 값)",                    note:"문구에 들어가는 숫자" },
             { k:"pressInSec", label:"눌림",          v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_LOCK_PRESS_IN_SEC" },
             { k:"pressScale", label:"눌림 크기",     v:0.94, min:0.6,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_LOCK_PRESS_SCALE" },
             { k:"pressOutSec",label:"눌림 복귀",     v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"MERGE_LOCK_PRESS_OUT_SEC" },
@@ -830,7 +821,6 @@
             { k:"angleA",     label:"회전 1차",      v:9,    min:0,    max:45, step:1,   unit:"°",                                     cfg:"MERGE_LOCK_ROTATE_ANGLE",        note:"−9° → +9° → −5°" },
             { k:"angleB",     label:"회전 2차",      v:5,    min:0,    max:45, step:1,   unit:"°",                                     cfg:"MERGE_LOCK_ROTATE_ANGLE_2" },
             { k:"backSec",    label:"회전 복귀",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"backOut", cfg:"MERGE_LOCK_ROTATE_BACK_SEC" },
-            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
           ],
           f1: [
             { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_RISE_GAP",           note:"누른 칩 위 시작 높이" },
@@ -915,8 +905,7 @@
             { k:"sparkCount", label:"스파크 개수",   v:8,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
           ],
           c4: [
-            { k:"msg",        label:"문구",          tv:"최고 레벨이에요", cfg:"(L10N merge_max_level)", note:"실패가 아니라 상태 고지" },
-            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"hitInSec",   label:"대상 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"hitEase",    ease:"quadOut", cfg:"MERGE_MAX_HIT_IN_SEC" },
             { k:"hitSX",      label:"대상 가로",     v:1.10, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_X" },
             { k:"hitSY",      label:"대상 세로",     v:0.90, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_Y" },
@@ -925,7 +914,7 @@
             { k:"shakeAmp",   label:"흔들림 진폭",   v:4,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_MAX_SHAKE_AMPLITUDE",      note:"거부(5)보다 약하게" },
           ],
           c6: [
-            { k:"msg",        label:"문구",          tv:"미션 클리어!", cfg:"(L10N merge_mission_clear)", note:"축하 문구는 짧게" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"stagger",    label:"STAGGER",       v:0.06, min:0,    max:0.5,step:0.01, unit:"s",                                     cfg:"DELIVERY_STAGGER_SEC",           note:"코인(0.04)보다 느리게" },
             { k:"raiseSec",   label:"들어올림",      v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"raiseEase",  ease:"backOut", cfg:"MERGE_DELIVERY_RAISE_SEC" },
             { k:"raiseScale", label:"들어올림 크기", v:1.12, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_DELIVERY_RAISE_SCALE" },
@@ -937,7 +926,6 @@
             { k:"slotInSec",  label:"슬롯 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"slotEase",   ease:"quadOut", cfg:"MERGE_SLOT_HIT_IN_SEC" },
             { k:"slotScale",  label:"슬롯 반응 크기",v:1.14, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_SLOT_HIT_SCALE" },
             { k:"slotOutSec", label:"슬롯 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"slotOutEase",ease:"backOut", cfg:"MERGE_SLOT_HIT_OUT_SEC" },
-            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"값은 문구 애니메이션 5종 카드에서 온다" },
           ],
         };
 
@@ -949,7 +937,6 @@
           PARAMS[id].forEach(function (d) {
             if (d.v != null) V[id][d.k] = d.v;
             if (d.sv != null) V[id][d.k] = d.sv;     // 숫자가 아니라 선택지인 값
-            if (d.tv != null) V[id][d.k] = d.tv;     // 문구 자체 — 디자이너가 직접 쓴다
             if (d.easeK) V[id][d.easeK] = d.ease;
           });
         });
@@ -1268,7 +1255,7 @@
           function send(t) {
             if (!t.fromShelf) return Promise.resolve();
             var cell = freeCell();
-            if (cell < 0) return floatText(st, msgOf(P), { x: t.x, y: t.y }, P);
+            if (cell < 0) return floatText(st, "공간이 부족해요", { x: t.x, y: t.y }, P);
             t.fromShelf = false;
             cells[cell] = t;
             st.cellEls[cell].classList.add("is-hl");
@@ -1369,7 +1356,7 @@
             return Promise.all([
               gen.to(P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
                 .then(function () { return gen.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
-              floatText(st, msgOf(P), { x: gen.x, y: gen.y }, P),
+              floatText(st, "공간이 부족해요", { x: gen.x, y: gen.y }, P),
             ]);
           }
           function play() { reset(); return deny(); }
@@ -1397,7 +1384,7 @@
               gen.to(P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
                 .then(function () { return gen.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
               nodePunch(gauge.el.firstChild, 0.08, P.punchScale, P.punchOutSec, P.punchEase),
-              floatText(st, msgOf(P, P.remainSec), { x: gen.x, y: gen.y }, P),
+              floatText(st, "충전 중 " + Math.round(P.remainSec) + "초", { x: gen.x, y: gen.y }, P),
             ]);
           }
           function play() { reset(); return notify(); }
@@ -1426,7 +1413,7 @@
                 .then(function () { return lock.to(P.stepSec, { rot: P.angleA }, P.rotEase); })
                 .then(function () { return lock.to(P.stepSec, { rot: -P.angleB }, P.rotEase); })
                 .then(function () { return lock.to(P.backSec, { rot: 0 }, P.backEase); }),
-              floatText(st, msgOf(P, P.unlockLv), { x: lock.x, y: lock.y }, P),
+              floatText(st, "Lv." + Math.round(P.unlockLv) + " 해금", { x: lock.x, y: lock.y }, P),
             ]);
           }
           function play() { reset(); return deny(); }
@@ -1601,7 +1588,7 @@
           }
           function maxed(a, b) {
             /* 도장이 아니라 단순 텍스트다 — 이 문서의 문구는 전부 같은 5종을 쓴다 */
-            floatText(st, msgOf(P), { x: b.home.x, y: b.home.y }, P);
+            floatText(st, "최고 레벨이에요", { x: b.home.x, y: b.home.y }, P);
             /* 부정이 아니라 상태 고지 — 흔들림을 거부(C1)보다 약하게 준다 */
             return Promise.all([
               snapBack(st, a, null).then(function () { return shake(a, P.shakeAmp, P.shakeSec); }),
@@ -1673,7 +1660,7 @@
               var to2 = st.at(panel);
               /* 도장을 찍지 않는다 — 완료도 그냥 문구다 */
               return Promise.all([
-                floatText(st, msgOf(P), to2, P, true),
+                floatText(st, "미션 클리어!", to2, P, true),
                 sparks(st, to2, 8, "#7FC9BA", 0.34, 40, "quadOut"),
               ]).then(function () { reset(); });
             });
@@ -2144,13 +2131,6 @@
                 changed: vals[d.k] !== d.v, base: fmtNum(d.v),
               });
             }
-            if (d.tv != null) {
-              out.push({
-                cfg: d.cfg, value: '"' + vals[d.k] + '"',
-                label: d.label,
-                changed: vals[d.k] !== d.tv, base: '"' + d.tv + '"',
-              });
-            }
             if (d.sv != null) {
               out.push({
                 cfg: d.cfg, value: '"' + vals[d.k] + '"',
@@ -2276,17 +2256,8 @@
             tdL.textContent = d.label;
             var tdV = document.createElement("td");
             tdV.className = "mfx-vcell";
-            var input = null, pick = null, txt = null;
-            if (d.tv != null) {
-              /* 문구는 숫자가 아니라 글이다. 여기서 바로 고쳐 쓰고 그대로 복사해 간다 */
-              txt = document.createElement("input");
-              txt.type = "text";
-              txt.className = "mfx-in";
-              txt.style.width = "170px";
-              txt.style.textAlign = "left";
-              txt.value = vals[d.k];
-              tdV.appendChild(txt);
-            } else if (d.opts) {
+            var input = null, pick = null;
+            if (d.opts) {
               /* 숫자가 아닌 값도 여기서 고른다 — 문구 스타일이 그렇다 */
               pick = document.createElement("select");
               pick.className = "mfx-sel";
@@ -2329,7 +2300,6 @@
             function mark() {
               var diff = (d.v != null && vals[d.k] !== d.v) ||
                 (d.sv != null && vals[d.k] !== d.sv) ||
-                (d.tv != null && vals[d.k] !== d.tv) ||
                 (d.easeK && vals[d.easeK] !== d.ease);
               tr.classList.toggle("is-changed", !!diff);
             }
@@ -2338,19 +2308,20 @@
               input.addEventListener("input", function () {
                 var n = parseFloat(input.value);
                 if (!isFinite(n)) return;
-                vals[d.k] = clampV(n, d.min, d.max);
+                n = clampV(n, d.min, d.max);
+                if (d.step >= 1) n = Math.round(n);   // 초·px·개 는 정수다. 소수점을 숨기지 않는다
+                vals[d.k] = n;
                 after();
               });
               input.addEventListener("blur", function () { input.value = vals[d.k]; });
             }
-            if (txt) txt.addEventListener("input", function () { vals[d.k] = txt.value; after(); });
             if (pick) pick.addEventListener("change", function () {
               vals[d.k] = pick.value; mark();
               if (d.opts === "FLOAT_STYLES") renderStyle();   // 고른 스타일의 값 표로 갈아 끼운다
             });
             if (sel) sel.addEventListener("change", function () { vals[d.easeK] = sel.value; after(); });
             mark();                                  // 이미 기본값과 다르면 처음부터 표시돼야 한다
-            list.push({ d: d, input: input, pick: pick, txt: txt, sel: sel, mark: mark });
+            list.push({ d: d, input: input, pick: pick, sel: sel, mark: mark });
           }
 
           defs.forEach(function (d) { makeRow(d, vals, tb, rowEls); });
@@ -2382,7 +2353,6 @@
             var sv = V[styleId()];
             styleRows.forEach(function (r) {
               if (r.input) r.input.value = sv[r.d.k];
-              if (r.txt) r.txt.value = sv[r.d.k];
               if (r.pick) r.pick.value = sv[r.d.k];
               if (r.sel) r.sel.value = sv[r.d.easeK];
               r.mark();
@@ -2428,13 +2398,11 @@
             defs.forEach(function (d) {
               if (d.v != null) vals[d.k] = d.v;
               if (d.sv != null) vals[d.k] = d.sv;
-              if (d.tv != null) vals[d.k] = d.tv;
               if (d.easeK) vals[d.easeK] = d.ease;
             });
             rowEls.forEach(function (r) {
               if (r.input) r.input.value = vals[r.d.k];
               if (r.pick) r.pick.value = vals[r.d.k];
-              if (r.txt) r.txt.value = vals[r.d.k];
               if (r.sel) r.sel.value = vals[r.d.easeK];
               r.mark();
             });
