@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>솔리테어 바이럴 개편 전후 — 구간 대조</title>
+    <meta
+      name="description"
+      content="바이럴 개편 4구간(개편 전·1차·2차·3차)을 DAU당 지표 10개로 나란히 놓고, 마종·퍼블마 최근 3일을 목표선으로 얹은 구간 통산 대조."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+    <!-- 이 <style>은 예외 구역이다. 구간 막대는 허브 style.css에 없는 컴포넌트라
+         에스더 41번 페이지의 CSS를 그대로 이식했고(사용자 승인), 허브 클래스와 섞이지
+         않도록 전 선택자를 #eracmp / #tip 안으로 가뒀다. 원본의 전역 .rch · .mdesc도 좁혔다. -->
+    <style>
+      /* 구간 대조 막대 — 원본 41_sol_patch_watch.html 144~160행 이식 */
+      #eracmp h3{font-size:15px;margin:0 0 4px}
+      #eracmp .ehead{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#5b6478;margin:2px 0 10px;align-items:center}
+      #eracmp .ehead i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+      #eracmp .erow{display:grid;grid-template-columns:230px 1fr 74px;gap:10px;align-items:center;
+        padding:9px 0;border-bottom:1px solid #edf0f7}
+      #eracmp .erow:last-of-type{border-bottom:none}
+      #eracmp .elab{font-size:13px}
+      #eracmp .ebars{position:relative;padding:1px 0}
+      #eracmp .ebar{display:flex;align-items:center;gap:6px;margin:2px 0}
+      #eracmp .ebl{width:40px;font-size:10.5px;color:#9aa0b8;text-align:right;flex:none}
+      #eracmp .etr{position:relative;flex:1;height:14px;background:#f4f6fa;border-radius:3px;overflow:visible}
+      #eracmp .etr i{display:block;height:100%;border-radius:3px}
+      #eracmp .ebv{position:absolute;top:-1px;font-size:11px;white-space:nowrap}
+      #eracmp .ena{font-size:10.5px;color:#c3c9d6;padding-left:6px;line-height:14px}
+      #eracmp .etgt{position:absolute;top:-2px;bottom:-2px;border-left:2px dashed #b45309;opacity:.75;z-index:2}
+      #eracmp .etgl{position:absolute;top:-15px;font-size:10px;font-weight:800;color:#b45309;white-space:nowrap;z-index:2}
+      #eracmp .edelta{text-align:right;font-size:12px}
+      #eracmp .rch{font-size:10.5px;font-weight:700;color:#a8aec0;margin-left:3px}
+      #eracmp .mdesc{font-size:11.5px;color:#5b6478;line-height:1.75;margin-top:12px}
+      /* 유입 토글 — DATA에 org/ua 계층이 있을 때만 그려진다(없으면 합산 1덩어리) */
+      #eracmp .esrc{display:flex;gap:6px;align-items:center}
+      #eracmp .esrc button{font-size:11px;font-weight:700;padding:3px 10px;border-radius:14px;cursor:pointer;
+        border:1.5px solid #e4e8f0;background:#fff;color:#9aa0b8;font-family:inherit}
+      #eracmp .esrc button.on{border-color:#4f8ef7;background:#eef3ff;color:#4f8ef7}
+      @media (max-width:720px){ #eracmp .erow{grid-template-columns:150px 1fr 60px} }
+      /* ★네이티브 title은 뜨는 데 1초 이상 걸리고 줄바꿈이 플랫폼마다 달라 안 뜨는 것처럼 보인다.
+         hover 즉시 뜨는 커스텀 말풍선으로 대체한다. (원본 179~185행) */
+      #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:340px;
+        background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
+        line-height:1.55;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
+      #tip b{color:#ffd9a8;font-weight:800}
+      #eracmp [data-tip]{cursor:help}
+      #eracmp [data-tip]:hover{filter:brightness(1.06)}
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#chart">구간 대조</a>
+        <a class="nav-back" href="#how">읽는 법</a>
+        <a class="nav-back" href="#sql">갱신 쿼리</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 라이브 데이터</div>
+        <h1 class="doc-title">솔리테어 바이럴 개편 전후 — 구간 대조</h1>
+        <p class="doc-lede">
+          바이럴 개편을 <b>구간 4개</b>(개편 전 · 1차 · 2차 · 3차)로 끊고, DAU당 지표 10개를
+          같은 자에 나란히 놓았습니다. 값은 일별 평균이 아니라 <b>구간 통산</b>(합산 분자 ÷ 합산 분모)이고,
+          🎯 목표선은 <b>마종·퍼블마 최근 3일 합산</b>입니다. 막대에 마우스를 올리면 그 값의 모수가 나옵니다.
+          에스더 41번 관측 페이지의 같은 섹션을 허브로 옮긴 것이며, <b>수치는 BigQuery에서 받아 채웁니다</b>.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--sol)">솔리테어</span>
+          <span class="tag">BigQuery</span>
+          <span class="tag">목표선 = 마종 · 퍼블마</span>
+          <span class="tag" id="stamp">기준일 —</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="chart">
+        <h2 class="doc-h2">
+          구간 대조
+          <span class="doc-h2-sub">DAU당 10행 · 구간 통산 · 계열별 공유 스케일</span>
+        </h2>
+        <div id="eracmp"></div>
+      </section>
+
+      <section class="doc-section" id="how">
+        <h2 class="doc-h2">
+          읽는 법
+          <span class="doc-h2-sub">왜 이렇게 봐야 하는지</span>
+        </h2>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">막대 길이는 계열 안에서만 비교한다</div>
+            <p>
+              스케일은 행마다 자기 최대로 늘리지 않고 <strong>같은 단위 계열끼리 공유</strong>합니다
+              (판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종). 행마다 늘리면 막대가 다 꽉 차서
+              계열 간 크기 차이가 사라집니다. 반대로 <strong>계열이 다른 행끼리는 길이 비교가 불가</strong>합니다 —
+              그때는 숫자와 Δ만 보세요.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">「정의 상이」 배지가 붙은 4행은 개편 전과 축이 다르다</div>
+            <p>
+              8/7에 로그 정의와 발화 정책이 바뀌었습니다(호출 시점 변경 · 거절 3회 캡 ·
+              <code>3110</code>이 서버 등록 완료만으로 좁아짐). 그래서 이 행들의 개편 전 막대는
+              <strong>옅게(참고만)</strong> 그리고, <strong>Δ는 1차 대비</strong>로 잡습니다.
+              초대 2행은 2차(#450) 신설이라 개편 전·1차가 "없던 기능"으로 비어 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">목표선은 마종, 초대만 퍼블마 — 창은 최근 3일</div>
+            <p>
+              활동성 2행(판수 · 총광고)은 마종의 <strong>부스팅 이후 창</strong>, 바이럴·비율 6행은 마종
+              <strong>동기간</strong>, 초대 2행은 마종에 없는 지면이라 <strong>퍼블마</strong>를 씁니다.
+              원본은 각 창을 5일 합산으로 봤지만 이 페이지는 <strong>프로젝트당 최근 3일 합산</strong>입니다 —
+              창이 짧아 일 변동에 민감하니 목표선은 눈금이지 합격선이 아닙니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">구간 경계와 제외일</div>
+            <p>
+              배포가 하루 안에 섞이는 <strong>8/7 · 8/13 · 8/18은 제외</strong>했습니다. 그래서 구간별 일수가
+              6 / 5 / 4 / … 로 불연속입니다. 3차만 오늘 부분일을 포함하며, DAU 믹스는 구간마다 다릅니다
+              (8/14~ 인게임 메뉴 신규 유입) — 판수 해석은 루커 표의 RU 행과 교차 확인이 필요합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">지금은 골격만 — 수치가 비어 있다</div>
+            <p>
+              이 환경에 <code>bq</code> CLI가 없어 값을 직접 뽑지 못했습니다. 아래 <code>#sql</code>의
+              쿼리를 돌려 결과를 주면 페이지 하단 <code>DATA</code> 블록만 교체합니다. 그때까지 모든 행은
+              <code>—</code>로 그려집니다. 광고 완료의 <code>rv_*</code>와 초대 3단
+              <code>inv_*</code>은 <strong>이벤트 코드가 아직 미확정</strong>이라 0번 탐색 쿼리로 먼저 못박아야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="sql">
+        <h2 class="doc-h2">
+          갱신 쿼리
+          <span class="doc-h2-sub">이 세 개를 돌려 DATA 블록을 채운다</span>
+        </h2>
+
+        <details class="fold">
+          <summary>0. 탐색 — 광고·초대 이벤트 코드 확정 (최초 1회)</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- rv_* (동영상 광고 완료)와 inv_* (초대 시도/성공/유입)의 이벤트 코드가 아직 미확정이다.
+-- 클라 LogManager에는 4200_RV_START/4210_RV_FINISH와 4100/4110_INTERSTITIAL_RV_*가 함께 있고,
+-- 초대는 2097_PRE_LEVEL_INVITE · 5207_BTN_LEADERBOARD_FRIENDS_INVITE · 11001_TOSS_INVITE_FRIEND_INFO가
+-- 흩어져 있어 try/ok/유입 3단이 특정되지 않는다. 실제 발화량으로 먼저 고른다.
+select event, count(*) c, count(distinct player_id) u
+from `game-log-359704.raw.solitaire_city_journey`
+where log_date between '2026-08-19' and '2026-09-02'
+  and is_dev is distinct from true and player_id &gt; 0
+  and (event like '4%' or lower(event) like '%invite%' or lower(event) like '%toss%')
+group by 1 order by 2 desc</pre></div>
+            <div class="notes">
+              <div class="note" style="--acc: var(--warn)">
+                <p>
+                  결과로 매핑을 확정한 뒤 아래 1·2번 쿼리의
+                  <code>&lt;RV_FIN&gt;</code> · <code>&lt;INV_TRY&gt;</code> · <code>&lt;INV_IN&gt;</code>을 치환합니다.
+                  벤치 테이블(마종 · 퍼블마)이 같은 코드 체계인지도 미확인이라, 2번이 0으로 나오면
+                  이 쿼리를 해당 테이블에 다시 돌려 맞춥니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>1. 솔리테어 구간 집계 — 구간 4개를 한 번에</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- DAU(ud)는 세션이 아니라 "1000_LOGIN_COMPLETE가 있는 (날짜, 플레이어) 쌍"이다.
+-- 로그인 없는 날의 이벤트만 있는 행을 DAU로 세면 분모가 부푼다.
+-- 배포가 섞이는 8/7 · 8/13 · 8/18은 구간에서 뺀다.
+select case
+    when log_date between '2026-08-01' and '2026-08-06' then 'e1'
+    when log_date between '2026-08-08' and '2026-08-12' then 'e2'
+    when log_date between '2026-08-14' and '2026-08-17' then 'e3'
+    when log_date between '2026-08-19' and '2026-09-02' then 'e4' end era,
+  count(distinct log_date) days,
+  count(distinct if(has_login=1, format('%t|%t', log_date, player_id), null)) ud,
+  countif(event='2300_GAMEPLAY_FINISH') fin,
+  countif(event='&lt;RV_FIN&gt;') rv_fin,
+  countif(event='4010_INTERSTITIAL_AD_FINISH') it_fin,
+  countif(event='3410_MSG_P2P_SUCCESS') msg_ok,
+  countif(event='3510_FEED_SHARE_SUCCESS') feed_ok,
+  countif(event='3100_TOURNAMENT_CREATE') cr_try,
+  countif(event='3110_TOURNAMENT_CREATE_SUCCESS') cr_ok,
+  countif(event='3200_TOURNAMENT_SHARE') sh_try,
+  countif(event='3210_TOURNAMENT_SHARE_SUCCESS') sh_ok,
+  countif(event='&lt;INV_TRY&gt;') inv_try,
+  countif(event='&lt;INV_IN&gt;')  inv_in
+from (
+  select log_date, player_id, event,
+    max(if(event='1000_LOGIN_COMPLETE',1,0)) over(partition by log_date, player_id) has_login
+  from `game-log-359704.raw.solitaire_city_journey`
+  where log_date between '2026-08-01' and '2026-09-02'
+    and is_dev is distinct from true and player_id &gt; 0
+)
+where log_date not in ('2026-08-07','2026-08-13','2026-08-18')
+group by era having era is not null order by era</pre></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>2. 벤치 목표선 — 프로젝트별 최근 3일 (마종 2회 · 퍼블마 1회)</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 세 번 돌린다: 마종 활동성 창(부스팅 이후 D+33~35) → bench3.mahjong_pu
+--               마종 동기간 창(D+48~50)            → bench3.mahjong
+--               퍼블마 초대 창(최근 3일)            → bench3.pubma
+-- 「최근 3일」은 캘린더 최근이 아니라 각 D+n 창의 마지막 3일이다 — 같은 D+n 대조라는 원래 의도를 유지한다.
+select count(distinct log_date) days,
+  count(distinct if(has_login=1, format('%t|%t', log_date, player_id), null)) ud,
+  countif(event='2300_GAMEPLAY_FINISH') fin,
+  countif(event='&lt;RV_FIN&gt;') rv_fin,
+  countif(event='4010_INTERSTITIAL_AD_FINISH') it_fin,
+  countif(event='3410_MSG_P2P_SUCCESS') msg_ok,
+  countif(event='3510_FEED_SHARE_SUCCESS') feed_ok,
+  countif(event='3100_TOURNAMENT_CREATE') cr_try,
+  countif(event='3110_TOURNAMENT_CREATE_SUCCESS') cr_ok,
+  countif(event='3200_TOURNAMENT_SHARE') sh_try,
+  countif(event='3210_TOURNAMENT_SHARE_SUCCESS') sh_ok,
+  countif(event='&lt;INV_TRY&gt;') inv_try,
+  countif(event='&lt;INV_IN&gt;')  inv_in
+from (
+  select log_date, player_id, event,
+    max(if(event='1000_LOGIN_COMPLETE',1,0)) over(partition by log_date, player_id) has_login
+  from `game-log-359704.raw.&lt;mahjong|puzzle_block_master&gt;`
+  where log_date between '&lt;창시작&gt;' and '&lt;창끝&gt;'
+    and is_dev is distinct from true and player_id &gt; 0
+)</pre></div>
+          </div>
+        </details>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">실행 방법</div>
+            <p>
+              <code>bq query --nouse_legacy_sql --max_rows=100000</code>으로 돌립니다.
+              <strong><code>--max_rows</code>를 빼면 100행에서 잘립니다.</strong>
+              공통 필터는 <code>is_dev is distinct from true and player_id &gt; 0</code>입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 이벤트 매핑은 <code>assets/script/common/log/SolitaireTripeaksLogManager.ts</code>
+          실측이고, <code>rv_*</code>·<code>inv_*</code> 2건은 미확정(0번 탐색 쿼리 대기)입니다.
+          구간 경계·제외일·목표선 규약은 원본 관측 페이지(에스더 41번)에서 그대로 가져왔습니다.
+          서구권(GEO) 분리와 UA/오가닉 분리는 이 페이지 범위 밖입니다 — 데이터에
+          <code>org</code>/<code>ua</code> 계층이 들어오면 유입 토글이 자동으로 나타납니다.
+        </div>
+      </section>
+    </main>
+
+    <div id="tip"></div>
+
+    <script>
+      /* ── DATA — 갱신할 때 이 블록만 교체한다 ────────────────────────────────
+         era_cmp: 구간별 원값. org/ua 계층 없이 평평하게 줘도 되고, 그 경우 유입 토글은 안 뜬다.
+         bench3 : 목표선. 일별이 아니라 이미 3일 합산된 1덩어리를 넣는다.
+         전부 0인 지금은 각 행이 —(또는 "없던 기능")으로 그려진다. 깨지지 않는다. */
+      const DATA = {
+        updated: "",
+        era_cmp: {
+          e1: { days:6, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
+                cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
+          e2: { days:5, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
+                cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
+          e3: { days:4, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
+                cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
+          e4: { days:0, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
+                cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
+        },
+        bench3: {
+          mahjong_pu: { days:3, ud:0, fin:0, rv_fin:0, it_fin:0 },
+          mahjong:    { days:3, ud:0, msg_ok:0, feed_ok:0,
+                        cr_try:0, cr_ok:0, sh_try:0, sh_ok:0 },
+          pubma:      { days:3, ud:0, inv_try:0, inv_in:0 },
+        },
+      };
+
+      // 기준일 스탬프 — DATA.updated에서 읽는다. 갱신할 때마다 헤더가 따라온다.
+      document.getElementById("stamp").textContent =
+        DATA.updated ? DATA.updated + " 기준" : "데이터 대기 — 골격만";
+
+      // ── 바이럴 개편 전후 — 구간 막대 + 목표선 (E1 전 / E2 1차 / E3 2차 / E4 3차·현재) ─────
+      let SRC = "all";
+      function setSrc(g){ SRC = g; renderEra(); }
+
+      function renderEra(){
+        const el = document.getElementById('eracmp'); if(!el) return;
+        const ECm = DATA.era_cmp || {};
+        // 유입 토글 반영 — UA 포함=org+ua 합산 · UA 제외=org만 (계층이 없으면 그 객체가 곧 합산치)
+        const pickSrc = m => { if(!m) return null;
+          if(!m.org && !m.ua) return m;
+          const o=m.org, u=m.ua;
+          if(SRC==='org' || !u) return o || u || null;
+          if(!o) return u;
+          const t = Object.assign({}, o);
+          Object.entries(u).forEach(([k,v])=>{ if(typeof v==='number' && k!=='days') t[k]=(t[k]||0)+v; });
+          return t; };
+        const hasSrc = Object.values(ECm).some(m => m && (m.org || m.ua));
+        const E1=pickSrc(ECm.e1), E2=pickSrc(ECm.e2), E3=pickSrc(ECm.e3), E4=pickSrc(ECm.e4)||null;
+        if(!E1 || !E2 || !E3){ el.innerHTML='<div class="mdesc">개편 전후 데이터 없음</div>'; return; }
+        const LATEST = E4 || E3;
+        const nf = x => x==null? '—' : Number(x).toLocaleString('en-US');
+        // 목표선 — 프로젝트당 최근 3일 합산. 활동성=마종 부스팅 이후 창, 바이럴·비율=마종 동기간, 초대=퍼블마
+        const B = DATA.bench3 || {};
+        const Ma = B.mahjong_pu || {}, Ms = B.mahjong || {}, PU = B.pubma || {};
+        // [라벨, 값, 포맷, 종류(ok|def|new), 목표소스, 목표라벨, 주석, 스케일그룹, 모수(분자·라벨·분모·라벨)]
+        const ROWS = [
+          ['판수/DAU',          e=>e.ud? e.fin/e.ud:null,               v=>v.toFixed(1),  'ok', Ma, '마종', '', 'g_hi',
+            e=>[e.fin,'완료 판',e.ud,'유저-일']],
+          ['총광고 완료/DAU',    e=>e.ud? (e.rv_fin+e.it_fin)/e.ud:null, v=>v.toFixed(2), 'ok', Ma, '마종', 'IT는 1차 개편(#438)부터 켜짐 — 증가는 통합 설계 결과', 'g_hi',
+            e=>[e.rv_fin+e.it_fin,'광고 완료(RV+IT)',e.ud,'유저-일']],
+          ['메세지 성공/DAU',    e=>e.ud? e.msg_ok/e.ud:null,            v=>v.toFixed(3), 'ok', Ms, '마종', '초대로 친구 그래프가 쌓이면 오르는 후행 지표', 'g_lo',
+            e=>[e.msg_ok,'메세지 성공',e.ud,'유저-일']],
+          ['피드 성공/DAU',      e=>e.ud? e.feed_ok/e.ud:null,           v=>v.toFixed(3), 'ok', Ms, '마종', '', 'g_lo',
+            e=>[e.feed_ok,'피드 성공',e.ud,'유저-일']],
+          ['토너 생성시도/DAU',  e=>e.ud? e.cr_try/e.ud:null,            v=>v.toFixed(2), 'def', Ms, '마종', '8/7 호출 시점 변경+거절 3회 캡 — 개편 전과 축 다름', 'g_tour',
+            e=>[e.cr_try,'생성 시도',e.ud,'유저-일']],
+          ['토너 생성률',        e=>e.cr_try? e.cr_ok/e.cr_try*100:null, v=>v.toFixed(1)+'%','def', Ms, '마종', '3110 정의가 8/7 좁아짐(서버 등록 완료만) — 개편 전과 비교 금지', 'g_pct',
+            e=>[e.cr_ok,'생성 성공',e.cr_try,'생성 시도']],
+          ['토너 공유시도/DAU',  e=>e.ud? e.sh_try/e.ud:null,            v=>v.toFixed(2), 'def', Ms, '마종', '시도 폭증은 1차 개편의 쿨다운 제거·즉시 호출이 만든 상태 — 2차 토글·쿨타임이 되돌림(감소가 설계 목표)', 'g_tour',
+            e=>[e.sh_try,'공유 시도',e.ud,'유저-일']],
+          ['토너 공유율',        e=>e.sh_try? e.sh_ok/e.sh_try*100:null, v=>v.toFixed(1)+'%','def', Ms, '마종', '분모 정상화로 오르는 게 성공 — 2차 개편의 핵심 판정 지표', 'g_pct',
+            e=>[e.sh_ok,'공유 성공',e.sh_try,'공유 시도']],
+          ['토너 초대 시도/DAU', e=>(e.ud&&e.inv_try!=null)? e.inv_try/e.ud:null, v=>v.toFixed(2), 'new', PU, '퍼블마', '2차 개편(#450) 신설 지면 — 목표선=퍼블마 최근(마종엔 없음). 3차(#456)에서 첫 발화가 초대→공유로 바뀌어 시도 비중 하락 예상', 'g_tour',
+            e=>[e.inv_try,'초대 시도',e.ud,'유저-일']],
+          ['초대 유입률 (유입÷시도)', e=>(e.inv_try && e.inv_in!=null)? e.inv_in/e.inv_try*100:null, v=>v.toFixed(1)+'%','new', PU, '퍼블마', '유입 세션 ÷ 초대 시도 — 절대값은 DAU 규모 차라 무의미, 시도 대비 전환으로 비교. 낮으면 초대 페이로드(이미지·문구) 용의', 'g_pct',
+            e=>[e.inv_in,'유입 세션',e.inv_try,'초대 시도']],
+        ];
+        const ERAS = [
+          ['e1','개편 전', E1, '#C9CFDC', '8/1~6 · ~#432'],
+          ['e2','1차',    E2, '#9AA0B8', '8/8~12 · #438~448'],
+          ['e3','2차',    E3, '#7FA98B', '8/14~17 · #450'],
+          ['e4','3차',    E4, '#15803D', '8/19~ 오늘 포함 · #456'],
+        ];
+        // ★스케일은 같은 단위 계열(그룹) 공유 — 행마다 자기 최대로 늘리면 크기 비교가 안 된다.
+        const GMX = {};
+        ROWS.forEach(([lab,f,,kind,tgtSrc,,,grp])=>{
+          const vs=ERAS.map(([k,,E])=> (E && !(kind==='new'&&k!=='e3'&&k!=='e4'))? f(E):null)
+            .concat([tgtSrc&&Object.keys(tgtSrc).length? f(tgtSrc):null]).filter(x=>x!=null);
+          GMX[grp]=Math.max(GMX[grp]||0, ...vs, 1e-9);
+        });
+        const rows = ROWS.map(([lab,f,fmt,kind,tgtSrc,tgtLab,note,grp,parts])=>{
+          const mx = GMX[grp]*1.12;
+          const tgt = tgtSrc && Object.keys(tgtSrc).length ? f(tgtSrc) : null;
+          const bars = ERAS.map(([k,lbl,E,color,win])=>{
+            if(k==='e4' && !E)
+              return `<div class="ebar"><span class="ebl">${lbl}</span><div class="etr"><span class="ena">수집 중</span></div></div>`;
+            const na = !E || (kind==='new' && k==='e1') || (kind==='new' && k==='e2');
+            const v = na? null : f(E);
+            if(v==null)
+              return `<div class="ebar"><span class="ebl">${lbl}</span><div class="etr"><span class="ena">${kind==='new'?'없던 기능':'—'}</span></div></div>`;
+            const dim = kind==='def' && k==='e1';
+            const pt = parts? parts(E) : null;
+            const tip = `${lbl} 구간 · ${win}\n${fmt(v)} = ${pt?nf(pt[0]):''} ${pt?pt[1]:''} ÷ ${pt?nf(pt[2]):''} ${pt?pt[3]:''}\n${E.days}일 통산${dim?'\n(8/7 정의 변경 전 — 참고만)':''}`;
+            return `<div class="ebar"><span class="ebl">${lbl}</span><div class="etr" data-tip="${tip}"><i style="width:${(v/mx*100).toFixed(1)}%;background:${color};${dim?'opacity:.45':''}"></i><b class="ebv" style="left:calc(${Math.min(v/mx*100,88).toFixed(1)}% + 5px)${dim?';color:#9AA0B8':''}">${fmt(v)}</b></div></div>`;
+          }).join('');
+          const tpt = tgt!=null && tgtSrc? (parts? parts(tgtSrc): null) : null;
+          const tline = tgt==null? '' :
+            `<div class="etgt" style="left:calc(${(tgt/mx*100).toFixed(1)}% + 46px)" data-tip="${tgtLab} ${fmt(tgt)}${tpt?`\n= ${nf(tpt[0])} ${tpt[1]} ÷ ${nf(tpt[2])} ${tpt[3]}`:''}\n활동성=부스팅 이후 창 · 바이럴=동기간 · 초대=퍼블마 — 각 최근 3일 합산"></div>
+             <div class="etgl" style="left:calc(${Math.min(tgt/mx*100,82).toFixed(1)}% + 50px)">🎯 ${tgtLab} ${fmt(tgt)}</div>`;
+          const base = kind==='ok'? f(E1) : f(E2), baseLab = kind==='ok'? '개편 전':'1차';
+          const cur = f(LATEST);
+          let delta = '<span style="color:#C3C9D6">—</span>';
+          if(cur!=null && base!=null && base){
+            const pc=(cur/base-1)*100, col=Math.abs(pc)<5?'#9AA0B8':pc>0?'#15803D':'#DC2626';
+            delta = `<span style="font-weight:800;color:${col}" data-tip="최신 구간(${E4?'3차':'2차'}) ÷ ${baseLab} 구간">${pc>=0?'+':'−'}${Math.abs(pc).toFixed(0)}%</span>`;
+          }
+          return `<div class="erow"><div class="elab"><b>${lab}</b>${kind==='def'?' <span class="rch" data-tip="8/7 로그 정의·발화 정책 변경 — 개편 전 막대는 옅게(참고만), Δ는 1차 대비">정의 상이</span>':''}${note?` <span class="rch" data-tip="${note}">ⓘ</span>`:''}</div>
+            <div class="ebars">${tline}${bars}</div>
+            <div class="edelta">${delta}</div></div>`; }).join('');
+        // 유입 토글은 org/ua 계층이 실제로 들어왔을 때만 — UA 판별 규칙이 아직 없어 기본은 합산 1덩어리다.
+        const srcbar = !hasSrc? '' :
+          `<span class="esrc"><b style="color:#9AA0B8">유입</b>${[['all','UA 포함'],['org','UA 제외']].map(([g,l])=>
+            `<button class="${SRC===g?'on':''}" onclick="setSrc('${g}')">${l}</button>`).join('')}</span>`;
+        el.innerHTML = `<h3>바이럴 개편 전후 <span class="rch">루커 지표 기준 · 구간 통산 · 🎯 = 목표선 · 막대에 마우스를 올리면 모수</span></h3>
+          <div class="ehead">${ERAS.map(([k,lbl,E,color,win])=>`<span><i style="background:${color}"></i>${lbl} ${win}${k==='e4'&&!E?' (수집 중)':''}</span>`).join('')}
+            <span style="color:#B45309;font-weight:700">┆ 목표선(마종 · 초대만 퍼블마)</span>${srcbar}</div>
+          ${rows}
+          <div class="mdesc">배포 혼합일(8/7·8/13·8/18)은 제외 · 값은 <b>구간 통산</b>(합산 분자÷합산 분모) · 막대 스케일은 <b>같은 단위 계열끼리 공유</b>(판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종) — 계열이 다른 행끼리는 길이 비교 불가 ·
+          <b>정의 상이</b> = 8/7에 로그 정의·발화 정책이 바뀐 지표 — 개편 전 막대는 옅게(참고만), <b>Δ는 1차 대비</b> ·
+          3차(#456) = 첫 발화 공유 복귀·IT 지면 4종 추가·컨텍스트 2중 개선 · <b>3차만 오늘 부분일 포함</b> ·
+          목표선: 활동성(판수·광고)=마종 부스팅 이후 창 / 바이럴·비율=마종 동기간 / 초대=퍼블마 — <b>각 최근 3일 합산</b>(창이 짧아 일 변동에 민감) ·
+          DAU 믹스는 구간마다 다름(8/14~ 인게임메뉴 신규 유입) — 판수 해석은 루커 표의 RU 행과 교차 확인</div>`;
+      }
+      renderEra();
+
+      // 말풍선 — 이벤트 위임이라 다시 그려도 다시 붙일 필요가 없다.
+      (function(){
+        const tipEl = document.getElementById('tip');
+        let cur = null;
+        document.addEventListener('mouseover', ev => {
+          const t = ev.target.closest ? ev.target.closest('[data-tip]') : null;
+          if(!t){ if(cur){ tipEl.style.display='none'; cur=null; } return; }
+          if(t===cur) return;
+          cur = t;
+          tipEl.innerHTML = t.getAttribute('data-tip').replace(/^([^\n]+)/, '<b>$1</b>');
+          tipEl.style.display = 'block';
+        });
+        document.addEventListener('mousemove', ev => {
+          if(!cur) return;
+          const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+          // 화면 밖으로 나가지 않게 — 오른쪽/아래 끝에서는 커서 반대편으로 뒤집는다.
+          tipEl.style.left = Math.min(ev.clientX + 14, window.innerWidth  - w - 10) + 'px';
+          tipEl.style.top  = (ev.clientY + h + 22 > window.innerHeight ? ev.clientY - h - 12
+                                                                      : ev.clientY + 18) + 'px';
+        });
+        document.addEventListener('mouseout', ev => {
+          if(cur && !ev.relatedTarget) { tipEl.style.display='none'; cur=null; }
+        });
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>
