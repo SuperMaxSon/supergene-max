@@ -9,7 +9,7 @@
       content="머지 보드 연출 값을 직접 만지며 맞추는 튜닝 도구. 액션 6종 · 텍스트 3종 · 누락 5종, 카드마다 표에서 시간·이징·세기를 슬라이더나 숫자로 바꾸고 cc.tween 상수로 복사한다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=mfx10" />
+    <link rel="stylesheet" href="../style.css?v=mfx11" />
   </head>
   <body class="mfx">
     <nav class="nav">
@@ -30,13 +30,13 @@
           표의 값은 숫자로 치거나 <b>슬라이더로 끌어서</b> 바꿉니다. 바꾸는 즉시 옆 무대가 그 값으로 놉니다.
           타일은 직접 누르고 끌 수 있고,
           맞춘 값은 카드 머리의 <b>[설정 복사]</b> 로 <code>cc.tween</code> 상수째 가져가고,
-          받은 텍스트는 툴바의 <b>[설정 붙여넣기]</b> 로 도로 무대에 먹입니다.
+          받은 텍스트나 <code>.json</code> 은 툴바의 <b>[설정 주고받기]</b> 로 도로 무대에 먹입니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
-          <span class="tag">연출 14종 · 값 저장 · 붙여넣기</span>
-          <span class="tag" id="mfx-ver">v3.9 · 2026-09-02 18:35</span>
+          <span class="tag">연출 14종 · 값 저장 · 주고받기</span>
+          <span class="tag" id="mfx-ver">v4.0 · 2026-09-03 08:53</span>
         </div>
       </div>
     </header>
@@ -92,22 +92,43 @@
           <button type="button" data-lp="1" aria-pressed="false">반복</button>
         </div>
         <button type="button" class="mfx-btn is-primary" id="mfx-copyall">전체 설정 복사</button>
-        <button type="button" class="mfx-btn" id="mfx-pasteall">설정 붙여넣기</button>
+        <button type="button" class="mfx-btn" id="mfx-ioopen">설정 주고받기</button>
         <button type="button" class="mfx-btn" id="mfx-resetall">전부 기본값</button>
         <span class="mfx-restored" id="mfx-restored" hidden></span>
         <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 치거나 슬라이더를 끌면 옆 무대가 그 값으로 놉니다. 맞춘 값은 <b>이 브라우저에 남아</b> 새로고침해도 그대로입니다. 타일은 <b>언제나 직접 누르고 끌 수 있습니다</b> — 자동 재생은 없고, 시연은 버튼을 눌렀을 때만 돕니다.</span>
       </div>
 
-      <!-- 복사한 설정을 도로 문서에 먹이는 칸. 값이 남의 손을 거쳐 돌아오는 경로라
-           (슬랙에 붙였다가 다시 가져오는 등) 형식을 까다롭게 굴지 않는다. -->
-      <div class="mfx-paste" id="mfx-paste-panel" hidden>
-        <textarea id="mfx-paste-ta" spellcheck="false" placeholder="[설정 복사] · [전체 설정 복사] 로 가져간 텍스트를 통째로 붙여넣고 [적용] 을 누르세요. 카드 하나짜리도, 전체짜리도 됩니다."></textarea>
-        <div class="mfx-paste-row">
-          <button type="button" class="mfx-btn is-primary" id="mfx-paste-go">적용</button>
-          <button type="button" class="mfx-btn" id="mfx-paste-close">닫기</button>
-          <span class="mfx-paste-msg" id="mfx-paste-msg"></span>
+      <!-- 설정 주고받기 창. 인라인 패널이었을 땐 여는 버튼만 sticky 툴바에 있고
+           패널은 문서 맨 위에 있어서, 아래쪽 카드를 보다 누르면 화면에 아무 일도
+           안 일어났다. 모달은 스크롤 위치와 무관하게 같은 자리에 뜬다.
+           네이티브 <dialog> 라 ESC 닫기·포커스 가둠·backdrop 이 공짜다. -->
+      <dialog class="mfx-io" id="mfx-io" aria-label="설정 주고받기">
+        <div class="mfx-io-head">
+          <h2>설정 주고받기</h2>
+          <button type="button" class="mfx-x" id="mfx-io-x" aria-label="닫기">✕</button>
         </div>
-      </div>
+
+        <div class="mfx-io-sec">
+          <div class="mfx-io-t">가져오기</div>
+          <textarea id="mfx-io-ta" spellcheck="false" placeholder="[설정 복사] · [전체 설정 복사] 로 가져간 텍스트, 또는 내려받은 .json 의 내용을 통째로 붙여넣으세요. 카드 하나짜리도, 전체짜리도 됩니다."></textarea>
+          <div class="mfx-io-row">
+            <button type="button" class="mfx-btn is-primary" id="mfx-io-apply">적용</button>
+            <button type="button" class="mfx-btn" id="mfx-io-pick">파일 열기</button>
+            <input type="file" id="mfx-io-file" accept=".json,.txt,application/json,text/plain" hidden />
+            <span class="mfx-io-hint">창 안에 파일을 끌어다 놓아도 됩니다</span>
+          </div>
+          <div class="mfx-io-msg" id="mfx-io-msg"></div>
+        </div>
+
+        <div class="mfx-io-sec">
+          <div class="mfx-io-t">내보내기</div>
+          <div class="mfx-io-row">
+            <button type="button" class="mfx-btn" id="mfx-io-json">.json 내려받기</button>
+            <button type="button" class="mfx-btn" id="mfx-io-copy">TS 텍스트 복사</button>
+            <span class="mfx-io-hint">.json 은 그대로 다시 가져올 수 있고, TS 텍스트는 코드에 붙입니다</span>
+          </div>
+        </div>
+      </dialog>
 
       <section class="doc-section" id="action">
         <h2 class="doc-h2">
@@ -2584,14 +2605,17 @@
         });
 
         /* 전체 복사 — 15개 섹션을 한 덩어리로. 파일 하나에 그대로 붙일 수 있게 */
-        document.getElementById("mfx-copyall").addEventListener("click", function () {
+        function allText() {
           var head = [
             "// MergeBoardPresentationConfig.ts — 머지 피드백 연출값",
             "// 머지 피드백 연출집 무대에서 맞춘 값 · " + stampNow(),
             "// 각 줄 끝의 ← 기본 n 은 문서 기본값에서 바뀐 항목이다.",
             "",
           ].join("\n");
-          copyText(head + CATALOG.map(exportText).join("\n\n"), this);
+          return head + CATALOG.map(exportText).join("\n\n");
+        }
+        document.getElementById("mfx-copyall").addEventListener("click", function () {
+          copyText(allText(), this);
         });
         document.getElementById("mfx-resetall").addEventListener("click", function () {
           if (!window.confirm("모든 섹션의 값을 기본값으로 되돌립니다. 이 브라우저에 저장된 작업본도 지워집니다.")) return;
@@ -2633,44 +2657,126 @@
           });
           return hit;
         }
-        var pastePanel = document.getElementById("mfx-paste-panel");
-        var pasteTa = document.getElementById("mfx-paste-ta");
-        var pasteMsg = document.getElementById("mfx-paste-msg");
-        function pasteSay(text, bad) {
-          pasteMsg.textContent = text;
-          pasteMsg.classList.toggle("is-bad", !!bad);
+        /* .json 으로 온 것. 내려받기가 씌운 봉투({doc,ver,stamp,values})도,
+           values 알맹이만 있는 것도 받는다 — 손으로 잘라 붙이는 사람이 있을 테니. */
+        function readJson(text) {
+          var obj;
+          try { obj = JSON.parse(text); } catch (e) { return 0; }
+          if (!obj || typeof obj !== "object") return 0;
+          var bag = obj.values && typeof obj.values === "object" ? obj.values : obj;
+          var hit = 0;
+          Object.keys(bag).forEach(function (id) { hit += applyValues(id, bag[id]); });
+          return hit;
         }
-        document.getElementById("mfx-pasteall").addEventListener("click", function () {
-          pastePanel.hidden = !pastePanel.hidden;
-          if (pastePanel.hidden) return;
-          pasteSay("");
-          pasteTa.focus();
-        });
-        document.getElementById("mfx-paste-close").addEventListener("click", function () {
-          pastePanel.hidden = true;
-        });
-        document.getElementById("mfx-paste-go").addEventListener("click", function () {
-          var text = pasteTa.value;
-          if (!text.trim()) { pasteSay("붙여넣은 내용이 없습니다.", true); return; }
-          var hit = readPayload(text);
-          var how = "@mfx-data";
-          if (!hit) { hit = readConsts(text); how = "export const"; }
-          if (!hit) {
-            pasteSay("읽을 수 있는 값이 없습니다. [설정 복사] 로 가져간 텍스트를 통째로 붙여넣어 주세요.", true);
+
+        /* 들어오는 경로가 셋(붙여넣기 · 파일 · 드롭)인데 형식은 넷이다.
+           어느 문으로 들어오든 여기 한 곳에서 같은 순서로 읽는다. */
+        function importText(text) {
+          if (!text || !text.trim()) return { hit: 0, how: "" };
+          var hit = readJson(text);
+          if (hit) return { hit: hit, how: "json" };
+          hit = readPayload(text);
+          if (hit) return { hit: hit, how: "@mfx-data" };
+          hit = readConsts(text);
+          if (hit) return { hit: hit, how: "export const" };
+          return { hit: 0, how: "" };
+        }
+
+        var ioDlg = document.getElementById("mfx-io");
+        var ioTa = document.getElementById("mfx-io-ta");
+        var ioMsg = document.getElementById("mfx-io-msg");
+        var ioFile = document.getElementById("mfx-io-file");
+        function ioSay(text, bad) {
+          ioMsg.textContent = text || "";
+          ioMsg.classList.toggle("is-bad", !!bad);
+        }
+        function ioOpen() {
+          ioSay("");
+          if (ioDlg.showModal) ioDlg.showModal(); else ioDlg.setAttribute("open", "");
+          ioTa.focus();
+        }
+        function ioClose() {
+          if (ioDlg.close) ioDlg.close(); else ioDlg.removeAttribute("open");
+        }
+
+        /* 적용에 성공하면 창을 닫는다 — 결과는 보드에 나타나는데 모달이 그걸 가린다.
+           대신 sticky 툴바의 배지가 결과를 받아 스크롤 어디서든 보이게 한다. */
+        function importDone(res) {
+          if (!res.hit) {
+            ioSay("읽을 수 있는 값이 없습니다. [설정 복사] 로 가져간 텍스트나 내려받은 .json 을 통째로 넣어 주세요.", true);
             return;
           }
           REFRESH.forEach(function (fn) { fn(); });
           saveNow();
-          pasteSay(hit + "개 값 적용됨 (" + how + " 형식) · 기본값과 다른 항목 " + changedCount() + "개");
+          ioClose();
+          barSay(res.hit + "개 값 적용됨 (" + res.how + ") · 기본값과 다른 " + changedCount() + "개");
+        }
+
+        document.getElementById("mfx-ioopen").addEventListener("click", ioOpen);
+        document.getElementById("mfx-io-x").addEventListener("click", ioClose);
+        /* backdrop 클릭으로 닫기. dialog 자신이 target 일 때만 — 내용물 클릭은 통과시킨다. */
+        ioDlg.addEventListener("click", function (e) { if (e.target === ioDlg) ioClose(); });
+        document.getElementById("mfx-io-apply").addEventListener("click", function () {
+          if (!ioTa.value.trim()) { ioSay("붙여넣은 내용이 없습니다.", true); return; }
+          importDone(importText(ioTa.value));
         });
 
-        /* 복원 안내. 며칠 뒤에 열었을 때 남의 손이 닿은 값을 기본값으로 오해하면
-           그대로 코드에 박힌다. 복원됐다는 사실을 툴바에서 먼저 보여 준다. */
-        if (restoredCount > 0) {
-          var rst = document.getElementById("mfx-restored");
-          rst.textContent = "이전 작업본 복원됨 · 기본값과 다른 " + restoredCount + "개";
-          rst.hidden = false;
+        /* 파일 — 고르기 · 끌어다 놓기 둘 다 같은 자리로 들어온다 */
+        function readFile(file) {
+          if (!file) return;
+          var fr = new FileReader();
+          fr.onload = function () {
+            ioTa.value = String(fr.result);
+            importDone(importText(ioTa.value));
+          };
+          fr.onerror = function () { ioSay("파일을 읽지 못했습니다.", true); };
+          fr.readAsText(file);
         }
+        document.getElementById("mfx-io-pick").addEventListener("click", function () { ioFile.click(); });
+        ioFile.addEventListener("change", function () { readFile(ioFile.files[0]); ioFile.value = ""; });
+        ["dragenter", "dragover"].forEach(function (ev) {
+          ioDlg.addEventListener(ev, function (e) { e.preventDefault(); ioDlg.classList.add("is-drop"); });
+        });
+        /* dragleave 는 자식 위로 지나갈 때도 터진다. 그대로 받으면 창 안에서
+           파일을 옮기는 내내 테두리가 깜빡인다 — 창 자체를 벗어날 때만 끈다. */
+        ioDlg.addEventListener("dragleave", function (e) {
+          if (e.target === ioDlg) ioDlg.classList.remove("is-drop");
+        });
+        ioDlg.addEventListener("drop", function (e) { e.preventDefault(); ioDlg.classList.remove("is-drop"); });
+        ioDlg.addEventListener("drop", function (e) {
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) { readFile(e.dataTransfer.files[0]); return; }
+          var t = e.dataTransfer && e.dataTransfer.getData("text");
+          if (t) { ioTa.value = t; importDone(importText(t)); }
+        });
+
+        /* 내보내기 */
+        function jsonStamp() { return stampNow().replace(/[: ]/g, "-"); }
+        document.getElementById("mfx-io-json").addEventListener("click", function () {
+          var blob = new Blob([JSON.stringify({ doc: "merge-feedback-anim", ver: 1, stamp: stampNow(), values: V }, null, 2)],
+            { type: "application/json" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "merge-feedback-anim-" + jsonStamp() + ".json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          ioSay("내려받았습니다 · 기본값과 다른 " + changedCount() + "개");
+        });
+        document.getElementById("mfx-io-copy").addEventListener("click", function () {
+          copyText(allText(), this);
+        });
+
+        /* 툴바 배지. 복원 안내와 붙여넣기 결과가 같은 자리를 쓴다 — 툴바가 sticky 라
+           스크롤 어디에 있든 보이고, 모달을 닫은 직후에도 결과가 눈에 남는다.
+           며칠 뒤에 열었을 때 남의 손이 닿은 값을 기본값으로 오해하면 그대로 코드에 박힌다. */
+        var barBadge = document.getElementById("mfx-restored");
+        function barSay(text) {
+          barBadge.textContent = text;
+          barBadge.hidden = !text;
+        }
+        if (restoredCount > 0) barSay("이전 작업본 복원됨 · 기본값과 다른 " + restoredCount + "개");
 
         /* 툴바 ------------------------------------------------------------- */
         function seg(id, apply) {
