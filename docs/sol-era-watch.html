@@ -55,6 +55,7 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#chart">구간 대조</a>
+        <a class="nav-back" href="#bench">벤치 3사</a>
         <a class="nav-back" href="#how">읽는 법</a>
         <a class="nav-back" href="#sql">갱신 쿼리</a>
         <span class="nav-spacer"></span>
@@ -87,6 +88,33 @@
           <span class="doc-h2-sub">DAU당 10행 · 구간 통산 · 계열별 공유 스케일</span>
         </h2>
         <div id="eracmp"></div>
+      </section>
+
+      <section class="doc-section" id="bench">
+        <h2 class="doc-h2">
+          벤치 3사 — 같은 3일치
+          <span class="doc-h2-sub">코지 · 마종 · 퍼블마 · DAU당</span>
+        </h2>
+        <div id="benchtbl"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">차트의 목표선은 마종 하나뿐이라 이 표를 함께 본다</div>
+            <p>
+              막대 차트는 행마다 목표선을 <strong>한 줄만</strong> 그릴 수 있어 원본 규약대로 마종(초대는 퍼블마)을
+              얹었습니다. 하지만 판정이 갈릴 때 실제로 먼저 보는 건 <strong>코지</strong>이므로, 세 벤치를 같은 창으로
+              나란히 둔 표를 따로 실었습니다. 마종은 DAU가 압도적으로 커서 단독 비교가 함정이 될 수 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">초대 2행은 퍼블마만 값이 있다</div>
+            <p>
+              토너 초대 지면(<code>3460_MSG_P2P_INVITE</code> · <code>position=tournament_invite</code>)은
+              마종·코지에 없어 0입니다. <strong>초대 유입률의 목표선은 아직 비어 있습니다</strong> —
+              유입 세션은 이벤트가 아니라 <code>entrypoint_now.entry</code>로 세야 하는데, 어느 entry 값이
+              초대 유입인지 확정되지 않았습니다.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section class="doc-section" id="how">
@@ -131,12 +159,13 @@
             </p>
           </div>
           <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">지금은 골격만 — 수치가 비어 있다</div>
+            <div class="note-title">목표선은 채워졌고, 솔리테어 막대는 값 대기</div>
             <p>
-              이 환경에 <code>bq</code> CLI가 없어 값을 직접 뽑지 못했습니다. 아래 <code>#sql</code>의
-              쿼리를 돌려 결과를 주면 페이지 하단 <code>DATA</code> 블록만 교체합니다. 그때까지 모든 행은
-              <code>—</code>로 그려집니다. 광고 완료의 <code>rv_*</code>와 초대 3단
-              <code>inv_*</code>은 <strong>이벤트 코드가 아직 미확정</strong>이라 0번 탐색 쿼리로 먼저 못박아야 합니다.
+              벤치 3사(코지·마종·퍼블마)는 <strong>8/31~9/2 3일치 실측</strong>이 들어와 🎯 목표선이 그려집니다.
+              솔리테어 구간 막대는 아직 <code>—</code>입니다 — 집계 기준을
+              <strong>빌드 483 이상</strong>(A/B 대조군 빌드)으로 잡았고, 그 빌드가 방금 배포돼
+              표본이 655세션뿐이기 때문입니다. 하루 쌓인 뒤 1번 쿼리 결과로 채웁니다.
+              <strong>초대 유입률의 목표선은 비어 있습니다</strong> — <code>inv_in</code>의 진입지면 값이 미확정입니다.
             </p>
           </div>
         </div>
@@ -145,29 +174,76 @@
       <section class="doc-section" id="sql">
         <h2 class="doc-h2">
           갱신 쿼리
-          <span class="doc-h2-sub">이 세 개를 돌려 DATA 블록을 채운다</span>
+          <span class="doc-h2-sub">BigQuery 콘솔에 그대로 붙인다</span>
         </h2>
 
         <details class="fold">
-          <summary>0. 탐색 — 광고·초대 이벤트 코드 확정 (최초 1회)</summary>
+          <summary>1. 솔리테어 — 빌드 483 이상, 빌드·날짜별</summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- rv_* (동영상 광고 완료)와 inv_* (초대 시도/성공/유입)의 이벤트 코드가 아직 미확정이다.
--- 클라 LogManager에는 4200_RV_START/4210_RV_FINISH와 4100/4110_INTERSTITIAL_RV_*가 함께 있고,
--- 초대는 2097_PRE_LEVEL_INVITE · 5207_BTN_LEADERBOARD_FRIENDS_INVITE · 11001_TOSS_INVITE_FRIEND_INFO가
--- 흩어져 있어 try/ok/유입 3단이 특정되지 않는다. 실제 발화량으로 먼저 고른다.
-select event, count(*) c, count(distinct player_id) u
-from `game-log-359704.raw.solitaire_city_journey`
-where log_date between '2026-08-19' and '2026-09-02'
-  and is_dev is distinct from true and player_id &gt; 0
-  and (event like '4%' or lower(event) like '%invite%' or lower(event) like '%toss%')
-group by 1 order by 2 desc</pre></div>
+            <div class="table-scroll"><pre>-- 483 = A/B 대조군 빌드(토너 초대 지면 임시 차단). 그 이후만 본다.
+-- DAU는 세션이 아니라 1000_LOGIN_COMPLETE가 있는 (날짜, 플레이어) 쌍이다.
+-- RV는 4210_RV_FINISH(일반 RV)다. 4110_INTERSTITIAL_RV_FINISH는 IRV로 다른 지면이라
+-- 총광고에 넣지 않고 누락 확인용으로만 따로 센다.
+SELECT
+    client_version AS `빌드`,
+    log_date AS `날짜`,
+    COUNT(DISTINCT IF(has_login = 1, FORMAT('%t|%t', log_date, player_id), NULL)) AS `DAU`,
+    COUNTIF(event = '2300_GAMEPLAY_FINISH')           AS `완료판수`,
+    COUNTIF(event = '4210_RV_FINISH')                 AS `RV완료`,
+    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')    AS `IT완료`,
+    COUNTIF(event = '4110_INTERSTITIAL_RV_FINISH')    AS `IRV완료`,
+    COUNTIF(event = '3410_MSG_P2P_SUCCESS')           AS `메세지성공`,
+    COUNTIF(event = '3510_FEED_SHARE_SUCCESS')        AS `피드성공`,
+    COUNTIF(event = '3100_TOURNAMENT_CREATE')         AS `생성시도`,
+    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS') AS `생성성공`,
+    COUNTIF(event = '3200_TOURNAMENT_SHARE')          AS `공유시도`,
+    COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')  AS `공유성공`,
+    COUNTIF(event = '3460_MSG_P2P_INVITE'
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS `초대시도_토너`,
+    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS `초대성공_토너`,
+    COUNTIF(event = '3460_MSG_P2P_INVITE')            AS `초대시도_전체`
+FROM (
+    SELECT
+        log_date, player_id, event, data, client_version,
+        MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
+            OVER (PARTITION BY log_date, player_id) AS has_login
+    FROM `game-log-359704.raw.solitaire_city_journey`
+    WHERE log_date BETWEEN '2026-09-01' AND CURRENT_DATE('Asia/Seoul')
+        AND client_version &gt;= 483
+        AND is_dev IS DISTINCT FROM TRUE
+        AND player_id &gt; 0
+)
+GROUP BY `빌드`, `날짜`
+ORDER BY `빌드`, `날짜`;</pre></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>2. 진입지면 분포 — 초대 유입 세션을 세기 위한 사전 확인</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 초대 유입은 이벤트가 아니라 로그인 진입점이다. entrypoint_now는 STRING 컬럼이고
+-- payload는 OBJECT라 중첩 경로로 바로 읽는다. 세션 = (player_id, logincount_total).
+SELECT
+    client_version AS `빌드`,
+    IFNULL(JSON_VALUE(entrypoint_now, '$.entry'), '(null)') AS `진입지면`,
+    COUNT(DISTINCT CONCAT(CAST(player_id AS STRING), '_',
+                          CAST(logincount_total AS STRING))) AS `세션수`
+FROM `game-log-359704.raw.solitaire_city_journey`
+WHERE log_date BETWEEN '2026-09-01' AND CURRENT_DATE('Asia/Seoul')
+    AND client_version &gt;= 483
+    AND is_dev IS DISTINCT FROM TRUE
+    AND player_id &gt; 0
+GROUP BY `빌드`, `진입지면`
+ORDER BY `빌드`, `세션수` DESC;</pre></div>
             <div class="notes">
-              <div class="note" style="--acc: var(--warn)">
+              <div class="note" style="--acc: var(--bad)">
                 <p>
-                  결과로 매핑을 확정한 뒤 아래 1·2번 쿼리의
-                  <code>&lt;RV_FIN&gt;</code> · <code>&lt;INV_TRY&gt;</code> · <code>&lt;INV_IN&gt;</code>을 치환합니다.
-                  벤치 테이블(마종 · 퍼블마)이 같은 코드 체계인지도 미확인이라, 2번이 0으로 나오면
-                  이 쿼리를 해당 테이블에 다시 돌려 맞춥니다.
+                  <b>2026-09-02 실행 결과 — 초대 전용 진입지면이 없다.</b> 483 세션 655건의 진입지면은
+                  <code>(null)</code> 187 · <code>in_game_menu</code> 112 · <code>ad</code> 74 ·
+                  <code>bot_cta</code> 67 · <code>web_games_hub</code> 59 · 이하 잔여로,
+                  초대로 들어온 세션을 특정할 값이 보이지 않습니다. 초대 물량이 큰 퍼블마(3일 26,583시도)에
+                  같은 쿼리를 돌려 <strong>초대량과 함께 커지는 지면</strong>을 찾아야 <code>inv_in</code>이 확정됩니다.
                 </p>
               </div>
             </div>
@@ -175,88 +251,66 @@ group by 1 order by 2 desc</pre></div>
         </details>
 
         <details class="fold">
-          <summary>1. 솔리테어 구간 집계 — 구간 4개를 한 번에</summary>
+          <summary>3. 벤치 3사 — 9/2 기준 3일치 (이 페이지의 목표선 원본)</summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- DAU(ud)는 세션이 아니라 "1000_LOGIN_COMPLETE가 있는 (날짜, 플레이어) 쌍"이다.
--- 로그인 없는 날의 이벤트만 있는 행을 DAU로 세면 분모가 부푼다.
--- 배포가 섞이는 8/7 · 8/13 · 8/18은 구간에서 뺀다.
-select case
-    when log_date between '2026-08-01' and '2026-08-06' then 'e1'
-    when log_date between '2026-08-08' and '2026-08-12' then 'e2'
-    when log_date between '2026-08-14' and '2026-08-17' then 'e3'
-    when log_date between '2026-08-19' and '2026-09-02' then 'e4' end era,
-  count(distinct log_date) days,
-  count(distinct if(has_login=1, format('%t|%t', log_date, player_id), null)) ud,
-  countif(event='2300_GAMEPLAY_FINISH') fin,
-  countif(event='&lt;RV_FIN&gt;') rv_fin,
-  countif(event='4010_INTERSTITIAL_AD_FINISH') it_fin,
-  countif(event='3410_MSG_P2P_SUCCESS') msg_ok,
-  countif(event='3510_FEED_SHARE_SUCCESS') feed_ok,
-  countif(event='3100_TOURNAMENT_CREATE') cr_try,
-  countif(event='3110_TOURNAMENT_CREATE_SUCCESS') cr_ok,
-  countif(event='3200_TOURNAMENT_SHARE') sh_try,
-  countif(event='3210_TOURNAMENT_SHARE_SUCCESS') sh_ok,
-  countif(event='&lt;INV_TRY&gt;') inv_try,
-  countif(event='&lt;INV_IN&gt;')  inv_in
-from (
-  select log_date, player_id, event,
-    max(if(event='1000_LOGIN_COMPLETE',1,0)) over(partition by log_date, player_id) has_login
-  from `game-log-359704.raw.solitaire_city_journey`
-  where log_date between '2026-08-01' and '2026-09-02'
-    and is_dev is distinct from true and player_id &gt; 0
+            <div class="table-scroll"><pre>-- 코지·마종·퍼블마를 같은 캘린더 창(8/31~9/2)으로 뽑는다. D+n 정렬은 쓰지 않는다.
+-- 9/2는 부분일이므로 DAU가 소폭 낮게 잡힌다.
+WITH b AS (
+    SELECT 'mahjong' AS proj, log_date, player_id, event, data,
+        MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
+            OVER (PARTITION BY log_date, player_id) AS has_login
+    FROM `game-log-359704.raw.mahjong`
+    WHERE log_date BETWEEN '2026-08-31' AND '2026-09-02'
+        AND is_dev IS DISTINCT FROM TRUE AND player_id &gt; 0
+
+    UNION ALL
+
+    SELECT 'pubma', log_date, player_id, event, data,
+        MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
+            OVER (PARTITION BY log_date, player_id) AS has_login
+    FROM `game-log-359704.raw.puzzle_block_master`
+    WHERE log_date BETWEEN '2026-08-31' AND '2026-09-02'
+        AND is_dev IS DISTINCT FROM TRUE AND player_id &gt; 0
+
+    UNION ALL
+
+    SELECT 'cozy', log_date, player_id, event, data,
+        MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
+            OVER (PARTITION BY log_date, player_id) AS has_login
+    FROM `game-log-359704.raw.cozy_tiles`
+    WHERE log_date BETWEEN '2026-08-31' AND '2026-09-02'
+        AND is_dev IS DISTINCT FROM TRUE AND player_id &gt; 0
 )
-where log_date not in ('2026-08-07','2026-08-13','2026-08-18')
-group by era having era is not null order by era</pre></div>
+SELECT
+    proj AS `프로젝트`,
+    COUNT(DISTINCT log_date) AS `일수`,
+    COUNT(DISTINCT IF(has_login = 1, FORMAT('%t|%t', log_date, player_id), NULL)) AS `DAU`,
+    COUNTIF(event = '2300_GAMEPLAY_FINISH')           AS `완료판수`,
+    COUNTIF(event = '4210_RV_FINISH')                 AS `RV완료`,
+    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')    AS `IT완료`,
+    COUNTIF(event = '3410_MSG_P2P_SUCCESS')           AS `메세지성공`,
+    COUNTIF(event = '3510_FEED_SHARE_SUCCESS')        AS `피드성공`,
+    COUNTIF(event = '3100_TOURNAMENT_CREATE')         AS `생성시도`,
+    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS') AS `생성성공`,
+    COUNTIF(event = '3200_TOURNAMENT_SHARE')          AS `공유시도`,
+    COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')  AS `공유성공`,
+    COUNTIF(event = '3460_MSG_P2P_INVITE'
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS `초대시도_토너`,
+    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS `초대성공_토너`
+FROM b
+GROUP BY `프로젝트`
+ORDER BY `프로젝트`;</pre></div>
           </div>
         </details>
-
-        <details class="fold">
-          <summary>2. 벤치 목표선 — 프로젝트별 최근 3일 (마종 2회 · 퍼블마 1회)</summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 세 번 돌린다: 마종 활동성 창(부스팅 이후 D+33~35) → bench3.mahjong_pu
---               마종 동기간 창(D+48~50)            → bench3.mahjong
---               퍼블마 초대 창(최근 3일)            → bench3.pubma
--- 「최근 3일」은 캘린더 최근이 아니라 각 D+n 창의 마지막 3일이다 — 같은 D+n 대조라는 원래 의도를 유지한다.
-select count(distinct log_date) days,
-  count(distinct if(has_login=1, format('%t|%t', log_date, player_id), null)) ud,
-  countif(event='2300_GAMEPLAY_FINISH') fin,
-  countif(event='&lt;RV_FIN&gt;') rv_fin,
-  countif(event='4010_INTERSTITIAL_AD_FINISH') it_fin,
-  countif(event='3410_MSG_P2P_SUCCESS') msg_ok,
-  countif(event='3510_FEED_SHARE_SUCCESS') feed_ok,
-  countif(event='3100_TOURNAMENT_CREATE') cr_try,
-  countif(event='3110_TOURNAMENT_CREATE_SUCCESS') cr_ok,
-  countif(event='3200_TOURNAMENT_SHARE') sh_try,
-  countif(event='3210_TOURNAMENT_SHARE_SUCCESS') sh_ok,
-  countif(event='&lt;INV_TRY&gt;') inv_try,
-  countif(event='&lt;INV_IN&gt;')  inv_in
-from (
-  select log_date, player_id, event,
-    max(if(event='1000_LOGIN_COMPLETE',1,0)) over(partition by log_date, player_id) has_login
-  from `game-log-359704.raw.&lt;mahjong|puzzle_block_master&gt;`
-  where log_date between '&lt;창시작&gt;' and '&lt;창끝&gt;'
-    and is_dev is distinct from true and player_id &gt; 0
-)</pre></div>
-          </div>
-        </details>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">실행 방법</div>
-            <p>
-              <code>bq query --nouse_legacy_sql --max_rows=100000</code>으로 돌립니다.
-              <strong><code>--max_rows</code>를 빼면 100행에서 잘립니다.</strong>
-              공통 필터는 <code>is_dev is distinct from true and player_id &gt; 0</code>입니다.
-            </p>
-          </div>
-        </div>
 
         <div class="foot">
-          <b>확인 범위</b> 이벤트 매핑은 <code>assets/script/common/log/SolitaireTripeaksLogManager.ts</code>
-          실측이고, <code>rv_*</code>·<code>inv_*</code> 2건은 미확정(0번 탐색 쿼리 대기)입니다.
-          구간 경계·제외일·목표선 규약은 원본 관측 페이지(에스더 41번)에서 그대로 가져왔습니다.
-          서구권(GEO) 분리와 UA/오가닉 분리는 이 페이지 범위 밖입니다 — 데이터에
-          <code>org</code>/<code>ua</code> 계층이 들어오면 유입 토글이 자동으로 나타납니다.
+          <b>확인 범위</b> 이벤트 매핑은 호출부 실측입니다 —
+          <code>4210_RV_FINISH</code>는 <code>showRewardedAD</code> 성공 시,
+          <code>3460/3470_MSG_P2P_INVITE*</code>는 <code>FB.inviteAsync</code> 직전·성공 시
+          (<code>data.position</code> = <code>LogInvitePosition</code>, 토너 초대는 <code>tournament_invite</code>).
+          벤치 3사 수치는 2026-09-02 실행 결과이고, 솔리테어 483 이상 구간은 값 대기입니다.
+          <code>inv_in</code>(초대 유입 세션)만 미확정입니다.
         </div>
       </section>
     </main>
@@ -269,7 +323,24 @@ from (
          bench3 : 목표선. 일별이 아니라 이미 3일 합산된 1덩어리를 넣는다.
          전부 0인 지금은 각 행이 —(또는 "없던 기능")으로 그려진다. 깨지지 않는다. */
       const DATA = {
-        updated: "",
+        updated: "2026-09-02",
+        // 벤치 3일치 실측 창 — 8/31~9/2(9/2는 부분일). 세 프로젝트를 같은 창으로 뽑았다.
+        bench: {
+          win: "8/31~9/2",
+          cozy:    { days:3, ud:46124, fin:587976, rv_fin:90158, it_fin:340549,
+                     msg_ok:78314, feed_ok:952,
+                     cr_try:159214, cr_ok:30202, sh_try:120947, sh_ok:23569,
+                     inv_try:0, inv_ok:0 },
+          mahjong: { days:3, ud:87727, fin:658721, rv_fin:77109, it_fin:362056,
+                     msg_ok:133148, feed_ok:6141,
+                     cr_try:289336, cr_ok:86316, sh_try:111227, sh_ok:35780,
+                     inv_try:0, inv_ok:0 },
+          pubma:   { days:3, ud:34402, fin:264078, rv_fin:64133, it_fin:115497,
+                     msg_ok:40851, feed_ok:847,
+                     cr_try:86557, cr_ok:9082, sh_try:69711, sh_ok:9801,
+                     inv_try:26583, inv_ok:25444 },
+        },
+        // 솔리테어 구간 — 값 대기. 483(A/B 대조군 빌드) 배포 후 그 구간부터 채운다.
         era_cmp: {
           e1: { days:6, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
                 cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
@@ -280,17 +351,13 @@ from (
           e4: { days:0, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
                 cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
         },
-        bench3: {
-          mahjong_pu: { days:3, ud:0, fin:0, rv_fin:0, it_fin:0 },
-          mahjong:    { days:3, ud:0, msg_ok:0, feed_ok:0,
-                        cr_try:0, cr_ok:0, sh_try:0, sh_ok:0 },
-          pubma:      { days:3, ud:0, inv_try:0, inv_in:0 },
-        },
       };
 
       // 기준일 스탬프 — DATA.updated에서 읽는다. 갱신할 때마다 헤더가 따라온다.
       document.getElementById("stamp").textContent =
-        DATA.updated ? DATA.updated + " 기준" : "데이터 대기 — 골격만";
+        DATA.updated
+          ? DATA.updated + " 기준 · 벤치 " + (DATA.bench?.win || "—")
+          : "데이터 대기 — 골격만";
 
       // ── 바이럴 개편 전후 — 구간 막대 + 목표선 (E1 전 / E2 1차 / E3 2차 / E4 3차·현재) ─────
       let SRC = "all";
@@ -314,8 +381,9 @@ from (
         const LATEST = E4 || E3;
         const nf = x => x==null? '—' : Number(x).toLocaleString('en-US');
         // 목표선 — 프로젝트당 최근 3일 합산. 활동성=마종 부스팅 이후 창, 바이럴·비율=마종 동기간, 초대=퍼블마
-        const B = DATA.bench3 || {};
-        const Ma = B.mahjong_pu || {}, Ms = B.mahjong || {}, PU = B.pubma || {};
+        // 창이 하나로 통일됐으므로 활동성·바이럴 둘 다 같은 마종 3일치를 쓴다. 초대만 퍼블마.
+        const B = DATA.bench || {};
+        const Ma = B.mahjong || {}, Ms = B.mahjong || {}, PU = B.pubma || {};
         // [라벨, 값, 포맷, 종류(ok|def|new), 목표소스, 목표라벨, 주석, 스케일그룹, 모수(분자·라벨·분모·라벨)]
         const ROWS = [
           ['판수/DAU',          e=>e.ud? e.fin/e.ud:null,               v=>v.toFixed(1),  'ok', Ma, '마종', '', 'g_hi',
@@ -369,7 +437,7 @@ from (
           }).join('');
           const tpt = tgt!=null && tgtSrc? (parts? parts(tgtSrc): null) : null;
           const tline = tgt==null? '' :
-            `<div class="etgt" style="left:calc(${(tgt/mx*100).toFixed(1)}% + 46px)" data-tip="${tgtLab} ${fmt(tgt)}${tpt?`\n= ${nf(tpt[0])} ${tpt[1]} ÷ ${nf(tpt[2])} ${tpt[3]}`:''}\n활동성=부스팅 이후 창 · 바이럴=동기간 · 초대=퍼블마 — 각 최근 3일 합산"></div>
+            `<div class="etgt" style="left:calc(${(tgt/mx*100).toFixed(1)}% + 46px)" data-tip="${tgtLab} ${fmt(tgt)}${tpt?`\n= ${nf(tpt[0])} ${tpt[1]} ÷ ${nf(tpt[2])} ${tpt[3]}`:''}\n벤치 3일치(${B.win}) 통산 · 활동성·바이럴=마종 · 초대=퍼블마"></div>
              <div class="etgl" style="left:calc(${Math.min(tgt/mx*100,82).toFixed(1)}% + 50px)">🎯 ${tgtLab} ${fmt(tgt)}</div>`;
           const base = kind==='ok'? f(E1) : f(E2), baseLab = kind==='ok'? '개편 전':'1차';
           const cur = f(LATEST);
@@ -392,10 +460,41 @@ from (
           <div class="mdesc">배포 혼합일(8/7·8/13·8/18)은 제외 · 값은 <b>구간 통산</b>(합산 분자÷합산 분모) · 막대 스케일은 <b>같은 단위 계열끼리 공유</b>(판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종) — 계열이 다른 행끼리는 길이 비교 불가 ·
           <b>정의 상이</b> = 8/7에 로그 정의·발화 정책이 바뀐 지표 — 개편 전 막대는 옅게(참고만), <b>Δ는 1차 대비</b> ·
           3차(#456) = 첫 발화 공유 복귀·IT 지면 4종 추가·컨텍스트 2중 개선 · <b>3차만 오늘 부분일 포함</b> ·
-          목표선: 활동성(판수·광고)=마종 부스팅 이후 창 / 바이럴·비율=마종 동기간 / 초대=퍼블마 — <b>각 최근 3일 합산</b>(창이 짧아 일 변동에 민감) ·
+          목표선: 마종 3일치(${B.win}) 통산 · 초대만 퍼블마 — <b>창이 3일뿐이라 일 변동에 민감</b>하고, 9/2는 부분일이다 ·
           DAU 믹스는 구간마다 다름(8/14~ 인게임메뉴 신규 유입) — 판수 해석은 루커 표의 RU 행과 교차 확인</div>`;
       }
       renderEra();
+
+
+      // 벤치 3사 표 — 차트와 같은 DATA.bench에서 계산한다. 값을 손으로 적어두면 갱신 때 어긋난다.
+      (function(){
+        const el = document.getElementById('benchtbl'); if(!el) return;
+        const B = DATA.bench || {};
+        const COLS = [['cozy','코지'],['mahjong','마종'],['pubma','퍼블마']];
+        const ROWS = [
+          ['판수/DAU',        m=>m.ud? m.fin/m.ud:null,                v=>v.toFixed(1)],
+          ['총광고 완료/DAU',  m=>m.ud? (m.rv_fin+m.it_fin)/m.ud:null,  v=>v.toFixed(2)],
+          ['메세지 성공/DAU',  m=>m.ud? m.msg_ok/m.ud:null,             v=>v.toFixed(3)],
+          ['피드 성공/DAU',    m=>m.ud? m.feed_ok/m.ud:null,            v=>v.toFixed(3)],
+          ['토너 생성시도/DAU',m=>m.ud? m.cr_try/m.ud:null,             v=>v.toFixed(2)],
+          ['토너 생성률',      m=>m.cr_try? m.cr_ok/m.cr_try*100:null,  v=>v.toFixed(1)+'%'],
+          ['토너 공유시도/DAU',m=>m.ud? m.sh_try/m.ud:null,             v=>v.toFixed(2)],
+          ['토너 공유율',      m=>m.sh_try? m.sh_ok/m.sh_try*100:null,  v=>v.toFixed(1)+'%'],
+          ['토너 초대시도/DAU',m=>m.ud? m.inv_try/m.ud:null,            v=>v.toFixed(2)],
+          ['초대 성공률',      m=>m.inv_try? m.inv_ok/m.inv_try*100:null, v=>v.toFixed(1)+'%'],
+        ];
+        const nf = x => Number(x).toLocaleString('en-US');
+        const head = COLS.map(([k,l])=>`<th style="text-align:right">${l}</th>`).join('');
+        const dau = COLS.map(([k])=>`<td style="text-align:right">${B[k]?nf(B[k].ud):'—'}</td>`).join('');
+        const body = ROWS.map(([lab,f,fmt])=>`<tr><td>${lab}</td>${
+          COLS.map(([k])=>{ const m=B[k]; const v=m? f(m):null;
+            return `<td style="text-align:right">${v==null||!isFinite(v)?'—':fmt(v)}</td>`; }).join('')
+        }</tr>`).join('');
+        el.innerHTML = `<div class="table-scroll"><table>
+          <thead><tr><th>지표</th>${head}</tr></thead>
+          <tbody><tr><td><b>DAU (3일 유저-일)</b></td>${dau}</tr>${body}</tbody>
+        </table></div>`;
+      })();
 
       // 말풍선 — 이벤트 위임이라 다시 그려도 다시 붙일 필요가 없다.
       (function(){
