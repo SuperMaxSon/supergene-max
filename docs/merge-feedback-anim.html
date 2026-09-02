@@ -9,7 +9,7 @@
       content="머지 보드 연출 값을 직접 만지며 맞추는 튜닝 도구. 액션 6종 · 텍스트 3종 · 누락 5종, 카드마다 표에서 시간·이징·세기를 슬라이더나 숫자로 바꾸고 cc.tween 상수로 복사한다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=mfx9" />
+    <link rel="stylesheet" href="../style.css?v=mfx10" />
   </head>
   <body class="mfx">
     <nav class="nav">
@@ -29,13 +29,14 @@
         <p class="doc-lede">
           표의 값은 숫자로 치거나 <b>슬라이더로 끌어서</b> 바꿉니다. 바꾸는 즉시 옆 무대가 그 값으로 놉니다.
           타일은 직접 누르고 끌 수 있고,
-          맞춘 값은 카드 머리의 <b>[설정 복사]</b> 로 <code>cc.tween</code> 상수째 가져갑니다.
+          맞춘 값은 카드 머리의 <b>[설정 복사]</b> 로 <code>cc.tween</code> 상수째 가져가고,
+          받은 텍스트는 툴바의 <b>[설정 붙여넣기]</b> 로 도로 무대에 먹입니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
-          <span class="tag">연출 14종 · 값 조정 가능</span>
-          <span class="tag" id="mfx-ver">v3.8 · 2026-09-01 17:52</span>
+          <span class="tag">연출 14종 · 값 저장 · 붙여넣기</span>
+          <span class="tag" id="mfx-ver">v3.9 · 2026-09-02 18:35</span>
         </div>
       </div>
     </header>
@@ -91,8 +92,21 @@
           <button type="button" data-lp="1" aria-pressed="false">반복</button>
         </div>
         <button type="button" class="mfx-btn is-primary" id="mfx-copyall">전체 설정 복사</button>
+        <button type="button" class="mfx-btn" id="mfx-pasteall">설정 붙여넣기</button>
         <button type="button" class="mfx-btn" id="mfx-resetall">전부 기본값</button>
-        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 치거나 슬라이더를 끌면 옆 무대가 그 값으로 놉니다. 타일은 <b>언제나 직접 누르고 끌 수 있습니다</b> — 자동 재생은 없고, 시연은 버튼을 눌렀을 때만 돕니다.</span>
+        <span class="mfx-restored" id="mfx-restored" hidden></span>
+        <span class="mfx-bar-l" style="letter-spacing: 0; font-weight: 500">표의 숫자를 치거나 슬라이더를 끌면 옆 무대가 그 값으로 놉니다. 맞춘 값은 <b>이 브라우저에 남아</b> 새로고침해도 그대로입니다. 타일은 <b>언제나 직접 누르고 끌 수 있습니다</b> — 자동 재생은 없고, 시연은 버튼을 눌렀을 때만 돕니다.</span>
+      </div>
+
+      <!-- 복사한 설정을 도로 문서에 먹이는 칸. 값이 남의 손을 거쳐 돌아오는 경로라
+           (슬랙에 붙였다가 다시 가져오는 등) 형식을 까다롭게 굴지 않는다. -->
+      <div class="mfx-paste" id="mfx-paste-panel" hidden>
+        <textarea id="mfx-paste-ta" spellcheck="false" placeholder="[설정 복사] · [전체 설정 복사] 로 가져간 텍스트를 통째로 붙여넣고 [적용] 을 누르세요. 카드 하나짜리도, 전체짜리도 됩니다."></textarea>
+        <div class="mfx-paste-row">
+          <button type="button" class="mfx-btn is-primary" id="mfx-paste-go">적용</button>
+          <button type="button" class="mfx-btn" id="mfx-paste-close">닫기</button>
+          <span class="mfx-paste-msg" id="mfx-paste-msg"></span>
+        </div>
       </div>
 
       <section class="doc-section" id="action">
@@ -935,6 +949,68 @@
             if (d.easeK) V[id][d.easeK] = d.ease;
           });
         });
+
+        /* ── 값 적용기 ─────────────────────────────────────────────────────
+           바깥에서 들어온 값(localStorage 복원 · 붙여넣기)은 절대 그대로 믿지 않는다.
+           PARAMS 에 실재하는 키만 통과시키고, 숫자는 min~max 로 조이고, 이징·스타일은
+           목록에 있는 이름만 받는다. 나중에 PARAMS 에서 키를 빼거나 범위를 바꿔도
+           옛 저장본이 무대를 깨뜨리지 않게 하는 유일한 방어선이다. */
+        function applyValues(id, obj) {
+          var defs = PARAMS[id];
+          if (!defs || !obj || typeof obj !== "object") return 0;
+          var vals = V[id], hit = 0;
+          defs.forEach(function (d) {
+            if (d.v != null && obj[d.k] != null) {
+              var num = parseFloat(obj[d.k]);
+              if (isFinite(num)) { vals[d.k] = clampV(num, d.min, d.max); hit++; }
+            }
+            if (d.sv != null && STYLE_PARAM[obj[d.k]]) { vals[d.k] = obj[d.k]; hit++; }
+            if (d.easeK && EASE_LIST.indexOf(obj[d.easeK]) >= 0) { vals[d.easeK] = obj[d.easeK]; hit++; }
+          });
+          return hit;
+        }
+
+        /* 기본값과 다른 항목이 몇 개인지 — 복원 안내 문구와 붙여넣기 결과에 쓴다 */
+        function changedCount() {
+          var c = 0;
+          Object.keys(PARAMS).forEach(function (id) {
+            PARAMS[id].forEach(function (d) {
+              if (d.v != null && V[id][d.k] !== d.v) c++;
+              if (d.sv != null && V[id][d.k] !== d.sv) c++;
+              if (d.easeK && V[id][d.easeK] !== d.ease) c++;
+            });
+          });
+          return c;
+        }
+
+        /* ── 브라우저 저장 ─────────────────────────────────────────────────
+           맞추던 값이 새로고침 한 번에 날아가면 도구로 못 쓴다. 이 브라우저에만
+           남는 개인 작업본이고, 팀에 넘길 때는 여전히 [설정 복사] 를 쓴다.
+           사파리 프라이빗처럼 localStorage 가 던지는 환경이 있어 전부 try 로 감싼다. */
+        var STORE_KEY = "mfx.tune.v1";
+        var saveTimer = null;
+        function saveNow() {
+          try { localStorage.setItem(STORE_KEY, JSON.stringify(V)); } catch (e) {}
+        }
+        function saveSoon() {
+          if (saveTimer) clearTimeout(saveTimer);
+          saveTimer = setTimeout(saveNow, 250);
+        }
+        function storeClear() {
+          try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+        }
+        var restoredCount = 0;
+        (function restore() {
+          var raw = null;
+          try { raw = localStorage.getItem(STORE_KEY); } catch (e) { return; }
+          if (!raw) return;
+          var saved;
+          try { saved = JSON.parse(raw); } catch (e) { storeClear(); return; }
+          if (!saved || typeof saved !== "object") { storeClear(); return; }
+          Object.keys(saved).forEach(function (id) { applyValues(id, saved[id]); });
+          restoredCount = changedCount();
+        })();
+
         /* ======================================================================
            데모 15종 — 모든 수치는 위 V[id] 에서 읽는다.
            표의 입력을 바꾸면 다음 재생부터 그 값으로 논다.
@@ -2105,6 +2181,7 @@
            한쪽에서 고친 값이 다른 카드 입력칸에 안 비치면 "따로 논다" 고 오해한다.
            그래서 같은 스타일을 보고 있는 표는 전부 같이 갱신한다. */
         var STYLE_VIEWS = [];
+        var REFRESH = [];                    // 카드별 "현재 V 로 다시 맞춰라" 콜백
         function broadcastStyle(sid) {
           STYLE_VIEWS.forEach(function (v) { if (v.sid() === sid) v.sync(); });
         }
@@ -2175,7 +2252,16 @@
             if (x.bare) return x.code + (x.l.changed ? "   ← 기본 " + x.l.base : "");
             return pad + "  // " + x.l.label + (x.l.changed ? "   ← 기본 " + x.l.base : "");
           });
-          return head.concat(body).join("\n");
+          /* 되읽기용 데이터. 상수 이름은 카드끼리 겹치는 게 있어서(MERGE_SQUASH_IN_SEC 처럼)
+             이름만으로는 어느 카드 값인지 복원할 수 없다. 주석 한 줄에 원본을 실어 둔다 —
+             TypeScript 에 그대로 붙여도 주석이라 무해하고, 문서에 도로 붙여넣으면
+             소수점까지 그대로 되살아난다. */
+          var ids = [spec.id];
+          PARAMS[spec.id].forEach(function (d) {
+            if (d.opts === "FLOAT_STYLES" && STYLE_PARAM[V[spec.id][d.k]]) ids.push(STYLE_PARAM[V[spec.id][d.k]]);
+          });
+          var data = ids.map(function (pid) { return "// @mfx-data " + pid + " " + JSON.stringify(V[pid]); });
+          return head.concat(body).concat([""]).concat(data).join("\n");
         }
         function stampNow() {
           var d = new Date(), z = function (n) { return (n < 10 ? "0" : "") + n; };
@@ -2333,6 +2419,9 @@
               tr.classList.toggle("is-changed", !!diff);
               if (range && document.activeElement !== range) range.value = vals[d.k];
               if (input && document.activeElement !== input) input.value = vals[d.k];
+              if (pick && document.activeElement !== pick) pick.value = vals[d.k];
+              if (sel && document.activeElement !== sel) sel.value = vals[d.easeK];
+              saveSoon();
             }
             function after() { mark(); if (sid) broadcastStyle(sid); }
             if (input) {
@@ -2431,6 +2520,14 @@
 
           var entry = { demo: demo, btn: btn, played: false, spec: spec };
           running.push(entry);
+          /* 붙여넣기로 값이 통째로 바뀌면 이걸 불러 카드 하나를 현재 V 로 다시 맞춘다.
+             mark() 가 입력칸·슬라이더·선택지를 모두 되맞추므로 행은 mark() 만으로 끝나고,
+             문구 스타일이 바뀐 카드는 하위 표를 통째로 다시 그려야 한다. */
+          REFRESH.push(function () {
+            rowEls.forEach(function (r) { r.mark(); });
+            if (styleDef) renderStyle();
+            demo.reset();
+          });
           btn.addEventListener("click", function () { run(entry); });
           copyBtn.addEventListener("click", function () { copyText(exportText(spec), copyBtn); });
           resetBtn.addEventListener("click", function () {
@@ -2497,9 +2594,83 @@
           copyText(head + CATALOG.map(exportText).join("\n\n"), this);
         });
         document.getElementById("mfx-resetall").addEventListener("click", function () {
-          if (!window.confirm("모든 섹션의 값을 기본값으로 되돌립니다.")) return;
+          if (!window.confirm("모든 섹션의 값을 기본값으로 되돌립니다. 이 브라우저에 저장된 작업본도 지워집니다.")) return;
+          if (saveTimer) clearTimeout(saveTimer);      // 리로드 직전에 도로 저장되는 것 방지
+          storeClear();
           location.reload();
         });
+
+        /* ── 설정 붙여넣기 ─────────────────────────────────────────────────
+           1순위는 복사 텍스트 꼬리의 @mfx-data 줄이다 — 카드 id 째로 실려 있어
+           소수점까지 그대로 되살아난다.
+           그게 없으면(이 기능 이전에 뽑아 둔 텍스트, 손으로 적은 목록) export const
+           이름으로 읽는다. 이름이 겹치는 상수는 그 이름을 쓰는 카드 전부에 먹인다 —
+           같은 상수면 게임에서도 같은 값이라 그게 맞다. */
+        function readPayload(text) {
+          var re = /@mfx-data\s+([a-z0-9]+)\s+(\{[^\n]*\})/g, m, hit = 0;
+          while ((m = re.exec(text))) {
+            var obj = null;
+            try { obj = JSON.parse(m[2]); } catch (e) { continue; }
+            hit += applyValues(m[1], obj);
+          }
+          return hit;
+        }
+        function readConsts(text) {
+          var map = {}, re = /export\s+const\s+([A-Z0-9_]+)\s*=\s*("[^"]*"|-?[0-9.]+)/g, m;
+          while ((m = re.exec(text))) map[m[1]] = m[2];
+          var hit = 0;
+          Object.keys(PARAMS).forEach(function (id) {
+            var patch = {};
+            PARAMS[id].forEach(function (d) {
+              var raw = map[d.cfg];
+              if (raw != null) patch[d.k] = raw.charAt(0) === '"' ? raw.slice(1, -1) : raw;
+              if (d.easeK) {
+                var ez = map[easeConstName(d.cfg)];
+                if (ez != null && ez.charAt(0) === '"') patch[d.easeK] = ez.slice(1, -1);
+              }
+            });
+            hit += applyValues(id, patch);
+          });
+          return hit;
+        }
+        var pastePanel = document.getElementById("mfx-paste-panel");
+        var pasteTa = document.getElementById("mfx-paste-ta");
+        var pasteMsg = document.getElementById("mfx-paste-msg");
+        function pasteSay(text, bad) {
+          pasteMsg.textContent = text;
+          pasteMsg.classList.toggle("is-bad", !!bad);
+        }
+        document.getElementById("mfx-pasteall").addEventListener("click", function () {
+          pastePanel.hidden = !pastePanel.hidden;
+          if (pastePanel.hidden) return;
+          pasteSay("");
+          pasteTa.focus();
+        });
+        document.getElementById("mfx-paste-close").addEventListener("click", function () {
+          pastePanel.hidden = true;
+        });
+        document.getElementById("mfx-paste-go").addEventListener("click", function () {
+          var text = pasteTa.value;
+          if (!text.trim()) { pasteSay("붙여넣은 내용이 없습니다.", true); return; }
+          var hit = readPayload(text);
+          var how = "@mfx-data";
+          if (!hit) { hit = readConsts(text); how = "export const"; }
+          if (!hit) {
+            pasteSay("읽을 수 있는 값이 없습니다. [설정 복사] 로 가져간 텍스트를 통째로 붙여넣어 주세요.", true);
+            return;
+          }
+          REFRESH.forEach(function (fn) { fn(); });
+          saveNow();
+          pasteSay(hit + "개 값 적용됨 (" + how + " 형식) · 기본값과 다른 항목 " + changedCount() + "개");
+        });
+
+        /* 복원 안내. 며칠 뒤에 열었을 때 남의 손이 닿은 값을 기본값으로 오해하면
+           그대로 코드에 박힌다. 복원됐다는 사실을 툴바에서 먼저 보여 준다. */
+        if (restoredCount > 0) {
+          var rst = document.getElementById("mfx-restored");
+          rst.textContent = "이전 작업본 복원됨 · 기본값과 다른 " + restoredCount + "개";
+          rst.hidden = false;
+        }
 
         /* 툴바 ------------------------------------------------------------- */
         function seg(id, apply) {
