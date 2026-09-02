@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-02 18:39",
+  updated: "2026-09-03 08:57",
 };
 
 /* --------------------------------------------------------------------------
@@ -72,12 +72,12 @@ const SECTIONS = [
     cards: [
       {
         title: "솔리테어 483 전후 — 벤치 대조",
-        desc: "같은 3일 창을 client_version으로 갈라 482 이하와 483을 DAU당 10행으로 대조한다. 483에도 초대가 살아 있어 A/B는 아직 시작 전이다.",
+        desc: "9/2에 482와 483이 공존해 날짜를 맞춘 대조가 가능해졌다. DAU당 10행 · 목표선은 벤치 3사 고정 기준선. 483에도 초대가 살아 있어 A/B는 시작 전이다.",
         url: "docs/sol-era-watch.html",
         project: "sol",
         status: "초안",
-        version: "v2.1",
-        updated: "2026-09-02 18:39",
+        version: "v3.0",
+        updated: "2026-09-03 08:57",
         pinned: false,
         tags: ["BigQuery", "공유", "이식"],
       },
