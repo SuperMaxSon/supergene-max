@@ -67,10 +67,11 @@
         <div class="doc-eyebrow">분석 · 라이브 데이터</div>
         <h1 class="doc-title">솔리테어 483 전후 — 벤치 대조</h1>
         <p class="doc-lede">
-          같은 3일 창(<b>8/31~9/2</b>)을 <b>client_version</b>으로만 갈라, <b>482 이하</b>와
-          <b>483 이상</b>(토너 초대를 끈 대조군 빌드)을 DAU당 지표 10개로 나란히 놓았습니다.
+          같은 3일 창(<b>8/31~9/2</b>)을 <b>client_version</b>으로만 갈라, <b>482 이하</b>(3일 · 7,229 유저-일)와
+          <b>483</b>(9/2 부분일 · 202 유저-일)을 DAU당 지표 10개로 나란히 놓았습니다.
           🎯 목표선은 같은 창의 <b>마종</b>(초대만 퍼블마)이고, 코지까지 셋을 놓은 대조표를 아래에 뒀습니다.
-          값은 일별 평균이 아니라 <b>구간 통산</b>(합산 분자 ÷ 합산 분모)이며, 막대에 마우스를 올리면 모수가 나옵니다.
+          <b>표본이 크게 기울어 있어</b> DAU를 분모로 쓰는 행은 483이 구조적으로 낮게 나옵니다 —
+          방향 판단은 비율 3행부터 보세요.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
@@ -133,12 +134,15 @@
             </p>
           </div>
           <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">엄밀한 A/B가 아니라 전후 대조다</div>
+            <div class="note-title">483은 초대 차단 대조군이 아니다 — A/B는 아직 시작 전</div>
             <p>
-              483은 <strong>9/2 배포분</strong>이라 사실상 오늘 세션이고, 482 이하는 3일 전체입니다.
-              같은 시간대에 유저를 무작위로 나눈 게 아니라 <strong>버전으로만 갈랐으므로</strong>,
-              업데이트를 먼저 받는 활성 유저 쪽으로 483이 기울어 있습니다. 483 표본이 하루 더 쌓이면
-              같은 날짜끼리 맞춰 다시 봐야 합니다. Δ는 <strong>483 이상 ÷ 482 이하</strong>입니다.
+              483 로그에 <strong>토너 초대가 172건(성공 168) 살아 있습니다</strong>. 차단 코드
+              (<code>tournamentInviteEnabled</code> 임시 <code>false</code>)는 아직 커밋·배포되지 않았고,
+              현재 <code>main</code>은 시트값을 그대로 읽습니다. 그래서 이 표는 A/B 대조가 아니라
+              <strong>단순 빌드 전후</strong>이고, 실제 A/B는 차단 빌드(484 이상)가 나간 뒤에 성립합니다.
+              게다가 483은 <strong>9/2 부분일 하루(202 유저-일)</strong>뿐이어서, 하루를 다 쓰지 못한 세션이
+              모여 판수·광고 같은 <strong>DAU 분모 지표가 실제보다 낮게</strong> 찍힙니다.
+              공유율 3.4%도 성공 6건이라 표본이 사실상 없습니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--analysis)">
@@ -352,16 +356,21 @@ ORDER BY `프로젝트`;</pre></div>
                      cr_try:86557, cr_ok:9082, sh_try:69711, sh_ok:9801,
                      inv_try:26583, inv_ok:25444 },
         },
-        // 솔리테어 — 벤치와 같은 3일 창(8/31~9/2)을 client_version으로 갈랐다. 값 대기.
-        // 483 = A/B 대조군 빌드(토너 초대 차단) · 482 이하 = 비교군
+        // 솔리테어 — 벤치와 같은 3일 창(8/31~9/2)을 client_version으로 갈랐다. 2026-09-02 실측.
+        // ★483은 "초대 차단 대조군"이 아니다 — 차단 코드는 아직 커밋·배포되지 않았고,
+        //   483 로그에도 토너 초대가 172건 살아 있다. 차단 빌드는 484 이상이 될 것이다.
         sol: {
           win: "8/31~9/2 · 버전 분리",
           pre: { label:"482 이하", win:"8/31~9/2 · ~#482", color:"#9AA0B8",
-                 days:0, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
-                 cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
-          cur: { label:"483 이상", win:"9/2~ · #483+", color:"#15803D",
-                 days:0, ud:0, fin:0, rv_fin:0, it_fin:0, msg_ok:0, feed_ok:0,
-                 cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_in:0 },
+                 days:3, ud:7229, fin:77541, rv_fin:23932, it_fin:48219,
+                 msg_ok:2277, feed_ok:781,
+                 cr_try:13928, cr_ok:1565, sh_try:11967, sh_ok:798,
+                 inv_try:11494, inv_ok:11124, inv_in:null },
+          cur: { label:"483", win:"9/2 부분일 · #483", color:"#15803D",
+                 days:1, ud:202, fin:1453, rv_fin:354, it_fin:1048,
+                 msg_ok:57, feed_ok:9,
+                 cr_try:296, cr_ok:34, sh_try:174, sh_ok:6,
+                 inv_try:172, inv_ok:168, inv_in:null },
         },
       };
 
@@ -396,13 +405,13 @@ ORDER BY `프로젝트`;</pre></div>
         // [라벨, 값, 포맷, 목표소스, 목표라벨, 주석, 스케일그룹, 모수, 중립(방향 판정 안 함)]
         const ROWS = [
           ['판수/DAU',          e=>e.ud? e.fin/e.ud:null,               v=>v.toFixed(1),  Ma, '마종', '', 'g_hi',
-            e=>[e.fin,'완료 판',e.ud,'유저-일'], false],
+            e=>[e.fin,'완료 판',e.ud,'유저-일'], true],
           ['총광고 완료/DAU',    e=>e.ud? (e.rv_fin+e.it_fin)/e.ud:null, v=>v.toFixed(2), Ma, '마종', 'RV(4210)+IT(4010) 합 — IRV(4110)는 다른 지면이라 제외', 'g_hi',
-            e=>[e.rv_fin+e.it_fin,'광고 완료(RV+IT)',e.ud,'유저-일'], false],
+            e=>[e.rv_fin+e.it_fin,'광고 완료(RV+IT)',e.ud,'유저-일'], true],
           ['메세지 성공/DAU',    e=>e.ud? e.msg_ok/e.ud:null,            v=>v.toFixed(3), Ma, '마종', '초대로 친구 그래프가 쌓이면 오르는 후행 지표', 'g_lo',
-            e=>[e.msg_ok,'메세지 성공',e.ud,'유저-일'], false],
+            e=>[e.msg_ok,'메세지 성공',e.ud,'유저-일'], true],
           ['피드 성공/DAU',      e=>e.ud? e.feed_ok/e.ud:null,           v=>v.toFixed(3), Ma, '마종', '', 'g_lo',
-            e=>[e.feed_ok,'피드 성공',e.ud,'유저-일'], false],
+            e=>[e.feed_ok,'피드 성공',e.ud,'유저-일'], true],
           ['토너 생성시도/DAU',  e=>e.ud? e.cr_try/e.ud:null,            v=>v.toFixed(2), Ma, '마종', '많을수록 좋은 지표가 아니다 — 벤치 수준으로 정상화가 목표라 색 판정을 끈다', 'g_tour',
             e=>[e.cr_try,'생성 시도',e.ud,'유저-일'], true],
           ['토너 생성률',        e=>e.cr_try? e.cr_ok/e.cr_try*100:null, v=>v.toFixed(1)+'%', Ma, '마종', '3110 = 서버 등록 완료만 센다', 'g_pct',
@@ -411,10 +420,10 @@ ORDER BY `프로젝트`;</pre></div>
             e=>[e.sh_try,'공유 시도',e.ud,'유저-일'], true],
           ['토너 공유율',        e=>e.sh_try? e.sh_ok/e.sh_try*100:null, v=>v.toFixed(1)+'%', Ma, '마종', '분모 정상화로 오르는 게 성공', 'g_pct',
             e=>[e.sh_ok,'공유 성공',e.sh_try,'공유 시도'], false],
-          ['토너 초대 시도/DAU', e=>(e.ud&&e.inv_try!=null)? e.inv_try/e.ud:null, v=>v.toFixed(2), PU, '퍼블마', '목표선=퍼블마(마종·코지엔 없는 지면). 483은 A/B 대조군이라 초대가 꺼진 빌드 — 0이 정상이다', 'g_tour',
+          ['토너 초대 시도/DAU', e=>(e.ud&&e.inv_try!=null)? e.inv_try/e.ud:null, v=>v.toFixed(2), PU, '퍼블마', '목표선=퍼블마(마종·코지엔 없는 지면). 483에도 초대가 살아 있다 — 차단 빌드는 아직 배포되지 않았다', 'g_tour',
             e=>[e.inv_try,'초대 시도',e.ud,'유저-일'], true],
           ['초대 유입률 (유입÷시도)', e=>(e.inv_try && e.inv_in!=null)? e.inv_in/e.inv_try*100:null, v=>v.toFixed(1)+'%', PU, '퍼블마', '유입 세션 ÷ 초대 시도. 유입 세션은 entrypoint의 진입지면으로 세는데 그 값이 미확정 — 목표선도 비어 있다', 'g_pct',
-            e=>[e.inv_in,'유입 세션',e.inv_try,'초대 시도'], false],
+            e=>[e.inv_in,'유입 세션',e.inv_try,'초대 시도'], true],
         ];
         // ★스케일은 같은 단위 계열(그룹) 공유 — 행마다 자기 최대로 늘리면 크기 비교가 안 된다.
         const GMX = {};
@@ -457,10 +466,10 @@ ORDER BY `프로젝트`;</pre></div>
             <span style="color:#B45309;font-weight:700">┆ 목표선(마종 · 초대만 퍼블마)</span>${srcbar}</div>
           ${rows}
           <div class="mdesc">값은 <b>구간 통산</b>(합산 분자÷합산 분모) · 막대 스케일은 <b>같은 단위 계열끼리 공유</b>(판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종) — 계열이 다른 행끼리는 길이 비교 불가 ·
-          <b>Δ = 483 이상 ÷ 482 이하</b> — 같은 3일 창을 <b>client_version으로만</b> 갈랐다. <b>생성시도·공유시도·초대 2행은 색 판정을 끔</b>(많을수록 좋은 지표가 아니거나 의도된 차단) ·
+          <b>Δ = 483 이상 ÷ 482 이하</b> — 같은 3일 창을 <b>client_version으로만</b> 갈랐다. <b>DAU를 분모로 쓰는 7행은 색 판정을 끔</b> — 483이 <b>부분일 1일(202 유저-일)</b>이라 분모가 구조적으로 불리하다. 색은 <b>비율 3행</b>(생성률·공유율·유입률)에만 켠다 ·
           ★<b>시점이 겹치지 않는다</b> — 483은 9/2 배포분이라 사실상 오늘 세션이고 482 이하는 3일 전체다. 같은 시간대의 무작위 분배가 아니므로 <b>엄밀한 A/B가 아니라 전후 대조</b>로 읽어야 한다 ·
           목표선: 마종 3일치(${B.win}) 통산 · 초대만 퍼블마 — 창이 3일뿐이라 일 변동에 민감하고 9/2는 부분일이다 ·
-          483은 <b>토너 초대를 끈 대조군 빌드</b>라 초대 2행이 0인 게 설계대로다</div>`;
+          ★483은 <b>초대를 끈 대조군 빌드가 아니다</b> — 차단 코드가 아직 배포되지 않아 483에도 초대가 172건 살아 있다. A/B 대조는 차단 빌드(484+) 배포 후에야 성립한다</div>`;
       }
       renderEra();
 
