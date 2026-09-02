@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>부팅 소실 계측 추가</title>
+    <meta
+      name="description"
+      content="빌드 480에서 1b 구간 소실을 SDK reject·이탈·미확인으로 가르지 못한 부채를 갚는 계측. 무엇을 넣고 무엇을 뺐는지, 그리고 아직 열려 있는 구멍."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#why">왜</a>
+        <a class="nav-back" href="#split">소실 3갈래</a>
+        <a class="nav-back" href="#add">넣는 것</a>
+        <a class="nav-back" href="#drop">뺀 것</a>
+        <a class="nav-back" href="#review">제안 대조</a>
+        <a class="nav-back" href="#gap">남은 구멍</a>
+        <a class="nav-back" href="#verify">배포 후 확인</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 계측</div>
+        <h1 class="doc-title">부팅 소실 계측 추가</h1>
+        <p class="doc-lede">
+          2026-09-01 빌드 480에서 <b>FB SDK 대기 구간(1b)</b>의 세션이 사라졌는데,
+          그 자리에 로그가 한 줄도 없어서 <b>이탈인지 SDK 실패인지 그 밖의 무엇인지 끝까지 못 갈랐습니다.</b>
+          이 문서는 그 부채를 갚는 계측의 최종안입니다 —
+          <b>무엇을 넣는지</b>, <b>무엇을 일부러 뺐는지</b>, 그리고
+          <b>이걸 다 넣어도 여전히 안 풀리는 것</b>까지 적었습니다.
+          마지막 항목이 제일 중요합니다: 어제 우리를 속인 건 소실의 성격이 아니라 <b>소실의 규모</b>였습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--sol)">솔리테어</span>
+          <span class="tag">main.js 계측 패치</span>
+          <span class="tag">정상 세션 로그 증가 0행</span>
+          <span class="tag">2026-09-02</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="why">
+        <h2 class="doc-h2">
+          왜 넣는가
+          <span class="doc-h2-sub">빌드 480에서 못 갈랐던 것</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">1b</div>
+            <div class="stat-name">무너진 구간</div>
+            <div class="stat-sub">1a 100% · 구간2 정상 · 하류 정상</div>
+          </div>
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">99.19<span class="stat-unit">%</span></div>
+            <div class="stat-name">직전 빌드 1b 통과율 (RU)</div>
+            <div class="stat-sub">사고 창에서 80.17%까지</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">0</div>
+            <div class="stat-name">실패 시 남는 로그</div>
+            <div class="stat-sub"><code>.catch</code>가 없어 무기록</div>
+          </div>
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">3</div>
+            <div class="stat-name">구분되지 않은 원인</div>
+            <div class="stat-sub">reject · 이탈 · 미확인</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">자국이 셋 다 똑같았다</div>
+            <p>
+              <code>INTRO_FB_START</code>는 있는데 <code>INTRO_FB_START_FINISH</code>가 없다 —
+              세 가지 원인이 <b>전부 이 하나의 모습</b>으로 나타납니다.
+              유저가 기다리다 나갔든, SDK가 reject했든, 페이지가 죽었든 구분이 안 됩니다.
+              그래서 조사에서 가설을 열세 개 세우고 하나씩 죽였지만 <b>메커니즘은 끝내 특정하지 못했습니다.</b>
+              BigQuery로는 더 갈 수 없고, 클라이언트에 관측점을 심는 것 말고는 방법이 없습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="split">
+        <h2 class="doc-h2">
+          소실 3갈래
+          <span class="doc-h2-sub">둘은 로그로, 하나는 잔차로</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>갈래</th>
+                <th>무슨 일</th>
+                <th>어떻게 잡히나</th>
+                <th style="text-align: right">관측</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill" style="--acc: var(--bad)">SDK reject</span></td>
+                <td><code>initializeAsync()</code>가 실패로 끝남</td>
+                <td><code>INTRO_FB_START_FAIL</code> + <code>error_code</code> · <code>error_message</code></td>
+                <td style="text-align: right"><b>직접</b></td>
+              </tr>
+              <tr>
+                <td><span class="pill" style="--acc: var(--bad)">이탈</span></td>
+                <td>기다리다 유저가 나감</td>
+                <td><code>INTRO_FB_ABANDON</code> (<code>pagehide</code> → <code>sendBeacon</code>)</td>
+                <td style="text-align: right"><b>직접</b></td>
+              </tr>
+              <tr class="is-dead">
+                <td><span class="pill" style="--acc: var(--warn)">미확인</span></td>
+                <td>로그가 남지 않아 성격을 특정할 수 없는 나머지</td>
+                <td>로그 없음 — <b>잔차로만</b></td>
+                <td style="text-align: right">간접</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">셋째 갈래를 「사망」이라 부르면 안 되는 이유</div>
+            <p>
+              처음에는 이걸 <b>페이지 사망</b>이라고 불렀는데, 정확하지 않았습니다.
+              잔차에는 성격이 다른 세 가지가 섞여 있습니다:
+            </p>
+            <p style="margin-top: 8px">
+              <code>미확인 = START − FINISH − FAIL − ABANDON</code>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">잔차에 섞여 있는 것</div>
+            <p>
+              <b>① 진짜 사망</b> — 렌더러 크래시 · 메모리 부족. 프로세스가 죽어 JS가 안 돕니다.
+              다만 모바일에서 OS가 탭을 회수할 때는 <code>pagehide</code>가 뜨는 경우가 많아,
+              <b>진짜 크래시의 상당수는 이미 <code>ABANDON</code>에 들어가 있습니다.</b>
+            </p>
+            <p style="margin-top: 8px">
+              <b>② 여전히 대기 중</b> — <code>initializeAsync</code>가 끝나지 않았고 유저도 나가지 않은 상태.
+              <b>아무것도 죽지 않았고 탭은 살아 있습니다.</b>
+              빌드 480에서 의심했던 시나리오가 정확히 이것입니다 —
+              엔진 실행이 메인 스레드를 오래 물면 <code>.then()</code> 콜백이 밀립니다.
+            </p>
+            <p style="margin-top: 8px">
+              <b>③ 계측 실패</b> — <code>FAIL</code>·<code>ABANDON</code>이 서버에 도달하지 못한 경우.
+              소실이 아니라 우리 로그가 유실된 것입니다.
+            </p>
+            <p style="margin-top: 8px">
+              그래서 이 숫자는 <b>사망 건수가 아니라 상한이자 혼합</b>입니다.
+              <b>「미확인」으로 부르는 게 맞습니다</b> — 「사망」은 우리가 모르는 것을 안다고 말하는 이름이었습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="add">
+        <h2 class="doc-h2">
+          넣는 것
+          <span class="doc-h2-sub">이벤트 3 · 필드 4</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>언제 찍히나</th>
+                <th>얻는 것</th>
+                <th style="text-align: right">정상 세션 비용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>INTRO_FB_START_FAIL</code></td>
+                <td>init reject</td>
+                <td><b>원인까지 내려가는 유일한 경로</b> — <code>error_code</code></td>
+                <td style="text-align: right">0행</td>
+              </tr>
+              <tr>
+                <td><code>INTRO_FB_ABANDON</code></td>
+                <td>대기 중 언로드</td>
+                <td>이탈 판별. <code>time</code>으로 <b>몇 초 기다리다 나갔는지</b>까지</td>
+                <td style="text-align: right">0행</td>
+              </tr>
+              <tr>
+                <td><code>INTRO_FB_AFTER_INIT_ERROR</code></td>
+                <td>init 성공 후 진행률 설정에서 예외</td>
+                <td>init은 됐는데 그 뒤에서 죽는 경우 분리</td>
+                <td style="text-align: right">0행</td>
+              </tr>
+              <tr>
+                <td><code>data.time</code></td>
+                <td>모든 로그</td>
+                <td>구간별 소요시간. <b>지금은 통과율만 보이고 시간은 안 보인다</b></td>
+                <td style="text-align: right">필드</td>
+              </tr>
+              <tr>
+                <td><code>data.device</code></td>
+                <td>모든 로그</td>
+                <td>부팅 구간의 <b>유일한 OS 축</b> (<code>os</code> 컬럼이 NULL이라)</td>
+                <td style="text-align: right">필드</td>
+              </tr>
+              <tr>
+                <td><code>data.sid</code></td>
+                <td>모든 로그</td>
+                <td>한 번의 부팅 안에서 게이트를 이어 봄</td>
+                <td style="text-align: right">필드</td>
+              </tr>
+              <tr>
+                <td><code>data.log_build_error</code></td>
+                <td>로그 조립 실패 시</td>
+                <td>관측 도구 자신의 실패를 관측 가능하게</td>
+                <td style="text-align: right">필드</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">정상 세션은 로그가 한 줄도 안 는다</div>
+            <p>
+              이벤트 3종은 <b>전부 실패 시에만</b> 발생하고, 필드 4개는 <b>기존 로그에 칸만 붙습니다.</b>
+              부팅 경로에 XHR을 추가로 발생시키지 않는다는 게 이 설계의 핵심입니다 —
+              1b는 우리가 측정하려는 구간이라, 그 안에서 로그를 더 쏘면
+              <b>관측 도구가 관측 대상을 느리게 만듭니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title"><code>.catch</code> 대신 <code>then(onOk, onFail)</code>을 쓴 이유</div>
+            <p>
+              <code>.catch</code>를 별도 체인으로 붙이면 <code>.then(onOk)</code>이 만든 파생 promise가
+              reject된 채 방치돼 <b><code>unhandledrejection</code></b>이 뜹니다(콘솔 에러 + Sentry 노이즈).
+              두 인자 형태는 그걸 막고, 동시에 <code>onOk</code> 내부 예외가
+              <code>FAIL</code>로 <b>오분류되는 것</b>도 막습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="drop">
+        <h2 class="doc-h2">
+          뺀 것
+          <span class="doc-h2-sub">한 번 넣었다가 되돌린 4종</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>뺀 항목</th>
+                <th>왜 뺐나</th>
+                <th>잃는 것</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="is-dead">
+                <td><code>INTRO_FB_START_SLOW_1S / 3S / 5S</code></td>
+                <td>
+                  직전 빌드 RU <b>p50이 5.32초</b> — 5초 워치독조차 <b>정상 세션 절반이 쏜다.</b>
+                  게다가 그 XHR이 측정 대상인 1b 창 안에서 <code>initializeAsync</code>와 네트워크를 경쟁한다
+                </td>
+                <td>미확인 세션이 몇 초에서 멎었는지 모름</td>
+              </tr>
+              <tr class="is-dead">
+                <td><code>INTRO_FB_HIDDEN</code></td>
+                <td>
+                  iOS Safari는 백그라운드 전환에 <code>pagehide</code>가 뜨는 경우가 많아
+                  <b><code>ABANDON</code>과 중복 발화</b>한다. 플래그가 따로라 서로 막지도 않는다
+                </td>
+                <td>미확인을 백그라운드 / 포그라운드로 못 나눔</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">"오래 걸려서 나간 경우"는 이미 잡힌다</div>
+            <p>
+              워치독의 원래 목적이 <b>실패는 아닌데 오래 걸려 이탈하는 케이스</b>였는데,
+              그건 <code>INTRO_FB_ABANDON</code>이 잡습니다. 그리고 거기 실린
+              <code>data.time</code>은 <b>ms 단위</b>라, 5초·10초 두 칸으로 뭉갠 워치독보다 정밀합니다.
+              워치독이 유일하게 값을 갖는 건 로그가 아예 없는 <b>미확인 케이스</b>뿐인데,
+              그 하나 때문에 전 세션 볼륨을 두 배로 만드는 건 맞지 않습니다.
+            </p>
+            <p style="margin-top: 8px">
+              부수 효과로 타이머 3개와 리스너 1개가 사라져
+              <b>부팅 크리티컬 패스가 단순해졌습니다.</b> 계측이 부팅 경로에 있다는 게 이 작업의 가장 큰 리스크였습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="review">
+        <h2 class="doc-h2">
+          팀 제안 대조
+          <span class="doc-h2-sub">독립적으로 나온 4건과의 비교</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>제안</th>
+                <th>현재 상태</th>
+                <th>비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>① 초기화 실패 로그</td>
+                <td><span class="pill" style="--acc: var(--ok)">구현됨</span></td>
+                <td><code>INTRO_FB_START_FAIL</code>. 다만 <code>.catch</code>가 아니라 <code>then(onOk, onFail)</code></td>
+              </tr>
+              <tr>
+                <td>② 지연 감시 (5초 · 10초)</td>
+                <td><span class="pill" style="--acc: var(--bad)">제외</span></td>
+                <td>§뺀 것 참조 — <code>ABANDON</code>+<code>time</code>과 중복, 볼륨 과다</td>
+              </tr>
+              <tr>
+                <td>③ 세션 구분 번호</td>
+                <td><span class="pill" style="--acc: var(--ok)">구현됨</span></td>
+                <td><code>data.sid</code>. 제안한 4개 이벤트를 포함해 <b>모든</b> 부팅 로그에 실림</td>
+              </tr>
+              <tr>
+                <td>④ 기기 구분</td>
+                <td><span class="pill" style="--acc: var(--ok)">구현됨</span></td>
+                <td><code>data.device</code>. <code>ALL_*</code> 계열에도 실려 그쪽 OS 축이 새로 생김</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">줄 번호가 다르면 구버전을 보고 있는 것</div>
+            <p>
+              제안서가 인용한 <code>main.js</code> 줄 번호는 <b>계측 패치 이전</b> 기준입니다.
+              패치가 아직 미커밋이라 그렇습니다. 중복 작업이 나기 전에 맞춰야 합니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="gap">
+        <h2 class="doc-h2">
+          남은 구멍
+          <span class="doc-h2-sub">이걸 다 넣어도 안 풀리는 것</span>
+        </h2>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">어제 우릴 속인 건 소실의 성격이 아니라 규모였다</div>
+            <p>
+              사고 후 확인 결과 <b>한 사람이 20건 넘게</b> 만들었습니다.
+              그러면 그동안 못 풀던 것이 한꺼번에 설명됩니다 —
+              <code>isNewDevice</code>는 <code>localStorage</code> 유무로 정해지므로
+              <b>같은 사람이 재시도하면 첫 회만 NRU, 이후는 전부 RU</b>가 됩니다.
+              RU 편중도, 45분이라는 짧은 창도, 미국 단독도, 롤백 전에 이미 회복된 것도 전부 여기서 나옵니다.
+            </p>
+            <p style="margin-top: 8px">
+              계측을 다 넣고 어제로 돌아가도 결과는 이렇습니다 —
+              <b>"이탈이 많았다"는 답은 나오지만, 그게 한 사람인지 24명인지는 여전히 모릅니다.</b>
+              <code>sid</code>는 페이지 로드마다 새로 나므로 재시도 20번은 무관한 20건입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>질문</th>
+                <th>지금 계측으로</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>왜 소실됐나</td>
+                <td><span class="pill" style="--acc: var(--ok)">갈린다</span></td>
+              </tr>
+              <tr>
+                <td>몇 명이 소실됐나</td>
+                <td><span class="pill" style="--acc: var(--bad)">못 센다</span></td>
+              </tr>
+              <tr>
+                <td>롤백해야 하나</td>
+                <td><span class="pill" style="--acc: var(--bad)">판단 근거 부족</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">제안 — 필드 두 개</div>
+            <p>
+              <code>did</code> (localStorage 영구 랜덤 id) 와 <code>attempt</code> (부팅마다 +1).
+              이벤트가 아니라 필드라 <b>볼륨 비용이 0</b>이고, 통과율을 <b>사람 기준</b>으로 재계산할 수 있게 됩니다.
+              <code>attempt=20</code>이 로그에 직접 보이므로 재시도 루프 자체가 관측 대상이 됩니다.
+            </p>
+            <p style="margin-top: 8px">
+              <b>한계</b> — localStorage 삭제 · 시크릿 모드 · 기기 교체에는 무력합니다.
+              그리고 소급되지 않습니다. 그래서 이건 아래 방어선을 <b>대체하지 못하고 보강만</b> 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">코드 없이 오늘 바로 되는 방어선</div>
+            <p>
+              하류 <code>1010_LOAD_COMPLETE</code>는 <code>player_id</code>가 실제 값이라 <b>이미 사람 단위</b>입니다.
+              세션 통과율이 떨어졌는데 <b>하류 사람 지표가 멀쩡하면 그건 세션 부풀림</b>이라는 신호입니다.
+              어제도 그 값이 정상이었습니다 — <b>89.69% vs 직전 빌드 89.36%.</b>
+              신호는 있었고, 우리가 사후에야 봤을 뿐입니다. 이건 소급 적용도 됩니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>게이트를 이렇게 고쳐야 함</th>
+                <th>어제 무슨 일이 있었나</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NRU만 보지 말고 <b>RU도 함께</b></td>
+                <td>NRU 95.45%로 임계(93.5%)를 안 건드려 경보가 안 울림. 붕괴는 RU에 있었음</td>
+              </tr>
+              <tr>
+                <td>일 단위 말고 <b>시간 창 집계</b> 병행</td>
+                <td>빌드 480이 그날 트래픽의 4%라 일 단위로는 1b가 98.32%로 보였음</td>
+              </tr>
+              <tr>
+                <td><b>최소 표본</b> 미만이면 게이트 발동 금지</td>
+                <td>RU 126건 창에서 24건 손실 — 한 사람이 19%p를 움직임</td>
+              </tr>
+              <tr>
+                <td><b>단일 구간만</b> 꺼지면 자동 보류</td>
+                <td>1a 100% · 구간2 정상 · 하류 정상인데 1b만 붕괴 = 모집단 회귀가 아님</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section" id="verify">
+        <h2 class="doc-h2">
+          배포 후 확인 순서
+          <span class="doc-h2-sub">순서가 중요하다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>확인</th>
+                <th>왜 이 순서인가</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><code>INTRO_FB_ABANDON</code> 건수 <b>&gt; 0</b></td>
+                <td>
+                  <b>가장 먼저.</b> <code>sendBeacon</code>이 서버에 거부되면 0건이 나오는데,
+                  그건 "이탈 없음"과 구분되지 않습니다. 0이면 잔차식 전체가 무의미해집니다
+                </td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><code>FIRST_LOG</code>에 <code>sid</code> · <code>time</code> · <code>device</code>가 실리는지</td>
+                <td>필드 주입이 실제로 되는지 확인. 여기가 비면 이후 분석 축이 전부 없습니다</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><code>log_build_error</code> 건수</td>
+                <td>0이 정상. 값이 있으면 로그 조립이 실제로 던지고 있다는 <b>직접 증거</b></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td><code>FAIL</code> / <code>ABANDON</code> 비율과 미확인 잔차</td>
+                <td>이게 정상 빌드의 <b>기준선</b>이 됩니다. 다음 사고 때 비교 대상</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>3D 모듈 재투입</td>
+                <td>기준선을 확보한 뒤. 트래픽이 적은 시간대에</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <b>연관 문서</b>
+          <a href="boot-log-flow.html">솔리테어 부팅 로그 플로우</a> — 로그가 찍히는 순서와 구간
+          <br /><br />
+          <b>확인 범위</b> <code>main.js</code> 계측 패치는 <b>미커밋 상태</b>입니다.
+          p50 5.32초 · 통과율 99.19% → 80.17% · 하류 89.69% vs 89.36%는 사고 조사 시점의 BigQuery 실측값입니다.
+          "한 사람이 20건 이상"은 별도 확인된 값이며, 식별에 사용한 축은 이 문서에 반영되지 않았습니다.
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
