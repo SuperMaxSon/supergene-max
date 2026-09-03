@@ -26,6 +26,28 @@
      안 그러면 검색으로만 닿는 문서가 된다. */
   var NOPROJ = "__none__";
 
+  /* ---------- 상태 우선순위 ----------
+     섹션 안에서 손이 필요한 문서가 위로 오게 한다: 진행중 > 초안 > 완료.
+     Live 는 매주 갱신되는 상시 문서라 그보다 위. 목록에 없는 값은 맨 뒤로 보낸다 —
+     새 상태 값이 생겨도 카드가 사라지지 않고 아래에 쌓이기만 한다. */
+  var STATUS_ORDER = { Live: 0, "진행중": 1, "초안": 2, "완료": 3 };
+
+  function statusRank(card) {
+    var r = STATUS_ORDER[card.status];
+    return r == null ? 90 : r;
+  }
+
+  /* pinned 는 사람이 직접 올린 것이라 자동 정렬이 끌어내리면 안 된다 — 상태보다 우선.
+     sort 는 안정 정렬이라 순위가 같으면 data.js 선언 순서가 그대로 유지된다. */
+  function byStatus(cards) {
+    return cards.slice().sort(function (a, b) {
+      var pa = a.pinned ? 0 : 1;
+      var pb = b.pinned ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return statusRank(a) - statusRank(b);
+    });
+  }
+
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -129,8 +151,10 @@
     if (sec.desc) head.appendChild(el("p", "section-desc", sec.desc));
     s.appendChild(head);
 
+    /* 정렬은 렌더 직전 한 번뿐이다. 검색·프로젝트 필터는 is-hidden 토글이라
+       DOM 순서에 관여하지 않는다 — 필터를 걸어도 이 순서가 유지된다. */
     var list = el("div", "cards");
-    cards.forEach(function (c) {
+    byStatus(cards).forEach(function (c) {
       list.appendChild(buildCard(c, sec.accent, sec.label));
     });
     s.appendChild(list);
