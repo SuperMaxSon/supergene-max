@@ -72,13 +72,13 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
-        title: "솔리테어 483 부팅 로딩 — 483 vs 기타",
+        title: "솔리테어 부팅 로딩 — 485 vs 483 vs 477",
         desc: "부팅 로그 24단계를 483과 477이하가 각각 언제 통과하는지 NRU·RU로 나눠 겹쳐 그린 곡선. 25MB 빌드(485) 배포 직후 그대로 돌릴 쿼리 6개와 곡선 색 규칙을 맨 아래에 미리 넣어 뒀다.",
         url: "docs/sol-483-boot-latency.html",
         project: "sol",
         status: "완료",
-        version: "v5.0",
-        updated: "2026-09-03 17:32",
+        version: "v5.1",
+        updated: "2026-09-03 18:00",
         pinned: false,
         tags: ["BigQuery", "로딩", "인터랙티브"],
       },
