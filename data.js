@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-03 10:38",
+  updated: "2026-09-03 10:44",
 };
 
 /* --------------------------------------------------------------------------
@@ -87,7 +87,7 @@ const SECTIONS = [
         desc: "482 이하와 483을 빌드별로 합산해 DAU당 9행으로 대조한다. 목표선은 벤치 3사 고정 기준선이고, 일자별 원본은 폴드에 그대로 둔다.",
         url: "docs/sol-era-watch.html",
         project: "sol",
-        status: "초안",
+        status: "완료",
         version: "v3.3",
         updated: "2026-09-03 09:10",
         pinned: false,
@@ -98,7 +98,7 @@ const SECTIONS = [
         desc: "연출 14종의 시간·이징·세기를 표에서 직접 고치면 옆 무대가 그 값으로 논다. 병합은 4×4 샌드박스라 칩이 계속 차오르고, 창고에서 보드로 올리고, 문구는 누른 칩 위로 떠오른다. [설정 복사] 로 붙여넣기 가능한 cc.tween 상수를 그대로 가져간다.",
         url: "docs/merge-feedback-anim.html",
         project: "smg",
-        status: "초안",
+        status: "진행중",
         version: "v4.1",
         updated: "2026-09-03 10:33",
         pinned: false,
@@ -130,7 +130,7 @@ const SECTIONS = [
         title: "아이소메트릭 데코 영역 — 등장 연출 · 레이어",
         desc: "빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다. 보간 1초는 root 하나의 연출 시간이고 그 안에서 스프라이트가 조립되듯 들어온다 — 맞춘 값이 그대로 Cocos 코드로 나온다.",
         url: "docs/deco-tween-iso.html",
-        status: "완료",
+        status: "진행중",
         version: "v3.11",
         updated: "2026-09-01 17:18",
         pinned: false,
@@ -141,7 +141,7 @@ const SECTIONS = [
         title: "채팅 캐릭터 애니메이션 용량 계산기",
         desc: "캐릭터와 감정이 늘면 용량이 어디까지 가나. 프레임 시퀀스 · 노드 트랜스폼 · Spine 세 방식을 같은 조건에 놓고 계산한다.",
         url: "docs/chat-anim-size-calc.html",
-        status: "완료",
+        status: "초안",
         version: "v1.8",
         updated: "2026-09-01 10:31",
         pinned: false,
@@ -163,7 +163,7 @@ const SECTIONS = [
         desc: "주요 게임 5개 로그를 전량 실측해 프로토에 넣을 수 있는 것만 골랐다. 호출문이 이미 심긴 18계열과 새로 넣을 16계열을 갈랐고, 공통 로그 등록·호출 규약을 붙였다.",
         url: "docs/story-merge-log-matrix.html",
         project: "smg",
-        status: "완료",
+        status: "초안",
         version: "v2.1",
         updated: "2026-08-28 12:05",
         pinned: false,
