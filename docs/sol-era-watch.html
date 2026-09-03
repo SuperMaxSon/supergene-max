@@ -76,11 +76,11 @@
         <div class="doc-eyebrow">분석 · 라이브 데이터</div>
         <h1 class="doc-title">솔리테어 483 전후 — 벤치 대조</h1>
         <p class="doc-lede">
-          <b>482 이하</b>(8/31~9/3 · 7,241 유저-일)와 <b>483 이상</b>(9/2~9/3 · 2,355 유저-일)을
+          <b>482 이하</b>(8/31~9/4 · 7,245 유저-일)와 <b>483 이상</b>(9/2~9/4 · 5,004 유저-일)을
           빌드별로 합산해 DAU당 지표 9개로 나란히 놓았습니다. 🎯 목표선은 <b>8/31~9/2 벤치 고정 기준선</b>
           (마종 · 초대만 퍼블마)이라 솔리테어 창이 바뀌어도 움직이지 않습니다.
-          483은 9/2 저녁 배포분부터라 <b>하루를 온전히 쓴 세션 비중이 낮고</b>, 그래서 DAU를 분모로 쓰는
-          행은 구조적으로 눌립니다 — 방향 판단은 비율 2행(생성률·공유율)부터 보세요.
+          483 이상은 9/2 저녁 배포분부터 <b>9/4 조회 시점까지</b>라 시작·끝이 잘린 하루가 섞여 있고,
+          그래서 DAU를 분모로 쓰는 행은 구조적으로 눌립니다 — 방향 판단은 비율 2행(생성률·공유율)부터 보세요.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
@@ -154,11 +154,11 @@
           <div class="note" style="--acc: var(--warn)">
             <div class="note-title">483은 초대 차단 대조군이 아니다 — A/B는 아직 시작 전</div>
             <p>
-              483 로그에 <strong>토너 초대가 172건(성공 168) 살아 있습니다</strong>. 차단 코드
+              483 이상 로그에 <strong>토너 초대가 5,019건(성공 4,888) 살아 있습니다</strong>. 차단 코드
               (<code>tournamentInviteEnabled</code> 임시 <code>false</code>)는 아직 커밋·배포되지 않았고,
               현재 <code>main</code>은 시트값을 그대로 읽습니다. 그래서 이 표는 A/B 대조가 아니라
               <strong>단순 빌드 전후</strong>이고, 실제 A/B는 차단 빌드(484 이상)가 나간 뒤에 성립합니다.
-              게다가 483은 <strong>9/2 저녁 배포분 + 9/3 오전</strong>으로 모인 2,355 유저-일이라,
+              게다가 483 이상은 <strong>9/2 저녁 배포분부터 9/4 조회 시점까지</strong> 모인 5,004 유저-일이라,
               하루를 온전히 쓴 세션 비중이 482보다 낮습니다 — 판수·광고 같은 <strong>DAU 분모 지표가
               구조적으로 낮게</strong> 찍히는 이유입니다.
             </p>
@@ -178,8 +178,9 @@
             <div class="note-title">Δ 색이 꺼진 3행이 있다</div>
             <p>
               <strong>토너 생성시도 · 공유시도</strong>는 많을수록 좋은 지표가 아니라
-              <strong>벤치 수준으로 정상화</strong>가 목표이고, <strong>토너 초대시도</strong>는 483이
-              의도적으로 끈 지면이라 <strong>0이 설계대로</strong>입니다. 이 3행은 증감에 색을 입히지 않고
+              <strong>벤치 수준으로 정상화</strong>가 목표이고, <strong>토너 초대시도</strong>는 차단
+              빌드가 나가면 0으로 떨어지는 게 설계라 증감 자체가 좋고 나쁨이 아닙니다
+              (지금은 차단 전이라 483 이상에도 5,019건이 살아 있습니다). 이 3행은 증감에 색을 입히지 않고
               회색으로 둡니다 — 색이 곧 좋고 나쁨으로 읽히면 판정을 오도합니다.
             </p>
           </div>
@@ -202,51 +203,56 @@
         </h2>
 
         <details class="fold">
-          <summary>1. 솔리테어 — 같은 3일치를 483 전후로 분리 (이 차트의 막대 원본)</summary>
+          <summary>1. 솔리테어 — 날짜 × 빌드군 원본 (이 문서 daily를 그대로 만드는 쿼리)</summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- 벤치와 같은 캘린더 창(8/31~9/2)에서 client_version으로만 두 군을 갈랐다.
--- 483 = A/B 대조군 빌드(토너 초대 지면 차단) · 482 이하 = 비교군.
+            <div class="table-scroll"><pre>-- 결과 1행 = 이 문서 DATA.sol.daily 1행. 별칭을 JS 키와 같게 둬서 옮겨 적을 때 매핑이 없다.
+-- 483 = A/B 대조군 빌드(토너 초대 지면 차단) 기준선 · 482 이하 = 비교군.
+-- ★ver는 client_version &gt;= 483을 한 군으로 묶은 값이다 — 484·485가 나가면 여기 섞인다.
 -- DAU는 세션이 아니라 1000_LOGIN_COMPLETE가 있는 (날짜, 플레이어) 쌍이다.
 -- RV는 4210_RV_FINISH(일반 RV). 4110_INTERSTITIAL_RV_FINISH는 IRV로 다른 지면이라
--- 총광고에 넣지 않고 누락 확인용으로만 따로 센다.
+-- 총광고에 넣지 않고 irv_fin으로 누락 확인용으로만 센다.
+-- 초대: inv_* = 토너 초대(position='tournament_invite'), inv_all_* = 지면 무관 전체.
 SELECT
-    CASE WHEN client_version &gt;= 483 THEN '483이상' ELSE '482이하' END AS `구분`,
-    COUNT(DISTINCT log_date) AS `일수`,
-    COUNT(DISTINCT IF(has_login = 1, FORMAT('%t|%t', log_date, player_id), NULL)) AS `DAU`,
-    COUNTIF(event = '2300_GAMEPLAY_FINISH')           AS `완료판수`,
-    COUNTIF(event = '4210_RV_FINISH')                 AS `RV완료`,
-    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')    AS `IT완료`,
-    COUNTIF(event = '4110_INTERSTITIAL_RV_FINISH')    AS `IRV완료`,
-    COUNTIF(event = '3410_MSG_P2P_SUCCESS')           AS `메세지성공`,
-    COUNTIF(event = '3510_FEED_SHARE_SUCCESS')        AS `피드성공`,
-    COUNTIF(event = '3100_TOURNAMENT_CREATE')         AS `생성시도`,
-    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS') AS `생성성공`,
-    COUNTIF(event = '3200_TOURNAMENT_SHARE')          AS `공유시도`,
-    COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')  AS `공유성공`,
+    log_date AS d,
+    IF(client_version &gt;= 483, '483', '482') AS ver,
+    COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
+    COUNTIF(event = '2300_GAMEPLAY_FINISH')                           AS fin,
+    COUNTIF(event = '4210_RV_FINISH')                                 AS rv_fin,
+    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                    AS it_fin,
+    COUNTIF(event = '4110_INTERSTITIAL_RV_FINISH')                    AS irv_fin,
+    COUNTIF(event = '3410_MSG_P2P_SUCCESS')                           AS msg_ok,
+    COUNTIF(event = '3510_FEED_SHARE_SUCCESS')                        AS feed_ok,
+    COUNTIF(event = '3100_TOURNAMENT_CREATE')                         AS cr_try,
+    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                 AS cr_ok,
+    COUNTIF(event = '3200_TOURNAMENT_SHARE')                          AS sh_try,
+    COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                  AS sh_ok,
     COUNTIF(event = '3460_MSG_P2P_INVITE'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS `초대시도_토너`,
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_try,
     COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS `초대성공_토너`,
-    COUNTIF(event = '3460_MSG_P2P_INVITE')            AS `초대시도_전체`
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_ok,
+    COUNTIF(event = '3460_MSG_P2P_INVITE')                            AS inv_all_try,
+    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS')                    AS inv_all_ok
 FROM (
     SELECT
         log_date, player_id, event, data, client_version,
         MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
             OVER (PARTITION BY log_date, player_id) AS has_login
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-08-31' AND '2026-09-02'
+    WHERE log_date BETWEEN '2026-08-31' AND '2026-09-04'
         AND is_dev IS DISTINCT FROM TRUE
         AND player_id &gt; 0
 )
-GROUP BY `구분`
-ORDER BY `구분` DESC;</pre></div>
+GROUP BY d, ver
+ORDER BY d, ver DESC;</pre></div>
             <div class="notes">
               <div class="note" style="--acc: var(--validate)">
                 <p>
-                  <b>빌드별로 쪼개 보려면</b> <code>CASE</code> 자리에 <code>client_version</code>을 넣고
-                  <code>GROUP BY</code>도 그것으로 바꾸면 됩니다. 하루 안에 업데이트를 받은 플레이어는
-                  같은 날 두 버전에 걸치므로 <b>DAU가 두 군에 각각 한 번씩 잡힐 수 있습니다</b>(비율 지표엔
-                  영향이 작지만, 483 표본이 작을 때는 유의).
+                  <code>ver</code>는 <b>483 이상을 전부 하나로 묶은 값</b>입니다. 484·485가 배포되면
+                  차단 빌드와 비차단 빌드가 같은 막대에 섞이므로, <code>IF(...)</code> 자리에
+                  <code>client_version</code>을 그대로 넣고 <code>GROUP BY</code>도 바꿔
+                  <b>버전별로 먼저 확인</b>하세요. 하루 안에 업데이트를 받은 플레이어는 같은 날 두 버전에
+                  걸치므로 <b>DAU가 두 군에 각각 한 번씩 잡힐 수 있습니다</b>(비율 지표엔 영향이 작지만,
+                  483 표본이 작을 때는 유의).
                 </p>
               </div>
             </div>
@@ -313,7 +319,7 @@ ORDER BY `프로젝트`;</pre></div>
           <code>4210_RV_FINISH</code>는 <code>showRewardedAD</code> 성공 시,
           <code>3460/3470_MSG_P2P_INVITE*</code>는 <code>FB.inviteAsync</code> 직전·성공 시
           (<code>data.position</code> = <code>LogInvitePosition</code>, 토너 초대는 <code>tournament_invite</code>).
-          벤치 3사 수치는 2026-09-02 실행 결과를 고정한 기준선이고, 솔리테어는 2026-09-03 조회분입니다.
+          벤치 3사 수치는 2026-09-02 실행 결과를 고정한 기준선이고, 솔리테어는 2026-09-04 조회분입니다(9/4는 부분 집계).
           초대 유입 세션은 이 문서 범위 밖입니다.
         </div>
       </section>
@@ -327,7 +333,7 @@ ORDER BY `프로젝트`;</pre></div>
          bench3 : 목표선. 일별이 아니라 이미 3일 합산된 1덩어리를 넣는다.
          전부 0인 지금은 각 행이 —(또는 "없던 기능")으로 그려진다. 깨지지 않는다. */
       const DATA = {
-        updated: "2026-09-03",
+        updated: "2026-09-04",
         // 벤치 3일치 — 8/31~9/2 실측. ★고정 기준선이다: 솔 창이 바뀌어도 다시 뽑지 않는다.
         // 매번 같이 굴리면 목표선이 함께 흔들려 "무엇이 움직였는지"가 사라진다.
         bench: {
@@ -350,35 +356,35 @@ ORDER BY `프로젝트`;</pre></div>
         //   갱신할 때는 daily에 행을 덧붙이기만 하면 막대·Δ가 따라온다.
         sol: {
           arms: [
-            { key:"pre", ver:"482", label:"482 이하", win:"8/31~9/3", color:"#9AA0B8" },
-            { key:"cur", ver:"483", label:"483 이상", win:"9/2~9/3",  color:"#15803D" },
+            { key:"pre", ver:"482", label:"482 이하", win:"8/31~9/4", color:"#9AA0B8" },
+            { key:"cur", ver:"483", label:"483 이상", win:"9/2~9/4",  color:"#15803D" },
           ],
           daily: [
-            { d:"2026-08-31", ver:"482", ud:2680, fin:29379, rv_fin:9178, it_fin:18236,
+            { d:"2026-08-31", ver:"482", ud:2680, fin:29379, rv_fin:9178, it_fin:18236, irv_fin:0,
               msg_ok:704, feed_ok:243, cr_try:5160, cr_ok:511, sh_try:4070, sh_ok:255,
-              inv_try:3883, inv_ok:3744 },
-            { d:"2026-09-01", ver:"482", ud:2458, fin:27783, rv_fin:8562, it_fin:17200,
+              inv_try:3883, inv_ok:3744, inv_all_try:3972, inv_all_ok:3825 },
+            { d:"2026-09-01", ver:"482", ud:2458, fin:27783, rv_fin:8562, it_fin:17200, irv_fin:0,
               msg_ok:899, feed_ok:357, cr_try:5007, cr_ok:605, sh_try:4617, sh_ok:318,
-              inv_try:4457, inv_ok:4321 },
-            { d:"2026-09-02", ver:"482", ud:2100, fin:20466, rv_fin:6204, it_fin:12869,
+              inv_try:4457, inv_ok:4321, inv_all_try:4548, inv_all_ok:4405 },
+            { d:"2026-09-02", ver:"482", ud:2100, fin:20466, rv_fin:6204, it_fin:12869, irv_fin:0,
               msg_ok:674, feed_ok:181, cr_try:3765, cr_ok:450, sh_try:3281, sh_ok:225,
-              inv_try:3155, inv_ok:3059 },
-            { d:"2026-09-02", ver:"483", ud:815,  fin:5888,  rv_fin:1805, it_fin:3966,
+              inv_try:3155, inv_ok:3059, inv_all_try:3218, inv_all_ok:3118 },
+            { d:"2026-09-02", ver:"483", ud:815,  fin:5888,  rv_fin:1805, it_fin:3966,  irv_fin:0,
               msg_ok:278, feed_ok:39,  cr_try:1362, cr_ok:173, sh_try:890,  sh_ok:55,
-              inv_try:856,  inv_ok:826 },
-            { d:"2026-09-03", ver:"483", ud:1540, fin:13537, rv_fin:3426, it_fin:7959,
-              msg_ok:461, feed_ok:127, cr_try:2996, cr_ok:320, sh_try:1900, sh_ok:96,
-              inv_try:1829, inv_ok:1782 },
-            { d:"2026-09-03", ver:"482", ud:3,    fin:167,   rv_fin:17,   it_fin:169,
-              msg_ok:0,   feed_ok:0,   cr_try:5,    cr_ok:1,   sh_try:1,    sh_ok:0,
-              inv_try:1,    inv_ok:2 },
+              inv_try:856,  inv_ok:826,  inv_all_try:874,  inv_all_ok:844 },
+            { d:"2026-09-03", ver:"482", ud:6,    fin:310,   rv_fin:36,   it_fin:312,   irv_fin:0,
+              msg_ok:0,   feed_ok:0,   cr_try:6,    cr_ok:1,   sh_try:1,    sh_ok:0,
+              inv_try:1,    inv_ok:2,    inv_all_try:1,    inv_all_ok:2 },
+            { d:"2026-09-03", ver:"483", ud:2896, fin:27400, rv_fin:7571, it_fin:16646, irv_fin:0,
+              msg_ok:1081, feed_ok:338, cr_try:6107, cr_ok:641, sh_try:4730, sh_ok:351,
+              inv_try:3299, inv_ok:3223, inv_all_try:3385, inv_all_ok:3300 },
+            { d:"2026-09-04", ver:"482", ud:1,    fin:24,    rv_fin:3,    it_fin:25,    irv_fin:0,
+              msg_ok:0,   feed_ok:0,   cr_try:0,    cr_ok:0,   sh_try:0,    sh_ok:0,
+              inv_try:0,    inv_ok:0,    inv_all_try:0,    inv_all_ok:0 },
+            { d:"2026-09-04", ver:"483", ud:1293, fin:11811, rv_fin:3272, it_fin:7290,  irv_fin:0,
+              msg_ok:458, feed_ok:81,  cr_try:2569, cr_ok:310, sh_try:2764, sh_ok:124,
+              inv_try:864,  inv_ok:839,  inv_all_try:907,  inv_all_ok:877 },
           ],
-          // 초대 시도 — daily의 inv_try는 토너 초대만 센 값이다. 지면 무관 전체 초대를
-          // 8/31~9/2 창에서 따로 뽑았는데 일자별·9/3 값이 없어 daily에 넣지 않고 창 합계로만 둔다.
-          // 차트는 daily만 쓰므로 이 값은 표 아래 각주에만 나온다.
-          invAll: { win:"8/31~9/2", irv_fin:0,
-            pre: { all_try:11738, tour_try:11495 },
-            cur: { all_try:874,   tour_try:856 } },
         },
       };
 
@@ -480,10 +486,10 @@ ORDER BY `프로젝트`;</pre></div>
             <span style="color:#B45309;font-weight:700">┆ 목표선(마종 · 초대만 퍼블마)</span>${srcbar}</div>
           ${rows}
           <div class="mdesc">값은 <b>빌드별 통산</b>(합산 분자÷합산 분모) — 일자별 원본은 차트 아래 폴드에 그대로 있다 · 막대 스케일은 <b>같은 단위 계열끼리 공유</b>(판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종) — 계열이 다른 행끼리는 길이 비교 불가 ·
-          <b>DAU를 분모로 쓰는 7행은 색 판정을 끔</b> — 483은 <b>9/2 저녁 배포분 + 9/3 오전</b>이라 하루를 온전히 쓴 세션 비중이 482보다 낮다. 판수·광고의 감소는 상당 부분 이 시간대 구성 차이다. 색은 <b>비율 2행</b>(생성률·공유율)에만 켠다 ·
-          9/3의 482는 3 유저-일뿐(전환 완료)이라 482 통산에 섞여도 영향이 없다 ·
+          <b>DAU를 분모로 쓰는 7행은 색 판정을 끔</b> — 483 이상은 <b>9/2 저녁 배포분 ~ 9/4 조회 시점</b>이라 시작·끝이 잘린 하루가 섞여 있다. 판수·광고의 감소는 상당 부분 이 시간대 구성 차이다. 색은 <b>비율 2행</b>(생성률·공유율)에만 켠다 ·
+          9/3·9/4의 482는 합쳐 7 유저-일뿐(전환 완료)이라 482 통산에 섞여도 영향이 없다 ·
           목표선: 마종 ${B.win} 통산 · 초대만 퍼블마 — <b>고정 기준선</b>이라 솔 창이 바뀌어도 다시 뽑지 않는다 ·
-          ★483은 <b>초대를 끈 대조군 빌드가 아니다</b> — 차단 코드가 아직 배포되지 않아 483에도 초대가 2,685건 살아 있다. A/B는 차단 빌드(484+) 배포 후에야 성립한다</div>`;
+          ★483은 <b>초대를 끈 대조군 빌드가 아니다</b> — 차단 코드가 아직 배포되지 않아 483 이상에도 초대가 5,019건 살아 있다. A/B는 차단 빌드(484+) 배포 후에야 성립한다</div>`;
       }
       renderEra();
 
@@ -495,7 +501,9 @@ ORDER BY `프로젝트`;</pre></div>
         if(!D.length){ el.innerHTML = '<div class="mdesc">원본 없음</div>'; return; }
         const COLS = [['ud','DAU'],['fin','완료판수'],['rv_fin','RV완료'],['it_fin','IT완료'],
           ['msg_ok','메세지성공'],['feed_ok','피드성공'],['cr_try','생성시도'],['cr_ok','생성성공'],
-          ['sh_try','공유시도'],['sh_ok','공유성공'],['inv_try','초대시도'],['inv_ok','초대성공']];
+          ['sh_try','공유시도'],['sh_ok','공유성공'],
+          ['inv_try','토너초대시도'],['inv_ok','토너초대성공'],
+          ['inv_all_try','전체초대시도'],['inv_all_ok','전체초대성공']];
         const nf = x => x==null? '—' : Number(x).toLocaleString('en-US');
         const rows = D.slice().sort((a,b)=> a.d===b.d ? b.ver.localeCompare(a.ver) : a.d.localeCompare(b.d));
         el.innerHTML = `<div class="table-scroll"><table>
@@ -504,18 +512,20 @@ ORDER BY `프로젝트`;</pre></div>
             COLS.map(([k])=>`<td style="text-align:right">${nf(r[k])}</td>`).join('')}</tr>`).join('')}</tbody>
         </table></div>` + invAllNote();
 
-        // 전체 초대 각주 — 표의 초대시도는 토너 초대만이다. 창 합계로만 있는 전체 초대를 여기서 밝힌다.
+        // 전체 초대 각주 — 토너 초대와 전체 초대의 차이를 밝힌다. daily 합산이라 창이 바뀌면 따라온다.
         function invAllNote(){
-          const A = (DATA.sol && DATA.sol.invAll) || null;
-          if(!A) return '';
-          const d = (m) => nf(m.all_try - m.tour_try);
-          return `<div class="mdesc">표의 <b>초대시도</b>는 <b>토너 초대</b>만 센 값이다.
-            지면 무관 <b>전체 초대 시도</b>는 ${A.win} 창에서
-            482 이하 <b>${nf(A.pre.all_try)}</b>(토너 ${nf(A.pre.tour_try)} + 그 외 ${d(A.pre)}) ·
-            483 이상 <b>${nf(A.cur.all_try)}</b>(토너 ${nf(A.cur.tour_try)} + 그 외 ${d(A.cur)}) —
-            토너가 초대 발화의 <b>98%</b>(482 97.9% · 483 97.9%)라 차트 판정은 토너 열로 해도 결론이 바뀌지 않는다 ·
-            일자별·9/3 값은 아직 뽑지 않아 위 표에는 열을 넣지 않았다 ·
-            같은 창의 <b>IRV 완료(4110)는 ${nf(A.irv_fin)}건</b>이라 총광고에서 빼도 누락이 없다</div>`;
+          const agg = ver => D.filter(r => r.ver === ver).reduce((t, r) => {
+            t.tour += r.inv_try||0; t.all += r.inv_all_try||0; t.irv += r.irv_fin||0; return t;
+          }, {tour:0, all:0, irv:0});
+          const P = agg('482'), C = agg('483');
+          const pct = m => m.all? (m.tour/m.all*100).toFixed(1)+'%' : '—';
+          return `<div class="mdesc"><b>토너초대</b>는 <code>position=tournament_invite</code>만,
+            <b>전체초대</b>는 지면 무관 전 초대(<code>3460/3470</code>)다 ·
+            창 통산으로 482 이하 <b>${nf(P.all)}</b>(그중 토너 ${nf(P.tour)} · ${pct(P)}) ·
+            483 이상 <b>${nf(C.all)}</b>(그중 토너 ${nf(C.tour)} · ${pct(C)}) —
+            <b>초대의 98%가 토너 지면</b>이라 차트의 토너 초대 행으로 판정해도 결론이 바뀌지 않는다 ·
+            같은 창 <b>IRV 완료(4110)는 482·483 모두 ${nf(P.irv + C.irv)}건</b>이라 총광고에서 빼도 누락이 없다 ·
+            <b>9/4는 조회 시점까지의 부분 집계</b>다</div>`;
         }
       })();
 
