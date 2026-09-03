@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-03 09:46",
+  updated: "2026-09-03 10:06",
 };
 
 /* --------------------------------------------------------------------------
@@ -401,6 +401,7 @@ const SECTIONS = [
         updated: "2026-08-28 12:21",
         pinned: false,
         tags: ["토너먼트", "BigQuery"],
+        share: false,
       },
       {
         title: "전환 지면 중복 제거 — 바이럴 검증",
@@ -412,6 +413,7 @@ const SECTIONS = [
         updated: "2026-08-28 19:05",
         pinned: false,
         tags: ["컨텍스트", "BigQuery"],
+        share: false,
       },
       {
         title: "토너먼트 공유 실패 — 수정 전/후",
