@@ -65,14 +65,14 @@
           부팅 로그 24단계를 483과 <b style="color:#7c8499">477이하</b>가 각각 언제 통과하는지 겹쳐 그렸습니다.
           483은 <b style="color:#1d4ed8">NRU 파랑</b> · <b style="color:#059669">RU 녹색</b>, 477이하는 두 그래프 모두 회색입니다.
           세로축은 부팅 시작 이후 경과 시간, 가로축은 로그 순서이며 <b>점 위에 마우스를 올리면</b> 로그 이름과 양쪽 값이 뜹니다.
-          <br />맨 아래 <b><a href="#q485" style="color:#ea580c">485 트래킹 준비</a></b> 절에는 용량이 37MB → 25MB로 줄어든 <b>485 배포 직후 그대로 돌릴 쿼리 5개</b>와 곡선에 얹을 색 규칙이 미리 들어 있습니다.
+          <br />맨 아래 <b><a href="#q485" style="color:#ea580c">485 트래킹 준비</a></b> 절에는 용량이 37MB → 25MB로 줄어든 <b>485 배포 직후 그대로 돌릴 쿼리 6개</b>와 곡선에 얹을 색 규칙이 미리 들어 있습니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
           <span class="tag">완주 세션 기준</span>
           <span class="tag">2026-08-31 ~ 09-03</span>
-          <span class="tag">2026-09-03 17:17 갱신</span>
+          <span class="tag">2026-09-03 17:25 갱신</span>
         </div>
       </div>
     </header>
@@ -164,8 +164,13 @@
           NRU = <code>logincount_total = 1</code>, RU = 그 외.
           x축 순서는 <b>RU의 477이하 p50</b> 기준으로 고정해 지표를 바꿔도 축이 움직이지 않습니다 — NRU에서 <code>OBJECT_POOL ✓</code>가
           <code>OBJECT_POOL</code>보다 앞서 보이는 건 그 로그의 표본이 작아(805 / 2,322) 빠른 세션 쪽으로 치우쳤기 때문입니다.
-          <code>FIRST_LOG</code> · <code>INTRO_FB_START</code> · <code>ALL_LOAD_FB</code> 등 main.js 부트 로그는 483에서 신설돼
-          <b>477이하에는 데이터가 없어 곡선에 넣지 못했고</b>, 그 구간은 1번 로그의 격차에 뭉뚱그려져 있습니다.
+          <code>FIRST_LOG</code> · <code>INTRO_FB_START</code> · <code>ALL_LOAD_FB</code> 등 main.js 부트 로그는
+          <b>곡선에 넣지 못했고</b>, 그 구간은 1번 로그의 격차에 뭉뚱그려져 있습니다.
+          <b style="color:#b91c1c">2026-09-03 정정</b> — 이전 판에서 그 이유를 "483에서 신설돼 477이하에 데이터가 없어서"라고 적었으나
+          <b>코드 실측 결과 사실이 아닙니다.</b> 이 로그들은 <code>2026-01-08</code> 초기 세팅부터 계속 전송되고 있었고,
+          곡선에 못 넣은 진짜 이유는 <strong>main.js 로그에 <code>data.time</code> 필드가 없었기 때문</strong>입니다.
+          그 필드는 <code>2026-09-02</code> 커밋에서 들어가 <b>485부터</b> 실립니다 — 483에도 없습니다.
+          자세한 영향은 아래 <a href="#q485">485 트래킹 준비</a>의 Q3 · Q3b에 적었습니다.
           완주 세션만 대상이라 중간 이탈자는 빠져 있고, 도달률 회귀는 이 문서로 판정할 수 없습니다.
         </div>
       </section>
@@ -183,7 +188,7 @@
             <div class="note-title">아직 데이터가 없습니다 — 쿼리와 색만 먼저 확정합니다</div>
             <p>
               485는 <b>빌드 용량이 37MB에서 25MB로 약 32% 줄어든</b> 첫 빌드이고 <b>2026-09-03 기준 미배포</b>입니다.
-              지금 이 절에 있는 것은 결과가 아니라 <strong>배포 다음 날 그대로 실행할 쿼리 5개</strong>와
+              지금 이 절에 있는 것은 결과가 아니라 <strong>배포 다음 날 그대로 실행할 쿼리 6개</strong>와
               <strong>그래프에 얹을 색 규칙</strong>입니다.
             </p>
             <p>
@@ -218,9 +223,14 @@
                 <td>NRU <code>로드완료_도달_pct</code>가 483 대비 <b>상승</b> (최소 유지)</td>
               </tr>
               <tr>
-                <td>Q3</td><td>줄어든 12MB가 실제로 다운로드 구간에서 빠졌나</td>
-                <td>main.js 부트 4단계</td>
-                <td>신규 기기 <code>ALL_LOAD_FB</code> p50 <b>감소</b> — 여기가 안 줄면 용량 효과가 아님</td>
+                <td>Q3</td><td>485의 부트 구간이 실제로 어디서 얼마나 걸리나</td>
+                <td>main.js 부트 구간 절대값</td>
+                <td><b>485 단독 기준선</b> — 483에는 <code>data.time</code>이 없어 지연 비교 불가</td>
+              </tr>
+              <tr>
+                <td>Q3b</td><td>줄어든 12MB가 실제로 다운로드 구간에서 빠졌나</td>
+                <td>main.js 부트 도달률</td>
+                <td>신규 기기 <code>인트로씬로드_pct</code>가 483 대비 <b>상승</b> — 여기가 안 오르면 용량 효과가 아님</td>
               </tr>
               <tr>
                 <td>Q4</td><td>압축·모듈 제거로 새 실패가 생기지 않았나</td>
@@ -232,13 +242,18 @@
         </div>
 
         <div class="notes">
-          <div class="note">
-            <div class="note-title">Q3이 Q1보다 먼저 답을 줍니다</div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">다운로드 구간의 결승선은 <code>ALL_LOAD_INTRO</code>입니다 — <code>ALL_LOAD_FB</code>가 아닙니다</div>
+            <p>
+              <code>main.js</code>의 <code>tryLog('LOAD_FB')</code>는 <code>FBInstant.getEntryPointAsync()</code>가
+              끝난 시점, 즉 <b>페이스북 SDK 준비 완료</b>일 뿐 엔진·번들 다운로드와 무관합니다.
+              용량이 실리는 곳은 <code>preloadSceneAsync(launchScene)</code>이 끝나는
+              <strong><code>ALL_LOAD_INTRO</code></strong>입니다. 판정선은 여기에 그어야 합니다.
+            </p>
             <p>
               Q1은 위 곡선과 똑같이 <b>완주 세션만</b> 보기 때문에 "빨리 끝난 사람만 남는" 생존 편향이 섞입니다.
-              반면 Q3의 <code>ALL_LOAD_FB</code>는 엔진·번들을 실제로 내려받고 난 시점이라
-              <strong>용량 감소가 직접 실리는 구간</strong>입니다.
-              여기가 안 줄었는데 Q1만 좋아졌다면 <b>용량 효과가 아니라 표본이 바뀐 것</b>으로 읽어야 합니다.
+              Q3b의 <code>인트로씬로드_pct</code>가 안 올랐는데 Q1만 좋아졌다면
+              <b>용량 효과가 아니라 표본이 바뀐 것</b>으로 읽어야 합니다.
             </p>
           </div>
           <div class="note">
@@ -249,6 +264,11 @@
               <strong><code>FIRST_LOG</code> 대비 발생률의 절대값</strong>으로만 판정합니다.
               용량을 줄이는 수단인 텍스처 양자화와 모듈 제거는 <b>"덜 받아서 빨라진다"와 "빠진 게 있어서 안 뜬다"가
               같은 변경에서 나옵니다</b> — 속도만 보고 통과시키면 안 되는 이유입니다.
+            </p>
+            <p>
+              <b>주의</b> — 분모인 <code>FIRST_LOG</code>는 483에도 있으므로 <code>484-</code> 행도 값이 잡힙니다.
+              하지만 그 행의 실패율은 전부 <b>0으로 나올 수밖에 없습니다</b>(로그가 없으니까).
+              <strong>0을 "483이 더 안전했다"로 읽으면 안 됩니다.</strong> 485 행의 절대값만 봅니다.
             </p>
           </div>
         </div>
@@ -314,7 +334,7 @@
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">쿼리 전문</h3>
         <p class="doc-h2-sub">
-          다섯 쿼리 모두 맨 위 <code>d_from</code> · <code>d_to</code> 두 상수만 고쳐서 돌립니다.
+          여섯 쿼리 모두 맨 위 <code>d_from</code> · <code>d_to</code> 두 상수만 고쳐서 돌립니다.
           Q1·Q2는 <b>세 빌드군을 한 번에</b> 뽑으므로 483·477 수치도 이 쿼리로 다시 나옵니다 —
           위 표의 기존 483 수치와 소수 ms 단위로 어긋날 수 있고, 그때는 <strong>새로 뽑은 값으로 전부 교체</strong>합니다.
           한 쿼리 안에서 나온 값끼리만 비교해야 이상치 컷과 중복 제거 조건이 같습니다.
@@ -325,7 +345,7 @@
           <div class="fold-body">
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- 먼저 이걸 돌린다. 485가 실제로 몇 번부터 올라왔는지(484가 존재하는지)와
--- NRU 세션이 판정에 쓸 만큼 쌓였는지를 확인하기 전에는 아래 넷을 돌릴 이유가 없다.
+-- NRU 세션이 판정에 쓸 만큼 쌓였는지를 확인하기 전에는 아래 다섯을 돌릴 이유가 없다.
 -- 세션 = (player_id, logincount_total) 한 쌍 = 로그인 1회.
 DECLARE d_from DATE DEFAULT DATE '2026-09-10';   -- 485 배포 다음 날로 고친다
 DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
@@ -467,25 +487,24 @@ ORDER BY `구분`, `빌드군`</pre></div>
         </details>
 
         <details class="fold">
-          <summary>Q3 — main.js 부트 4단계 (다운로드 구간 · 483 vs 485)</summary>
+          <summary>Q3 — main.js 부트 구간 절대값 (485 단독 · 483과 지연 비교는 불가)</summary>
           <div class="fold-body">
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
-            <div class="table-scroll"><pre>-- FIRST_LOG와 INTRO_FB_START는 FBInstant 초기화 전에 찍혀 플레이어 ID가 '-1'이다.
--- 세션 조인도, logincount_total 기반 NRU 판정도 쓸 수 없다. 그래서 이 쿼리만
+            <div class="table-scroll"><pre>-- ⚠ 이 쿼리는 485 단독이다. main.js 로그에 data.time 이 들어간 건 2026-09-02 커밋부터라
+--    483 이하의 main.js 로그에는 time 필드 자체가 없다(코드 실측). 지연 비교는 485부터 가능.
+--    483과의 대조는 Q3b(건수 비율)로 한다.
+-- FIRST_LOG · INTRO_FB_START 는 FBInstant 초기화 전에 찍혀 플레이어 ID가 '-1'이다.
+-- 세션 조인도, logincount_total 기반 NRU 판정도 못 쓴다. 그래서 이 쿼리만
 --   · 버전을 테이블 컬럼이 아니라 data.client_version 에서 꺼내고
---   · 신규 여부를 data.isNewDevice (main.js가 직접 실어 보내는 값)로 가르고
+--   · 신규 여부를 data.isNewDevice (main.js가 직접 싣는 값)로 가르고
 --   · 세션이 아니라 로그 단위 분포로 낸다.
--- 이 네 로그는 483에서 신설됐으므로 477이하에는 데이터가 없다 — 2군 비교다.
+-- ALL_* 는 tryLog() 가 기기 접미사 붙은 로그와 함께 접미사 없이 한 번 더 보내는 집계용이다.
 DECLARE d_from DATE DEFAULT DATE '2026-09-10';
 DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
 DECLARE cap_ms INT64 DEFAULT 600000;
 
 WITH src AS (
     SELECT
-        CASE
-            WHEN CAST(JSON_VALUE(data, '$.client_version') AS INT64) &gt;= 485              THEN '485+'
-            WHEN CAST(JSON_VALUE(data, '$.client_version') AS INT64) BETWEEN 483 AND 484 THEN '483~484'
-        END                                       AS grp,
         IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
         event,
         CAST(JSON_VALUE(data, '$.time') AS INT64) AS t
@@ -493,21 +512,81 @@ WITH src AS (
     WHERE log_date BETWEEN d_from AND d_to
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.time') IS NOT NULL
-      AND JSON_VALUE(data, '$.client_version') IS NOT NULL
-      AND event IN ('FIRST_LOG', 'INTRO_FB_START', 'INTRO_FB_START_FINISH', 'ALL_LOAD_FB')
+      AND CAST(JSON_VALUE(data, '$.client_version') AS INT64) &gt;= 485
+      AND event IN (
+          'FIRST_LOG',              -- main.js 진입
+          'INTRO_FB_START',         -- FBInstant.initializeAsync 호출 직전
+          'INTRO_FB_START_FINISH',  -- initializeAsync 완료
+          'ALL_LOAD_FB',            -- getEntryPointAsync 완료 = FB 준비 끝
+          'ALL_LOAD_INTRO',         -- ★ preloadSceneAsync(launchScene) 완료 = 인트로 씬 다운로드+파싱 끝
+          'ALL_LOAD_INTRO_START',   -- runSceneImmediate 시작
+          'ALL_LOAD_INTRO_FINISH'   -- 씬 전환 완료
+      )
 )
 SELECT
     seg                                    AS `기기`,
     event                                  AS `로그`,
-    grp                                    AS `빌드군`,
     COUNT(*)                               AS `로그수`,
     CAST(ROUND(AVG(t)) AS INT64)           AS `평균_ms`,
     APPROX_QUANTILES(t, 100)[OFFSET(50)]   AS `p50_ms`,
     APPROX_QUANTILES(t, 100)[OFFSET(90)]   AS `p90_ms`
 FROM src
-WHERE grp IS NOT NULL AND t BETWEEN 0 AND cap_ms
-GROUP BY 1, 2, 3
-ORDER BY `기기`, `로그`, `빌드군`</pre></div>
+WHERE t BETWEEN 0 AND cap_ms
+GROUP BY 1, 2
+ORDER BY `기기`, `p50_ms`</pre></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>Q3b — main.js 부트 도달률 (483 vs 485 · 시간 필드 없이 비교)</summary>
+          <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
+            <div class="table-scroll"><pre>-- 483에는 data.time 이 없지만 로그 행 자체는 2026-01-08부터 쌓여 있다(코드 실측).
+-- 그래서 지연 대신 "몇 %가 다음 단계까지 왔나"로 두 빌드를 비교한다.
+-- 용량이 줄면 ALL_LOAD_INTRO 도달률이 올라가야 한다 — 여기가 다운로드 비용이 실리는 지점이다.
+-- 분모는 FIRST_LOG = main.js 가 실행된 모든 브라우저.
+DECLARE d_from DATE DEFAULT DATE '2026-09-10';
+DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
+
+WITH src AS (
+    SELECT
+        CASE
+            WHEN CAST(JSON_VALUE(data, '$.client_version') AS INT64) &gt;= 485              THEN '485+'
+            WHEN CAST(JSON_VALUE(data, '$.client_version') AS INT64) BETWEEN 483 AND 484 THEN '483~484'
+            WHEN CAST(JSON_VALUE(data, '$.client_version') AS INT64) &lt;= 477              THEN '477-'
+        END                                       AS grp,
+        IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
+        event
+    FROM `game-log-359704.raw.solitaire_city_journey`
+    WHERE log_date BETWEEN d_from AND d_to
+      AND (is_dev = FALSE OR is_dev IS NULL)
+      AND JSON_VALUE(data, '$.client_version') IS NOT NULL
+      AND event IN ('FIRST_LOG', 'INTRO_FB_START', 'INTRO_FB_START_FINISH',
+                    'ALL_LOAD_FB', 'ALL_LOAD_INTRO', 'ALL_LOAD_INTRO_FINISH')
+),
+s AS (
+    SELECT
+        grp, seg,
+        COUNTIF(event = 'FIRST_LOG')             AS first_log,
+        COUNTIF(event = 'INTRO_FB_START_FINISH') AS fb_init_done,
+        COUNTIF(event = 'ALL_LOAD_FB')           AS fb_ready,
+        COUNTIF(event = 'ALL_LOAD_INTRO')        AS intro_loaded,
+        COUNTIF(event = 'ALL_LOAD_INTRO_FINISH') AS intro_shown
+    FROM src
+    WHERE grp IS NOT NULL
+    GROUP BY 1, 2
+)
+SELECT
+    seg                                                     AS `기기`,
+    grp                                                     AS `빌드군`,
+    first_log                                               AS `FIRST_LOG`,
+    ROUND(fb_init_done / NULLIF(first_log, 0) * 100, 2)     AS `FB초기화완료_pct`,
+    ROUND(fb_ready     / NULLIF(first_log, 0) * 100, 2)     AS `FB준비완료_pct`,
+    ROUND(intro_loaded / NULLIF(first_log, 0) * 100, 2)     AS `인트로씬로드_pct`,
+    ROUND(intro_shown  / NULLIF(first_log, 0) * 100, 2)     AS `인트로씬표시_pct`
+FROM s
+GROUP BY 1, 2, 3, 4, 5, 6, 7
+ORDER BY `기기`, `빌드군`</pre></div>
           </div>
         </details>
 
@@ -570,7 +649,7 @@ ORDER BY `빌드군` DESC</pre></div>
         <div class="foot">
           <b>전제와 한계</b>
           버전 경계 <code>485+ / 483~484 / 477이하</code>는 <b>가정</b>입니다 — 484가 실제로 배포됐는지,
-          485가 최종 빌드 번호가 맞는지를 <b>Q0로 먼저 확인</b>하고 네 쿼리의 <code>CASE</code>를 함께 고쳐야 합니다.
+          485가 최종 빌드 번호가 맞는지를 <b>Q0로 먼저 확인</b>하고 나머지 쿼리의 <code>CASE</code>를 함께 고쳐야 합니다.
           NRU 판정을 <code>logincount_total &lt;= 1</code>로 잡은 것은 위 곡선의 <code>= 1</code>보다 넓은 조건이라
           0이 섞인 세션까지 들어옵니다(허브의 다른 로딩 문서와 맞춘 조건) — 483 수치를 재산출해 함께 갈아 끼우는 이유입니다.
           Q1·Q2는 <b>같은 기간에 세 빌드가 공존한다는 전제</b>입니다. 485가 100% 롤아웃되어 483 트래픽이 말라붙으면
