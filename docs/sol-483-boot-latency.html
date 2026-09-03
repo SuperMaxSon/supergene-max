@@ -72,7 +72,7 @@
           <span class="tag">BigQuery</span>
           <span class="tag">완주 세션 기준</span>
           <span class="tag">2026-08-31 ~ 09-03</span>
-          <span class="tag">2026-09-03 17:25 갱신</span>
+          <span class="tag">2026-09-03 17:28 갱신</span>
         </div>
       </div>
     </header>
@@ -334,7 +334,11 @@
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">쿼리 전문</h3>
         <p class="doc-h2-sub">
-          여섯 쿼리 모두 맨 위 <code>d_from</code> · <code>d_to</code> 두 상수만 고쳐서 돌립니다.
+          여섯 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'</code> 한 줄만 고쳐서 돌립니다.
+          <b>일부러 <code>DECLARE</code>를 쓰지 않았습니다</b> — 상수를 선언하면 BigQuery가 이걸 스크립트로 보고
+          <code>Could not compute bytes processed estimate for script</code>를 띄워
+          <strong>실행 전 스캔 비용을 못 보게 됩니다.</strong> <code>data</code>를 스캔하는 쿼리라 비용 확인이 가장 필요한 쪽이므로
+          날짜는 리터럴로 박아 둡니다(허브의 다른 BigQuery 문서와 같은 방식).
           Q1·Q2는 <b>세 빌드군을 한 번에</b> 뽑으므로 483·477 수치도 이 쿼리로 다시 나옵니다 —
           위 표의 기존 483 수치와 소수 ms 단위로 어긋날 수 있고, 그때는 <strong>새로 뽑은 값으로 전부 교체</strong>합니다.
           한 쿼리 안에서 나온 값끼리만 비교해야 이상치 컷과 중복 제거 조건이 같습니다.
@@ -347,9 +351,7 @@
             <div class="table-scroll"><pre>-- 먼저 이걸 돌린다. 485가 실제로 몇 번부터 올라왔는지(484가 존재하는지)와
 -- NRU 세션이 판정에 쓸 만큼 쌓였는지를 확인하기 전에는 아래 다섯을 돌릴 이유가 없다.
 -- 세션 = (player_id, logincount_total) 한 쌍 = 로그인 1회.
-DECLARE d_from DATE DEFAULT DATE '2026-09-10';   -- 485 배포 다음 날로 고친다
-DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
-
+-- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다(485 배포 다음 날 ~ +3일).
 SELECT
     client_version                    AS `빌드`,
     COUNTIF(logincount_total &lt;= 1)    AS `NRU_세션`,
@@ -358,7 +360,7 @@ SELECT
     MIN(log_date)                     AS `첫날`,
     MAX(log_date)                     AS `마지막날`
 FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN d_from AND d_to
+WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
   AND (is_dev = FALSE OR is_dev IS NULL)
   AND player_id &gt; 0
   AND logincount_total IS NOT NULL
@@ -374,10 +376,7 @@ ORDER BY 1 DESC</pre></div>
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- 위 두 곡선을 그대로 3군으로 확장한 쿼리.
 -- 결과를 (구분, 로그, 빌드군) 순으로 받아 D 객체의 3원소 배열에 그대로 밀어 넣는다.
-DECLARE d_from DATE DEFAULT DATE '2026-09-10';
-DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
-DECLARE cap_ms INT64 DEFAULT 600000;             -- 10분 넘는 값은 이상치로 버린다
-
+-- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다. 600000 = 10분, 넘는 값은 이상치로 버린다.
 WITH src AS (
     SELECT
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS sk,
@@ -391,7 +390,7 @@ WITH src AS (
         CAST(JSON_VALUE(data, '$.time') AS INT64)  AS t,
         log_time
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN d_from AND d_to
+    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -409,7 +408,7 @@ WITH src AS (
 ),
 one AS (        -- 한 세션에서 같은 로그가 두 번 찍히면 첫 번째만 남긴다
     SELECT * FROM src
-    WHERE grp IS NOT NULL AND t BETWEEN 0 AND cap_ms
+    WHERE grp IS NOT NULL AND t BETWEEN 0 AND 600000
     QUALIFY ROW_NUMBER() OVER (PARTITION BY sk, event ORDER BY log_time, t) = 1
 ),
 done AS (       -- 완주 세션만. 중간 이탈은 Q2에서 따로 본다
@@ -439,9 +438,7 @@ ORDER BY `구분`, `로그`, `빌드군`</pre></div>
             <div class="table-scroll"><pre>-- Q1이 완주 세션만 보기 때문에 반드시 짝으로 돌려야 하는 쿼리다.
 -- 용량이 줄면 느린 회선에서 끝까지 오는 사람 자체가 늘고, 그러면 느린 세션이
 -- 표본에 다시 들어와 Q1의 p90은 오히려 나빠 보일 수 있다. 그때 판정은 이 쿼리가 한다.
-DECLARE d_from DATE DEFAULT DATE '2026-09-10';
-DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
-
+-- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다.
 WITH src AS (
     SELECT
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS sk,
@@ -453,7 +450,7 @@ WITH src AS (
         IF(logincount_total &lt;= 1, 'NRU', 'RU')     AS seg,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN d_from AND d_to
+    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -499,17 +496,14 @@ ORDER BY `구분`, `빌드군`</pre></div>
 --   · 신규 여부를 data.isNewDevice (main.js가 직접 싣는 값)로 가르고
 --   · 세션이 아니라 로그 단위 분포로 낸다.
 -- ALL_* 는 tryLog() 가 기기 접미사 붙은 로그와 함께 접미사 없이 한 번 더 보내는 집계용이다.
-DECLARE d_from DATE DEFAULT DATE '2026-09-10';
-DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
-DECLARE cap_ms INT64 DEFAULT 600000;
-
+-- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다. 600000 = 10분 이상치 컷.
 WITH src AS (
     SELECT
         IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
         event,
         CAST(JSON_VALUE(data, '$.time') AS INT64) AS t
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN d_from AND d_to
+    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.time') IS NOT NULL
       AND CAST(JSON_VALUE(data, '$.client_version') AS INT64) &gt;= 485
@@ -531,7 +525,7 @@ SELECT
     APPROX_QUANTILES(t, 100)[OFFSET(50)]   AS `p50_ms`,
     APPROX_QUANTILES(t, 100)[OFFSET(90)]   AS `p90_ms`
 FROM src
-WHERE t BETWEEN 0 AND cap_ms
+WHERE t BETWEEN 0 AND 600000
 GROUP BY 1, 2
 ORDER BY `기기`, `p50_ms`</pre></div>
           </div>
@@ -545,9 +539,7 @@ ORDER BY `기기`, `p50_ms`</pre></div>
 -- 그래서 지연 대신 "몇 %가 다음 단계까지 왔나"로 두 빌드를 비교한다.
 -- 용량이 줄면 ALL_LOAD_INTRO 도달률이 올라가야 한다 — 여기가 다운로드 비용이 실리는 지점이다.
 -- 분모는 FIRST_LOG = main.js 가 실행된 모든 브라우저.
-DECLARE d_from DATE DEFAULT DATE '2026-09-10';
-DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
-
+-- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다.
 WITH src AS (
     SELECT
         CASE
@@ -558,7 +550,7 @@ WITH src AS (
         IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN d_from AND d_to
+    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.client_version') IS NOT NULL
       AND event IN ('FIRST_LOG', 'INTRO_FB_START', 'INTRO_FB_START_FINISH',
@@ -585,7 +577,6 @@ SELECT
     ROUND(intro_loaded / NULLIF(first_log, 0) * 100, 2)     AS `인트로씬로드_pct`,
     ROUND(intro_shown  / NULLIF(first_log, 0) * 100, 2)     AS `인트로씬표시_pct`
 FROM s
-GROUP BY 1, 2, 3, 4, 5, 6, 7
 ORDER BY `기기`, `빌드군`</pre></div>
           </div>
         </details>
@@ -598,15 +589,13 @@ ORDER BY `기기`, `빌드군`</pre></div>
 -- "빠진 게 있어서 안 뜬다"가 같은 변경에서 나온다. 이 쿼리가 그 뒷면을 본다.
 -- 분모는 FIRST_LOG = 부팅을 시도한 모든 브라우저.
 -- 아래 이탈·실패 로그는 2026-09-02 신설이라 483에는 없다 — 절대값으로만 판정한다.
-DECLARE d_from DATE DEFAULT DATE '2026-09-10';
-DECLARE d_to   DATE DEFAULT DATE '2026-09-13';
-
+-- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다.
 WITH src AS (
     SELECT
         CAST(JSON_VALUE(data, '$.client_version') AS INT64) AS ver,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN d_from AND d_to
+    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.client_version') IS NOT NULL
       AND event IN (
