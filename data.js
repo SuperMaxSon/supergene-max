@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-03 10:06",
+  updated: "2026-09-03 10:33",
 };
 
 /* --------------------------------------------------------------------------
@@ -98,10 +98,32 @@ const SECTIONS = [
         url: "docs/merge-feedback-anim.html",
         project: "smg",
         status: "초안",
-        version: "v3.7",
-        updated: "2026-09-01 16:04",
+        version: "v4.1",
+        updated: "2026-09-03 10:33",
         pinned: false,
         tags: ["연출", "튜닝 도구", "인터랙티브"],
+      },
+      {
+        title: "아이템 체인 검수대",
+        desc: "레벨 1~9 아이템을 나란히 놓고 실루엣·그레이스케일로 바꿔 보고, 실제 셀 크기와 폰 배율로 줄여 본다. canvas 로 픽셀을 읽어 인접 레벨의 실루엣 면적·색 거리·명도 대비를 재고, 세 단서가 전부 미달인 쌍을 구분 위험으로 잡는다. 엑셀 표는 긁어 붙이고 이미지는 끌어다 놓는다.",
+        url: "docs/item-chain-review.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-03 10:33",
+        pinned: false,
+        tags: ["아트", "검수 도구", "인터랙티브"],
+      },
+      {
+        title: "대화 연출 미리보기",
+        desc: "엑셀에 정리한 대사 표를 그대로 긁어 붙이면 폰 프레임 안에서 그 대화가 돈다. 초상 등장·타이핑·강조 값 28개를 슬라이더로 맞춰 cc.tween 상수로 가져간다. 대사창과 글꼴·폭이 같은 자로 실제 렌더 높이를 재서, 넘치는 대사를 줄 수째 표로 잡아 준다.",
+        url: "docs/dialogue-preview.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-03 10:33",
+        pinned: false,
+        tags: ["대사", "연출", "튜닝 도구", "인터랙티브"],
       },
       {
         title: "아이소메트릭 데코 영역 — 등장 연출 · 레이어",

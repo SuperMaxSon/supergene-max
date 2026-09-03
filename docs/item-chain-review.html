@@ -1,0 +1,1836 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>아이템 체인 검수대</title>
+    <meta
+      name="description"
+      content="머지 아이템 체인을 게임에 붙이기 전에 문서 안에서 검수한다. 시트를 붙여넣고 이미지를 떨구면 셀 크기·축소 배율·실루엣으로 보고, 인접 레벨의 면적·색·대비를 픽셀로 재서 구분 위험 쌍을 짚어 준다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=icx1" />
+  </head>
+  <body class="icx-doc">
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#chain">체인 올리기</a>
+        <a class="nav-back" href="#sheet">시트 규격</a>
+        <a class="nav-back" href="#view">검수대</a>
+        <a class="nav-back" href="#pair">인접 비교</a>
+        <a class="nav-back" href="#board">보드 미리보기</a>
+        <a class="nav-back" href="#judge">자동 판정</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">아트 · 검수 도구</div>
+        <h1 class="doc-title">아이템 체인 검수대</h1>
+        <p class="doc-lede">
+          머지 아트의 최대 난제는 <b>"레벨 5랑 6이 구분이 안 된다"</b> 입니다.
+          100% 로 그린 그림을 게임에 붙여 봐야 알게 되는 이 왕복을 여기서 끝냅니다.
+          시트를 그대로 붙여넣고 이미지를 떨구면 셀 크기·축소 배율·실루엣으로 바로 보고,
+          인접 레벨의 <b>면적·색·명도 대비를 픽셀로 재서</b> 구분이 위험한 쌍을 짚어 줍니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
+          <span class="tag">아트 검수용</span>
+          <span class="tag">시트 붙여넣기 · 이미지 드롭</span>
+          <span class="tag">픽셀 판정 · 구분 위험 경고</span>
+          <span class="tag" id="icx-ver">v1.0 · 2026-09-03 10:05</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 외곽선 모드용 필터. CSS 필터 조합으로는 "테두리만" 이 안 나온다 —
+         알파를 부풀린 뒤(feMorphology) 원본 알파를 빼야(operator="out") 껍데기만 남는다.
+         어두운 배경에서는 검은 선이 안 보여서 밝은 색 버전을 따로 둔다. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <filter id="icx-outline" x="-25%" y="-25%" width="150%" height="150%">
+          <feMorphology in="SourceAlpha" operator="dilate" radius="1.4" result="fat" />
+          <feComposite in="fat" in2="SourceAlpha" operator="out" result="ring" />
+          <feFlood flood-color="#16192a" result="ink" />
+          <feComposite in="ink" in2="ring" operator="in" />
+        </filter>
+        <filter id="icx-outline-lit" x="-25%" y="-25%" width="150%" height="150%">
+          <feMorphology in="SourceAlpha" operator="dilate" radius="1.4" result="fat" />
+          <feComposite in="fat" in2="SourceAlpha" operator="out" result="ring" />
+          <feFlood flood-color="#f4f6fa" result="ink" />
+          <feComposite in="ink" in2="ring" operator="in" />
+        </filter>
+      </defs>
+    </svg>
+
+    <main class="wrap wrap--wide">
+      <!-- 보기 조건은 본문 맨 위에 sticky 로 둔다. 검수는 "이 조건에서 보면 어떤가" 를
+           계속 갈아 끼우는 일이라, 조건 손잡이가 스크롤을 따라다녀야 한다. -->
+      <div class="icx-bar">
+        <span class="icx-bar-l">보기</span>
+        <div class="icx-seg" id="icx-mode">
+          <button type="button" data-md="raw" aria-pressed="true">원본</button>
+          <button type="button" data-md="sil" aria-pressed="false">실루엣</button>
+          <button type="button" data-md="gray" aria-pressed="false">흑백</button>
+          <button type="button" data-md="edge" aria-pressed="false">외곽선</button>
+        </div>
+
+        <span class="icx-bar-l">배경</span>
+        <div class="icx-seg" id="icx-bg">
+          <button type="button" data-bg="board" aria-pressed="true">보드색</button>
+          <button type="button" data-bg="cell" aria-pressed="false">셀색</button>
+          <button type="button" data-bg="light" aria-pressed="false">밝은</button>
+          <button type="button" data-bg="dark" aria-pressed="false">어두운</button>
+        </div>
+
+        <span class="icx-bar-l">배율</span>
+        <div class="icx-seg" id="icx-zoom">
+          <button type="button" data-zm="1" aria-pressed="true">1×</button>
+          <button type="button" data-zm="0.5" aria-pressed="false">0.5×</button>
+          <button type="button" data-zm="0.35" aria-pressed="false">0.35×</button>
+        </div>
+
+        <span class="icx-bar-l">셀</span>
+        <span class="icx-ctl">
+          <input type="range" class="icx-rng" id="icx-cell" min="40" max="140" step="2" value="72" aria-label="셀 크기" />
+          <span class="icx-val" id="icx-cellv">72px</span>
+        </span>
+
+        <span class="icx-bar-l">채움</span>
+        <span class="icx-ctl">
+          <input type="range" class="icx-rng" id="icx-fit" min="55" max="145" step="1" value="100" aria-label="아이템 채움 비율" />
+          <span class="icx-val" id="icx-fitv">100%</span>
+        </span>
+
+        <button type="button" class="icx-btn is-primary" id="icx-ioopen">시트 넣기 · 내보내기</button>
+        <button type="button" class="icx-btn" id="icx-clearimg">이미지 비우기</button>
+        <button type="button" class="icx-btn" id="icx-resetall">전부 기본값</button>
+        <span class="icx-badge" id="icx-badge" hidden></span>
+
+        <span class="icx-bar-l icx-bar-say">
+          <b>이미지는 이 세션에만 남습니다 — 새로고침하면 다시 올려 주세요.</b>
+          체인 정의(이름·레벨·파일명)만 이 브라우저에 저장됩니다.
+        </span>
+      </div>
+
+      <!-- 시트/체인 주고받기 창. 여는 버튼이 sticky 툴바에 있어서, 패널을 문서 흐름에
+           두면 아래쪽에서 눌렀을 때 화면에 아무 일도 안 일어난다. 모달은 스크롤 위치와
+           무관하게 같은 자리에 뜬다. 네이티브 <dialog> 라 ESC·포커스 가둠·backdrop 이 공짜다. -->
+      <dialog class="icx-io" id="icx-io" aria-label="시트 넣기 · 내보내기">
+        <div class="icx-io-head">
+          <h2>시트 넣기 · 내보내기</h2>
+          <button type="button" class="icx-x" id="icx-io-x" aria-label="닫기">✕</button>
+        </div>
+
+        <div class="icx-io-sec">
+          <div class="icx-io-t">가져오기</div>
+          <p class="icx-io-lead">
+            <b>엑셀·구글시트에서 표 범위를 그대로 긁어 붙여넣으세요.</b>
+            첫 줄을 머리글로 읽습니다 — 컬럼 순서는 상관없습니다.
+            내려받은 <code>.csv</code> · <code>.json</code> 도 같은 칸에 넣으면 됩니다.
+          </p>
+          <textarea id="icx-io-ta" spellcheck="false" placeholder="체인	레벨	파일명	이름	비고&#10;청소 도구	1	item_01.png	스펀지 조각&#10;청소 도구	2	item_02.png	스펀지&#10;청소 도구	3	item_03.png	비누"></textarea>
+          <div class="icx-io-row">
+            <button type="button" class="icx-btn is-primary" id="icx-io-apply">적용</button>
+            <button type="button" class="icx-btn" id="icx-io-pick">파일 열기</button>
+            <input type="file" id="icx-io-file" accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json" hidden />
+            <span class="icx-io-hint">창 안에 <code>.csv</code> · <code>.tsv</code> · <code>.json</code> 파일을 끌어다 놓아도 됩니다</span>
+          </div>
+          <div class="icx-io-msg" id="icx-io-msg"></div>
+        </div>
+
+        <div class="icx-io-sec">
+          <div class="icx-io-t">내보내기</div>
+          <div class="icx-io-row">
+            <button type="button" class="icx-btn" id="icx-io-csv">.csv 내려받기</button>
+            <button type="button" class="icx-btn" id="icx-io-json">.json 내려받기</button>
+            <button type="button" class="icx-btn" id="icx-io-copy">판정 요약 복사</button>
+          </div>
+          <div class="icx-io-row">
+            <span class="icx-io-hint">
+              <code>.csv</code> 는 엑셀에서 바로 열려 편집한 뒤 도로 붙여넣는 경로,
+              <code>.json</code> 은 있는 그대로 되살리는 경로입니다.
+              이미지는 어느 쪽에도 담기지 않습니다.
+            </span>
+          </div>
+        </div>
+      </dialog>
+
+      <section class="doc-section" id="chain">
+        <h2 class="doc-h2">
+          체인 올리기
+          <span class="doc-h2-sub">시트가 어떤 파일명이 몇 레벨인지 정하고, 이미지는 따로 떨군다</span>
+        </h2>
+
+        <div class="icx-drop" id="icx-drop">
+          <div class="icx-drop-t">여기에 아이템 이미지를 끌어다 놓으세요</div>
+          <div class="icx-drop-s">
+            여러 장을 한꺼번에 떨구면 시트의 <b>파일명</b> 과 맞춰 자동 배정하고,
+            못 맞춘 것은 파일명 자연정렬 순으로 남은 레벨에 채웁니다.
+            <br />
+            <code>.csv</code> · <code>.tsv</code> · <code>.json</code> 을 떨구면 체인 정의로 읽습니다.
+          </div>
+          <div class="icx-drop-r">
+            <button type="button" class="icx-btn" id="icx-drop-pick">파일 고르기</button>
+            <input type="file" id="icx-drop-file" accept="image/*,.csv,.tsv,.txt,.json" multiple hidden />
+          </div>
+        </div>
+
+        <div class="icx-chainrow">
+          <span class="icx-bar-l">체인</span>
+          <div class="icx-seg" id="icx-chains"></div>
+          <input type="text" class="icx-txt" id="icx-chainname" aria-label="체인 이름" />
+          <button type="button" class="icx-btn" id="icx-addchain">체인 추가</button>
+          <button type="button" class="icx-btn" id="icx-delchain">체인 삭제</button>
+          <span class="icx-bar-l">레벨</span>
+          <button type="button" class="icx-btn" id="icx-addlv">＋ 레벨</button>
+          <button type="button" class="icx-btn" id="icx-dellv">－ 레벨</button>
+        </div>
+
+        <div class="icx-slots" id="icx-slots"></div>
+        <div class="icx-assign" id="icx-assign" hidden></div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이미지가 저장되지 않는 이유</div>
+            <p>
+              브라우저 저장소(<code>localStorage</code>)는 도메인당 대략 5MB 입니다.
+              512px PNG 한 장을 base64 로 바꾸면 그것만으로 수백 KB 라,
+              9레벨 한 체인이면 한도를 그대로 넘깁니다. 넘기는 순간 저장이 통째로 실패해
+              <strong>체인 정의까지 같이 날아갑니다.</strong>
+              그래서 이 문서는 <strong>가볍고 다시 만들기 어려운 것(체인 이름·레벨·파일명·보기 설정)만 저장</strong>하고,
+              무겁고 원본이 따로 있는 것(이미지)은 세션에만 둡니다.
+              시트에 <b>파일명</b> 을 적어 두면 새로고침 뒤 같은 이미지를 다시 떨궜을 때
+              <strong>같은 레벨로 자동 복귀</strong>합니다 — 그게 파일명 컬럼의 진짜 값어치입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="sheet">
+        <h2 class="doc-h2">
+          시트 규격
+          <span class="doc-h2-sub">이 표대로 스프레드시트를 만들면 그대로 긁어 붙일 수 있다</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>컬럼</th>
+                <th>알아듣는 머리글</th>
+                <th>필수</th>
+                <th>예시값</th>
+                <th>설명</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>체인</b></td>
+                <td><code>체인</code> <code>체인명</code> <code>chain</code> <code>group</code></td>
+                <td>선택</td>
+                <td>청소 도구</td>
+                <td>같은 값끼리 한 체인으로 묶입니다. 비어 있으면 전부 한 체인으로 봅니다.</td>
+              </tr>
+              <tr>
+                <td><b>레벨</b></td>
+                <td><code>레벨</code> <code>단계</code> <code>level</code> <code>lv</code> <code>tier</code></td>
+                <td>권장</td>
+                <td>5</td>
+                <td>정수. 없으면 <b>행 순서</b>를 레벨로 쓰고, 그 사실을 결과 메시지에 적어 알립니다.</td>
+              </tr>
+              <tr>
+                <td><b>파일명</b></td>
+                <td><code>파일명</code> <code>파일</code> <code>이미지</code> <code>file</code> <code>filename</code> <code>image</code></td>
+                <td>권장</td>
+                <td>item_05.png</td>
+                <td>떨군 이미지를 이 이름에 맞춰 자동 배정합니다. 확장자·대소문자·<code>_</code>·<code>-</code>·공백은 무시하고 맞춥니다.</td>
+              </tr>
+              <tr>
+                <td><b>이름</b></td>
+                <td><code>이름</code> <code>라벨</code> <code>아이템</code> <code>label</code> <code>name</code></td>
+                <td>권장</td>
+                <td>세제통</td>
+                <td>판정표·비교창에 그대로 나옵니다. 없으면 <code>Lv.5</code> 로 대신합니다.</td>
+              </tr>
+              <tr>
+                <td><b>비고</b></td>
+                <td><code>비고</code> <code>메모</code> <code>note</code> <code>memo</code></td>
+                <td>선택</td>
+                <td>6과 헷갈린다는 QA 지적</td>
+                <td>슬롯 카드에 한 줄로 붙습니다. 판정에는 쓰이지 않습니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">붙여넣기가 읽히는 순서</div>
+            <p>
+              들어온 텍스트는 <strong>탭 구분(TSV) → 쉼표 구분(CSV) → JSON 봉투 → JSON 알맹이</strong> 순으로 시도합니다.
+              엑셀·구글시트에서 셀 범위를 복사하면 클립보드에 탭 구분 표가 들어오므로 그게 1순위입니다.
+              따옴표로 감싼 셀 안의 쉼표·줄바꿈도 그대로 살립니다 —
+              <b>비고</b> 칸에 문장을 길게 적어도 컬럼이 밀리지 않습니다.
+              읽고 나면 <strong>어느 형식으로 읽었는지</strong>와
+              <strong>못 알아본 머리글 이름</strong>을 결과 메시지에 그대로 적어 줍니다.
+              조용히 버리지 않습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="view">
+        <h2 class="doc-h2">
+          검수대
+          <span class="doc-h2-sub">셀 크기에 대입 · 폰 크기로 축소 · 실루엣만 남기기</span>
+        </h2>
+
+        <div class="icx-stage" id="icx-strip" data-mode="raw" data-bg="board"></div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--smg)">
+            <div class="note-title">여기서 보는 세 가지</div>
+            <p>
+              <strong>셀 대입</strong> — 점선이 실제 셀 경계입니다.
+              아트가 점선 밖으로 삐져나오면 게임에서 옆 셀을 침범하고,
+              점선 안쪽에 크게 남으면 여백만 큰 아트입니다. 채움 슬라이더로 그 경계를 찾습니다.
+              <strong>축소 보기</strong> — 0.35× 는 7×9 보드를 폰 화면에 다 넣었을 때의 실제 크기입니다.
+              여기서 뭉개지면 게임에서도 뭉개집니다.
+              <strong>실루엣</strong> — 색을 지웠을 때도 레벨이 갈리는지 봅니다.
+              색이 유일한 단서면 저조도·색약·축소 어느 쪽에서도 먼저 무너집니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="pair">
+        <h2 class="doc-h2">
+          인접 레벨 비교
+          <span class="doc-h2-sub">기본값은 자동 판정이 가장 위험하다고 짚은 쌍</span>
+        </h2>
+
+        <div class="icx-chainrow">
+          <span class="icx-bar-l">왼쪽</span>
+          <select class="icx-sel" id="icx-pa" aria-label="왼쪽 레벨"></select>
+          <span class="icx-bar-l">오른쪽</span>
+          <select class="icx-sel" id="icx-pb" aria-label="오른쪽 레벨"></select>
+          <button type="button" class="icx-btn is-primary" id="icx-pworst">가장 위험한 쌍으로</button>
+        </div>
+
+        <div class="icx-stage icx-pair" id="icx-pstage" data-mode="raw" data-bg="board"></div>
+        <div class="icx-pinfo" id="icx-pinfo"></div>
+      </section>
+
+      <section class="doc-section" id="board">
+        <h2 class="doc-h2">
+          보드 채우기 미리보기
+          <span class="doc-h2-sub">한 레벨씩 볼 때는 멀쩡하다가 섞이면 무너지는 경우가 있다</span>
+        </h2>
+
+        <div class="icx-chainrow">
+          <span class="icx-bar-l">가로</span>
+          <input type="number" class="icx-num" id="icx-cols" min="3" max="12" step="1" value="7" aria-label="보드 가로 칸" />
+          <span class="icx-bar-l">세로</span>
+          <input type="number" class="icx-num" id="icx-rows" min="3" max="12" step="1" value="9" aria-label="보드 세로 칸" />
+          <button type="button" class="icx-btn" id="icx-shuffle">다시 섞기</button>
+          <span class="icx-io-hint">낮은 레벨이 많이 나오도록 가중치를 줬습니다 — 실제 보드가 그렇습니다</span>
+        </div>
+
+        <div class="icx-boardwrap">
+          <div class="icx-stage icx-board" id="icx-board" data-mode="raw" data-bg="board"></div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="judge">
+        <h2 class="doc-h2">
+          자동 판정
+          <span class="doc-h2-sub">눈이 아니라 픽셀이 센다 — 인접 레벨의 면적 · 색 · 명도 대비</span>
+        </h2>
+
+        <div class="icx-chainrow">
+          <span class="icx-bar-l">면적차</span>
+          <span class="icx-ctl">
+            <input type="range" class="icx-rng" id="icx-ta" min="2" max="40" step="1" value="12" aria-label="면적 차이 임계" />
+            <span class="icx-val" id="icx-tav">12%</span>
+          </span>
+          <span class="icx-bar-l">색차</span>
+          <span class="icx-ctl">
+            <input type="range" class="icx-rng" id="icx-tc" min="5" max="150" step="5" value="40" aria-label="색 차이 임계" />
+            <span class="icx-val" id="icx-tcv">40</span>
+          </span>
+          <span class="icx-bar-l">대비비</span>
+          <span class="icx-ctl">
+            <input type="range" class="icx-rng" id="icx-tk" min="1.05" max="2.5" step="0.05" value="1.25" aria-label="명도 대비비 임계" />
+            <span class="icx-val" id="icx-tkv">1.25</span>
+          </span>
+          <span class="icx-bar-l">알파</span>
+          <span class="icx-ctl">
+            <input type="range" class="icx-rng" id="icx-tal" min="1" max="128" step="1" value="24" aria-label="실루엣 알파 임계" />
+            <span class="icx-val" id="icx-talv">24</span>
+          </span>
+        </div>
+
+        <div class="icx-jsum" id="icx-jsum"></div>
+
+        <div class="table-scroll">
+          <table class="icx-jt">
+            <thead>
+              <tr>
+                <th>레벨</th>
+                <th>이름</th>
+                <th style="text-align: right">실루엣 면적</th>
+                <th style="text-align: right">가로세로 채움</th>
+                <th>평균 색</th>
+                <th style="text-align: right">상대 휘도</th>
+                <th style="text-align: right">↕ 면적차</th>
+                <th style="text-align: right">↕ 색차</th>
+                <th style="text-align: right">↕ 대비비</th>
+                <th>판정</th>
+              </tr>
+            </thead>
+            <tbody id="icx-jbody"></tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">왜 이 세 가지로 판정하나</div>
+            <p>
+              사람이 머지 보드에서 아이템을 가르는 단서는 사실상 셋뿐입니다 —
+              <strong>얼마나 큰가(실루엣 면적)</strong>,
+              <strong>무슨 색인가(평균 색)</strong>,
+              <strong>밝은가 어두운가(명도 대비)</strong>.
+              모양의 디테일은 보드 크기에서 이미 사라집니다.
+              <br />
+              <b>실루엣 면적</b>은 알파가 임계값을 넘는 픽셀의 비율입니다.
+              레벨이 올라가면 아이템이 커지는 게 이 장르의 기본 문법이라,
+              면적이 안 늘면 "성장했다" 는 신호 자체가 없습니다.
+              절대 차이가 아니라 <b>큰 쪽 대비 상대 차이</b>로 재는데,
+              낮은 레벨은 원래 면적이 작아서 절대값으로 재면 항상 통과해 버리기 때문입니다.
+              <br />
+              <b>평균 색</b>은 알파를 넘는 픽셀만의 RGB 평균이고, 차이는 RGB 공간의 거리입니다.
+              배경 투명 영역은 빼야 아이템 자체의 색이 나옵니다.
+              <br />
+              <b>대비비</b>는 sRGB 를 선형화한 상대 휘도로 계산한 WCAG 공식
+              <code>(밝은쪽+0.05) / (어두운쪽+0.05)</code> 입니다.
+              색을 못 가려도 명암이 다르면 사람은 구분합니다 — 그 마지막 안전망을 재는 값입니다.
+            </p>
+          </div>
+
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">판정 규칙 — 단서가 하나도 없을 때만 "위험"</div>
+            <p>
+              세 지표를 각각 임계값과 견줘 <b>통과 / 미달</b>을 매기고, 통과 개수로 판정합니다.
+              <strong>2개 이상 통과 → 양호</strong>,
+              <strong>1개만 통과 → 주의</strong>,
+              <strong>하나도 못 넘김 → 위험</strong>.
+              색이 완전히 달라도 크기가 같으면 그건 문제가 아닙니다. 색이 단서를 하나 대고 있으니까요.
+              문제는 <strong>크기도 색도 명암도 전부 비슷한 쌍</strong>입니다 — 그때 "5랑 6이 구분이 안 된다" 가 나옵니다.
+              그래서 OR 이 아니라 AND 로, 단서가 <b>전멸</b>했을 때만 위험으로 올립니다.
+            </p>
+          </div>
+
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">50대+ 타깃이라 대비를 특히 본다</div>
+            <p>
+              이 게임의 주 사용자는 50대 이상입니다. 나이가 들면 수정체가 누렇게 변해
+              <strong>파랑 계열의 변별과 저대비 판별이 먼저 떨어집니다.</strong>
+              프로젝트 접근성 기준이 고대비(<code>#D32F2F</code> / <code>#212121</code>)를 못 박은 것도 같은 이유입니다.
+              그래서 <b>대비비만 미달인 쌍</b>은 다른 지표를 통과했더라도 판정 옆에 따로 표시합니다 —
+              20대 QA 눈에는 갈리는데 실사용자 눈에는 안 갈리는 구간이 정확히 거기입니다.
+              기본 임계 <code>1.25</code> 는 WCAG 최소치(<code>3.0</code>)보다 한참 낮은 값인데,
+              여기서 재는 건 텍스트 가독성이 아니라 <b>두 그림이 서로 다르게 보이는가</b> 라서
+              그대로 쓰면 전부 위험으로 뜹니다. 팀 눈높이에 맞춰 슬라이더로 조이세요.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b>
+          셀 72px · 아이템 66px 은 <code>story-merge-proto-client</code> 의
+          <code>MergeBoardPresentationConfig</code> 실측값이고, 보드색 <code>#FFF6E8</code> ·
+          셀색 <code>#F2DCB6</code> 도 같은 코드의 <code>MERGE_BOARD_PALETTE</code> 값입니다.
+          기본 보드 7×9 는 프로토 기본 배치입니다.
+          면적·색·휘도는 이 문서가 <code>canvas</code> 로 실제 픽셀을 읽어 계산한 값이고,
+          판정 임계값(<code>12%</code> · <code>40</code> · <code>1.25</code>)은
+          이 문서가 제안하는 출발점일 뿐 팀 합의값이 아닙니다.
+          이미지를 올리지 않았을 때 보이는 9레벨은 <b>내장 더미</b>이며 실제 아트가 아닙니다 —
+          5·6 이 일부러 거의 같게 그려져 있어 판정이 무엇을 잡아내는지 보여 줍니다.
+          모든 계산은 브라우저 안에서만 돌고 이미지는 어디로도 전송되지 않습니다.
+        </div>
+      </section>
+    </main>
+
+    <script>
+      /* ======================================================================
+         아이템 체인 검수대
+
+         구조를 세 층으로 나눈다.
+           1) 소스   — 어떤 이미지가 어느 체인·레벨에 앉아 있는가 (IMGBY · SLOT)
+           2) 측정   — 그 이미지의 픽셀을 재서 수치로 (analyze · STATS)
+           3) 표현   — 같은 소스를 여러 조건(모드·배경·배율·셀)으로 그린다 (render*)
+
+         화면에 보이는 그림과 판정표가 쓰는 그림이 반드시 같은 소스여야 한다.
+         "화면에선 달라 보이는데 표는 같다고 한다" 가 되는 순간 이 도구는 못 쓴다.
+         그래서 더미도 올린 이미지도 전부 data URI → <img> 한 길로만 들어온다.
+         ====================================================================== */
+      (function () {
+        "use strict";
+
+        function $(id) { return document.getElementById(id); }
+        function elm(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
+        function clampV(n, a, b) { return Math.min(b, Math.max(a, n)); }
+        function pad2(n) { return (n < 10 ? "0" : "") + n; }
+        function stampNow() {
+          var d = new Date();
+          return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
+            " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+        }
+        function hex2(n) { var s = Math.round(clampV(n, 0, 255)).toString(16); return s.length < 2 ? "0" + s : s; }
+        function rgbHex(c) { return "#" + (hex2(c[0]) + hex2(c[1]) + hex2(c[2])).toUpperCase(); }
+        /* 파일명 자연정렬. item_2 가 item_10 보다 앞에 와야 레벨 순서가 맞는다 —
+           사전순으로 붙이면 10 이 2 앞으로 튀어 체인이 통째로 어긋난다. */
+        function natCmp(a, b) { return String(a).localeCompare(String(b), "ko", { numeric: true, sensitivity: "base" }); }
+
+        function copyText(text, btn) {
+          function done() {
+            if (!btn) return;
+            var old = btn.textContent;
+            btn.textContent = "복사됨";
+            btn.classList.add("is-done");
+            setTimeout(function () { btn.textContent = old; btn.classList.remove("is-done"); }, 1200);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+          } else { fallback(); }
+          function fallback() {
+            var ta = elm("textarea");
+            ta.value = text;
+            ta.style.cssText = "position:fixed;opacity:0";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); done(); } catch (e) {}
+            document.body.removeChild(ta);
+          }
+        }
+
+        /* ====================================================================
+           내장 더미 체인 9레벨.
+
+           <symbol> + <use> 로 두면 화면에는 뜨지만 canvas 로는 못 읽는다 —
+           drawImage 는 문서 안의 SVG 조각이 아니라 이미지 리소스만 받는다.
+           이 문서의 본체가 "픽셀을 실제로 재는 것" 이라 더미도 올린 이미지와
+           똑같은 길(data URI → <img>)로 들어와야 판정표에 같이 오른다.
+           그래서 마크업이 아니라 문자열 생성기로 갖고 있는다.
+
+           5·6 은 일부러 크기 3%p · 색 거리 7 밖에 차이를 안 뒀다. 이 도구가 왜
+           필요한지를 기본 상태에서 바로 보여 주기 위한 미끼다.
+           ==================================================================== */
+        var DUMMY = [
+          { label: "스펀지 조각", body: "#F2C879", edge: "#DCA84F", accent: "#7FC9BA", size: 0.40, dots: 1, grip: 0 },
+          { label: "스펀지",     body: "#F0BE63", edge: "#C9922A", accent: "#7FC9BA", size: 0.50, dots: 2, grip: 0 },
+          { label: "비누",       body: "#EFD9A8", edge: "#D3B87A", accent: "#A8DED2", size: 0.57, dots: 2, grip: 0 },
+          { label: "솔",         body: "#C99A5A", edge: "#7A4E2B", accent: "#7A4E2B", size: 0.63, dots: 3, grip: 1 },
+          { label: "세제통",     body: "#8FC7B4", edge: "#1E5A55", accent: "#1E5A55", size: 0.70, dots: 3, grip: 1 },
+          { label: "세제통 대",  body: "#8AC3B2", edge: "#1E5A55", accent: "#1E5A55", size: 0.73, dots: 3, grip: 1 },
+          { label: "양동이",     body: "#6FB3D6", edge: "#2A5F7A", accent: "#FFF6E8", size: 0.80, dots: 4, grip: 1 },
+          { label: "청소 카트",  body: "#A88FD0", edge: "#4B3A78", accent: "#FFF6E8", size: 0.88, dots: 4, grip: 1 },
+          { label: "청소 로봇",  body: "#E4796B", edge: "#8C3A2E", accent: "#FFF6E8", size: 0.95, dots: 5, grip: 0 },
+        ];
+
+        function dummySVG(i) {
+          var s = DUMMY[i % DUMMY.length];
+          /* K 와 cy 는 "제일 큰 레벨이 128 틀 안에 다 들어오는가" 로 정해진 값이다.
+             size 는 레벨 간 비율을 정하는 값이지 절대 크기가 아니라서, 그대로 쓰면
+             8·9 레벨의 손잡이 위와 몸통 아래가 틀 밖으로 잘린다. 잘리면 면적 측정이
+             줄어들어 판정표가 거짓말을 한다 — 화면이 아니라 숫자가 먼저 깨진다. */
+          var K = 0.8;
+          var C = 128, h = (C * s.size * K) / 2, cx = 64, cy = 68;
+          var r = h * 0.4, sw = Math.max(2, h * 0.085);
+          var x = cx - h, y = cy - h, w = h * 2;
+          var o = [];
+          o.push('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">');
+          o.push('<defs><clipPath id="b"><rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + w + '" rx="' + r + '"/></clipPath></defs>');
+          if (s.grip) {
+            o.push('<rect x="' + (cx - h * 0.17) + '" y="' + (y - h * 0.46) + '" width="' + (h * 0.34) +
+              '" height="' + (h * 0.62) + '" rx="' + (h * 0.17) + '" fill="' + s.edge + '"/>');
+          }
+          o.push('<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + w + '" rx="' + r + '" fill="' + s.body + '"/>');
+          /* 아래쪽 띠는 몸통 라운드를 따라 잘려야 실루엣이 네모로 안 보인다 */
+          o.push('<g clip-path="url(#b)"><rect x="' + x + '" y="' + (cy + h * 0.24) + '" width="' + w +
+            '" height="' + (h * 1.1) + '" fill="' + s.accent + '"/></g>');
+          for (var d = 0; d < s.dots; d++) {
+            var t = (d + 1) / (s.dots + 1);
+            o.push('<circle cx="' + (x + w * t) + '" cy="' + (cy - h * 0.34) + '" r="' + (h * 0.13) + '" fill="' + s.edge + '"/>');
+          }
+          o.push('<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + w + '" rx="' + r +
+            '" fill="none" stroke="' + s.edge + '" stroke-width="' + sw + '"/>');
+          o.push("</svg>");
+          return o.join("");
+        }
+        /* base64 대신 encodeURIComponent 를 쓴다 — SVG 는 텍스트라 이쪽이 짧고,
+           btoa 는 한글 라벨이 섞이면 그대로 던진다. */
+        var DUMMY_URI = DUMMY.map(function (s, i) {
+          return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(dummySVG(i));
+        });
+
+        /* ====================================================================
+           상태
+           ==================================================================== */
+        var CID = 0;
+        function mkChain(name, n, useDummyLabels) {
+          var ch = { cid: ++CID, name: name, levels: [] };
+          for (var i = 0; i < n; i++) {
+            ch.levels.push({
+              level: i + 1,
+              label: useDummyLabels && DUMMY[i] ? DUMMY[i].label : "",
+              file: "",
+              note: "",
+            });
+          }
+          return ch;
+        }
+
+        var ST = {
+          chains: [mkChain("청소 도구 (내장 더미)", 9, true)],
+          active: 0,
+          mode: "raw",
+          bg: "board",
+          zoom: 1,
+          cell: 72,
+          fit: 100,
+          cols: 7,
+          rows: 9,
+          seed: 7,
+          thr: { area: 12, color: 40, contrast: 1.25, alpha: 24 },
+        };
+
+        /* 이미지는 두 갈래로 나눠 갖는다.
+           IMGBY — 정규화한 파일명 → data URI. 이번 세션에 떨어진 모든 그림.
+           SLOT  — "체인id|레벨" → 정규화한 파일명. 어느 그림이 어느 칸에 앉았나.
+           한 덩어리로 묶어 두면 시트를 다시 붙여넣을 때(체인 id 가 새로 발급된다)
+           올려 둔 이미지가 통째로 날아간다. 이렇게 갈라 두면 시트만 갈아 끼우고
+           파일명으로 도로 붙일 수 있다 — 그게 파일명 컬럼의 존재 이유다. */
+        var IMGBY = {};
+        var SLOT = {};
+
+        function normFile(n) {
+          return String(n).replace(/^.*[\\/]/, "").replace(/\.[^.]+$/, "").toLowerCase().replace(/[\s_\-.()]+/g, "");
+        }
+        function slotKey(ch, lv) { return ch.cid + "|" + lv.level; }
+        function chain() { return ST.chains[ST.active] || ST.chains[0]; }
+        function srcOf(ch, idx) {
+          var lv = ch.levels[idx];
+          var f = SLOT[slotKey(ch, lv)];
+          if (f && IMGBY[f]) return IMGBY[f];
+          /* 이미지가 없는 칸은 더미로 채운다. 9레벨을 넘어가면 되감는데,
+             빈 칸으로 두면 판정표에 구멍이 생겨 인접 비교가 끊긴다. */
+          return DUMMY_URI[idx % DUMMY_URI.length];
+        }
+        function hasImg(ch, idx) {
+          var f = SLOT[slotKey(ch, ch.levels[idx])];
+          return !!(f && IMGBY[f]);
+        }
+        function labelOf(ch, idx) {
+          var lv = ch.levels[idx];
+          return lv.label || ("Lv." + lv.level);
+        }
+
+        /* ====================================================================
+           측정 — canvas 로 픽셀을 실제로 읽는다.
+
+           data URI 라 same-origin 이고 canvas 가 오염되지 않아 getImageData 가 통한다.
+           원격 URL 을 물리면 여기서 SecurityError 로 죽으므로, 입력 경로를
+           FileReader(→ data URI) 하나로만 묶어 둔 것이기도 하다.
+           ==================================================================== */
+        var AN = 72;
+        var anCv = document.createElement("canvas");
+        anCv.width = AN; anCv.height = AN;
+        var anCx = anCv.getContext("2d", { willReadFrequently: true });
+        var anCache = {};
+
+        function srgbLin(c) {
+          c /= 255;
+          return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        }
+        function relLum(r, g, b) { return 0.2126 * srgbLin(r) + 0.7152 * srgbLin(g) + 0.0722 * srgbLin(b); }
+        function contrastRatio(l1, l2) {
+          var hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+          return (hi + 0.05) / (lo + 0.05);
+        }
+
+        function analyze(src, alphaT) {
+          var ck = alphaT + "@" + src;
+          if (anCache[ck]) return Promise.resolve(anCache[ck]);
+          return new Promise(function (res) {
+            var im = new Image();
+            im.onload = function () {
+              var iw = im.naturalWidth || im.width || AN;
+              var ih = im.naturalHeight || im.height || AN;
+              /* 화면과 같은 contain 규칙으로 그린다. 늘려 그리면 면적 비율이
+                 원본 비율과 달라져서 표의 숫자가 화면과 어긋난다. */
+              var k = Math.min(AN / iw, AN / ih);
+              var dw = iw * k, dh = ih * k;
+              anCx.clearRect(0, 0, AN, AN);
+              try { anCx.drawImage(im, (AN - dw) / 2, (AN - dh) / 2, dw, dh); } catch (e) { res(null); return; }
+              var d;
+              try { d = anCx.getImageData(0, 0, AN, AN).data; } catch (e) { res(null); return; }
+              var n = 0, sr = 0, sg = 0, sb = 0;
+              var minX = AN, minY = AN, maxX = -1, maxY = -1;
+              for (var y = 0; y < AN; y++) {
+                for (var x = 0; x < AN; x++) {
+                  var i = (y * AN + x) * 4;
+                  if (d[i + 3] <= alphaT) continue;
+                  n++;
+                  sr += d[i]; sg += d[i + 1]; sb += d[i + 2];
+                  if (x < minX) minX = x;
+                  if (x > maxX) maxX = x;
+                  if (y < minY) minY = y;
+                  if (y > maxY) maxY = y;
+                }
+              }
+              var st;
+              if (!n) {
+                st = { area: 0, rgb: [0, 0, 0], lum: 0, bw: 0, bh: 0, boxFill: 0 };
+              } else {
+                var rr = sr / n, gg = sg / n, bb = sb / n;
+                var bw = maxX - minX + 1, bh = maxY - minY + 1;
+                st = {
+                  area: (n / (AN * AN)) * 100,
+                  rgb: [rr, gg, bb],
+                  lum: relLum(rr, gg, bb),
+                  bw: (bw / AN) * 100,
+                  bh: (bh / AN) * 100,
+                  boxFill: (n / (bw * bh)) * 100,
+                };
+              }
+              anCache[ck] = st;
+              res(st);
+            };
+            im.onerror = function () { res(null); };
+            im.src = src;
+          });
+        }
+
+        var STATS = [];
+        var anToken = 0;
+        function measure() {
+          var my = ++anToken;
+          var ch = chain();
+          var jobs = ch.levels.map(function (lv, i) { return analyze(srcOf(ch, i), ST.thr.alpha); });
+          return Promise.all(jobs).then(function (out) {
+            /* 늦게 끝난 옛 측정이 새 측정을 덮어쓰면 표가 방금 지운 체인의
+               숫자를 보여 준다. 토큰이 다르면 그냥 버린다. */
+            if (my !== anToken) return null;
+            STATS = out;
+            return out;
+          });
+        }
+
+        /* 인접 쌍 판정. 통과한 지표 개수로 등급이 갈린다 — 자세한 근거는 본문 .note. */
+        function pairJudge(a, b) {
+          if (!a || !b) return null;
+          var mx = Math.max(a.area, b.area);
+          var dArea = mx <= 0 ? 0 : (Math.abs(a.area - b.area) / mx) * 100;
+          var dr = a.rgb[0] - b.rgb[0], dg = a.rgb[1] - b.rgb[1], db = a.rgb[2] - b.rgb[2];
+          var dCol = Math.sqrt(dr * dr + dg * dg + db * db);
+          var cr = contrastRatio(a.lum, b.lum);
+          var okA = dArea >= ST.thr.area;
+          var okC = dCol >= ST.thr.color;
+          var okK = cr >= ST.thr.contrast;
+          var pass = (okA ? 1 : 0) + (okC ? 1 : 0) + (okK ? 1 : 0);
+          return {
+            dArea: dArea, dCol: dCol, cr: cr,
+            okA: okA, okC: okC, okK: okK, pass: pass,
+            grade: pass === 0 ? "bad" : pass === 1 ? "warn" : "ok",
+          };
+        }
+        function allPairs() {
+          var out = [];
+          for (var i = 1; i < STATS.length; i++) {
+            var j = pairJudge(STATS[i - 1], STATS[i]);
+            if (j) { j.a = i - 1; j.b = i; out.push(j); }
+          }
+          return out;
+        }
+        function worstPair() {
+          var ps = allPairs();
+          if (!ps.length) return null;
+          var best = ps[0];
+          for (var i = 1; i < ps.length; i++) {
+            /* 통과 개수가 같으면 면적차가 작은 쪽이 더 위험하다 —
+               색은 배경·조명이 바뀌면 흔들리지만 크기는 안 흔들린다. */
+            if (ps[i].pass < best.pass || (ps[i].pass === best.pass && ps[i].dArea < best.dArea)) best = ps[i];
+          }
+          return best;
+        }
+
+        /* ====================================================================
+           표현 — 같은 소스를 조건만 바꿔 그린다
+           ==================================================================== */
+        function px(v) { return Math.round(v) + "px"; }
+        function itemNode(ch, idx, cellPx) {
+          var box = elm("div", "icx-item");
+          box.style.width = px(cellPx);
+          box.style.height = px(cellPx);
+          var cellBox = elm("div", "icx-cellbox");
+          var art = elm("img", "icx-art");
+          art.src = srcOf(ch, idx);
+          art.alt = labelOf(ch, idx);
+          art.draggable = false;
+          var side = (cellPx * ST.fit) / 100;
+          art.style.width = px(side);
+          art.style.height = px(side);
+          box.appendChild(cellBox);
+          box.appendChild(art);
+          return box;
+        }
+        function stageAttrs(el) {
+          el.setAttribute("data-mode", ST.mode);
+          el.setAttribute("data-bg", ST.bg);
+        }
+
+        function renderStrip() {
+          var host = $("icx-strip");
+          host.innerHTML = "";
+          stageAttrs(host);
+          var ch = chain();
+          var cellPx = ST.cell * ST.zoom;
+          ch.levels.forEach(function (lv, i) {
+            var col = elm("div", "icx-col");
+            col.appendChild(itemNode(ch, i, cellPx));
+            var cap = elm("div", "icx-cap");
+            cap.innerHTML = '<b>' + lv.level + '</b> ' + esc(labelOf(ch, i)) + (hasImg(ch, i) ? "" : ' <span class="icx-dim">더미</span>');
+            col.appendChild(cap);
+            host.appendChild(col);
+          });
+        }
+
+        function esc(s) {
+          return String(s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+
+        function renderChains() {
+          var box = $("icx-chains");
+          box.innerHTML = "";
+          ST.chains.forEach(function (ch, i) {
+            var b = elm("button");
+            b.type = "button";
+            b.textContent = ch.name || "이름 없음";
+            b.setAttribute("aria-pressed", String(i === ST.active));
+            b.setAttribute("data-ci", String(i));
+            box.appendChild(b);
+          });
+          $("icx-chainname").value = chain().name || "";
+        }
+
+        function renderSlots() {
+          var host = $("icx-slots");
+          host.innerHTML = "";
+          var ch = chain();
+          ch.levels.forEach(function (lv, i) {
+            var card = elm("div", "icx-slot");
+            card.setAttribute("data-lv", String(i));
+
+            var head = elm("div", "icx-slot-h");
+            head.innerHTML = '<span class="icx-slot-n">' + lv.level + "</span>" +
+              (hasImg(ch, i) ? '<span class="icx-slot-tag is-real">이미지</span>' : '<span class="icx-slot-tag">더미</span>');
+            var x = elm("button", "icx-slot-x");
+            x.type = "button";
+            x.textContent = "비우기";
+            x.setAttribute("data-clear", String(i));
+            head.appendChild(x);
+            card.appendChild(head);
+
+            var art = elm("img", "icx-slot-art");
+            art.src = srcOf(ch, i);
+            art.alt = labelOf(ch, i);
+            art.draggable = false;
+            card.appendChild(art);
+
+            var nm = elm("input", "icx-txt icx-slot-name");
+            nm.type = "text";
+            nm.value = lv.label;
+            nm.placeholder = "이름";
+            nm.setAttribute("aria-label", lv.level + "레벨 이름");
+            nm.setAttribute("data-name", String(i));
+            card.appendChild(nm);
+
+            var fn = elm("input", "icx-txt icx-slot-file");
+            fn.type = "text";
+            fn.value = lv.file;
+            fn.placeholder = "파일명";
+            fn.setAttribute("aria-label", lv.level + "레벨 파일명");
+            fn.setAttribute("data-file", String(i));
+            card.appendChild(fn);
+
+            if (lv.note) {
+              var nt = elm("div", "icx-slot-note");
+              nt.textContent = lv.note;
+              card.appendChild(nt);
+            }
+            host.appendChild(card);
+          });
+        }
+
+        function renderPairOpts() {
+          var ch = chain();
+          [$("icx-pa"), $("icx-pb")].forEach(function (sel) {
+            var keep = sel.value;
+            sel.innerHTML = "";
+            ch.levels.forEach(function (lv, i) {
+              var o = elm("option");
+              o.value = String(i);
+              o.textContent = lv.level + " · " + labelOf(ch, i);
+              sel.appendChild(o);
+            });
+            if (keep && Number(keep) < ch.levels.length) sel.value = keep;
+          });
+        }
+
+        function renderPair() {
+          var host = $("icx-pstage");
+          host.innerHTML = "";
+          stageAttrs(host);
+          var ch = chain();
+          var ai = clampV(parseInt($("icx-pa").value, 10) || 0, 0, ch.levels.length - 1);
+          var bi = clampV(parseInt($("icx-pb").value, 10) || 0, 0, ch.levels.length - 1);
+          /* 비교는 셀 크기가 아니라 "크게" 봐야 한다. 셀 대입은 검수대가 이미 하고 있고,
+             여기서 보려는 건 두 그림 자체의 차이라 배율만 따른다. */
+          var big = 210 * Math.max(ST.zoom, 0.5);
+          [ai, bi].forEach(function (i) {
+            var col = elm("div", "icx-pcol");
+            var box = elm("div", "icx-pbox");
+            box.style.width = px(big);
+            box.style.height = px(big);
+            var art = elm("img", "icx-art");
+            art.src = srcOf(ch, i);
+            art.alt = labelOf(ch, i);
+            art.draggable = false;
+            art.style.width = px(big * ST.fit / 100);
+            art.style.height = px(big * ST.fit / 100);
+            box.appendChild(art);
+            col.appendChild(box);
+            var cap = elm("div", "icx-cap");
+            cap.innerHTML = '<b>' + ch.levels[i].level + "</b> " + esc(labelOf(ch, i));
+            col.appendChild(cap);
+            host.appendChild(col);
+          });
+
+          var info = $("icx-pinfo");
+          var a = STATS[ai], b = STATS[bi];
+          var j = pairJudge(a, b);
+          if (!j || ai === bi) {
+            info.innerHTML = ai === bi ? '<span class="icx-dim">서로 다른 두 레벨을 고르세요.</span>' : "";
+            return;
+          }
+          info.innerHTML =
+            '<span class="icx-verdict is-' + j.grade + '">' + gradeText(j.grade) + "</span>" +
+            metric("면적차", j.dArea.toFixed(1) + "%", j.okA) +
+            metric("색차", j.dCol.toFixed(0), j.okC) +
+            metric("대비비", j.cr.toFixed(2), j.okK) +
+            '<span class="icx-dim">임계 ' + ST.thr.area + "% · " + ST.thr.color + " · " + ST.thr.contrast.toFixed(2) + "</span>";
+        }
+        function metric(name, val, ok) {
+          return '<span class="icx-m' + (ok ? " is-ok" : " is-no") + '"><i>' + name + "</i>" + val + "</span>";
+        }
+        function gradeText(g) { return g === "bad" ? "구분 위험" : g === "warn" ? "주의" : "양호"; }
+
+        function rng(seed) {
+          var s = (seed >>> 0) || 1;
+          return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+        }
+        function renderBoard() {
+          var host = $("icx-board");
+          host.innerHTML = "";
+          stageAttrs(host);
+          var ch = chain();
+          var n = ch.levels.length;
+          var cellPx = ST.cell * ST.zoom;
+          host.style.gridTemplateColumns = "repeat(" + ST.cols + ", " + px(cellPx) + ")";
+          /* 낮은 레벨 쪽으로 기운 가중치. 균등 분포로 채우면 9레벨이 보드의 1/9 을
+             차지하는데, 실제 보드에서 고레벨은 한두 개뿐이라 그림이 거짓말이 된다. */
+          var w = [], sum = 0;
+          for (var i = 0; i < n; i++) { var v = Math.pow(0.62, i); w.push(v); sum += v; }
+          var rand = rng(ST.seed);
+          for (var c = 0; c < ST.cols * ST.rows; c++) {
+            var t = rand() * sum, k = 0;
+            while (k < n - 1 && t > w[k]) { t -= w[k]; k++; }
+            host.appendChild(itemNode(ch, k, cellPx));
+          }
+        }
+
+        function renderJudge() {
+          var ch = chain();
+          var tb = $("icx-jbody");
+          tb.innerHTML = "";
+          var pairs = allPairs();
+          var risk = 0, caution = 0, dimOnly = 0;
+
+          ch.levels.forEach(function (lv, i) {
+            var s = STATS[i];
+            var j = i > 0 ? pairs[i - 1] : null;
+            var tr = elm("tr");
+            if (j && j.grade === "bad") { tr.className = "is-risk"; risk++; }
+            else if (j && j.grade === "warn") { tr.className = "is-caution"; caution++; }
+            if (j && !j.okK && j.grade !== "bad") dimOnly++;
+
+            var cells = [];
+            cells.push("<td><b>" + lv.level + "</b></td>");
+            cells.push("<td>" + esc(labelOf(ch, i)) + (hasImg(ch, i) ? "" : ' <span class="icx-dim">더미</span>') + "</td>");
+            if (!s) {
+              cells.push('<td colspan="8" class="icx-dim">읽지 못했습니다</td>');
+              tr.innerHTML = cells.join("");
+              tb.appendChild(tr);
+              return;
+            }
+            cells.push('<td class="icx-n">' + s.area.toFixed(1) + "%</td>");
+            cells.push('<td class="icx-n">' + s.bw.toFixed(0) + " × " + s.bh.toFixed(0) + "%</td>");
+            cells.push('<td><span class="icx-sw" style="background:' + rgbHex(s.rgb) + '"></span>' + rgbHex(s.rgb) + "</td>");
+            cells.push('<td class="icx-n">' + s.lum.toFixed(3) + "</td>");
+            if (!j) {
+              cells.push('<td class="icx-n icx-dim">—</td><td class="icx-n icx-dim">—</td><td class="icx-n icx-dim">—</td>');
+              cells.push('<td class="icx-dim">기준</td>');
+            } else {
+              cells.push('<td class="icx-n' + (j.okA ? "" : " is-no") + '">' + j.dArea.toFixed(1) + "%</td>");
+              cells.push('<td class="icx-n' + (j.okC ? "" : " is-no") + '">' + j.dCol.toFixed(0) + "</td>");
+              cells.push('<td class="icx-n' + (j.okK ? "" : " is-no") + '">' + j.cr.toFixed(2) + "</td>");
+              var extra = !j.okK && j.grade !== "bad" ? '<span class="icx-lowk">저대비</span>' : "";
+              cells.push('<td><span class="icx-verdict is-' + j.grade + '">' + gradeText(j.grade) + "</span>" + extra +
+                (j.grade !== "ok" ? ' <button type="button" class="icx-mini" data-pair="' + i + '">크게 보기</button>' : "") + "</td>");
+            }
+            tr.innerHTML = cells.join("");
+            tb.appendChild(tr);
+          });
+
+          var sum = $("icx-jsum");
+          var parts = [];
+          parts.push("<b>" + ch.levels.length + "레벨</b> · 인접 " + pairs.length + "쌍");
+          parts.push(risk ? '<span class="icx-verdict is-bad">구분 위험 ' + risk + "쌍</span>" : '<span class="icx-verdict is-ok">구분 위험 없음</span>');
+          if (caution) parts.push('<span class="icx-verdict is-warn">주의 ' + caution + "쌍</span>");
+          if (dimOnly) parts.push('<span class="icx-lowk">대비만 미달 ' + dimOnly + "쌍</span>");
+          parts.push('<span class="icx-dim">임계 면적차 ' + ST.thr.area + "% · 색차 " + ST.thr.color +
+            " · 대비비 " + ST.thr.contrast.toFixed(2) + " · 알파 " + ST.thr.alpha + "</span>");
+          sum.innerHTML = parts.join("");
+        }
+
+        var pairTouched = false;
+        function renderAll() {
+          renderChains();
+          renderSlots();
+          renderPairOpts();
+          renderStrip();
+          renderBoard();
+          renderJudge();
+          /* 비교창은 손을 대기 전까지 "가장 위험한 쌍" 을 따라간다. 문서를 열자마자
+             볼 것이 그 쌍이고, 한 번 고른 뒤에는 마음대로 덮어쓰면 안 된다. */
+          if (!pairTouched) {
+            var w = worstPair();
+            if (w) { $("icx-pa").value = String(w.a); $("icx-pb").value = String(w.b); }
+          }
+          renderPair();
+        }
+        function refresh() {
+          measure().then(function (out) { if (out) renderAll(); });
+        }
+
+        /* ====================================================================
+           표 파서 — 엑셀·구글시트에서 긁어 온 것이 1순위 입력이다.
+
+           셀 범위를 복사하면 클립보드에 탭 구분 표가 들어온다. 쉼표 구분도 같이
+           받는데, 따옴표 안의 쉼표·줄바꿈까지 살리려면 split 으로는 안 되고
+           문자를 하나씩 훑어야 한다(RFC 4180). 비고 칸에 문장을 적는 순간
+           split(",") 짜리 파서는 컬럼이 통째로 밀린다.
+           ==================================================================== */
+        function splitTable(text, sep) {
+          var rows = [], row = [], cell = "", q = false, i = 0;
+          text = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+          for (; i < text.length; i++) {
+            var c = text.charAt(i);
+            if (q) {
+              if (c === '"') {
+                if (text.charAt(i + 1) === '"') { cell += '"'; i++; }   // "" 는 따옴표 한 글자
+                else q = false;
+              } else cell += c;
+              continue;
+            }
+            if (c === '"' && cell === "") { q = true; continue; }
+            if (c === sep) { row.push(cell); cell = ""; continue; }
+            if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; continue; }
+            cell += c;
+          }
+          row.push(cell);
+          rows.push(row);
+          /* 시트 끝의 빈 줄은 붙여넣기마다 따라온다 — 레벨 하나가 통째로 빈 채 생긴다 */
+          return rows.filter(function (r) {
+            return r.some(function (v) { return String(v).trim() !== ""; });
+          });
+        }
+
+        var COLDEF = [
+          { k: "chain", ko: "체인", names: ["체인", "체인명", "체인이름", "묶음", "chain", "chainname", "group", "series"] },
+          { k: "level", ko: "레벨", names: ["레벨", "단계", "레벨번호", "level", "lv", "lvl", "tier", "step", "stage"] },
+          { k: "file",  ko: "파일명", names: ["파일명", "파일", "파일이름", "이미지", "이미지명", "에셋", "file", "filename", "image", "img", "asset", "sprite"] },
+          { k: "label", ko: "이름", names: ["이름", "라벨", "아이템", "아이템명", "표시명", "label", "name", "item", "title", "itemname"] },
+          { k: "note",  ko: "비고", names: ["비고", "메모", "설명", "note", "notes", "memo", "desc", "description", "comment"] },
+        ];
+        /* 머리글 매칭은 공백·대소문자·구분기호를 전부 지우고 비교한다. 시트에는
+           "파일 명", "file_name", "Level " 이 아무렇지 않게 섞여 들어온다. */
+        function normHead(s) {
+          return String(s).toLowerCase().replace(/[\s_\-().·:/]+/g, "");
+        }
+        function matchHead(h) {
+          var n = normHead(h);
+          if (!n) return null;
+          for (var i = 0; i < COLDEF.length; i++) {
+            if (COLDEF[i].names.indexOf(n) >= 0) return COLDEF[i].k;
+          }
+          return null;
+        }
+
+        /* 표를 읽어 체인 배열로. 실패해도 예외를 던지지 않고 무엇을 못 알아봤는지
+           함께 돌려준다 — 조용히 버리면 아트는 시트가 맞는 줄 알고 계속 고친다. */
+        function readTable(text, sep) {
+          var rows = splitTable(text, sep);
+          if (rows.length < 2) return { hit: 0 };
+
+          var head = rows[0].map(matchHead);
+          var known = head.filter(function (h) { return h; }).length;
+          var unknown = [];
+          rows[0].forEach(function (h, i) {
+            if (!head[i] && String(h).trim() !== "") unknown.push(String(h).trim());
+          });
+
+          var body, noHead = false;
+          if (known === 0) {
+            /* 머리글이 통째로 없는 표(값부터 시작하는 범위)를 그냥 버리면
+               "왜 안 되지" 만 남는다. 첫 칸이 숫자면 레벨로 보고 자리순으로 읽되,
+               그렇게 읽었다는 사실을 결과 메시지에 못 박는다. */
+            if (!/^\s*\d+\s*$/.test(String(rows[0][0] || ""))) {
+              return { hit: 0, unknown: unknown, headless: true };
+            }
+            head = ["level", "label", "file", "note"].slice(0, rows[0].length);
+            body = rows;
+            noHead = true;
+            unknown = [];
+          } else {
+            body = rows.slice(1);
+          }
+
+          var idx = {};
+          head.forEach(function (k, i) { if (k && idx[k] == null) idx[k] = i; });
+          var missing = [];
+          ["file", "label"].forEach(function (k) {
+            if (idx[k] == null) {
+              for (var i = 0; i < COLDEF.length; i++) if (COLDEF[i].k === k) missing.push(COLDEF[i].ko);
+            }
+          });
+
+          var groups = {}, order = [];
+          body.forEach(function (r, ri) {
+            function cell(k) { return idx[k] == null ? "" : String(r[idx[k]] == null ? "" : r[idx[k]]).trim(); }
+            var gname = cell("chain") || "체인 1";
+            if (!groups[gname]) { groups[gname] = []; order.push(gname); }
+            var lvNum = parseInt(cell("level"), 10);
+            groups[gname].push({
+              level: isFinite(lvNum) ? lvNum : 0,
+              seq: ri,
+              label: cell("label"),
+              file: cell("file"),
+              note: cell("note"),
+            });
+          });
+
+          var chains = order.map(function (name) {
+            var ls = groups[name];
+            /* 레벨 컬럼이 없거나 비었으면 행 순서를 레벨로 쓴다. 시트는 대개 이미
+               레벨 순으로 정렬돼 있어서 이게 실제로 맞다 — 다만 말은 하고 쓴다. */
+            var hasLv = ls.some(function (l) { return l.level > 0; });
+            if (hasLv) ls.sort(function (a, b) { return a.level - b.level || a.seq - b.seq; });
+            var ch = { cid: ++CID, name: name, levels: [] };
+            ls.forEach(function (l, i) {
+              ch.levels.push({ level: hasLv && l.level > 0 ? l.level : i + 1, label: l.label, file: l.file, note: l.note });
+            });
+            return ch;
+          }).filter(function (c) { return c.levels.length > 0; });
+
+          if (!chains.length) return { hit: 0, unknown: unknown };
+          var rowN = body.length;
+          return { hit: rowN, chains: chains, unknown: unknown, missing: missing, noHead: noHead,
+                   noLevel: idx.level == null && !noHead };
+        }
+
+        /* JSON 은 부차 경로다. 내려받기가 씌운 봉투({doc,ver,stamp,chains})도,
+           chains 알맹이만 있는 것도 받는다 — 손으로 잘라 붙이는 사람이 있다. */
+        function readJson(text) {
+          var obj;
+          try { obj = JSON.parse(text); } catch (e) { return { hit: 0 }; }
+          if (!obj) return { hit: 0 };
+          var bag = Array.isArray(obj) ? obj : Array.isArray(obj.chains) ? obj.chains : null;
+          if (!bag) return { hit: 0 };
+          var chains = [];
+          bag.forEach(function (c) {
+            if (!c || !Array.isArray(c.levels)) return;
+            var ch = { cid: ++CID, name: String(c.name || "체인 " + (chains.length + 1)), levels: [] };
+            c.levels.forEach(function (l, i) {
+              if (!l || typeof l !== "object") return;
+              var n = parseInt(l.level, 10);
+              ch.levels.push({
+                level: isFinite(n) && n > 0 ? n : i + 1,
+                label: String(l.label == null ? "" : l.label),
+                file: String(l.file == null ? "" : l.file),
+                note: String(l.note == null ? "" : l.note),
+              });
+            });
+            if (ch.levels.length) chains.push(ch);
+          });
+          if (!chains.length) return { hit: 0 };
+          return { hit: chains.reduce(function (n, c) { return n + c.levels.length; }, 0), chains: chains,
+                   envelope: !Array.isArray(obj) };
+        }
+
+        /* 들어오는 문(붙여넣기 · 파일 · 드롭)은 셋인데 형식은 넷이다.
+           어느 문으로 들어오든 여기 한 곳에서 같은 순서로 읽는다:
+           탭 구분 → 쉼표 구분 → JSON 봉투 → JSON 알맹이. */
+        function importText(text) {
+          if (!text || !text.trim()) return { hit: 0, how: "" };
+          var first = text.replace(/\r\n/g, "\n").split("\n")[0] || "";
+          var res;
+          if (first.indexOf("\t") >= 0) {
+            res = readTable(text, "\t");
+            if (res.hit) { res.how = "엑셀 표(탭 구분)"; return res; }
+          }
+          if (first.indexOf(",") >= 0 || first.indexOf(";") >= 0) {
+            res = readTable(text, first.indexOf(",") >= 0 ? "," : ";");
+            if (res.hit) { res.how = "CSV(쉼표 구분)"; return res; }
+          }
+          var js = readJson(text);
+          if (js.hit) { js.how = js.envelope ? "JSON 봉투" : "JSON 알맹이"; return js; }
+          /* 탭도 쉼표도 없는 한 컬럼짜리 표(이름만 세로로 긁어 온 것)도 살려 준다 */
+          res = readTable(text, "\t");
+          if (res.hit) { res.how = "한 컬럼 표"; return res; }
+          return { hit: 0, how: "", unknown: res.unknown || [], headless: res.headless };
+        }
+
+        /* 새 체인이 들어오면 체인 id 가 새로 발급돼 SLOT 이 통째로 무의미해진다.
+           파일명으로 도로 붙여 준다 — 시트를 고쳐 다시 붙여넣어도 올려 둔 이미지가
+           살아 있어야 실제로 쓸 수 있는 도구가 된다. */
+        function rebindImages() {
+          var next = {};
+          ST.chains.forEach(function (ch) {
+            ch.levels.forEach(function (lv) {
+              if (!lv.file) return;
+              var f = normFile(lv.file);
+              if (IMGBY[f]) next[slotKey(ch, lv)] = f;
+            });
+          });
+          SLOT = next;
+        }
+
+        function applyImport(res) {
+          if (!res.hit) return false;
+          ST.chains = res.chains;
+          ST.active = 0;
+          pairTouched = false;
+          rebindImages();
+          saveSoon();
+          refresh();
+          return true;
+        }
+
+        function importSay(res) {
+          if (!res.hit) {
+            var why = "읽을 수 있는 표가 없습니다. 엑셀·구글시트에서 머리글 줄까지 포함해 긁어 붙여 주세요.";
+            if (res.headless) why = "첫 줄에서 알아본 머리글이 하나도 없습니다. 머리글 줄(체인·레벨·파일명·이름·비고)을 포함해 다시 긁어 주세요.";
+            if (res.unknown && res.unknown.length) why += " 못 알아본 머리글: " + res.unknown.join(" · ");
+            return { text: why, bad: true };
+          }
+          var msg = [res.hit + "행 읽음 (" + res.how + ")"];
+          msg.push("체인 " + ST.chains.length + "개 · 레벨 " +
+            ST.chains.reduce(function (n, c) { return n + c.levels.length; }, 0) + "칸");
+          if (res.noHead) msg.push("머리글이 없어 자리순(레벨·이름·파일명·비고)으로 읽었습니다");
+          if (res.noLevel) msg.push("레벨 컬럼을 못 찾아 행 순서를 레벨로 썼습니다");
+          if (res.missing && res.missing.length) msg.push("빠진 컬럼: " + res.missing.join(" · "));
+          if (res.unknown && res.unknown.length) msg.push("못 알아본 머리글(무시함): " + res.unknown.join(" · "));
+          return { text: msg.join(" · "), bad: false };
+        }
+
+        /* ====================================================================
+           이미지 입력
+           ==================================================================== */
+        function readAsDataURL(file) {
+          return new Promise(function (res) {
+            var fr = new FileReader();
+            fr.onload = function () { res({ name: file.name, uri: String(fr.result) }); };
+            fr.onerror = function () { res(null); };
+            fr.readAsDataURL(file);
+          });
+        }
+        function readAsText(file) {
+          return new Promise(function (res) {
+            var fr = new FileReader();
+            fr.onload = function () { res(String(fr.result)); };
+            fr.onerror = function () { res(""); };
+            fr.readAsText(file);
+          });
+        }
+        function isImage(f) { return /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|svg)$/i.test(f.name); }
+
+        function ingestImages(files, forceIdx) {
+          var list = Array.prototype.slice.call(files).filter(isImage);
+          if (!list.length) return Promise.resolve(null);
+          return Promise.all(list.map(readAsDataURL)).then(function (got) {
+            got = got.filter(Boolean);
+            if (!got.length) return null;
+            got.forEach(function (g) { IMGBY[normFile(g.name)] = g.uri; });
+
+            var ch = chain();
+            var report = { byName: [], bySeq: [], left: [] };
+
+            if (forceIdx != null && ch.levels[forceIdx]) {
+              /* 슬롯 하나에 떨어뜨린 건 무조건 그 칸이다. 여러 장이면 첫 장만 —
+                 한 칸에 여러 장이라는 뜻이 없다. */
+              var g0 = got[0];
+              var lv0 = ch.levels[forceIdx];
+              SLOT[slotKey(ch, lv0)] = normFile(g0.name);
+              if (!lv0.file) lv0.file = g0.name;
+              report.byName.push(g0.name + " → " + lv0.level);
+              finish(report);
+              return report;
+            }
+
+            /* 1차: 시트의 파일명과 맞는 것부터 제자리에 앉힌다 */
+            var taken = {}, rest = [];
+            got.forEach(function (g) {
+              var f = normFile(g.name);
+              var hitIdx = -1;
+              for (var i = 0; i < ch.levels.length; i++) {
+                if (ch.levels[i].file && normFile(ch.levels[i].file) === f) { hitIdx = i; break; }
+              }
+              if (hitIdx >= 0) {
+                SLOT[slotKey(ch, ch.levels[hitIdx])] = f;
+                taken[hitIdx] = true;
+                report.byName.push(g.name + " → " + ch.levels[hitIdx].level);
+              } else rest.push(g);
+            });
+
+            /* 2차: 남은 것은 파일명 자연정렬 순으로 빈 칸에 채운다.
+               파일이 칸보다 많으면 체인을 늘린다 — 12장을 떨궜는데 9칸만 채우고
+               3장을 버리면, 버린 게 무엇인지 아무도 모른다. */
+            rest.sort(function (a, b) { return natCmp(a.name, b.name); });
+            var cur = 0;
+            rest.forEach(function (g) {
+              while (cur < ch.levels.length && (taken[cur] || SLOT[slotKey(ch, ch.levels[cur])])) cur++;
+              if (cur >= ch.levels.length) {
+                ch.levels.push({ level: ch.levels.length + 1, label: "", file: "", note: "" });
+              }
+              var lv = ch.levels[cur];
+              SLOT[slotKey(ch, lv)] = normFile(g.name);
+              if (!lv.file) lv.file = g.name;
+              report.bySeq.push(g.name + " → " + lv.level);
+              taken[cur] = true;
+              cur++;
+            });
+
+            finish(report);
+            return report;
+          });
+
+          function finish(report) {
+            var ch2 = chain();
+            ch2.levels.forEach(function (lv) {
+              if (lv.file && !SLOT[slotKey(ch2, lv)]) report.left.push(lv.level + " · " + (lv.file || "-"));
+            });
+            saveSoon();
+            refresh();
+            sayAssign(report);
+          }
+        }
+
+        function sayAssign(r) {
+          var box = $("icx-assign");
+          if (!r) { box.hidden = true; return; }
+          var out = [];
+          if (r.byName.length) out.push('<b>파일명 일치 ' + r.byName.length + "장</b> — " + esc(r.byName.join(", ")));
+          if (r.bySeq.length) out.push('<b>순서 배정 ' + r.bySeq.length + "장</b> — " + esc(r.bySeq.join(", ")));
+          if (r.left.length) out.push('<b class="icx-no">이미지 없는 칸 ' + r.left.length + "개</b> — " + esc(r.left.join(", ")));
+          if (!out.length) { box.hidden = true; return; }
+          box.innerHTML = out.join("<br />");
+          box.hidden = false;
+        }
+
+        /* 표 파일과 이미지가 섞여 떨어질 수 있다. 확장자로 갈라 각자의 길로 보낸다. */
+        function ingestFiles(files, forceIdx) {
+          var arr = Array.prototype.slice.call(files);
+          var imgs = arr.filter(isImage);
+          var tables = arr.filter(function (f) { return !isImage(f); });
+          if (imgs.length) ingestImages(imgs, forceIdx);
+          if (tables.length) {
+            readAsText(tables[0]).then(function (txt) {
+              var res = importText(txt);
+              var say = importSay(res);
+              if (res.hit) applyImport(res);
+              badge(say.text);
+              ioSay(say.text, say.bad);
+            });
+          }
+        }
+
+        /* ====================================================================
+           브라우저 저장 — 체인 정의와 보기 설정만. 이미지는 절대 넣지 않는다.
+           512px PNG 를 base64 로 바꾸면 한 장에 수백 KB 라 5MB 한도를 바로 넘기고,
+           넘기는 순간 setItem 이 통째로 던져서 체인 정의까지 같이 날아간다.
+           사파리 프라이빗처럼 localStorage 자체가 던지는 환경도 있어 전부 try 로 감싼다.
+           ==================================================================== */
+        var STORE_KEY = "icx.chain.v1";
+        var saveTimer = null;
+        function exportChains() {
+          return ST.chains.map(function (c) {
+            return {
+              name: c.name,
+              levels: c.levels.map(function (l) { return { level: l.level, label: l.label, file: l.file, note: l.note }; }),
+            };
+          });
+        }
+        function saveNow() {
+          try {
+            localStorage.setItem(STORE_KEY, JSON.stringify({
+              chains: exportChains(),
+              ui: { mode: ST.mode, bg: ST.bg, zoom: ST.zoom, cell: ST.cell, fit: ST.fit,
+                    cols: ST.cols, rows: ST.rows, thr: ST.thr },
+            }));
+          } catch (e) {}
+        }
+        function saveSoon() {
+          if (saveTimer) clearTimeout(saveTimer);
+          saveTimer = setTimeout(saveNow, 250);
+        }
+        function storeClear() { try { localStorage.removeItem(STORE_KEY); } catch (e) {} }
+
+        var restored = 0;
+        (function restore() {
+          var raw = null;
+          try { raw = localStorage.getItem(STORE_KEY); } catch (e) { return; }
+          if (!raw) return;
+          var saved;
+          try { saved = JSON.parse(raw); } catch (e) { storeClear(); return; }
+          if (!saved || typeof saved !== "object") { storeClear(); return; }
+          /* 저장본도 바깥에서 들어온 값이다. 옛 버전이 남긴 형식이 지금 코드를
+             깨뜨리지 않게 JSON 경로와 같은 검사기를 통과시킨다. */
+          var js = readJson(JSON.stringify({ chains: saved.chains }));
+          if (js.hit) { ST.chains = js.chains; ST.active = 0; restored = js.hit; }
+          var u = saved.ui;
+          if (u && typeof u === "object") {
+            if (["raw", "sil", "gray", "edge"].indexOf(u.mode) >= 0) ST.mode = u.mode;
+            if (["board", "cell", "light", "dark"].indexOf(u.bg) >= 0) ST.bg = u.bg;
+            if ([1, 0.5, 0.35].indexOf(u.zoom) >= 0) ST.zoom = u.zoom;
+            if (isFinite(u.cell)) ST.cell = clampV(parseFloat(u.cell), 40, 140);
+            if (isFinite(u.fit)) ST.fit = clampV(parseFloat(u.fit), 55, 145);
+            if (isFinite(u.cols)) ST.cols = clampV(parseInt(u.cols, 10), 3, 12);
+            if (isFinite(u.rows)) ST.rows = clampV(parseInt(u.rows, 10), 3, 12);
+            if (u.thr && typeof u.thr === "object") {
+              if (isFinite(u.thr.area)) ST.thr.area = clampV(parseFloat(u.thr.area), 2, 40);
+              if (isFinite(u.thr.color)) ST.thr.color = clampV(parseFloat(u.thr.color), 5, 150);
+              if (isFinite(u.thr.contrast)) ST.thr.contrast = clampV(parseFloat(u.thr.contrast), 1.05, 2.5);
+              if (isFinite(u.thr.alpha)) ST.thr.alpha = clampV(parseInt(u.thr.alpha, 10), 1, 128);
+            }
+          }
+        })();
+
+        /* ====================================================================
+           내보내기
+           ==================================================================== */
+        function csvCell(v) {
+          var s = String(v == null ? "" : v);
+          return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+        function csvText() {
+          var out = [["체인", "레벨", "파일명", "이름", "비고"].join(",")];
+          ST.chains.forEach(function (c) {
+            c.levels.forEach(function (l) {
+              out.push([c.name, l.level, l.file, l.label, l.note].map(csvCell).join(","));
+            });
+          });
+          return out.join("\r\n") + "\r\n";
+        }
+        function download(text, name, mime) {
+          var blob = new Blob([text], { type: mime });
+          var url = URL.createObjectURL(blob);
+          var a = elm("a");
+          a.href = url;
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        }
+        function fileStamp() { return stampNow().replace(/[: ]/g, "-"); }
+
+        function reportText() {
+          var ch = chain();
+          var pairs = allPairs();
+          var out = [];
+          out.push("아이템 체인 검수대 — " + ch.name + " · " + stampNow());
+          out.push("임계: 면적차 " + ST.thr.area + "% · 색차 " + ST.thr.color +
+            " · 대비비 " + ST.thr.contrast.toFixed(2) + " · 알파 " + ST.thr.alpha);
+          out.push("");
+          out.push(["레벨", "이름", "면적%", "평균색", "휘도", "면적차%", "색차", "대비비", "판정"].join("\t"));
+          ch.levels.forEach(function (lv, i) {
+            var s = STATS[i], j = i > 0 ? pairs[i - 1] : null;
+            if (!s) { out.push([lv.level, labelOf(ch, i), "-", "-", "-", "-", "-", "-", "읽기 실패"].join("\t")); return; }
+            out.push([
+              lv.level, labelOf(ch, i), s.area.toFixed(1), rgbHex(s.rgb), s.lum.toFixed(3),
+              j ? j.dArea.toFixed(1) : "-", j ? j.dCol.toFixed(0) : "-", j ? j.cr.toFixed(2) : "-",
+              j ? gradeText(j.grade) : "기준",
+            ].join("\t"));
+          });
+          var bad = pairs.filter(function (p) { return p.grade === "bad"; });
+          out.push("");
+          out.push(bad.length
+            ? "구분 위험 " + bad.length + "쌍: " + bad.map(function (p) {
+                return ch.levels[p.a].level + "·" + ch.levels[p.b].level +
+                  " (" + labelOf(ch, p.a) + " ↔ " + labelOf(ch, p.b) + ")";
+              }).join(", ")
+            : "구분 위험 없음");
+          return out.join("\n");
+        }
+
+        /* ====================================================================
+           조작부 배선
+           ==================================================================== */
+        function seg(id, apply) {
+          var box = $(id);
+          box.addEventListener("click", function (e) {
+            var b = e.target.closest("button");
+            if (!b || !box.contains(b)) return;
+            Array.prototype.forEach.call(box.querySelectorAll("button"), function (x) {
+              x.setAttribute("aria-pressed", String(x === b));
+            });
+            apply(b);
+          });
+        }
+        function syncSeg(id, attr, val) {
+          Array.prototype.forEach.call($(id).querySelectorAll("button"), function (b) {
+            b.setAttribute("aria-pressed", String(b.getAttribute(attr) === String(val)));
+          });
+        }
+
+        seg("icx-mode", function (b) { ST.mode = b.getAttribute("data-md"); saveSoon(); renderAll(); });
+        seg("icx-bg", function (b) { ST.bg = b.getAttribute("data-bg"); saveSoon(); renderAll(); });
+        seg("icx-zoom", function (b) { ST.zoom = parseFloat(b.getAttribute("data-zm")); saveSoon(); renderAll(); });
+
+        function slider(id, valId, fmt, apply) {
+          var r = $(id), v = $(valId);
+          r.addEventListener("input", function () {
+            var n = parseFloat(r.value);
+            if (!isFinite(n)) return;
+            apply(n);
+            v.textContent = fmt(n);
+            saveSoon();
+          });
+          v.textContent = fmt(parseFloat(r.value));
+        }
+        slider("icx-cell", "icx-cellv", function (n) { return n + "px"; }, function (n) { ST.cell = n; renderAll(); });
+        slider("icx-fit", "icx-fitv", function (n) { return n + "%"; }, function (n) { ST.fit = n; renderAll(); });
+        /* 임계값은 픽셀을 다시 안 읽어도 된다 — 판정만 다시 매기면 되므로 렌더만 돌린다.
+           알파 임계는 예외다. 어떤 픽셀을 아이템으로 칠지가 바뀌니 다시 재야 한다. */
+        slider("icx-ta", "icx-tav", function (n) { return n + "%"; }, function (n) { ST.thr.area = n; renderJudge(); renderPair(); });
+        slider("icx-tc", "icx-tcv", function (n) { return String(n); }, function (n) { ST.thr.color = n; renderJudge(); renderPair(); });
+        slider("icx-tk", "icx-tkv", function (n) { return n.toFixed(2); }, function (n) { ST.thr.contrast = n; renderJudge(); renderPair(); });
+        slider("icx-tal", "icx-talv", function (n) { return String(n); }, function (n) { ST.thr.alpha = n; refresh(); });
+
+        $("icx-cols").addEventListener("input", function () {
+          var n = parseInt(this.value, 10);
+          if (!isFinite(n)) return;
+          ST.cols = clampV(n, 3, 12); saveSoon(); renderBoard();
+        });
+        $("icx-rows").addEventListener("input", function () {
+          var n = parseInt(this.value, 10);
+          if (!isFinite(n)) return;
+          ST.rows = clampV(n, 3, 12); saveSoon(); renderBoard();
+        });
+        $("icx-shuffle").addEventListener("click", function () {
+          ST.seed = (Math.random() * 0xffffffff) >>> 0;
+          renderBoard();
+        });
+
+        $("icx-chains").addEventListener("click", function (e) {
+          var b = e.target.closest("button");
+          if (!b) return;
+          ST.active = parseInt(b.getAttribute("data-ci"), 10) || 0;
+          pairTouched = false;
+          sayAssign(null);
+          refresh();
+        });
+        $("icx-chainname").addEventListener("input", function () {
+          chain().name = this.value;
+          saveSoon();
+          renderChains();
+        });
+        $("icx-addchain").addEventListener("click", function () {
+          ST.chains.push(mkChain("체인 " + (ST.chains.length + 1), 3, false));
+          ST.active = ST.chains.length - 1;
+          pairTouched = false;
+          refresh();
+          saveSoon();
+        });
+        $("icx-delchain").addEventListener("click", function () {
+          if (ST.chains.length <= 1) { badge("마지막 체인은 지울 수 없습니다."); return; }
+          ST.chains.splice(ST.active, 1);
+          ST.active = 0;
+          pairTouched = false;
+          refresh();
+          saveSoon();
+        });
+        $("icx-addlv").addEventListener("click", function () {
+          var ch = chain();
+          ch.levels.push({ level: ch.levels.length + 1, label: "", file: "", note: "" });
+          refresh();
+          saveSoon();
+        });
+        $("icx-dellv").addEventListener("click", function () {
+          var ch = chain();
+          if (ch.levels.length <= 2) { badge("레벨은 2개 아래로 줄일 수 없습니다."); return; }
+          var lv = ch.levels.pop();
+          delete SLOT[slotKey(ch, lv)];
+          pairTouched = false;
+          refresh();
+          saveSoon();
+        });
+
+        /* 슬롯 카드 — 이름·파일명 입력, 비우기, 개별 드롭 */
+        var slotsBox = $("icx-slots");
+        slotsBox.addEventListener("input", function (e) {
+          var t = e.target;
+          var ch = chain();
+          if (t.hasAttribute && t.hasAttribute("data-name")) {
+            ch.levels[parseInt(t.getAttribute("data-name"), 10)].label = t.value;
+            saveSoon();
+            renderStrip(); renderPairOpts(); renderPair(); renderJudge();
+          } else if (t.hasAttribute && t.hasAttribute("data-file")) {
+            var i = parseInt(t.getAttribute("data-file"), 10);
+            ch.levels[i].file = t.value;
+            /* 파일명을 손으로 고치면 이미 올려 둔 그림 중 그 이름이 있는지 즉시 다시 본다 —
+               시트를 고쳐 붙이지 않고도 이름만 맞춰 붙일 수 있다. */
+            var f = normFile(t.value);
+            if (IMGBY[f]) SLOT[slotKey(ch, ch.levels[i])] = f;
+            saveSoon();
+            refresh();
+          }
+        });
+        slotsBox.addEventListener("click", function (e) {
+          var b = e.target.closest("[data-clear]");
+          if (!b) return;
+          var ch = chain();
+          delete SLOT[slotKey(ch, ch.levels[parseInt(b.getAttribute("data-clear"), 10)])];
+          refresh();
+        });
+        /* 카드 하나에만 떨궈 그 레벨을 교체하는 길. dragover 에서 preventDefault 를
+           안 하면 브라우저가 파일을 새 탭으로 열어 버려 문서가 통째로 날아간다. */
+        slotsBox.addEventListener("dragover", function (e) {
+          var card = e.target.closest(".icx-slot");
+          if (!card) return;
+          e.preventDefault();
+          e.stopPropagation();
+          card.classList.add("is-over");
+        });
+        slotsBox.addEventListener("dragleave", function (e) {
+          var card = e.target.closest(".icx-slot");
+          if (card && !card.contains(e.relatedTarget)) card.classList.remove("is-over");
+        });
+        slotsBox.addEventListener("drop", function (e) {
+          var card = e.target.closest(".icx-slot");
+          if (!card) return;
+          e.preventDefault();
+          e.stopPropagation();
+          card.classList.remove("is-over");
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+            ingestFiles(e.dataTransfer.files, parseInt(card.getAttribute("data-lv"), 10));
+          }
+        });
+
+        /* 큰 드롭존 */
+        var dropBox = $("icx-drop");
+        ["dragenter", "dragover"].forEach(function (ev) {
+          dropBox.addEventListener(ev, function (e) { e.preventDefault(); dropBox.classList.add("is-over"); });
+        });
+        dropBox.addEventListener("dragleave", function (e) {
+          if (e.target === dropBox) dropBox.classList.remove("is-over");
+        });
+        dropBox.addEventListener("drop", function (e) {
+          e.preventDefault();
+          dropBox.classList.remove("is-over");
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) ingestFiles(e.dataTransfer.files, null);
+        });
+        $("icx-drop-pick").addEventListener("click", function () { $("icx-drop-file").click(); });
+        $("icx-drop-file").addEventListener("change", function () {
+          ingestFiles(this.files, null);
+          this.value = "";
+        });
+        /* 문서 아무 데나 떨궈도 브라우저가 파일을 열지 않게 막는다. 드롭 대상을
+           빗맞히는 일이 잦은데, 그때마다 페이지가 날아가면 올린 이미지도 같이 날아간다. */
+        window.addEventListener("dragover", function (e) { e.preventDefault(); });
+        window.addEventListener("drop", function (e) { e.preventDefault(); });
+
+        /* 비교창 */
+        $("icx-pa").addEventListener("change", function () { pairTouched = true; renderPair(); });
+        $("icx-pb").addEventListener("change", function () { pairTouched = true; renderPair(); });
+        $("icx-pworst").addEventListener("click", function () {
+          var w = worstPair();
+          if (!w) { badge("비교할 인접 쌍이 없습니다."); return; }
+          pairTouched = true;
+          $("icx-pa").value = String(w.a);
+          $("icx-pb").value = String(w.b);
+          renderPair();
+          document.getElementById("pair").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        /* 판정표의 "크게 보기" — 그 쌍을 비교창에 걸고 데려간다. 표에서 위험을 보고
+           다시 스크롤해 셀렉트 두 개를 맞추는 건 매번 하기엔 너무 번거롭다. */
+        $("icx-jbody").addEventListener("click", function (e) {
+          var b = e.target.closest("[data-pair]");
+          if (!b) return;
+          var i = parseInt(b.getAttribute("data-pair"), 10);
+          pairTouched = true;
+          $("icx-pa").value = String(i - 1);
+          $("icx-pb").value = String(i);
+          renderPair();
+          document.getElementById("pair").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        /* 툴바 배지. 결과가 sticky 바에 뜨므로 스크롤 어디에 있든 보인다. */
+        var badgeEl = $("icx-badge");
+        var badgeTimer = null;
+        function badge(text) {
+          badgeEl.textContent = text || "";
+          badgeEl.hidden = !text;
+          if (badgeTimer) clearTimeout(badgeTimer);
+          if (text) badgeTimer = setTimeout(function () { badgeEl.hidden = true; }, 9000);
+        }
+
+        $("icx-clearimg").addEventListener("click", function () {
+          if (!Object.keys(IMGBY).length) { badge("올린 이미지가 없습니다."); return; }
+          IMGBY = {};
+          SLOT = {};
+          sayAssign(null);
+          refresh();
+          badge("이미지를 비웠습니다 — 체인 정의는 그대로입니다.");
+        });
+        $("icx-resetall").addEventListener("click", function () {
+          if (!window.confirm("체인 정의와 보기 설정을 기본값으로 되돌립니다. 이 브라우저에 저장된 작업본도 지워집니다.")) return;
+          if (saveTimer) clearTimeout(saveTimer);   // 리로드 직전에 도로 저장되는 것 방지
+          storeClear();
+          location.reload();
+        });
+
+        /* ── 모달 ────────────────────────────────────────────────────────── */
+        var ioDlg = $("icx-io");
+        var ioTa = $("icx-io-ta");
+        var ioMsg = $("icx-io-msg");
+        var ioFile = $("icx-io-file");
+        function ioSay(text, bad) {
+          ioMsg.textContent = text || "";
+          ioMsg.classList.toggle("is-bad", !!bad);
+        }
+        /* 붙여넣으면 캐럿이 끝으로 가고 브라우저가 그 캐럿을 보이려 스크롤을 끌고 간다.
+           시트 붙여넣기는 줄이 길어서 붙이자마자 엉뚱한 중간이 보인다 —
+           방금 넣은 게 뭔지(머리글 줄)부터 보여야 하므로 왼쪽 위로 되돌린다. */
+        function ioHome() {
+          try { ioTa.setSelectionRange(0, 0); } catch (e) {}
+          ioTa.scrollTop = 0;
+          ioTa.scrollLeft = 0;
+        }
+        ioTa.addEventListener("paste", function () { setTimeout(ioHome, 0); });
+
+        function ioOpen() {
+          ioSay("");
+          if (ioDlg.showModal) ioDlg.showModal(); else ioDlg.setAttribute("open", "");
+          ioTa.focus();
+        }
+        function ioClose() { if (ioDlg.close) ioDlg.close(); else ioDlg.removeAttribute("open"); }
+
+        $("icx-ioopen").addEventListener("click", ioOpen);
+        $("icx-io-x").addEventListener("click", ioClose);
+        /* backdrop 클릭으로 닫기. dialog 자신이 target 일 때만 — 내용물 클릭은 통과시킨다. */
+        ioDlg.addEventListener("click", function (e) { if (e.target === ioDlg) ioClose(); });
+
+        function ioApply(text) {
+          var res = importText(text);
+          var say = importSay(res);
+          if (!res.hit) { ioSay(say.text, true); return; }
+          applyImport(res);
+          /* 적용되면 창을 닫는다 — 결과는 아래 슬롯과 판정표에 나타나는데 모달이 그걸 가린다.
+             대신 sticky 툴바 배지가 같은 문장을 받아 스크롤 어디서든 보이게 한다. */
+          ioClose();
+          badge(say.text);
+        }
+        $("icx-io-apply").addEventListener("click", function () {
+          if (!ioTa.value.trim()) { ioSay("붙여넣은 내용이 없습니다.", true); return; }
+          ioApply(ioTa.value);
+        });
+        $("icx-io-pick").addEventListener("click", function () { ioFile.click(); });
+        ioFile.addEventListener("change", function () {
+          var f = ioFile.files[0];
+          ioFile.value = "";
+          if (!f) return;
+          readAsText(f).then(function (txt) { ioTa.value = txt; ioHome(); ioApply(txt); });
+        });
+        ["dragenter", "dragover"].forEach(function (ev) {
+          ioDlg.addEventListener(ev, function (e) { e.preventDefault(); ioDlg.classList.add("is-drop"); });
+        });
+        /* dragleave 는 자식 위를 지날 때도 터진다. 그대로 받으면 창 안에서 파일을
+           옮기는 내내 테두리가 깜빡인다 — 창 자체를 벗어날 때만 끈다. */
+        ioDlg.addEventListener("dragleave", function (e) {
+          if (e.target === ioDlg) ioDlg.classList.remove("is-drop");
+        });
+        ioDlg.addEventListener("drop", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          ioDlg.classList.remove("is-drop");
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+            var f = e.dataTransfer.files[0];
+            if (isImage(f)) { ingestFiles(e.dataTransfer.files, null); ioClose(); return; }
+            readAsText(f).then(function (txt) { ioTa.value = txt; ioHome(); ioApply(txt); });
+            return;
+          }
+          var t = e.dataTransfer && e.dataTransfer.getData("text");
+          if (t) { ioTa.value = t; ioHome(); ioApply(t); }
+        });
+
+        $("icx-io-csv").addEventListener("click", function () {
+          /* UTF-8 BOM. 엑셀은 BOM 이 없으면 CSV 를 시스템 코드페이지로 열어서
+             한글 컬럼이 통째로 깨진다 — 아트가 못 쓰는 파일이 된다. */
+          download("\ufeff" + csvText(), "item-chain-" + fileStamp() + ".csv", "text/csv;charset=utf-8");
+          ioSay("내려받았습니다 · 체인 " + ST.chains.length + "개");
+        });
+        $("icx-io-json").addEventListener("click", function () {
+          download(JSON.stringify({ doc: "item-chain-review", ver: 1, stamp: stampNow(), chains: exportChains() }, null, 2),
+            "item-chain-" + fileStamp() + ".json", "application/json");
+          ioSay("내려받았습니다 · 체인 " + ST.chains.length + "개");
+        });
+        $("icx-io-copy").addEventListener("click", function () { copyText(reportText(), this); });
+
+        /* ── 첫 그림 ─────────────────────────────────────────────────────── */
+        syncSeg("icx-mode", "data-md", ST.mode);
+        syncSeg("icx-bg", "data-bg", ST.bg);
+        syncSeg("icx-zoom", "data-zm", ST.zoom);
+        $("icx-cell").value = ST.cell; $("icx-cellv").textContent = ST.cell + "px";
+        $("icx-fit").value = ST.fit; $("icx-fitv").textContent = ST.fit + "%";
+        $("icx-cols").value = ST.cols;
+        $("icx-rows").value = ST.rows;
+        $("icx-ta").value = ST.thr.area; $("icx-tav").textContent = ST.thr.area + "%";
+        $("icx-tc").value = ST.thr.color; $("icx-tcv").textContent = String(ST.thr.color);
+        $("icx-tk").value = ST.thr.contrast; $("icx-tkv").textContent = ST.thr.contrast.toFixed(2);
+        $("icx-tal").value = ST.thr.alpha; $("icx-talv").textContent = String(ST.thr.alpha);
+
+        refresh();
+        if (restored > 0) badge("저장된 체인 정의를 복원했습니다 · " + restored + "칸 — 이미지는 다시 올려 주세요.");
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>
