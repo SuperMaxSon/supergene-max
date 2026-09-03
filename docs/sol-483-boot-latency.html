@@ -97,7 +97,7 @@
           <span class="tag">완주 세션 기준</span>
           <span class="tag">2026-09-02 ~ 09-04</span>
           <span class="tag">NRU·RU 동일 창</span>
-          <span class="tag">2026-09-04 08:50 갱신</span>
+          <span class="tag">2026-09-04 08:53 갱신</span>
         </div>
       </div>
     </header>
@@ -285,7 +285,7 @@
               </tr>
               <tr>
                 <td>Q1</td><td>부팅 24단계를 485가 언제 통과하나</td>
-                <td>단계별 도달 시각</td>
+                <td>단계별 도달 시각 (곡선 주입용)</td>
                 <td>NRU <code>1010_LOAD_COMPLETE</code> p50이 483 대비 <b>감소</b></td>
               </tr>
               <tr style="background:color-mix(in srgb,#ea580c 6%, transparent)">
@@ -410,14 +410,14 @@
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">쿼리 전문</h3>
         <p class="doc-h2-sub">
-          여섯 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'</code> 한 줄만 고쳐서 돌립니다.
+          일곱 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'</code> 한 줄만 고쳐서 돌립니다.
           <b>일부러 <code>DECLARE</code>를 쓰지 않았습니다</b> — 상수를 선언하면 BigQuery가 이걸 스크립트로 보고
           <code>Could not compute bytes processed estimate for script</code>를 띄워
           <strong>실행 전 스캔 비용을 못 보게 됩니다.</strong> <code>data</code>를 스캔하는 쿼리라 비용 확인이 가장 필요한 쪽이므로
           날짜는 리터럴로 박아 둡니다(허브의 다른 BigQuery 문서와 같은 방식).
-          Q1·Q2는 <b>세 빌드군을 한 번에</b> 뽑으므로 483·477 수치도 이 쿼리로 다시 나옵니다 —
-          위 표의 기존 483 수치와 소수 ms 단위로 어긋날 수 있고, 그때는 <strong>새로 뽑은 값으로 전부 교체</strong>합니다.
-          한 쿼리 안에서 나온 값끼리만 비교해야 이상치 컷과 중복 제거 조건이 같습니다.
+          <b>위 곡선과 원본 표는 Q1 결과 그대로입니다</b> — 창을 옮겨 다시 그릴 때도 Q1 하나만 돌려
+          <code>json</code> 열을 통째로 갈아 끼웁니다. 세 빌드군이 한 쿼리에서 나와야
+          이상치 컷과 중복 제거 조건이 같아 서로 비교됩니다.
         </p>
 
         <details class="fold">
@@ -449,75 +449,12 @@ ORDER BY 1 DESC</pre></div>
         </details>
 
         <details class="fold">
-          <summary>Q1 — 부팅 24단계 도달 시각 (485+ · 483~484 · 477이하)</summary>
+          <summary>Q1 — 부팅 24단계 도달 시각 (곡선·표 주입용 · 48줄 JSON)</summary>
           <div class="fold-body">
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
-            <div class="table-scroll"><pre>-- 위 두 곡선을 그대로 3군으로 확장한 쿼리.
--- 결과를 (구분, 로그, 빌드군) 순으로 받아 D 객체의 3원소 배열에 그대로 밀어 넣는다.
--- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 지금 창(09-02~09-04) 기준 485는 NRU 681 · RU 2,274 세션.
---    배포일(09-02)이 섞여 있으니 며칠 뒤 창을 뒤로 옮겨 다시 뽑는다. 미래 날짜 = 0 B / 0행.
--- 600000 = 10분, 넘는 값은 이상치로 버린다.
-WITH src AS (
-    SELECT
-        CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS sk,
-        CASE
-            WHEN client_version &gt;= 485              THEN '485+'
-            WHEN client_version BETWEEN 483 AND 484 THEN '483~484'
-            WHEN client_version &lt;= 477              THEN '477-'
-        END                                        AS grp,
-        IF(logincount_total &lt;= 1, 'NRU', 'RU')     AS seg,
-        event,
-        CAST(JSON_VALUE(data, '$.time') AS INT64)  AS t,
-        log_time
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
-      AND (is_dev = FALSE OR is_dev IS NULL)
-      AND player_id &gt; 0
-      AND logincount_total IS NOT NULL
-      AND JSON_VALUE(data, '$.time') IS NOT NULL
-      AND event IN (
-          'INTRO_DEBUG_STAGE_MAPS', 'INTRO_BUNDLE', 'INTRO_SIGNED_PLAYER_INFO',
-          'INTRO_FB_FRIEND', 'INTRO_FB_ENTRY_POINT', 'INTRO_FB_SUBSCRIBE_BOT',
-          'INTRO_GAME_DATA', 'INTRO_FB_SUBSCRIBE_BOT_FINISH', 'INTRO_OBJECT_POOL',
-          'INTRO_BUNDLE_FINISH', 'INTRO_SIGNED_PLAYER_INFO_FINISH', 'INTRO_DEBUG_FB_DATA',
-          'INTRO_OBJECT_POOL_FINISH', 'INTRO_FB_ENTRY_POINT_FINISH', 'INTRO_FB_ENTRY_DATA',
-          'INTRO_FB_ENTRY_DATA_FINISH', 'INTRO_DEBUG_FB_DATA_FINISH', 'INTRO_GAME_DATA_FINISH',
-          'INTRO_DEBUG_STAGE_MAPS_FINISH', 'INTRO_FB_FRIEND_FINISH', 'INTRO_LOGIN',
-          'INTRO_DEBUG_LOGIN_FINISH', '1000_LOGIN_COMPLETE', '1010_LOAD_COMPLETE'
-      )
-),
-one AS (        -- 한 세션에서 같은 로그가 두 번 찍히면 첫 번째만 남긴다
-    SELECT * FROM src
-    WHERE grp IS NOT NULL AND t BETWEEN 0 AND 600000
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY sk, event ORDER BY log_time, t) = 1
-),
-done AS (       -- 완주 세션만. 중간 이탈은 Q2에서 따로 본다
-    SELECT DISTINCT sk FROM one WHERE event = '1010_LOAD_COMPLETE'
-),
-f AS (
-    SELECT o.* FROM one o JOIN done USING (sk)
-)
-SELECT
-    seg                                    AS `구분`,
-    event                                  AS `로그`,
-    grp                                    AS `빌드군`,
-    COUNT(DISTINCT sk)                     AS `세션`,
-    CAST(ROUND(AVG(t)) AS INT64)           AS `평균_ms`,
-    APPROX_QUANTILES(t, 100)[OFFSET(50)]   AS `p50_ms`,
-    APPROX_QUANTILES(t, 100)[OFFSET(90)]   AS `p90_ms`
-FROM f
-GROUP BY 1, 2, 3
-ORDER BY `구분`, `로그`, `빌드군`</pre></div>
-          </div>
-        </details>
-
-        <details class="fold">
-          <summary>Q1J — 곡선 주입용 (Q1과 같은 값을 JSON 48줄로)</summary>
-          <div class="fold-body">
-            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
-            <div class="table-scroll"><pre>-- Q1과 같은 집계인데 세 빌드군을 한 줄로 접어서 낸다. 144행 → 48줄.
--- 콘솔에서 잘리지 않고, 결과를 그대로 이어 붙이면 이 문서의 D 객체가 된다.
--- 곡선을 다시 그릴 때는 Q1이 아니라 이걸 돌린다.
+            <div class="table-scroll"><pre>-- 24단계 × 세 빌드군 × NRU/RU 를 세 군 한 줄로 접어서 낸다. 144행 → 48줄.
+-- 콘솔에서 잘리지 않고, json 열을 그대로 이어 붙이면 이 문서의 D 객체가 된다.
+-- 위 곡선과 원본 표는 전부 이 쿼리 결과다.
 -- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 표본이 쌓이면 창을 뒤로 옮긴다.
 WITH src AS (
     SELECT
@@ -639,7 +576,7 @@ ORDER BY `구분`, `빌드군`, `날짜`</pre></div>
           </div>
         </details>
         <details class="fold">
-          <summary>Q2 — 단계 도달률 (중간 이탈 판정 · Q1과 반드시 짝으로)</summary>
+          <summary>Q2 — 단계 도달률 (중간 이탈 판정 · Q1과 짝으로)</summary>
           <div class="fold-body">
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- Q1이 완주 세션만 보기 때문에 반드시 짝으로 돌려야 하는 쿼리다.
