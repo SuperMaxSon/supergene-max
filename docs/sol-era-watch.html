@@ -54,6 +54,13 @@
       #tip b{color:#ffd9a8;font-weight:800}
       #eracmp [data-tip]{cursor:help}
       #eracmp [data-tip]:hover{filter:brightness(1.06)}
+      /* 쿼리 복사 버튼 — 이 문서 쿼리는 콘솔에 그대로 붙이는 게 유일한 용도다.
+         블록 위 오른쪽에 한 줄로 두면 가로 스크롤 코드와 겹치지 않는다. */
+      #sql .sqlbar{display:flex;justify-content:flex-end;margin:2px 0 6px}
+      #sql .sqlcopy{font:inherit;font-size:11.5px;font-weight:700;color:#5b6478;background:#fff;
+        border:1px solid #dfe3ec;border-radius:6px;padding:4px 10px;cursor:pointer;line-height:1.4}
+      #sql .sqlcopy:hover{background:#f4f6fa;color:#2b3348}
+      #sql .sqlcopy.is-done{border-color:#16a34a;color:#16a34a;background:#f0fdf4}
     </style>
   </head>
   <body>
@@ -549,6 +556,44 @@ ORDER BY `프로젝트`;</pre></div>
         document.addEventListener('mouseout', ev => {
           if(cur && !ev.relatedTarget) { tipEl.style.display='none'; cur=null; }
         });
+      })();
+    </script>
+    <script>
+      // 쿼리 블록(#sql 안의 pre)마다 복사 버튼을 붙인다. 쿼리를 추가해도 자동으로 붙는다.
+      (function () {
+        document.querySelectorAll('#sql .fold-body .table-scroll').forEach(function (box) {
+          var pre = box.querySelector('pre');
+          if (!pre) return;
+          var bar = document.createElement('div');
+          bar.className = 'sqlbar';
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'sqlcopy';
+          btn.textContent = '쿼리 복사';
+          bar.appendChild(btn);
+          box.parentNode.insertBefore(bar, box);
+          btn.addEventListener('click', function () { copySql(pre.textContent, btn); });
+        });
+
+        function copySql(text, btn) {
+          function done() {
+            btn.textContent = '복사됨';
+            btn.classList.add('is-done');
+            setTimeout(function () { btn.textContent = '쿼리 복사'; btn.classList.remove('is-done'); }, 1200);
+          }
+          function fallback() {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) {}
+            document.body.removeChild(ta);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, fallback);
+          } else { fallback(); }
+        }
       })();
     </script>
     <script src="../app.js"></script>
