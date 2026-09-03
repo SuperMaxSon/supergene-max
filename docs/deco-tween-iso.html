@@ -6,10 +6,10 @@
     <title>아이소메트릭 데코 영역 — 등장 연출 · 레이어</title>
     <meta
       name="description"
-      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 보간 시간(root 하나의 연출 시간) · 오브젝트 간 딜레이 · 이징 · 연출별 값을 바꾸면 Cocos Creator 2.4 코드가 그 값 그대로 바뀐다. 깊이 순서는 아트 리소스 트리 그대로 고정이다."
+      content="빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다 — 배치형 · 수리형 · 건설형 · 선택형 네 유형. 등장 연출 9종에 키값(DROP_IN · POP_UP · FILL_FROM_LEFT …)이 붙어 있고, 키값마다 값 · 이징을 표에서 맞추면 Cocos Creator 2.4 코드가 그 값 그대로 바뀐다. 맞춘 값은 브라우저에 남고 텍스트로 주고받는다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=iso23" />
+    <link rel="stylesheet" href="../style.css?v=iso24" />
   </head>
   <body>
     <nav class="nav">
@@ -32,20 +32,55 @@
           오브젝트가 등장합니다 &mdash; 아트 인계 문서의 네 유형을 그대로 깔았습니다.
           <b>배치형</b>은 한 번에 놓이고, <b>건설형</b>(집)은 터 &rarr; 벽 &rarr; 지붕으로 자라며,
           <b>수리형</b>(분수)은 낡은 것이 <b>처음부터 놓여 있다가</b> 누르면 새 것으로 교체되고, <b>선택형</b>(가로등)은
-          카드 3장 중 하나를 고릅니다. <b>보간 시간 1초는 오브젝트 root 하나가 등장하는 시간</b>입니다. 그 1초 안에서 root 안의 스프라이트가 조립 순서대로 조금씩 늦게 들어오고, 딜레이는 root 와 root 사이에 둡니다. 이 값들과 이징 &middot; 연출별 값을
-          바꾸면 아래 코드가 같이 바뀌고, 그대로 복사할 수 있습니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
+          카드 3장 중 하나를 고릅니다. <b>보간 시간 1초는 오브젝트 root 하나가 등장하는 시간</b>입니다. 그 1초 안에서 root 안의 스프라이트가 조립 순서대로 조금씩 늦게 들어오고, 딜레이는 root 와 root 사이에 둡니다.
+          등장 연출 9종에는 <b>키값</b>이 붙어 있습니다 &mdash; <code>DROP_IN</code> &middot; <code>POP_UP</code> &middot; <code>FILL_FROM_LEFT</code> 처럼, 기획서와 코드가 같은 이름으로 부르는 값입니다.
+          키값을 고르면 그 연출의 값 &middot; 이징이 아래 표로 뜨고, <b>숫자를 치거나 슬라이더를 끌면</b> 무대와 코드가 그 값으로 바뀝니다.
+          맞춘 값은 <b>이 브라우저에 남아</b> 새로고침해도 그대로이고, <b>[설정 주고받기]</b> 로 텍스트째 주고받습니다. <b>Cocos Creator 2.4 에서 되는 연출만</b>
           실었습니다 &mdash; 엔진이 기본 지원하지 않는 것은 뺐습니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">Cocos 2.4 API 기준</span>
           <span class="tag">데코</span>
+          <span class="tag">튜닝 도구</span>
           <span class="tag">인터랙티브</span>
           <span class="tag">앵커 (0.5, 0)</span>
-          <span class="tag">v3.11 &middot; 2026-09-01</span>
+          <span class="tag">연출 9종 &middot; 키값 &middot; 값 저장</span>
+          <span class="tag" id="iso-ver">v4.0 &middot; 2026-09-03</span>
         </div>
       </div>
     </header>
+
+    <!-- 설정 주고받기 창. 여는 버튼이 무대 툴바에 있어서 인라인 패널이면 아래쪽을
+         보다 눌렀을 때 화면에 아무 일도 안 일어난다. 네이티브 <dialog> 라 스크롤
+         위치와 무관하게 같은 자리에 뜨고 ESC 닫기 · 포커스 가둠 · backdrop 이 공짜다. -->
+    <dialog class="mfx-io" id="io" aria-label="설정 주고받기">
+      <div class="mfx-io-head">
+        <h2>설정 주고받기</h2>
+        <button type="button" class="mfx-x" id="io-x" aria-label="닫기">✕</button>
+      </div>
+
+      <div class="mfx-io-sec">
+        <div class="mfx-io-t">가져오기</div>
+        <textarea id="io-ta" spellcheck="false" placeholder="[연출 값 복사] · [전체 설정 복사] 로 가져간 텍스트, 또는 내려받은 .json 의 내용을 통째로 붙여넣으세요. 연출 하나짜리도, 전체짜리도 됩니다."></textarea>
+        <div class="mfx-io-row">
+          <button type="button" class="mfx-btn is-primary" id="io-apply">적용</button>
+          <button type="button" class="mfx-btn" id="io-pick">파일 열기</button>
+          <input type="file" id="io-file" accept=".json,.txt,application/json,text/plain" hidden />
+          <span class="mfx-io-hint">창 안에 파일을 끌어다 놓아도 됩니다</span>
+        </div>
+        <div class="mfx-io-msg" id="io-msg"></div>
+      </div>
+
+      <div class="mfx-io-sec">
+        <div class="mfx-io-t">내보내기</div>
+        <div class="mfx-io-row">
+          <button type="button" class="mfx-btn" id="io-copy">전체 설정 복사</button>
+          <button type="button" class="mfx-btn" id="io-save">.json 내려받기</button>
+          <span class="mfx-io-hint">주석 <code>// @iso-data</code> 줄이 되읽기용 원본입니다 — 지우지 마세요</span>
+        </div>
+      </div>
+    </dialog>
 
     <main class="wrap wrap--wide">
 
@@ -58,7 +93,10 @@
           <span class="doc-h2-sub">데코 영역 1개 · 오브젝트 root 6개 · 이미지 19장 (완성 시 15장) · 아이소메트릭 2:1</span>
         </h2>
 
+        <!-- 연출 하나 = 키값 하나. 버튼에 이름과 키값을 같이 실어 둔다 — 무대에서 고른
+             것을 기획서에 옮겨 적을 때 이 키값을 그대로 쓴다. -->
         <div class="projbar" id="presets" style="--acc: var(--smg)"></div>
+        <div class="iso-hint" id="presetInfo" style="margin: 8px 0 0"></div>
 
         <div class="calc-grid" style="margin-top: 14px">
           <div class="calc-cell" style="--acc: var(--smg)">
@@ -107,7 +145,7 @@
             </div>
           </div>
           <div class="calc-cell" style="--acc: var(--smg)">
-            <label class="calc-label" for="i-ease">Easing</label>
+            <label class="calc-label" for="i-ease">이징 <span class="calc-unit">연출별</span></label>
             <div class="calc-row">
               <select class="calc-in" id="i-ease">
                 <option value="bounceOut">bounceOut</option>
@@ -128,13 +166,18 @@
           </div>
         </div>
 
-        <!-- 연출마다 만질 값이 다르다. 공통 칸(보간 시간 · root 간 딜레이 · 이징) 아래에
-             선택된 연출의 값만 갈아 끼운다. -->
-        <div class="calc-grid calc-grid--sub" id="subParams"></div>
+        <!-- 연출마다 만질 값이 다르다. 공통 칸(보간 시간 · root 간 딜레이 · 페이드) 아래에
+             고른 키값의 값만 갈아 끼운다. 격자 칸이 아니라 표인 이유는 숫자칸 하나로는
+             "어디가 맞는지" 를 훑을 수 없어서다 — 슬라이더 · 이징 · 메모가 같이 선다. -->
+        <div id="subParams" style="margin-top: 14px"></div>
 
         <!-- 값은 여기서 만지는데 복사 버튼이 코드 섹션에만 있으면 화면을 내려야 한다 -->
         <div class="projbar iso-modebar" style="--acc: var(--smg)">
-          <button class="mfx-btn" type="button" data-copy="vals">연출 값 복사</button>
+          <button class="mfx-btn is-primary" type="button" data-copy="vals">연출 값 복사</button>
+          <button class="mfx-btn" type="button" id="copyAll">전체 설정 복사</button>
+          <button class="mfx-btn" type="button" id="ioOpen">설정 주고받기</button>
+          <button class="mfx-btn" type="button" id="resetVals">전부 기본값</button>
+          <span class="mfx-restored" id="restored" hidden></span>
         </div>
 
         <div class="iso-split">
@@ -368,14 +411,14 @@
       <section class="doc-section" id="support">
         <h2 class="doc-h2">
           지원 범위
-          <span class="doc-h2-sub">Cocos Creator 2.4 · 여기 있는 7종은 전부 엔진 기본 기능</span>
+          <span class="doc-h2-sub">Cocos Creator 2.4 · 여기 있는 9종은 전부 엔진 기본 기능</span>
         </h2>
 
         <div class="table-scroll" style="--acc: var(--smg)">
           <table>
             <thead>
               <tr>
-                <th>연출</th>
+                <th>키값 · 이름</th>
                 <th>손대는 것</th>
                 <th>추가 비용</th>
                 <th>주의</th>
@@ -383,34 +426,58 @@
             </thead>
             <tbody>
               <tr>
-                <td>위에서 낙하</td>
+                <td><code>DROP_IN</code><br />떨어져 놓임</td>
                 <td><code>node.y</code> + <code>delay</code></td>
                 <td>없음</td>
                 <td>시작 y 를 화면 밖까지 올려야 잘려 들어오는 게 안 보인다</td>
               </tr>
               <tr>
-                <td>낙하 + 착지 스쿼시</td>
+                <td><code>DROP_SQUASH</code><br />떨어져 눌림</td>
                 <td><code>y</code> → <code>scaleY</code> 연결</td>
                 <td>없음</td>
                 <td>앵커가 이미지 하단 끝이라 밑변이 기준선이 된다. 밑끝이 접지점이 아닌 지붕 &middot; 굴뚝에는 걸지 말 것</td>
               </tr>
               <tr>
-                <td>아래에서 팝</td>
+                <td><code>POP_UP</code><br />솟아 놓임</td>
                 <td><code>scale</code> 0.25 → 1</td>
                 <td>없음</td>
                 <td>2.4 의 <code>scale</code> 은 단일 값(균등). 축을 나누려면 <code>scaleX</code> / <code>scaleY</code></td>
               </tr>
               <tr>
-                <td>페이드 인 / 아웃</td>
-                <td><code>node.opacity</code> 0 ↔ 255</td>
+                <td><code>FADE_IN</code><br />스며 나타남</td>
+                <td><code>node.opacity</code> 0 → 255</td>
                 <td>없음</td>
                 <td>자식까지 같이 흐려지려면 부모의 <code>cascadeOpacity</code> 를 켤 것</td>
               </tr>
               <tr>
-                <td>Fill 가로 / 세로</td>
-                <td><code>Sprite.Type.FILLED</code> + <code>fillRange</code></td>
+                <td><code>FADE_OUT</code><br />스며 사라짐</td>
+                <td><code>node.opacity</code> 255 → 0</td>
+                <td>없음</td>
+                <td>퇴장이라 트윈이 끝나면 <code>active = false</code> 까지 해 준다. 진행 중인 트윈부터 <code>stopAllByTarget</code></td>
+              </tr>
+              <!-- 방향은 값이 아니라 다른 연출이다 — fillStart 가 곧 키값이라 네 줄로 선다.
+                   FADE_IN / FADE_OUT 을 키값 둘로 나눈 것과 같은 이유다. -->
+              <tr>
+                <td><code>FILL_FROM_LEFT</code><br />왼쪽부터 채워짐</td>
+                <td><code>FillType.HORIZONTAL</code> · <code>fillStart 0</code></td>
                 <td>정점 갱신</td>
-                <td>FILLED 는 SLICED(9-slice) 와 배타적이다. 아이소 파츠에서는 화면 축으로 잘린다</td>
+                <td rowspan="2">FILLED 는 SLICED(9-slice) 와 배타적이다. 잘리는 선은 화면 세로선이라 아이소 사면을 따라가지 않는다</td>
+              </tr>
+              <tr>
+                <td><code>FILL_FROM_RIGHT</code><br />오른쪽부터 채워짐</td>
+                <td><code>fillStart 1</code> · <code>fillRange</code> 음수</td>
+                <td>정점 갱신</td>
+              </tr>
+              <tr>
+                <td><code>FILL_FROM_BOTTOM</code><br />아래부터 채워짐</td>
+                <td><code>FillType.VERTICAL</code> · <code>fillStart 0</code></td>
+                <td>정점 갱신</td>
+                <td rowspan="2">같은 제약. 잘리는 선은 화면 기준 수평선이다</td>
+              </tr>
+              <tr>
+                <td><code>FILL_FROM_TOP</code><br />위부터 채워짐</td>
+                <td><code>fillStart 1</code> · <code>fillRange</code> 음수</td>
+                <td>정점 갱신</td>
               </tr>
             </tbody>
           </table>
@@ -480,19 +547,33 @@
         }
 
         /* Cocos 2.4 에서 기본으로 되는 것만 남겼다. 4방향 fill 은 FillType 에 없어서 뺐다. */
-        /* 연출마다 만질 값이 다르다. par 에 정의하면 무대 아래 칸으로 뜨고,
-           apply 와 코드 스니펫이 같은 값을 읽는다. */
+        /* ── 연출 9종 ────────────────────────────────────────────────────────
+           연출 하나 = 키값 하나다. 화면에서 다르게 보이면 키값을 나눈다 — Fill 의
+           방향이 그래서 par 가 아니라 정의(axis · start)에 올라와 있다. 방향은
+           디자이너가 맞추는 값이 아니라 어느 연출을 쓸지의 선택이라 튜닝 상수 자리에
+           두면 안 된다. FADE_IN / FADE_OUT 을 키값 둘로 나눈 것과 같은 이유다.
+
+           key  기획서와 코드가 같이 부르는 이름. 상수 접두어도 이 값이다.
+           prop 손대는 프로퍼티        fn  생성 코드의 메서드 이름
+           par  표로 뜨는 튜닝값. cfg 가 그 값의 상수 이름이고, apply · 코드 생성기 ·
+                설정 복사가 전부 같은 par 를 읽는다 — 숫자가 갈릴 자리를 안 만든다. */
         var PRESETS = [
-          { id: "drop", name: "위에서 낙하", key: "node.y", ease: "bounceOut",
-            par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 40, min: 0, max: 1400, step: 20 }],
+          { id: "drop", key: "DROP_IN", name: "떨어져 놓임",
+            prop: "node.y", fn: "playDropIn", ease: "bounceOut",
+            par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 40, min: 0, max: 1400, step: 20,
+                    cfg: "DECO_DROP_IN_FROM_HEIGHT", note: "화면 밖까지 올려야 잘려 들어오는 게 안 보인다" }],
             apply: function (p, t, e, fn, P) { return { ty: -(1 - e) * P.h, op: fadeOp(t) }; } },
 
           /* 낙하 구간은 quadIn 고정이다 — 공통 이징이 bounce 계열이면 착지 전에 통통 튀어서
-             "착지하자마자 띠용" 이 안 나온다. 공통 이징은 착지 뒤 복원(띠용)에만 쓴다. */
-          { id: "squash", name: "낙하 + 착지 스쿼시", key: "y + scale", ease: "backOut",
-            par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 40, min: 0, max: 1400, step: 20 },
-                  { k: "sq", label: "스쿼시 세기", unit: "scaleY", v: 0.82, min: 0.5, max: 1, step: 0.02 },
-                  { k: "fall", label: "낙하 비중", unit: "%", v: 72, min: 40, max: 90, step: 2 }],
+             "착지하자마자 띠용" 이 안 나온다. 고른 이징은 착지 뒤 복원(띠용)에만 쓴다. */
+          { id: "squash", key: "DROP_SQUASH", name: "떨어져 눌림",
+            prop: "y + scale", fn: "playDropWithSquash", ease: "backOut",
+            par: [{ k: "h", label: "낙하 시작 높이", unit: "px", v: 40, min: 0, max: 1400, step: 20,
+                    cfg: "DECO_DROP_SQUASH_FROM_HEIGHT" },
+                  { k: "sq", label: "스쿼시 세기", unit: "scaleY", v: 0.82, min: 0.5, max: 1, step: 0.02,
+                    cfg: "DECO_DROP_SQUASH_SCALE_Y", note: "앵커가 하단 끝이라 발이 붙은 채로 눌린다" },
+                  { k: "fall", label: "낙하 비중", unit: "%", v: 72, min: 40, max: 90, step: 2,
+                    cfg: "DECO_DROP_SQUASH_FALL_RATIO", note: "낙하 구간은 quadIn 고정 — 착지 전에 튀면 띠용이 안 난다" }],
             apply: function (p, t, e0, fn, P) {
               var r = P.fall / 100;
               if (t < r) return { ty: -(1 - E.quadIn(t / r)) * P.h, op: fadeOp(t) };
@@ -501,41 +582,80 @@
               return { ty: 0, sx: 1 + (1 - sy) * 0.8, sy: sy, op: fadeOp(t) };
             } },
 
-          { id: "pop", name: "아래에서 팝", key: "scale", ease: "backOut",
-            par: [{ k: "s0", label: "시작 스케일", unit: "", v: 0.25, min: 0, max: 1, step: 0.05 },
-                  { k: "rise", label: "솟는 거리", unit: "px", v: 0, min: 0, max: 140, step: 2 }],
+          { id: "pop", key: "POP_UP", name: "솟아 놓임",
+            prop: "scale", fn: "playPopIn", ease: "backOut",
+            par: [{ k: "s0", label: "시작 스케일", unit: "", v: 0.25, min: 0, max: 1, step: 0.05,
+                    cfg: "DECO_POP_UP_START_SCALE" },
+                  { k: "rise", label: "솟는 거리", unit: "px", v: 0, min: 0, max: 140, step: 2,
+                    cfg: "DECO_POP_UP_RISE_PX", note: "0 이면 제자리에서 커지기만 한다" }],
             apply: function (p, t, e, fn, P) {
               return { ty: (1 - t) * P.rise, s: P.s0 + (1 - P.s0) * e, op: fadeOp(t) };
             } },
 
-          { id: "fadeIn", name: "페이드 인", key: "opacity", ease: "sineOut",
-            par: [{ k: "a0", label: "시작 opacity", unit: "", v: 0, min: 0, max: 255, step: 5 },
-                  { k: "a1", label: "끝 opacity", unit: "", v: 255, min: 0, max: 255, step: 5 }],
+          { id: "fadeIn", key: "FADE_IN", name: "스며 나타남",
+            prop: "opacity", fn: "playFadeIn", ease: "sineOut",
+            par: [{ k: "a0", label: "시작 opacity", unit: "", v: 0, min: 0, max: 255, step: 5,
+                    cfg: "DECO_FADE_IN_FROM_OPACITY" },
+                  { k: "a1", label: "끝 opacity", unit: "", v: 255, min: 0, max: 255, step: 5,
+                    cfg: "DECO_FADE_IN_TO_OPACITY", note: "자식까지 흐려지려면 부모의 cascadeOpacity 를 켤 것" }],
             apply: function (p, t, e, fn, P) { return { op: (P.a0 + (P.a1 - P.a0) * e) / 255 }; } },
 
-          { id: "fadeOut", name: "페이드 아웃", key: "opacity", ease: "sineOut",
-            par: [{ k: "a0", label: "시작 opacity", unit: "", v: 255, min: 0, max: 255, step: 5 },
-                  { k: "a1", label: "끝 opacity", unit: "", v: 0, min: 0, max: 255, step: 5 }],
+          { id: "fadeOut", key: "FADE_OUT", name: "스며 사라짐",
+            prop: "opacity", fn: "playFadeOut", ease: "sineOut",
+            par: [{ k: "a0", label: "시작 opacity", unit: "", v: 255, min: 0, max: 255, step: 5,
+                    cfg: "DECO_FADE_OUT_FROM_OPACITY" },
+                  { k: "a1", label: "끝 opacity", unit: "", v: 0, min: 0, max: 255, step: 5,
+                    cfg: "DECO_FADE_OUT_TO_OPACITY", note: "퇴장이라 끝나면 active = false 까지 해 준다" }],
             apply: function (p, t, e, fn, P) { return { op: (P.a0 + (P.a1 - P.a0) * e) / 255 }; } },
 
-          { id: "fillH", name: "Fill 가로", key: "FillType.HORIZONTAL", ease: "quadOut",
-            par: [{ k: "st", label: "등장 방향", unit: "fillStart", v: 0,
-                    opt: [{ v: 0, label: "좌 → 우  (fillStart 0)" }, { v: 1, label: "우 → 좌  (fillStart 1)" }] },
-                  { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
-            apply: function (p, t, e, fn, P) {
+          /* Fill 4종. 축(axis)과 시작 변(start)이 키값에 박혀 있어 튜닝값은 fillRange 하나다.
+             start 는 Cocos 의 sprite.fillStart 그대로다 — 채우기가 시작되는 변. */
+          { id: "fillL", key: "FILL_FROM_LEFT", name: "왼쪽부터 채워짐",
+            prop: "FillType.HORIZONTAL", fn: "playFillFromLeft", ease: "quadOut",
+            axis: "HORIZONTAL", start: 0,
+            par: [{ k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05,
+                    cfg: "DECO_FILL_FROM_LEFT_RANGE", note: "1 이면 끝까지 채운다" }],
+            apply: function (p, t, e, fn, P, S) {
               var w = p.bb.w * e * P.rg;
-              return { op: fadeOp(t), clip: rectPath(P.st ? p.bb.x + p.bb.w - w : p.bb.x, p.bb.y, w, p.bb.h) };
+              return { op: fadeOp(t), clip: rectPath(S.start ? p.bb.x + p.bb.w - w : p.bb.x, p.bb.y, w, p.bb.h) };
             } },
 
-          { id: "fillV", name: "Fill 세로", key: "FillType.VERTICAL", ease: "quadOut",
-            par: [{ k: "st", label: "등장 방향", unit: "fillStart", v: 0,
-                    opt: [{ v: 0, label: "아래 → 위  (fillStart 0)" }, { v: 1, label: "위 → 아래  (fillStart 1)" }] },
-                  { k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05 }],
-            apply: function (p, t, e, fn, P) {
+          { id: "fillR", key: "FILL_FROM_RIGHT", name: "오른쪽부터 채워짐",
+            prop: "FillType.HORIZONTAL", fn: "playFillFromRight", ease: "quadOut",
+            axis: "HORIZONTAL", start: 1,
+            par: [{ k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05,
+                    cfg: "DECO_FILL_FROM_RIGHT_RANGE", note: "fillStart 1 · fillRange 는 음수로 나간다" }],
+            apply: function (p, t, e, fn, P, S) {
+              var w = p.bb.w * e * P.rg;
+              return { op: fadeOp(t), clip: rectPath(S.start ? p.bb.x + p.bb.w - w : p.bb.x, p.bb.y, w, p.bb.h) };
+            } },
+
+          { id: "fillB", key: "FILL_FROM_BOTTOM", name: "아래부터 채워짐",
+            prop: "FillType.VERTICAL", fn: "playFillFromBottom", ease: "quadOut",
+            axis: "VERTICAL", start: 0,
+            par: [{ k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05,
+                    cfg: "DECO_FILL_FROM_BOTTOM_RANGE", note: "자라 오르듯 보이는 쪽 — 건설형에 맞는다" }],
+            apply: function (p, t, e, fn, P, S) {
               var h = p.bb.h * e * P.rg;
-              return { op: fadeOp(t), clip: rectPath(p.bb.x, P.st ? p.bb.y : p.bb.y + p.bb.h - h, p.bb.w, h) };
+              return { op: fadeOp(t), clip: rectPath(p.bb.x, S.start ? p.bb.y : p.bb.y + p.bb.h - h, p.bb.w, h) };
+            } },
+
+          { id: "fillT", key: "FILL_FROM_TOP", name: "위부터 채워짐",
+            prop: "FillType.VERTICAL", fn: "playFillFromTop", ease: "quadOut",
+            axis: "VERTICAL", start: 1,
+            par: [{ k: "rg", label: "fillRange 목표", unit: "", v: 1, min: 0.1, max: 1, step: 0.05,
+                    cfg: "DECO_FILL_FROM_TOP_RANGE", note: "위에서 덮이듯 보인다 — 잘리는 선은 화면 수평선이다" }],
+            apply: function (p, t, e, fn, P, S) {
+              var h = p.bb.h * e * P.rg;
+              return { op: fadeOp(t), clip: rectPath(p.bb.x, S.start ? p.bb.y : p.bb.y + p.bb.h - h, p.bb.w, h) };
             } }
         ];
+        /* #i-ease 의 목록과 같아야 한다. 바깥에서 들어온 이징 이름은 이 목록으로 건다. */
+        var EASE_LIST = ["bounceOut", "backOut", "elasticOut", "quadOut", "cubicOut", "sineOut", "linear"];
+        function byId(id) {
+          for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === id) return PRESETS[i];
+          return null;
+        }
 
         /* 딜레이는 오브젝트 root 단위다 — root 순서대로 배열로 뽑아 그대로 쓰게 한다.
            단위는 초다 — cc.tween 의 delay() 가 초를 받으므로 변환할 자리를 안 만든다.
@@ -560,8 +680,9 @@
         /* root 하나 = 연출 하나. 안의 스프라이트는 같은 delay · 같은 duration 으로 함께 간다.
            그래서 바깥 루프가 오브젝트, 안쪽 루프가 그 오브젝트의 스프라이트다.
            숫자는 전부 위 칸에서 맞춘 값이 그대로 박힌다 — 고쳐 쓸 곳이 없게. */
-        function CODE(id, d, s, e) {
-          var SP = span().toFixed(2), D = tweenSec().toFixed(2), Q = '"' + e + '"', P = PV[id] || {};
+        function CODE(ps) {
+          var id = ps.id, P = PV[id] || {};
+          var SP = span().toFixed(2), D = tweenSec().toFixed(2), Q = '"' + P.ease + '"';
           function wrap(sig, body, tail) {
             return sig + "(objects: cc.Node[][]): void {\n" +
               "    objects.forEach((parts, i) => {\n" +
@@ -585,12 +706,13 @@
           }
           var op0 = "node.opacity = " + (fade() > 0 ? "0" : "255") + ";";
           var sp = "const sprite = node.getComponent(cc.Sprite);\nsprite.type = cc.Sprite.Type.FILLED;\n";
-          /* Fill 은 방향이 값 두 개로 갈린다 — 시작점과 채우는 부호. */
-          function fill(axis, dirs) {
-            var back = P.st === 1;
-            return wrap("private playFill" + (axis === "HORIZONTAL" ? "Horizontal" : "Vertical"),
-              sp + "sprite.fillType = cc.Sprite.FillType." + axis + ";\n" +
-              "sprite.fillStart = " + (back ? 1 : 0) + ";      // " + (back ? dirs[1] : dirs[0]) + "\n" +
+          /* 방향은 키값이 정한다 — fillStart 는 리터럴로 박히고, 되채우는 쪽(start 1)은
+             fillRange 가 음수로 나간다. 표에서 고를 값이 아니라 어느 연출인지의 문제다. */
+          function fill(S) {
+            var back = S.start === 1;
+            return wrap("private " + S.fn,
+              sp + "sprite.fillType = cc.Sprite.FillType." + S.axis + ";\n" +
+              "sprite.fillStart = " + S.start + ";      // " + S.name + "\n" +
               "sprite.fillRange = 0;\n" + op0 + "\n\ncc.tween(sprite)\n    .delay(delay + step * j)\n    .to(" + D +
               ", { fillRange: " + (back ? "-" : "") + P.rg + " }, { easing: " + Q + " })\n    .start();" +
               (fade() > 0
@@ -600,33 +722,34 @@
           }
           var tw = tweenSec(), fallSec = tw * (P.fall || 72) / 100, rest = tw - fallSec;
           var map = {
-            drop: "/** 오브젝트가 순서대로 위에서 떨어진다 */\n" + wrap("private playDropIn",
+            drop: "/** 오브젝트가 순서대로 위에서 떨어진다 */\n" + wrap("private " + ps.fn,
 "const endY = node.y;\nnode.y = endY + " + P.h + ";          // 이만큼 위에서 떨어진다\n" + op0 + "\n\n" +
 motion([".to(" + D + ", { y: endY }, { easing: " + Q + " })"])),
-            squash: "/** 낙하는 가속(quadIn)으로 안 튀게 떨어뜨리고, 착지하는 즉시 한 번만 눌렀다 편다.\n *  앵커는 이미지 하단 끝 (0.5, 0) — 발이 바닥에 붙은 채로 눌린다. */\n" + wrap("private playDropWithSquash",
+            squash: "/** 낙하는 가속(quadIn)으로 안 튀게 떨어뜨리고, 착지하는 즉시 한 번만 눌렀다 편다.\n *  앵커는 이미지 하단 끝 (0.5, 0) — 발이 바닥에 붙은 채로 눌린다. */\n" + wrap("private " + ps.fn,
 "const endY = node.y;\nnode.y = endY + " + P.h + ";\n" + op0 + "\n\n" + motion([
 ".to(" + fallSec.toFixed(2) + ", { y: endY }, { easing: \"quadIn\" })   // 튀지 않는다",
 ".to(" + (rest * 0.35).toFixed(2) + ", { scaleY: " + P.sq + ", scaleX: " + (1 + (1 - P.sq) * 0.8).toFixed(2) + " })",
 ".to(" + (rest * 0.65).toFixed(2) + ", { scaleY: 1, scaleX: 1 }, { easing: " + Q + " })"])),
-            pop: "/** 제자리에서 솟아오른다 */\n" + wrap("private playPopIn",
+            pop: "/** 제자리에서 솟아오른다 */\n" + wrap("private " + ps.fn,
 (P.rise ? "const endY = node.y;\n" : "") + "node.setScale(" + P.s0 + ");\n" + op0 + "\n" +
 (P.rise ? "node.y = endY - " + P.rise + ";          // 바닥 아래에서 올라온다\n" : "") + "\n" +
 motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easing: " + Q + " })"]),
 "\n\n// 2.4 의 scale 은 단일 값(균등)이다. 축을 나누려면 scaleX / scaleY"),
-            fadeIn: wrap("private playFadeIn",
+            fadeIn: wrap("private " + ps.fn,
 "node.opacity = " + P.a0 + ";\n\ncc.tween(node)\n    .delay(delay + step * j)\n    .to(" + D + ", { opacity: " + P.a1 + " }, { easing: " + Q + " })\n    .start();",
 "\n\n// 자식까지 같이 흐려지려면 부모의 cascadeOpacity 를 켤 것"),
-            fadeOut: wrap("private playFadeOut",
+            fadeOut: wrap("private " + ps.fn,
 "cc.Tween.stopAllByTarget(node);   // 진행 중인 트윈부터 정리\nnode.opacity = " + P.a0 + ";\n\ncc.tween(node)\n    .delay(delay + step * j)\n    .to(" + D + ", { opacity: " + P.a1 + " }, { easing: " + Q + " })\n    .call(() => { node.active = false; })\n    .start();"),
-            fillH: fill("HORIZONTAL", ["좌 → 우", "우 → 좌 는 fillStart 1 · fillRange 음수"]) +
-              "\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다",
-            fillV: fill("VERTICAL", ["아래 → 위", "위 → 아래 는 fillStart 1 · fillRange 음수"]) +
-              "\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다"
           };
-          /* 교체는 어느 연출을 골라도 같다 — 낡은 것을 먼저 지우고, 그 뒤에 새 것을 부른다. */
-          var NAME = { drop: "playDropIn", squash: "playDropWithSquash", pop: "playPopIn",
-                       fadeIn: "playFadeIn", fadeOut: "playFadeOut",
-                       fillH: "playFillHorizontal", fillV: "playFillVertical" };
+          /* Fill 4종은 코드가 방향만 다르다 — 정의(axis · start)를 그대로 흘려 넣는다.
+             객체 리터럴에 네 줄로 두면 어느 연출을 보고 있든 나머지 셋까지 만들어진다. */
+          if (ps.axis) {
+            map[id] = fill(ps) + (ps.axis === "HORIZONTAL"
+              ? "\n\n// FILLED 는 SLICED(9-slice) 와 같이 못 쓴다"
+              : "\n\n// 잘리는 선은 화면 기준 수평선이다 — 아이소 사면을 따라가지 않는다");
+          }
+          /* 교체는 어느 연출을 골라도 같다 — 낡은 것을 먼저 지우고, 그 뒤에 새 것을 부른다.
+             부를 메서드 이름은 정의(ps.fn)에 하나만 있다 — 예전엔 맵이 따로 있어서 갈릴 수 있었다. */
           var G = stagger().toFixed(2);
           var swap = "\n\n/** 수리형 교체 — 낡은 것을 공통 딜레이만큼 걸쳐 지우고, 다 지워진 뒤 새 것을 올린다 */\n" +
             "private playSwap(oldParts: cc.Node[], newParts: cc.Node[]): void {\n" +
@@ -638,7 +761,7 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
             "            .start();\n" +
             "    });\n\n" +
             "    // 겹치면 교체가 아니라 두 개가 같이 보인다 — 다 지워진 뒤에 부른다\n" +
-            "    this.scheduleOnce(() => this." + NAME[id] + "([newParts]), " + G + ");\n}\n\n" +
+            "    this.scheduleOnce(() => this." + ps.fn + "([newParts]), " + G + ");\n}\n\n" +
             "// 자식 스프라이트까지 같이 흐려지려면 root 의 cascadeOpacity 를 켤 것";
           return delayArray() + map[id] + swap;
         }
@@ -693,6 +816,8 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
 
 
 
+        /* 버튼에 이름과 키값을 같이 싣는다 — 무대에서 고른 것을 기획서에 옮겨 적을 때
+           이 키값을 그대로 쓰기 때문이다. 손대는 프로퍼티는 버튼 아래 한 줄로 뺐다. */
         var buttons = {};
         PRESETS.forEach(function (ps) {
           var b = document.createElement("button");
@@ -707,52 +832,174 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
         var state = { preset: PRESETS[0], t0: 0, playing: false, loop: false, raf: 0 };
         var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-        /* 연출별 값. 재생할 때마다 여기서 읽으므로 값을 바꾸면 다음 재생부터 반영된다. */
+        /* 연출별 값. 재생할 때마다 여기서 읽으므로 값을 바꾸면 다음 재생부터 반영된다.
+           이징도 여기 들어간다 — 전역 select 하나였을 때는 연출을 갈아 끼우면
+           그 연출의 기본 이징으로 덮어써서 손댄 값이 날아갔다. */
         var PV = {};
         PRESETS.forEach(function (ps) {
-          PV[ps.id] = {};
+          PV[ps.id] = { ease: ps.ease };
           (ps.par || []).forEach(function (d) { PV[ps.id][d.k] = d.v; });
         });
         function par() { return PV[state.preset.id]; }
+        function clampV(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
-        function renderPar() {
+        /* ── 파라미터 표 ──────────────────────────────────────────────────
+           격자 칸(숫자칸 하나)이었을 때는 "어디가 맞는지" 를 훑을 수가 없었다.
+           merge-feedback-anim 과 같은 4열 표로 맞춘다:
+             숫자칸(정밀 입력) + 단위 + 슬라이더(훑기) | 이징 | 메모
+           이징은 연출당 하나뿐이라 첫 행에만 놓고 나머지 행은 — 로 비운다.
+           CSS 는 그 문서 것을 그대로 쓴다 (.mfx-* 는 전역 규칙이라 신규 없음). */
+        var rowMarks = [];        // 표 안 행들의 되맞추기 함수. 붙여넣기 · 기본값이 부른다
+        var easeCell = null;      // 표 안 이징 select. #i-ease 와 같은 값을 본다
+
+        function renderParamTable() {
           var ps = state.preset, box = document.getElementById("subParams");
           box.innerHTML = "";
-          (ps.par || []).forEach(function (d) {
-            var cell = document.createElement("div");
-            cell.className = "calc-cell";
-            cell.style.setProperty("--acc", "var(--plan)");
-            var head = '<label class="calc-label">' + d.label +
-              (d.unit ? ' <span class="calc-unit">' + d.unit + "</span>" : "") + "</label>";
-            /* 방향처럼 고를 값은 숫자 칸이 아니라 목록으로 준다 — 0 · 1 만 보고는 못 고른다. */
-            if (d.opt) {
-              cell.innerHTML = head + '<div class="calc-row"><select class="calc-in">' +
-                d.opt.map(function (o) {
-                  return '<option value="' + o.v + '"' + (PV[ps.id][d.k] === o.v ? " selected" : "") +
-                    ">" + o.label + "</option>";
-                }).join("") + "</select></div>";
-              var sel = cell.querySelector("select");
-              sel.addEventListener("change", function () {
-                PV[ps.id][d.k] = parseFloat(sel.value);
-                refresh();
-                replay();
-              });
-              box.appendChild(cell);
-              return;
-            }
-            cell.innerHTML = head +
-              '<div class="calc-row"><input class="calc-in" type="number" min="' + d.min +
-              '" max="' + d.max + '" step="' + d.step + '" value="' + PV[ps.id][d.k] + '" /></div>';
-            var input = cell.querySelector("input");
-            input.addEventListener("input", function () {
-              var n = parseFloat(input.value);
-              if (!isFinite(n)) return;
-              PV[ps.id][d.k] = Math.max(d.min, Math.min(d.max, n));
-              refresh();
-            });
-            input.addEventListener("blur", function () { input.value = PV[ps.id][d.k]; });
-            box.appendChild(cell);
+          rowMarks = [];
+          easeCell = null;
+          var scroll = document.createElement("div");
+          scroll.className = "table-scroll";
+          scroll.style.setProperty("--acc", "var(--smg)");
+          var table = document.createElement("table");
+          table.className = "mfx-params";
+          table.innerHTML = "<thead><tr><th>항목</th><th>값</th><th>이징</th><th>메모</th></tr></thead>";
+          var tb = document.createElement("tbody");
+          (ps.par || []).forEach(function (d, i) { tb.appendChild(paramRow(ps, d, i === 0)); });
+          table.appendChild(tb);
+          scroll.appendChild(table);
+          box.appendChild(scroll);
+          syncPresetInfo();
+        }
+
+        function paramRow(ps, d, first) {
+          var vals = PV[ps.id];
+          var tr = document.createElement("tr");
+          var tdL = document.createElement("td");
+          tdL.textContent = d.label;
+
+          var tdV = document.createElement("td");
+          tdV.className = "mfx-vcell";
+          var input = document.createElement("input");
+          input.type = "number";
+          input.className = "mfx-in";
+          input.min = d.min;
+          input.max = d.max;
+          /* step 을 그대로 걸면 0.82 같은 값이 브라우저 검증에서 막힌다.
+             화살표 간격은 d.step 으로 두되 입력 자체는 어떤 소수든 받는다. */
+          input.step = "any";
+          input.value = vals[d.k];
+          input.setAttribute("aria-label", d.label);
+          input.addEventListener("keydown", function (ev) {
+            if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+            ev.preventDefault();
+            var cur = parseFloat(input.value);
+            if (!isFinite(cur)) cur = d.v;
+            var next = cur + (ev.key === "ArrowUp" ? d.step : -d.step);
+            input.value = clampV(Math.round(next * 1000) / 1000, d.min, d.max);
+            input.dispatchEvent(new Event("input", { bubbles: true }));
           });
+          tdV.appendChild(input);
+          if (d.unit) {
+            var u = document.createElement("span");
+            u.className = "mfx-u";
+            u.textContent = d.unit;
+            tdV.appendChild(u);
+          }
+          /* 두 번째 손잡이. 숫자칸은 정밀 입력용으로 그대로 두고, 슬라이더는
+             min~max 를 손으로 훑으며 "어디가 맞는지" 를 찾는 용도다. */
+          var range = document.createElement("input");
+          range.type = "range";
+          range.className = "mfx-rng";
+          range.min = d.min;
+          range.max = d.max;
+          range.step = d.step;
+          range.value = vals[d.k];
+          range.setAttribute("aria-label", d.label + " 슬라이더");
+          tdV.appendChild(range);
+
+          var tdE = document.createElement("td");
+          var sel = null;
+          if (first) {
+            sel = document.createElement("select");
+            sel.className = "mfx-sel";
+            EASE_LIST.forEach(function (name) {
+              var o = document.createElement("option");
+              o.value = name;
+              o.textContent = name;
+              sel.appendChild(o);
+            });
+            sel.value = vals.ease;
+            sel.setAttribute("aria-label", ps.key + " 이징");
+            tdE.appendChild(sel);
+            easeCell = sel;
+          } else {
+            tdE.textContent = "—";
+            tdE.className = "mfx-dash";
+          }
+
+          var tdN = document.createElement("td");
+          tdN.className = "mfx-memo";
+          tdN.textContent = d.note || "";
+
+          tr.appendChild(tdL);
+          tr.appendChild(tdV);
+          tr.appendChild(tdE);
+          tr.appendChild(tdN);
+
+          /* 값이 바뀌는 모든 경로(숫자칸 · 슬라이더 · #i-ease · 붙여넣기 · 기본값)가
+             마지막에 이걸 지난다. 그래서 DOM 되맞추기도 여기 한 군데서 한다 —
+             지금 손대고 있는 쪽은 건드리지 않아야 커서가 튀거나 손잡이가 떨지 않는다. */
+          function mark() {
+            var diff = vals[d.k] !== d.v || (first && vals.ease !== ps.ease);
+            tr.classList.toggle("is-changed", !!diff);
+            if (document.activeElement !== range) range.value = vals[d.k];
+            if (document.activeElement !== input) input.value = vals[d.k];
+            if (sel && document.activeElement !== sel) sel.value = vals.ease;
+          }
+          function after() { mark(); saveSoon(); refresh(); }
+          input.addEventListener("input", function () {
+            var n = parseFloat(input.value);
+            if (!isFinite(n)) return;
+            vals[d.k] = clampV(n, d.min, d.max);   // 소수점 그대로 받는다
+            after();
+          });
+          input.addEventListener("blur", function () { input.value = vals[d.k]; });
+          range.addEventListener("input", function () {
+            var n = parseFloat(range.value);
+            if (!isFinite(n)) return;
+            vals[d.k] = clampV(n, d.min, d.max);
+            after();
+          });
+          if (sel) sel.addEventListener("change", function () { setEase(sel.value); });
+
+          mark();                                  // 복원된 값이면 처음부터 표시돼야 한다
+          rowMarks.push(mark);
+          return tr;
+        }
+
+        /* 이징은 두 자리에서 고를 수 있다 — 공통 칸의 #i-ease 와 표 첫 행.
+           같은 값을 보는 창 둘이라 한 군데를 고치면 다른 쪽도 따라와야 한다. */
+        function setEase(name) {
+          if (EASE_LIST.indexOf(name) < 0) return;
+          par().ease = name;
+          syncEase();
+          rowMarks.forEach(function (m) { m(); });
+          saveSoon();
+          refresh();
+          if (!state.playing) replay();
+        }
+        function syncEase() {
+          var v = par().ease;
+          if (el.ease.value !== v) el.ease.value = v;
+          if (easeCell && easeCell.value !== v) easeCell.value = v;
+        }
+        /* 고른 연출이 무엇인지 한 줄로 — 키값 · 이름 · 메서드 · 손대는 프로퍼티. */
+        function syncPresetInfo() {
+          var ps = state.preset;
+          document.getElementById("presetInfo").innerHTML =
+            "<b>" + ps.key + "</b> · " + ps.name + " — 생성 코드 <code>" + ps.fn +
+            "()</code> · 손대는 것 <code>" + ps.prop + "</code>" +
+            (ps.axis ? " · <code>fillStart " + ps.start + "</code>" : "");
         }
 
         function duration() { var v = parseFloat(el.dur.value); return isFinite(v) && v > 0 ? v : 1; }
@@ -797,22 +1044,24 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
         }
 
         function refresh() {
-          el.code.innerHTML = highlight(CODE(state.preset.id, duration(), stagger(), el.ease.value));
+          el.code.innerHTML = highlight(CODE(state.preset));
           el.total.value = total().toFixed(2);
         }
 
         function select(ps) {
           state.preset = ps;
           Object.keys(buttons).forEach(function (k) { buttons[k].classList.toggle("is-active", k === ps.id); });
-          el.ease.value = ps.ease;
-          renderPar();
+          renderParamTable();
+          syncEase();
           refresh();
         }
 
         function paint(m, t) {
           var c = Math.max(0, Math.min(1, t));
-          var fn = E[el.ease.value] || E.linear;
-          var p = state.preset.apply(m, c, fn(c), fn, par());
+          var fn = E[par().ease] || E.linear;
+          /* 여섯 번째 인자는 프리셋 정의다 — Fill 은 방향(axis · start)을 par 가 아니라
+             정의에서 읽는다. 방향이 값이 아니라 어느 연출인지의 문제이기 때문이다. */
+          var p = state.preset.apply(m, c, fn(c), fn, par(), state.preset);
           var sx = p.sx != null ? p.sx : p.s != null ? p.s : 1;
           var sy = p.sy != null ? p.sy : p.s != null ? p.s : 1;
           m.el.style.transform =
@@ -1001,8 +1250,10 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
           if (state.loop && !state.playing) playAll();
         });
         document.getElementById("resetArea").addEventListener("click", clearArea);
-        [el.dur, el.stg, el.inner, el.fade].forEach(function (i) { i.addEventListener("input", function () { refresh(); renderRows(); }); });
-        el.ease.addEventListener("change", function () { refresh(); if (!state.playing) replay(); });
+        [el.dur, el.stg, el.inner, el.fade].forEach(function (i) {
+          i.addEventListener("input", function () { refresh(); renderRows(); saveSoon(); });
+        });
+        el.ease.addEventListener("change", function () { setEase(el.ease.value); });
 
         /* 업/다운 버튼 — input 의 step · min · max 를 그대로 따른다. */
         Array.prototype.forEach.call(document.querySelectorAll(".calc-btn"), function (b) {
@@ -1014,6 +1265,7 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
             next = parseFloat(next.toFixed(dec + 1));
             t.value = Math.max(parseFloat(t.min), Math.min(parseFloat(t.max), next));
             refresh();
+            saveSoon();
           });
         });
 
@@ -1101,6 +1353,7 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
                   DLY[key] = round2(Math.max(0, Math.min(20, v)));
                   inp.classList.add("is-set");
                   refresh();
+                  saveSoon();
                 });
                 inp.addEventListener("blur", function () { inp.value = delaySec(key); });
               }
@@ -1160,6 +1413,7 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
           "<b>object 하위 노드 순서가 곧 깊이 정렬 순서입니다.</b> 뒤에 놓일수록 카메라에 가깝고, 이 순서는 아트 리소스 트리 그대로 <b>고정</b>입니다." +
           "<br />딜레이(초)는 <b>root 사이의 간격</b>이라 root 행에서만 고칩니다 — 첫 root 는 기준(0)이라 칸이 없습니다." +
           "<br />등장은 어떤 연출이든 <b>페이드 인을 함께</b> 탑니다 — 트윈 앞부분을 opacity 에 씁니다(0 이면 처음부터 불투명)." +
+          "<br />이징은 <b>연출별</b>입니다 — 키값을 갈아 끼워도 그 연출에 맞춰 둔 이징은 남습니다. 공통 칸과 표 첫 행 중 어디서 고쳐도 같은 값입니다." +
           "<br />보간 시간 1초는 <b>root 하나가 등장하는 시간</b>입니다. 그 1초 안에서 스프라이트가 <b>레이어 순서대로 조금씩 늦게</b> 들어오고(root 안 시차), 0 으로 두면 한꺼번에 움직입니다." +
           "<br />수리형은 낡은 상태가 처음부터 놓여 있다가, 제 차례에 <b>공통 딜레이만큼 걸쳐 흐려져 지워지고</b> 그 뒤에 새 것이 들어옵니다." +
           "<br />행이나 무대에 얹으면 그 파츠만 남고, ◉ 로 숨깁니다. 오브젝트 유형은 아트 인계 문서의 네 가지 — <b>배치형 · 수리형 · 건설형 · 선택형</b> — 을 하나씩 깔아 뒀습니다.";
@@ -1172,6 +1426,7 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
           DLY = {};
           renderRows();
           refresh();
+          saveSoon();
         });
 
         /* ---- 줌 ----
@@ -1313,39 +1568,402 @@ motion([".to(" + D + ", { " + (P.rise ? "y: endY, " : "") + "scale: 1 }, { easin
           return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()) + " " + z(d.getHours()) + ":" + z(d.getMinutes());
         }
         document.getElementById("copyCode").addEventListener("click", function () {
-          copyText(CODE(state.preset.id, duration(), stagger(), el.ease.value), this);
+          copyText(CODE(state.preset), this);
         });
-        /* 무대 · 코드 두 자리에 같은 버튼이 있다 — 쓰는 글은 하나다. */
-        function valsText() {
-          var ps = state.preset, P = PV[ps.id];
-          var out = [
-            "// DecoAppearConfig.ts — 데코 등장 연출값",
-            "// " + ps.name + " · 데코 영역 시연 무대에서 맞춘 값 · " + stampNow(),
-            "",
-            "export const DECO_APPEAR_DURATION_SEC = " + duration().toFixed(2) + ";   // root 하나의 연출 시간",
-            "export const DECO_APPEAR_TWEEN_SEC    = " + tweenSec().toFixed(2) + ";   // 스프라이트 하나의 트윈 길이",
-            "export const DECO_APPEAR_STAGGER_SEC  = " + stagger().toFixed(3) + ";   // root 사이 간격",
-            "export const DECO_APPEAR_INNER_SPAN   = " + span().toFixed(2) + ";   // root 안 시차 총량",
-            "export const DECO_APPEAR_FADE_SEC     = " + fadeSec().toFixed(2) + ";   // 등장 페이드 인 길이",
-            'export const DECO_APPEAR_EASING       = "' + el.ease.value + '";'
-          ];
-          (ps.par || []).forEach(function (d) {
-            var key = ("DECO_APPEAR_" + d.k).toUpperCase();
-            while (key.length < 24) key += " ";   /* 위 상수들과 = 위치를 맞춘다 */
-            out.push("export const " + key + " = " + P[d.k] + ";   // " + d.label +
-              (d.unit ? " (" + d.unit + ")" : "") + (P[d.k] !== d.v ? "   ← 기본 " + d.v : ""));
+        /* ── 값 저장 ─────────────────────────────────────────────────────────
+           맞추던 값이 새로고침 한 번에 날아가면 도구로 못 쓴다. 이 브라우저에만
+           남는 개인 작업본이고, 팀에 넘길 때는 여전히 [설정 복사] 를 쓴다.
+           사파리 프라이빗처럼 localStorage 가 던지는 환경이 있어 전부 try 로 감싼다. */
+        var STORE_KEY = "iso.deco.tune.v1";
+        /* 공통값은 DOM 입력칸에 산다 — 저장 · 복원 · 기본값 대상을 한 군데 적어 둔다.
+           연출을 갈아 끼워도 무대 리듬은 같아야 비교가 되므로 연출별로 쪼개지 않는다. */
+        var COMMON = [
+          { k: "dur",   el: "dur",   v: 1,   min: 0.1, max: 3 },
+          { k: "stg",   el: "stg",   v: 0.5, min: 0,   max: 5 },
+          { k: "inner", el: "inner", v: 35,  min: 0,   max: 60 },
+          { k: "fade",  el: "fade",  v: 40,  min: 0,   max: 100 }
+        ];
+        function commonDef(k) {
+          for (var i = 0; i < COMMON.length; i++) if (COMMON[i].k === k) return COMMON[i];
+          return null;
+        }
+        function snapshot() {
+          var out = { common: {}, delay: {} };
+          COMMON.forEach(function (c) { out.common[c.k] = parseFloat(el[c.el].value); });
+          Object.keys(DLY).forEach(function (k) { if (DLY[k] != null) out.delay[k] = DLY[k]; });
+          PRESETS.forEach(function (ps) {
+            var o = { ease: PV[ps.id].ease };
+            (ps.par || []).forEach(function (d) { o[d.k] = PV[ps.id][d.k]; });
+            out[ps.id] = o;
           });
-          /* root 별 딜레이 배열은 여기 안 넣는다 — 그건 오브젝트마다 다른 데이터이지
-             튜닝 상수가 아니다. 배열이 필요하면 코드 복사 쪽에 함께 나온다. */
+          return out;
+        }
+        var saveTimer = null;
+        function saveNow() {
+          try { localStorage.setItem(STORE_KEY, JSON.stringify(snapshot())); } catch (e) {}
+        }
+        function saveSoon() {
+          restoredOn = false;                 /* 한 번 손대면 "복원됨" 이 아니라 "손댄 값" 이다 */
+          refreshBadge();
+          if (saveTimer) clearTimeout(saveTimer);
+          saveTimer = setTimeout(saveNow, 250);
+        }
+        function storeClear() {
+          try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+        }
+
+        /* ── 값 적용기 ───────────────────────────────────────────────────────
+           바깥에서 들어온 값(localStorage 복원 · 붙여넣기)은 절대 그대로 믿지 않는다.
+           정의에 실재하는 키만 통과시키고, 숫자는 min~max 로 조이고, 이징은 목록에
+           있는 이름만 받는다. 정의에서 키를 빼거나 범위를 바꿔도 옛 저장본이 무대를
+           깨뜨리지 않게 하는 유일한 방어선이다. */
+        function applyPreset(id, obj) {
+          var ps = byId(id);
+          if (!ps || !obj || typeof obj !== "object") return 0;
+          var vals = PV[id], hit = 0;
+          (ps.par || []).forEach(function (d) {
+            if (obj[d.k] == null) return;
+            var n = parseFloat(obj[d.k]);
+            if (!isFinite(n)) return;
+            vals[d.k] = clampV(n, d.min, d.max);
+            hit++;
+          });
+          if (EASE_LIST.indexOf(obj.ease) >= 0) { vals.ease = obj.ease; hit++; }
+          return hit;
+        }
+        function applyCommon(obj) {
+          if (!obj || typeof obj !== "object") return 0;
+          var hit = 0;
+          COMMON.forEach(function (c) {
+            if (obj[c.k] == null) return;
+            var n = parseFloat(obj[c.k]);
+            if (!isFinite(n)) return;
+            el[c.el].value = clampV(n, c.min, c.max);
+            hit++;
+          });
+          return hit;
+        }
+        function applyDelay(obj) {
+          if (!obj || typeof obj !== "object") return 0;
+          var keys = objSeq(), hit = 0;
+          Object.keys(obj).forEach(function (k) {
+            if (keys.indexOf(k) < 0) return;
+            var n = parseFloat(obj[k]);
+            if (!isFinite(n)) return;
+            DLY[k] = round2(clampV(n, 0, 20));
+            hit++;
+          });
+          return hit;
+        }
+
+        /* 기본값과 다른 항목이 몇 개인지 — 배지 문구와 붙여넣기 결과에 쓴다 */
+        function changedCount() {
+          var c = 0;
+          COMMON.forEach(function (x) { if (parseFloat(el[x.el].value) !== x.v) c++; });
+          PRESETS.forEach(function (ps) {
+            if (PV[ps.id].ease !== ps.ease) c++;
+            (ps.par || []).forEach(function (d) { if (PV[ps.id][d.k] !== d.v) c++; });
+          });
+          Object.keys(DLY).forEach(function (k) { if (DLY[k] != null) c++; });
+          return c;
+        }
+        /* 무대 툴바 배지. 저장된 작업본이 복원됐다는 걸 못 보고 남의 값을 기본값으로
+           읽어 가면 그대로 코드에 박힌다. 그래서 눈에 띄는 자리에 남긴다. */
+        var restoredOn = false;
+        function refreshBadge() {
+          var n = changedCount(), b = document.getElementById("restored");
+          if (!n) { b.hidden = true; return; }
+          b.hidden = false;
+          b.textContent = restoredOn ? "저장된 작업본 " + n + "건 복원" : "기본값과 다른 " + n + "건";
+        }
+
+        /* ── 내보내기 ────────────────────────────────────────────────────────
+           디자이너가 맞춘 값을 우리가 그대로 읽고 붙일 수 있어야 한다. 붙여넣기 가능한
+           TypeScript 상수로 뽑고, 기본값과 다른 줄 끝에 "← 기본 n" 을 달아 무엇을
+           건드렸는지 한눈에 보이게 한다. */
+        function fmtNum(n) {
+          if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+          return String(Math.round(n * 1000) / 1000);
+        }
+        /* 상수 이름은 예전 것을 그대로 둔다 — 이미 복사해 간 사람이 있다.
+           TWEEN_SEC · INNER_SPAN · FADE_SEC 는 나머지에서 계산된 파생값이라 이름만으로는
+           되읽을 수 없다. 되읽기는 아래 @iso-data 줄이 담당한다. */
+        function commonLines() {
+          return [
+            { cfg: "DECO_APPEAR_DURATION_SEC", val: duration().toFixed(2), label: "root 하나의 연출 시간",
+              base: "1.00", changed: duration() !== 1 },
+            { cfg: "DECO_APPEAR_TWEEN_SEC", val: tweenSec().toFixed(2), label: "스프라이트 하나의 트윈 길이 (파생)" },
+            { cfg: "DECO_APPEAR_STAGGER_SEC", val: stagger().toFixed(3), label: "root 사이 간격",
+              base: "0.500", changed: stagger() !== 0.5 },
+            { cfg: "DECO_APPEAR_INNER_SPAN", val: span().toFixed(2), label: "root 안 시차 총량 (파생 · " + inner() + "%)" },
+            { cfg: "DECO_APPEAR_FADE_SEC", val: fadeSec().toFixed(2), label: "등장 페이드 인 길이 (파생 · " + fade() + "%)" }
+          ];
+        }
+        function presetLines(ps) {
+          var vals = PV[ps.id], out = [];
+          (ps.par || []).forEach(function (d) {
+            out.push({ cfg: d.cfg, val: fmtNum(vals[d.k]),
+              label: d.label + (d.unit ? " (" + d.unit + ")" : ""),
+              base: fmtNum(d.v), changed: vals[d.k] !== d.v });
+          });
+          out.push({ cfg: "DECO_" + ps.key + "_EASING", val: '"' + vals.ease + '"', label: "이징",
+            base: ps.ease, changed: vals.ease !== ps.ease });
+          return out;
+        }
+        function block(lines) {
+          var stmts = lines.map(function (l) { return { code: "export const " + l.cfg + " = " + l.val + ";", l: l }; });
+          var w = 0;
+          stmts.forEach(function (x) { if (x.code.length > w) w = x.code.length; });
+          return stmts.map(function (x) {
+            var pad = x.code;
+            while (pad.length < w) pad += " ";
+            return pad + "  // " + x.l.label + (x.l.changed ? "   ← 기본 " + x.l.base : "");
+          });
+        }
+        var RULE = "// " + new Array(60).join("─");
+        function title(ps) { return "// " + ps.key + " · " + ps.name + "   (" + ps.fn + " · " + ps.prop + ")"; }
+        /* 되읽기용 데이터. 상수 이름만으로는 파생값을 되살릴 수 없고 소수점도 깎인다.
+           주석 한 줄에 원본을 실어 둔다 — TypeScript 에 그대로 붙여도 주석이라 무해하고,
+           문서에 도로 붙여넣으면 소수점까지 그대로 되살아난다. */
+        function dataLine(id, obj) { return "// @iso-data " + id + " " + JSON.stringify(obj); }
+
+        function exportText(ps) {
+          var lines = commonLines().concat(presetLines(ps));
+          var changed = lines.filter(function (l) { return l.changed; }).length;
+          var snap = snapshot();
+          return [
+            RULE,
+            title(ps),
+            "// 데코 영역 시연 무대에서 맞춘 값 · " + stampNow() +
+              (changed ? " · 기본값과 다른 " + changed + "건에 ← 표시" : " · 전부 기본값"),
+            RULE
+          ].concat(block(lines)).concat([
+            "",
+            dataLine("common", snap.common),
+            dataLine(ps.id, snap[ps.id])
+          ]).join("\n");
+        }
+        function exportAll() {
+          var snap = snapshot();
+          var out = [
+            RULE,
+            "// DecoAppearConfig.ts — 데코 등장 연출값 " + PRESETS.length + "종",
+            "// 데코 영역 시연 무대에서 맞춘 값 · " + stampNow() + " · 기본값과 다른 " + changedCount() + "건",
+            RULE,
+            "",
+            "// 무대 공통 — 연출을 갈아 끼워도 같은 리듬으로 본다"
+          ].concat(block(commonLines()));
+          PRESETS.forEach(function (ps) {
+            out.push("", title(ps));
+            out = out.concat(block(presetLines(ps)));
+          });
+          out.push("", dataLine("common", snap.common));
+          PRESETS.forEach(function (ps) { out.push(dataLine(ps.id, snap[ps.id])); });
+          if (Object.keys(snap.delay).length) out.push(dataLine("delay", snap.delay));
           return out.join("\n");
         }
         Array.prototype.forEach.call(document.querySelectorAll('[data-copy="vals"]'), function (b) {
-          b.addEventListener("click", function () { copyText(valsText(), b); });
+          b.addEventListener("click", function () { copyText(exportText(state.preset), b); });
         });
+        document.getElementById("copyAll").addEventListener("click", function () {
+          copyText(exportAll(), this);
+        });
+
+        /* ── 가져오기 ────────────────────────────────────────────────────────
+           들어오는 문은 셋(붙여넣기 · 파일 · 드롭)인데 형식은 셋이다. 어느 문으로
+           들어와도 여기 한 곳에서 같은 순서로 읽는다: .json → @iso-data → 상수 이름. */
+        var CFG = {};
+        PRESETS.forEach(function (ps) {
+          (ps.par || []).forEach(function (d) { CFG[d.cfg] = { id: ps.id, k: d.k, d: d }; });
+          CFG["DECO_" + ps.key + "_EASING"] = { id: ps.id, ease: true };
+        });
+        CFG.DECO_APPEAR_DURATION_SEC = { common: "dur" };
+        CFG.DECO_APPEAR_STAGGER_SEC = { common: "stg" };
+
+        function readBag(bag) {
+          if (!bag || typeof bag !== "object") return 0;
+          var hit = 0;
+          Object.keys(bag).forEach(function (id) {
+            if (id === "common") { hit += applyCommon(bag[id]); return; }
+            if (id === "delay") { hit += applyDelay(bag[id]); return; }
+            hit += applyPreset(id, bag[id]);
+          });
+          return hit;
+        }
+        /* .json 으로 온 것. 내려받기가 씌운 봉투({doc,ver,stamp,values})도,
+           values 알맹이만 있는 것도 받는다 — 손으로 잘라 붙이는 사람이 있을 테니. */
+        function readJson(text) {
+          var obj;
+          try { obj = JSON.parse(text); } catch (e) { return 0; }
+          if (!obj || typeof obj !== "object") return 0;
+          return readBag(obj.values && typeof obj.values === "object" ? obj.values : obj);
+        }
+        function readPayload(text) {
+          var bag = {}, seen = 0;
+          text.replace(/@iso-data\s+([A-Za-z0-9_]+)\s+(\{[^\n]*\})/g, function (m, id, json) {
+            var obj;
+            try { obj = JSON.parse(json); } catch (e) { return m; }
+            bag[id] = obj;
+            seen++;
+            return m;
+          });
+          return seen ? readBag(bag) : 0;
+        }
+        /* 파생 상수(TWEEN_SEC · INNER_SPAN · FADE_SEC)는 CFG 에 없어서 그냥 흘려보낸다 —
+           그 값들은 나머지에서 계산되므로 되먹이면 오히려 어긋난다. */
+        function readConsts(text) {
+          var re = /\b(DECO_[A-Z0-9_]+)\s*=\s*("[A-Za-z]+"|-?[\d.]+)/g, m, hit = 0;
+          while ((m = re.exec(text))) {
+            var t = CFG[m[1]];
+            if (!t) continue;
+            var raw = m[2].replace(/"/g, "");
+            if (t.ease) {
+              if (EASE_LIST.indexOf(raw) >= 0) { PV[t.id].ease = raw; hit++; }
+              continue;
+            }
+            var n = parseFloat(raw);
+            if (!isFinite(n)) continue;
+            if (t.common) {
+              var c = commonDef(t.common);
+              el[c.el].value = clampV(n, c.min, c.max);
+              hit++;
+              continue;
+            }
+            PV[t.id][t.k] = clampV(n, t.d.min, t.d.max);
+            hit++;
+          }
+          return hit;
+        }
+        function importText(text) {
+          if (!text || !text.trim()) return { hit: 0, how: "" };
+          var hit = readJson(text);
+          if (hit) return { hit: hit, how: ".json" };
+          hit = readPayload(text);
+          if (hit) return { hit: hit, how: "@iso-data" };
+          hit = readConsts(text);
+          if (hit) return { hit: hit, how: "export const" };
+          return { hit: 0, how: "" };
+        }
+        /* 값이 통째로 갈렸으니 표 · 트리 · 코드 · 저장본을 한 번에 되맞춘다 */
+        function afterImport() {
+          renderParamTable();
+          syncEase();
+          renderRows();
+          refresh();
+          saveNow();
+          restoredOn = false;
+          refreshBadge();
+          if (!state.playing) replay();
+        }
+
+        /* ── 전부 기본값 ─────────────────────────────────────────────────────
+           값만 되돌린다. 숨긴 파츠 · 레이어는 트리의 [기본값으로] 담당이다 —
+           둘이 겹치면 어느 버튼이 무엇을 지웠는지 알 수 없다. */
+        document.getElementById("resetVals").addEventListener("click", function () {
+          COMMON.forEach(function (c) { el[c.el].value = c.v; });
+          PRESETS.forEach(function (ps) {
+            PV[ps.id].ease = ps.ease;
+            (ps.par || []).forEach(function (d) { PV[ps.id][d.k] = d.v; });
+          });
+          DLY = {};
+          storeClear();
+          restoredOn = false;
+          renderParamTable();
+          syncEase();
+          renderRows();
+          refresh();
+          refreshBadge();
+          if (!state.playing) replay();
+        });
+
+        /* ── 설정 주고받기 창 ────────────────────────────────────────────── */
+        var ioDlg = document.getElementById("io");
+        var ioTa = document.getElementById("io-ta");
+        var ioMsg = document.getElementById("io-msg");
+        var ioFile = document.getElementById("io-file");
+        function ioSay(text, bad) {
+          ioMsg.textContent = text || "";
+          ioMsg.classList.toggle("is-bad", !!bad);
+        }
+        function ioTake(text) {
+          var r = importText(text);
+          if (!r.hit) {
+            ioSay("읽을 값을 못 찾았습니다 — @iso-data 줄이나 DECO_ 상수, 또는 .json 이어야 합니다.", true);
+            return;
+          }
+          afterImport();
+          ioSay(r.hit + "건 적용했습니다 (" + r.how + ") · 기본값과 다른 " + changedCount() + "건");
+        }
+        document.getElementById("ioOpen").addEventListener("click", function () {
+          ioSay("");
+          ioDlg.showModal();
+        });
+        document.getElementById("io-x").addEventListener("click", function () { ioDlg.close(); });
+        document.getElementById("io-apply").addEventListener("click", function () { ioTake(ioTa.value); });
+        document.getElementById("io-pick").addEventListener("click", function () { ioFile.click(); });
+        ioFile.addEventListener("change", function () {
+          var f = ioFile.files && ioFile.files[0];
+          if (!f) return;
+          var rd = new FileReader();
+          rd.onload = function () {
+            ioTa.value = String(rd.result || "");
+            ioTake(ioTa.value);
+          };
+          rd.readAsText(f);
+          ioFile.value = "";
+        });
+        ["dragover", "dragenter"].forEach(function (t) {
+          ioDlg.addEventListener(t, function (ev) { ev.preventDefault(); ioDlg.classList.add("is-drop"); });
+        });
+        ["dragleave", "dragend"].forEach(function (t) {
+          ioDlg.addEventListener(t, function () { ioDlg.classList.remove("is-drop"); });
+        });
+        ioDlg.addEventListener("drop", function (ev) {
+          ev.preventDefault();
+          ioDlg.classList.remove("is-drop");
+          var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+          if (!f) return;
+          var rd = new FileReader();
+          rd.onload = function () {
+            ioTa.value = String(rd.result || "");
+            ioTake(ioTa.value);
+          };
+          rd.readAsText(f);
+        });
+        document.getElementById("io-copy").addEventListener("click", function () {
+          copyText(exportAll(), this);
+        });
+        document.getElementById("io-save").addEventListener("click", function () {
+          var body = JSON.stringify({ doc: "deco-tween-iso", ver: 1, stamp: stampNow(), values: snapshot() }, null, 2);
+          var url = URL.createObjectURL(new Blob([body], { type: "application/json" }));
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "deco-tween-iso-" + stampNow().replace(/[: ]/g, "-") + ".json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          ioSay("내려받았습니다 · 기본값과 다른 " + changedCount() + "건");
+        });
+
+        /* ── 초기화 ──────────────────────────────────────────────────────────
+           저장본을 먼저 먹인 다음 표를 그린다 — 순서가 뒤바뀌면 표가 기본값을 그려 놓고
+           무대만 복원된 값으로 놀아서 둘이 따로 논다. */
+        (function restore() {
+          var raw = null;
+          try { raw = localStorage.getItem(STORE_KEY); } catch (e) { return; }
+          if (!raw) return;
+          var saved;
+          try { saved = JSON.parse(raw); } catch (e) { storeClear(); return; }
+          if (!saved || typeof saved !== "object") { storeClear(); return; }
+          readBag(saved);
+          restoredOn = changedCount() > 0;
+        })();
 
         setZoom(zoom);
         select(PRESETS[0]);
         clearArea();
+        refreshBadge();
       })();
     </script>
     <script src="../app.js"></script>
