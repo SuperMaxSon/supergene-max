@@ -67,10 +67,11 @@
         <div class="doc-eyebrow">분석 · 라이브 데이터</div>
         <h1 class="doc-title">솔리테어 483 전후 — 벤치 대조</h1>
         <p class="doc-lede">
-          <b>9/2에 482와 483이 같은 날 공존</b>했기 때문에, 날짜를 맞춘 대조가 가능해졌습니다.
-          막대는 <b>482·9/2</b> / <b>483·9/2</b> / <b>483·9/3</b> 셋이고 Δ는 같은 날(9/2) 483÷482입니다.
-          🎯 목표선은 <b>8/31~9/2 벤치 고정 기준선</b>(마종 · 초대만 퍼블마)이라 솔리테어 창이 바뀌어도
-          움직이지 않습니다. 9/3은 482가 3 유저-일뿐이라 대조가 성립하지 않고, 483도 오전까지의 부분일입니다.
+          <b>482 이하</b>(8/31~9/3 · 7,241 유저-일)와 <b>483</b>(9/2~9/3 · 2,355 유저-일)을
+          빌드별로 합산해 DAU당 지표 10개로 나란히 놓았습니다. 🎯 목표선은 <b>8/31~9/2 벤치 고정 기준선</b>
+          (마종 · 초대만 퍼블마)이라 솔리테어 창이 바뀌어도 움직이지 않습니다.
+          483은 9/2 저녁 배포분부터라 <b>하루를 온전히 쓴 세션 비중이 낮고</b>, 그래서 DAU를 분모로 쓰는
+          행은 구조적으로 눌립니다 — 방향 판단은 비율 3행부터 보세요.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
@@ -147,9 +148,9 @@
               (<code>tournamentInviteEnabled</code> 임시 <code>false</code>)는 아직 커밋·배포되지 않았고,
               현재 <code>main</code>은 시트값을 그대로 읽습니다. 그래서 이 표는 A/B 대조가 아니라
               <strong>단순 빌드 전후</strong>이고, 실제 A/B는 차단 빌드(484 이상)가 나간 뒤에 성립합니다.
-              게다가 483은 <strong>9/2 부분일 하루(202 유저-일)</strong>뿐이어서, 하루를 다 쓰지 못한 세션이
-              모여 판수·광고 같은 <strong>DAU 분모 지표가 실제보다 낮게</strong> 찍힙니다.
-              공유율 3.4%도 성공 6건이라 표본이 사실상 없습니다.
+              게다가 483은 <strong>9/2 저녁 배포분 + 9/3 오전</strong>으로 모인 2,355 유저-일이라,
+              하루를 온전히 쓴 세션 비중이 482보다 낮습니다 — 판수·광고 같은 <strong>DAU 분모 지표가
+              구조적으로 낮게</strong> 찍히는 이유입니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--analysis)">
@@ -366,30 +367,33 @@ ORDER BY `프로젝트`;</pre></div>
                      cr_try:86557, cr_ok:9082, sh_try:69711, sh_ok:9801,
                      inv_try:26583, inv_ok:25444 },
         },
-        // 솔리테어 — 날짜×client_version 실측(2026-09-03 08:53 조회). 9/2에 두 버전이 공존해
-        // ★같은 날짜 대조가 가능해졌다. 9/3은 482가 3 유저-일뿐이라(전환 완료) 대조가 성립하지 않아
-        //   483 단독으로만 싣는다. 9/3은 오전까지의 부분일이다.
+        // 솔리테어 — 날짜×client_version 실측(2026-09-03 08:53 조회).
+        // ★막대 값은 손으로 더하지 않는다. 아래 daily를 코드가 버전별로 합산한다.
+        //   갱신할 때는 daily에 행을 덧붙이기만 하면 막대·Δ가 따라온다.
         sol: {
-          win: "날짜별 · 버전 분리",
           arms: [
-            { key:"pre", label:"482 · 9/2", win:"9/2 하루 · ~#482", color:"#9AA0B8",
-              days:1, ud:2100, fin:20466, rv_fin:6204, it_fin:12869, msg_ok:674, feed_ok:181,
-              cr_try:3765, cr_ok:450, sh_try:3281, sh_ok:225, inv_try:3155, inv_ok:3059, inv_in:null },
-            { key:"cur", label:"483 · 9/2", win:"9/2 배포일 · #483", color:"#15803D",
-              days:1, ud:815, fin:5888, rv_fin:1805, it_fin:3966, msg_ok:278, feed_ok:39,
-              cr_try:1362, cr_ok:173, sh_try:890, sh_ok:55, inv_try:856, inv_ok:826, inv_in:null },
-            { key:"cur2", label:"483 · 9/3", win:"9/3 부분일 · #483", color:"#7FA98B",
-              days:1, ud:1540, fin:13537, rv_fin:3426, it_fin:7959, msg_ok:461, feed_ok:127,
-              cr_try:2996, cr_ok:320, sh_try:1900, sh_ok:96, inv_try:1829, inv_ok:1782, inv_in:null },
+            { key:"pre", ver:"482", label:"482 이하", win:"8/31~9/3", color:"#9AA0B8" },
+            { key:"cur", ver:"483", label:"483",      win:"9/2~9/3",  color:"#15803D" },
           ],
-          // 조회 원본 6행 — 차트가 쓰지 않는 8/31·9/1·9/3(482)까지 그대로 남긴다.
           daily: [
-            ["2026-08-31","482 이하",2680,29379,9178,18236,704,243,5160,511,4070,255,3883,3744],
-            ["2026-09-01","482 이하",2458,27783,8562,17200,899,357,5007,605,4617,318,4457,4321],
-            ["2026-09-02","482 이하",2100,20466,6204,12869,674,181,3765,450,3281,225,3155,3059],
-            ["2026-09-02","483 이상", 815, 5888,1805, 3966,278, 39,1362,173, 890, 55, 856, 826],
-            ["2026-09-03","483 이상",1540,13537,3426, 7959,461,127,2996,320,1900, 96,1829,1782],
-            ["2026-09-03","482 이하",   3,  167,  17,  169,  0,  0,   5,  1,   1,  0,   1,   2],
+            { d:"2026-08-31", ver:"482", ud:2680, fin:29379, rv_fin:9178, it_fin:18236,
+              msg_ok:704, feed_ok:243, cr_try:5160, cr_ok:511, sh_try:4070, sh_ok:255,
+              inv_try:3883, inv_ok:3744, inv_in:null },
+            { d:"2026-09-01", ver:"482", ud:2458, fin:27783, rv_fin:8562, it_fin:17200,
+              msg_ok:899, feed_ok:357, cr_try:5007, cr_ok:605, sh_try:4617, sh_ok:318,
+              inv_try:4457, inv_ok:4321, inv_in:null },
+            { d:"2026-09-02", ver:"482", ud:2100, fin:20466, rv_fin:6204, it_fin:12869,
+              msg_ok:674, feed_ok:181, cr_try:3765, cr_ok:450, sh_try:3281, sh_ok:225,
+              inv_try:3155, inv_ok:3059, inv_in:null },
+            { d:"2026-09-02", ver:"483", ud:815,  fin:5888,  rv_fin:1805, it_fin:3966,
+              msg_ok:278, feed_ok:39,  cr_try:1362, cr_ok:173, sh_try:890,  sh_ok:55,
+              inv_try:856,  inv_ok:826,  inv_in:null },
+            { d:"2026-09-03", ver:"483", ud:1540, fin:13537, rv_fin:3426, it_fin:7959,
+              msg_ok:461, feed_ok:127, cr_try:2996, cr_ok:320, sh_try:1900, sh_ok:96,
+              inv_try:1829, inv_ok:1782, inv_in:null },
+            { d:"2026-09-03", ver:"482", ud:3,    fin:167,   rv_fin:17,   it_fin:169,
+              msg_ok:0,   feed_ok:0,   cr_try:5,    cr_ok:1,   sh_try:1,    sh_ok:0,
+              inv_try:1,    inv_ok:2,    inv_in:null },
           ],
         },
       };
@@ -416,9 +420,13 @@ ORDER BY `프로젝트`;</pre></div>
           Object.entries(u).forEach(([k,v])=>{ if(typeof v==='number' && k!=='days') t[k]=(t[k]||0)+v; });
           return t; };
         const SOL = DATA.sol || {};
-        const ARMS = (SOL.arms || []).map(m => Object.assign({}, m, pickSrc(m)));
-        const hasSrc = (SOL.arms || []).some(m => m && (m.org || m.ua));
-        // Δ는 같은 날짜(9/2) 482 대 483만 본다 — 9/3은 비교군이 사실상 없다.
+        // 일자별 원본을 버전별로 합산 — 구간 통산(합산 분자 ÷ 합산 분모)이라 그냥 더하면 된다.
+        const sum = ver => (SOL.daily || []).filter(r => r.ver === ver)
+          .reduce((t, r) => { Object.entries(r).forEach(([k, v]) => {
+              if(typeof v === 'number') t[k] = (t[k] || 0) + v; });
+            t.days = (t.days || 0) + 1; return t; }, {});
+        const ARMS = (SOL.arms || []).map(a => Object.assign({}, a, sum(a.ver), pickSrc(a) || {}));
+        const hasSrc = (SOL.daily || []).some(r => r && (r.org || r.ua));
         const PRE = ARMS.find(m => m.key === 'pre'), CUR = ARMS.find(m => m.key === 'cur');
         const B = DATA.bench || {};
         const Ma = B.mahjong || {}, PU = B.pubma || {};
@@ -468,13 +476,13 @@ ORDER BY `프로젝트`;</pre></div>
           const tline = tgt==null || !isFinite(tgt)? '' :
             `<div class="etgt" style="left:calc(${(tgt/mx*100).toFixed(1)}% + 46px)" data-tip="${tgtLab} ${fmt(tgt)}${tpt?`\n= ${nf(tpt[0])} ${tpt[1]} ÷ ${nf(tpt[2])} ${tpt[3]}`:''}\n벤치 3일치(${B.win}) 통산 · 활동성·바이럴=마종 · 초대=퍼블마"></div>
              <div class="etgl" style="left:calc(${Math.min(tgt/mx*100,82).toFixed(1)}% + 50px)">🎯 ${tgtLab} ${fmt(tgt)}</div>`;
-          // Δ = 9/2 같은 날짜 안에서 483 ÷ 482 − 1. 날짜를 맞춰야 부분일 편향이 빠진다.
+          // Δ = 483 합산 ÷ 482 합산 − 1. 버전별 통산이라 일자 구성이 다른 점은 각주로 경고한다.
           let delta = '<span style="color:#C3C9D6">—</span>';
           const vc = CUR && CUR.ud? f(CUR):null, vp = PRE && PRE.ud? f(PRE):null;
           if(vc!=null && isFinite(vc) && vp!=null && isFinite(vp) && vp){
             const pc=(vc/vp-1)*100;
             const col = neutral? '#9AA0B8' : (Math.abs(pc)<5? '#9AA0B8' : pc>0? '#15803D':'#DC2626');
-            delta = `<span style="font-weight:800;color:${col}" data-tip="같은 날(9/2) 483 ÷ 482 — ${fmt(vc)} ÷ ${fmt(vp)}${neutral?'\\n(정상화·의도된 차단이라 색 판정을 끔)':''}">${pc>=0?'+':'−'}${Math.abs(pc).toFixed(0)}%</span>`;
+            delta = `<span style="font-weight:800;color:${col}" data-tip="483 통산 ÷ 482 통산 — ${fmt(vc)} ÷ ${fmt(vp)}${neutral?'\\n(정상화·의도된 차단이라 색 판정을 끔)':''}">${pc>=0?'+':'−'}${Math.abs(pc).toFixed(0)}%</span>`;
           }
           return `<div class="erow"><div class="elab"><b>${lab}</b>${note?` <span class="rch" data-tip="${note}">ⓘ</span>`:''}</div>
             <div class="ebars">${tline}${bars}</div>
@@ -482,30 +490,33 @@ ORDER BY `프로젝트`;</pre></div>
         const srcbar = !hasSrc? '' :
           `<span class="esrc"><b style="color:#9AA0B8">유입</b>${[['all','UA 포함'],['org','UA 제외']].map(([g,l])=>
             `<button class="${SRC===g?'on':''}" onclick="setSrc('${g}')">${l}</button>`).join('')}</span>`;
-        el.innerHTML = `<h3>솔리테어 483 전후 <span class="rch">날짜×빌드로 분리 · Δ는 <b>같은 날(9/2)</b> 483÷482 · 🎯 = 벤치 ${B.win} 기준선 · 막대에 마우스를 올리면 모수</span></h3>
-          <div class="ehead">${ARMS.map(m=>`<span><i style="background:${m.color}"></i>${m.label} ${m.win}${m.ud?'':' (수집 중)'}</span>`).join('')}
+        el.innerHTML = `<h3>솔리테어 483 전후 <span class="rch">빌드별 통산 · Δ = 483 ÷ 482 · 🎯 = 벤치 ${B.win} 기준선 · 막대에 마우스를 올리면 모수</span></h3>
+          <div class="ehead">${ARMS.map(m=>`<span><i style="background:${m.color}"></i>${m.label} ${m.win} · ${m.days}일 ${Number(m.ud||0).toLocaleString('en-US')} 유저-일</span>`).join('')}
             <span style="color:#B45309;font-weight:700">┆ 목표선(마종 · 초대만 퍼블마)</span>${srcbar}</div>
           ${rows}
-          <div class="mdesc">값은 <b>구간 통산</b>(합산 분자÷합산 분모) · 막대 스케일은 <b>같은 단위 계열끼리 공유</b>(판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종) — 계열이 다른 행끼리는 길이 비교 불가 ·
-          <b>Δ = 같은 날(9/2) 483 ÷ 482</b> — 날짜를 맞춰야 부분일 편향이 빠진다. 9/3은 482가 3 유저-일뿐이라(전환 완료) 대조가 성립하지 않아 483만 실었다 ·
-          <b>DAU를 분모로 쓰는 7행은 색 판정을 끔</b> — 483은 9/2 저녁 배포분이라 <b>같은 날이어도 활동 시간대가 짧다</b>. 색은 <b>비율 3행</b>(생성률·공유율·유입률)에만 켠다 ·
+          <div class="mdesc">값은 <b>빌드별 통산</b>(합산 분자÷합산 분모) — 일자별 원본은 차트 아래 폴드에 그대로 있다 · 막대 스케일은 <b>같은 단위 계열끼리 공유</b>(판수·광고 / 메세지·피드 / 토너 발화 3종 / 비율 3종) — 계열이 다른 행끼리는 길이 비교 불가 ·
+          <b>DAU를 분모로 쓰는 7행은 색 판정을 끔</b> — 483은 <b>9/2 저녁 배포분 + 9/3 오전</b>이라 하루를 온전히 쓴 세션 비중이 482보다 낮다. 판수·광고의 감소는 상당 부분 이 시간대 구성 차이다. 색은 <b>비율 3행</b>(생성률·공유율·유입률)에만 켠다 ·
+          9/3의 482는 3 유저-일뿐(전환 완료)이라 482 통산에 섞여도 영향이 없다 ·
           목표선: 마종 ${B.win} 통산 · 초대만 퍼블마 — <b>고정 기준선</b>이라 솔 창이 바뀌어도 다시 뽑지 않는다 ·
-          ★483은 <b>초대를 끈 대조군 빌드가 아니다</b> — 차단 코드가 아직 배포되지 않아 483에도 초대가 살아 있다(9/2 856건 · 9/3 1,829건). A/B는 차단 빌드(484+) 배포 후에야 성립한다</div>`;
+          ★483은 <b>초대를 끈 대조군 빌드가 아니다</b> — 차단 코드가 아직 배포되지 않아 483에도 초대가 2,685건 살아 있다. A/B는 차단 빌드(484+) 배포 후에야 성립한다</div>`;
       }
       renderEra();
 
 
-      // 조회 원본 표 — DATA.sol.daily를 그대로 편다. 차트 숫자의 출처를 눈으로 확인시키는 용도.
+      // 조회 원본 표 — 막대의 합산 재료를 그대로 편다. 숫자의 출처를 눈으로 확인시키는 용도.
       (function(){
         const el = document.getElementById('soldaily'); if(!el) return;
         const D = (DATA.sol && DATA.sol.daily) || [];
         if(!D.length){ el.innerHTML = '<div class="mdesc">원본 없음</div>'; return; }
-        const H = ['날짜','구분','DAU','완료판수','RV완료','IT완료','메세지성공','피드성공',
-                   '생성시도','생성성공','공유시도','공유성공','초대시도','초대성공'];
-        const nf = x => typeof x === 'number' ? x.toLocaleString('en-US') : x;
+        const COLS = [['ud','DAU'],['fin','완료판수'],['rv_fin','RV완료'],['it_fin','IT완료'],
+          ['msg_ok','메세지성공'],['feed_ok','피드성공'],['cr_try','생성시도'],['cr_ok','생성성공'],
+          ['sh_try','공유시도'],['sh_ok','공유성공'],['inv_try','초대시도'],['inv_ok','초대성공']];
+        const nf = x => x==null? '—' : Number(x).toLocaleString('en-US');
+        const rows = D.slice().sort((a,b)=> a.d===b.d ? b.ver.localeCompare(a.ver) : a.d.localeCompare(b.d));
         el.innerHTML = `<div class="table-scroll"><table>
-          <thead><tr>${H.map((h,i)=>`<th${i>1?' style="text-align:right"':''}>${h}</th>`).join('')}</tr></thead>
-          <tbody>${D.map(r=>`<tr>${r.map((c,i)=>`<td${i>1?' style="text-align:right"':''}>${nf(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+          <thead><tr><th>날짜</th><th>빌드</th>${COLS.map(([,l])=>`<th style="text-align:right">${l}</th>`).join('')}</tr></thead>
+          <tbody>${rows.map(r=>`<tr><td>${r.d.slice(5)}</td><td>${r.ver==='483'?'483 이상':'482 이하'}</td>${
+            COLS.map(([k])=>`<td style="text-align:right">${nf(r[k])}</td>`).join('')}</tr>`).join('')}</tbody>
         </table></div>`;
       })();
 
