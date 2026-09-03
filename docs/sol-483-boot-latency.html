@@ -71,9 +71,9 @@
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
           <span class="tag">완주 세션 기준</span>
-          <span class="tag">NRU 2026-09-02~09-03</span>
-          <span class="tag" style="color:#b91c1c">RU 구 창 2026-08-31~09-03</span>
-          <span class="tag">2026-09-03 18:04 갱신</span>
+          <span class="tag">NRU 2026-09-02~09-04</span>
+          <span class="tag" style="color:#b91c1c">RU 구 창 2026-08-31~09-03 · 미갱신</span>
+          <span class="tag">2026-09-04 08:32 갱신</span>
         </div>
       </div>
     </header>
@@ -101,12 +101,12 @@
         </div>
         <div class="notes">
           <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">485가 가장 느립니다 — 다만 <b>72세션</b>이고 배포 이틀째입니다</div>
+            <div class="note-title">485가 가장 느립니다 — 다만 <b>72세션</b>이고, 이 곡선은 <b>09-02~09-03</b> 값입니다</div>
             <p>최종 <code>1010_LOAD_COMPLETE</code> p50이 <b>477이하 5,254 → 483 6,615 → 485 8,679 ms</b>로
             <strong>새 빌드일수록 단조롭게 느립니다.</strong> 용량을 12MB 줄인 빌드가 31% 더 걸릴 이유는 없습니다.</p>
             <p>같은 창에서 갓 나온 빌드와 오래된 빌드를 나란히 놓으면 새 빌드는 <b>에셋 해시가 전부 바뀌어
             페이스북 CDN 엣지에 캐시가 없습니다.</b> NRU는 기기 캐시만 없을 뿐 엣지 캐시는 공유하므로 이 편향을 못 피합니다.
-            <b>표본 1,000세션 · 배포 3일 경과 전까지 판정하지 않습니다.</b></p>
+            <b>표본 1,000세션 · 배포 3일 경과 전까지 판정하지 않습니다.</b> 가설 자체는 <b>Q1D(일자별 추이)</b>로 지금 바로 검정할 수 있습니다 — 485의 p50이 일차마다 내려가면 캐시, 평평하면 빌드입니다.</p>
           </div>
         </div>
         <details class="fold">
@@ -123,8 +123,8 @@
           <div class="note" style="--acc: var(--bad)">
             <div class="note-title">RU는 아직 485가 없고, 483·477도 다른 창입니다</div>
             <p>RU의 483·477은 <b>구 창(08-31~09-03) · NRU 정의 <code>= 1</code></b> 값이 그대로 남아 있습니다.
-            위 NRU는 <b>새 창(09-02~09-03) · <code>&lt;= 1</code></b>입니다 — <strong>두 그래프를 가로로 비교하면 안 됩니다.</strong>
-            Q1J를 RU까지 돌린 결과가 들어오면 같은 자로 갈아 끼웁니다.</p>
+            위 NRU는 <b>09-02~09-03 · <code>&lt;= 1</code></b>입니다 — <strong>두 그래프를 가로로 비교하면 안 됩니다.</strong>
+            Q1J는 이미 <b>09-02~09-04</b> 창으로 갱신해 뒀습니다 — 그걸 돌린 결과가 들어오면 NRU·RU를 한 번에 같은 자로 갈아 끼웁니다.</p>
           </div>
         </div>
         <div class="cwrap">
@@ -232,7 +232,7 @@
                 </div>
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">무엇을 어떤 쿼리로 판정하는가</h3>
-        <p class="doc-h2-sub">순서대로 돌립니다. Q0가 통과하지 못하면 나머지는 의미가 없습니다.</p>
+        <p class="doc-h2-sub">순서대로 돌립니다. Q0가 통과하지 못하면 나머지는 의미가 없습니다 — 다만 <b>Q5는 표본이 적어도 지금 바로 답을 줍니다.</b> 기울기는 절대값보다 표본에 덜 민감하기 때문입니다.</p>
         <div class="table-scroll" style="--acc: #ea580c">
           <table>
             <thead>
@@ -249,6 +249,11 @@
                 <td>Q1</td><td>부팅 24단계를 485가 언제 통과하나</td>
                 <td>단계별 도달 시각</td>
                 <td>NRU <code>1010_LOAD_COMPLETE</code> p50이 483 대비 <b>감소</b></td>
+              </tr>
+              <tr style="background:color-mix(in srgb,#ea580c 6%, transparent)">
+                <td>Q1D</td><td><b>485가 느린 게 캐시 탓인가 빌드 탓인가</b></td>
+                <td>일자별 추이</td>
+                <td>485 p50이 <b>일차마다 감소</b>하고 483은 평평하면 <b style="color:#b91c1c">캐시</b> · 둘 다 평평하면 <b>빌드</b></td>
               </tr>
               <tr>
                 <td>Q2</td><td>도중에 덜 떨어져 나가나</td>
@@ -367,7 +372,7 @@
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">쿼리 전문</h3>
         <p class="doc-h2-sub">
-          여섯 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'</code> 한 줄만 고쳐서 돌립니다.
+          여섯 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'</code> 한 줄만 고쳐서 돌립니다.
           <b>일부러 <code>DECLARE</code>를 쓰지 않았습니다</b> — 상수를 선언하면 BigQuery가 이걸 스크립트로 보고
           <code>Could not compute bytes processed estimate for script</code>를 띄워
           <strong>실행 전 스캔 비용을 못 보게 됩니다.</strong> <code>data</code>를 스캔하는 쿼리라 비용 확인이 가장 필요한 쪽이므로
@@ -395,7 +400,7 @@ SELECT
     MIN(log_date)                     AS `첫날`,
     MAX(log_date)                     AS `마지막날`
 FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
   AND (is_dev = FALSE OR is_dev IS NULL)
   AND player_id &gt; 0
   AND logincount_total IS NOT NULL
@@ -427,7 +432,7 @@ WITH src AS (
         CAST(JSON_VALUE(data, '$.time') AS INT64)  AS t,
         log_time
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -489,7 +494,7 @@ WITH src AS (
         CAST(JSON_VALUE(data, '$.time') AS INT64)  AS t,
         log_time
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -546,6 +551,56 @@ ORDER BY `구분`, event</pre></div>
           </div>
         </details>
         <details class="fold">
+          <summary>Q1D — 일자별 추이 (485가 느린 게 캐시 탓인지 빌드 탓인지 가른다)</summary>
+          <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
+            <div class="table-scroll"><pre>-- 485는 09-02 배포다. "새 빌드라 CDN 엣지 캐시가 비어서 느린 것"이라면
+-- 날이 갈수록 p50 이 내려가야 한다. 반대로 평평하면 캐시 탓이 아니라 빌드 탓이다.
+-- 483·477 을 같이 뽑는 건 대조군이 필요해서다 — 특정 날 전체가 느렸다면
+-- 세 군이 같이 올라가므로, 그건 빌드 차이가 아니라 그날의 회선·트래픽 문제다.
+-- 판정: 485 의 일차별 p50 기울기가 483 보다 뚜렷하게 음수여야 캐시 가설이 산다.
+-- ⚠ 기간 = 아래 WHERE. 485 배포일(09-02)을 반드시 포함해야 기울기가 보인다.
+WITH src AS (
+    SELECT
+        log_date,
+        CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS sk,
+        CASE
+            WHEN client_version &gt;= 485              THEN '485+'
+            WHEN client_version BETWEEN 483 AND 484 THEN '483~484'
+            WHEN client_version &lt;= 477              THEN '477-'
+        END                                        AS grp,
+        IF(logincount_total &lt;= 1, 'NRU', 'RU')     AS seg,
+        event,
+        CAST(JSON_VALUE(data, '$.time') AS INT64)  AS t,
+        log_time
+    FROM `game-log-359704.raw.solitaire_city_journey`
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
+      AND (is_dev = FALSE OR is_dev IS NULL)
+      AND player_id &gt; 0
+      AND logincount_total IS NOT NULL
+      AND JSON_VALUE(data, '$.time') IS NOT NULL
+      AND event = '1010_LOAD_COMPLETE'
+),
+one AS (
+    SELECT * FROM src
+    WHERE grp IS NOT NULL AND t BETWEEN 0 AND 600000
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY sk, event ORDER BY log_time, t) = 1
+)
+SELECT
+    seg                                          AS `구분`,
+    grp                                          AS `빌드군`,
+    log_date                                     AS `날짜`,
+    DATE_DIFF(log_date, DATE '2026-09-02', DAY)  AS `485_배포후_일차`,
+    COUNT(DISTINCT sk)                           AS `세션`,
+    CAST(ROUND(AVG(t)) AS INT64)                 AS `평균_ms`,
+    APPROX_QUANTILES(t, 100)[OFFSET(50)]         AS `p50_ms`,
+    APPROX_QUANTILES(t, 100)[OFFSET(90)]         AS `p90_ms`
+FROM one
+GROUP BY 1, 2, 3, 4
+ORDER BY `구분`, `빌드군`, `날짜`</pre></div>
+          </div>
+        </details>
+        <details class="fold">
           <summary>Q2 — 단계 도달률 (중간 이탈 판정 · Q1과 반드시 짝으로)</summary>
           <div class="fold-body">
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
@@ -565,7 +620,7 @@ WITH src AS (
         IF(logincount_total &lt;= 1, 'NRU', 'RU')     AS seg,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -620,7 +675,7 @@ WITH src AS (
         event,
         CAST(JSON_VALUE(data, '$.time') AS INT64) AS t
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.time') IS NOT NULL
       AND CAST(JSON_VALUE(data, '$.client_version') AS INT64) &gt;= 485
@@ -668,7 +723,7 @@ WITH src AS (
         IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.client_version') IS NOT NULL
       AND event IN ('FIRST_LOG', 'INTRO_FB_START', 'INTRO_FB_START_FINISH',
@@ -714,7 +769,7 @@ WITH src AS (
         CAST(JSON_VALUE(data, '$.client_version') AS INT64) AS ver,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.client_version') IS NOT NULL
       AND event IN (

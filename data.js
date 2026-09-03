@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-03 18:04",
+  updated: "2026-09-04 08:32",
 };
 
 /* --------------------------------------------------------------------------
@@ -77,8 +77,8 @@ const SECTIONS = [
         url: "docs/sol-483-boot-latency.html",
         project: "sol",
         status: "완료",
-        version: "v5.2",
-        updated: "2026-09-03 18:04",
+        version: "v5.3",
+        updated: "2026-09-04 08:32",
         pinned: false,
         tags: ["BigQuery", "로딩", "인터랙티브"],
       },
