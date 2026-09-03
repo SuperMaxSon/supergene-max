@@ -65,14 +65,14 @@
           부팅 로그 24단계를 483과 <b style="color:#7c8499">477이하</b>가 각각 언제 통과하는지 겹쳐 그렸습니다.
           483은 <b style="color:#1d4ed8">NRU 파랑</b> · <b style="color:#059669">RU 녹색</b>, 477이하는 두 그래프 모두 회색입니다.
           세로축은 부팅 시작 이후 경과 시간, 가로축은 로그 순서이며 <b>점 위에 마우스를 올리면</b> 로그 이름과 양쪽 값이 뜹니다.
-          <br />맨 아래 <b><a href="#q485" style="color:#ea580c">485 트래킹 준비</a></b> 절에는 용량이 37MB → 25MB로 줄어든 <b>485 배포 직후 그대로 돌릴 쿼리 6개</b>와 곡선에 얹을 색 규칙이 미리 들어 있습니다.
+          <br />맨 아래 <b><a href="#q485" style="color:#ea580c">485 트래킹 준비</a></b> 절에는 용량이 37MB → 25MB로 줄어든 <b>485를 추적할 쿼리 6개</b>와 곡선에 얹을 색 규칙이 있습니다. 485는 09-02부터 라이브지만 <b>표본이 72세션이라 아직 판정하지 않습니다.</b>
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
           <span class="tag">완주 세션 기준</span>
           <span class="tag">2026-08-31 ~ 09-03</span>
-          <span class="tag">2026-09-03 17:28 갱신</span>
+          <span class="tag">2026-09-03 17:32 갱신</span>
         </div>
       </div>
     </header>
@@ -181,23 +181,52 @@
            숫자가 채워지면 위 두 곡선에 485 계열을 한 줄 더 얹고 이 절을 결과 절로 바꾼다. -->
       <section class="doc-section" id="q485">
         <h2 class="doc-h2" style="--acc: #ea580c">485 트래킹 준비</h2>
-        <p class="doc-h2-sub">배포 전 · 빌드 용량 37MB → 25MB · 쿼리와 색만 먼저 확정</p>
+        <p class="doc-h2-sub">빌드 용량 37MB → 25MB · 09-02 라이브 확인(NRU 72세션) · <b style="color:#b91c1c">표본·시점 미달로 판정 보류</b></p>
 
         <div class="notes">
-          <div class="note" style="--acc: #ea580c">
-            <div class="note-title">아직 데이터가 없습니다 — 쿼리와 색만 먼저 확정합니다</div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">485는 이미 라이브에 있습니다 — 다만 <b>지금 수치로는 판정할 수 없습니다</b></div>
             <p>
-              485는 <b>빌드 용량이 37MB에서 25MB로 약 32% 줄어든</b> 첫 빌드이고 <b>2026-09-03 기준 미배포</b>입니다.
-              지금 이 절에 있는 것은 결과가 아니라 <strong>배포 다음 날 그대로 실행할 쿼리 6개</strong>와
-              <strong>그래프에 얹을 색 규칙</strong>입니다.
+              <b>2026-09-03 정정.</b> 착수 시점에는 미배포로 알고 있었으나, <code>2026-09-02~09-03</code> 창으로 Q1을 돌리니
+              <strong>485+ 가 NRU 72세션으로 이미 잡힙니다.</strong> 아래 쿼리의 기본 기간을 그 창으로 바꿔 뒀습니다.
             </p>
             <p>
-              용량 감소는 <b>NRU에서만 크게 보입니다.</b> RU는 이미 캐시가 있어 번들을 다시 받지 않기 때문입니다 —
-              그래서 <b>RU에서 차이가 거의 없는 것은 실패가 아니라 예상된 결과</b>이고, 판정선은 NRU 쪽에 그어야 합니다.
-              반대로 RU가 <b>느려졌다면</b> 그건 용량과 무관한 다른 회귀이므로 따로 파야 합니다.
+              그리고 첫 결과는 <b>기대와 반대입니다</b> — NRU <code>1010_LOAD_COMPLETE</code> p50이
+              <b>477이하 5,254ms · 483~484 6,615ms · 485+ 8,679ms</b>로, <strong>새 빌드일수록 느립니다.</strong>
+              용량을 12MB 줄였는데 32% 느려질 이유는 없습니다. 그래서 이건 <b>빌드의 성능이 아니라 측정의 결함</b>으로 봅니다.
             </p>
           </div>
-        </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 비교는 “빌드”가 아니라 “출시 후 경과 시간”을 재고 있습니다</div>
+            <p>
+              같은 캘린더 창에서 <b>갓 나온 빌드와 오래된 빌드를 나란히 놓으면 새 빌드가 항상 불리합니다.</b>
+              신규 빌드는 에셋 해시가 전부 바뀌어 <strong>페이스북 CDN 엣지에 아직 캐시가 없고</strong>,
+              그 자리를 채우는 초기 요청이 그대로 새 빌드 유저의 다운로드 시간에 실립니다.
+              NRU라도 기기 캐시만 없을 뿐 엣지 캐시는 공유하므로 이 편향을 피하지 못합니다.
+            </p>
+            <p>
+              477이하 → 483 → 485로 <b>새 빌드일수록 단조롭게 느려지는 지금 패턴</b>이 정확히 그 모양입니다.
+              483이 477보다 느리다는 위 곡선의 결론도 <strong>같은 편향을 타고 있을 수 있어 재검토 대상</strong>입니다.
+            </p>
+          </div>
+          <div class="note">
+            <div class="note-title">판정 전에 통과해야 하는 두 가지</div>
+            <p>
+              ① <b>표본</b> — 485+ NRU 72세션은 483의 1,454세션과 <b>20배 차이</b>입니다. p90은 상위 7세션이 정하는 값이라
+              한두 명의 저사양 기기가 전체를 흔듭니다. <strong>1,000세션 이상</strong>에서 다시 봅니다.
+              ② <b>시점</b> — 배포 <b>3일 이상 지난 뒤</b>, 엣지 캐시가 데워진 창에서 봅니다.
+              둘 다 만족하기 전 수치는 <b>기록만 하고 결론은 내지 않습니다.</b>
+            </p>
+          </div>
+          <div class="note" style="--acc: #ea580c">
+            <div class="note-title">그때까지는 도달률이 더 믿을 만합니다</div>
+            <p>
+              Q2 · Q3b의 <b>도달률</b>은 "몇 %가 다음 단계까지 왔나"라서 <strong>절대 시간이 느려져도 값이 유지</strong>됩니다.
+              엣지 캐시 편향은 시간을 늘리지 반드시 이탈을 늘리지는 않으므로,
+              <b>용량 감소의 첫 신호는 지연이 아니라 도달률에서 먼저 나옵니다.</b>
+            </p>
+          </div>
+                </div>
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">무엇을 어떤 쿼리로 판정하는가</h3>
         <p class="doc-h2-sub">순서대로 돌립니다. Q0가 통과하지 못하면 나머지는 의미가 없습니다.</p>
@@ -210,7 +239,8 @@
               <tr>
                 <td>Q0</td><td>485 트래픽이 판정할 만큼 쌓였나 · 버전 경계는 정확히 몇 번인가</td>
                 <td>빌드별 세션 수</td>
-                <td>485+ NRU 세션 <b>1,000 이상</b> (위 483 곡선과 같은 자릿수)</td>
+                <td>485+ NRU 세션 <b>1,000 이상</b> <b style="color:#b91c1c">＋ 배포 3일 경과</b><br />
+                    <span class="cdim">09-03 현재 72세션 — <b>미달</b>. 아래 Q1·Q3는 아직 결론용이 아님</span></td>
               </tr>
               <tr>
                 <td>Q1</td><td>부팅 24단계를 485가 언제 통과하나</td>
@@ -334,7 +364,7 @@
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">쿼리 전문</h3>
         <p class="doc-h2-sub">
-          여섯 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'</code> 한 줄만 고쳐서 돌립니다.
+          여섯 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'</code> 한 줄만 고쳐서 돌립니다.
           <b>일부러 <code>DECLARE</code>를 쓰지 않았습니다</b> — 상수를 선언하면 BigQuery가 이걸 스크립트로 보고
           <code>Could not compute bytes processed estimate for script</code>를 띄워
           <strong>실행 전 스캔 비용을 못 보게 됩니다.</strong> <code>data</code>를 스캔하는 쿼리라 비용 확인이 가장 필요한 쪽이므로
@@ -351,7 +381,9 @@
             <div class="table-scroll"><pre>-- 먼저 이걸 돌린다. 485가 실제로 몇 번부터 올라왔는지(484가 존재하는지)와
 -- NRU 세션이 판정에 쓸 만큼 쌓였는지를 확인하기 전에는 아래 다섯을 돌릴 이유가 없다.
 -- 세션 = (player_id, logincount_total) 한 쌍 = 로그인 1회.
--- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다(485 배포 다음 날 ~ +3일).
+-- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 지금은 485가 이미 잡히는 창(09-02~09-03)이라 바로 돌아간다.
+--    485 배포 후에는 배포 다음 날 ~ +3일로 바꾼다. 미래 날짜를 넣으면 파티션이 없어
+--    "This query will process 0 B" 가 뜨고 결과도 0행이다 — 쿼리가 틀린 게 아니라 창이 빈 것이다.
 SELECT
     client_version                    AS `빌드`,
     COUNTIF(logincount_total &lt;= 1)    AS `NRU_세션`,
@@ -360,7 +392,7 @@ SELECT
     MIN(log_date)                     AS `첫날`,
     MAX(log_date)                     AS `마지막날`
 FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
+WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
   AND (is_dev = FALSE OR is_dev IS NULL)
   AND player_id &gt; 0
   AND logincount_total IS NOT NULL
@@ -376,7 +408,9 @@ ORDER BY 1 DESC</pre></div>
             <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- 위 두 곡선을 그대로 3군으로 확장한 쿼리.
 -- 결과를 (구분, 로그, 빌드군) 순으로 받아 D 객체의 3원소 배열에 그대로 밀어 넣는다.
--- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다. 600000 = 10분, 넘는 값은 이상치로 버린다.
+-- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 지금 창(09-02~09-03)에 485가 이미 소량 잡힌다(NRU 72세션).
+--    표본이 쌓이면 창을 뒤로 옮긴다. 미래 날짜를 넣으면 0 B / 0행이 나온다.
+-- 600000 = 10분, 넘는 값은 이상치로 버린다.
 WITH src AS (
     SELECT
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS sk,
@@ -390,7 +424,7 @@ WITH src AS (
         CAST(JSON_VALUE(data, '$.time') AS INT64)  AS t,
         log_time
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -438,7 +472,8 @@ ORDER BY `구분`, `로그`, `빌드군`</pre></div>
             <div class="table-scroll"><pre>-- Q1이 완주 세션만 보기 때문에 반드시 짝으로 돌려야 하는 쿼리다.
 -- 용량이 줄면 느린 회선에서 끝까지 오는 사람 자체가 늘고, 그러면 느린 세션이
 -- 표본에 다시 들어와 Q1의 p90은 오히려 나빠 보일 수 있다. 그때 판정은 이 쿼리가 한다.
--- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다.
+-- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 지금 창(09-02~09-03)으로 바로 돌아간다.
+--    485 배포 후에는 배포 다음 날 ~ +3일로 옮긴다. 미래 날짜 = 0 B / 0행.
 WITH src AS (
     SELECT
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS sk,
@@ -450,7 +485,7 @@ WITH src AS (
         IF(logincount_total &lt;= 1, 'NRU', 'RU')     AS seg,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND player_id &gt; 0
       AND logincount_total IS NOT NULL
@@ -496,14 +531,16 @@ ORDER BY `구분`, `빌드군`</pre></div>
 --   · 신규 여부를 data.isNewDevice (main.js가 직접 싣는 값)로 가르고
 --   · 세션이 아니라 로그 단위 분포로 낸다.
 -- ALL_* 는 tryLog() 가 기기 접미사 붙은 로그와 함께 접미사 없이 한 번 더 보내는 집계용이다.
--- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다. 600000 = 10분 이상치 컷.
+-- ⚠ 이 쿼리는 client_version >= 485 만 본다. 표본이 아직 작다(09-02~03 NRU 72세션).
+--    기간 = 아래 WHERE 의 날짜 두 개. 배포 후 배포 다음 날 ~ +3일로 옮긴다.
+-- 600000 = 10분 이상치 컷.
 WITH src AS (
     SELECT
         IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
         event,
         CAST(JSON_VALUE(data, '$.time') AS INT64) AS t
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.time') IS NOT NULL
       AND CAST(JSON_VALUE(data, '$.client_version') AS INT64) &gt;= 485
@@ -539,7 +576,8 @@ ORDER BY `기기`, `p50_ms`</pre></div>
 -- 그래서 지연 대신 "몇 %가 다음 단계까지 왔나"로 두 빌드를 비교한다.
 -- 용량이 줄면 ALL_LOAD_INTRO 도달률이 올라가야 한다 — 여기가 다운로드 비용이 실리는 지점이다.
 -- 분모는 FIRST_LOG = main.js 가 실행된 모든 브라우저.
--- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다.
+-- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 지금 창(09-02~09-03)으로 바로 돌아간다.
+--    485 배포 후에는 배포 다음 날 ~ +3일로 옮긴다. 미래 날짜 = 0 B / 0행.
 WITH src AS (
     SELECT
         CASE
@@ -550,7 +588,7 @@ WITH src AS (
         IF(LOWER(JSON_VALUE(data, '$.isNewDevice')) = 'true', '신규기기', '재방문기기') AS seg,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.client_version') IS NOT NULL
       AND event IN ('FIRST_LOG', 'INTRO_FB_START', 'INTRO_FB_START_FINISH',
@@ -589,13 +627,14 @@ ORDER BY `기기`, `빌드군`</pre></div>
 -- "빠진 게 있어서 안 뜬다"가 같은 변경에서 나온다. 이 쿼리가 그 뒷면을 본다.
 -- 분모는 FIRST_LOG = 부팅을 시도한 모든 브라우저.
 -- 아래 이탈·실패 로그는 2026-09-02 신설이라 483에는 없다 — 절대값으로만 판정한다.
--- 기간은 아래 WHERE 의 날짜 두 개를 직접 고친다.
+-- ⚠ 기간 = 아래 WHERE 의 날짜 두 개. 지금 창(09-02~09-03)으로 바로 돌아간다.
+--    485 배포 후에는 배포 다음 날 ~ +3일로 옮긴다. 미래 날짜 = 0 B / 0행.
 WITH src AS (
     SELECT
         CAST(JSON_VALUE(data, '$.client_version') AS INT64) AS ver,
         event
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-10' AND '2026-09-13'
+    WHERE log_date BETWEEN '2026-09-02' AND '2026-09-03'
       AND (is_dev = FALSE OR is_dev IS NULL)
       AND JSON_VALUE(data, '$.client_version') IS NOT NULL
       AND event IN (
