@@ -373,6 +373,12 @@ ORDER BY `프로젝트`;</pre></div>
               msg_ok:0,   feed_ok:0,   cr_try:5,    cr_ok:1,   sh_try:1,    sh_ok:0,
               inv_try:1,    inv_ok:2 },
           ],
+          // 초대 시도 — daily의 inv_try는 토너 초대만 센 값이다. 지면 무관 전체 초대를
+          // 8/31~9/2 창에서 따로 뽑았는데 일자별·9/3 값이 없어 daily에 넣지 않고 창 합계로만 둔다.
+          // 차트는 daily만 쓰므로 이 값은 표 아래 각주에만 나온다.
+          invAll: { win:"8/31~9/2", irv_fin:0,
+            pre: { all_try:11738, tour_try:11495 },
+            cur: { all_try:874,   tour_try:856 } },
         },
       };
 
@@ -427,7 +433,7 @@ ORDER BY `프로젝트`;</pre></div>
             e=>[e.sh_try,'공유 시도',e.ud,'유저-일'], true],
           ['토너 공유율',        e=>e.sh_try? e.sh_ok/e.sh_try*100:null, v=>v.toFixed(1)+'%', Ma, '마종', '분모 정상화로 오르는 게 성공', 'g_pct',
             e=>[e.sh_ok,'공유 성공',e.sh_try,'공유 시도'], false],
-          ['토너 초대 시도/DAU', e=>(e.ud&&e.inv_try!=null)? e.inv_try/e.ud:null, v=>v.toFixed(2), PU, '퍼블마', '목표선=퍼블마(마종·코지엔 없는 지면). 483에도 초대가 살아 있다 — 차단 빌드는 아직 배포되지 않았다', 'g_tour',
+          ['토너 초대 시도/DAU', e=>(e.ud&&e.inv_try!=null)? e.inv_try/e.ud:null, v=>v.toFixed(2), PU, '퍼블마', '목표선=퍼블마(마종·코지엔 없는 지면). 483에도 초대가 살아 있다 — 차단 빌드는 아직 배포되지 않았다. 이 행은 토너 초대만 센다 — 지면 무관 전체 초대는 표 아래 각주', 'g_tour',
             e=>[e.inv_try,'초대 시도',e.ud,'유저-일'], true],
         ];
         // ★스케일은 같은 단위 계열(그룹) 공유 — 행마다 자기 최대로 늘리면 크기 비교가 안 된다.
@@ -496,7 +502,21 @@ ORDER BY `프로젝트`;</pre></div>
           <thead><tr><th>날짜</th><th>빌드</th>${COLS.map(([,l])=>`<th style="text-align:right">${l}</th>`).join('')}</tr></thead>
           <tbody>${rows.map(r=>`<tr><td>${r.d.slice(5)}</td><td>${r.ver==='483'?'483 이상':'482 이하'}</td>${
             COLS.map(([k])=>`<td style="text-align:right">${nf(r[k])}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table></div>`;
+        </table></div>` + invAllNote();
+
+        // 전체 초대 각주 — 표의 초대시도는 토너 초대만이다. 창 합계로만 있는 전체 초대를 여기서 밝힌다.
+        function invAllNote(){
+          const A = (DATA.sol && DATA.sol.invAll) || null;
+          if(!A) return '';
+          const d = (m) => nf(m.all_try - m.tour_try);
+          return `<div class="mdesc">표의 <b>초대시도</b>는 <b>토너 초대</b>만 센 값이다.
+            지면 무관 <b>전체 초대 시도</b>는 ${A.win} 창에서
+            482 이하 <b>${nf(A.pre.all_try)}</b>(토너 ${nf(A.pre.tour_try)} + 그 외 ${d(A.pre)}) ·
+            483 이상 <b>${nf(A.cur.all_try)}</b>(토너 ${nf(A.cur.tour_try)} + 그 외 ${d(A.cur)}) —
+            토너가 초대 발화의 <b>98%</b>(482 97.9% · 483 97.9%)라 차트 판정은 토너 열로 해도 결론이 바뀌지 않는다 ·
+            일자별·9/3 값은 아직 뽑지 않아 위 표에는 열을 넣지 않았다 ·
+            같은 창의 <b>IRV 완료(4110)는 ${nf(A.irv_fin)}건</b>이라 총광고에서 빼도 누락이 없다</div>`;
+        }
       })();
 
       // 벤치 3사 표 — 차트와 같은 DATA.bench에서 계산한다. 값을 손으로 적어두면 갱신 때 어긋난다.
