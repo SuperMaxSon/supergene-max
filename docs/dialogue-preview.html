@@ -6,10 +6,10 @@
     <title>대화 연출 미리보기</title>
     <meta
       name="description"
-      content="스토리 머지 대화 연출을 폰 비율 무대에서 맞추는 도구. 엑셀·구글시트에서 대사 표를 그대로 붙여넣고, 초상 등장·타이핑·자동 넘김 값을 슬라이더로 맞추고, 대사창을 넘치는 줄을 실제 렌더 높이로 잡아낸다."
+      content="스토리 머지 채팅 연출을 코코스와 같은 값으로 재생한다. chat_show.anim 을 직접 읽어 놀고, 시트 대사를 붙여 넣어 검사하고, story_dialogue.json 과 교체용 .anim 을 뽑는다."
     />
     <meta name="color-scheme" content="light" />
-    <link rel="stylesheet" href="../style.css?v=tlk1" />
+    <link rel="stylesheet" href="../style.css?v=tlk2" />
   </head>
   <body class="tlk">
     <nav class="nav">
@@ -17,9 +17,9 @@
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#stage">무대</a>
         <a class="nav-back" href="#params">연출 값</a>
-        <a class="nav-back" href="#lint">대사 길이</a>
-        <a class="nav-back" href="#sheet">시트 규격</a>
-        <a class="nav-back" href="#cast">캐릭터</a>
+        <a class="nav-back" href="#sheet">대사 시트</a>
+        <a class="nav-back" href="#assets">리소스</a>
+        <a class="nav-back" href="#export">내보내기</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -29,65 +29,21 @@
         <div class="doc-eyebrow">기획 · 연출 규격</div>
         <h1 class="doc-title">대화 연출 미리보기</h1>
         <p class="doc-lede">
-          엑셀·구글시트에 정리한 대사 표를 <b>그대로 긁어 붙여넣으면</b> 폰 비율 화면에서 바로 재생됩니다.
-          초상이 어느 방향에서 얼마나 빠르게 들어오는지, 타이핑이 몇 자씩 찍히는지를 표의 숫자와 슬라이더로 맞추고,
-          <b>대사창을 넘치는 줄</b>은 실제로 그려진 높이를 재서 목록으로 띄웁니다.
-          맞춘 값은 <b>[설정 복사]</b> 로 <code>TypeScript</code> 상수째, 대사는 <b>[.csv 내려받기]</b> 로 시트에 도로 가져갑니다.
+          채팅 한 줄이 뜨는 연출을 <b>코코스와 같은 값</b>으로 재생합니다. 값을 옮겨 적지 않고
+          <code>chat_show.anim</code> 을 그대로 읽어 놀기 때문에, 클립을 고쳐 떨구면 무대도 따라 바뀝니다.
+          맞춘 값은 <b>교체용 <code>.anim</code></b> 으로 뽑아 그대로 덮어쓰면 됩니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
-          <span class="tag">기획 · 아트 공용</span>
-          <span class="tag">시트 붙여넣기</span>
-          <span class="tag">대사 길이 검사</span>
-          <span class="tag">v1.0 · 2026-09-03 10:05</span>
+          <span class="tag">채팅 연출</span>
+          <span class="tag">시트 · 클립 왕복</span>
+          <span class="tag">코드 실측</span>
+          <span class="tag" id="tlk-ver">v2.0 · 2026-09-03 15:04</span>
         </div>
       </div>
     </header>
 
-    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
-      <defs>
-        <!-- 내장 더미 3명. 이미지가 아직 없어도 문서가 굴러가야 하고, 그림이 오면
-             떨궈서 갈아 끼운다. 얼굴은 비워 두고 표정만 JS 가 위에 얹는다 —
-             표정 컬럼이 화면에서 실제로 갈리는 걸 봐야 시트를 그렇게 쓴다. -->
-        <symbol id="tlk-ch-a" viewBox="0 0 200 300">
-          <path d="M54 300v-58c0-27 21-44 46-44s46 17 46 44v58z" fill="#7FA6C9" />
-          <path d="M76 300v-72h48v72z" fill="#F6EFE2" />
-          <rect x="89" y="124" width="22" height="28" rx="6" fill="#F0C9A4" />
-          <circle cx="100" cy="94" r="45" fill="#F6D3B0" />
-          <path d="M55 92a45 45 0 0 1 90 0c0-24-15-40-45-40S55 68 55 92z" fill="#6B4A2F" />
-          <circle cx="100" cy="40" r="17" fill="#6B4A2F" />
-        </symbol>
-        <symbol id="tlk-ch-b" viewBox="0 0 200 300">
-          <path d="M50 300v-60c0-29 22-47 50-47s50 18 50 47v60z" fill="#8FB98A" />
-          <rect x="88" y="126" width="24" height="28" rx="6" fill="#E8B78C" />
-          <circle cx="100" cy="96" r="46" fill="#EFC49B" />
-          <path d="M62 80c0-22 17-38 38-38s38 16 38 38z" fill="#3E5C74" />
-          <rect x="52" y="76" width="96" height="10" rx="5" fill="#2F4657" />
-          <path d="M70 112c6 26 18 34 30 34s24-8 30-34c-8 10-20 14-30 14s-22-4-30-14z" fill="#7A5A3A" />
-        </symbol>
-        <symbol id="tlk-ch-c" viewBox="0 0 200 300">
-          <path d="M60 300v-56c0-25 18-41 40-41s40 16 40 41v56z" fill="#C9A87C" />
-          <path d="M63 104l7 44 30-18z" fill="#E3C9A4" />
-          <path d="M137 104l-7 44-30-18z" fill="#E3C9A4" />
-          <circle cx="100" cy="134" r="46" fill="#E3C9A4" />
-        </symbol>
-        <!-- 배경. 값 맞추기용이라 디테일은 필요 없고, 초상·대사창의 대비만 나오면 된다. -->
-        <symbol id="tlk-scene" viewBox="0 0 360 640">
-          <rect width="360" height="640" fill="#EAF3F6" />
-          <circle cx="292" cy="86" r="34" fill="#FBEAC6" />
-          <path d="M0 300h360v340H0z" fill="#CFE6E2" />
-          <path d="M0 300c60-18 110 12 180 0s120-26 180-6v30H0z" fill="#BEDCD8" />
-          <rect x="0" y="392" width="360" height="248" fill="#D9BD94" />
-          <rect x="0" y="392" width="360" height="10" fill="#C6A579" />
-          <path d="M32 300h26v92H32zM120 316h22v76h-22zM236 306h24v86h-24z" fill="#B99367" opacity=".55" />
-        </symbol>
-      </defs>
-    </svg>
-
     <main class="wrap wrap--wide">
-      <!-- 재생·속도 바를 본문 맨 위에 sticky 로 둔다. 대사 연출은 1× 로는
-           "빠르다/느리다" 말고 아무 말도 안 나온다. 0.25× 로 봐야 어느 구간이
-           뻑뻑한지 짚을 수 있고, 그때 파라미터 표까지 손이 닿아야 한다. -->
       <div class="tlk-bar">
         <button type="button" class="tlk-btn is-primary" id="tlk-play">재생</button>
         <button type="button" class="tlk-btn" id="tlk-step">한 줄씩</button>
@@ -98,1455 +54,1169 @@
           <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
           <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
         </div>
-        <span class="tlk-bar-l">반복</span>
-        <div class="tlk-seg" id="tlk-loop">
-          <button type="button" data-lp="0" aria-pressed="true">1회</button>
-          <button type="button" data-lp="1" aria-pressed="false">반복</button>
+        <!-- 코코스 스크린샷과 눈으로 대조하려면 같은 시각에 멈춰 세워야 한다.
+             클립의 키프레임 시각 네 곳이 곧 비교 지점이다. -->
+        <span class="tlk-bar-l">등장 정지</span>
+        <div class="tlk-seg" id="tlk-freeze">
+          <button type="button" data-fz="" aria-pressed="true">해제</button>
+          <button type="button" data-fz="0" aria-pressed="false">0s</button>
+          <button type="button" data-fz="0.1" aria-pressed="false">0.1s</button>
+          <button type="button" data-fz="0.1667" aria-pressed="false">0.1667s</button>
+          <button type="button" data-fz="0.3333" aria-pressed="false">0.3333s</button>
         </div>
-        <button type="button" class="tlk-btn is-primary" id="tlk-ioopen">대본 넣기 · 내보내기</button>
-        <button type="button" class="tlk-btn" id="tlk-copyall">전체 설정 복사</button>
+        <button type="button" class="tlk-btn" id="tlk-ioopen">시트 · 리소스 넣기</button>
         <button type="button" class="tlk-btn" id="tlk-resetall">전부 기본값</button>
         <span class="tlk-badge" id="tlk-badge" hidden></span>
-        <span class="tlk-bar-note">
-          표의 숫자를 치거나 슬라이더를 끌면 무대가 그 값으로 놉니다. 대본과 맞춘 값은
-          <b>이 브라우저에 남아</b> 새로고침해도 그대로입니다. 다만
-          <b>캐릭터 이미지는 이 세션에만 남습니다</b> — 새로고침하면 내장 더미로 돌아갑니다.
-        </span>
       </div>
-
-      <!-- 대본 주고받기 창. 여는 버튼이 sticky 툴바에 있어서 인라인 패널이면
-           문서 아래쪽에서 눌렀을 때 화면에 아무 일도 안 일어난다. 모달은 스크롤
-           위치와 무관하게 같은 자리에 뜬다. 네이티브 <dialog> 라 ESC 닫기·
-           포커스 가둠·backdrop 이 공짜다. -->
-      <dialog class="tlk-io" id="tlk-io" aria-label="대본 넣기 · 내보내기">
-        <div class="tlk-io-head">
-          <h2>대본 넣기 · 내보내기</h2>
-          <button type="button" class="tlk-x" id="tlk-io-x" aria-label="닫기">✕</button>
-        </div>
-
-        <div class="tlk-io-sec">
-          <div class="tlk-io-t">대사 표 붙여넣기 (주 경로)</div>
-          <p class="tlk-io-lead">
-            <b>엑셀·구글시트에서 대사 표를 그대로 긁어 붙여넣으세요.</b>
-            첫 줄을 헤더로 읽습니다 — 컬럼 순서는 상관없고 <code>화자</code>·<code>대사</code> 같은 한글 이름과
-            <code>speaker</code>·<code>text</code> 같은 영문 이름을 모두 받습니다.
-            대사 안의 쉼표·따옴표·줄바꿈은 그대로 살립니다.
-            <code>.csv</code>·<code>.tsv</code> 파일, 내려받은 <code>.json</code>, [설정 복사] 로 가져간 TypeScript 텍스트도 같은 칸에 넣으면 됩니다.
-          </p>
-          <textarea id="tlk-io-ta" spellcheck="false" placeholder="순번	화자	위치	표정	대사	자동넘김	강조&#10;1	엘라	좌	기본	드디어 창고 정리가 끝났어요.	1600&#10;2	해리	우	기쁨	그 낡은 램프요! 닦아 보면 뭐라도 나오지 않을까요?	1800"></textarea>
-          <div class="tlk-io-row">
-            <button type="button" class="tlk-btn is-primary" id="tlk-io-apply">적용</button>
-            <button type="button" class="tlk-btn" id="tlk-io-pick">파일 열기</button>
-            <input type="file" id="tlk-io-file" accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json" hidden />
-            <button type="button" class="tlk-btn" id="tlk-io-sample">샘플 대본 넣기</button>
-            <span class="tlk-io-hint">창 안에 파일을 끌어다 놓아도 됩니다</span>
-          </div>
-          <div class="tlk-io-msg" id="tlk-io-msg"></div>
-        </div>
-
-        <div class="tlk-io-sec">
-          <div class="tlk-io-t">내보내기</div>
-          <div class="tlk-io-row">
-            <button type="button" class="tlk-btn is-primary" id="tlk-io-csv">.csv 내려받기</button>
-            <button type="button" class="tlk-btn" id="tlk-io-json">.json 내려받기</button>
-            <button type="button" class="tlk-btn" id="tlk-io-copy">TS 텍스트 복사</button>
-          </div>
-          <div class="tlk-io-row">
-            <span class="tlk-io-hint">
-              <code>.csv</code> 는 대사에 <b>글자 수 · 줄 수 · 판정</b> 컬럼을 붙여 내보냅니다 — 시트에서 바로 고치세요.
-              엑셀에서 한글이 깨지지 않게 UTF-8 BOM 을 붙입니다.
-              <code>.json</code> 은 대본과 연출 값을 함께 담아 그대로 다시 가져올 수 있고, TS 텍스트는 코드에 붙입니다.
-            </span>
-          </div>
-        </div>
-      </dialog>
 
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
           무대
-          <span class="doc-h2-sub">360×640 · 9:16 논리 해상도 그대로 — 대사창이 화면의 몇 할을 먹는지가 여기서 보인다</span>
+          <span class="doc-h2-sub">디자인 해상도 720×1280 좌표를 그대로 씁니다 — 상수를 변환 없이 박아 두려고</span>
         </h2>
-
-        <div class="tlk-work">
-          <div class="tlk-stagecol">
-            <div class="tlk-stick">
-              <div class="tlk-phone">
-                <div class="tlk-screen">
-                  <svg class="tlk-bg" viewBox="0 0 360 640" preserveAspectRatio="none" aria-hidden="true">
-                    <use href="#tlk-scene"></use>
-                  </svg>
-                  <div class="tlk-ports" id="tlk-ports"></div>
-                  <div class="tlk-ruler" id="tlk-ruler"><span id="tlk-ruler-l"></span></div>
-                  <div class="tlk-box" id="tlk-box">
-                    <div class="tlk-name" id="tlk-name"></div>
-                    <div class="tlk-text" id="tlk-text"></div>
-                    <div class="tlk-next">▼</div>
-                  </div>
-                  <div class="tlk-measure" id="tlk-measure" aria-hidden="true"></div>
-                </div>
-              </div>
-              <div class="tlk-meta" id="tlk-meta">대본을 넣거나 [재생] 을 누르세요</div>
-            </div>
+        <div class="tlk-stagewrap">
+          <div class="tlk-phone">
+            <div class="tlk-dim" id="tlk-dim"></div>
+            <div class="tlk-feed" id="tlk-feed"></div>
+            <div class="tlk-guide" id="tlk-guide" hidden></div>
           </div>
-
-          <div class="tlk-panel">
-            <section class="tlk-sub" id="params">
-              <h2 class="doc-h2">
-                연출 값
-                <span class="doc-h2-sub">숫자칸 또는 슬라이더 — 바꾸면 다음 재생부터 그 값으로 논다</span>
-              </h2>
-              <div id="tlk-cards"></div>
-            </section>
-
-            <section class="tlk-sub" id="lint">
-              <h2 class="doc-h2">
-                대사 목록 · 길이 검사
-                <span class="doc-h2-sub">줄을 누르면 그 대사를 무대에서 재생한다</span>
-              </h2>
-              <div class="tlk-derive" id="tlk-derive"></div>
-              <div class="table-scroll">
-                <table class="tlk-lines">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>화자</th>
-                      <th>대사</th>
-                      <th style="text-align: right">글자</th>
-                      <th style="text-align: right">줄</th>
-                      <th>판정</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tlk-lint-body"></tbody>
-                </table>
-              </div>
-
-              <div class="notes">
-                <div class="note" style="--acc: var(--validate)">
-                  <div class="note-title">줄 수를 어떻게 세는가</div>
-                  <p>
-                    글자 수로 어림잡지 않습니다. 화면의 대사창과 <strong>글꼴·글자 크기·줄 간격·본문 폭이 똑같은 자</strong>를
-                    화면 밖에 하나 세워 두고, 대사를 그 자에 넣어 <strong>실제로 그려진 높이</strong>를 잰 뒤 줄 높이로 나눕니다.
-                    한국어는 어절 단위로 끊기기 때문에 같은 글자 수라도 어디서 띄었느냐에 따라 줄 수가 갈립니다 — 글자 수 추정으로는 잡히지 않는 차이입니다.
-                  </p>
-                  <p>
-                    코코스 <code>cc.Label</code> 은 CJK 를 글자 단위로 끊어서 같은 문장이 <strong>같거나 더 적은 줄</strong>로 들어갑니다.
-                    즉 이 문서의 판정은 항상 안전한 쪽(보수적)입니다.
-                  </p>
-                </div>
-                <div class="note" style="--acc: var(--balance)">
-                  <div class="note-title">왜 이 기준인가</div>
-                  <p>
-                    타깃이 <strong>50대 이상</strong>이라 대사 글꼴은 <strong>16pt 아래로 내리지 않습니다</strong>. 기본값 17pt 는 그 아래 여유를 한 칸 둔 값입니다.
-                    글자 크기가 정해지면 줄 높이(글자 크기 × 줄 간격)가 정해지고, 대사창 높이에서 이름표와 안팎 여백을 뺀 나머지를 줄 높이로 나눈 것이
-                    <strong>가용 줄 수</strong>입니다. 위 배지에 그 계산이 실시간으로 나옵니다.
-                  </p>
-                  <p>
-                    <strong>넘침</strong>은 가용 줄 수를 실제로 초과해 <strong>글자가 잘려 안 보이는</strong> 상태입니다 — 반드시 고쳐야 합니다.
-                    <strong>주의</strong>는 잘리지는 않지만 아래 <code>대사 길이 기준</code> 표의 최대 글자 수·줄 수를 넘은 상태로,
-                    한 화면에서 읽는 부담을 넘겼다는 뜻입니다. 대사창을 키워 해결할지 대사를 쪼갤지는 여기서 값을 바꿔 가며 정하세요.
-                  </p>
-                </div>
-              </div>
-            </section>
+          <div class="tlk-side">
+            <div class="tlk-now" id="tlk-now"></div>
+            <label class="tlk-check"><input type="checkbox" id="tlk-showguide" /> 좌표 가이드</label>
+            <label class="tlk-check"><input type="checkbox" id="tlk-showbox" /> 노드 경계</label>
+            <div class="note" id="tlk-feednote"></div>
           </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="params">
+        <h2 class="doc-h2">
+          연출 값
+          <span class="doc-h2-sub">전부 코드·클립 실측치입니다. 바꾸면 무대가 즉시 그 값으로 놉니다</span>
+        </h2>
+        <div id="tlk-cards"></div>
+        <div class="foot">
+          <b>어디서 온 값인가</b>
+          등장 곡선은 <code>assets/bundle/chat/clips/chat_show.anim</code> 의 키프레임입니다.
+          이 클립에는 <code>curve</code> 필드가 하나도 없어 <b>전부 선형 보간</b>이고, 그래서 문서와
+          엔진의 곡선이 같습니다. 통통 튀는 느낌은 이징이 아니라 키프레임 배치(0 → 0.1667 → 0.3333)에서 나옵니다.
+          레이아웃·피드 값은 <code>ChatBubbleStoryPresentation.ts</code> 상단 상수,
+          타이핑·자동넘김은 <code>ChatPresentationConfig.ts</code>,
+          말풍선 9-slice 는 <code>story_character_text_bubble01.9.json</code> 에서 읽었습니다.
         </div>
       </section>
 
       <section class="doc-section" id="sheet">
         <h2 class="doc-h2">
-          시트 컬럼 규격
-          <span class="doc-h2-sub">이 표대로 시트를 만들면 그대로 긁어 붙여넣을 수 있다</span>
+          대사 시트
+          <span class="doc-h2-sub">엑셀에서 긁어 붙이거나 <code>story_dialogue.json</code> 을 떨구면 됩니다</span>
         </h2>
 
         <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>컬럼</th>
-                <th>영문 이름</th>
-                <th>필수</th>
-                <th>예시</th>
-                <th>설명</th>
-              </tr>
-            </thead>
+          <table class="tlk-spec">
+            <thead><tr><th>컬럼</th><th>필수</th><th>예시</th><th>설명</th></tr></thead>
             <tbody>
-              <tr>
-                <td><code>순번</code></td>
-                <td><code>no</code> <code>번호</code> <code>순서</code> <code>index</code></td>
-                <td>선택</td>
-                <td>1</td>
-                <td>없으면 시트의 행 순서대로 매깁니다. 표시용일 뿐 재생 순서는 언제나 행 순서입니다.</td>
-              </tr>
-              <tr>
-                <td><code>화자</code></td>
-                <td><code>speaker</code> <code>이름</code> <code>캐릭터</code> <code>name</code></td>
-                <td>권장</td>
-                <td>엘라</td>
-                <td>이름표에 그대로 나오고, <b>캐릭터 이미지를 붙이는 키</b>입니다. 비우면 이름표 없이 대사만 나옵니다.</td>
-              </tr>
-              <tr>
-                <td><code>위치</code></td>
-                <td><code>side</code> <code>방향</code> <code>position</code></td>
-                <td>선택</td>
-                <td>좌 · 우 · left · right</td>
-                <td>비우면 <b>화자가 처음 나온 순서대로 좌·우를 번갈아</b> 배정하고 그 사실을 알려 줍니다. 한쪽에 다른 화자가 오면 앞 초상이 퇴장하고 새 초상이 들어옵니다.</td>
-              </tr>
-              <tr>
-                <td><code>표정</code></td>
-                <td><code>emotion</code> <code>감정</code> <code>expression</code></td>
-                <td>선택</td>
-                <td>기본 · 기쁨 · 슬픔 · 놀람 · 화남</td>
-                <td>내장 더미의 얼굴이 바뀝니다. 이미지는 <code>화자_표정</code> 파일명으로 붙습니다 (예: <code>엘라_기쁨.png</code>).</td>
-              </tr>
-              <tr>
-                <td><code>대사</code></td>
-                <td><code>text</code> <code>내용</code> <code>line</code> <code>dialogue</code></td>
-                <td><b>필수</b></td>
-                <td>어머, 방금 뭔가 반짝였어요!</td>
-                <td>이 컬럼을 못 찾으면 표로 읽지 않고 무엇을 못 알아봤는지 알려 줍니다. 쉼표·따옴표·셀 안 줄바꿈 모두 그대로 살아납니다.</td>
-              </tr>
-              <tr>
-                <td><code>자동넘김</code></td>
-                <td><code>autoMs</code> <code>대기</code> <code>wait</code> <code>delay</code></td>
-                <td>선택</td>
-                <td>1600</td>
-                <td><b>밀리초</b>. 이 줄을 다 찍은 뒤 다음 줄로 넘어가기까지의 대기입니다. 비우면 <code>타이핑 · 진행</code> 표의 기본값을 씁니다.</td>
-              </tr>
-              <tr>
-                <td><code>강조</code></td>
-                <td><code>emph</code> <code>흔들림</code> <code>shake</code></td>
-                <td>선택</td>
-                <td>Y · 1 · TRUE · O</td>
-                <td>채워 두면 그 줄에서 초상 흔들림 + 대사창 튐이 함께 재생됩니다. 값은 <code>강조 연출</code> 표에서 맞춥니다.</td>
-              </tr>
+              <tr><td><code>key_number</code></td><td>△</td><td>220001</td><td>정렬 기준. 없으면 행 순서로 매깁니다</td></tr>
+              <tr><td><code>scene_id</code></td><td>○</td><td>tutorial_0</td><td><code>story_node.json</code> 의 대사 노드와 이어지는 키</td></tr>
+              <tr><td><code>part</code></td><td>○</td><td>1</td><td>씬 안의 묶음</td></tr>
+              <tr><td><code>step</code></td><td>○</td><td>1</td><td>묶음 안의 순서</td></tr>
+              <tr><td><code>speaker</code></td><td>○</td><td>Rosie</td><td>캐스트 4명 중 하나 · <code>Narration</code></td></tr>
+              <tr><td><code>direction</code></td><td>○</td><td>1</td><td><b>1 = 좌 · 2 = 우.</b> 프리팹 좌/우 두 벌을 가릅니다</td></tr>
+              <tr><td><code>emotion</code></td><td>○</td><td>worried</td><td>포트레이트 시퀀스 폴더명의 뒷부분</td></tr>
+              <tr><td><code>anim</code></td><td>○</td><td>Rosie_worried</td><td>재생할 클립. 코드가 소문자로 낮춰 찾습니다</td></tr>
+              <tr><td><code>text_en</code></td><td>○</td><td>I can't believe it.</td><td>말풍선 본문. 로컬라이제이션을 타지 않고 이 값이 그대로 나갑니다</td></tr>
+              <tr><td><code>in_use</code></td><td>○</td><td>1</td><td>0 이면 로더가 건너뜁니다</td></tr>
             </tbody>
           </table>
         </div>
+        <p class="note">
+          컬럼 순서는 상관없고 첫 줄을 헤더로 읽습니다. 한글 머리글(<code>화자</code>, <code>대사</code> …)도 받습니다.
+          못 알아본 컬럼은 이름을 대서 알려주고 무시합니다.
+        </p>
 
-        <div class="notes">
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">읽는 규칙</div>
-            <p>
-              헤더 이름은 <strong>공백·대소문자·밑줄·괄호를 무시</strong>하고 맞춥니다 (<code>화 자</code>, <code>Speaker</code>, <code>auto_ms</code> 모두 통과).
-              규격에 없는 컬럼(배경·사운드·비고 등)이 섞여 있어도 괜찮습니다 — <strong>무시하되 어떤 이름을 못 알아봤는지 목록으로 알려 줍니다</strong>. 조용히 버리지 않습니다.
-            </p>
-            <p>
-              엑셀·구글시트에서 셀 범위를 복사하면 클립보드에 탭으로 나뉜 표(TSV)가 들어갑니다. 그대로 붙여넣으면 됩니다.
-              쉼표로 나뉜 <code>.csv</code> 도 같은 파서로 읽고, <strong>따옴표로 감싼 셀 안의 쉼표와 줄바꿈</strong>을 정상 처리합니다.
-              헤더를 하나도 못 알아본 경우에는 <strong>첫 칸을 화자, 마지막 칸을 대사</strong>로 가정하고 그렇게 읽었다고 알려 줍니다.
-            </p>
-          </div>
-        </div>
-
-        <details class="fold">
-          <summary>JSON 으로 주고받기 — 스키마</summary>
-          <div class="fold-body">
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>키</th><th>타입</th><th>필수</th><th>설명</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td><code>doc</code></td><td>string</td><td>선택</td><td>항상 <code>"dialogue-preview"</code>. 확인용이며 값이 달라도 읽습니다.</td></tr>
-                  <tr><td><code>ver</code></td><td>number</td><td>선택</td><td>봉투 버전. 현재 <code>1</code>.</td></tr>
-                  <tr><td><code>stamp</code></td><td>string</td><td>선택</td><td>내보낸 시각 <code>YYYY-MM-DD HH:MM</code>.</td></tr>
-                  <tr><td><code>script</code></td><td>array</td><td>선택</td><td>대사 줄 배열. 있으면 대본만 갈아 끼웁니다 — 연출 값은 건드리지 않습니다.</td></tr>
-                  <tr><td><code>script[].speaker</code></td><td>string</td><td>선택</td><td>화자 이름.</td></tr>
-                  <tr><td><code>script[].side</code></td><td><code>"left"</code> | <code>"right"</code></td><td>선택</td><td>비우면 화자 등장 순서로 자동 배정.</td></tr>
-                  <tr><td><code>script[].emotion</code></td><td>string</td><td>선택</td><td><code>기본</code>·<code>기쁨</code>·<code>슬픔</code>·<code>놀람</code>·<code>화남</code> 또는 영문 키.</td></tr>
-                  <tr><td><code>script[].text</code></td><td>string</td><td><b>필수</b></td><td>대사 본문. 비어 있는 줄은 버립니다.</td></tr>
-                  <tr><td><code>script[].autoMs</code></td><td>number</td><td>선택</td><td>이 줄만의 자동 넘김 대기(ms).</td></tr>
-                  <tr><td><code>script[].emph</code></td><td>boolean</td><td>선택</td><td>강조 연출 여부.</td></tr>
-                  <tr><td><code>values</code></td><td>object</td><td>선택</td><td>연출 값 묶음(<code>p1</code>~<code>p5</code>). 있으면 값만 갈아 끼웁니다 — 대본은 건드리지 않습니다.</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </details>
-
-        <details class="fold">
-          <summary>샘플 대본 (탭으로 나뉜 표 · 그대로 시트에 붙여도 됩니다)</summary>
-          <div class="fold-body">
-            <pre id="tlk-sample"></pre>
-          </div>
-        </details>
+        <div id="tlk-lint"></div>
       </section>
 
-      <section class="doc-section" id="cast">
+      <section class="doc-section" id="assets">
         <h2 class="doc-h2">
-          캐릭터 이미지
-          <span class="doc-h2-sub">떨군 파일명을 화자·표정에 맞춰 붙이고, 안 맞으면 손으로 고른다</span>
+          리소스
+          <span class="doc-h2-sub">포트레이트 폴더를 통째로 떨구면 파일명에서 캐릭터·감정·프레임을 읽습니다</span>
         </h2>
-
         <div class="tlk-drop" id="tlk-drop">
-          <b>여기에 초상 이미지를 끌어다 놓으세요</b>
-          문서 어디에 떨궈도 됩니다 · 눌러서 파일을 고를 수도 있습니다 · PNG · JPG · WEBP · SVG
+          <b>여기에 포트레이트 폴더를 끌어다 놓으세요</b>
+          <span><code>&lt;character&gt;_&lt;emotion&gt;_png_00001_.png</code> 형식이면 16세트를 알아서 짭니다</span>
+          <button type="button" class="tlk-btn" id="tlk-pickdir">폴더 선택</button>
+          <input type="file" id="tlk-dirinput" webkitdirectory directory multiple hidden />
+          <span class="tlk-hint">브라우저가 로컬 파일을 읽을 뿐, 아무것도 업로드되지 않습니다. 새로고침하면 사라집니다.</span>
         </div>
-        <!-- 파일 입력은 드롭존 밖에 둔다. 안에 두면 imgFile.click() 이 만든 클릭이
-             드롭존까지 올라와 다시 imgFile.click() 을 부르는 무한 루프가 된다. -->
-        <input type="file" id="tlk-img-file" accept="image/*" multiple hidden />
-
-        <div class="table-scroll" style="margin-top: 12px">
-          <table>
-            <thead>
-              <tr>
-                <th>화자</th>
-                <th>표정</th>
-                <th>미리보기</th>
-                <th>사용할 그림</th>
-                <th>붙은 파일</th>
-              </tr>
-            </thead>
-            <tbody id="tlk-cast-body"></tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">파일명 규칙</div>
-            <p>
-              <code>화자.png</code> 는 그 화자의 <strong>기본 초상</strong>, <code>화자_표정.png</code> 는 그 표정 전용 초상으로 붙습니다
-              (<code>엘라.png</code>, <code>엘라_기쁨.png</code>). 대소문자·공백·밑줄·하이픈은 무시하고 맞추므로
-              <code>Ella happy.png</code> 도 <code>엘라</code> 가 영문 이름이라면 붙습니다.
-              <strong>못 맞춘 파일은 버리지 않고</strong> 위 표의 선택칸에 그대로 올라오니 손으로 골라 주세요.
-            </p>
-            <p>
-              <strong>이미지는 이 세션에만 남습니다.</strong> 브라우저에 저장되는 것은 대본과 연출 값(작은 JSON)뿐이고,
-              그림은 새로고침하면 내장 더미로 돌아갑니다. 문서 하나에 수 MB 짜리 그림을 눌러 담지 않으려는 의도입니다 —
-              팀에 넘길 때는 그림 파일을 따로 주고, 이 문서에서는 <code>.csv</code>·<code>.json</code>·TS 텍스트만 주고받습니다.
-            </p>
-          </div>
-        </div>
-
+        <div id="tlk-castbox"></div>
         <div class="foot">
-          <b>확인 범위</b>
-          무대의 트윈 엔진은 <code>docs/merge-feedback-anim.html</code> 의 것을 그대로 가져왔고,
-          Cocos 2.4 <code>cc.easing</code> 과 같은 수식을 다시 구현한 것이라 문서에서 보는 곡선이 엔진에서 나오는 곡선과 같습니다.
-          화면 치수(360×640)와 접근성 기준(글꼴 16pt 이상, 터치 영역 48×48 이상)은 프로젝트 규칙에서 온 값이고,
-          그 밖의 시간·이징·거리·대사 길이 기준은 <b>이 문서가 제안하는 값이며 아직 코드에 없습니다</b> —
-          여기서 맞춘 뒤 <code>[설정 복사]</code> 로 넘겨 주세요.
+          <b>왜 인계 검사를 여기서 하나</b>
+          과거에 두 번 크게 물렸습니다. <code>trimType</code> 이 <code>auto</code> 로 임포트돼
+          304×288 프레임이 204×262 로 잘렸고, 잘리는 위치가 프레임마다 달라 재생하면 캐릭터가 튀었습니다
+          (<code>.meta</code> 270개 되돌림). 그리고 캐스트 이름이 확정 전 이름으로 납품돼 파일 598개를
+          rename 했습니다. 둘 다 <b>넘기기 전에 이 표를 통과시켰으면 안 났을 일</b>입니다.
+        </div>
+      </section>
+
+      <section class="doc-section" id="export">
+        <h2 class="doc-h2">
+          내보내기
+          <span class="doc-h2-sub">맞춘 값이 코코스로 건너가는 경로 — 세 갈래로 나뉩니다</span>
+        </h2>
+        <div class="tlk-exports" id="tlk-exports"></div>
+        <div class="foot">
+          <b>왜 세 갈래인가</b>
+          값이 세 군데에 나뉘어 있기 때문입니다. 설정·레이아웃은 <b>TS 상수</b>라 붙여넣으면 끝이지만,
+          <b>등장 연출의 알맹이는 코드가 아니라 <code>chat_show.anim</code> 클립 안</b>에 키프레임으로 있습니다.
+          상수만 넘기면 등장 연출은 반영되지 않습니다. <code>.anim</code> 은 JSON 이라 이 문서가 교체본을
+          통째로 만들어 줍니다 — 파일을 덮어쓰면 애니메이션 에디터에서 키를 손으로 옮길 일이 없습니다.
+          대사는 <code>story_dialogue.json</code> 을 그대로 뽑습니다. 리포에 시트→JSON 변환기가 없어서
+          지금은 사람이 JSON 을 직접 고치고 있는데, 그 자리를 대신합니다.
         </div>
       </section>
     </main>
 
+    <dialog class="tlk-io" id="tlk-io" aria-label="시트 · 리소스 넣기">
+      <div class="tlk-io-head">
+        <h2>시트 · 리소스 넣기</h2>
+        <button type="button" class="tlk-x" id="tlk-io-x" aria-label="닫기">✕</button>
+      </div>
+      <div class="tlk-io-sec">
+        <div class="tlk-io-t">붙여넣기</div>
+        <textarea id="tlk-io-ta" spellcheck="false" placeholder="엑셀·구글시트에서 대사 표를 그대로 긁어 붙여넣으세요. story_dialogue.json 내용이나 chat_show.anim 내용을 넣어도 됩니다."></textarea>
+        <div class="tlk-io-row">
+          <button type="button" class="tlk-btn is-primary" id="tlk-io-apply">적용</button>
+          <button type="button" class="tlk-btn" id="tlk-io-pick">파일 열기</button>
+          <input type="file" id="tlk-io-file" accept=".csv,.tsv,.txt,.json,.anim" hidden />
+          <span class="tlk-hint">창 안에 파일을 끌어다 놓아도 됩니다 · <code>.anim</code> 을 넣으면 등장 연출 값이 그 클립으로 바뀝니다</span>
+        </div>
+        <div class="tlk-io-msg" id="tlk-io-msg"></div>
+      </div>
+    </dialog>
+
     <script>
-      /* ======================================================================
-         트윈 엔진. docs/merge-feedback-anim.html 의 엔진을 그대로 가져왔다.
-         Cocos 2.4 cc.easing 과 같은 수식을 다시 구현한 것 — 문서에서 보는 곡선과
-         엔진에서 나오는 곡선이 같아야 타이밍 얘기가 성립한다.
-         ====================================================================== */
       (function () {
         "use strict";
 
-        var EASE = {
-          linear: function (t) { return t; },
-          quadIn: function (t) { return t * t; },
-          quadOut: function (t) { return 1 - (1 - t) * (1 - t); },
-          quadInOut: function (t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; },
-          sineInOut: function (t) { return -(Math.cos(Math.PI * t) - 1) / 2; },
-          circIn: function (t) { return 1 - Math.sqrt(1 - t * t); },
-          circOut: function (t) { return Math.sqrt(1 - Math.pow(t - 1, 2)); },
-          backIn: function (t) { return 2.70158 * t * t * t - 1.70158 * t * t; },
-          backOut: function (t) { return 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2); },
-        };
-        var EASE_LIST = ["linear", "quadIn", "quadOut", "quadInOut", "sineInOut", "circIn", "circOut", "backIn", "backOut"];
+        /* ── 실측 상수 ─────────────────────────────────────────────────────
+           출처는 전부 story-merge-proto-client main 이다.
+           디자인 해상도 좌표를 그대로 쓴다 — 변환해서 담으면 코코스 상수가 바뀔 때
+           옮겨 적는 단계가 하나 더 생기고, 거기서 어긋난다. */
+        var DESIGN_W = 720, DESIGN_H = 1280;
 
-        var SPEED = 1;
-        var LOOP = false;
-        var jobs = [];
-        var ticks = [];
-        var lastTs = 0;
-
-        function frame(ts) {
-          if (!lastTs) lastTs = ts;
-          var dt = Math.min(0.05, (ts - lastTs) / 1000) * SPEED;
-          lastTs = ts;
-          var live = [];
-          for (var i = 0; i < jobs.length; i++) {
-            var j = jobs[i];
-            if (j.dead) continue;
-            j.t += dt;
-            var r = j.dur <= 0 ? 1 : Math.min(1, j.t / j.dur);
-            // 한 트윈이 던진 예외가 rAF 루프 전체를 멈추면 페이지의 모든 연출이 죽는다.
-            try { j.fn(j.ease(r), r); } catch (err) { r = 1; }
-            if (r >= 1) j.res(); else live.push(j);
-          }
-          jobs = live;
-          for (var k = 0; k < ticks.length; k++) { try { ticks[k](dt); } catch (err) {} }
-          requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
-
-        function tw(dur, ease, fn) {
-          return new Promise(function (res) {
-            jobs.push({ t: 0, dur: dur, ease: EASE[ease] || EASE.linear, fn: fn, res: res });
-          });
-        }
-        function wait(d) { return tw(d, "linear", function () {}); }
-        function addTick(f) { ticks.push(f); }
-        function delTick(f) { var i = ticks.indexOf(f); if (i >= 0) ticks.splice(i, 1); }
-
-        /* 임의 객체를 Cocos 노드처럼 트윈한다. 이 문서의 움직이는 것들(초상·대사창)은
-           전부 x/투명도/배율 몇 개짜리라 Spr 클래스까지 갈 필요가 없다. */
-        function animTo(obj, dur, props, ease) {
-          var from = {}, k;
-          for (k in props) from[k] = obj[k];
-          return tw(dur, ease, function (e) {
-            for (var q in props) obj[q] = from[q] + (props[q] - from[q]) * e;
-            obj.apply();
-          }).then(function () { return obj; });
-        }
-
-        function clampV(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-        function elm(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
-        function byId(id) { return document.getElementById(id); }
-        function toChars(s) {
-          s = String(s);
-          return typeof Array.from === "function" ? Array.from(s) : s.split("");
-        }
-
-        /* ======================================================================
-           튜닝 파라미터 — 이 문서의 본체.
-           표의 숫자를 바꾸면 무대가 그 값으로 논다. 기본값과 달라지면 행에 표시가
-           붙고, 카드 머리의 [설정 복사] 가 붙여넣기 가능한 TypeScript 상수로
-           뽑아 준다. cfg 는 그때 쓰는 상수 이름.
-           ====================================================================== */
-        var PARAMS = {
-          p1: [
-            { k:"inSec",     label:"초상 등장 시간",   v:0.28, min:0.05, max:1.5, step:0.01, unit:"s",  easeK:"inEase",  ease:"backOut",  cfg:"DIALOGUE_PORTRAIT_IN_SEC" },
-            { k:"inDistPx",  label:"등장 이동 거리",   v:60,   min:0,    max:240, step:5,    unit:"px",                                  cfg:"DIALOGUE_PORTRAIT_IN_OFFSET", note:"화면 바깥쪽에서 안으로" },
-            { k:"inAlpha0",  label:"등장 시작 투명도", v:0.2,  min:0,    max:1,   step:0.05, unit:"",                                    cfg:"DIALOGUE_PORTRAIT_IN_ALPHA",  note:"0 이면 완전히 없다가 나타난다" },
-            { k:"inScale",   label:"등장 시작 배율",   v:0.94, min:0.6,  max:1.4, step:0.01, unit:"×",                                   cfg:"DIALOGUE_PORTRAIT_IN_SCALE" },
-            { k:"outSec",    label:"퇴장 시간",        v:0.22, min:0.05, max:1.5, step:0.01, unit:"s",  easeK:"outEase", ease:"quadIn",   cfg:"DIALOGUE_PORTRAIT_OUT_SEC",   note:"같은 자리에 다른 화자가 올 때" },
-            { k:"outDistPx", label:"퇴장 이동 거리",   v:40,   min:0,    max:240, step:5,    unit:"px",                                  cfg:"DIALOGUE_PORTRAIT_OUT_OFFSET" },
-            { k:"dimAlpha",  label:"이전 화자 투명도", v:0.45, min:0,    max:1,   step:0.05, unit:"",                                    cfg:"DIALOGUE_PORTRAIT_DIM_ALPHA", note:"말하지 않는 쪽을 얼마나 죽이나" },
-            { k:"dimSec",    label:"어두워지는 시간",  v:0.2,  min:0.02, max:1.5, step:0.01, unit:"s",  easeK:"dimEase", ease:"quadOut",  cfg:"DIALOGUE_PORTRAIT_DIM_SEC" },
-            { k:"baseY",     label:"초상 세로 위치",   v:0,    min:-60,  max:120, step:2,    unit:"px",                                  cfg:"DIALOGUE_PORTRAIT_BASE_Y",    note:"+ 면 위로 — 대사창에 덜 가린다" },
-          ],
-          p2: [
-            { k:"fadeSec",     label:"대사창 페이드",   v:0.24, min:0.02, max:1.5, step:0.01, unit:"s",  easeK:"fadeEase",    ease:"quadOut", cfg:"DIALOGUE_BOX_FADE_SEC" },
-            { k:"boxH",        label:"대사창 높이",     v:210,  min:120,  max:360, step:5,    unit:"px",                                     cfg:"DIALOGUE_BOX_HEIGHT",     note:"640 중 얼마를 먹나 — 자에 실시간 표시" },
-            { k:"risePx",      label:"등장 시 올라옴",  v:24,   min:0,    max:120, step:2,    unit:"px",                                     cfg:"DIALOGUE_BOX_RISE_OFFSET" },
-            { k:"namePopSec",  label:"이름표 팝",       v:0.18, min:0.02, max:1,   step:0.01, unit:"s",  easeK:"namePopEase", ease:"backOut", cfg:"DIALOGUE_NAME_POP_SEC" },
-            { k:"padX",        label:"대사창 좌우 여백",v:18,   min:6,    max:40,  step:1,    unit:"px",                                     cfg:"DIALOGUE_BOX_PADDING_X",  note:"본문 폭이 줄면 줄 수가 늘어난다" },
-          ],
-          p3: [
-            { k:"cps",      label:"타이핑 속도",     v:28,   min:4,   max:120,  step:1,  unit:"자/초",                        cfg:"DIALOGUE_TYPING_CPS",             note:"0.25× 로 보면 체감이 다르다" },
-            { k:"punctMs",  label:"문장부호 정지",   v:260,  min:0,   max:1200, step:10, unit:"ms",                           cfg:"DIALOGUE_TYPING_PAUSE_PUNCT_MS",  note:". ! ? … 뒤" },
-            { k:"commaMs",  label:"쉼표 정지",       v:120,  min:0,   max:800,  step:10, unit:"ms",                           cfg:"DIALOGUE_TYPING_PAUSE_COMMA_MS",  note:", · 뒤" },
-            { k:"autoMs",   label:"자동 넘김 대기",  v:1500, min:200, max:6000, step:50, unit:"ms",                           cfg:"DIALOGUE_AUTO_ADVANCE_MS",        note:"시트의 자동넘김 칸이 이 값을 덮는다" },
-            { k:"gapMs",    label:"줄 사이 간격",    v:240,  min:0,   max:2000, step:10, unit:"ms",                           cfg:"DIALOGUE_LINE_GAP_MS" },
-          ],
-          p4: [
-            { k:"shakeAmp",   label:"초상 흔들림 진폭", v:10,   min:0,    max:40,  step:1,    unit:"px",                                    cfg:"DIALOGUE_SHAKE_AMPLITUDE" },
-            { k:"shakeTimes", label:"흔들림 횟수",      v:3,    min:1,    max:8,   step:1,    unit:"회",                                    cfg:"DIALOGUE_SHAKE_TIMES",   note:"진폭은 회를 거듭할수록 준다" },
-            { k:"shakeSec",   label:"흔들림 시간",      v:0.34, min:0.05, max:1.5, step:0.01, unit:"s",  easeK:"shakeEase", ease:"quadOut", cfg:"DIALOGUE_SHAKE_SEC" },
-            { k:"punchScale", label:"대사창 튐 배율",   v:1.06, min:1,    max:1.4, step:0.01, unit:"×",                                     cfg:"DIALOGUE_BOX_PUNCH_SCALE" },
-            { k:"punchSec",   label:"대사창 튐 시간",   v:0.16, min:0.02, max:1,   step:0.01, unit:"s",  easeK:"punchEase", ease:"backOut", cfg:"DIALOGUE_BOX_PUNCH_SEC" },
-          ],
-          p5: [
-            { k:"fontPt",   label:"대사 글자 크기", v:17,  min:12, max:28,  step:0.5,  unit:"pt",              cfg:"DIALOGUE_FONT_SIZE_PT",    note:"50대+ 타깃 — 16pt 아래로 내리지 않는다" },
-            { k:"lineH",    label:"줄 간격",        v:1.5, min:1.1, max:2.2, step:0.05, unit:"×",              cfg:"DIALOGUE_LINE_HEIGHT_RATIO" },
-            { k:"maxLines", label:"최대 줄 수",     v:4,   min:1,  max:10,  step:1,    unit:"줄",              cfg:"DIALOGUE_TEXT_MAX_LINES",  note:"넘으면 주의 — 가용 줄 수를 넘으면 넘침" },
-            { k:"maxChars", label:"최대 글자 수",   v:48,  min:10, max:200, step:1,    unit:"자",              cfg:"DIALOGUE_TEXT_MAX_CHARS",  note:"공백 포함" },
-          ],
+        var LAYOUT = {
+          rowWidth: 720,
+          portraitW: 304, portraitH: 288, portraitX: -237.289, portraitY: -20.125,
+          nameW: 192, nameH: 68, nameX: -233.66, nameY: -142.576, nameRestY: -137,
+          bubbleW: 469, bubbleH: 220, bubbleX: 106.073, bubbleY: 11.786,
+          bubbleAnchorX: 0.01, bubbleAnchorY: 0.12,
+          dlgW: 400, dlgH: 144, dlgX: 104.504, dlgY: 17.019,
+          dlgFont: 36, dlgLine: 36, nameFont: 38, nameLine: 40,
+          gap: 10, bottomY: -390, viewportTopY: 590,
+          feedShiftSec: 0.18, hideScale: 0.9, hideSec: 0.16,
+          dimAlpha: 128, dimFadeSec: 0.3,
+          typingCps: 40, autoAdvanceSec: 0,
+          poolCount: 5,
         };
 
-        var CARDS = [
-          { id: "p1", no: "P1", title: "초상 등장 · 퇴장" },
-          { id: "p2", no: "P2", title: "대사창" },
-          { id: "p3", no: "P3", title: "타이핑 · 진행" },
-          { id: "p4", no: "P4", title: "강조 연출" },
-          { id: "p5", no: "P5", title: "대사 길이 기준" },
+        /* 말풍선 9-slice — story_character_text_bubble01.9.json */
+        var BUBBLE9 = { w: 469, h: 220, left: 80, right: 45, top: 52, bottom: 70 };
+
+        /* 포트레이트 감정 클립 — rosie_sad.anim 외 15개가 전부 같은 모양이다.
+           17프레임 스프라이트 교체 · sample 30 · speed 0.5 · wrapMode 2(Loop). */
+        var PORTRAIT = { frames: 17, sample: 30, speed: 0.5, loop: true };
+
+        var CAST = [
+          { name: "Rosie", idx: "01", color: "#9E2E5E" },
+          { name: "Poppy", idx: "02", color: "#884B15" },
+          { name: "Brett", idx: "03", color: "#1D5D7E" },
+          { name: "Rafa",  idx: "04", color: "#4C4AB7" },
         ];
-
-        /* 현재값 저장소. PARAMS 의 기본값을 복사해 시작하고, 입력이 바뀌면 여기만 갱신된다. */
-        var V = {};
-        Object.keys(PARAMS).forEach(function (id) {
-          V[id] = {};
-          PARAMS[id].forEach(function (d) {
-            if (d.v != null) V[id][d.k] = d.v;
-            if (d.easeK) V[id][d.easeK] = d.ease;
-          });
-        });
-
-        /* ── 값 적용기 ─────────────────────────────────────────────────────
-           바깥에서 들어온 값(localStorage 복원 · 붙여넣기)은 절대 그대로 믿지 않는다.
-           PARAMS 에 실재하는 키만 통과시키고, 숫자는 min~max 로 조이고, 이징은
-           목록에 있는 이름만 받는다. 나중에 PARAMS 에서 키를 빼거나 범위를 바꿔도
-           옛 저장본이 무대를 깨뜨리지 않게 하는 유일한 방어선이다. */
-        function applyValues(id, obj) {
-          var defs = PARAMS[id];
-          if (!defs || !obj || typeof obj !== "object") return 0;
-          var vals = V[id], hit = 0;
-          defs.forEach(function (d) {
-            if (d.v != null && obj[d.k] != null) {
-              var num = parseFloat(obj[d.k]);
-              if (isFinite(num)) { vals[d.k] = clampV(num, d.min, d.max); hit++; }
-            }
-            if (d.easeK && EASE_LIST.indexOf(obj[d.easeK]) >= 0) { vals[d.easeK] = obj[d.easeK]; hit++; }
-          });
-          return hit;
+        function castOf(speaker) {
+          if (speaker === "Narration") return CAST[0];
+          for (var i = 0; i < CAST.length; i++) if (CAST[i].name === speaker) return CAST[i];
+          return null;
         }
 
-        function changedCount() {
-          var c = 0;
-          Object.keys(PARAMS).forEach(function (id) {
-            PARAMS[id].forEach(function (d) {
-              if (d.v != null && V[id][d.k] !== d.v) c++;
-              if (d.easeK && V[id][d.easeK] !== d.ease) c++;
-            });
-          });
-          return c;
-        }
-
-        /* ======================================================================
-           대사 스크립트 — 시트에서 들어온다.
-           연출 값(V)과는 완전히 별개 데이터다. 표를 붙여넣으면 스크립트만 갈리고,
-           튜닝값 텍스트를 붙여넣으면 스크립트는 그대로 남는다. 둘을 한 저장소에
-           섞으면 "대사 고치려다 연출값이 날아갔다" 가 반드시 생긴다.
-           ====================================================================== */
-        var SAMPLE_ROWS = [
-          ["순번", "화자", "위치", "표정", "대사", "자동넘김", "강조"],
-          ["1", "엘라", "좌", "기본", "드디어 창고 정리가 끝났어요. 이제 뭘 하죠?", "1600", ""],
-          ["2", "해리", "우", "기쁨", "그 낡은 램프요! 닦아 보면 뭐라도 나오지 않을까요?", "1800", ""],
-          ["3", "엘라", "좌", "놀람", "어머, 방금 뭔가 반짝였어요!", "1400", "Y"],
-          ["4", "해리", "우", "기본", "제가 뭐랬어요. 이 항구에는 아직 남은 게 많다니까요.", "1700", ""],
-          ["5", "해리", "우", "기본", "이 항구 마을에는 삼십 년 전부터 전해 내려오는 이야기가 하나 있는데요, 그 얘기를 다 하려면 아마 밤을 꼬박 새워도 모자랄 겁니다.", "2600", ""],
-          ["6", "엘라", "좌", "슬픔", "…할머니가 늘 말씀하시던 그 이야기네요.", "1600", ""],
-          ["7", "모리", "우", "기본", "야옹.", "900", ""],
-          ["8", "엘라", "좌", "기쁨", "모리! 너도 같이 갈래?", "1300", ""],
-          ["9", "해리", "우", "화남", "고양이를 데려간다고요? 지난번에 어떻게 됐는지 잊으셨어요?", "2000", "Y"],
-        ];
-        var SAMPLE_TSV = SAMPLE_ROWS.map(function (r) { return r.join("\t"); }).join("\n");
-
-        var SCRIPT = [];
-        var SCRIPT_SRC = "샘플";
-
-        /* ── 브라우저 저장 ─────────────────────────────────────────────────
-           맞추던 값과 넣어 둔 대본이 새로고침 한 번에 날아가면 도구로 못 쓴다.
-           이미지는 일부러 넣지 않는다 — data URI 몇 장이면 localStorage 한도를
-           그냥 넘겨서, 넣는 순간 저장 자체가 통째로 실패한다.
-           사파리 프라이빗처럼 localStorage 가 던지는 환경이 있어 전부 try 로 감싼다. */
-        var STORE_KEY = "tlk.dialogue.v1";
-        var saveTimer = null;
-        function saveNow() {
-          try {
-            localStorage.setItem(STORE_KEY, JSON.stringify({ values: V, script: SCRIPT, src: SCRIPT_SRC }));
-          } catch (e) {}
-        }
-        function saveSoon() {
-          if (saveTimer) clearTimeout(saveTimer);
-          saveTimer = setTimeout(saveNow, 250);
-        }
-        function storeClear() {
-          try { localStorage.removeItem(STORE_KEY); } catch (e) {}
-        }
-
-        /* ======================================================================
-           표(TSV/CSV) 판독기 — 이 문서의 1순위 입력 경로.
-           대사는 시트에서 관리되는 데이터다. 엑셀·구글시트에서 셀 범위를 복사하면
-           클립보드에 탭으로 나뉜 표가 들어온다. 그걸 그대로 받는다.
-           ====================================================================== */
-
-        /* 순진한 split(",") 은 이 문서에서 특히 못 쓴다 — 대사에는 쉼표가 흔하고
-           셀 안 줄바꿈도 들어간다. 따옴표 규칙(RFC 4180)을 그대로 구현한다:
-           셀이 따옴표로 시작하면 닫는 따옴표까지 전부 내용이고, 그 안의 ""는 " 하나다. */
-        function splitCells(text, delim) {
-          var rows = [], row = [], cell = "", i = 0, q = false, c;
-          while (i < text.length) {
-            c = text.charAt(i);
-            if (q) {
-              if (c === '"') {
-                if (text.charAt(i + 1) === '"') { cell += '"'; i += 2; continue; }
-                q = false; i++; continue;
-              }
-              cell += c; i++; continue;
-            }
-            if (c === '"' && cell === "") { q = true; i++; continue; }
-            if (c === delim) { row.push(cell); cell = ""; i++; continue; }
-            if (c === "\r") { i++; continue; }
-            if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; i++; continue; }
-            cell += c; i++;
-          }
-          row.push(cell);
-          rows.push(row);
-          /* 시트 끝의 빈 행은 복사할 때 딸려 오기 마련이다 — 조용히 턴다 */
-          while (rows.length && rows[rows.length - 1].every(function (x) { return !String(x).trim(); })) rows.pop();
-          return rows;
-        }
-
-        var COLS = {
-          no:      ["순번", "번호", "순서", "no", "num", "number", "index", "idx", "#"],
-          speaker: ["화자", "이름", "캐릭터", "등장인물", "speaker", "name", "character", "char", "who"],
-          side:    ["위치", "방향", "자리", "side", "pos", "position", "align"],
-          emotion: ["표정", "감정", "emotion", "expression", "face", "mood"],
-          text:    ["대사", "내용", "텍스트", "말", "text", "line", "dialogue", "dialog", "script", "message", "body"],
-          autoMs:  ["자동넘김", "자동", "대기", "대기시간", "automs", "auto", "wait", "waitms", "delay", "delayms", "duration"],
-          emph:    ["강조", "흔들림", "emph", "emphasis", "shake", "highlight"],
-        };
-        /* 헤더는 사람이 손으로 적는 칸이라 공백·대소문자·밑줄이 제멋대로다.
-           전부 털고 비교한다 — "화 자", "Speaker", "auto_ms" 가 다 통과해야 한다. */
-        function normHead(s) {
-          return String(s).replace(/^\uFEFF/, "").toLowerCase().replace(/[\s_\-().·:/]/g, "");
-        }
-        function normSide(s) {
-          var t = normHead(s);
-          if (!t) return "";
-          if (/^(좌|왼|왼쪽|좌측|l|left|1)$/.test(t)) return "left";
-          if (/^(우|오른|오른쪽|우측|r|right|2)$/.test(t)) return "right";
-          return "";
-        }
-        var EMO_ALIAS = {
-          neutral: ["기본", "보통", "무표정", "평상", "neutral", "normal", "default", "idle"],
-          happy: ["기쁨", "웃음", "행복", "미소", "happy", "smile", "joy", "glad"],
-          sad: ["슬픔", "우울", "눈물", "sad", "cry", "down"],
-          surprise: ["놀람", "경악", "당황", "surprise", "shock", "surprised"],
-          angry: ["화남", "분노", "짜증", "angry", "mad", "rage"],
-        };
-        var EMO_LABEL = { neutral: "기본", happy: "기쁨", sad: "슬픔", surprise: "놀람", angry: "화남" };
-        function normEmotion(s) {
-          var t = normHead(s);
-          if (!t) return "neutral";
-          var hit = "neutral";
-          Object.keys(EMO_ALIAS).forEach(function (k) {
-            EMO_ALIAS[k].forEach(function (a) { if (normHead(a) === t) hit = k; });
-          });
-          return hit;
-        }
-        function truthy(s) {
-          var t = normHead(s);
-          return /^(y|yes|1|true|o|ㅇ|v|강조|✓)$/.test(t);
-        }
-
-        /* 표 판독 결과는 {ok, rows, notes, src, err} 하나로만 나간다.
-           실패할 때도 "왜" 를 문장으로 담아서 낸다 — 조용히 버리면 기획은
-           자기 시트가 잘못됐는지 이 문서가 고장 났는지 알 방법이 없다. */
-        function parseSheet(text) {
-          var delim = text.indexOf("\t") >= 0 ? "\t" : ",";
-          var src = delim === "\t" ? "TSV" : "CSV";
-          var rows = splitCells(text, delim);
-          if (!rows.length || (rows.length === 1 && rows[0].length < 2)) {
-            return { ok: false, err: "표로 보이지 않습니다 (행이 " + rows.length + "개)." };
-          }
-
-          var head = rows[0], idx = {}, unknown = [], notes = [];
-          head.forEach(function (h, i) {
-            var n = normHead(h), found = null;
-            Object.keys(COLS).forEach(function (key) {
-              if (found) return;
-              if (COLS[key].some(function (a) { return normHead(a) === n; })) found = key;
-            });
-            if (found && idx[found] == null) idx[found] = i;
-            else if (String(h).trim()) unknown.push(String(h).trim());
-          });
-
-          var recognized = Object.keys(idx).length;
-          var body = rows.slice(1);
-
-          if (!recognized) {
-            /* 헤더를 하나도 못 알아봤다. 첫 줄부터 데이터로 보고, 가장 흔한 배치인
-               "첫 칸 = 화자 / 마지막 칸 = 대사" 로 가정한다. 가정했다는 걸 반드시 말한다. */
-            if (head.length < 2) return { ok: false, err: "헤더도 못 알아봤고 컬럼도 하나뿐입니다. 첫 줄에 화자·대사 같은 컬럼 이름을 넣어 주세요." };
-            idx = { speaker: 0, text: head.length - 1 };
-            body = rows;
-            unknown = [];                              // 첫 줄이 데이터였으니 "못 알아본 컬럼" 이 아니다
-            notes.push("헤더를 못 알아봐서 첫 칸을 화자, 마지막 칸을 대사로 읽었습니다");
-          } else if (idx.text == null) {
-            return {
-              ok: false,
-              err: "대사 컬럼을 못 찾았습니다. 알아본 컬럼: " +
-                Object.keys(idx).join(", ") +
-                (unknown.length ? " · 못 알아본 컬럼: " + unknown.join(", ") : "") +
-                "\n첫 줄에 '대사' 또는 'text' 컬럼을 넣어 주세요.",
-            };
-          }
-
-          var out = [], sideMissing = false;
-          body.forEach(function (r) {
-            function cell(key) { return idx[key] == null ? "" : String(r[idx[key]] == null ? "" : r[idx[key]]).trim(); }
-            var t = idx.text == null ? "" : String(r[idx.text] == null ? "" : r[idx.text]);
-            if (!t.trim()) return;                       // 빈 대사 줄은 시트의 여백이다
-            var side = normSide(cell("side"));
-            if (!side) sideMissing = true;
-            var ms = parseFloat(cell("autoMs"));
-            out.push({
-              no: cell("no"),
-              speaker: cell("speaker"),
-              side: side,
-              emotion: normEmotion(cell("emotion")),
-              text: t.replace(/\s+$/, ""),
-              autoMs: isFinite(ms) && ms >= 0 ? ms : null,
-              emph: truthy(cell("emph")),
-            });
-          });
-
-          if (!out.length) return { ok: false, err: "대사 컬럼은 찾았지만 내용이 있는 줄이 없습니다." };
-
-          if (sideMissing) {
-            assignSides(out);
-            notes.push(
-              (idx.side == null ? "위치 컬럼이 없어" : "위치가 빈 줄이 있어") +
-                " 화자가 처음 나온 순서대로 좌·우를 배정했습니다"
-            );
-          }
-          if (unknown.length) notes.push("못 알아본 컬럼은 무시했습니다: " + unknown.join(", "));
-          if (idx.speaker == null) notes.push("화자 컬럼이 없어 이름표 없이 대사만 재생합니다");
-
-          return { ok: true, rows: out, notes: notes, src: src };
-        }
-
-        /* 위치가 비면 화자 등장 순서로 좌·우를 번갈아 준다.
-           2인 대화가 압도적으로 많아서 이 규칙만으로 대부분 맞는다. */
-        function assignSides(rows) {
-          var order = [];
-          rows.forEach(function (l) {
-            if (!l.speaker) return;
-            if (order.indexOf(l.speaker) < 0) order.push(l.speaker);
-          });
-          rows.forEach(function (l) {
-            if (l.side) return;
-            var i = order.indexOf(l.speaker);
-            l.side = i < 0 || i % 2 === 0 ? "left" : "right";
-          });
-        }
-
-        /* JSON 봉투 안의 script 도 시트에서 온 것과 같은 모양으로 정리해서 받는다 */
-        function normScript(arr) {
-          if (!Array.isArray(arr)) return null;
-          var out = [], missing = false;
-          arr.forEach(function (o) {
-            if (!o || typeof o !== "object") return;
-            var t = o.text == null ? "" : String(o.text);
-            if (!t.trim()) return;
-            var side = normSide(o.side);
-            if (!side) missing = true;
-            var ms = parseFloat(o.autoMs);
-            out.push({
-              no: o.no == null ? "" : String(o.no),
-              speaker: o.speaker == null ? "" : String(o.speaker),
-              side: side,
-              emotion: normEmotion(o.emotion),
-              text: t,
-              autoMs: isFinite(ms) && ms >= 0 ? ms : null,
-              emph: !!o.emph,
-            });
-          });
-          if (!out.length) return null;
-          if (missing) assignSides(out);
-          return out;
-        }
-
-        /* ======================================================================
-           캐릭터 이미지 — 세션 전용.
-           떨군 파일명을 화자·표정에 맞춘다. 못 맞춘 건 버리지 않고 선택칸에 올린다.
-           ====================================================================== */
-        var BUILTIN = ["tlk-ch-a", "tlk-ch-b", "tlk-ch-c"];
-        var BUILTIN_LABEL = { "tlk-ch-a": "내장 더미 A (앞치마)", "tlk-ch-b": "내장 더미 B (모자)", "tlk-ch-c": "내장 더미 C (고양이)" };
-        var FACE = { "tlk-ch-a": { x: 100, y: 96 }, "tlk-ch-b": { x: 100, y: 98 }, "tlk-ch-c": { x: 100, y: 134 } };
-        var IMAGES = [];          // [{name, src}] — localStorage 에 절대 넣지 않는다
-        var ASSIGN = {};          // "화자|표정" 또는 "화자|" → "b:심볼id" | "i:이미지인덱스"
-
-        function normName(s) {
-          return String(s).toLowerCase().replace(/\.[a-z0-9]+$/i, "").replace(/[\s_\-.]/g, "");
-        }
-        function speakerOrder() {
-          var order = [];
-          SCRIPT.forEach(function (l) {
-            var s = l.speaker || "(무명)";
-            if (order.indexOf(s) < 0) order.push(s);
-          });
-          return order;
-        }
-        function builtinFor(speaker) {
-          var i = speakerOrder().indexOf(speaker || "(무명)");
-          return BUILTIN[(i < 0 ? 0 : i) % BUILTIN.length];
-        }
-        /* 화자별 기본 슬롯 + 그 화자가 실제로 쓰는 표정 슬롯만 만든다.
-           안 쓰는 표정까지 늘어놓으면 표가 5배가 되고 아무도 안 본다. */
-        function castSlots() {
-          var seen = {}, out = [];
-          speakerOrder().forEach(function (sp) {
-            var k = sp + "|";
-            if (!seen[k]) { seen[k] = 1; out.push({ key: k, speaker: sp, emotion: "" }); }
-          });
-          SCRIPT.forEach(function (l) {
-            var sp = l.speaker || "(무명)";
-            if (l.emotion === "neutral") return;
-            var k = sp + "|" + l.emotion;
-            if (!seen[k]) { seen[k] = 1; out.push({ key: k, speaker: sp, emotion: l.emotion }); }
-          });
-          return out;
-        }
-        function assignFor(speaker, emotion) {
-          var sp = speaker || "(무명)";
-          var v = ASSIGN[sp + "|" + emotion] || ASSIGN[sp + "|"];
-          if (v && v.charAt(0) === "i") {
-            var im = IMAGES[parseInt(v.slice(2), 10)];
-            if (im) return { type: "img", src: im.src };
-          }
-          if (v && v.charAt(0) === "b" && FACE[v.slice(2)]) return { type: "builtin", id: v.slice(2) };
-          return { type: "builtin", id: builtinFor(sp) };
-        }
-
-        /* 표정은 눈·눈썹·입 세 조각으로 만든다. 캐릭터 심볼은 얼굴을 비워 두고
-           여기서 얹는다 — 캐릭터가 늘어도 표정 코드는 한 벌이면 된다. */
-        function faceSVG(em, cx, cy) {
-          var L = cx - 16, R = cx + 16, ey = cy - 6, my = cy + 20, ink = "#3a2b1e";
-          function dot(x, y) { return '<circle cx="' + x + '" cy="' + y + '" r="4.5" fill="' + ink + '"/>'; }
-          function ring(x, y) { return '<circle cx="' + x + '" cy="' + y + '" r="7" fill="#fff" stroke="' + ink + '" stroke-width="2.5"/><circle cx="' + x + '" cy="' + y + '" r="3" fill="' + ink + '"/>'; }
-          function arc(x, y) { return '<path d="M' + (x - 7) + " " + (y + 3) + " q7 -9 14 0" + '" fill="none" stroke="' + ink + '" stroke-width="3.5" stroke-linecap="round"/>'; }
-          function line(d) { return '<path d="' + d + '" fill="none" stroke="' + ink + '" stroke-width="3.5" stroke-linecap="round"/>'; }
-          var eyes, mouth, brow = "";
-          if (em === "happy") {
-            eyes = arc(L, ey) + arc(R, ey);
-            mouth = line("M" + (cx - 14) + " " + (my - 5) + " q14 16 28 0");
-          } else if (em === "sad") {
-            eyes = dot(L, ey + 2) + dot(R, ey + 2);
-            brow = line("M" + (L - 10) + " " + (ey - 16) + " l17 7") + line("M" + (R + 10) + " " + (ey - 16) + " l-17 7");
-            mouth = line("M" + (cx - 13) + " " + (my + 5) + " q13 -14 26 0");
-          } else if (em === "surprise") {
-            eyes = ring(L, ey) + ring(R, ey);
-            mouth = '<ellipse cx="' + cx + '" cy="' + (my + 1) + '" rx="6.5" ry="9" fill="' + ink + '"/>';
-          } else if (em === "angry") {
-            eyes = dot(L, ey + 1) + dot(R, ey + 1);
-            brow = line("M" + (L - 10) + " " + (ey - 15) + " l17 8") + line("M" + (R + 10) + " " + (ey - 15) + " l-17 8");
-            mouth = line("M" + (cx - 12) + " " + my + " h24");
-          } else {
-            eyes = dot(L, ey) + dot(R, ey);
-            mouth = line("M" + (cx - 9) + " " + my + " q9 7 18 0");
-          }
-          return "<g>" + brow + eyes + mouth + "</g>";
-        }
-        function castHTML(speaker, emotion) {
-          var a = assignFor(speaker, emotion);
-          if (a.type === "img") return '<img alt="" src="' + a.src + '" />';
-          var f = FACE[a.id] || FACE["tlk-ch-a"];
-          return '<svg class="tlk-art" viewBox="0 0 200 300" aria-hidden="true"><use href="#' + a.id + '"></use>' +
-            faceSVG(emotion, f.x, f.y) + "</svg>";
-        }
-
-        /* 파일명 → 슬롯. 정확히 같은 이름을 1순위로, 포함 관계를 2순위로 본다.
-           "엘라_기쁨" 이 "엘라" 보다 먼저 잡혀야 하므로 긴 키를 우선한다. */
-        function autoMatch(imgIndex) {
-          var stem = normName(IMAGES[imgIndex].name);
-          var slots = castSlots(), best = null, bestLen = -1;
-          slots.forEach(function (s) {
-            var sp = normName(s.speaker);
-            if (!sp) return;
-            var em = s.emotion ? normName(EMO_LABEL[s.emotion]) : "";
-            var emEn = s.emotion ? normName(s.emotion) : "";
-            var keys = s.emotion ? [sp + em, sp + emEn] : [sp];
-            var score = -1;
-            keys.forEach(function (k) {
-              if (!k) return;
-              if (stem === k) score = Math.max(score, k.length + 100);
-              else if (stem.indexOf(k) >= 0) score = Math.max(score, k.length);
-              else if (s.emotion && stem.indexOf(sp) >= 0 && (stem.indexOf(em) >= 0 || (emEn && stem.indexOf(emEn) >= 0))) score = Math.max(score, k.length);
-            });
-            if (score > bestLen) { bestLen = score; best = s; }
-          });
-          if (!best || bestLen < 0) return null;
-          ASSIGN[best.key] = "i:" + imgIndex;
-          return best;
-        }
-
-        /* ======================================================================
-           무대
-           ====================================================================== */
-        var portsEl = byId("tlk-ports");
-        var boxEl = byId("tlk-box");
-        var nameEl = byId("tlk-name");
-        var textEl = byId("tlk-text");
-        var measEl = byId("tlk-measure");
-        var rulerEl = byId("tlk-ruler");
-        var rulerLabel = byId("tlk-ruler-l");
-        var metaEl = byId("tlk-meta");
-
-        var SCREEN_H = 640;
-
-        function Port(side) {
-          this.el = elm("div", "tlk-port " + (side === "right" ? "is-r" : "is-l"));
-          this.side = side;
-          this.dx = 0; this.a = 0; this.s = 1; this.shake = 0;
-          this.speaker = "";
-          portsEl.appendChild(this.el);
-          this.apply();
-        }
-        Port.prototype.apply = function () {
-          this.el.style.transform =
-            "translate(" + (this.dx + this.shake) + "px," + -V.p1.baseY + "px) scale(" + this.s + ")";
-          this.el.style.opacity = this.a;
-        };
-        /* 서명이 같으면 다시 그리지 않는다. data URI 를 서명에 넣으면 문자열이
-           메가 단위가 되므로 배정 키만 쓴다 — 배정이 바뀌면 refreshPortraits 가 비운다. */
-        Port.prototype.setArt = function (speaker, emotion) {
-          var sp = speaker || "(무명)";
-          var sig = sp + "|" + emotion + "|" + (ASSIGN[sp + "|" + emotion] || ASSIGN[sp + "|"] || "");
-          if (this.sig === sig) return;
-          this.sig = sig;
-          this.el.innerHTML = castHTML(speaker, emotion);
-        };
-        Port.prototype.kill = function () { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); };
-
-        var SIDE = { left: null, right: null };
-        var BOX = {
-          a: 0, dy: 0, s: 1,
-          apply: function () {
-            boxEl.style.transform = "translateY(" + this.dy + "px) scale(" + this.s + ")";
-            boxEl.style.opacity = this.a;
+        /* chat_show.anim 을 파싱해 넣은 기본 클립.
+           curve 필드가 하나도 없어 전부 선형이다 — 그래서 보간기가 lerp 하나면 된다. */
+        var CLIP_DEFAULT = {
+          name: "chat_show", sample: 30, speed: 1, wrapMode: 1,
+          tracks: {
+            "character.scale":    [[0, 0.5, 0.5], [0.16666666666666666, 1.1, 1.1], [0.3333333333333333, 1, 1]],
+            "character.opacity":  [[0, 0], [0.1, 255]],
+            "name.y":             [[0, -97], [0.16666666666666666, -147], [0.3333333333333333, -137]],
+            "name.opacity":       [[0, 0], [0.1, 255]],
+            "text_bubble.scale":  [[0, 0.6, 0.65], [0.16666666666666666, 1.05, 1.05], [0.3333333333333333, 1, 1]],
+            "text_bubble.opacity":[[0, 0], [0.1, 255]],
           },
         };
-
-        /* 파라미터에서 오는 치수를 화면에 밀어 넣는다. 대사창 높이·여백·글자 크기가
-           바뀌면 길이 판정의 분모가 통째로 바뀌므로, 이 함수 뒤에는 항상 검사를 다시 돈다. */
-        function ptToPx(pt) { return pt * (96 / 72); }
-        function applyLayout() {
-          var p2 = V.p2, p5 = V.p5;
-          var fontPx = ptToPx(p5.fontPt);
-          boxEl.style.height = p2.boxH + "px";
-          boxEl.style.paddingLeft = p2.padX + "px";
-          boxEl.style.paddingRight = p2.padX + "px";
-          textEl.style.fontSize = fontPx + "px";
-          textEl.style.lineHeight = String(p5.lineH);
-          rulerEl.style.bottom = "12px";
-          rulerEl.style.height = p2.boxH + "px";
-          rulerLabel.textContent = "대사창 " + Math.round(p2.boxH) + "px · 화면의 " + Math.round((p2.boxH / SCREEN_H) * 100) + "%";
-          /* 자는 본문과 글꼴·폭이 같아야 의미가 있다. 폭은 대사창 안쪽 폭 그대로. */
-          var w = boxEl.clientWidth - p2.padX * 2;
-          measEl.style.width = Math.max(40, w) + "px";
-          measEl.style.fontSize = fontPx + "px";
-          measEl.style.lineHeight = String(p5.lineH);
-          BOX.apply();
-          if (SIDE.left) SIDE.left.apply();
-          if (SIDE.right) SIDE.right.apply();
-          return { fontPx: fontPx, width: Math.max(40, w), lineHpx: fontPx * p5.lineH };
-        }
-
-        /* 대사창 안에서 본문이 실제로 쓸 수 있는 높이. 여백·이름표 높이는
-           스타일시트에서 오므로 계산으로 짐작하지 않고 살아 있는 DOM 에서 읽는다. */
-        function bodyRoom() {
-          var cs = window.getComputedStyle(boxEl);
-          var pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-          var gap = parseFloat(cs.rowGap || cs.gap || "0") || 0;
-          var nameH = nameEl.offsetHeight || 0;
-          /* .tlk-next(▼)는 absolute 라 flex 흐름에서 빠진다 — 간격은 이름표와 본문 사이 한 번뿐이다 */
-          return Math.max(0, boxEl.clientHeight - pad - nameH - gap);
-        }
-
-        /* ── 재생 ──────────────────────────────────────────────────────────
-           GEN 은 세대 번호다. 멈추거나 되감으면 올라가고, 진행 중이던 체인은
-           다음 단계에서 자기 세대가 아닌 걸 알고 조용히 빠진다. 이게 없으면
-           [처음으로] 를 누른 뒤에도 앞 재생이 계속 글자를 찍는다. */
-        var GEN = 0, NEXT = 0, CUR = -1, PLAYING = false, TYPING = null;
-
-        function setBtns() {
-          byId("tlk-play").textContent = PLAYING ? "멈춤" : "재생";
-          var empty = SCRIPT.length === 0;
-          byId("tlk-play").disabled = empty;
-          byId("tlk-step").disabled = empty;
-        }
-        function sayMeta(t) { metaEl.textContent = t; }
-
-        function resetStage() {
-          GEN++;
-          PLAYING = false;
-          TYPING = null;
-          ["left", "right"].forEach(function (s) { if (SIDE[s]) { SIDE[s].kill(); SIDE[s] = null; } });
-          BOX.a = 0; BOX.dy = 0; BOX.s = 1; BOX.apply();
-          textEl.textContent = "";
-          nameEl.textContent = "\u200b";
-          nameEl.style.opacity = "0";
-          NEXT = 0; CUR = -1;
-          markCur();
-          setBtns();
-          sayMeta(SCRIPT.length ? "0 / " + SCRIPT.length + " 줄 · " + SCRIPT_SRC : "대본이 비었습니다");
-        }
-
-        function exitPort(p) {
-          var p1 = V.p1;
-          SIDE[p.side] = null;
-          return animTo(p, p1.outSec, { dx: (p.side === "right" ? 1 : -1) * p1.outDistPx, a: 0 }, p1.outEase)
-            .then(function () { p.kill(); });
-        }
-
-        function ensurePort(speaker, side, emotion, g) {
-          var p1 = V.p1;
-          var cur = SIDE[side];
-          if (cur && cur.speaker === (speaker || "(무명)")) {
-            cur.setArt(speaker, emotion);
-            return animTo(cur, p1.dimSec, { a: 1 }, p1.dimEase);
-          }
-          var chain = cur ? exitPort(cur) : Promise.resolve();
-          return chain.then(function () {
-            if (g !== GEN) return null;
-            var p = new Port(side);
-            SIDE[side] = p;
-            p.speaker = speaker || "(무명)";
-            p.setArt(speaker, emotion);
-            p.dx = (side === "right" ? 1 : -1) * p1.inDistPx;
-            p.a = p1.inAlpha0;
-            p.s = p1.inScale;
-            p.apply();
-            return animTo(p, p1.inSec, { dx: 0, a: 1, s: 1 }, p1.inEase);
+        function cloneClip(c) { return JSON.parse(JSON.stringify(c)); }
+        var CLIP = cloneClip(CLIP_DEFAULT);
+        function clipDuration(c) {
+          var d = 0;
+          Object.keys(c.tracks).forEach(function (k) {
+            var ks = c.tracks[k];
+            if (ks.length) d = Math.max(d, ks[ks.length - 1][0]);
           });
+          return d;
         }
 
-        function namePop() {
-          var p2 = V.p2;
-          nameEl.style.opacity = "0";
-          return tw(p2.namePopSec, p2.namePopEase, function (e) {
-            nameEl.style.transform = "scale(" + (0.72 + 0.28 * e) + ")";
-            nameEl.style.opacity = String(Math.min(1, e * 1.6));
-          });
-        }
-
-        /* 흔들림은 감쇠가 있어야 "놀람" 으로 읽힌다. 등폭 왕복은 그냥 진동이다. */
-        function shakePort(p) {
-          if (!p) return Promise.resolve();
-          var p4 = V.p4;
-          var n = Math.max(1, Math.round(p4.shakeTimes));
-          var leg = p4.shakeSec / (n * 2);
-          var chain = Promise.resolve();
-          for (var i = 0; i < n; i++) {
-            (function (i) {
-              var amp = p4.shakeAmp * (1 - i / (n + 1));
-              chain = chain
-                .then(function () { return animTo(p, leg, { shake: amp }, p4.shakeEase); })
-                .then(function () { return animTo(p, leg, { shake: -amp * 0.6 }, p4.shakeEase); });
-            })(i);
+        /* 구간 선형 보간. 트랙은 [frame, v1, v2?] 배열이고 v2 는 scale 의 y 성분이다. */
+        function sampleTrack(keys, t) {
+          if (!keys || !keys.length) return null;
+          if (t <= keys[0][0]) return keys[0].slice(1);
+          var last = keys[keys.length - 1];
+          if (t >= last[0]) return last.slice(1);
+          for (var i = 1; i < keys.length; i++) {
+            if (t > keys[i][0]) continue;
+            var a = keys[i - 1], b = keys[i];
+            var span = b[0] - a[0];
+            var r = span <= 0 ? 1 : (t - a[0]) / span;
+            var out = [];
+            for (var j = 1; j < a.length; j++) out.push(a[j] + (b[j] - a[j]) * r);
+            return out;
           }
-          return chain.then(function () { return animTo(p, leg, { shake: 0 }, "backOut"); });
-        }
-        function boxPunch() {
-          var p4 = V.p4;
-          return animTo(BOX, p4.punchSec * 0.4, { s: p4.punchScale }, "quadOut")
-            .then(function () { return animTo(BOX, p4.punchSec * 0.6, { s: 1 }, p4.punchEase); });
+          return last.slice(1);
         }
 
-        /* 타이핑. 단순 트윈으로는 문장부호 정지를 못 넣어서 글자마다 남은 시간을
-           직접 센다. dt 가 SPEED 를 이미 먹고 들어오므로 0.25× 로 보면 타이핑도 같이 느려진다. */
-        function typeRun(text, g) {
-          var p3 = V.p3;
-          var chars = toChars(text);
-          var i = 0, acc = 0, done = false;
-          return new Promise(function (res) {
-            function finish() {
-              if (done) return;
-              done = true;
-              delTick(tick);
-              textEl.textContent = text;
-              TYPING = null;
-              res();
-            }
-            function tick(dt) {
-              if (g !== GEN) { done = true; delTick(tick); TYPING = null; res(); return; }
-              acc += dt;
-              var guard = 0;
-              while (i < chars.length && guard++ < 500) {
-                var cost = 1 / Math.max(1, p3.cps);
-                var prev = i > 0 ? chars[i - 1] : "";
-                if (/[.!?…。！？]/.test(prev)) cost += p3.punctMs / 1000;
-                else if (/[,、·，]/.test(prev)) cost += p3.commaMs / 1000;
-                if (acc < cost) break;
-                acc -= cost;
-                i++;
+        /* ── 파생값 ────────────────────────────────────────────────────────
+           행 간격은 코드가 매번 계산한다(getFixedRowTopExtent/BottomExtent).
+           여기서도 같은 식으로 구해야 레이아웃 값을 바꿨을 때 같이 움직인다. */
+        function rowTopExtent() {
+          return Math.max(
+            LAYOUT.bubbleY + LAYOUT.bubbleH / 2,
+            LAYOUT.portraitY + LAYOUT.portraitH / 2,
+            LAYOUT.nameY + LAYOUT.nameH / 2);
+        }
+        function rowBottomExtent() {
+          return Math.max(
+            -LAYOUT.bubbleY + LAYOUT.bubbleH / 2,
+            -LAYOUT.portraitY + LAYOUT.portraitH / 2,
+            -LAYOUT.nameY + LAYOUT.nameH / 2);
+        }
+        function rowPitch() { return rowTopExtent() + rowBottomExtent() + LAYOUT.gap; }
+
+        /* 말풍선 말꼬리 피벗. 코드의 layoutBubbleFromTailPivot 과 같은 식이다 —
+           앵커 (0.01, 0.12) 는 실수가 아니라 말꼬리 자리이고, 스테이지가 그걸 보정해
+           그림상 말풍선이 가이드 위치에 오게 한다. 여기를 안 맞추면 크기는 같은데
+           튀어오르는 방향이 달라진다. */
+        function bubblePivot(sign) {
+          return {
+            x: LAYOUT.bubbleX * sign - sign * (0.5 - LAYOUT.bubbleAnchorX) * LAYOUT.bubbleW,
+            y: LAYOUT.bubbleY - (0.5 - LAYOUT.bubbleAnchorY) * LAYOUT.bubbleH,
+          };
+        }
+
+        /* ── 시계 ──────────────────────────────────────────────────────────
+           dt 누적이 아니라 시작 시각 기준 절대 경과시간으로 센다. 0.333초짜리를
+           반복 재생하면 누적 오차가 눈에 보이기 때문이다. */
+        var SPEED = 1, FREEZE = null;
+        var clock = { t0: 0, now: 0 };
+        var tickers = [];
+        function addTick(fn) { tickers.push(fn); return fn; }
+        function delTick(fn) { var i = tickers.indexOf(fn); if (i >= 0) tickers.splice(i, 1); }
+        (function frame(ts) {
+          clock.now = ts / 1000;
+          for (var i = tickers.length - 1; i >= 0; i--) {
+            try { tickers[i](clock.now); } catch (e) { tickers.splice(i, 1); }
+          }
+          requestAnimationFrame(frame);
+        })(0);
+        function easeQuadOut(r) { return 1 - (1 - r) * (1 - r); }
+
+        function elm(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
+        function byId(id) { return document.getElementById(id); }
+
+        /* ══════════════════════════════════════════════════════════════════
+           대사 데이터
+           ══════════════════════════════════════════════════════════════════ */
+        var COLS = ["key_number","scene_id","part","step","speaker","direction","emotion","anim","text_en","in_use"];
+        /* 시트 머리글은 사람이 쓴다. 한글로도 쓰고, 괄호나 공백도 붙는다.
+           순서에 기대지 않고 이름으로 잡되 별칭을 넉넉히 받는다. */
+        var ALIAS = {
+          key_number: ["keynumber","key","번호","키번호"],
+          scene_id:   ["sceneid","scene","씬","씬id"],
+          part:       ["part","파트"],
+          step:       ["step","순서","스텝"],
+          speaker:    ["speaker","화자","캐릭터"],
+          direction:  ["direction","dir","위치","방향"],
+          emotion:    ["emotion","표정","감정"],
+          anim:       ["anim","animation","애니","클립"],
+          text_en:    ["texten","text","대사","본문","영문대사"],
+          in_use:     ["inuse","use","사용","사용여부"],
+        };
+        function normHead(s) {
+          return String(s == null ? "" : s).toLowerCase().replace(/[\s_\-()[\]]/g, "");
+        }
+        function matchCol(head) {
+          var h = normHead(head);
+          for (var i = 0; i < COLS.length; i++) {
+            var c = COLS[i];
+            if (h === normHead(c)) return c;
+            var alts = ALIAS[c];
+            for (var j = 0; j < alts.length; j++) if (h === normHead(alts[j])) return c;
+          }
+          return null;
+        }
+
+        /* RFC4180 규칙대로 자른다. 대사에는 쉼표가 흔하고 줄바꿈도 들어가서
+           split(",") 로 때우면 대사가 통째로 깨진다. 탭 구분(엑셀 클립보드)도 같은 함수로. */
+        function parseTable(text, sep) {
+          var rows = [], row = [], cell = "", q = false, i = 0;
+          while (i < text.length) {
+            var ch = text[i];
+            if (q) {
+              if (ch === '"') {
+                if (text[i + 1] === '"') { cell += '"'; i += 2; continue; }
+                q = false; i++; continue;
               }
-              textEl.textContent = chars.slice(0, i).join("");
-              if (i >= chars.length) finish();
+              cell += ch; i++; continue;
             }
-            TYPING = { finish: finish };
-            addTick(tick);
-          });
-        }
-
-        function showLine(i, g) {
-          var line = SCRIPT[i];
-          if (!line) return Promise.resolve();
-          CUR = i;
-          markCur();
-          sayMeta(i + 1 + " / " + SCRIPT.length + " 줄 · " + SCRIPT_SRC);
-
-          var p1 = V.p1, p2 = V.p2;
-          var side = line.side === "right" ? "right" : "left";
-          var other = side === "right" ? "left" : "right";
-          var jobs = [];
-
-          if (SIDE[other]) jobs.push(animTo(SIDE[other], p1.dimSec, { a: p1.dimAlpha }, p1.dimEase));
-          jobs.push(ensurePort(line.speaker, side, line.emotion, g));
-
-          if (BOX.a < 1) {
-            BOX.a = 0; BOX.dy = p2.risePx; BOX.apply();
-            jobs.push(animTo(BOX, p2.fadeSec, { a: 1, dy: 0 }, p2.fadeEase));
+            if (ch === '"') { q = true; i++; continue; }
+            if (ch === sep) { row.push(cell); cell = ""; i++; continue; }
+            if (ch === "\r") { i++; continue; }
+            if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; i++; continue; }
+            cell += ch; i++;
           }
-          nameEl.textContent = line.speaker || "\u200b";
-          jobs.push(namePop());
-          textEl.textContent = "";
+          row.push(cell); rows.push(row);
+          return rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ""; }); });
+        }
 
-          return Promise.all(jobs).then(function () {
-            if (g !== GEN) return;
-            if (line.emph) { shakePort(SIDE[side]); boxPunch(); }
-            return typeRun(line.text, g);
+        function readSheet(text) {
+          var sep = text.indexOf("\t") >= 0 ? "\t" : ",";
+          var rows = parseTable(text, sep);
+          if (rows.length < 2) return null;
+          var head = rows[0], map = [], unknown = [];
+          head.forEach(function (h, idx) {
+            var c = matchCol(h);
+            map[idx] = c;
+            if (!c && String(h).trim() !== "") unknown.push(String(h).trim());
+          });
+          if (map.indexOf("text_en") < 0) {
+            return { error: "대사 컬럼을 못 찾았습니다. 알아본 컬럼: " +
+              (map.filter(Boolean).join(", ") || "없음") +
+              (unknown.length ? " · 못 알아본 컬럼: " + unknown.join(", ") : "") };
+          }
+          var out = [];
+          for (var r = 1; r < rows.length; r++) {
+            var o = {};
+            for (var c = 0; c < map.length; c++) if (map[c]) o[map[c]] = rows[r][c];
+            out.push(normalizeLine(o, out.length));
+          }
+          return { lines: out, unknown: unknown, sep: sep === "\t" ? "TSV" : "CSV" };
+        }
+
+        /* 시트에서 온 값은 전부 문자열이다. 숫자 컬럼을 숫자로 되돌리고,
+           위치는 좌/우 한글 표기도 받는다. */
+        function normalizeLine(o, index) {
+          var dir = String(o.direction == null ? "" : o.direction).trim().toLowerCase();
+          var dirNum = dir === "2" || dir === "우" || dir === "right" ? 2
+            : dir === "1" || dir === "좌" || dir === "left" ? 1 : 0;
+          return {
+            key_number: num(o.key_number, 0),
+            scene_id: String(o.scene_id == null ? "" : o.scene_id).trim(),
+            part: num(o.part, 1),
+            step: num(o.step, index + 1),
+            speaker: String(o.speaker == null ? "" : o.speaker).trim(),
+            direction: dirNum,
+            emotion: String(o.emotion == null ? "" : o.emotion).trim(),
+            anim: String(o.anim == null ? "" : o.anim).trim(),
+            text_en: String(o.text_en == null ? "" : o.text_en),
+            in_use: o.in_use == null || String(o.in_use).trim() === "" ? 1 : num(o.in_use, 1),
+          };
+        }
+        function num(v, dflt) { var n = parseFloat(v); return isFinite(n) ? n : dflt; }
+
+        var SCRIPT = [];          // 현재 대본
+        var IMGS = {};            // "rosie_sad" -> [dataURI × 17]
+        var IMGMETA = {};         // "rosie_sad" -> [{name, w, h}]
+
+        /* ══════════════════════════════════════════════════════════════════
+           무대 — 코코스 좌표(원점 중앙 · y 위쪽 +)를 그대로 쓰고, 전체를
+           transform: scale 하나로 줄인다. 그래야 상수를 변환 없이 박을 수 있다.
+           ══════════════════════════════════════════════════════════════════ */
+        var feedEl, phoneEl, dimEl, nowEl, guideEl;
+        var rows = [];            // 화면에 있는 행 (오래된 것 → 최신)
+        var cursor = 0;           // 다음에 재생할 대사 index
+        var playing = false;
+        var showBox = false;
+
+        function gx(x) { return DESIGN_W / 2 + x; }
+        function gy(y) { return DESIGN_H / 2 - y; }
+
+        function place(el, x, y, w, h, ax, ay) {
+          el.style.left = x + "px";
+          el.style.top = (-y) + "px";
+          if (w) { el.style.width = w + "px"; el.style.height = h + "px"; }
+          el.dataset.ax = ax; el.dataset.ay = ay;
+          el.style.transformOrigin = (ax * 100) + "% " + ((1 - ay) * 100) + "%";
+          setXf(el, 1, 1, 0, 1);
+        }
+        /* 앵커 보정 translate 를 매번 다시 쓴다 — scale 이 앵커 기준으로 돌아야
+           튀어오르는 방향이 코코스와 같아진다. */
+        function setXf(el, sx, sy, dy, alpha) {
+          var ax = parseFloat(el.dataset.ax), ay = parseFloat(el.dataset.ay);
+          el.style.transform = "translate(" + (-ax * 100) + "%, " + (-(1 - ay) * 100 - 0) + "%)"
+            + " translateY(" + (-dy) + "px) scale(" + sx + "," + sy + ")";
+          el.style.opacity = alpha;
+        }
+
+        function makeRow(line) {
+          var cast = castOf(line.speaker) || { name: line.speaker || "?", idx: "01", color: "#8a8a8a" };
+          var sign = line.direction === 2 ? -1 : 1;
+          var row = elm("div", "tlk-row");
+          row.style.left = gx(0) + "px";
+
+          var portrait = elm("div", "tlk-portrait");
+          portrait.style.setProperty("--c", cast.color);
+          place(portrait, LAYOUT.portraitX * sign, LAYOUT.portraitY, LAYOUT.portraitW, LAYOUT.portraitH, 0.5, 0.5);
+          var pimg = elm("div", "tlk-pimg");
+          portrait.appendChild(pimg);
+          var pdummy = elm("div", "tlk-pdummy");
+          pdummy.textContent = cast.name.charAt(0);
+          portrait.appendChild(pdummy);
+
+          var pivot = bubblePivot(sign);
+          var stage = elm("div", "tlk-bstage");
+          stage.style.left = pivot.x + "px";
+          stage.style.top = (-pivot.y) + "px";
+
+          var bubble = elm("div", "tlk-bubble");
+          bubble.style.width = LAYOUT.bubbleW + "px";
+          bubble.style.height = LAYOUT.bubbleH + "px";
+          bubble.style.setProperty("--c", cast.color);
+          bubble.style.borderImageSlice = BUBBLE9.top + " " + BUBBLE9.right + " " + BUBBLE9.bottom + " " + BUBBLE9.left + " fill";
+          bubble.dataset.ax = LAYOUT.bubbleAnchorX; bubble.dataset.ay = LAYOUT.bubbleAnchorY;
+          bubble.style.transformOrigin = (LAYOUT.bubbleAnchorX * 100) + "% " + ((1 - LAYOUT.bubbleAnchorY) * 100) + "%";
+          bubble.style.setProperty("--flip", sign);
+          stage.appendChild(bubble);
+
+          var dlg = elm("div", "tlk-dlg");
+          dlg.style.left = (LAYOUT.dlgX * sign - pivot.x) + "px";
+          dlg.style.top = (-(LAYOUT.dlgY - pivot.y)) + "px";
+          dlg.style.width = LAYOUT.dlgW + "px";
+          dlg.style.height = LAYOUT.dlgH + "px";
+          dlg.style.fontSize = LAYOUT.dlgFont + "px";
+          dlg.style.lineHeight = LAYOUT.dlgLine + "px";
+          dlg.dataset.ax = 0.5; dlg.dataset.ay = 0.5;
+          dlg.style.transform = "translate(-50%, -50%)";
+          stage.appendChild(dlg);
+
+          var nameBox = elm("div", "tlk-name");
+          nameBox.style.setProperty("--c", cast.color);
+          place(nameBox, LAYOUT.nameX * sign, LAYOUT.nameRestY, LAYOUT.nameW, LAYOUT.nameH, 0.5, 0.5);
+          nameBox.style.fontSize = LAYOUT.nameFont + "px";
+          nameBox.style.lineHeight = LAYOUT.nameLine + "px";
+          nameBox.textContent = cast.name;
+
+          row.appendChild(portrait); row.appendChild(nameBox); row.appendChild(stage);
+          feedEl.appendChild(row);
+
+          var r = {
+            el: row, line: line, sign: sign, cast: cast,
+            portrait: portrait, pimg: pimg, pdummy: pdummy,
+            bubble: bubble, dlg: dlg, name: nameBox, stage: stage,
+            y: LAYOUT.bottomY, animT0: clock.now, frameT0: clock.now, typed: 0, tick: null,
+          };
+          applyBox(r);
+          return r;
+        }
+
+        function applyBox(r) {
+          [r.portrait, r.name, r.bubble, r.dlg].forEach(function (el) {
+            el.classList.toggle("is-box", showBox);
           });
         }
 
-        function msOf(line) { return line && line.autoMs != null ? line.autoMs : V.p3.autoMs; }
+        /* 등장 클립을 매 프레임 샘플링한다. FREEZE 가 걸리면 그 시각에 세워 둔다 —
+           코코스 스크린샷과 같은 시점을 눈으로 대조하려고. */
+        function driveRow(r) {
+          if (r.tick) delTick(r.tick);
+          r.animT0 = clock.now;
+          r.tick = addTick(function (now) {
+            var t = FREEZE != null ? FREEZE : (now - r.animT0) * SPEED;
+            var dur = clipDuration(CLIP);
+            if (t > dur) t = dur;
+            var cs = sampleTrack(CLIP.tracks["character.scale"], t) || [1, 1];
+            var co = sampleTrack(CLIP.tracks["character.opacity"], t) || [255];
+            var ny = sampleTrack(CLIP.tracks["name.y"], t) || [LAYOUT.nameRestY];
+            var no = sampleTrack(CLIP.tracks["name.opacity"], t) || [255];
+            var bs = sampleTrack(CLIP.tracks["text_bubble.scale"], t) || [1, 1];
+            var bo = sampleTrack(CLIP.tracks["text_bubble.opacity"], t) || [255];
+            setXf(r.portrait, cs[0] * r.sign, cs[1] == null ? cs[0] : cs[1], 0, co[0] / 255);
+            r.name.style.top = (-ny[0]) + "px";
+            setXf(r.name, 1, 1, 0, no[0] / 255);
+            var bsx = bs[0], bsy = bs[1] == null ? bs[0] : bs[1];
+            r.bubble.style.transform = "translate(" + (-LAYOUT.bubbleAnchorX * 100) + "%, "
+              + (-(1 - LAYOUT.bubbleAnchorY) * 100) + "%) scale(" + (bsx * r.sign) + "," + bsy + ")";
+            r.bubble.style.opacity = bo[0] / 255;
+            r.dlg.style.opacity = bo[0] / 255;
+            drivePortraitFrame(r, now);
+          });
+        }
 
-        function playAll() {
-          if (PLAYING) { stopPlay(); return; }
-          if (!SCRIPT.length) return;
-          GEN++;
-          var g = GEN;
-          PLAYING = true;
-          setBtns();
-          if (NEXT >= SCRIPT.length) { NEXT = 0; CUR = -1; }
-          step();
-
-          function step() {
-            if (g !== GEN) return;
-            if (NEXT >= SCRIPT.length) {
-              if (!LOOP) { PLAYING = false; setBtns(); return; }
-              /* 반복은 무대를 비우고 처음부터 — resetStage 가 GEN 을 올리므로
-                 여기서는 직접 비운다. 안 그러면 자기 자신을 세대에서 밀어낸다. */
-              ["left", "right"].forEach(function (s) { if (SIDE[s]) { SIDE[s].kill(); SIDE[s] = null; } });
-              BOX.a = 0; BOX.apply();
-              NEXT = 0;
+        /* 포트레이트는 스프라이트 교체다. sample 30 × speed 0.5 → 15fps.
+           60Hz 화면에서 4프레임마다 한 장이라 정수로 떨어진다. */
+        function drivePortraitFrame(r, now) {
+          var key = (r.line.anim || (r.line.speaker + "_" + r.line.emotion)).toLowerCase();
+          var set = IMGS[key];
+          var fps = PORTRAIT.sample * PORTRAIT.speed;
+          var n = set ? set.length : PORTRAIT.frames;
+          var t = FREEZE != null ? FREEZE : (now - r.frameT0) * SPEED;
+          var idx = Math.floor(t * fps);
+          idx = PORTRAIT.loop ? ((idx % n) + n) % n : Math.min(n - 1, idx);
+          if (set) {
+            r.pdummy.hidden = true;
+            r.pimg.hidden = false;
+            if (r.pimg.dataset.k !== key + idx) {
+              r.pimg.style.backgroundImage = "url(" + set[idx] + ")";
+              r.pimg.dataset.k = key + idx;
             }
-            var line = SCRIPT[NEXT];
-            showLine(NEXT, g)
-              .then(function () {
-                if (g !== GEN) return null;
-                return wait(msOf(line) / 1000);
-              })
-              .then(function () {
-                if (g !== GEN) return null;
-                NEXT++;
-                return wait(V.p3.gapMs / 1000);
-              })
-              .then(function () { if (g === GEN) step(); })
-              .catch(function () {});
+          } else {
+            r.pimg.hidden = true;
+            r.pdummy.hidden = false;
+            r.pdummy.dataset.f = (idx + 1) + "/" + n;
           }
         }
-        function stopPlay() {
-          GEN++;
-          PLAYING = false;
-          TYPING = null;
-          setBtns();
-        }
-        /* 한 줄씩 — 타이핑 중이면 먼저 그 문장을 채운다. 대사 검수는
-           "다 찍힌 문장" 을 보는 일이라 매번 끝까지 기다리게 하면 못 쓴다. */
-        function stepOne() {
-          if (TYPING) { TYPING.finish(); return; }
-          if (PLAYING) stopPlay();
-          if (!SCRIPT.length) return;
-          GEN++;
-          var g = GEN;
-          if (NEXT >= SCRIPT.length) NEXT = 0;
-          var i = NEXT;
-          NEXT++;
-          showLine(i, g).catch(function () {});
-        }
-        function jumpTo(i) {
-          stopPlay();
-          NEXT = i + 1;
-          GEN++;
-          var g = GEN;
-          showLine(i, g).catch(function () {});
-        }
 
-        /* ======================================================================
-           대사 길이 검사 — 글자 수 추정이 아니라 실제 렌더 높이로 판정한다.
-           ====================================================================== */
-        var lintBody = byId("tlk-lint-body");
-        var LINT = [];              // 줄마다의 {글자수, 줄수, 판정} — .csv 내보내기가 이걸 그대로 싣는다
-        var deriveEl = byId("tlk-derive");
-
-        function lintOne(text, dim, room) {
-          measEl.textContent = String(text);
-          var h = measEl.getBoundingClientRect().height;
-          var lines = Math.max(1, Math.round(h / dim.lineHpx));
-          return { chars: toChars(text).length, lines: lines, height: h, room: room };
-        }
-        function verdictOf(r, allow) {
-          var p5 = V.p5;
-          if (r.lines > allow) return { cls: "is-bad", label: "넘침" };
-          if (r.lines > p5.maxLines || r.chars > p5.maxChars) return { cls: "is-warn", label: "주의" };
-          return { cls: "is-ok", label: "통과" };
-        }
-
-        function renderLint() {
-          var dim = applyLayout();
-          var room = bodyRoom();
-          var allow = Math.max(1, Math.floor(room / dim.lineHpx));
-          var p5 = V.p5;
-
-          var perLine = Math.max(1, Math.floor(dim.width / dim.fontPx));
-          deriveEl.innerHTML = "";
-          [
-            ["본문 폭", Math.round(dim.width) + "px"],
-            ["글자", p5.fontPt + "pt (" + Math.round(dim.fontPx) + "px)"],
-            ["줄 높이", Math.round(dim.lineHpx) + "px"],
-            ["본문 가용 높이", Math.round(room) + "px"],
-            ["→ 가용 줄 수", allow + "줄"],
-            ["→ 한 줄 약", perLine + "자"],
-          ].forEach(function (p) {
-            var s = document.createElement("span");
-            s.innerHTML = p[0] + " <b>" + p[1] + "</b>";
-            deriveEl.appendChild(s);
-          });
-          if (p5.fontPt < 16) {
-            var w1 = document.createElement("span");
-            w1.innerHTML = "⚠ <b>16pt 미만</b> — 50대+ 타깃 접근성 기준 아래입니다";
-            deriveEl.appendChild(w1);
+        /* 피드 배치. 코드의 layoutVisibleFeed 와 같은 순서로 계산한다 —
+           최신 행이 bottomY 에 서고, 위로 올라가며 (윗행 top + 아랫행 bottom + gap) 만큼 벌어진다. */
+        function layoutFeed(newRow) {
+          var pitch = rowPitch();
+          for (var i = rows.length - 1, k = 0; i >= 0; i--, k++) {
+            var r = rows[i];
+            var target = LAYOUT.bottomY + k * pitch;
+            if (r === newRow) { r.y = target; r.el.style.top = gy(target) + "px"; continue; }
+            slideTo(r, target);
           }
-          if (p5.maxLines > allow) {
-            var w2 = document.createElement("span");
-            w2.innerHTML = "⚠ 최대 줄 수(" + p5.maxLines + ")가 <b>가용 줄 수(" + allow + ")보다 큽니다</b> — 기준을 낮추거나 대사창을 키우세요";
-            deriveEl.appendChild(w2);
-          }
-
-          lintBody.innerHTML = "";
-          LINT = [];
-          SCRIPT.forEach(function (l, i) {
-            var r = lintOne(l.text, dim, room);
-            var v = verdictOf(r, allow);
-            LINT.push({ chars: r.chars, lines: r.lines, verdict: v.label });
-
-            var tr = document.createElement("tr");
-            tr.setAttribute("data-i", String(i));
-            var c1 = document.createElement("td");
-            c1.textContent = l.no || String(i + 1);
-            var c2 = document.createElement("td");
-            c2.textContent = (l.speaker || "—") + (l.side === "right" ? " ▸" : " ◂");
-            var c3 = document.createElement("td");
-            c3.className = "tlk-say";
-            c3.textContent = l.text;
-            var c4 = document.createElement("td");
-            c4.style.textAlign = "right";
-            c4.textContent = String(r.chars);
-            var c5 = document.createElement("td");
-            c5.style.textAlign = "right";
-            c5.textContent = String(r.lines);
-            var c6 = document.createElement("td");
-            var pill = elm("span", "tlk-v " + v.cls);
-            pill.textContent = v.label;
-            c6.appendChild(pill);
-            [c1, c2, c3, c4, c5, c6].forEach(function (c) { tr.appendChild(c); });
-            tr.addEventListener("click", function () { jumpTo(i); });
-            lintBody.appendChild(tr);
-          });
-          if (!SCRIPT.length) {
-            var tr0 = document.createElement("tr");
-            var td0 = document.createElement("td");
-            td0.colSpan = 6;
-            td0.textContent = "대본이 비었습니다 — [대본 넣기] 에서 시트를 붙여넣거나 샘플을 넣어 보세요.";
-            tr0.appendChild(td0);
-            lintBody.appendChild(tr0);
-          }
-          markCur();
         }
+        function slideTo(r, target) {
+          if (r.slide) delTick(r.slide);
+          var from = r.y, t0 = clock.now;
+          r.slide = addTick(function (now) {
+            var raw = (now - t0) * SPEED / LAYOUT.feedShiftSec;
+            var rr = raw >= 1 ? 1 : easeQuadOut(raw);
+            r.y = from + (target - from) * rr;
+            r.el.style.top = gy(r.y) + "px";
+            if (raw >= 1) { delTick(r.slide); r.slide = null; }
+          });
+        }
+        /* 뷰포트를 넘긴 가장 오래된 행을 버린다. 풀은 5칸이지만 이 계산 때문에
+           실제로 화면에 남는 건 3줄이다 — 이 문서가 그걸 그대로 보여 준다.
 
-        function markCur() {
-          Array.prototype.forEach.call(lintBody.querySelectorAll("tr"), function (tr) {
-            tr.classList.toggle("is-cur", parseInt(tr.getAttribute("data-i"), 10) === CUR);
+           판정은 반드시 **목표 위치**로 한다. 애니메이션 중인 현재 위치로 재면
+           밀려 올라가는 도중이라 아직 상한을 안 넘은 것으로 보여서 한 줄이 더 남는다.
+           코드도 같은 이유로 trimFeedToViewport() 가 노드 좌표가 아니라 배치 계산식을
+           걷고, layoutVisibleFeed() 보다 먼저 돈다. */
+        function trimFeed() {
+          var pitch = rowPitch(), guard = 0;
+          while (rows.length > 1 && guard++ < 20) {
+            var oldestTarget = LAYOUT.bottomY + (rows.length - 1) * pitch;
+            if (oldestTarget + rowTopExtent() <= LAYOUT.viewportTopY) break;
+            dropRow(rows[0]);
+            rows.shift();
+          }
+          updateFeedNote();
+        }
+        function dropRow(r) {
+          if (r.tick) delTick(r.tick);
+          if (r.slide) delTick(r.slide);
+          var t0 = clock.now, el = r.el;
+          var fade = addTick(function (now) {
+            var raw = (now - t0) * SPEED / LAYOUT.hideSec;
+            var rr = raw >= 1 ? 1 : raw;
+            el.style.opacity = String(1 - rr);
+            el.style.transform = "scale(" + (1 - (1 - LAYOUT.hideScale) * rr) + ")";
+            if (raw >= 1) { delTick(fade); if (el.parentNode) el.parentNode.removeChild(el); }
           });
         }
 
-        /* ======================================================================
-           캐릭터 표
-           ====================================================================== */
-        var castBody = byId("tlk-cast-body");
-        function renderCast() {
-          castBody.innerHTML = "";
-          var slots = castSlots();
-          if (!slots.length) {
-            var tr0 = document.createElement("tr");
-            var td0 = document.createElement("td");
-            td0.colSpan = 5;
-            td0.textContent = "대본이 비어 붙일 자리가 없습니다.";
-            tr0.appendChild(td0);
-            castBody.appendChild(tr0);
-            return;
-          }
-          slots.forEach(function (s) {
-            var tr = document.createElement("tr");
-            var c1 = document.createElement("td");
-            c1.className = "tlk-cast-key";
-            c1.textContent = s.speaker;
-            var c2 = document.createElement("td");
-            c2.textContent = s.emotion ? EMO_LABEL[s.emotion] : "기본 (모든 표정)";
-
-            var c3 = document.createElement("td");
-            var a = assignFor(s.speaker, s.emotion || "neutral");
-            if (a.type === "img") {
-              var im = document.createElement("img");
-              im.className = "tlk-thumb";
-              im.src = a.src;
-              im.alt = "";
-              c3.appendChild(im);
-            } else {
-              var box = elm("div", "tlk-thumb");
-              box.innerHTML = castHTML(s.speaker, s.emotion || "neutral");
-              c3.appendChild(box);
-            }
-
-            var c4 = document.createElement("td");
-            var sel = document.createElement("select");
-            sel.className = "tlk-sel";
-            BUILTIN.forEach(function (b) {
-              var o = document.createElement("option");
-              o.value = "b:" + b;
-              o.textContent = BUILTIN_LABEL[b];
-              sel.appendChild(o);
-            });
-            IMAGES.forEach(function (im, i) {
-              var o = document.createElement("option");
-              o.value = "i:" + i;
-              o.textContent = im.name;
-              sel.appendChild(o);
-            });
-            var cur = ASSIGN[s.key];
-            sel.value = cur || "b:" + builtinFor(s.speaker);
-            sel.addEventListener("change", function () {
-              ASSIGN[s.key] = sel.value;
-              renderCast();
-              refreshPortraits();
-            });
-            c4.appendChild(sel);
-
-            var c5 = document.createElement("td");
-            c5.className = "tlk-cast-file";
-            var used = ASSIGN[s.key] || ASSIGN[s.speaker + "|"] || "";
-            c5.textContent = used.charAt(0) === "i" && IMAGES[parseInt(used.slice(2), 10)]
-              ? IMAGES[parseInt(used.slice(2), 10)].name
-              : "—";
-
-            [c1, c2, c3, c4, c5].forEach(function (c) { tr.appendChild(c); });
-            castBody.appendChild(tr);
+        /* 타이핑. 40 cps 를 시간으로 센다 — 글자 수를 프레임마다 더하면 속도가 화면 주사율을 탄다. */
+        function typeRow(r) {
+          if (r.typeTick) delTick(r.typeTick);
+          var text = r.line.text_en || "", t0 = clock.now;
+          r.full = text;
+          r.typeTick = addTick(function (now) {
+            var n = FREEZE != null ? text.length
+              : Math.floor((now - t0) * SPEED * LAYOUT.typingCps);
+            if (n > text.length) n = text.length;
+            if (r.typed !== n) { r.typed = n; r.dlg.textContent = text.slice(0, n); }
+            if (n >= text.length) { delTick(r.typeTick); r.typeTick = null; }
           });
         }
-        /* 그림을 갈아 끼우면 무대에 서 있는 초상도 즉시 바뀌어야 한다 —
-           다음 재생까지 기다리게 하면 "붙은 건가?" 를 확인할 방법이 없다. */
-        function refreshPortraits() {
-          ["left", "right"].forEach(function (s) {
-            var p = SIDE[s];
-            if (!p) return;
-            var line = SCRIPT[CUR];
-            var emo = line && line.speaker === p.speaker ? line.emotion : "neutral";
-            p.sig = "";
-            p.setArt(p.speaker, emo);
+        function finishTyping(r) {
+          if (!r) return false;
+          if (r.typeTick && r.typed < (r.full || "").length) {
+            delTick(r.typeTick); r.typeTick = null;
+            r.typed = r.full.length; r.dlg.textContent = r.full;
+            return true;
+          }
+          return false;
+        }
+
+        function pushLine(line) {
+          var r = makeRow(line);
+          rows.push(r);
+          trimFeed();               // 코코스와 같은 순서 — 자르고 나서 배치한다
+          layoutFeed(r);
+          driveRow(r);
+          typeRow(r);
+          fadeDim();
+          updateNow(line);
+          return r;
+        }
+        var dimDone = false;
+        function fadeDim() {
+          if (dimDone) return;
+          dimDone = true;
+          var t0 = clock.now, target = LAYOUT.dimAlpha / 255;
+          var f = addTick(function (now) {
+            var raw = (now - t0) * SPEED / LAYOUT.dimFadeSec;
+            dimEl.style.opacity = String(Math.min(1, raw) * target);
+            if (raw >= 1) delTick(f);
           });
         }
 
-        function handleImages(files) {
-          var list = Array.prototype.filter.call(files, function (f) {
-            return /^image\//.test(f.type) || /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(f.name);
-          });
-          if (!list.length) return false;
-          var matched = [], unmatched = [], left = list.length;
-          list.forEach(function (f) {
-            var fr = new FileReader();
-            fr.onload = function () {
-              var idx = IMAGES.length;
-              IMAGES.push({ name: f.name, src: String(fr.result) });
-              var hit = autoMatch(idx);
-              if (hit) matched.push(f.name + " → " + hit.speaker + (hit.emotion ? " · " + EMO_LABEL[hit.emotion] : ""));
-              else unmatched.push(f.name);
-              if (--left === 0) done();
-            };
-            fr.onerror = function () { unmatched.push(f.name); if (--left === 0) done(); };
-            fr.readAsDataURL(f);
-          });
-          function done() {
-            renderCast();
-            refreshPortraits();
-            var msg = "그림 " + list.length + "장 · 자동으로 붙음 " + matched.length + "장";
-            if (unmatched.length) msg += " · 못 맞춘 파일 " + unmatched.length + "장은 아래 표에서 골라 주세요";
-            barSay(msg + " (세션 한정)");
-            if (unmatched.length) {
-              ioSay("붙은 그림\n" + (matched.length ? matched.join("\n") : "(없음)") +
-                "\n\n못 맞춘 파일 — [캐릭터] 표의 선택칸에 올라와 있습니다\n" + unmatched.join("\n"));
-            }
-          }
+        function stepOnce() {
+          var last = rows[rows.length - 1];
+          if (finishTyping(last)) return true;
+          if (cursor >= activeLines().length) return false;
+          pushLine(activeLines()[cursor++]);
           return true;
         }
+        function rewind() {
+          rows.forEach(function (r) {
+            if (r.tick) delTick(r.tick);
+            if (r.slide) delTick(r.slide);
+            if (r.typeTick) delTick(r.typeTick);
+            if (r.el.parentNode) r.el.parentNode.removeChild(r.el);
+          });
+          rows = []; cursor = 0; playing = false;
+          dimDone = false; dimEl.style.opacity = "0";
+          updateNow(null); updateFeedNote();
+          byId("tlk-play").textContent = "재생";
+        }
+        function activeLines() {
+          return SCRIPT.filter(function (l) { return l.in_use === 1; });
+        }
 
-        /* ======================================================================
-           복사 텍스트 만들기
-           디자이너가 맞춘 값을 우리가 그대로 읽고 붙일 수 있어야 한다. 그래서
-           붙여넣기 가능한 TypeScript 상수로 뽑고, 기본값과 다른 줄에는 끝에
-           "← 기본 n" 을 달아 무엇을 건드렸는지 한눈에 보이게 한다.
-           ====================================================================== */
-        function fmtNum(n) {
+        /* 자동 재생. auto_advance_sec 이 0(=탭으로 넘김)이라 문서에서는 대사 길이에
+           맞춰 넘긴다 — 실제 게임은 사람이 탭할 때까지 기다린다는 걸 아래 note 로 적어 둔다. */
+        var autoTick = null;
+        function playAll() {
+          if (playing) { stopPlay(); return; }
+          if (cursor >= activeLines().length) rewind();
+          playing = true;
+          byId("tlk-play").textContent = "멈춤";
+          var nextAt = 0;
+          autoTick = addTick(function (now) {
+            if (!playing) return;
+            if (now < nextAt) return;
+            if (cursor >= activeLines().length) { stopPlay(); return; }
+            var line = activeLines()[cursor++];
+            pushLine(line);
+            var read = (line.text_en || "").length / LAYOUT.typingCps;
+            nextAt = now + (read + 0.9) / SPEED;
+          });
+        }
+        function stopPlay() {
+          playing = false;
+          if (autoTick) { delTick(autoTick); autoTick = null; }
+          byId("tlk-play").textContent = "재생";
+        }
+
+        function updateNow(line) {
+          if (!line) { nowEl.innerHTML = '<span class="tlk-muted">재생 전</span>'; return; }
+          var cast = castOf(line.speaker);
+          nowEl.innerHTML = "";
+          var chip = elm("span", "tlk-chip");
+          chip.style.setProperty("--c", cast ? cast.color : "#8a8a8a");
+          chip.textContent = line.speaker + " · " + line.emotion + " · " + (line.direction === 2 ? "우" : "좌");
+          var meta = elm("div", "tlk-muted");
+          meta.textContent = line.scene_id + " " + line.part + "-" + line.step
+            + " · " + (line.text_en || "").length + "자";
+          nowEl.appendChild(chip); nowEl.appendChild(meta);
+        }
+        function updateFeedNote() {
+          var note = byId("tlk-feednote");
+          if (!note) return;
+          note.innerHTML = "행 간격 <b>" + rowPitch().toFixed(2) + "px</b>"
+            + " (위 " + rowTopExtent().toFixed(2) + " + 아래 " + rowBottomExtent().toFixed(2)
+            + " + 간격 " + LAYOUT.gap + ")<br>"
+            + "풀은 <b>" + LAYOUT.poolCount + "칸</b>이지만 뷰포트 상한 "
+            + LAYOUT.viewportTopY + " 때문에 실제로 남는 건 <b>" + maxVisibleRows() + "줄</b>입니다."
+            + " 지금 화면에 " + rows.length + "줄.";
+        }
+        function maxVisibleRows() {
+          var pitch = rowPitch(), n = 1;
+          while (n < 12 && LAYOUT.bottomY + n * pitch + rowTopExtent() <= LAYOUT.viewportTopY) n++;
+          return n;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           연출 값 표
+           클립 값은 CLIP.tracks 를 직접 가리킨다. 표를 고치면 클립이 바뀌고,
+           내보내기가 그 클립을 그대로 .anim 으로 뱉는다 — 사이에 옮겨 적는 단계가 없다.
+           ══════════════════════════════════════════════════════════════════ */
+        /* 클립 키프레임 접근자. 다른 클립을 떨구면 트랙 구성이 다를 수 있어서
+           없는 자리를 읽어도 터지지 않게 막아 둔다 — 표 한 줄 때문에 무대가 죽으면 안 된다. */
+        function K(track, i, j) {
+          return {
+            ok: function () { var t = CLIP.tracks[track]; return !!(t && t[i] && t[i][j] != null); },
+            get: function () { var t = CLIP.tracks[track]; return t && t[i] ? t[i][j] : 0; },
+            set: function (v) { var t = CLIP.tracks[track]; if (t && t[i]) t[i][j] = v; },
+          };
+        }
+        function L(key) {                  // LAYOUT 접근자
+          return { get: function () { return LAYOUT[key]; }, set: function (v) { LAYOUT[key] = v; } };
+        }
+        function P(key) {
+          return { get: function () { return PORTRAIT[key]; }, set: function (v) { PORTRAIT[key] = v; } };
+        }
+
+        var CARDS = [
+          { id: "clip", no: "P1", title: "등장 클립 · chat_show.anim",
+            note: "curve 필드가 없어 전부 선형입니다. 통통 튀는 느낌은 이징이 아니라 아래 시각 배치에서 나옵니다.",
+            defs: [
+              { label: "캐릭터 시작 크기", a: K("character.scale", 0, 1), min: 0, max: 2, step: 0.05, unit: "×", also: K("character.scale", 0, 2) },
+              { label: "캐릭터 오버슛 크기", a: K("character.scale", 1, 1), min: 0.5, max: 2, step: 0.05, unit: "×", also: K("character.scale", 1, 2) },
+              { label: "캐릭터 오버슛 시각", a: K("character.scale", 1, 0), min: 0.02, max: 0.6, step: 0.0167, unit: "s" },
+              { label: "캐릭터 정착 시각", a: K("character.scale", 2, 0), min: 0.05, max: 1, step: 0.0167, unit: "s" },
+              { label: "이름 시작 y", a: K("name.y", 0, 1), min: -300, max: 0, step: 1, unit: "px" },
+              { label: "이름 오버슛 y", a: K("name.y", 1, 1), min: -300, max: 0, step: 1, unit: "px" },
+              { label: "이름 정착 y", a: K("name.y", 2, 1), min: -300, max: 0, step: 1, unit: "px" },
+              { label: "말풍선 시작 가로", a: K("text_bubble.scale", 0, 1), min: 0, max: 2, step: 0.05, unit: "×" },
+              { label: "말풍선 시작 세로", a: K("text_bubble.scale", 0, 2), min: 0, max: 2, step: 0.05, unit: "×" },
+              { label: "말풍선 오버슛 크기", a: K("text_bubble.scale", 1, 1), min: 0.5, max: 2, step: 0.05, unit: "×", also: K("text_bubble.scale", 1, 2) },
+              { label: "페이드 인 시간", a: K("character.opacity", 1, 0), min: 0.02, max: 0.6, step: 0.0167, unit: "s",
+                also2: [K("name.opacity", 1, 0), K("text_bubble.opacity", 1, 0)] },
+            ] },
+          { id: "feed", no: "P2", title: "피드",
+            note: "새 행이 아래에 서고 기존 행이 위로 밀립니다. 뷰포트 상한이 실제로 몇 줄 남을지를 정합니다.",
+            defs: [
+              { label: "최신 행 y", a: L("bottomY"), min: -640, max: 0, step: 5, unit: "px" },
+              { label: "뷰포트 상한 y", a: L("viewportTopY"), min: 0, max: 640, step: 5, unit: "px" },
+              { label: "행 간격", a: L("gap"), min: 0, max: 80, step: 1, unit: "px" },
+              { label: "밀림 시간", a: L("feedShiftSec"), min: 0.02, max: 1, step: 0.01, unit: "s" },
+              { label: "퇴장 크기", a: L("hideScale"), min: 0.5, max: 1, step: 0.01, unit: "×" },
+              { label: "퇴장 시간", a: L("hideSec"), min: 0.02, max: 1, step: 0.01, unit: "s" },
+            ] },
+          { id: "portrait", no: "P3", title: "포트레이트 클립",
+            note: "프레임 시퀀스라 조절할 값은 재생 속도뿐입니다. 연기 자체는 아트가 프레임을 다시 뽑아야 바뀝니다.",
+            defs: [
+              { label: "프레임 수", a: P("frames"), min: 2, max: 60, step: 1, unit: "장" },
+              { label: "샘플", a: P("sample"), min: 10, max: 60, step: 1, unit: "fps" },
+              { label: "재생 속도", a: P("speed"), min: 0.1, max: 2, step: 0.05, unit: "×" },
+            ] },
+          { id: "config", no: "P4", title: "설정 · 딤",
+            note: "auto_advance_sec 0 은 탭으로 넘긴다는 뜻입니다. 문서에서는 읽는 시간을 가정해 자동으로 넘깁니다.",
+            defs: [
+              { label: "타이핑 속도", a: L("typingCps"), min: 5, max: 120, step: 1, unit: "cps" },
+              { label: "자동 넘김", a: L("autoAdvanceSec"), min: 0, max: 10, step: 0.5, unit: "s" },
+              { label: "딤 알파", a: L("dimAlpha"), min: 0, max: 255, step: 1, unit: "" },
+              { label: "딤 페이드", a: L("dimFadeSec"), min: 0, max: 2, step: 0.05, unit: "s" },
+            ] },
+          { id: "geom", no: "P5", title: "레이아웃 좌표",
+            note: "ChatBubbleStoryPresentation.ts 상단 상수입니다. 말풍선 앵커 (0.01, 0.12) 는 말꼬리 피벗이라 정규화하면 안 됩니다.",
+            defs: [
+              { label: "포트레이트 x", a: L("portraitX"), min: -360, max: 360, step: 0.001, unit: "px" },
+              { label: "포트레이트 y", a: L("portraitY"), min: -360, max: 360, step: 0.001, unit: "px" },
+              { label: "이름박스 x", a: L("nameX"), min: -360, max: 360, step: 0.001, unit: "px" },
+              { label: "말풍선 x", a: L("bubbleX"), min: -360, max: 360, step: 0.001, unit: "px" },
+              { label: "말풍선 y", a: L("bubbleY"), min: -360, max: 360, step: 0.001, unit: "px" },
+              { label: "말풍선 가로", a: L("bubbleW"), min: 100, max: 720, step: 1, unit: "px" },
+              { label: "말풍선 세로", a: L("bubbleH"), min: 60, max: 500, step: 1, unit: "px" },
+              { label: "대사 폭", a: L("dlgW"), min: 100, max: 700, step: 1, unit: "px" },
+              { label: "대사 높이", a: L("dlgH"), min: 40, max: 400, step: 1, unit: "px" },
+              { label: "대사 글자 크기", a: L("dlgFont"), min: 12, max: 72, step: 1, unit: "px" },
+              { label: "대사 줄 높이", a: L("dlgLine"), min: 12, max: 90, step: 1, unit: "px" },
+            ] },
+        ];
+
+        var DEFAULTS = null;
+        function snapshotDefaults() {
+          DEFAULTS = { clip: cloneClip(CLIP_DEFAULT), layout: JSON.parse(JSON.stringify(LAYOUT)), portrait: JSON.parse(JSON.stringify(PORTRAIT)) };
+        }
+
+        function buildCards() {
+          var host = byId("tlk-cards");
+          host.innerHTML = "";
+          CARDS.forEach(function (card) {
+            var item = elm("div", "tlk-card");
+            var head = elm("div", "tlk-card-head");
+            var no = elm("span", "tlk-no"); no.textContent = card.no;
+            var h3 = document.createElement("h3"); h3.textContent = card.title;
+            var sp = elm("span"); sp.style.flex = "1";
+            var copy = elm("button", "tlk-btn is-primary"); copy.type = "button"; copy.textContent = "설정 복사";
+            head.appendChild(no); head.appendChild(h3); head.appendChild(sp); head.appendChild(copy);
+            var scroll = elm("div", "table-scroll");
+            var table = document.createElement("table");
+            table.className = "tlk-params";
+            table.innerHTML = "<thead><tr><th>항목</th><th>값</th><th>기본</th></tr></thead>";
+            var tb = document.createElement("tbody");
+            card.rows = [];
+            card.defs.forEach(function (d) { tb.appendChild(makeRowUI(d, card)); });
+            table.appendChild(tb); scroll.appendChild(table);
+            var note = elm("p", "note"); note.textContent = card.note;
+            item.appendChild(head); item.appendChild(scroll); item.appendChild(note);
+            host.appendChild(item);
+            copy.addEventListener("click", function () { copyText(cardText(card), copy); });
+          });
+        }
+
+        function makeRowUI(d, card) {
+          var tr = document.createElement("tr");
+          if (d.a.ok && !d.a.ok()) {                 // 떨군 클립에 없는 트랙이면 자리만 비운다
+            var td = document.createElement("td");
+            td.colSpan = 3; td.className = "tlk-dash";
+            td.textContent = d.label + " — 이 클립에 없는 트랙";
+            tr.appendChild(td);
+            return tr;
+          }
+          var td1 = document.createElement("td"); td1.textContent = d.label;
+          var td2 = document.createElement("td"); td2.className = "tlk-vcell";
+          var input = document.createElement("input");
+          input.type = "number"; input.className = "tlk-in"; input.step = "any";
+          input.min = d.min; input.max = d.max;
+          var range = document.createElement("input");
+          range.type = "range"; range.className = "tlk-rng";
+          range.min = d.min; range.max = d.max; range.step = d.step;
+          range.setAttribute("aria-label", d.label);
+          var unit = elm("span", "tlk-u"); unit.textContent = d.unit || "";
+          td2.appendChild(input); td2.appendChild(unit); td2.appendChild(range);
+          var td3 = document.createElement("td"); td3.className = "tlk-base";
+          d.base = d.a.get();
+          td3.textContent = fmt(d.base) + (d.unit || "");
+          tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+
+          function write(v) {
+            v = Math.max(d.min, Math.min(d.max, v));
+            d.a.set(v);
+            if (d.also) d.also.set(v);
+            if (d.also2) d.also2.forEach(function (x) { x.set(v); });
+            sync(); onValueChange();
+          }
+          function sync() {
+            var v = d.a.get();
+            tr.classList.toggle("is-changed", Math.abs(v - d.base) > 1e-9);
+            if (document.activeElement !== input) input.value = v;
+            if (document.activeElement !== range) range.value = v;
+          }
+          input.addEventListener("input", function () { var n = parseFloat(input.value); if (isFinite(n)) write(n); });
+          input.addEventListener("blur", function () { input.value = d.a.get(); });
+          range.addEventListener("input", function () { var n = parseFloat(range.value); if (isFinite(n)) write(n); });
+          d.sync = sync;
+          card.rows.push(d);
+          sync();
+          return tr;
+        }
+        function fmt(n) {
           if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
-          return String(Math.round(n * 1000) / 1000);
+          return String(Math.round(n * 10000) / 10000);
         }
-        function easeConstName(cfg) {
-          if (/_SEC$/.test(cfg)) return cfg.replace(/_SEC$/, "_EASING");
-          return cfg + "_EASING";
+        function syncAllCards() { CARDS.forEach(function (c) { (c.rows || []).forEach(function (d) { d.sync && d.sync(); }); }); }
+
+        /* ══════════════════════════════════════════════════════════════════
+           검사 — 게임을 켜야 알던 것들을 여기서 먼저 잡는다
+           ══════════════════════════════════════════════════════════════════ */
+
+        /* 대사 길이. cc.Label 이 overflow SHRINK 라 넘쳐도 잘리지 않고 글자가 줄어든다.
+           그래서 위험은 "잘림"이 아니라 "너무 작아짐"이다. 400×144 · 36px · 줄높이 36
+           → 4줄까지 원래 크기. 그보다 길면 SHRINK 가 폰트를 깎는다.
+           720 폭 디자인이 실기기 논리폭(약 390pt)으로 줄어드니 36px ≈ 19.5pt 이고,
+           50대+ 하한 16pt 에 해당하는 디자인 크기는 약 29.5px 다. */
+        var PT_SCALE = 390 / 720;
+        var MIN_PT = 16;
+        function minDesignFont() { return MIN_PT / PT_SCALE; }
+
+        var ruler = null;
+        function measureLines(text, fontPx) {
+          if (!ruler) {
+            ruler = elm("div", "tlk-ruler");
+            document.body.appendChild(ruler);
+          }
+          ruler.style.width = LAYOUT.dlgW + "px";
+          ruler.style.fontSize = fontPx + "px";
+          ruler.style.lineHeight = LAYOUT.dlgLine + "px";
+          ruler.textContent = text || "";
+          return Math.max(1, Math.round(ruler.scrollHeight / LAYOUT.dlgLine));
         }
-        function stampNow() {
-          var d = new Date(), z = function (n) { return (n < 10 ? "0" : "") + n; };
-          return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()) + " " + z(d.getHours()) + ":" + z(d.getMinutes());
+        /* SHRINK 를 흉내낸다 — 4줄 안에 들어갈 때까지 폰트를 줄인다.
+           브라우저는 CJK 를 어절 단위로 끊고 cc.Label 은 글자 단위로 끊어서, 웹이 항상
+           같거나 더 많은 줄을 잡는다. 그래서 이 판정은 보수적이다: 여기서 통과하면
+           게임에서도 통과한다. */
+        function shrinkToFit(text) {
+          var cap = Math.max(1, Math.floor(LAYOUT.dlgH / LAYOUT.dlgLine));
+          var size = LAYOUT.dlgFont;
+          var lines = measureLines(text, size);
+          var guard = 0;
+          while (lines > cap && size > 8 && guard++ < 40) {
+            size -= 1;
+            lines = measureLines(text, size);
+          }
+          return { size: size, lines: lines, cap: cap };
         }
-        function collectLines(id) {
-          var defs = PARAMS[id], vals = V[id], out = [];
-          defs.forEach(function (d) {
-            if (d.v != null) {
-              out.push({
-                cfg: d.cfg, value: fmtNum(vals[d.k]),
-                label: d.label + (d.unit ? " (" + d.unit + ")" : ""),
-                changed: vals[d.k] !== d.v, base: fmtNum(d.v),
-              });
-            }
-            if (d.easeK) {
-              out.push({
-                cfg: easeConstName(d.cfg), value: '"' + vals[d.easeK] + '"',
-                label: d.label + " 이징",
-                changed: vals[d.easeK] !== d.ease, base: '"' + d.ease + '"',
-              });
+
+        function runLint() {
+          var host = byId("tlk-lint");
+          host.innerHTML = "";
+          if (!SCRIPT.length) {
+            var p = elm("p", "note");
+            p.textContent = "대사를 넣으면 여기에 검사 결과가 나옵니다. 툴바의 [시트 · 리소스 넣기] 로 시트를 붙여넣거나 story_dialogue.json 을 떨구세요.";
+            host.appendChild(p);
+            return;
+          }
+          var loader = lintLoader();
+          var text = lintText();
+          host.appendChild(lintBlock("로더 규칙", loader,
+            "StoryDataLoader 가 게임 시작 때 던지는 조건을 그대로 옮겼습니다. 여기서 걸리면 게임이 뜨지 않습니다."));
+          host.appendChild(lintBlock("대사 길이", text,
+            "cc.Label 이 SHRINK 라 넘쳐도 잘리지 않고 글자가 작아집니다. 위험은 잘림이 아니라 " +
+            minDesignFont().toFixed(0) + "px(≈16pt) 아래로 내려가 50대+ 가 못 읽게 되는 것입니다. " +
+            "브라우저가 한국어를 어절 단위로 끊어 게임보다 줄을 더 잡으므로 이 판정은 보수적입니다 — 여기서 통과하면 게임에서도 통과합니다."));
+          host.appendChild(lintBlock("아트 인계", lintArt(),
+            "포트레이트 폴더를 떨구면 채워집니다. 트림·프레임 수·캐스트 이름은 과거에 실제로 사고가 났던 항목입니다."));
+        }
+
+        function lintLoader() {
+          var out = [];
+          var seen = {};
+          SCRIPT.forEach(function (l, i) {
+            var where = (l.scene_id || "?") + " " + l.part + "-" + l.step;
+            if (!l.scene_id) out.push(["bad", where, "scene_id 가 비었습니다 — 대사 노드와 이어지지 않습니다"]);
+            if (!castOf(l.speaker)) out.push(["bad", where, "캐스트에 없는 화자: " + (l.speaker || "(빈칸)")]);
+            if (l.direction !== 1 && l.direction !== 2) out.push(["bad", where, "direction 은 1(좌) 또는 2(우) 여야 합니다 — 지금 " + l.direction]);
+            if (l.in_use !== 1 && l.in_use !== 0) out.push(["warn", where, "in_use 가 0/1 이 아닙니다 — " + l.in_use]);
+            if (!String(l.text_en).trim()) out.push(["warn", where, "대사가 비었습니다"]);
+            var k = l.key_number;
+            if (k) { if (seen[k]) out.push(["bad", where, "key_number 중복: " + k]); seen[k] = 1; }
+            if (i > 0 && k && SCRIPT[i - 1].key_number && k < SCRIPT[i - 1].key_number)
+              out.push(["warn", where, "key_number 가 앞 행보다 작습니다 — 로더가 정렬하면 순서가 뒤집힙니다"]);
+          });
+          if (!activeLines().length) out.push(["bad", "-", "in_use=1 인 대사가 하나도 없습니다"]);
+          return out;
+        }
+
+        function lintText() {
+          var out = [], floor = minDesignFont();
+          SCRIPT.forEach(function (l) {
+            var where = (l.scene_id || "?") + " " + l.part + "-" + l.step;
+            var f = shrinkToFit(l.text_en);
+            var label = (l.text_en || "").slice(0, 34) + ((l.text_en || "").length > 34 ? "…" : "");
+            if (f.size < floor) {
+              out.push(["bad", where, f.size + "px 까지 줄어듭니다 (하한 " + floor.toFixed(0) + "px) · " + f.lines + "줄 · " + label]);
+            } else if (f.size < LAYOUT.dlgFont) {
+              out.push(["warn", where, f.size + "px 로 줄어듭니다 (원래 " + LAYOUT.dlgFont + "px) · " + f.lines + "줄 · " + label]);
             }
           });
           return out;
         }
-        function exportText(spec) {
-          var lines = collectLines(spec.id);
-          var changed = lines.filter(function (l) { return l.changed; }).length;
-          var stmts = lines.map(function (l) { return { code: "export const " + l.cfg + " = " + l.value + ";", l: l }; });
-          var w = 0;
-          stmts.forEach(function (x) { if (x.code.length > w) w = x.code.length; });
-          var head = [
-            "// " + new Array(58).join("─"),
-            "// " + spec.no + " · " + spec.title,
-            "// 대화 연출 미리보기에서 맞춘 값 · " + stampNow() + (changed ? " · 기본값과 다른 " + changed + "건에 ← 표시" : " · 전부 기본값"),
-            "// " + new Array(58).join("─"),
-          ];
-          var body = stmts.map(function (x) {
-            var pad = x.code;
-            while (pad.length < w) pad += " ";
-            return pad + "  // " + x.l.label + (x.l.changed ? "   ← 기본 " + x.l.base : "");
+
+        function lintArt() {
+          var out = [];
+          var need = {};
+          activeLines().forEach(function (l) {
+            var k = (l.anim || (l.speaker + "_" + l.emotion)).toLowerCase();
+            need[k] = (need[k] || 0) + 1;
           });
-          /* 되읽기용 데이터. 상수 이름만으로는 소수점이 살지 않아서 원본을 주석 한 줄에
-             실어 둔다 — TypeScript 에 그대로 붙여도 주석이라 무해하고, 문서에 도로
-             붙여넣으면 값이 그대로 되살아난다. */
-          var data = ["// @tlk-data " + spec.id + " " + JSON.stringify(V[spec.id])];
-          return head.concat(body).concat([""]).concat(data).join("\n");
+          var keys = Object.keys(need).sort();
+          if (!Object.keys(IMGS).length) {
+            out.push(["info", "-", "포트레이트가 없습니다 — 더미 상자로 놉니다. 대본이 요구하는 세트 " + keys.length + "개: " + keys.join(", ")]);
+            return out;
+          }
+          keys.forEach(function (k) {
+            if (!IMGS[k]) out.push(["bad", k, "대본이 쓰는데 폴더에 없습니다"]);
+          });
+          Object.keys(IMGS).forEach(function (k) {
+            var meta = IMGMETA[k] || [];
+            if (meta.length !== PORTRAIT.frames)
+              out.push(["bad", k, meta.length + "프레임 — " + PORTRAIT.frames + "장이어야 합니다"]);
+            var bad = meta.filter(function (m) { return m.w !== LAYOUT.portraitW || m.h !== LAYOUT.portraitH; });
+            if (bad.length)
+              out.push(["bad", k, bad.length + "장이 " + LAYOUT.portraitW + "×" + LAYOUT.portraitH + " 가 아닙니다 (" +
+                bad[0].w + "×" + bad[0].h + " 등) — trimType 이 auto 로 임포트되면 이렇게 됩니다"]);
+            if (!need[k]) out.push(["info", k, "폴더에 있지만 대본이 쓰지 않습니다"]);
+            var speaker = k.split("_")[0];
+            if (!CAST.some(function (c) { return c.name.toLowerCase() === speaker; }))
+              out.push(["bad", k, "캐스트에 없는 이름입니다 — 확정 전 이름으로 납품된 적이 있습니다"]);
+          });
+          var raw = Object.keys(IMGMETA).length ? Object.keys(IMGMETA) : [];
+          var mixed = raw.some(function (k) { return (IMGMETA[k][0] || {}).name !== ((IMGMETA[k][0] || {}).name || "").toLowerCase(); });
+          if (mixed) out.push(["warn", "-", "파일명에 대문자가 섞여 있습니다 — 클립 이름은 전부 소문자라 코드가 낮춰서 찾고 있습니다"]);
+          return out;
         }
-        function allText() {
-          var head = [
-            "// DialoguePresentationConfig.ts — 스토리 머지 대화 연출값",
-            "// 대화 연출 미리보기 무대에서 맞춘 값 · " + stampNow(),
-            "// 각 줄 끝의 ← 기본 n 은 문서 기본값에서 바뀐 항목이다.",
+
+        function lintBlock(title, items, why) {
+          var box = elm("div", "tlk-lintbox");
+          var bad = items.filter(function (x) { return x[0] === "bad"; }).length;
+          var warn = items.filter(function (x) { return x[0] === "warn"; }).length;
+          var h = elm("div", "tlk-lint-h");
+          h.innerHTML = "<b>" + title + "</b> "
+            + '<span class="tlk-pill is-bad">' + bad + "</span>"
+            + '<span class="tlk-pill is-warn">' + warn + "</span>";
+          box.appendChild(h);
+          if (!items.length) {
+            var ok = elm("div", "tlk-lint-ok"); ok.textContent = "문제 없음";
+            box.appendChild(ok);
+          } else {
+            var scroll = elm("div", "table-scroll");
+            var t = document.createElement("table");
+            t.className = "tlk-lint-t";
+            t.innerHTML = "<thead><tr><th>구분</th><th>위치</th><th>내용</th></tr></thead>";
+            var tb = document.createElement("tbody");
+            items.forEach(function (it) {
+              var tr = document.createElement("tr");
+              tr.className = "is-" + it[0];
+              var a = document.createElement("td");
+              a.textContent = it[0] === "bad" ? "위험" : it[0] === "warn" ? "주의" : "참고";
+              var b = document.createElement("td"); b.textContent = it[1];
+              var c = document.createElement("td"); c.textContent = it[2];
+              tr.appendChild(a); tr.appendChild(b); tr.appendChild(c);
+              tb.appendChild(tr);
+            });
+            t.appendChild(tb); scroll.appendChild(t); box.appendChild(scroll);
+          }
+          var n = elm("p", "note"); n.textContent = why;
+          box.appendChild(n);
+          return box;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           내보내기 — 값이 코코스로 건너가는 세 갈래
+           ══════════════════════════════════════════════════════════════════ */
+
+        /* .anim 은 그냥 JSON 이다. 원본과 같은 골격으로 되짚어 쓰면 파일을 덮어쓰는 것만으로
+           등장 연출이 반영된다 — 애니메이션 에디터에서 키를 손으로 옮길 일이 없어진다. */
+        function buildAnim(right) {
+          var props = { character: {}, name: {}, text_bubble: {} };
+          Object.keys(CLIP.tracks).forEach(function (key) {
+            var parts = key.split("."), node = parts[0], prop = parts[1];
+            props[node][prop] = CLIP.tracks[key].map(function (k) {
+              var v;
+              if (prop === "scale") {
+                var x = k[1], y = k[2] == null ? k[1] : k[2];
+                v = { __type__: "cc.Vec3", x: right && node === "character" ? -x : x, y: y, z: 1 };
+              } else {
+                v = k[1];
+              }
+              return { frame: k[0], value: v };
+            });
+          });
+          return {
+            __type__: "cc.AnimationClip",
+            _name: right ? "chat_show_right" : "chat_show",
+            _objFlags: 0, _native: "",
+            _duration: clipDuration(CLIP),
+            sample: CLIP.sample, speed: CLIP.speed, wrapMode: CLIP.wrapMode,
+            curveData: { paths: { character: { props: props.character }, name: { props: props.name }, text_bubble: { props: props.text_bubble } } },
+            events: [],
+          };
+        }
+
+        function tsText() {
+          var t = rowTopExtent(), b = rowBottomExtent();
+          return [
+            "// ChatPresentationConfig.ts",
+            "export const CHAT_PRESENTATION_CONFIG: Readonly<ChatPresentationConfig> = Object.freeze({",
+            '    renderer: "bubble",',
+            "    tap_to_advance: 1,",
+            '    portrait: "half",',
+            "    typing_speed_cps: " + fmt(LAYOUT.typingCps) + ",",
+            "    auto_advance_sec: " + fmt(LAYOUT.autoAdvanceSec) + ",",
+            "});",
             "",
+            "// ChatBubbleStoryPresentation.ts — 상단 상수",
+            "const VISIBLE_MESSAGE_COUNT = " + fmt(LAYOUT.poolCount) + ";",
+            "const MESSAGE_BOTTOM_Y = " + fmt(LAYOUT.bottomY) + ";",
+            "const CHAT_VIEWPORT_TOP_Y = " + fmt(LAYOUT.viewportTopY) + ";",
+            "const CHAT_ROW_WIDTH = " + fmt(LAYOUT.rowWidth) + ";",
+            "const PORTRAIT_CANVAS_WIDTH = " + fmt(LAYOUT.portraitW) + ";",
+            "const PORTRAIT_CANVAS_HEIGHT = " + fmt(LAYOUT.portraitH) + ";",
+            "const PORTRAIT_X = " + fmt(LAYOUT.portraitX) + ";",
+            "const PORTRAIT_Y = " + fmt(LAYOUT.portraitY) + ";",
+            "const NAME_BOX_X = " + fmt(LAYOUT.nameX) + ";",
+            "const NAME_BOX_Y = " + fmt(LAYOUT.nameY) + ";",
+            "const NAME_ANIMATION_REST_Y = " + fmt(CLIP.tracks["name.y"][CLIP.tracks["name.y"].length - 1][1]) + ";",
+            "const NAME_BOX_WIDTH = " + fmt(LAYOUT.nameW) + ";",
+            "const NAME_BOX_HEIGHT = " + fmt(LAYOUT.nameH) + ";",
+            "const BUBBLE_CENTER_X = " + fmt(LAYOUT.bubbleX) + ";",
+            "const BUBBLE_CENTER_Y = " + fmt(LAYOUT.bubbleY) + ";",
+            "const BUBBLE_WIDTH = " + fmt(LAYOUT.bubbleW) + ";",
+            "const BUBBLE_HEIGHT = " + fmt(LAYOUT.bubbleH) + ";",
+            "const BUBBLE_ANCHOR_X = " + fmt(LAYOUT.bubbleAnchorX) + ";   // 말꼬리 피벗 — 정규화 금지",
+            "const BUBBLE_ANCHOR_Y = " + fmt(LAYOUT.bubbleAnchorY) + ";",
+            "const DIALOGUE_CENTER_X = " + fmt(LAYOUT.dlgX) + ";",
+            "const DIALOGUE_CENTER_Y = " + fmt(LAYOUT.dlgY) + ";",
+            "const DIALOGUE_WIDTH = " + fmt(LAYOUT.dlgW) + ";",
+            "const DIALOGUE_HEIGHT = " + fmt(LAYOUT.dlgH) + ";",
+            "const MESSAGE_VERTICAL_GAP = " + fmt(LAYOUT.gap) + ";",
+            "const FEED_SHIFT_DURATION_SEC = " + fmt(LAYOUT.feedShiftSec) + ";",
+            "const CHAT_DIM_ALPHA = " + fmt(LAYOUT.dimAlpha) + ";",
+            "const CHAT_DIM_FADE_SEC = " + fmt(LAYOUT.dimFadeSec) + ";",
+            "",
+            "// ChatMessageRow.ts",
+            "const CHAT_UNIT_HIDDEN_SCALE = " + fmt(LAYOUT.hideScale) + ";",
+            "const CHAT_UNIT_HIDE_DURATION_SEC = " + fmt(LAYOUT.hideSec) + ";",
+            "",
+            "// 파생 — 코드가 매번 계산하는 값이라 붙여넣을 필요는 없다. 대조용.",
+            "//   행 위 여백 " + t.toFixed(3) + " · 아래 여백 " + b.toFixed(3) + " · 행 간격 " + rowPitch().toFixed(3),
+            "//   뷰포트 상한 때문에 화면에 남는 행 수 " + maxVisibleRows() + " (풀은 " + LAYOUT.poolCount + ")",
           ].join("\n");
-          return head + CARDS.map(exportText).join("\n\n");
+        }
+
+        function cardText(card) {
+          var lines = ["// " + card.no + " · " + card.title];
+          card.defs.forEach(function (d) {
+            var v = d.a.get();
+            lines.push("//   " + d.label + " = " + fmt(v) + (d.unit || "")
+              + (Math.abs(v - d.base) > 1e-9 ? "   ← 기본 " + fmt(d.base) + (d.unit || "") : ""));
+          });
+          if (card.id === "clip") lines.push("", JSON.stringify(buildAnim(false), null, 2));
+          else lines.push("", tsText());
+          return lines.join("\n");
+        }
+
+        function dialogueJson() {
+          return JSON.stringify(SCRIPT.map(function (l) {
+            var o = {};
+            COLS.forEach(function (c) { o[c] = l[c]; });
+            return o;
+          }), null, 2) + "\n";
+        }
+
+        function sheetCsv() {
+          var head = COLS.concat(["_lines", "_shrink_px", "_verdict"]);
+          var rowsOut = [head];
+          var floor = minDesignFont();
+          SCRIPT.forEach(function (l) {
+            var f = shrinkToFit(l.text_en);
+            var verdict = f.size < floor ? "위험" : f.size < LAYOUT.dlgFont ? "주의" : "정상";
+            rowsOut.push(COLS.map(function (c) { return l[c]; }).concat([f.lines, f.size, verdict]));
+          });
+          var body = rowsOut.map(function (r) {
+            return r.map(function (v) {
+              var s = String(v == null ? "" : v);
+              return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }).join(",");
+          }).join("\r\n");
+          return "﻿" + body + "\r\n";
+        }
+
+        function download(name, text, mime) {
+          var blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url; a.download = name;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
         }
         function copyText(text, btn) {
           function done() {
             var old = btn.textContent;
-            btn.textContent = "복사됨";
-            btn.classList.add("is-done");
-            setTimeout(function () { btn.textContent = old; btn.classList.remove("is-done"); }, 1300);
+            btn.textContent = "복사됨"; btn.classList.add("is-done");
+            setTimeout(function () { btn.textContent = old; btn.classList.remove("is-done"); }, 1200);
           }
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
@@ -1556,479 +1226,255 @@
         }
         function fallbackCopy(text, done) {
           var ta = document.createElement("textarea");
-          ta.value = text;
-          ta.style.cssText = "position:fixed;top:-9999px";
-          document.body.appendChild(ta);
-          ta.select();
+          ta.value = text; ta.style.cssText = "position:fixed;top:-9999px";
+          document.body.appendChild(ta); ta.select();
           try { document.execCommand("copy"); done(); } catch (e) {}
           document.body.removeChild(ta);
         }
 
-        /* ======================================================================
-           파라미터 카드
-           ====================================================================== */
-        var REFRESH = [];
-        function buildCard(spec) {
-          var item = elm("div", "tlk-card");
-          var vals = V[spec.id], defs = PARAMS[spec.id];
-
-          var head = elm("div", "tlk-card-head");
-          var no = elm("span", "tlk-no");
-          no.textContent = spec.no;
-          var h3 = document.createElement("h3");
-          h3.textContent = spec.title;
-          var spacer = elm("span");
-          spacer.style.flex = "1";
-          var resetBtn = elm("button", "tlk-btn");
-          resetBtn.type = "button";
-          resetBtn.textContent = "기본값";
-          var copyBtn = elm("button", "tlk-btn is-primary");
-          copyBtn.type = "button";
-          copyBtn.textContent = "설정 복사";
-          head.appendChild(no); head.appendChild(h3); head.appendChild(spacer);
-          head.appendChild(resetBtn); head.appendChild(copyBtn);
-
-          var body = elm("div", "tlk-card-body");
-          var scroll = elm("div", "table-scroll");
-          var table = document.createElement("table");
-          table.className = "tlk-params";
-          table.innerHTML = "<thead><tr><th>항목</th><th>값</th><th>이징</th><th>메모</th></tr></thead>";
-          var tb = document.createElement("tbody");
-          var rowEls = [];
-
-          defs.forEach(function (d) { rowEls.push(makeRow(d, vals)); });
-          table.appendChild(tb);
-          scroll.appendChild(table);
-          body.appendChild(scroll);
-          item.appendChild(head);
-          item.appendChild(body);
-
-          function makeRow(d, vals) {
-            var tr = document.createElement("tr");
-            var tdL = document.createElement("td");
-            tdL.textContent = d.label;
-            var tdV = document.createElement("td");
-            tdV.className = "tlk-vcell";
-            var input = null, range = null;
-            if (d.v != null) {
-              input = document.createElement("input");
-              input.type = "number";
-              input.className = "tlk-in";
-              input.min = d.min;
-              input.max = d.max;
-              /* step 을 그대로 걸면 12.5 같은 값이 브라우저 검증에서 막힌다.
-                 화살표 간격은 d.step 으로 두되 입력 자체는 어떤 소수든 받는다. */
-              input.step = "any";
-              input.value = vals[d.k];
-              input.addEventListener("keydown", function (e) {
-                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-                e.preventDefault();
-                var cur = parseFloat(input.value);
-                if (!isFinite(cur)) cur = d.v;
-                var next = cur + (e.key === "ArrowUp" ? d.step : -d.step);
-                next = Math.round(next * 1000) / 1000;
-                input.value = clampV(next, d.min, d.max);
-                input.dispatchEvent(new Event("input", { bubbles: true }));
-              });
-              tdV.appendChild(input);
-              if (d.unit) { var u = elm("span", "tlk-u"); u.textContent = d.unit; tdV.appendChild(u); }
-              /* 두 번째 손잡이. 숫자칸은 정밀 입력용으로 두고, 슬라이더는 min~max 를
-                 손으로 훑으며 "어디가 맞는지" 를 찾는 용도다. 여기 step 은 d.step 을
-                 그대로 걸어 눈금이 값과 같게 떨어지도록 한다. */
-              range = document.createElement("input");
-              range.type = "range";
-              range.className = "tlk-rng";
-              range.min = d.min;
-              range.max = d.max;
-              range.step = d.step;
-              range.value = vals[d.k];
-              range.setAttribute("aria-label", d.label);
-              tdV.appendChild(range);
-            } else {
-              tdV.textContent = "—";
-            }
-            var tdE = document.createElement("td");
-            var sel = null;
-            if (d.easeK) {
-              sel = document.createElement("select");
-              sel.className = "tlk-sel";
-              EASE_LIST.forEach(function (e) {
-                var o = document.createElement("option");
-                o.value = e;
-                o.textContent = e;
-                if (e === vals[d.easeK]) o.selected = true;
-                sel.appendChild(o);
-              });
-              tdE.appendChild(sel);
-            } else {
-              tdE.textContent = "—";
-              tdE.className = "tlk-dash";
-            }
-            var tdN = document.createElement("td");
-            tdN.className = "tlk-memo";
-            tdN.textContent = d.note || "";
-
-            tr.appendChild(tdL); tr.appendChild(tdV); tr.appendChild(tdE); tr.appendChild(tdN);
-            tb.appendChild(tr);
-
-            /* 값이 바뀌는 모든 경로(입력 · 슬라이더 · 카드 기본값 · 붙여넣기)가 마지막에
-               이걸 부른다. 그래서 DOM 되맞추기도 여기 한 군데서 한다 — 지금 손대고 있는
-               쪽은 건드리지 않아야 커서가 튀거나 손잡이가 떨지 않는다. */
-            function mark() {
-              var diff = (d.v != null && vals[d.k] !== d.v) || (d.easeK && vals[d.easeK] !== d.ease);
-              tr.classList.toggle("is-changed", !!diff);
-              if (range && document.activeElement !== range) range.value = vals[d.k];
-              if (input && document.activeElement !== input) input.value = vals[d.k];
-              if (sel && document.activeElement !== sel) sel.value = vals[d.easeK];
-              saveSoon();
-            }
-            function after() { mark(); renderLint(); }
-            if (input) {
-              input.addEventListener("input", function () {
-                var n = parseFloat(input.value);
-                if (!isFinite(n)) return;
-                vals[d.k] = clampV(n, d.min, d.max);
-                after();
-              });
-              input.addEventListener("blur", function () { input.value = vals[d.k]; });
-            }
-            if (range) {
-              range.addEventListener("input", function () {
-                var n = parseFloat(range.value);
-                if (!isFinite(n)) return;
-                vals[d.k] = clampV(n, d.min, d.max);
-                after();
-              });
-            }
-            if (sel) sel.addEventListener("change", function () { vals[d.easeK] = sel.value; after(); });
-            mark();
-            return { d: d, input: input, range: range, sel: sel, mark: mark };
-          }
-
-          copyBtn.addEventListener("click", function () { copyText(exportText(spec), copyBtn); });
-          resetBtn.addEventListener("click", function () {
-            defs.forEach(function (d) {
-              if (d.v != null) vals[d.k] = d.v;
-              if (d.easeK) vals[d.easeK] = d.ease;
+        var EXPORTS = [
+          { t: ".anim — chat_show", d: "등장 연출의 알맹이. 이 파일을 덮어쓰면 키를 손으로 옮길 필요가 없습니다.",
+            go: function () { download("chat_show.anim", JSON.stringify(buildAnim(false), null, 2) + "\n", "application/json"); } },
+          { t: ".anim — chat_show_right", d: "우측 변형. 캐릭터 scaleX 만 음수인 같은 클립입니다.",
+            go: function () { download("chat_show_right.anim", JSON.stringify(buildAnim(true), null, 2) + "\n", "application/json"); } },
+          { t: "TS 상수", d: "ChatPresentationConfig.ts 와 ChatBubbleStoryPresentation.ts 상단 상수. 붙여넣으면 끝입니다.",
+            copy: tsText },
+          { t: "story_dialogue.json", d: "대본 전체. 리포에 시트→JSON 변환기가 없어 지금은 사람이 직접 고치는데, 그 자리를 대신합니다.",
+            go: function () { download("story_dialogue.json", dialogueJson(), "application/json"); } },
+          { t: "시트 .csv", d: "검사 결과(줄 수·줄어든 크기·판정)를 컬럼으로 붙여 내보냅니다. 엑셀에서 바로 고칠 수 있게.",
+            go: function () { download("story_dialogue_check.csv", sheetCsv(), "text/csv;charset=utf-8"); } },
+        ];
+        function buildExports() {
+          var host = byId("tlk-exports");
+          host.innerHTML = "";
+          EXPORTS.forEach(function (x) {
+            var box = elm("div", "tlk-exp");
+            var h = elm("b"); h.textContent = x.t;
+            var d = elm("span", "tlk-muted"); d.textContent = x.d;
+            var btn = elm("button", "tlk-btn is-primary");
+            btn.type = "button";
+            btn.textContent = x.copy ? "복사" : "내려받기";
+            btn.addEventListener("click", function () {
+              if (x.copy) copyText(x.copy(), btn); else x.go();
             });
-            rowEls.forEach(function (r) { r.mark(); });
-            renderLint();
+            box.appendChild(h); box.appendChild(d); box.appendChild(btn);
+            host.appendChild(box);
           });
-          REFRESH.push(function () { rowEls.forEach(function (r) { r.mark(); }); });
-          return item;
         }
 
-        var cardHost = byId("tlk-cards");
-        CARDS.forEach(function (spec) { cardHost.appendChild(buildCard(spec)); });
+        /* ══════════════════════════════════════════════════════════════════
+           들어오는 것들 — 시트 · story_dialogue.json · .anim · 포트레이트 폴더
+           ══════════════════════════════════════════════════════════════════ */
 
-        /* ======================================================================
-           들어오는 것 판독 — 순서가 곧 이 문서의 주 경로 선언이다.
-           TSV/CSV → JSON 봉투 → JSON 알맹이 → @tlk-data → export const.
-           대본과 튜닝값은 서로를 지우지 않는다.
-           ====================================================================== */
-        function applyScript(rows, src, notes) {
-          SCRIPT = rows;
-          SCRIPT_SRC = src;
-          ASSIGN = pruneAssign();
-          resetStage();
-          renderLint();
-          renderCast();
-          saveNow();
-          var who = speakerOrder();
-          var msg = "표로 읽었습니다 (" + src + ") · " + rows.length + "줄 · 화자 " + who.length + "명: " + who.join(", ");
-          (notes || []).forEach(function (n) { msg += "\n· " + n; });
-          return msg;
-        }
-        /* 대본이 갈리면 없어진 화자에 붙어 있던 배정은 의미가 없다.
-           다만 이름이 그대로인 슬롯은 살려 둬야 그림을 다시 떨구지 않는다. */
-        function pruneAssign() {
-          var keep = {}, valid = {};
-          castSlots().forEach(function (s) { valid[s.key] = 1; });
-          Object.keys(ASSIGN).forEach(function (k) { if (valid[k]) keep[k] = ASSIGN[k]; });
-          return keep;
-        }
-
-        function readPayload(text) {
-          var re = /@tlk-data\s+([a-z0-9]+)\s+(\{[^\n]*\})/g, m, hit = 0;
-          while ((m = re.exec(text))) {
-            var obj = null;
-            try { obj = JSON.parse(m[2]); } catch (e) { continue; }
-            hit += applyValues(m[1], obj);
-          }
-          return hit;
-        }
-        function readConsts(text) {
-          var map = {}, re = /export\s+const\s+([A-Z0-9_]+)\s*=\s*("[^"]*"|-?[0-9.]+)/g, m;
-          while ((m = re.exec(text))) map[m[1]] = m[2];
-          var hit = 0;
-          Object.keys(PARAMS).forEach(function (id) {
-            var patch = {};
-            PARAMS[id].forEach(function (d) {
-              var raw = map[d.cfg];
-              if (raw != null) patch[d.k] = raw.charAt(0) === '"' ? raw.slice(1, -1) : raw;
-              if (d.easeK) {
-                var ez = map[easeConstName(d.cfg)];
-                if (ez != null && ez.charAt(0) === '"') patch[d.easeK] = ez.slice(1, -1);
-              }
+        /* .anim 을 읽어 CLIP 을 갈아 끼운다. 값을 옮겨 적지 않는 핵심 경로다 —
+           코코스에서 클립을 고치고 여기 떨구면 문서가 그 곡선으로 논다. */
+        function readAnim(obj) {
+          if (!obj || obj.__type__ !== "cc.AnimationClip" || !obj.curveData) return 0;
+          var paths = obj.curveData.paths || {};
+          var tracks = {}, n = 0;
+          Object.keys(paths).forEach(function (node) {
+            var props = (paths[node] || {}).props || {};
+            Object.keys(props).forEach(function (prop) {
+              var keys = props[prop];
+              if (!Array.isArray(keys) || !keys.length) return;
+              tracks[node + "." + prop] = keys.map(function (k) {
+                var v = k.value;
+                if (v && typeof v === "object") return [k.frame, Math.abs(v.x), v.y];
+                return [k.frame, v];
+              });
+              n++;
             });
-            hit += applyValues(id, patch);
           });
-          return hit;
+          if (!n) return 0;
+          CLIP = {
+            name: obj._name || "chat_show",
+            sample: obj.sample || 30,
+            speed: obj.speed == null ? 1 : obj.speed,
+            wrapMode: obj.wrapMode == null ? 1 : obj.wrapMode,
+            tracks: tracks,
+          };
+          rebindClipDefs();
+          return n;
         }
-        /* .json — 내려받기가 씌운 봉투({doc,ver,stamp,script,values})도, 알맹이만
-           있는 것도 받는다. script 만 있으면 대본만, values 만 있으면 값만 갈린다. */
-        function readJson(text) {
-          var obj;
-          try { obj = JSON.parse(text); } catch (e) { return null; }
-          if (!obj || typeof obj !== "object") return null;
-          var msgs = [];
-          if (Array.isArray(obj)) {
-            var rows0 = normScript(obj);
-            if (!rows0) return null;
-            return { msg: applyScript(rows0, "JSON", ["봉투 없이 배열만 들어와 대본으로 읽었습니다"]) };
-          }
-          var did = false;
-          if (obj.script) {
-            var rows = normScript(obj.script);
-            if (rows) { msgs.push(applyScript(rows, "JSON", [])); did = true; }
-          }
-          var bag = obj.values && typeof obj.values === "object" ? obj.values : (obj.script ? null : obj);
-          if (bag) {
-            var hit = 0;
-            Object.keys(bag).forEach(function (id) { hit += applyValues(id, bag[id]); });
-            if (hit) {
-              REFRESH.forEach(function (fn) { fn(); });
-              renderLint();
-              saveNow();
-              msgs.push("연출 값 " + hit + "개를 JSON 에서 읽었습니다 · 기본값과 다른 " + changedCount() + "개");
-              did = true;
-            }
-          }
-          return did ? { msg: msgs.join("\n") } : null;
-        }
+        /* 클립이 통째로 갈리면 표의 기준값(기본 열)도 새 클립 기준으로 다시 잡아야 한다. */
+        function rebindClipDefs() { buildCards(); }
 
         function importText(text) {
-          if (!text || !text.trim()) return { ok: false, msg: "붙여넣은 내용이 없습니다." };
-          var t = String(text).replace(/^\uFEFF/, "");
-          var first = t.trim().charAt(0);
-          var tabErr = "";
-          /* JSON 으로 시작하는 텍스트는 표 파서에 넣지 않는다 — 통과할 리는 없지만
-             엉뚱한 오류 문구가 앞에 서면 진짜 원인을 못 찾는다. */
-          if (first !== "{" && first !== "[") {
-            var tab = parseSheet(t);
-            if (tab.ok) return { ok: true, msg: applyScript(tab.rows, tab.src, tab.notes) };
-            tabErr = tab.err || "";
+          if (!text || !text.trim()) return { hit: 0, how: "" };
+          var trimmed = text.trim();
+          if (trimmed.charAt(0) === "{" || trimmed.charAt(0) === "[") {
+            var obj = null;
+            try { obj = JSON.parse(trimmed); } catch (e) { obj = null; }
+            if (obj) {
+              if (!Array.isArray(obj) && obj.__type__ === "cc.AnimationClip") {
+                var n = readAnim(obj);
+                if (n) return { hit: n, how: ".anim 클립", clip: true };
+              }
+              var arr = Array.isArray(obj) ? obj : (Array.isArray(obj.script) ? obj.script : null);
+              if (arr) {
+                SCRIPT = arr.map(function (o, i) { return normalizeLine(o, i); });
+                return { hit: SCRIPT.length, how: "JSON 대본" };
+              }
+            }
           }
-          var j = readJson(t);
-          if (j) return { ok: true, msg: j.msg };
-          var d = readPayload(t);
-          if (d) {
-            REFRESH.forEach(function (fn) { fn(); });
-            renderLint();
-            saveNow();
-            return { ok: true, msg: "연출 값 " + d + "개를 읽었습니다 (@tlk-data) · 대본은 그대로입니다 · 기본값과 다른 " + changedCount() + "개" };
+          var res = readSheet(text);
+          if (res && res.error) return { hit: 0, how: "", error: res.error };
+          if (res && res.lines && res.lines.length) {
+            SCRIPT = res.lines;
+            return { hit: SCRIPT.length, how: res.sep + " 시트", unknown: res.unknown };
           }
-          var c = readConsts(t);
-          if (c) {
-            REFRESH.forEach(function (fn) { fn(); });
-            renderLint();
-            saveNow();
-            return { ok: true, msg: "연출 값 " + c + "개를 읽었습니다 (export const) · 대본은 그대로입니다 · 기본값과 다른 " + changedCount() + "개" };
-          }
-          return {
-            ok: false,
-            msg: (tabErr ? tabErr + "\n\n" : "") +
-              "읽을 수 있는 내용이 없습니다. 엑셀·구글시트에서 대사 표를 통째로 긁어 붙여넣거나, 내려받은 .csv · .json 을 넣어 주세요.",
-          };
+          return { hit: 0, how: "" };
         }
 
-        /* ======================================================================
-           내보내기
-           ====================================================================== */
-        /* 대사에 쉼표·따옴표·줄바꿈이 그대로 들어 있어야 시트에서 다시 편집할 수 있다.
-           RFC 4180 규칙: 특수문자가 있으면 따옴표로 감싸고 안쪽 따옴표는 두 번 쓴다. */
-        function csvCell(v) {
-          var s = v == null ? "" : String(v);
-          if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-          return s;
-        }
-        function csvText() {
-          var head = ["순번", "화자", "위치", "표정", "대사", "자동넘김", "강조", "글자수", "줄수", "판정"];
-          var rows = SCRIPT.map(function (l, i) {
-            var m = LINT[i] || { chars: 0, lines: 0, verdict: "" };
-            return [
-              l.no || i + 1,
-              l.speaker,
-              l.side === "right" ? "우" : "좌",
-              EMO_LABEL[l.emotion] || "기본",
-              l.text,
-              l.autoMs == null ? "" : l.autoMs,
-              l.emph ? "Y" : "",
-              m.chars,
-              m.lines,
-              m.verdict,
-            ].map(csvCell).join(",");
+        /* 포트레이트 폴더. 파일명이 <character>_<emotion>_png_00001_.png 라
+           캐릭터·감정·프레임 순번을 거기서 그대로 읽는다. */
+        var NAME_RE = /^([A-Za-z]+)_([A-Za-z]+)_png_(\d+)_?\.png$/i;
+        function ingestFiles(files) {
+          var list = Array.prototype.slice.call(files).filter(function (f) {
+            return /\.png$/i.test(f.name);
           });
-          /* 앞의 BOM 이 없으면 엑셀이 UTF-8 로 안 읽어서 한글이 통째로 깨진다 */
-          return "\uFEFF" + [head.map(csvCell).join(",")].concat(rows).join("\r\n") + "\r\n";
-        }
-        function download(name, text, mime) {
-          var blob = new Blob([text], { type: mime });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement("a");
-          a.href = url;
-          a.download = name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-        }
-        function fileStamp() { return stampNow().replace(/[: ]/g, "-"); }
-
-        /* ======================================================================
-           모달 · 툴바 배선
-           ====================================================================== */
-        var ioDlg = byId("tlk-io");
-        var ioTa = byId("tlk-io-ta");
-        var ioMsg = byId("tlk-io-msg");
-        var ioFile = byId("tlk-io-file");
-        var barBadge = byId("tlk-badge");
-
-        function barSay(text) {
-          barBadge.textContent = text;
-          barBadge.hidden = !text;
-        }
-        function ioSay(text, bad) {
-          ioMsg.textContent = text || "";
-          ioMsg.classList.toggle("is-bad", !!bad);
-        }
-        /* 붙여넣으면 캐럿이 끝으로 가고 브라우저가 그 캐럿을 보이려고 스크롤을 끌고 간다.
-           표는 줄이 길어서 붙이자마자 엉뚱한 중간이 보인다 — 캐럿을 맨 앞으로 되돌린다. */
-        function ioHome() {
-          try { ioTa.setSelectionRange(0, 0); } catch (e) {}
-          ioTa.scrollTop = 0;
-          ioTa.scrollLeft = 0;
-        }
-        ioTa.addEventListener("paste", function () { setTimeout(ioHome, 0); });
-        function ioOpen() {
-          ioSay("");
-          if (ioDlg.showModal) ioDlg.showModal(); else ioDlg.setAttribute("open", "");
-          ioTa.focus();
-        }
-        function ioClose() {
-          if (ioDlg.close) ioDlg.close(); else ioDlg.removeAttribute("open");
-        }
-        /* 적용에 성공하면 창을 닫는다 — 결과는 무대와 표에 나타나는데 모달이 그걸 가린다.
-           대신 sticky 툴바의 배지가 결과를 받아 스크롤 어디서든 보이게 한다. */
-        function importDone(res) {
-          if (!res.ok) { ioSay(res.msg, true); return; }
-          ioClose();
-          barSay(res.msg.split("\n")[0]);
-          ioSay(res.msg);
-        }
-
-        byId("tlk-ioopen").addEventListener("click", ioOpen);
-        byId("tlk-io-x").addEventListener("click", ioClose);
-        ioDlg.addEventListener("click", function (e) { if (e.target === ioDlg) ioClose(); });
-        byId("tlk-io-apply").addEventListener("click", function () {
-          if (!ioTa.value.trim()) { ioSay("붙여넣은 내용이 없습니다.", true); return; }
-          importDone(importText(ioTa.value));
-        });
-        byId("tlk-io-sample").addEventListener("click", function () {
-          ioTa.value = SAMPLE_TSV;
-          ioHome();
-          importDone(importText(SAMPLE_TSV));
-        });
-
-        function readTextFile(file) {
-          if (!file) return;
-          var fr = new FileReader();
-          fr.onload = function () {
-            ioTa.value = String(fr.result);
-            ioHome();
-            importDone(importText(ioTa.value));
-          };
-          fr.onerror = function () { ioSay("파일을 읽지 못했습니다.", true); };
-          fr.readAsText(file);
-        }
-        byId("tlk-io-pick").addEventListener("click", function () { ioFile.click(); });
-        ioFile.addEventListener("change", function () { readTextFile(ioFile.files[0]); ioFile.value = ""; });
-
-        ["dragenter", "dragover"].forEach(function (ev) {
-          ioDlg.addEventListener(ev, function (e) { e.preventDefault(); ioDlg.classList.add("is-drop"); });
-        });
-        /* dragleave 는 자식 위로 지나갈 때도 터진다. 그대로 받으면 창 안에서
-           파일을 옮기는 내내 테두리가 깜빡인다 — 창 자체를 벗어날 때만 끈다. */
-        ioDlg.addEventListener("dragleave", function (e) { if (e.target === ioDlg) ioDlg.classList.remove("is-drop"); });
-        ioDlg.addEventListener("drop", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          ioDlg.classList.remove("is-drop");
-          var dt = e.dataTransfer;
-          if (dt && dt.files && dt.files.length) {
-            if (handleImages(dt.files)) return;      // 그림을 창에 떨궈도 받는다
-            readTextFile(dt.files[0]);
-            return;
-          }
-          var t = dt && dt.getData("text");
-          if (t) { ioTa.value = t; ioHome(); importDone(importText(t)); }
-        });
-
-        /* 그림은 문서 어디에 떨궈도 받는다 — 전용 칸을 찾아 스크롤하게 만들면
-           "왜 안 되지" 로 끝난다. 브라우저 기본 동작(파일 열기)은 반드시 막는다. */
-        var dropZone = byId("tlk-drop");
-        var imgFile = byId("tlk-img-file");
-        dropZone.addEventListener("click", function () { imgFile.click(); });
-        imgFile.addEventListener("change", function () { handleImages(imgFile.files); imgFile.value = ""; });
-        ["dragenter", "dragover"].forEach(function (ev) {
-          window.addEventListener(ev, function (e) {
-            if (!e.dataTransfer) return;
-            e.preventDefault();
-            /* 모달 위에서 끄는 중이면 모달이 자기 테두리를 켠다 — 둘 다 켜면 어디에
-               떨어지는지가 모호해진다 */
-            if (ioDlg.contains(e.target)) return;
-            dropZone.classList.add("is-over");
+          if (!list.length) return Promise.resolve({ sets: 0, skipped: 0 });
+          var buckets = {}, skipped = 0;
+          list.forEach(function (f) {
+            var m = NAME_RE.exec(f.name);
+            if (!m) { skipped++; return; }
+            var key = (m[1] + "_" + m[2]).toLowerCase();
+            (buckets[key] = buckets[key] || []).push({ file: f, seq: parseInt(m[3], 10), name: f.name });
           });
-        });
-        window.addEventListener("dragleave", function (e) {
-          if (e.relatedTarget) return;
-          dropZone.classList.remove("is-over");
-        });
-        window.addEventListener("drop", function (e) {
-          e.preventDefault();
-          dropZone.classList.remove("is-over");
-          var dt = e.dataTransfer;
-          if (!dt || !dt.files || !dt.files.length) return;
-          if (handleImages(dt.files)) return;
-          readTextFile(dt.files[0]);
-        });
+          var keys = Object.keys(buckets);
+          if (!keys.length) return Promise.resolve({ sets: 0, skipped: skipped });
+          return Promise.all(keys.map(function (key) {
+            var items = buckets[key].sort(function (a, b) { return a.seq - b.seq; });
+            return Promise.all(items.map(readOne)).then(function (loaded) {
+              IMGS[key] = loaded.map(function (x) { return x.uri; });
+              IMGMETA[key] = loaded.map(function (x) { return { name: x.name, w: x.w, h: x.h }; });
+            });
+          })).then(function () { return { sets: keys.length, skipped: skipped }; });
+        }
+        function readOne(item) {
+          return new Promise(function (resolve) {
+            var fr = new FileReader();
+            fr.onload = function () {
+              var uri = String(fr.result);
+              var img = new Image();
+              img.onload = function () { resolve({ uri: uri, name: item.name, w: img.naturalWidth, h: img.naturalHeight }); };
+              img.onerror = function () { resolve({ uri: uri, name: item.name, w: 0, h: 0 }); };
+              img.src = uri;
+            };
+            fr.onerror = function () { resolve({ uri: "", name: item.name, w: 0, h: 0 }); };
+            fr.readAsDataURL(item.file);
+          });
+        }
 
-        byId("tlk-io-csv").addEventListener("click", function () {
-          if (!SCRIPT.length) { ioSay("내보낼 대본이 없습니다.", true); return; }
-          download("dialogue-" + fileStamp() + ".csv", csvText(), "text/csv;charset=utf-8");
-          var bad = LINT.filter(function (m) { return m.verdict === "넘침"; }).length;
-          ioSay("내려받았습니다 · " + SCRIPT.length + "줄" + (bad ? " · 넘침 " + bad + "줄이 판정 컬럼에 표시돼 있습니다" : ""));
-        });
-        byId("tlk-io-json").addEventListener("click", function () {
-          download(
-            "dialogue-" + fileStamp() + ".json",
-            JSON.stringify({ doc: "dialogue-preview", ver: 1, stamp: stampNow(), script: SCRIPT, values: V }, null, 2),
-            "application/json"
-          );
-          ioSay("내려받았습니다 · 대본 " + SCRIPT.length + "줄 + 연출 값 (기본값과 다른 " + changedCount() + "개)");
-        });
-        byId("tlk-io-copy").addEventListener("click", function () { copyText(allText(), this); });
-        byId("tlk-copyall").addEventListener("click", function () { copyText(allText(), this); });
-        byId("tlk-resetall").addEventListener("click", function () {
-          if (!window.confirm("연출 값과 대본을 기본값·샘플로 되돌립니다. 이 브라우저에 저장된 작업본도 지워집니다.")) return;
-          if (saveTimer) clearTimeout(saveTimer);      // 리로드 직전에 도로 저장되는 것 방지
-          storeClear();
-          location.reload();
-        });
+        function buildCastBox() {
+          var host = byId("tlk-castbox");
+          host.innerHTML = "";
+          var keys = Object.keys(IMGS).sort();
+          if (!keys.length) return;
+          var scroll = elm("div", "table-scroll");
+          var t = document.createElement("table");
+          t.className = "tlk-cast";
+          t.innerHTML = "<thead><tr><th>세트</th><th>프레임</th><th>크기</th><th>미리보기</th></tr></thead>";
+          var tb = document.createElement("tbody");
+          keys.forEach(function (k) {
+            var meta = IMGMETA[k] || [];
+            var first = meta[0] || {};
+            var tr = document.createElement("tr");
+            var a = document.createElement("td"); a.textContent = k;
+            var b = document.createElement("td"); b.textContent = meta.length + "장";
+            if (meta.length !== PORTRAIT.frames) b.className = "is-bad";
+            var c = document.createElement("td");
+            c.textContent = first.w + "×" + first.h;
+            if (first.w !== LAYOUT.portraitW || first.h !== LAYOUT.portraitH) c.className = "is-bad";
+            var d = document.createElement("td");
+            var im = elm("span", "tlk-thumb");
+            im.style.backgroundImage = "url(" + (IMGS[k][0] || "") + ")";
+            d.appendChild(im);
+            tr.appendChild(a); tr.appendChild(b); tr.appendChild(c); tr.appendChild(d);
+            tb.appendChild(tr);
+          });
+          t.appendChild(tb); scroll.appendChild(t); host.appendChild(scroll);
+        }
 
-        byId("tlk-play").addEventListener("click", playAll);
-        byId("tlk-step").addEventListener("click", stepOne);
-        byId("tlk-rewind").addEventListener("click", function () { resetStage(); });
+        /* ══════════════════════════════════════════════════════════════════
+           저장 · 배선
+           이미지는 저장하지 않는다. base64 17장씩 16세트면 localStorage 한도를
+           한참 넘긴다. 값과 대본만 남기고, 이미지는 세션마다 다시 떨군다.
+           ══════════════════════════════════════════════════════════════════ */
+        var STORE_KEY = "tlk.chat.v2";
+        var saveTimer = null;
+        function saveNow() {
+          try {
+            localStorage.setItem(STORE_KEY, JSON.stringify({ clip: CLIP, layout: LAYOUT, portrait: PORTRAIT, script: SCRIPT }));
+          } catch (e) {}
+        }
+        function saveSoon() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); }
+        function storeClear() { try { localStorage.removeItem(STORE_KEY); } catch (e) {} }
+        function restore() {
+          var raw = null;
+          try { raw = localStorage.getItem(STORE_KEY); } catch (e) { return false; }
+          if (!raw) return false;
+          var s;
+          try { s = JSON.parse(raw); } catch (e) { storeClear(); return false; }
+          if (!s || typeof s !== "object") { storeClear(); return false; }
+          if (s.clip && s.clip.tracks) CLIP = s.clip;
+          if (s.layout) Object.keys(LAYOUT).forEach(function (k) {
+            if (typeof s.layout[k] === "number" && isFinite(s.layout[k])) LAYOUT[k] = s.layout[k];
+          });
+          if (s.portrait) Object.keys(PORTRAIT).forEach(function (k) {
+            if (s.portrait[k] != null) PORTRAIT[k] = s.portrait[k];
+          });
+          if (Array.isArray(s.script)) SCRIPT = s.script.map(function (o, i) { return normalizeLine(o, i); });
+          return true;
+        }
+
+        function badge(text) {
+          var b = byId("tlk-badge");
+          b.textContent = text || "";
+          b.hidden = !text;
+        }
+        function onValueChange() {
+          saveSoon();
+          updateFeedNote();
+          rows.forEach(function (r) { relayoutRow(r); });
+          layoutFeedStatic();
+        }
+        /* 값이 바뀌면 이미 떠 있는 행도 새 좌표로 옮긴다 — 안 그러면 표를 만지는 동안
+           화면과 값이 어긋나서 뭘 보고 판단하는지 모르게 된다. */
+        function relayoutRow(r) {
+          var sign = r.sign, pivot = bubblePivot(sign);
+          place(r.portrait, LAYOUT.portraitX * sign, LAYOUT.portraitY, LAYOUT.portraitW, LAYOUT.portraitH, 0.5, 0.5);
+          place(r.name, LAYOUT.nameX * sign, LAYOUT.nameRestY, LAYOUT.nameW, LAYOUT.nameH, 0.5, 0.5);
+          r.name.style.fontSize = LAYOUT.nameFont + "px";
+          r.stage.style.left = pivot.x + "px";
+          r.stage.style.top = (-pivot.y) + "px";
+          r.bubble.style.width = LAYOUT.bubbleW + "px";
+          r.bubble.style.height = LAYOUT.bubbleH + "px";
+          r.dlg.style.left = (LAYOUT.dlgX * sign - pivot.x) + "px";
+          r.dlg.style.top = (-(LAYOUT.dlgY - pivot.y)) + "px";
+          r.dlg.style.width = LAYOUT.dlgW + "px";
+          r.dlg.style.height = LAYOUT.dlgH + "px";
+          r.dlg.style.fontSize = LAYOUT.dlgFont + "px";
+          r.dlg.style.lineHeight = LAYOUT.dlgLine + "px";
+          applyBox(r);
+        }
+        function layoutFeedStatic() {
+          trimFeed();
+          var pitch = rowPitch();
+          for (var i = rows.length - 1, k = 0; i >= 0; i--, k++) {
+            rows[i].y = LAYOUT.bottomY + k * pitch;
+            rows[i].el.style.top = gy(rows[i].y) + "px";
+          }
+        }
+
+        function fitStage() {
+          var wrap = phoneEl.parentNode;
+          var avail = Math.min(wrap.clientWidth || DESIGN_W, 420);
+          var k = avail / DESIGN_W;
+          phoneEl.style.setProperty("--k", k);
+          wrap.style.height = (DESIGN_H * k) + "px";
+          wrap.style.width = (DESIGN_W * k) + "px";
+        }
 
         function seg(id, apply) {
           var box = byId(id);
@@ -2041,52 +1487,148 @@
             apply(b);
           });
         }
-        seg("tlk-speed", function (b) { SPEED = parseFloat(b.getAttribute("data-sp")); });
-        seg("tlk-loop", function (b) { LOOP = b.getAttribute("data-lp") === "1"; });
 
-        /* 창 폭이 바뀌면 대사창 안쪽 폭도 바뀐다 — 폭이 바뀌면 줄 수가 바뀐다.
-           길이 판정을 붙박이 숫자로 두면 좁은 화면에서 거짓말이 된다. */
-        var reTimer = null;
-        window.addEventListener("resize", function () {
-          if (reTimer) clearTimeout(reTimer);
-          reTimer = setTimeout(renderLint, 150);
-        });
+        function boot() {
+          feedEl = byId("tlk-feed"); phoneEl = document.querySelector(".tlk-phone");
+          dimEl = byId("tlk-dim"); nowEl = byId("tlk-now"); guideEl = byId("tlk-guide");
 
-        /* ======================================================================
-           기동
-           ====================================================================== */
-        byId("tlk-sample").textContent = SAMPLE_TSV;
+          snapshotDefaults();
+          var restored = restore();
+          buildCards(); buildExports(); buildCastBox();
+          fitStage();
+          window.addEventListener("resize", fitStage);
+          updateNow(null); updateFeedNote(); runLint();
+          if (restored) badge("이전 작업본 복원됨" + (SCRIPT.length ? " · 대사 " + SCRIPT.length + "줄" : ""));
 
-        var restored = null;
-        (function restore() {
-          var raw = null;
-          try { raw = localStorage.getItem(STORE_KEY); } catch (e) { return; }
-          if (!raw) return;
-          var saved;
-          try { saved = JSON.parse(raw); } catch (e) { storeClear(); return; }
-          if (!saved || typeof saved !== "object") { storeClear(); return; }
-          if (saved.values) Object.keys(saved.values).forEach(function (id) { applyValues(id, saved.values[id]); });
-          var rows = normScript(saved.script);
-          if (rows) { SCRIPT = rows; SCRIPT_SRC = saved.src || "복원"; }
-          restored = { vals: changedCount(), lines: rows ? rows.length : 0 };
-        })();
+          byId("tlk-play").addEventListener("click", playAll);
+          byId("tlk-step").addEventListener("click", function () { stopPlay(); stepOnce(); });
+          byId("tlk-rewind").addEventListener("click", rewind);
+          byId("tlk-showbox").addEventListener("change", function () {
+            showBox = this.checked; rows.forEach(applyBox);
+          });
+          byId("tlk-showguide").addEventListener("change", function () { guideEl.hidden = !this.checked; });
+          seg("tlk-speed", function (b) { SPEED = parseFloat(b.getAttribute("data-sp")); });
+          seg("tlk-freeze", function (b) {
+            var v = b.getAttribute("data-fz");
+            FREEZE = v === "" ? null : parseFloat(v);
+            if (FREEZE != null && !rows.length) stepOnce();
+          });
+          byId("tlk-resetall").addEventListener("click", function () {
+            if (!window.confirm("연출 값과 대본을 기본으로 되돌리고 저장본도 지웁니다.")) return;
+            if (saveTimer) clearTimeout(saveTimer);
+            storeClear();
+            location.reload();
+          });
 
-        if (!SCRIPT.length) {
-          var boot = parseSheet(SAMPLE_TSV);
-          if (boot.ok) { SCRIPT = boot.rows; SCRIPT_SRC = "샘플"; }
+          /* 시트 · 리소스 넣기 창 */
+          var dlg = byId("tlk-io"), ta = byId("tlk-io-ta"), msg = byId("tlk-io-msg"), file = byId("tlk-io-file");
+          function say(t, bad) { msg.textContent = t || ""; msg.classList.toggle("is-bad", !!bad); }
+          function ioHome() {
+            try { ta.setSelectionRange(0, 0); } catch (e) {}
+            ta.scrollTop = 0; ta.scrollLeft = 0;
+          }
+          ta.addEventListener("paste", function () { setTimeout(ioHome, 0); });
+          byId("tlk-ioopen").addEventListener("click", function () {
+            say(""); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
+            ta.focus();
+          });
+          byId("tlk-io-x").addEventListener("click", function () { dlg.close ? dlg.close() : dlg.removeAttribute("open"); });
+          dlg.addEventListener("click", function (e) { if (e.target === dlg) (dlg.close ? dlg.close() : dlg.removeAttribute("open")); });
+          function applyImport(text) {
+            var res = importText(text);
+            if (res.error) { say(res.error, true); return; }
+            if (!res.hit) { say("읽을 수 있는 내용이 없습니다. 시트 표 · story_dialogue.json · .anim 중 하나여야 합니다.", true); return; }
+            if (!res.clip) { rewind(); }
+            syncAllCards(); runLint(); saveNow(); onValueChange();
+            dlg.close ? dlg.close() : dlg.removeAttribute("open");
+            badge(res.how + " 적용됨" + (res.clip ? " · 트랙 " + res.hit + "개" : " · 대사 " + res.hit + "줄")
+              + (res.unknown && res.unknown.length ? " · 못 알아본 컬럼: " + res.unknown.join(", ") : ""));
+          }
+          byId("tlk-io-apply").addEventListener("click", function () {
+            if (!ta.value.trim()) { say("붙여넣은 내용이 없습니다.", true); return; }
+            applyImport(ta.value);
+          });
+          byId("tlk-io-pick").addEventListener("click", function () { file.click(); });
+          file.addEventListener("change", function () {
+            var f = file.files[0]; file.value = "";
+            if (!f) return;
+            var fr = new FileReader();
+            fr.onload = function () { ta.value = String(fr.result); ioHome(); applyImport(ta.value); };
+            fr.readAsText(f);
+          });
+          ["dragenter", "dragover"].forEach(function (ev) {
+            dlg.addEventListener(ev, function (e) { e.preventDefault(); dlg.classList.add("is-drop"); });
+          });
+          dlg.addEventListener("dragleave", function (e) { if (e.target === dlg) dlg.classList.remove("is-drop"); });
+          dlg.addEventListener("drop", function (e) {
+            e.preventDefault(); dlg.classList.remove("is-drop");
+            var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!f) return;
+            var fr = new FileReader();
+            fr.onload = function () { ta.value = String(fr.result); ioHome(); applyImport(ta.value); };
+            fr.readAsText(f);
+          });
+
+          /* 포트레이트 폴더 */
+          var drop = byId("tlk-drop"), dirInput = byId("tlk-dirinput");
+          byId("tlk-pickdir").addEventListener("click", function () { dirInput.click(); });
+          dirInput.addEventListener("change", function () { takeFiles(dirInput.files); dirInput.value = ""; });
+          ["dragenter", "dragover"].forEach(function (ev) {
+            drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("is-over"); });
+          });
+          ["dragleave", "drop"].forEach(function (ev) {
+            drop.addEventListener(ev, function (e) { e.preventDefault(); if (ev === "drop" || e.target === drop) drop.classList.remove("is-over"); });
+          });
+          drop.addEventListener("drop", function (e) {
+            var dt = e.dataTransfer;
+            if (dt && dt.items && dt.items.length && dt.items[0].webkitGetAsEntry) {
+              collectEntries(dt.items).then(takeFiles);
+              return;
+            }
+            if (dt && dt.files) takeFiles(dt.files);
+          });
+          function takeFiles(files) {
+            drop.classList.add("is-busy");
+            ingestFiles(files).then(function (r) {
+              drop.classList.remove("is-busy");
+              buildCastBox(); runLint();
+              badge(r.sets ? "포트레이트 " + r.sets + "세트 읽음" + (r.skipped ? " · 이름 규칙과 다른 파일 " + r.skipped + "개 건너뜀" : "")
+                : "읽을 수 있는 PNG 가 없습니다");
+            });
+          }
         }
 
-        REFRESH.forEach(function (fn) { fn(); });
-        resetStage();
-        renderCast();
-        /* 첫 계산은 레이아웃이 잡힌 뒤에 해야 한다 — 붙기 전에는 대사창 폭이 0 이라
-           모든 대사가 "넘침" 으로 찍힌다. */
-        requestAnimationFrame(function () {
-          renderLint();
-          if (restored && (restored.vals > 0 || restored.lines > 0)) {
-            barSay("이전 작업본 복원됨 · 대본 " + restored.lines + "줄 · 기본값과 다른 값 " + restored.vals + "개");
+        /* 폴더를 통째로 떨구면 files 가 비어 있고 entry 트리로만 온다. 재귀로 훑는다. */
+        function collectEntries(items) {
+          var entries = [];
+          for (var i = 0; i < items.length; i++) {
+            var e = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+            if (e) entries.push(e);
           }
-        });
+          var files = [];
+          function walk(entry) {
+            if (entry.isFile) {
+              return new Promise(function (res) { entry.file(function (f) { files.push(f); res(); }, res); });
+            }
+            if (entry.isDirectory) {
+              var reader = entry.createReader();
+              return new Promise(function (res) {
+                var all = [];
+                (function readMore() {
+                  reader.readEntries(function (batch) {
+                    if (!batch.length) { Promise.all(all.map(walk)).then(res); return; }
+                    all = all.concat(batch); readMore();
+                  }, res);
+                })();
+              });
+            }
+            return Promise.resolve();
+          }
+          return Promise.all(entries.map(walk)).then(function () { return files; });
+        }
+
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+        else boot();
       })();
     </script>
     <script src="../app.js"></script>

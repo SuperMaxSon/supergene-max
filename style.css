@@ -4360,33 +4360,17 @@ select.calc-in {
   .icx-slots { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   대화 연출 미리보기 (.tlk-*) — docs/dialogue-preview.html 전용
+   무대는 코코스 디자인 해상도 720×1280 좌표를 그대로 쓰고 transform: scale 로
+   줄인다. 그래서 안쪽 좌표는 전부 게임 상수 그대로다 — 변환해서 담으면
+   코코스 상수가 바뀔 때 옮겨 적는 단계가 하나 더 생기고 거기서 어긋난다.
+   ════════════════════════════════════════════════════════════════════════ */
 
-/* ==========================================================================
-   docs/dialogue-preview.html — 대화 연출 미리보기
-   대사 길이와 초상 등장 속도는 말로 주고받으면 절대 안 맞는다. 폰 비율 프레임을
-   문서 안에 세우고 그 안에서 값을 맞춘다. 그래서 이 문서만 "무대" 를 갖는다.
-   무대 안쪽 색(--tlk-*)은 허브 토큰이 아니라 게임 화면의 색이다 — 여기서만
-   허브 팔레트를 벗어난다. 무대 밖(표·모달·설명)은 전부 허브 토큰.
-   클래스는 전부 tlk- 접두어다. 머지 피드백 연출집(.mfx-*)과 같은 모양이지만
-   일부러 복제했다 — 한쪽 문서를 손보다 다른 문서가 깨지는 걸 막는다.
-   ========================================================================== */
-.tlk {
-  --ink: #2b2118;
-  --paper: #fff8ef;
-  --sea: #cfe6e2;
-  --sky: #eaf3f6;
-  --dock: #d9bd94;
-  --boxbg: rgba(30, 24, 18, 0.88);
-  --boxink: #fff8ef;
-  --namebg: #4d7c0f;
-}
-
-/* ---- 툴바. 재생·속도가 이 문서의 조작부라 sticky 로 항상 손에 둔다.
-        스크롤이 파라미터 표 아래로 내려가도 재생 버튼이 따라온다. ---- */
 .tlk-bar {
   position: sticky;
   top: calc(var(--nav-h) + 8px);
-  z-index: 6;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -4399,684 +4383,252 @@ select.calc-in {
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow);
 }
-.tlk-bar-l {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-}
-.tlk-bar-note {
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--text-dim);
-  flex: 1 1 240px;
-  min-width: 0;
-}
-.tlk-bar-note b {
-  color: var(--text);
-  font-weight: 700;
-}
-
-.tlk-seg {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
+.tlk-bar-l { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--text-faint); }
+.tlk-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
 .tlk-seg button {
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 11px;
-  border: 0;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-dim);
-  cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border: 0; border-right: 1px solid var(--border);
+  background: var(--surface); color: var(--text-dim); cursor: pointer;
 }
-.tlk-seg button:last-child {
-  border-right: 0;
-}
-.tlk-seg button[aria-pressed="true"] {
-  background: var(--smg);
-  color: #fff;
-}
-
+.tlk-seg button:last-child { border-right: 0; }
+.tlk-seg button[aria-pressed="true"] { background: var(--smg); color: #fff; }
 .tlk-btn {
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text-dim);
-  cursor: pointer;
-  white-space: nowrap;
+  font: inherit; font-size: 12px; font-weight: 700;
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text-dim); cursor: pointer; white-space: nowrap;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.tlk-btn:hover {
-  border-color: var(--smg);
-  color: var(--smg);
-}
-.tlk-btn.is-primary {
-  background: var(--smg);
-  border-color: var(--smg);
-  color: #fff;
-}
-.tlk-btn.is-primary:hover {
-  background: color-mix(in srgb, var(--smg) 82%, #000);
-  color: #fff;
-}
-.tlk-btn.is-done {
-  background: var(--ok);
-  border-color: var(--ok);
-  color: #fff;
-}
-.tlk-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/* 복원·적용 결과 배지. 며칠 뒤 열었을 때 남의 작업본을 기본값으로 오해하면
-   그대로 코드에 박히므로 툴바에서 눈에 띄어야 한다. */
+.tlk-btn:hover { border-color: var(--smg); color: var(--smg); }
+.tlk-btn.is-primary { background: var(--smg); border-color: var(--smg); color: #fff; }
+.tlk-btn.is-primary:hover { background: color-mix(in srgb, var(--smg) 82%, #000); color: #fff; }
+.tlk-btn.is-done { background: var(--ok); border-color: var(--ok); color: #fff; }
 .tlk-badge {
-  font-size: 11.5px;
-  font-weight: 800;
-  padding: 3px 10px;
-  border-radius: 999px;
+  font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
   background: color-mix(in srgb, var(--smg) 14%, var(--surface));
-  color: var(--smg);
-  border: 1px solid color-mix(in srgb, var(--smg) 34%, transparent);
+  color: var(--smg); border: 1px solid color-mix(in srgb, var(--smg) 34%, transparent);
   white-space: nowrap;
 }
+.tlk-hint { font-size: 11.5px; color: var(--text-faint); }
+.tlk-muted { font-size: 11.5px; color: var(--text-faint); }
 
-/* ---- 본체 2열. 왼쪽 무대는 sticky — 파라미터 표가 길어서 붙박이가 아니면
-        값을 고치는 동안 정작 결과를 못 본다. ---- */
-.tlk-work {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  align-items: start;
-}
-@media (min-width: 1000px) {
-  .tlk-work {
-    grid-template-columns: 384px minmax(0, 1fr);
-  }
-  .tlk-stick {
-    position: sticky;
-    top: calc(var(--nav-h) + 68px);
-  }
-}
-.tlk-stagecol {
-  min-width: 0;
-}
-.tlk-panel {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.tlk-stick {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-/* 중첩 섹션도 앵커로 뛰므로 nav 높이만큼 물려 준다 */
-.tlk-sub {
-  scroll-margin-top: calc(var(--nav-h) + 16px);
-}
-
-/* ---- 폰 프레임. 대사창이 화면의 몇 할을 먹는지가 이 도구의 핵심이라
-        임의 비율이 아니라 360×640(9:16) 실제 논리 해상도 그대로 세운다.
-        여기서 px 를 줄이면 폰트 pt 판정이 통째로 거짓말이 된다. ---- */
+/* ── 무대 ─────────────────────────────────────────────────────────────── */
+.tlk-stagewrap { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
 .tlk-phone {
-  /* 안쪽 화면이 정확히 360×640 이어야 한다 — 전역 border-box 라 테두리 10px 을
-     바깥 치수에 더해 둔다. 여기서 화면을 줄이면 pt 판정이 통째로 거짓말이 된다. */
-  width: 380px;
-  height: 660px;
-  max-width: 100%;
   position: relative;
-  border-radius: 30px;
-  padding: 10px;
-  background: #2b2118;
-  box-shadow: 0 18px 40px rgba(43, 33, 24, 0.32);
+  width: 720px; height: 1280px;
+  transform: scale(var(--k, 0.42));
+  transform-origin: top left;
+  border-radius: 26px;
+  overflow: hidden;
+  background: #2b1d14;
+  box-shadow: 0 10px 34px rgba(58, 32, 14, 0.24);
   flex: 0 0 auto;
 }
-.tlk-screen {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 22px;
-  overflow: hidden;
-  background: var(--sky);
-  user-select: none;
-  -webkit-user-select: none;
+.tlk-dim { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.tlk-feed { position: absolute; inset: 0; }
+/* 행은 크기 없는 좌표점이다. 코코스 노드도 contentSize 와 무관하게 원점 기준으로
+   자식을 배치하므로, 여기서도 점 하나로 두는 편이 값과 1:1 이다. */
+.tlk-row { position: absolute; width: 0; height: 0; }
+.tlk-row > * { position: absolute; }
+.tlk-portrait { border-radius: 12px; overflow: hidden; }
+.tlk-pimg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; }
+.tlk-pdummy {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--c) 22%, #fff);
+  border: 3px solid var(--c);
+  color: var(--c); font-size: 110px; font-weight: 900;
 }
-.tlk-bg {
+.tlk-pdummy::after {
+  content: attr(data-f);
+  position: absolute; right: 10px; bottom: 8px;
+  font-size: 22px; font-weight: 800; opacity: 0.55;
+}
+.tlk-bstage { position: absolute; width: 0; height: 0; }
+.tlk-bubble {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  background: #fff;
+  border: 3px solid var(--c);
+  border-radius: 26px;
+  box-sizing: border-box;
 }
-
-.tlk-ports {
+.tlk-dlg {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-/* 초상은 화면 바닥에 선다. 대사창이 아랫단을 덮는 게 정상이고,
-   그 겹침이 얼마인지 보는 것이 이 무대의 목적이다. */
-.tlk-port {
-  position: absolute;
-  bottom: 0;
-  width: 200px;
-  height: 300px;
-  will-change: transform, opacity;
-}
-.tlk-port.is-l {
-  left: 4px;
-  transform-origin: bottom left;
-}
-.tlk-port.is-r {
-  right: 4px;
-  transform-origin: bottom right;
-}
-.tlk-port.is-r .tlk-art {
-  transform: scaleX(-1);
-}
-.tlk-art {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.tlk-port img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: bottom center;
-  display: block;
-}
-
-/* 대사창. 높이가 파라미터라 인라인 style 로 들어온다 — 여기서는 모양만 잡는다. */
-.tlk-box {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  border-radius: 18px;
-  background: var(--boxbg);
-  color: var(--boxink);
-  box-shadow: 0 6px 18px rgba(20, 14, 8, 0.35);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 18px 16px;
-  will-change: transform, opacity;
-}
-/* 이름표는 화자가 없는 줄에서도 자리를 지켜야 한다 — 비었다고 높이가 0 이 되면
-   본문 가용 높이가 늘어나 길이 판정이 줄마다 흔들린다. 그래서 빈 이름에도
-   폭 없는 공백을 넣고, 최소 높이를 여기서 못 박는다. */
-.tlk-name {
-  align-self: flex-start;
-  min-height: 24px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  background: var(--namebg);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-  transform-origin: left center;
-}
-/* .tlk-text 와 .tlk-measure 는 글꼴·줄바꿈 규칙이 반드시 같아야 한다.
-   길이 판정을 "화면에 실제로 그려진 높이" 로 하기 때문에, 둘이 갈리는 순간
-   표의 줄 수가 거짓말이 된다. 규칙을 바꿀 땐 두 셀렉터를 같이 고친다. */
-.tlk-text,
-.tlk-measure {
-  font-family: inherit;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: pre-wrap;
-  /* 한국어는 어절 단위로 끊는 게 읽기 규칙이다. 코코스 Label 은 글자 단위로
-     끊어서 같은 문장이 같거나 더 적은 줄로 들어간다 — 즉 이 판정은 안전한 쪽이다. */
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  color: #2b1d14;
+  font-weight: 700;
   word-break: keep-all;
   overflow-wrap: break-word;
+  box-sizing: border-box;
 }
-.tlk-text {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
+.tlk-name {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px;
+  background: var(--c); color: #fff; font-weight: 900;
+  box-sizing: border-box;
 }
-/* 화면 밖 자. 보이지 않지만 폭·글꼴이 대사창 본문과 같아야 의미가 있다. */
-.tlk-measure {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  visibility: hidden;
-  pointer-events: none;
+.tlk-row .is-box { outline: 2px dashed rgba(255, 255, 255, 0.7); outline-offset: 0; }
+.tlk-guide { position: absolute; inset: 0; pointer-events: none; }
+.tlk-guide::before,
+.tlk-guide::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 0;
+  border-top: 2px dashed rgba(255, 214, 120, 0.9);
 }
-.tlk-caret {
-  display: inline-block;
-  width: 0.5em;
-  opacity: 0.75;
-}
-.tlk-next {
-  position: absolute;
-  right: 16px;
-  bottom: 10px;
-  font-size: 11px;
-  opacity: 0.7;
-}
+.tlk-guide::before { top: 50px; }    /* viewportTopY 590 → 640-590 */
+.tlk-guide::after { top: 1030px; }   /* bottomY -390 → 640+390 */
 
-/* 대사창이 먹는 세로 폭을 화면 오른쪽에 자로 표시한다.
-   "대사창이 화면의 얼마를 먹느냐" 가 기획·아트가 가장 자주 싸우는 지점이다. */
-.tlk-ruler {
-  position: absolute;
-  right: 2px;
-  width: 8px;
-  border-top: 1px solid rgba(255, 248, 239, 0.8);
-  border-bottom: 1px solid rgba(255, 248, 239, 0.8);
-  border-right: 1px solid rgba(255, 248, 239, 0.8);
-  pointer-events: none;
+.tlk-side { flex: 1 1 240px; min-width: 220px; display: flex; flex-direction: column; gap: 10px; }
+.tlk-now { min-height: 44px; display: flex; flex-direction: column; gap: 5px; }
+.tlk-chip {
+  align-self: flex-start;
+  font-size: 12px; font-weight: 800; padding: 3px 11px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 14%, var(--surface));
+  color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
 }
-.tlk-ruler span {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 10px;
-  font-weight: 800;
-  color: #fff8ef;
-  text-shadow: 0 1px 3px rgba(20, 14, 8, 0.9);
-  white-space: nowrap;
-}
+.tlk-check { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-dim); cursor: pointer; }
 
-.tlk-ctl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.tlk-meta {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---- 파라미터 카드. 머지 피드백 연출집의 카드를 복제한 것 ---- */
+/* ── 값 표 ─────────────────────────────────────────────────────────────── */
 .tlk-card {
-  --acc: var(--smg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  margin-bottom: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow);
+  margin-bottom: 16px; overflow: hidden;
 }
 .tlk-card-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--border-soft);
-  background: var(--surface-2);
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-bottom: 1px solid var(--border-soft);
 }
-.tlk-card-head h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-}
+.tlk-card-head h3 { margin: 0; font-size: 14.5px; font-weight: 800; }
 .tlk-no {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  padding: 2px 7px;
-  border-radius: var(--radius-sm);
-  background: var(--acc);
-  color: #fff;
-  font-variant-numeric: tabular-nums;
+  font-size: 11px; font-weight: 900; letter-spacing: 0.04em;
+  padding: 2px 8px; border-radius: 6px;
+  background: color-mix(in srgb, var(--smg) 14%, var(--surface)); color: var(--smg);
 }
-.tlk-card-body {
-  padding: 12px 14px 14px;
-  min-width: 0;
-}
-.tlk-card-body .table-scroll table {
-  font-size: 12.5px;
-}
-.tlk-params td {
-  vertical-align: middle;
-}
-/* 값 칸에는 숫자칸 · 단위 · 슬라이더가 한 줄로 선다. 셋이 붙어 있어야
-   "이 값을 만지는 손잡이" 라는 게 한 덩어리로 읽힌다. */
-.tlk-vcell {
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+.tlk-card .table-scroll { padding: 0 14px; }
+.tlk-card .note { padding: 0 14px 12px; margin: 8px 0 0; }
+.tlk-params { width: 100%; font-size: 12.5px; }
+.tlk-params td { vertical-align: middle; }
+.tlk-vcell { white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .tlk-in {
-  width: 76px;
-  padding: 3px 7px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+  width: 84px; padding: 3px 7px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 12.5px; font-weight: 700;
+  font-variant-numeric: tabular-nums; text-align: right;
 }
-.tlk-in:focus {
-  outline: 2px solid var(--smg);
-  outline-offset: -1px;
-  border-color: var(--smg);
-}
-.tlk-u {
-  font-size: 11px;
-  color: var(--text-faint);
-}
-
-/* 값 슬라이더. 숫자칸을 대신하는 게 아니라 옆에 붙는 두 번째 손잡이다 —
-   min~max 를 훑어 보며 값을 찾고, 확정은 숫자칸에서 한다. */
+.tlk-in:focus { outline: 2px solid var(--smg); outline-offset: -1px; border-color: var(--smg); }
+.tlk-u { font-size: 11px; color: var(--text-faint); }
+.tlk-base { color: var(--text-faint); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tlk-dash { color: var(--text-faint); font-size: 12px; }
 .tlk-rng {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 108px;
-  flex: 0 0 108px;
-  height: 16px;
-  margin: 0;
-  background: transparent;
-  cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  width: 108px; flex: 0 0 108px; height: 16px; margin: 0;
+  background: transparent; cursor: pointer;
 }
-.tlk-rng::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--smg) 22%, var(--border));
-}
-.tlk-rng::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--smg) 22%, var(--border));
-}
+.tlk-rng::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--smg) 22%, var(--border)); }
+.tlk-rng::-moz-range-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--smg) 22%, var(--border)); }
 .tlk-rng::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: -5px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-  background: var(--smg);
-  box-shadow: 0 1px 3px rgba(43, 33, 24, 0.35);
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  border: 2px solid var(--surface); background: var(--smg);
+  box-shadow: 0 1px 3px rgba(58, 32, 14, 0.35);
 }
 .tlk-rng::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-  background: var(--smg);
-  box-shadow: 0 1px 3px rgba(43, 33, 24, 0.35);
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--surface); background: var(--smg);
+  box-shadow: 0 1px 3px rgba(58, 32, 14, 0.35);
 }
-.tlk-rng:focus-visible {
-  outline: 2px solid var(--smg);
-  outline-offset: 2px;
-  border-radius: 3px;
-}
-.tlk-sel {
-  padding: 3px 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--acc);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  max-width: 190px;
-}
-.tlk-dash {
-  color: var(--text-faint);
-}
-.tlk-memo {
-  color: var(--text-dim);
-  font-size: 12px;
-  white-space: normal;
-}
-/* 바뀐 행은 왼쪽에 띠를 세운다. 무엇을 건드렸는지가 복사 전에 보여야 한다. */
-.tlk-params tbody tr.is-changed td {
-  background: color-mix(in srgb, var(--smg) 9%, var(--surface));
-}
-.tlk-params tbody tr.is-changed td:first-child {
-  box-shadow: inset 4px 0 0 var(--smg);
-  color: var(--smg);
-  font-weight: 700;
-}
+.tlk-params tbody tr.is-changed td { background: color-mix(in srgb, var(--smg) 9%, var(--surface)); }
+.tlk-params tbody tr.is-changed td:first-child { box-shadow: inset 4px 0 0 var(--smg); color: var(--smg); font-weight: 700; }
 
-/* ---- 대사 길이 검사 표 ---- */
-.tlk-lines td {
-  vertical-align: top;
+/* ── 시트 스펙 · 검사 ───────────────────────────────────────────────────── */
+.tlk-spec { width: 100%; font-size: 12.5px; }
+.tlk-spec code { font-size: 11.5px; }
+.tlk-lintbox {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); margin-top: 14px; overflow: hidden;
 }
-.tlk-lines .tlk-say {
-  white-space: normal;
-  max-width: 420px;
-}
-.tlk-lines tbody tr {
-  cursor: pointer;
-}
-/* 지금 무대에서 재생 중인 줄. 표와 무대가 같은 줄을 가리켜야 값 얘기가 된다. */
-.tlk-lines tbody tr.is-cur td {
-  background: color-mix(in srgb, var(--smg) 12%, var(--surface));
-}
-.tlk-lines tbody tr.is-cur td:first-child {
-  box-shadow: inset 4px 0 0 var(--smg);
-}
-.tlk-v {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  white-space: nowrap;
-}
-.tlk-v.is-ok {
-  color: var(--ok);
-}
-.tlk-v.is-warn {
-  color: var(--warn);
-}
-.tlk-v.is-bad {
-  color: var(--bad);
-}
-/* 파라미터에서 계산돼 나오는 값들. 기준의 근거가 실시간으로 보여야
-   "왜 4줄인가" 를 표 밖에서 따로 설명하지 않아도 된다. */
-.tlk-derive {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.tlk-derive span {
-  font-size: 11.5px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
-}
-.tlk-derive span b {
-  color: var(--smg);
-  font-weight: 800;
-}
+.tlk-lint-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-soft); font-size: 13.5px; }
+.tlk-pill { font-size: 11px; font-weight: 900; padding: 1px 8px; border-radius: 999px; }
+.tlk-pill.is-bad { background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
+.tlk-pill.is-warn { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: var(--warn); }
+.tlk-lint-ok { padding: 10px 14px; font-size: 12.5px; color: var(--ok); font-weight: 700; }
+.tlk-lintbox .table-scroll { padding: 0 14px; }
+.tlk-lintbox .note { padding: 0 14px 12px; margin: 8px 0 0; }
+.tlk-lint-t { width: 100%; font-size: 12.5px; }
+.tlk-lint-t td:first-child { font-weight: 800; white-space: nowrap; }
+.tlk-lint-t tr.is-bad td:first-child { color: var(--bad); }
+.tlk-lint-t tr.is-warn td:first-child { color: var(--warn); }
+.tlk-lint-t tr.is-info td:first-child { color: var(--text-faint); }
 
-/* ---- 캐릭터 이미지 ---- */
+/* ── 리소스 드롭 ────────────────────────────────────────────────────────── */
 .tlk-drop {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-3);
-  padding: 18px 16px;
-  text-align: center;
-  color: var(--text-dim);
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 26px 18px; text-align: center;
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text-dim); font-size: 13px;
 }
-.tlk-drop:hover,
-.tlk-drop.is-over {
-  border-color: var(--smg);
-  background: color-mix(in srgb, var(--smg) 7%, var(--surface));
-  color: var(--smg);
-}
-.tlk-drop b {
-  display: block;
-  font-size: 14px;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-.tlk-drop.is-over b {
-  color: var(--smg);
-}
+.tlk-drop.is-over { border-color: var(--smg); background: color-mix(in srgb, var(--smg) 7%, var(--surface)); }
+.tlk-drop.is-busy { opacity: 0.6; }
+.tlk-cast { width: 100%; font-size: 12.5px; margin-top: 14px; }
+.tlk-cast td.is-bad { color: var(--bad); font-weight: 800; }
 .tlk-thumb {
-  width: 46px;
-  height: 60px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  object-fit: contain;
-  display: block;
-}
-.tlk-cast-key {
-  font-weight: 700;
-  white-space: nowrap;
-}
-.tlk-cast-file {
-  font-size: 11.5px;
-  color: var(--text-faint);
-  word-break: break-all;
+  display: inline-block; width: 60px; height: 57px;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  border: 1px solid var(--border-soft); border-radius: 6px;
 }
 
-/* ---- 대본·설정 주고받기 창. 여는 버튼이 sticky 툴바에 있어서 인라인 패널이면
-        아래쪽을 보다 눌렀을 때 화면에 아무 일도 안 일어난다. 모달은 스크롤
-        위치와 무관하게 같은 자리에 뜬다. 네이티브 <dialog> — ESC·포커스 가둠 공짜. ---- */
+/* ── 내보내기 ───────────────────────────────────────────────────────────── */
+.tlk-exports { display: grid; gap: 10px; }
+.tlk-exp {
+  display: grid; grid-template-columns: minmax(150px, auto) 1fr auto;
+  align-items: center; gap: 12px;
+  padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface);
+}
+@media (max-width: 700px) { .tlk-exp { grid-template-columns: 1fr; } }
+
+/* ── 넣기 창 ────────────────────────────────────────────────────────────── */
 .tlk-io {
-  width: min(760px, calc(100vw - 32px));
+  width: min(720px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 24px 64px rgba(43, 33, 24, 0.28);
-  overflow: auto;
+  padding: 0; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+  box-shadow: 0 24px 64px rgba(58, 32, 14, 0.28); overflow: auto;
 }
-.tlk-io::backdrop {
-  background: rgba(30, 24, 18, 0.42);
-  backdrop-filter: blur(2px);
-}
-.tlk-io.is-drop {
-  outline: 3px dashed var(--smg);
-  outline-offset: -6px;
-}
-.tlk-io-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.tlk-io-head h2 {
-  margin: 0;
-  flex: 1;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
+.tlk-io::backdrop { background: rgba(38, 22, 10, 0.42); backdrop-filter: blur(2px); }
+.tlk-io.is-drop { outline: 3px dashed var(--smg); outline-offset: -6px; }
+.tlk-io-head { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--border-soft); }
+.tlk-io-head h2 { margin: 0; flex: 1; font-size: 15px; font-weight: 800; }
 .tlk-x {
-  font: inherit;
-  font-size: 15px;
-  line-height: 1;
-  padding: 5px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-dim);
-  cursor: pointer;
+  font: inherit; font-size: 15px; line-height: 1; padding: 5px 9px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text-dim); cursor: pointer;
 }
-.tlk-x:hover {
-  border-color: var(--smg);
-  color: var(--smg);
-}
-.tlk-io-sec {
-  padding: 14px 16px;
-}
-.tlk-io-sec + .tlk-io-sec {
-  border-top: 1px solid var(--border-soft);
-}
-.tlk-io-t {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-  margin-bottom: 8px;
-}
-.tlk-io-lead {
-  font-size: 12.5px;
-  color: var(--text-dim);
-  margin: 0 0 8px;
-}
-.tlk-io-lead b {
-  color: var(--text);
-  font-weight: 700;
-}
+.tlk-x:hover { border-color: var(--smg); color: var(--smg); }
+.tlk-io-sec { padding: 14px 16px; }
+.tlk-io-t { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--text-faint); margin-bottom: 8px; }
 .tlk-io textarea {
-  display: block;
-  width: 100%;
-  min-height: 160px;
-  resize: vertical;
-  padding: 9px 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
+  display: block; width: 100%; min-height: 150px; resize: vertical;
+  padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.55;
-  white-space: pre;
-  overflow-wrap: normal;
-  overflow-x: auto;
+  font-size: 12px; line-height: 1.55;
+  white-space: pre; overflow-wrap: normal; overflow-x: auto;
 }
-.tlk-io textarea:focus {
-  outline: 2px solid var(--smg);
-  outline-offset: -1px;
-  border-color: var(--smg);
-}
-.tlk-io-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 9px;
-}
-.tlk-io-hint {
-  font-size: 11.5px;
-  color: var(--text-faint);
-}
-.tlk-io-msg {
-  margin-top: 9px;
-  font-size: 12px;
+.tlk-io textarea:focus { outline: 2px solid var(--smg); outline-offset: -1px; border-color: var(--smg); }
+.tlk-io-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+.tlk-io-msg { margin-top: 9px; font-size: 12px; font-weight: 700; color: var(--ok); }
+.tlk-io-msg.is-bad { color: var(--bad); }
+
+/* 대사 줄 수를 재는 자. 대사창과 글꼴·폭·줄높이가 같아야 의미가 있어서
+   화면 밖에 같은 조건으로 세워 둔다. */
+.tlk-ruler {
+  position: absolute; left: -99999px; top: 0;
+  visibility: hidden;
   font-weight: 700;
-  color: var(--ok);
-  white-space: pre-line;
-}
-.tlk-io-msg.is-bad {
-  color: var(--bad);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
