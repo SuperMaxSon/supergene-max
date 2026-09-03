@@ -39,7 +39,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-03 10:33",
+  updated: "2026-09-03 10:38",
 };
 
 /* --------------------------------------------------------------------------
@@ -303,7 +303,7 @@ const SECTIONS = [
         desc: "무엇이 무겁고 언제 불러오는가. 메모리는 파일이 아니라 해상도로 정해집니다 — 대화 애니 파일 7.3MB 가 메모리 90.8MB. 로딩 단위를 캐릭터가 아니라 감정(5.7MB)으로 잡아야 하는 이유를 솔리테어 실측으로 맞췄습니다.",
         url: "docs/story-merge-resource-budget.html",
         project: "smg",
-        status: "추적",
+        status: "진행중",
         version: "v2.2",
         updated: "2026-09-01 15:54",
         pinned: false,
