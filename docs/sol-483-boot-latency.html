@@ -37,6 +37,9 @@
       #cmp .cswatch{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:7px;
         vertical-align:-2px;border:1px solid rgba(20,25,45,.12)}
       #cmp .cdim{font-size:11px;color:var(--text-faint)}
+      /* 쿼리는 읽으라고 둔 게 아니라 콘솔에 붙여 넣으라고 둔 것이다. 버튼 자체는 허브 공용
+         .mfx-btn 을 그대로 쓰고(--smg 토큰만 인라인으로 갈아 끼움) 이 줄은 정렬만 잡는다. */
+      #cmp .qcopy{display:flex;justify-content:flex-end;margin:2px 0 10px}
       #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:340px;
         background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
         line-height:1.6;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
@@ -69,7 +72,7 @@
           <span class="tag">BigQuery</span>
           <span class="tag">완주 세션 기준</span>
           <span class="tag">2026-08-31 ~ 09-03</span>
-          <span class="tag">2026-09-03 15:06 갱신</span>
+          <span class="tag">2026-09-03 17:17 갱신</span>
         </div>
       </div>
     </header>
@@ -320,6 +323,7 @@
         <details class="fold">
           <summary>Q0 — 빌드별 세션 수 (판정 전 선행 확인)</summary>
           <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- 먼저 이걸 돌린다. 485가 실제로 몇 번부터 올라왔는지(484가 존재하는지)와
 -- NRU 세션이 판정에 쓸 만큼 쌓였는지를 확인하기 전에는 아래 넷을 돌릴 이유가 없다.
 -- 세션 = (player_id, logincount_total) 한 쌍 = 로그인 1회.
@@ -347,6 +351,7 @@ ORDER BY 1 DESC</pre></div>
         <details class="fold">
           <summary>Q1 — 부팅 24단계 도달 시각 (485+ · 483~484 · 477이하)</summary>
           <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- 위 두 곡선을 그대로 3군으로 확장한 쿼리.
 -- 결과를 (구분, 로그, 빌드군) 순으로 받아 D 객체의 3원소 배열에 그대로 밀어 넣는다.
 DECLARE d_from DATE DEFAULT DATE '2026-09-10';
@@ -410,6 +415,7 @@ ORDER BY `구분`, `로그`, `빌드군`</pre></div>
         <details class="fold">
           <summary>Q2 — 단계 도달률 (중간 이탈 판정 · Q1과 반드시 짝으로)</summary>
           <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- Q1이 완주 세션만 보기 때문에 반드시 짝으로 돌려야 하는 쿼리다.
 -- 용량이 줄면 느린 회선에서 끝까지 오는 사람 자체가 늘고, 그러면 느린 세션이
 -- 표본에 다시 들어와 Q1의 p90은 오히려 나빠 보일 수 있다. 그때 판정은 이 쿼리가 한다.
@@ -463,6 +469,7 @@ ORDER BY `구분`, `빌드군`</pre></div>
         <details class="fold">
           <summary>Q3 — main.js 부트 4단계 (다운로드 구간 · 483 vs 485)</summary>
           <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- FIRST_LOG와 INTRO_FB_START는 FBInstant 초기화 전에 찍혀 플레이어 ID가 '-1'이다.
 -- 세션 조인도, logincount_total 기반 NRU 판정도 쓸 수 없다. 그래서 이 쿼리만
 --   · 버전을 테이블 컬럼이 아니라 data.client_version 에서 꺼내고
@@ -507,6 +514,7 @@ ORDER BY `기기`, `로그`, `빌드군`</pre></div>
         <details class="fold">
           <summary>Q4 — 실패 · 이탈 로그 발생률 (485 신설 로그 · 회귀 감시)</summary>
           <div class="fold-body">
+            <div class="qcopy"><button class="mfx-btn" type="button" style="--smg: #ea580c">쿼리 복사</button></div>
             <div class="table-scroll"><pre>-- 용량을 줄이는 수단은 텍스처 양자화와 모듈 제거다. 둘 다 "덜 받아서 빨라진다"와
 -- "빠진 게 있어서 안 뜬다"가 같은 변경에서 나온다. 이 쿼리가 그 뒷면을 본다.
 -- 분모는 FIRST_LOG = 부팅을 시도한 모든 브라우저.
@@ -677,6 +685,39 @@ ORDER BY `빌드군` DESC</pre></div>
         });
         document.addEventListener('mouseout', ev => {
           if (cur && !ev.relatedTarget) { tipEl.style.display = 'none'; cur = null; }
+        });
+      })();
+
+      // 쿼리 복사 — deco-tween-iso.html 의 copyText 를 그대로 옮겨 썼다(clipboard 실패 시 textarea 폴백).
+      // 버튼이 fold 안에 있어 열기 전에는 DOM에 없어도 상관없도록 위임으로 건다.
+      (function () {
+        function copyText(text, btn) {
+          function done() {
+            const old = btn.textContent;
+            btn.textContent = '복사됨';
+            btn.classList.add('is-done');
+            setTimeout(() => { btn.textContent = old; btn.classList.remove('is-done'); }, 1300);
+          }
+          function fallback() {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;top:-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) {}
+            document.body.removeChild(ta);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, fallback);
+            return;
+          }
+          fallback();
+        }
+        document.addEventListener('click', ev => {
+          const btn = ev.target.closest ? ev.target.closest('.qcopy button') : null;
+          if (!btn) return;
+          const pre = btn.closest('.fold-body').querySelector('pre');
+          if (pre) copyText(pre.textContent, btn);
         });
       })();
     </script>
