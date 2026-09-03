@@ -3,57 +3,36 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>솔리테어 483 부팅 로딩 — 483 vs 기타 대조</title>
-    <meta
-      name="description"
-      content="483과 483 아닌 빌드의 부팅 로딩 시간을 캐시 상태로 층화하고 인트로 로그 24단계 사다리로 구간 분해한 대조 차트."
-    />
+    <title>솔리테어 483 부팅 로딩 대조</title>
+    <meta name="description" content="483과 477이하 빌드가 부팅 로그 24단계를 각각 언제 통과하는지 겹쳐 그린 곡선." />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
-    <!-- 이 <style>은 예외 구역이다. 두 비교군을 색으로 갈라 나란히 놓는 대조 막대는
-         허브 style.css에 없는 컴포넌트라(.bar는 4px 단일값 막대다) 사용자 요청으로 추가했고,
-         docs/sol-era-watch.html의 #eracmp 선례를 따라 전 선택자를 #cmp 안에 가뒀다.
-         허브 클래스와 이름이 겹치지 않도록 접두사 c- 를 썼다. -->
+    <!-- 이 <style>은 예외 구역이다. 두 비교군을 겹쳐 그리는 사다리 곡선은 허브 style.css에
+         없는 컴포넌트라 사용자 요청으로 추가했고, docs/sol-era-watch.html의 #eracmp 선례를
+         따라 전 선택자를 #cmp 안에 가뒀다. -->
     <style>
       #cmp .cwrap{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius);
-        box-shadow:var(--shadow);padding:16px 18px 14px}
-      #cmp .clegend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:11.5px;
-        color:var(--text-dim);margin:0 0 14px}
-      #cmp .clegend i{display:inline-block;width:14px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+        box-shadow:var(--shadow);padding:16px 18px 12px}
+      #cmp .clegend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:12px;
+        color:var(--text-dim);margin:0 0 10px}
+      #cmp .clegend i{display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
       #cmp .cscale{margin-left:auto;font-size:11px;color:var(--text-faint)}
-      #cmp .crow{display:grid;grid-template-columns:214px 1fr 92px;gap:12px;align-items:center;
-        padding:11px 0;border-bottom:1px solid var(--border-soft)}
-      #cmp .crow:last-child{border-bottom:none}
-      #cmp .crow.is-total{border-top:2px solid var(--border);border-bottom:none;margin-top:2px}
-      #cmp .clab{font-size:13px;color:var(--text)}
-      #cmp .clab small{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}
-      #cmp .cbars{display:flex;flex-direction:column;gap:5px}
-      #cmp .cbar{display:flex;align-items:center;gap:8px}
-      #cmp .cbn{width:30px;flex:none;font-size:10.5px;color:var(--text-faint);text-align:right}
-      #cmp .ctr{position:relative;flex:1;height:15px;background:var(--surface-2);border-radius:3px;overflow:hidden}
-      #cmp .ctr i{display:block;height:100%;border-radius:3px}
-      #cmp .c483 i{background:var(--sol)}
-      #cmp .cetc i{background:#9aa3b8}
-      #cmp .cok  i{background:var(--ok)}
-      #cmp .cbv{width:74px;flex:none;font-size:11.5px;font-variant-numeric:tabular-nums;text-align:right;color:var(--text-dim)}
-      #cmp .cdelta{text-align:right;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
-      #cmp .cdelta.up{color:var(--warn)}
-      #cmp .cdelta.dn{color:var(--ok)}
-      #cmp .cdelta.flat{color:var(--text-faint)}
       #cmp .cchart{width:100%;height:auto;display:block}
-      #cmp .caxis{font-size:10px;fill:#8b93a8;font-family:inherit}
-      @media (max-width:720px){ #cmp .crow{grid-template-columns:126px 1fr 66px} #cmp .cbv{width:60px} }
+      #cmp .caxis{font-size:9.5px;fill:#8b93a8;font-family:inherit}
+      #cmp .cnum{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+      #cmp .cseg{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border-soft);
+        border:1px solid var(--border-soft);border-radius:var(--radius);overflow:hidden;margin-top:14px}
+      #cmp .cseg div{background:var(--surface);padding:12px 14px}
+      #cmp .cseg b{display:block;font-size:19px;font-variant-numeric:tabular-nums;margin-bottom:3px}
+      #cmp .cseg span{font-size:11.5px;color:var(--text-faint);line-height:1.5}
+      @media (max-width:720px){ #cmp .cseg{grid-template-columns:repeat(2,1fr)} }
     </style>
   </head>
   <body>
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
-        <a class="nav-back" href="#summary">요약</a>
-        <a class="nav-back" href="#segment">구간 분해</a>
-        <a class="nav-back" href="#cache">캐시 층화</a>
-        <a class="nav-back" href="#ladder">24단계 사다리</a>
-        <a class="nav-back" href="#basis">측정 조건</a>
+        <a class="nav-back" href="#ladder">사다리</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -61,400 +40,115 @@
     <header class="doc-header">
       <div class="wrap wrap--wide">
         <div class="doc-eyebrow">분석 · 라이브 데이터</div>
-        <h1 class="doc-title">솔리테어 483 부팅 로딩 — 483 vs 기타</h1>
+        <h1 class="doc-title">솔리테어 483 부팅 로딩 대조</h1>
         <p class="doc-lede">
-          483(2026-09-02 배포)과 483 아닌 빌드의 <code>1010_LOAD_COMPLETE</code> 도달 시간을
-          캐시 상태로 층화하고, 인트로 로그 24단계로 구간 분해한 대조입니다.
-          모든 차트에서 <b style="color:#1d4ed8">파랑이 483</b>, <b style="color:#7c8499">회색이 기타</b>입니다.
+          부팅 로그 24단계를 <b style="color:#1d4ed8">483</b>과 <b style="color:#7c8499">477이하</b>가
+          각각 언제 통과하는지 겹쳐 그렸습니다. 세로축은 부팅 시작 이후 경과 ms(p50),
+          가로축은 로그가 찍히는 순서입니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
+          <span class="tag">웜 세션 · 완주 기준</span>
           <span class="tag">2026-08-31 ~ 09-03</span>
-          <span class="tag">2026-09-03 09:20</span>
         </div>
       </div>
     </header>
 
     <main class="wrap wrap--wide" id="cmp">
-      <section class="doc-section" id="summary">
-        <h2 class="doc-h2">요약 <span class="doc-h2-sub">웜 세션 · 완주 기준</span></h2>
-        <div class="stat-row">
-          <div class="stat" style="--acc: var(--warn)">
-            <div class="stat-num">+243<span class="stat-unit">ms</span></div>
-            <div class="stat-name">로드완료 p50 델타</div>
-            <div class="stat-sub">4,067 → 4,310 (+6.0%)</div>
-          </div>
-          <div class="stat" style="--acc: var(--ok)">
-            <div class="stat-num">−130<span class="stat-unit">ms</span></div>
-            <div class="stat-name">로드완료 p90 델타</div>
-            <div class="stat-sub">483이 더 빠름</div>
-          </div>
-          <div class="stat" style="--acc: var(--ok)">
-            <div class="stat-num">98.37<span class="stat-unit">%</span></div>
-            <div class="stat-name">1b 통과율 (483)</div>
-            <div class="stat-sub">FB SDK 대기 구간 · 대조군 없음</div>
-          </div>
-          <div class="stat" style="--acc: var(--analysis)">
-            <div class="stat-num">1,297</div>
-            <div class="stat-name">483 웜 완주 세션</div>
-            <div class="stat-sub">기타 4,252</div>
-          </div>
-        </div>
-
-        <h2 class="doc-h2">교란을 걷어낼수록 격차가 줄었다 <span class="doc-h2-sub">같은 데이터 · 표본과 층화만 교체</span></h2>
-        <div class="cwrap">
-          <div class="clegend">
-            <span><i style="background:var(--warn)"></i>p50 델타</span>
-            <span><i style="background:#c3cad8"></i>p90 델타</span>
-            <span><i style="background:var(--ok)"></i>483이 더 빠름</span>
-            <span class="cscale">막대 스케일 공유 · p50 0~800ms · p90 0~3,800ms</span>
-          </div>
-          <div class="crow">
-            <div class="clab">층화 없음 · 동일 유저 페어드<small>483 세션 672</small></div>
-            <div class="cbars">
-              <div class="cbar"><span class="cbn">p50</span><span class="ctr"><i style="width:92.4%;background:var(--warn)"></i></span><span class="cbv">+739 ms</span></div>
-              <div class="cbar"><span class="cbn">p90</span><span class="ctr"><i style="width:98.3%;background:#c3cad8"></i></span><span class="cbv">+3,737 ms</span></div>
-            </div>
-            <div class="cdelta up">과대</div>
-          </div>
-          <div class="crow">
-            <div class="clab">캐시 층화 (웜만)<small>483 세션 240</small></div>
-            <div class="cbars">
-              <div class="cbar"><span class="cbn">p50</span><span class="ctr"><i style="width:64.4%;background:var(--warn)"></i></span><span class="cbv">+515 ms</span></div>
-              <div class="cbar"><span class="cbn">p90</span><span class="ctr"><i style="width:18.4%;background:#c3cad8"></i></span><span class="cbv">+700 ms</span></div>
-            </div>
-            <div class="cdelta flat">표본 부족</div>
-          </div>
-          <div class="crow">
-            <div class="clab"><b>사다리 (웜 · 완주)</b><small>483 세션 1,297 — 유효값</small></div>
-            <div class="cbars">
-              <div class="cbar"><span class="cbn">p50</span><span class="ctr"><i style="width:30.4%;background:var(--warn)"></i></span><span class="cbv">+243 ms</span></div>
-              <div class="cbar"><span class="cbn">p90</span><span class="ctr"><i style="width:3.4%;background:var(--ok)"></i></span><span class="cbv">−130 ms</span></div>
-            </div>
-            <div class="cdelta dn">유효</div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">이 차트를 읽는 법</div>
-            <p>
-              세 행은 다른 현상이 아니라 <strong>같은 데이터를 다르게 자른 것</strong>입니다.
-              483은 배포 직후라 세션의 64%가 콜드(번들을 새로 받음), 기타는 15%뿐입니다.
-              이 혼합비 차이가 1행의 p90 +3,737ms를 만들었고, 캐시 상태를 맞추면 사라집니다.
-              <strong>맨 아래 행이 유효값</strong>입니다.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="doc-section" id="segment">
-        <h2 class="doc-h2">구간 분해 <span class="doc-h2-sub">p50 기준 · 웜 완주 세션</span></h2>
-        <div class="cwrap">
-          <div class="clegend">
-            <span style="color:var(--sol)"><i style="background:var(--sol)"></i>483</span>
-            <span><i style="background:#9aa3b8"></i>기타</span>
-            <span class="cscale">구간 3행 스케일 공유 0~1,600ms · 총계는 별도 스케일 0~4,400ms</span>
-          </div>
-          <div class="crow">
-            <div class="clab">부팅 → 첫 인트로 태스크 도달<small>main.js 영역</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:94.4%"></i></span><span class="cbv">1,511 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:85.9%"></i></span><span class="cbv">1,375 ms</span></div>
-            </div>
-            <div class="cdelta up">+136</div>
-          </div>
-          <div class="crow">
-            <div class="clab">첫 태스크 → <code>1000_LOGIN_COMPLETE</code><small>인트로 태스크 11종 병렬</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:96.8%"></i></span><span class="cbv">1,549 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:96.7%"></i></span><span class="cbv">1,547 ms</span></div>
-            </div>
-            <div class="cdelta flat">+2</div>
-          </div>
-          <div class="crow">
-            <div class="clab">로그인완료 → <code>1010_LOAD_COMPLETE</code><small>로비 진입</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:78.1%"></i></span><span class="cbv">1,250 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:71.6%"></i></span><span class="cbv">1,145 ms</span></div>
-            </div>
-            <div class="cdelta up">+105</div>
-          </div>
-          <div class="crow is-total">
-            <div class="clab"><b>총계</b><small>부팅 → 로드완료</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:98.0%"></i></span><span class="cbv">4,310 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:92.4%"></i></span><span class="cbv">4,067 ms</span></div>
-            </div>
-            <div class="cdelta up">+243</div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">분해값은 근사, 총계는 정확</div>
-            <p>
-              총계 +243ms는 같은 값(<code>LOAD_COMPLETE</code> 도달 시각)의 그룹별 중앙값 차이라 그대로 성립합니다.
-              위 3행은 <strong>백분위수끼리 뺀 값</strong>이라 "구간 소요시간의 p50"과 정확히 같지는 않습니다.
-              <strong>+2ms를 정밀 수치로 인용하지 말고</strong> "인트로 구간엔 회귀 없음"으로 읽으세요.
-            </p>
-          </div>
-        </div>
-        <details class="fold">
-          <summary>구간 분해 원본 표</summary>
-          <div class="fold-body">
-            <div class="table-scroll">
-              <table>
-                <thead><tr><th>구간</th><th style="text-align:right">기타</th><th style="text-align:right">483</th><th style="text-align:right">델타</th></tr></thead>
-                <tbody>
-                  <tr><td>부팅 → 첫 인트로 태스크 도달</td><td style="text-align:right">1,375 ms</td><td style="text-align:right">1,511 ms</td><td style="text-align:right">+136</td></tr>
-                  <tr><td>첫 태스크 → <code>1000_LOGIN_COMPLETE</code></td><td style="text-align:right">1,547 ms</td><td style="text-align:right">1,549 ms</td><td style="text-align:right">+2</td></tr>
-                  <tr><td>로그인완료 → <code>1010_LOAD_COMPLETE</code></td><td style="text-align:right">1,145 ms</td><td style="text-align:right">1,250 ms</td><td style="text-align:right">+105</td></tr>
-                  <tr><td><b>총계</b></td><td style="text-align:right"><b>4,067 ms</b></td><td style="text-align:right"><b>4,310 ms</b></td><td style="text-align:right"><b>+243</b></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </details>
-      </section>
-
-      <section class="doc-section" id="cache">
-        <h2 class="doc-h2">캐시 층화 대조 <span class="doc-h2-sub">동일 유저 432명 · 08-31 ~ 09-02</span></h2>
-        <div class="cwrap">
-          <div class="clegend">
-            <span style="color:var(--sol)"><i style="background:var(--sol)"></i>483</span>
-            <span><i style="background:#9aa3b8"></i>기타</span>
-            <span class="cscale">p50 2행 스케일 공유 0~5,600ms · p90 2행 스케일 공유 0~17,000ms</span>
-          </div>
-          <div class="crow">
-            <div class="clab">콜드 · p50<small>그 빌드 첫 세션 · 483 432세션 / 기타 432세션</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:95.3%"></i></span><span class="cbv">5,339 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:87.7%"></i></span><span class="cbv">4,913 ms</span></div>
-            </div>
-            <div class="cdelta up">+426</div>
-          </div>
-          <div class="crow">
-            <div class="clab"><b>웜 · p50</b><small>재방문 · 483 240세션 / 기타 2,428세션</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:81.6%"></i></span><span class="cbv">4,568 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:72.4%"></i></span><span class="cbv">4,053 ms</span></div>
-            </div>
-            <div class="cdelta up">+515</div>
-          </div>
-          <div class="crow">
-            <div class="clab">콜드 · p90</div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:95.8%"></i></span><span class="cbv">16,279 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:86.9%"></i></span><span class="cbv">14,771 ms</span></div>
-            </div>
-            <div class="cdelta up">+1,508</div>
-          </div>
-          <div class="crow">
-            <div class="clab"><b>웜 · p90</b></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:71.3%"></i></span><span class="cbv">12,114 ms</span></div>
-              <div class="cbar cetc"><span class="cbn">기타</span><span class="ctr"><i style="width:67.1%"></i></span><span class="cbv">11,414 ms</span></div>
-            </div>
-            <div class="cdelta up">+700</div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">콜드 행은 483에 불리하게 기울어 있음</div>
-            <p>
-              기타의 "콜드"는 3일 창 안에서 첫 세션일 뿐, 번들은 그 전부터 캐시돼 있었습니다.
-              <strong>진짜 콜드 483 vs 가짜 콜드 기타</strong>라서 콜드 행의 +426ms는 과대평가입니다.
-              웜 행끼리가 유효 비교이고, 이 표의 웜 483은 240세션뿐이라
-              최종 판정은 아래 사다리(1,297세션)를 따릅니다.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section class="doc-section" id="ladder">
-        <h2 class="doc-h2">24단계 사다리 <span class="doc-h2-sub">웜 완주 세션 · 09-01 ~ 09-03 · 부팅 순서</span></h2>
         <div class="cwrap">
           <div class="clegend">
-            <span style="color:var(--sol)"><i style="background:var(--sol)"></i>483 도달 시각</span>
-            <span><i style="background:#9aa3b8"></i>기타 도달 시각</span>
-            <span class="cscale">x축 = 부팅 순서 24단계 · y축 = window.startTime 이후 경과 ms (p50)</span>
+            <span style="color:var(--sol)"><i style="background:var(--sol)"></i>483 &nbsp;<b>1,354</b> 세션</span>
+            <span><i style="background:#9aa3b8"></i>477이하 &nbsp;<b>7,174</b> 세션</span>
+            <span class="cscale">✓ = 해당 태스크 완료 로그</span>
           </div>
-          <!-- 두 선이 평행하게 가다가 마지막에만 벌어진다는 게 이 문서의 핵심이라
-               같은 x축을 쓰는 델타 패널을 바로 아래 붙여 눈이 세로로 대조하게 했다. -->
-          <svg class="cchart" viewBox="0 0 980 240" role="img" aria-label="483과 기타의 단계별 도달 시각 곡선">
+          <svg class="cchart" viewBox="0 0 1000 372" role="img" aria-label="483과 477이하의 부팅 로그 단계별 도달 시각">
             <g stroke="#eceff4" stroke-width="1">
-              <line x1="46" y1="214" x2="960" y2="214" /><line x1="46" y1="171.8" x2="960" y2="171.8" />
-              <line x1="46" y1="129.6" x2="960" y2="129.6" /><line x1="46" y1="87.3" x2="960" y2="87.3" />
-              <line x1="46" y1="45.1" x2="960" y2="45.1" />
+              <line x1="56" y1="250" x2="972" y2="250" /><line x1="56" y1="201.1" x2="972" y2="201.1" />
+              <line x1="56" y1="152.2" x2="972" y2="152.2" /><line x1="56" y1="103.3" x2="972" y2="103.3" />
+              <line x1="56" y1="54.4" x2="972" y2="54.4" />
             </g>
             <g class="caxis" text-anchor="end">
-              <text x="38" y="217">0</text><text x="38" y="175">1s</text><text x="38" y="133">2s</text>
-              <text x="38" y="91">3s</text><text x="38" y="48">4s</text>
+              <text x="48" y="253">0</text><text x="48" y="204">1s</text><text x="48" y="155">2s</text>
+              <text x="48" y="106">3s</text><text x="48" y="58">4s</text>
             </g>
-            <polyline fill="none" stroke="#9aa3b8" stroke-width="2.5" stroke-linejoin="round"
-              points="46.0,155.9 84.6,155.5 123.2,155.2 161.8,154.9 200.4,154.8 239.0,154.7 277.7,150.9 316.3,146.3 354.9,143.9 393.5,142.4 432.1,140.2 470.7,139.8 509.3,136.6 547.9,128.3 586.5,128.2 625.1,126.7 663.7,124.4 702.3,124.2 741.0,123.7 779.6,122.5 818.2,106.2 856.8,91.3 895.4,90.6 934.0,42.3" />
-            <polyline fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linejoin="round"
-              points="46.0,150.2 84.6,149.7 123.2,149.4 161.8,149.0 200.4,148.9 239.0,148.7 277.7,145.0 316.3,138.7 354.9,137.1 393.5,135.7 432.1,132.8 470.7,132.5 509.3,125.1 547.9,122.9 586.5,122.5 625.1,120.9 663.7,115.3 702.3,115.9 741.0,117.4 779.6,120.7 818.2,100.9 856.8,86.2 895.4,84.8 934.0,32.0" />
-            <circle cx="934" cy="42.3" r="3.5" fill="#9aa3b8" /><circle cx="934" cy="32.0" r="3.5" fill="#1d4ed8" />
-            <text class="caxis" x="928" y="56" text-anchor="end" fill="#7c8499">4,067</text>
-            <text class="caxis" x="928" y="24" text-anchor="end" fill="#1d4ed8" font-weight="700">4,310</text>
-            <g class="caxis" text-anchor="middle">
-              <text x="46" y="231">1</text><text x="239" y="231">6</text><text x="470.7" y="231">12</text>
-              <text x="702.3" y="231">18</text><text x="895.4" y="231">23</text><text x="934" y="231">24</text>
-            </g>
-            <text class="caxis" x="895.4" y="243" text-anchor="middle" fill="#8b93a8">로그인완료</text>
-          </svg>
-
-          <div class="clegend" style="margin:18px 0 6px">
-            <span><i style="background:var(--warn)"></i>483 − 기타 (델타 p50)</span>
-            <span class="cscale">y축 0~280ms · 점선 = +136ms(1단계에서 이미 붙은 격차)</span>
-          </div>
-          <svg class="cchart" viewBox="0 0 980 150" role="img" aria-label="단계별 델타 곡선">
-            <g stroke="#eceff4" stroke-width="1">
-              <line x1="46" y1="118" x2="960" y2="118" /><line x1="46" y1="86.6" x2="960" y2="86.6" />
-              <line x1="46" y1="55.1" x2="960" y2="55.1" />
-            </g>
-            <line x1="46" y1="75.3" x2="960" y2="75.3" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.7" />
-            <text class="caxis" x="960" y="71" text-anchor="end" fill="#b45309" font-weight="700">+136</text>
-            <g class="caxis" text-anchor="end">
-              <text x="38" y="121">0</text><text x="38" y="90">100</text><text x="38" y="58">200</text>
-            </g>
-            <polyline fill="none" stroke="#d97706" stroke-width="2.5" stroke-linejoin="round"
-              points="46.0,75.3 84.6,74.3 123.2,75.3 161.8,74.0 200.4,74.0 239.0,73.7 277.7,74.0 316.3,61.4 354.9,67.4 393.5,68.0 432.1,63.0 470.7,63.9 509.3,32.8 547.9,77.5 586.5,76.2 625.1,74.9 663.7,50.4 702.3,56.7 741.0,70.9 779.6,104.5 818.2,78.1 856.8,80.0 895.4,74.6 934.0,41.6" />
-            <circle cx="934" cy="41.6" r="3.5" fill="#d97706" />
-            <text class="caxis" x="928" y="34" text-anchor="end" fill="#b45309" font-weight="700">+243</text>
-            <g class="caxis" text-anchor="middle">
-              <text x="46" y="140">1</text><text x="239" y="140">6</text><text x="470.7" y="140">12</text>
-              <text x="702.3" y="140">18</text><text x="895.4" y="140">23</text><text x="934" y="140">24</text>
-            </g>
+            <polyline fill="none" stroke="#9aa3b8" stroke-width="2.5" stroke-linejoin="round" points="56.0,181.7 95.2,181.2 134.4,180.8 173.7,180.6 212.9,180.4 252.1,180.2 291.3,175.9 330.5,170.5 369.7,167.8 409.0,165.7 448.2,164.1 487.4,163.6 526.6,158.5 565.8,150.8 605.0,150.6 644.3,148.9 683.5,145.4 722.7,145.1 761.9,144.9 801.1,143.5 840.3,123.8 879.6,105.7 918.8,104.9 958.0,50.3" />
+            <polyline fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linejoin="round" points="56.0,177.0 95.2,176.3 134.4,175.9 173.7,175.8 212.9,175.6 252.1,175.3 291.3,171.2 330.5,163.5 369.7,161.9 409.0,160.3 448.2,157.2 487.4,156.7 526.6,148.0 565.8,144.8 605.0,144.5 644.3,143.1 683.5,137.2 722.7,137.7 761.9,139.2 801.1,142.9 840.3,120.5 879.6,102.7 918.8,100.7 958.0,41.0" />
+            <circle cx="56.0" cy="181.7" r="2.6" fill="#9aa3b8"/><circle cx="95.2" cy="181.2" r="2.6" fill="#9aa3b8"/><circle cx="134.4" cy="180.8" r="2.6" fill="#9aa3b8"/><circle cx="173.7" cy="180.6" r="2.6" fill="#9aa3b8"/><circle cx="212.9" cy="180.4" r="2.6" fill="#9aa3b8"/><circle cx="252.1" cy="180.2" r="2.6" fill="#9aa3b8"/><circle cx="291.3" cy="175.9" r="2.6" fill="#9aa3b8"/><circle cx="330.5" cy="170.5" r="2.6" fill="#9aa3b8"/><circle cx="369.7" cy="167.8" r="2.6" fill="#9aa3b8"/><circle cx="409.0" cy="165.7" r="2.6" fill="#9aa3b8"/><circle cx="448.2" cy="164.1" r="2.6" fill="#9aa3b8"/><circle cx="487.4" cy="163.6" r="2.6" fill="#9aa3b8"/><circle cx="526.6" cy="158.5" r="2.6" fill="#9aa3b8"/><circle cx="565.8" cy="150.8" r="2.6" fill="#9aa3b8"/><circle cx="605.0" cy="150.6" r="2.6" fill="#9aa3b8"/><circle cx="644.3" cy="148.9" r="2.6" fill="#9aa3b8"/><circle cx="683.5" cy="145.4" r="2.6" fill="#9aa3b8"/><circle cx="722.7" cy="145.1" r="2.6" fill="#9aa3b8"/><circle cx="761.9" cy="144.9" r="2.6" fill="#9aa3b8"/><circle cx="801.1" cy="143.5" r="2.6" fill="#9aa3b8"/><circle cx="840.3" cy="123.8" r="2.6" fill="#9aa3b8"/><circle cx="879.6" cy="105.7" r="2.6" fill="#9aa3b8"/><circle cx="918.8" cy="104.9" r="2.6" fill="#9aa3b8"/><circle cx="958.0" cy="50.3" r="2.6" fill="#9aa3b8"/><circle cx="56.0" cy="177.0" r="2.6" fill="#1d4ed8"/><circle cx="95.2" cy="176.3" r="2.6" fill="#1d4ed8"/><circle cx="134.4" cy="175.9" r="2.6" fill="#1d4ed8"/><circle cx="173.7" cy="175.8" r="2.6" fill="#1d4ed8"/><circle cx="212.9" cy="175.6" r="2.6" fill="#1d4ed8"/><circle cx="252.1" cy="175.3" r="2.6" fill="#1d4ed8"/><circle cx="291.3" cy="171.2" r="2.6" fill="#1d4ed8"/><circle cx="330.5" cy="163.5" r="2.6" fill="#1d4ed8"/><circle cx="369.7" cy="161.9" r="2.6" fill="#1d4ed8"/><circle cx="409.0" cy="160.3" r="2.6" fill="#1d4ed8"/><circle cx="448.2" cy="157.2" r="2.6" fill="#1d4ed8"/><circle cx="487.4" cy="156.7" r="2.6" fill="#1d4ed8"/><circle cx="526.6" cy="148.0" r="2.6" fill="#1d4ed8"/><circle cx="565.8" cy="144.8" r="2.6" fill="#1d4ed8"/><circle cx="605.0" cy="144.5" r="2.6" fill="#1d4ed8"/><circle cx="644.3" cy="143.1" r="2.6" fill="#1d4ed8"/><circle cx="683.5" cy="137.2" r="2.6" fill="#1d4ed8"/><circle cx="722.7" cy="137.7" r="2.6" fill="#1d4ed8"/><circle cx="761.9" cy="139.2" r="2.6" fill="#1d4ed8"/><circle cx="801.1" cy="142.9" r="2.6" fill="#1d4ed8"/><circle cx="840.3" cy="120.5" r="2.6" fill="#1d4ed8"/><circle cx="879.6" cy="102.7" r="2.6" fill="#1d4ed8"/><circle cx="918.8" cy="100.7" r="2.6" fill="#1d4ed8"/><circle cx="958.0" cy="41.0" r="2.6" fill="#1d4ed8"/>
+            <text class="cnum" x="950" y="32.0" text-anchor="end" fill="#1d4ed8">4,275 ms</text>
+            <text class="cnum" x="950" y="65.3" text-anchor="end" fill="#7c8499">4,085 ms</text>
+            <g transform="translate(0,58)"><text class="caxis" transform="translate(56.0,258) rotate(-52)" text-anchor="end">STAGE_MAPS</text><text class="caxis" transform="translate(95.2,258) rotate(-52)" text-anchor="end">BUNDLE</text><text class="caxis" transform="translate(134.4,258) rotate(-52)" text-anchor="end">SIGNED_PLAYER_INFO</text><text class="caxis" transform="translate(173.7,258) rotate(-52)" text-anchor="end">FB_FRIEND</text><text class="caxis" transform="translate(212.9,258) rotate(-52)" text-anchor="end">FB_ENTRY_POINT</text><text class="caxis" transform="translate(252.1,258) rotate(-52)" text-anchor="end">FB_SUBSCRIBE_BOT</text><text class="caxis" transform="translate(291.3,258) rotate(-52)" text-anchor="end">GAME_DATA</text><text class="caxis" transform="translate(330.5,258) rotate(-52)" text-anchor="end">FB_SUBSCRIBE_BOT ✓</text><text class="caxis" transform="translate(369.7,258) rotate(-52)" text-anchor="end">OBJECT_POOL</text><text class="caxis" transform="translate(409.0,258) rotate(-52)" text-anchor="end">BUNDLE ✓</text><text class="caxis" transform="translate(448.2,258) rotate(-52)" text-anchor="end">SIGNED_PLAYER_INFO ✓</text><text class="caxis" transform="translate(487.4,258) rotate(-52)" text-anchor="end">FB_DATA</text><text class="caxis" transform="translate(526.6,258) rotate(-52)" text-anchor="end">OBJECT_POOL ✓</text><text class="caxis" transform="translate(565.8,258) rotate(-52)" text-anchor="end">FB_ENTRY_POINT ✓</text><text class="caxis" transform="translate(605.0,258) rotate(-52)" text-anchor="end">FB_ENTRY_DATA</text><text class="caxis" transform="translate(644.3,258) rotate(-52)" text-anchor="end">FB_ENTRY_DATA ✓</text><text class="caxis" transform="translate(683.5,258) rotate(-52)" text-anchor="end">GAME_DATA ✓</text><text class="caxis" transform="translate(722.7,258) rotate(-52)" text-anchor="end">STAGE_MAPS ✓</text><text class="caxis" transform="translate(761.9,258) rotate(-52)" text-anchor="end">FB_DATA ✓</text><text class="caxis" transform="translate(801.1,258) rotate(-52)" text-anchor="end">FB_FRIEND ✓</text><text class="caxis" transform="translate(840.3,258) rotate(-52)" text-anchor="end">LOGIN</text><text class="caxis" transform="translate(879.6,258) rotate(-52)" text-anchor="end">LOGIN ✓</text><text class="caxis" transform="translate(918.8,258) rotate(-52)" text-anchor="end" font-weight="700" fill="#16192a">1000_LOGIN_COMPLETE</text><text class="caxis" transform="translate(958.0,258) rotate(-52)" text-anchor="end" font-weight="700" fill="#16192a">1010_LOAD_COMPLETE</text></g>
           </svg>
         </div>
+
+        <div class="cwrap" style="margin-top:14px">
+          <div class="clegend">
+            <span style="color:var(--warn)"><i style="background:var(--warn)"></i>483 − 477이하 (느려진 양)</span>
+            <span class="cscale">점선 = +95ms · 1단계에서 이미 붙어 있던 격차</span>
+          </div>
+          <svg class="cchart" viewBox="0 0 1000 160" role="img" aria-label="단계별 격차 곡선">
+            <g stroke="#eceff4" stroke-width="1">
+              <line x1="56" y1="130" x2="972" y2="130" /><line x1="56" y1="86.5" x2="972" y2="86.5" />
+              <line x1="56" y1="43" x2="972" y2="43" />
+            </g>
+            <line x1="56" y1="88.7" x2="972" y2="88.7" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.65" />
+            <g class="caxis" text-anchor="end">
+              <text x="48" y="133">0</text><text x="48" y="90">100</text><text x="48" y="46">200</text>
+            </g>
+            <polyline fill="none" stroke="#d97706" stroke-width="2.5" stroke-linejoin="round" points="56.0,88.7 95.2,87.0 134.4,86.1 173.7,87.0 212.9,87.8 252.1,86.5 291.3,88.3 330.5,67.8 369.7,77.4 409.0,82.2 448.2,69.1 487.4,69.1 526.6,36.1 565.8,76.5 605.0,76.1 644.3,78.7 683.5,57.0 722.7,63.9 761.9,79.1 801.1,124.3 840.3,100.4 879.6,103.0 918.8,93.0 958.0,47.4" />
+            <circle cx="56.0" cy="88.7" r="2.6" fill="#d97706"/><circle cx="95.2" cy="87.0" r="2.6" fill="#d97706"/><circle cx="134.4" cy="86.1" r="2.6" fill="#d97706"/><circle cx="173.7" cy="87.0" r="2.6" fill="#d97706"/><circle cx="212.9" cy="87.8" r="2.6" fill="#d97706"/><circle cx="252.1" cy="86.5" r="2.6" fill="#d97706"/><circle cx="291.3" cy="88.3" r="2.6" fill="#d97706"/><circle cx="330.5" cy="67.8" r="2.6" fill="#d97706"/><circle cx="369.7" cy="77.4" r="2.6" fill="#d97706"/><circle cx="409.0" cy="82.2" r="2.6" fill="#d97706"/><circle cx="448.2" cy="69.1" r="2.6" fill="#d97706"/><circle cx="487.4" cy="69.1" r="2.6" fill="#d97706"/><circle cx="526.6" cy="36.1" r="2.6" fill="#d97706"/><circle cx="565.8" cy="76.5" r="2.6" fill="#d97706"/><circle cx="605.0" cy="76.1" r="2.6" fill="#d97706"/><circle cx="644.3" cy="78.7" r="2.6" fill="#d97706"/><circle cx="683.5" cy="57.0" r="2.6" fill="#d97706"/><circle cx="722.7" cy="63.9" r="2.6" fill="#d97706"/><circle cx="761.9" cy="79.1" r="2.6" fill="#d97706"/><circle cx="801.1" cy="124.3" r="2.6" fill="#d97706"/><circle cx="840.3" cy="100.4" r="2.6" fill="#d97706"/><circle cx="879.6" cy="103.0" r="2.6" fill="#d97706"/><circle cx="918.8" cy="93.0" r="2.6" fill="#d97706"/><circle cx="958.0" cy="47.4" r="2.6" fill="#d97706"/>
+            <text class="cnum" x="950" y="76" text-anchor="end" fill="#b45309">+190 ms</text>
+            <g><text class="caxis" transform="translate(56.0,144) rotate(-52)" text-anchor="end">1</text><text class="caxis" transform="translate(95.2,144) rotate(-52)" text-anchor="end">2</text><text class="caxis" transform="translate(134.4,144) rotate(-52)" text-anchor="end">3</text><text class="caxis" transform="translate(173.7,144) rotate(-52)" text-anchor="end">4</text><text class="caxis" transform="translate(212.9,144) rotate(-52)" text-anchor="end">5</text><text class="caxis" transform="translate(252.1,144) rotate(-52)" text-anchor="end">6</text><text class="caxis" transform="translate(291.3,144) rotate(-52)" text-anchor="end">7</text><text class="caxis" transform="translate(330.5,144) rotate(-52)" text-anchor="end">8</text><text class="caxis" transform="translate(369.7,144) rotate(-52)" text-anchor="end">9</text><text class="caxis" transform="translate(409.0,144) rotate(-52)" text-anchor="end">10</text><text class="caxis" transform="translate(448.2,144) rotate(-52)" text-anchor="end">11</text><text class="caxis" transform="translate(487.4,144) rotate(-52)" text-anchor="end">12</text><text class="caxis" transform="translate(526.6,144) rotate(-52)" text-anchor="end">13</text><text class="caxis" transform="translate(565.8,144) rotate(-52)" text-anchor="end">14</text><text class="caxis" transform="translate(605.0,144) rotate(-52)" text-anchor="end">15</text><text class="caxis" transform="translate(644.3,144) rotate(-52)" text-anchor="end">16</text><text class="caxis" transform="translate(683.5,144) rotate(-52)" text-anchor="end">17</text><text class="caxis" transform="translate(722.7,144) rotate(-52)" text-anchor="end">18</text><text class="caxis" transform="translate(761.9,144) rotate(-52)" text-anchor="end">19</text><text class="caxis" transform="translate(801.1,144) rotate(-52)" text-anchor="end">20</text><text class="caxis" transform="translate(840.3,144) rotate(-52)" text-anchor="end">21</text><text class="caxis" transform="translate(879.6,144) rotate(-52)" text-anchor="end">22</text><text class="caxis" transform="translate(918.8,144) rotate(-52)" text-anchor="end">23</text><text class="caxis" transform="translate(958.0,144) rotate(-52)" text-anchor="end">24</text></g>
+          </svg>
+        </div>
+
+        <div class="cseg">
+          <div><b style="color:var(--warn)">+95 ms</b><span>부팅 → 첫 로그<br />엔진 진입 전</span></div>
+          <div><b style="color:var(--ok)">−10 ms</b><span>첫 로그 → 로그인완료<br />인트로 22단계</span></div>
+          <div><b style="color:var(--warn)">+105 ms</b><span>로그인완료 → 로드완료<br />로비 진입</span></div>
+          <div><b style="color:var(--warn)">+190 ms</b><span>총계 4,085 → 4,275<br />+4.7%</span></div>
+        </div>
+
         <div class="notes">
           <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">두 선이 평행하다가 마지막에만 벌어진다</div>
+            <div class="note-title">두 선이 평행하다가 마지막에만 벌어집니다</div>
             <p>
-              위 패널에서 파랑(483)이 회색(기타) 위에 <strong>일정한 간격으로 붙어</strong> 갑니다.
-              1단계에서 이미 +136ms가 붙고 23단계까지 +138ms — 인트로 22단계를 지나는 동안 순증이 +2ms입니다.
-              아래 델타 패널의 점선이 그 <strong>+136 기준선</strong>이고, 곡선이 그 위에서 오르내리는 건
-              인트로 태스크 11종이 <strong>병렬</strong>로 돌아 완료 순서가 뒤바뀌며 생기는 노이즈입니다(누적 상쇄).
-              <strong>마지막 24단계의 +243만 실제 순증</strong>입니다.
+              1단계에서 이미 <strong>+95ms</strong>가 붙은 채 시작해 23단계까지 +85ms — 인트로 22단계를 지나는 동안
+              오히려 <strong>10ms 줄어듭니다.</strong> 아래 격차 곡선이 점선 위에서 오르내리는 건 인트로 태스크 11종이
+              <strong>병렬</strong>로 돌아 완료 순서가 뒤바뀌며 생기는 노이즈입니다(누적 상쇄).
+              실제로 새로 벌어지는 건 <strong>마지막 24단계의 +105ms</strong>뿐입니다.
             </p>
           </div>
-          <div class="note" style="--acc: var(--ok)">
-            <div class="note-title">델타 p90은 24단계 전부 음수</div>
-            <p>−58 ~ −604ms. 웜 세션 기준으로 <strong>483이 꼬리에서 더 빠릅니다.</strong> 원본 표에서 확인할 수 있습니다.</p>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 값이 유효한 조건</div>
+            <p>
+              483은 배포 직후라 세션의 64%가 캐시 없는 콜드, 477이하는 15%뿐입니다. 그대로 비교하면 483이
+              무조건 느리게 나오므로 <strong>재방문(웜) 세션만</strong> 놓고 <strong>완주 세션만</strong> 집계했습니다.
+              같은 기준의 콜드 세션은 +555ms, 웜 p90은 <strong>−264ms로 483이 더 빠릅니다.</strong>
+            </p>
           </div>
         </div>
+
         <details class="fold">
-          <summary>24단계 원본 표 (세션 수 · p90 포함)</summary>
+          <summary>24단계 원본 표</summary>
           <div class="fold-body">
             <div class="table-scroll">
               <table>
-                <thead>
-                  <tr><th>#</th><th>단계</th><th style="text-align:right">세션 483</th><th style="text-align:right">세션 기타</th><th style="text-align:right">p50 483</th><th style="text-align:right">p50 기타</th><th style="text-align:right">델타 p50</th><th style="text-align:right">델타 증분</th><th style="text-align:right">델타 p90</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>1</td><td><code>INTRO_DEBUG_STAGE_MAPS</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,249</td><td style="text-align:right">1,511</td><td style="text-align:right">1,375</td><td style="text-align:right">+136</td><td style="text-align:right">—</td><td style="text-align:right">−379</td></tr>
-                  <tr><td>2</td><td><code>INTRO_BUNDLE</code></td><td style="text-align:right">1,296</td><td style="text-align:right">4,249</td><td style="text-align:right">1,524</td><td style="text-align:right">1,385</td><td style="text-align:right">+139</td><td style="text-align:right">+3</td><td style="text-align:right">−400</td></tr>
-                  <tr><td>3</td><td><code>INTRO_SIGNED_PLAYER_INFO</code></td><td style="text-align:right">1,294</td><td style="text-align:right">4,248</td><td style="text-align:right">1,529</td><td style="text-align:right">1,393</td><td style="text-align:right">+136</td><td style="text-align:right">−3</td><td style="text-align:right">−414</td></tr>
-                  <tr><td>4</td><td><code>INTRO_FB_FRIEND</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,249</td><td style="text-align:right">1,539</td><td style="text-align:right">1,399</td><td style="text-align:right">+140</td><td style="text-align:right">+4</td><td style="text-align:right">−414</td></tr>
-                  <tr><td>5</td><td><code>INTRO_FB_ENTRY_POINT</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,250</td><td style="text-align:right">1,542</td><td style="text-align:right">1,402</td><td style="text-align:right">+140</td><td style="text-align:right">0</td><td style="text-align:right">−413</td></tr>
-                  <tr><td>6</td><td><code>INTRO_FB_SUBSCRIBE_BOT</code></td><td style="text-align:right">1,296</td><td style="text-align:right">4,249</td><td style="text-align:right">1,546</td><td style="text-align:right">1,405</td><td style="text-align:right">+141</td><td style="text-align:right">+1</td><td style="text-align:right">−410</td></tr>
-                  <tr><td>7</td><td><code>INTRO_GAME_DATA</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,249</td><td style="text-align:right">1,635</td><td style="text-align:right">1,495</td><td style="text-align:right">+140</td><td style="text-align:right">−1</td><td style="text-align:right">−314</td></tr>
-                  <tr><td>8</td><td><code>INTRO_FB_SUBSCRIBE_BOT_FINISH</code></td><td style="text-align:right">1,294</td><td style="text-align:right">4,249</td><td style="text-align:right">1,783</td><td style="text-align:right">1,603</td><td style="text-align:right">+180</td><td style="text-align:right">+40</td><td style="text-align:right">−342</td></tr>
-                  <tr><td>9</td><td><code>INTRO_OBJECT_POOL</code></td><td style="text-align:right">1,291</td><td style="text-align:right">4,231</td><td style="text-align:right">1,821</td><td style="text-align:right">1,660</td><td style="text-align:right">+161</td><td style="text-align:right">−19</td><td style="text-align:right">−398</td></tr>
-                  <tr><td>10</td><td><code>INTRO_BUNDLE_FINISH</code></td><td style="text-align:right">1,293</td><td style="text-align:right">4,224</td><td style="text-align:right">1,854</td><td style="text-align:right">1,695</td><td style="text-align:right">+159</td><td style="text-align:right">−2</td><td style="text-align:right">−467</td></tr>
-                  <tr><td>11</td><td><code>INTRO_SIGNED_PLAYER_INFO_FINISH</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,250</td><td style="text-align:right">1,922</td><td style="text-align:right">1,747</td><td style="text-align:right">+175</td><td style="text-align:right">+16</td><td style="text-align:right">−295</td></tr>
-                  <tr><td>12</td><td><code>INTRO_DEBUG_FB_DATA</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,250</td><td style="text-align:right">1,930</td><td style="text-align:right">1,758</td><td style="text-align:right">+172</td><td style="text-align:right">−3</td><td style="text-align:right">−297</td></tr>
-                  <tr><td>13</td><td><code>INTRO_OBJECT_POOL_FINISH</code></td><td style="text-align:right">1,204</td><td style="text-align:right">3,956</td><td style="text-align:right">2,105</td><td style="text-align:right">1,834</td><td style="text-align:right">+271</td><td style="text-align:right">+99</td><td style="text-align:right">−555</td></tr>
-                  <tr><td>14</td><td><code>INTRO_FB_ENTRY_POINT_FINISH</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,249</td><td style="text-align:right">2,158</td><td style="text-align:right">2,029</td><td style="text-align:right">+129</td><td style="text-align:right">−142</td><td style="text-align:right">−428</td></tr>
-                  <tr><td>15</td><td><code>INTRO_FB_ENTRY_DATA</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,249</td><td style="text-align:right">2,166</td><td style="text-align:right">2,033</td><td style="text-align:right">+133</td><td style="text-align:right">+4</td><td style="text-align:right">−432</td></tr>
-                  <tr><td>16</td><td><code>INTRO_FB_ENTRY_DATA_FINISH</code></td><td style="text-align:right">1,294</td><td style="text-align:right">4,250</td><td style="text-align:right">2,205</td><td style="text-align:right">2,068</td><td style="text-align:right">+137</td><td style="text-align:right">+4</td><td style="text-align:right">−536</td></tr>
-                  <tr><td>17</td><td><code>INTRO_DEBUG_STAGE_MAPS_FINISH</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,250</td><td style="text-align:right">2,337</td><td style="text-align:right">2,122</td><td style="text-align:right">+215</td><td style="text-align:right">+78</td><td style="text-align:right">−604</td></tr>
-                  <tr><td>18</td><td><code>INTRO_GAME_DATA_FINISH</code></td><td style="text-align:right">1,294</td><td style="text-align:right">4,250</td><td style="text-align:right">2,323</td><td style="text-align:right">2,128</td><td style="text-align:right">+195</td><td style="text-align:right">−20</td><td style="text-align:right">−483</td></tr>
-                  <tr><td>19</td><td><code>INTRO_DEBUG_FB_DATA_FINISH</code></td><td style="text-align:right">1,249</td><td style="text-align:right">4,089</td><td style="text-align:right">2,289</td><td style="text-align:right">2,139</td><td style="text-align:right">+150</td><td style="text-align:right">−45</td><td style="text-align:right">−212</td></tr>
-                  <tr><td>20</td><td><code>INTRO_FB_FRIEND_FINISH</code></td><td style="text-align:right">1,295</td><td style="text-align:right">4,250</td><td style="text-align:right">2,210</td><td style="text-align:right">2,167</td><td style="text-align:right">+43</td><td style="text-align:right">−107</td><td style="text-align:right">−293</td></tr>
-                  <tr><td>21</td><td><code>INTRO_LOGIN</code></td><td style="text-align:right">1,294</td><td style="text-align:right">4,249</td><td style="text-align:right">2,679</td><td style="text-align:right">2,552</td><td style="text-align:right">+127</td><td style="text-align:right">+84</td><td style="text-align:right">−58</td></tr>
-                  <tr><td>22</td><td><code>INTRO_DEBUG_LOGIN_FINISH</code></td><td style="text-align:right">1,279</td><td style="text-align:right">4,218</td><td style="text-align:right">3,028</td><td style="text-align:right">2,907</td><td style="text-align:right">+121</td><td style="text-align:right">−6</td><td style="text-align:right">−321</td></tr>
-                  <tr><td>23</td><td><code>1000_LOGIN_COMPLETE</code></td><td style="text-align:right">1,296</td><td style="text-align:right">4,252</td><td style="text-align:right">3,060</td><td style="text-align:right">2,922</td><td style="text-align:right">+138</td><td style="text-align:right">+17</td><td style="text-align:right">−343</td></tr>
-                  <tr><td>24</td><td><b><code>1010_LOAD_COMPLETE</code></b></td><td style="text-align:right"><b>1,297</b></td><td style="text-align:right"><b>4,252</b></td><td style="text-align:right"><b>4,310</b></td><td style="text-align:right"><b>4,067</b></td><td style="text-align:right"><b>+243</b></td><td style="text-align:right"><b>+105</b></td><td style="text-align:right"><b>−130</b></td></tr>
-                </tbody>
+                <thead><tr><th>#</th><th>단계</th><th style="text-align:right">세션 483</th><th style="text-align:right">세션 477이하</th><th style="text-align:right">p50 483</th><th style="text-align:right">p50 477이하</th><th style="text-align:right">격차</th></tr></thead>
+                <tbody><tr><td>1</td><td><code>INTRO_DEBUG_STAGE_MAPS</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,170</td><td style="text-align:right">1,493</td><td style="text-align:right">1,398</td><td style="text-align:right">+95</td></tr><tr><td>2</td><td><code>INTRO_BUNDLE</code></td><td style="text-align:right">1,353</td><td style="text-align:right">7,169</td><td style="text-align:right">1,507</td><td style="text-align:right">1,408</td><td style="text-align:right">+99</td></tr><tr><td>3</td><td><code>INTRO_SIGNED_PLAYER_INFO</code></td><td style="text-align:right">1,351</td><td style="text-align:right">7,168</td><td style="text-align:right">1,516</td><td style="text-align:right">1,415</td><td style="text-align:right">+101</td></tr><tr><td>4</td><td><code>INTRO_FB_FRIEND</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,168</td><td style="text-align:right">1,518</td><td style="text-align:right">1,419</td><td style="text-align:right">+99</td></tr><tr><td>5</td><td><code>INTRO_FB_ENTRY_POINT</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,170</td><td style="text-align:right">1,521</td><td style="text-align:right">1,424</td><td style="text-align:right">+97</td></tr><tr><td>6</td><td><code>INTRO_FB_SUBSCRIBE_BOT</code></td><td style="text-align:right">1,353</td><td style="text-align:right">7,169</td><td style="text-align:right">1,528</td><td style="text-align:right">1,428</td><td style="text-align:right">+100</td></tr><tr><td>7</td><td><code>INTRO_GAME_DATA</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,170</td><td style="text-align:right">1,612</td><td style="text-align:right">1,516</td><td style="text-align:right">+96</td></tr><tr><td>8</td><td><code>INTRO_FB_SUBSCRIBE_BOT_FINISH</code></td><td style="text-align:right">1,351</td><td style="text-align:right">7,170</td><td style="text-align:right">1,769</td><td style="text-align:right">1,626</td><td style="text-align:right">+143</td></tr><tr><td>9</td><td><code>INTRO_OBJECT_POOL</code></td><td style="text-align:right">1,348</td><td style="text-align:right">7,143</td><td style="text-align:right">1,802</td><td style="text-align:right">1,681</td><td style="text-align:right">+121</td></tr><tr><td>10</td><td><code>INTRO_BUNDLE_FINISH</code></td><td style="text-align:right">1,350</td><td style="text-align:right">7,131</td><td style="text-align:right">1,834</td><td style="text-align:right">1,724</td><td style="text-align:right">+110</td></tr><tr><td>11</td><td><code>INTRO_SIGNED_PLAYER_INFO_FINISH</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,170</td><td style="text-align:right">1,898</td><td style="text-align:right">1,758</td><td style="text-align:right">+140</td></tr><tr><td>12</td><td><code>INTRO_DEBUG_FB_DATA</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,170</td><td style="text-align:right">1,908</td><td style="text-align:right">1,768</td><td style="text-align:right">+140</td></tr><tr><td>13</td><td><code>INTRO_OBJECT_POOL_FINISH</code></td><td style="text-align:right">1,257</td><td style="text-align:right">6,673</td><td style="text-align:right">2,087</td><td style="text-align:right">1,871</td><td style="text-align:right">+216</td></tr><tr><td>14</td><td><code>INTRO_FB_ENTRY_POINT_FINISH</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,168</td><td style="text-align:right">2,152</td><td style="text-align:right">2,029</td><td style="text-align:right">+123</td></tr><tr><td>15</td><td><code>INTRO_FB_ENTRY_DATA</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,169</td><td style="text-align:right">2,157</td><td style="text-align:right">2,033</td><td style="text-align:right">+124</td></tr><tr><td>16</td><td><code>INTRO_FB_ENTRY_DATA_FINISH</code></td><td style="text-align:right">1,351</td><td style="text-align:right">7,171</td><td style="text-align:right">2,186</td><td style="text-align:right">2,068</td><td style="text-align:right">+118</td></tr><tr><td>17</td><td><code>INTRO_GAME_DATA_FINISH</code></td><td style="text-align:right">1,351</td><td style="text-align:right">7,170</td><td style="text-align:right">2,307</td><td style="text-align:right">2,139</td><td style="text-align:right">+168</td></tr><tr><td>18</td><td><code>INTRO_DEBUG_STAGE_MAPS_FINISH</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,170</td><td style="text-align:right">2,297</td><td style="text-align:right">2,145</td><td style="text-align:right">+152</td></tr><tr><td>19</td><td><code>INTRO_DEBUG_FB_DATA_FINISH</code></td><td style="text-align:right">1,300</td><td style="text-align:right">6,921</td><td style="text-align:right">2,266</td><td style="text-align:right">2,149</td><td style="text-align:right">+117</td></tr><tr><td>20</td><td><code>INTRO_FB_FRIEND_FINISH</code></td><td style="text-align:right">1,352</td><td style="text-align:right">7,171</td><td style="text-align:right">2,191</td><td style="text-align:right">2,178</td><td style="text-align:right">+13</td></tr><tr><td>21</td><td><code>INTRO_LOGIN</code></td><td style="text-align:right">1,351</td><td style="text-align:right">7,169</td><td style="text-align:right">2,649</td><td style="text-align:right">2,581</td><td style="text-align:right">+68</td></tr><tr><td>22</td><td><code>INTRO_DEBUG_LOGIN_FINISH</code></td><td style="text-align:right">1,336</td><td style="text-align:right">7,110</td><td style="text-align:right">3,013</td><td style="text-align:right">2,951</td><td style="text-align:right">+62</td></tr><tr><td>23</td><td><code>1000_LOGIN_COMPLETE</code></td><td style="text-align:right">1,353</td><td style="text-align:right">7,173</td><td style="text-align:right">3,053</td><td style="text-align:right">2,968</td><td style="text-align:right">+85</td></tr><tr><td>24</td><td><code>1010_LOAD_COMPLETE</code></td><td style="text-align:right">1,354</td><td style="text-align:right">7,174</td><td style="text-align:right">4,275</td><td style="text-align:right">4,085</td><td style="text-align:right">+190</td></tr></tbody>
               </table>
             </div>
           </div>
         </details>
-      </section>
-
-      <section class="doc-section" id="basis">
-        <h2 class="doc-h2">측정 조건 <span class="doc-h2-sub">이벤트별 대조군 가용성 · 코드 실측</span></h2>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr><th>구간</th><th>이벤트</th><th><code>data.time</code> 도입</th><th>483 vs 기타</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>main.js 부트</td>
-                <td><code>FIRST_LOG</code> <code>INTRO_FB_START</code> <code>ALL_LOAD_FB</code></td>
-                <td>483 (0e24ab73)</td>
-                <td>불가 — 483 단독</td>
-              </tr>
-              <tr>
-                <td>엔진 인트로</td>
-                <td><code>INTRO_*</code> 13종 · <code>1000_LOGIN_COMPLETE</code></td>
-                <td>2026-05-19 (13a78d36)</td>
-                <td><b>가능</b></td>
-              </tr>
-              <tr>
-                <td>종점</td>
-                <td><code>1010_LOAD_COMPLETE</code></td>
-                <td>2026-05-19 (13a78d36)</td>
-                <td><b>가능</b></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h2 class="doc-h2">1b 구간 <span class="doc-h2-sub">FB SDK 대기 · 483 단독 · 대조군 없음</span></h2>
-        <div class="cwrap">
-          <div class="clegend">
-            <span style="color:var(--sol)"><i style="background:var(--sol)"></i>483</span>
-            <span class="cscale">통과율 = <code>INTRO_FB_START_FINISH</code> ÷ <code>INTRO_FB_START</code></span>
-          </div>
-          <div class="crow">
-            <div class="clab">1b 통과율<small>1,353 시작 → 1,331 완료</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">483</span><span class="ctr"><i style="width:98.37%"></i></span><span class="cbv">98.37 %</span></div>
-            </div>
-            <div class="cdelta dn">정상</div>
-          </div>
-          <div class="crow">
-            <div class="clab">1b 구간 소요<small>스케일 0~2,000ms</small></div>
-            <div class="cbars">
-              <div class="cbar c483"><span class="cbn">p50</span><span class="ctr"><i style="width:31.8%"></i></span><span class="cbv">636 ms</span></div>
-              <div class="cbar c483"><span class="cbn">p90</span><span class="ctr"><i style="width:83.4%"></i></span><span class="cbv">1,668 ms</span></div>
-            </div>
-            <div class="cdelta flat">—</div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">1b는 비교 불가</div>
-            <p>
-              부트 로그가 483에서 신설돼 <strong>이전 빌드에는 데이터 자체가 없습니다.</strong>
-              앞선 집계에서 "기타 1b 통과율 100%"로 잡힌 42세션은 483이 아닌 소수 빌드의 노이즈라 폐기했습니다.
-              일자별 추세로만 봐야 합니다.
-            </p>
-          </div>
-        </div>
 
         <div class="foot">
           <b>확인 범위</b>
-          BigQuery <code>game-log-359704.raw.solitaire_city_journey</code> · 2026-08-31 ~ 09-03.
-          사다리는 <code>1010_LOAD_COMPLETE</code> 완주 세션만 대상이라 <b>중간 이탈자는 빠져 있고, 도달률 회귀는 이 문서로 판정할 수 없습니다.</b>
-          09-03은 진행 중 데이터라 시간대 편향이 섞여 있습니다.
-          "기타"는 여러 구버전 혼합입니다.
-          이벤트 도입 시점은 코드·커밋 실측이고, 구간 귀속(부트 구간 +136ms)은 도달 시각 차이에서 역산한 값입니다.
+          BigQuery <code>game-log-359704.raw.solitaire_city_journey</code> · 각 로그 <code>data.time</code>(부팅 시작 이후 경과 ms)의 p50 · 2026-08-31 ~ 09-03.
+          <code>data.time</code>은 엔진 로그 기준 2026-05-19부터 존재해 두 빌드 모두에 있습니다.
+          <code>FIRST_LOG</code> · <code>INTRO_FB_START</code> · <code>ALL_LOAD_FB</code> 등 main.js 부트 로그는 483에서 신설돼
+          <b>477이하에는 데이터가 없어 이 곡선에 포함하지 않았습니다</b> — 그 구간은 1단계 격차 +95ms에 뭉뚱그려져 있습니다.
+          완주 세션만 대상이라 중간 이탈자는 빠져 있고, 도달률 회귀는 이 문서로 판정할 수 없습니다.
         </div>
       </section>
     </main>
