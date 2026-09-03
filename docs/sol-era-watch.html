@@ -27,7 +27,13 @@
       #eracmp .ebl{width:40px;font-size:10.5px;color:#9aa0b8;text-align:right;flex:none}
       #eracmp .etr{position:relative;flex:1;height:14px;background:#f4f6fa;border-radius:3px;overflow:visible}
       #eracmp .etr i{display:block;height:100%;border-radius:3px}
-      #eracmp .ebv{position:absolute;top:-1px;font-size:11px;white-space:nowrap}
+      /* 값·모수 열 — 막대 끝에 절대배치하면 긴 막대에서 모수가 막대 위로 올라타 읽히지 않는다.
+         고정 폭 열로 빼면 겹칠 일이 없고, 행끼리 값이 세로로 정렬돼 비교도 쉬워진다.
+         --evalw는 목표선 위치 계산(트랙 폭 = 100% − 52px − --evalw)에도 쓰인다. */
+      #eracmp{--evalw:154px}
+      #eracmp .eval{width:var(--evalw);flex:none;text-align:right;line-height:1.2}
+      #eracmp .eval b{font-size:11.5px}
+      #eracmp .epx{display:block;font-size:9.5px;color:#A8AEC0;font-weight:600;letter-spacing:-.1px}
       #eracmp .ena{font-size:10.5px;color:#c3c9d6;padding-left:6px;line-height:14px}
       #eracmp .etgt{position:absolute;top:-2px;bottom:-2px;border-left:2px dashed #b45309;opacity:.75;z-index:2}
       #eracmp .etgl{position:absolute;top:-15px;font-size:10px;font-weight:800;color:#b45309;white-space:nowrap;z-index:2}
@@ -39,7 +45,7 @@
       #eracmp .esrc button{font-size:11px;font-weight:700;padding:3px 10px;border-radius:14px;cursor:pointer;
         border:1.5px solid #e4e8f0;background:#fff;color:#9aa0b8;font-family:inherit}
       #eracmp .esrc button.on{border-color:#4f8ef7;background:#eef3ff;color:#4f8ef7}
-      @media (max-width:720px){ #eracmp .erow{grid-template-columns:150px 1fr 60px} }
+      @media (max-width:720px){ #eracmp .erow{grid-template-columns:150px 1fr 60px} #eracmp{--evalw:112px} }
       /* ★네이티브 title은 뜨는 데 1초 이상 걸리고 줄바꿈이 플랫폼마다 달라 안 뜨는 것처럼 보인다.
          hover 즉시 뜨는 커스텀 말풍선으로 대체한다. (원본 179~185행) */
       #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:340px;
@@ -436,20 +442,23 @@ ORDER BY `프로젝트`;</pre></div>
             if(v==null || !isFinite(v))
               return `<div class="ebar"><span class="ebl">${m.label}</span><div class="etr"><span class="ena">수집 중</span></div></div>`;
             const pt = parts? parts(m) : null;
-            const tip = `솔리테어 ${m.label} · ${m.win}\\n${fmt(v)} = ${pt?nf(pt[0]):''} ${pt?pt[1]:''} ÷ ${pt?nf(pt[2]):''} ${pt?pt[3]:''}\\n${m.days}일 통산`;
-            return `<div class="ebar"><span class="ebl">${m.label}</span><div class="etr" data-tip="${tip}"><i style="width:${(v/mx*100).toFixed(1)}%;background:${m.color}"></i><b class="ebv" style="left:calc(${Math.min(v/mx*100,88).toFixed(1)}% + 5px)">${fmt(v)}</b></div></div>`;
+            const tip = `솔리테어 ${m.label} · ${m.win}\n${fmt(v)} = ${pt?nf(pt[0]):''} ${pt?pt[1]:''} ÷ ${pt?nf(pt[2]):''} ${pt?pt[3]:''}\n${m.days}일 통산`;
+            const px = pt? `<span class="epx">${nf(pt[0])} ÷ ${nf(pt[2])}</span>` : '';
+            return `<div class="ebar"><span class="ebl">${m.label}</span><div class="etr" data-tip="${tip}"><i style="width:${(v/mx*100).toFixed(1)}%;background:${m.color}"></i></div><span class="eval" data-tip="${tip}"><b>${fmt(v)}</b>${px}</span></div>`;
           }).join('');
           const tpt = tgt!=null && tgtSrc? (parts? parts(tgtSrc): null) : null;
+          // ★목표선은 .ebars 폭이 아니라 트랙 폭 기준이어야 한다 — 우측 값 열만큼 좁아졌다.
+          const trk = r => `calc((100% - 52px - var(--evalw)) * ${r.toFixed(4)} + 46px)`;
           const tline = tgt==null || !isFinite(tgt)? '' :
-            `<div class="etgt" style="left:calc(${(tgt/mx*100).toFixed(1)}% + 46px)" data-tip="${tgtLab} ${fmt(tgt)}${tpt?`\n= ${nf(tpt[0])} ${tpt[1]} ÷ ${nf(tpt[2])} ${tpt[3]}`:''}\n벤치 3일치(${B.win}) 통산 · 활동성·바이럴=마종 · 초대=퍼블마"></div>
-             <div class="etgl" style="left:calc(${Math.min(tgt/mx*100,82).toFixed(1)}% + 50px)">🎯 ${tgtLab} ${fmt(tgt)}</div>`;
+            `<div class="etgt" style="left:${trk(tgt/mx)}" data-tip="${tgtLab} ${fmt(tgt)}${tpt?`\n= ${nf(tpt[0])} ${tpt[1]} ÷ ${nf(tpt[2])} ${tpt[3]}`:''}\n벤치 3일치(${B.win}) 통산 · 활동성·바이럴=마종 · 초대=퍼블마"></div>
+             <div class="etgl" style="left:${trk(Math.min(tgt/mx,0.82))}">🎯 ${tgtLab} ${fmt(tgt)}</div>`;
           // Δ = 483 합산 ÷ 482 합산 − 1. 버전별 통산이라 일자 구성이 다른 점은 각주로 경고한다.
           let delta = '<span style="color:#C3C9D6">—</span>';
           const vc = CUR && CUR.ud? f(CUR):null, vp = PRE && PRE.ud? f(PRE):null;
           if(vc!=null && isFinite(vc) && vp!=null && isFinite(vp) && vp){
             const pc=(vc/vp-1)*100;
             const col = neutral? '#9AA0B8' : (Math.abs(pc)<5? '#9AA0B8' : pc>0? '#15803D':'#DC2626');
-            delta = `<span style="font-weight:800;color:${col}" data-tip="483 통산 ÷ 482 통산 — ${fmt(vc)} ÷ ${fmt(vp)}${neutral?'\\n(정상화·의도된 차단이라 색 판정을 끔)':''}">${pc>=0?'+':'−'}${Math.abs(pc).toFixed(0)}%</span>`;
+            delta = `<span style="font-weight:800;color:${col}" data-tip="483 통산 ÷ 482 통산 — ${fmt(vc)} ÷ ${fmt(vp)}${neutral?'\n(정상화·의도된 차단이라 색 판정을 끔)':''}">${pc>=0?'+':'−'}${Math.abs(pc).toFixed(0)}%</span>`;
           }
           return `<div class="erow"><div class="elab"><b>${lab}</b>${note?` <span class="rch" data-tip="${note}">ⓘ</span>`:''}</div>
             <div class="ebars">${tline}${bars}</div>
@@ -457,7 +466,7 @@ ORDER BY `프로젝트`;</pre></div>
         const srcbar = !hasSrc? '' :
           `<span class="esrc"><b style="color:#9AA0B8">유입</b>${[['all','UA 포함'],['org','UA 제외']].map(([g,l])=>
             `<button class="${SRC===g?'on':''}" onclick="setSrc('${g}')">${l}</button>`).join('')}</span>`;
-        el.innerHTML = `<h3>솔리테어 483 전후 <span class="rch">빌드별 통산 · Δ = 483 ÷ 482 · 🎯 = 벤치 ${B.win} 기준선 · 막대에 마우스를 올리면 모수</span></h3>
+        el.innerHTML = `<h3>솔리테어 483 전후 <span class="rch">빌드별 통산 · Δ = 483 ÷ 482 · 🎯 = 벤치 ${B.win} 기준선 · 값 아래 회색이 모수(분자÷분모)</span></h3>
           <div class="ehead">${ARMS.map(m=>`<span><i style="background:${m.color}"></i>${m.label} ${m.win} · ${m.days}일 ${Number(m.ud||0).toLocaleString('en-US')} 유저-일</span>`).join('')}
             <span style="color:#B45309;font-weight:700">┆ 목표선(마종 · 초대만 퍼블마)</span>${srcbar}</div>
           ${rows}
