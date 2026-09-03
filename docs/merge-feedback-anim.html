@@ -36,7 +36,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.0 · 2026-09-03 08:53</span>
+          <span class="tag" id="mfx-ver">v4.1 · 2026-09-03 09:39</span>
         </div>
       </div>
     </header>
@@ -2690,6 +2690,18 @@
           ioMsg.textContent = text || "";
           ioMsg.classList.toggle("is-bad", !!bad);
         }
+        /* 붙여넣으면 캐럿이 텍스트 끝으로 가고, 브라우저가 그 캐럿을 보이려고
+           가로·세로 스크롤을 끌고 간다. 복사 텍스트는 줄이 길고(주석 정렬 + 한 줄짜리
+           @mfx-data JSON) 그래서 붙이자마자 엉뚱한 중간이 보인다.
+           방금 넣은 게 뭔지부터 보여야 하므로 캐럿을 맨 앞으로 되돌리고 왼쪽 위로 붙인다. */
+        function ioHome() {
+          try { ioTa.setSelectionRange(0, 0); } catch (e) {}
+          ioTa.scrollTop = 0;
+          ioTa.scrollLeft = 0;
+        }
+        /* paste 이벤트는 값이 들어가기 전에 터진다 — 한 틱 뒤에 되돌린다. */
+        ioTa.addEventListener("paste", function () { setTimeout(ioHome, 0); });
+
         function ioOpen() {
           ioSay("");
           if (ioDlg.showModal) ioDlg.showModal(); else ioDlg.setAttribute("open", "");
@@ -2727,6 +2739,7 @@
           var fr = new FileReader();
           fr.onload = function () {
             ioTa.value = String(fr.result);
+            ioHome();
             importDone(importText(ioTa.value));
           };
           fr.onerror = function () { ioSay("파일을 읽지 못했습니다.", true); };
@@ -2746,7 +2759,7 @@
         ioDlg.addEventListener("drop", function (e) {
           if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) { readFile(e.dataTransfer.files[0]); return; }
           var t = e.dataTransfer && e.dataTransfer.getData("text");
-          if (t) { ioTa.value = t; importDone(importText(t)); }
+          if (t) { ioTa.value = t; ioHome(); importDone(importText(t)); }
         });
 
         /* 내보내기 */
