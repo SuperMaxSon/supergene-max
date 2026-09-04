@@ -18,42 +18,48 @@
     <style>
       .kb { --good:#15803d; --bad:#dc2626; --spec:#0891b2; --mute:#9aa0b8; --a:#94a3b8; --b:#1d4ed8; }
 
-      /* 대조 막대 — sol-era-watch 의 #eracmp 를 세그먼트 3열로 확장했다.
-         한 지표 행 = [라벨 | 전체 패널 | 기존 패널 | 신규 패널], 패널 하나 = 485·486 막대 두 줄 + Δ.
-         스케일은 행 안의 6개 막대가 공유한다 — 패널마다 자기 최대로 늘리면 세그 간 크기 차이가 사라진다. */
-      .mx{--lab:186px}
-      .mx .mr{display:grid;grid-template-columns:var(--lab) repeat(3,1fr);gap:10px;align-items:center;
-        padding:10px 0;border-bottom:1px solid var(--border-soft)}
+      /* 대조 막대 — sol-era-watch 의 #eracmp 방식. 한 행 = [라벨 | 485·486 막대 두 줄 | Δ].
+         세그먼트(RU/NRU)는 패널로 쪼개 봤다가 걷어냈다 — 표본이 작아 어느 세그도 유의하지
+         않았고, 열이 셋이면 막대가 짧아져 그래프의 이점이 사라졌다. 분해는 원본 폴드에 있다. */
+      .mx{--lab:180px}
+      .mx .mr{display:grid;grid-template-columns:var(--lab) 1fr 108px;gap:14px;align-items:center;
+        padding:9px 0;border-bottom:1px solid var(--border-soft)}
       .mx .mr:last-child{border-bottom:none}
-      .mx .ml{font-size:12.5px;font-weight:600;padding-right:6px}
+      .mx .ml{font-size:12.5px;font-weight:600}
       .mx .mr.key .ml{font-weight:800}
       .mx .mr.dim{opacity:.45}
+      .mx .mr[data-tip]{cursor:help}
       .mx .q{font-size:10px;font-weight:800;color:#c3c9d6;margin-left:4px;cursor:help}
       .mx .q:hover{color:var(--b)}
 
-      .mx .hd{padding-bottom:5px;border-bottom:2px solid var(--border)}
-      .mx .sg{font-size:12px;font-weight:800;padding-left:32px}
-      .mx .sg em{display:block;font-style:normal;font-size:10px;font-weight:600;
-        color:var(--text-faint);font-variant-numeric:tabular-nums}
+      .mx .hd{padding-bottom:6px;border-bottom:2px solid var(--border);font-size:11px;font-weight:800}
+      .mx .hd .ml{font-size:11px;color:var(--text-dim)}
+      .mx .hd .bs{display:flex;gap:16px;align-items:center}
+      .mx .hd .ha,.mx .hd .hb{display:inline-flex;align-items:center;gap:5px;color:var(--text-dim);
+        font-variant-numeric:tabular-nums}
+      .mx .hd .ha::before,.mx .hd .hb::before{content:"";width:14px;height:8px;border-radius:2px}
+      .mx .hd .ha::before{background:var(--a)} .mx .hd .hb::before{background:var(--b)}
+      .mx .hd .bd{text-align:right;color:var(--text-dim)}
 
-      /* 패널 — 485·486 두 줄. Δ 는 오른쪽 끝에 세로 가운데로 붙여 두 막대를 한 덩어리로 묶는다. */
-      .mx .bp{display:grid;grid-template-columns:1fr 46px;grid-template-rows:auto auto;
-        gap:1px 8px;align-items:center;cursor:help}
-      .mx .bp .br{grid-column:1;display:grid;grid-template-columns:26px 1fr 54px;gap:6px;align-items:center}
+      /* 막대 두 줄 — 트랙을 넓게 쓰려고 값은 오른쪽 고정 폭 열로 뺐다.
+         막대 끝에 붙이면 긴 막대에서 숫자가 막대 위로 올라타 읽히지 않는다. */
+      .mx .br{display:grid;grid-template-columns:26px 1fr 60px;gap:8px;align-items:center;margin:2px 0}
       .mx .bl{font-size:9.5px;font-weight:800;color:#b6bccb;text-align:right}
-      .mx .bt{position:relative;height:12px;background:#f2f4f8;border-radius:3px}
+      .mx .bt{position:relative;height:13px;background:#f2f4f8;border-radius:3px}
       .mx .bt i{display:block;height:100%;border-radius:3px}
       .mx .bt i.a{background:var(--a)} .mx .bt i.b{background:var(--b)}
-      .mx .bv{font-size:10.5px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+      .mx .bv{font-size:11px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
       .mx .bv.a{color:#8b93a8} .mx .bv.b{color:var(--b)}
-      .mx .bd{grid-column:2;grid-row:1/3;font-size:13px;font-weight:800;text-align:right;
-        font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+      .mx .na{font-size:10.5px;font-weight:800;color:#b6bccb;text-align:center;padding:8px 0;
+        border-radius:6px;background:repeating-linear-gradient(135deg,#fcfcfd 0 7px,#f6f7fa 7px 14px)}
+
+      .mx .bd{font-size:14px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;
+        letter-spacing:-.3px;line-height:1.25}
       .mx .bd.good{color:var(--good)} .mx .bd.bad{color:var(--bad)}
       .mx .bd.spec{color:var(--spec)} .mx .bd.mute{color:var(--mute)}
-      /* 값이 없는 칸은 빈칸으로 두면 0으로 읽힌다 — 빗금으로 "없음"을 명시한다. */
-      .mx .bp.na{display:flex;align-items:center;justify-content:center;min-height:34px;border-radius:6px;
-        font-size:10.5px;font-weight:800;color:#b6bccb;cursor:default;
-        background:repeating-linear-gradient(135deg,#fcfcfd 0 7px,#f6f7fa 7px 14px)}
+      /* 유의성 꼬리표 — Δ 아래 작게. 크면 Δ 와 경쟁해서 어느 쪽이 결론인지 흐려진다. */
+      .mx .sg2{display:block;font-size:9.5px;font-weight:800;color:#b6bccb;letter-spacing:0}
+      .mx .sg2.ok{color:var(--good)}
 
       .mx .gp{margin:0 0 24px;padding-left:12px;border-left:4px solid var(--g);border-radius:2px}
       .mx .gp h3{margin:0 0 4px;font-size:13.5px;color:color-mix(in srgb,var(--g) 70%,var(--text))}
@@ -62,17 +68,12 @@
       .kb-foot{font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.8;margin-top:14px}
       .kb-foot b{color:var(--text)}
 
-      @media (max-width:900px){
-        .mx{--lab:112px}
-        .mx .bp{grid-template-columns:1fr 40px} .mx .bp .br{grid-template-columns:22px 1fr 44px;gap:4px}
-        .mx .bv{font-size:9.5px} .mx .bd{font-size:11.5px} .mx .sg{padding-left:26px}
-      }
-      @media (max-width:620px){
-        .mx .mr{grid-template-columns:1fr;gap:6px} .mx .hd{display:none}
-        .mx .ml{font-weight:800;padding-top:2px}
-        .mx .bp::before{content:attr(data-sg);grid-column:1/-1;font-size:9px;font-weight:800;
-          color:var(--text-faint)}
-        .mx .bp{grid-template-rows:auto auto auto} .mx .bd{grid-row:2/4}
+      @media (max-width:760px){
+        .mx{--lab:118px}
+        .mx .mr{grid-template-columns:var(--lab) 1fr 74px;gap:8px}
+        .mx .br{grid-template-columns:22px 1fr 48px;gap:5px}
+        .mx .bv{font-size:10px} .mx .bd{font-size:12.5px}
+        .mx .hd .bs{flex-direction:column;align-items:flex-start;gap:2px;font-size:10px}
       }
 
       /* 판정 전제 — 지표가 아니라 "이 표를 믿어도 되는가"의 전제라 표 위에 둔다. */
@@ -515,138 +516,147 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       // 슬롯 동작과 발화 성과는 같은 퍼널의 앞뒤라 한 덩어리로 둔다. 시도와 성공을 갈라 두면
       // "얼마나 쐈나"와 "얼마나 닿았나"를 눈으로 이어 붙여야 해서 배수 비교가 안 된다.
       // 순서: 기회 → 공유(시도·성공·성공률·절대) → 초대(시도·성공) → 미발화
+      // row = [라벨, 값함수, 포맷, 스케일그룹, 중립, 주석, 강조, 모수함수(있으면 유의성 검정)]
+      // 스케일은 같은 단위 계열끼리 공유한다 — 행마다 자기 최대로 늘리면 긴 막대가 늘 꽉 차서
+      // 막대가 Δ 이상의 정보를 주지 못한다.
       const GROUPS = [
         { name:"소셜 슬롯", acc:"#dc2626",
           sub:"슬롯이 몇 번 열려 몇 건이 나갔는지 · 청록 Δ는 설계대로 바뀌는 값이라 판정하지 않습니다",
           rows:[
-            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, true,
-              "(공유 시도 + 초대 시도) ÷ 완료 판수. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다"],
-            ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, true,
+            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, "g_fire", true,
+              "(공유 시도 + 초대 시도) ÷ 완료 판수. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다",
+              false, e => [e.sh_try+e.inv_try, e.fin]],
+            ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, "g_try", true,
               "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다"],
-            ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, false,
-              "3210. 실질 주지표입니다. 바로 위 시도가 2배면 여기도 2배가 되어야 본전인데, 전체 −6%가 신규 +61%(p=0.07) / 기존 −23%(p=0.12)를 덮고 있습니다. 두 방향이 반대라는 점은 읽되, 각각의 크기는 아직 유의하지 않아 확정할 수 없습니다", true],
-            ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, false,
-              "3210 ÷ 3200. 485에서도 신규 14.1% / 기존 7.6%로 신규가 더 높았습니다 — 발화가 적어 피로가 덜 쌓인 쪽이 잘 통과합니다", true],
-            ["공유 성공 (절대)", e => e.sh_ok, nfr, false,
+            ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, "g_ok", false,
+              "3210. 실질 주지표입니다. 시도를 2.3배 늘렸는데 성공은 제자리라, 늘린 슬롯이 그대로 실패로 흘렀다는 뜻입니다",
+              true, e => [e.sh_ok, e.ud]],
+            ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, "g_rate", false,
+              "3210 ÷ 3200. 이 문서에서 유일하게 통계적으로 확실한 지표입니다 — 시도를 늘릴수록 통과율이 떨어진다는 뜻이고, 공유 창구가 이미 포화였다는 근거입니다",
+              true, e => [e.sh_ok, e.sh_try]],
+            ["공유 성공 (절대)", e => e.sh_ok, nfr, "g_abs", false,
               "DAU 보정 없는 원값입니다. 9/4가 더 쌓이면서 v6.0의 90 → 84가 91 → 94로 뒤집혔습니다 — 부분 집계로 절대량을 판정하면 안 된다는 사례입니다"],
-            ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, true,
+            ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, "g_try", true,
               "3460 중 position=tournament_invite만 셉니다. 486에서 0이 되는 것이 설계입니다"],
-            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, true,
+            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, "g_ok", true,
               "3470. 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 성공 1건이 만든 유입이 공유의 1/16입니다(상단 판정 전제)"],
-            ["미노출 / DAU", e => e.sup/e.ud, p3, true,
-              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다. 발화가 는 것인지 미노출이 준 것인지 갈라 보셔야 합니다"],
+            ["미노출 / DAU", e => e.sup/e.ud, p3, "g_ok", true,
+              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다"],
           ]},
         { name:"플레이 · 수익", acc:"#d97706",
-          sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 판수는 분모가 둘이라 나란히 두었습니다",
+          sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 전부 유의성 미달이라 방향만 참고합니다",
           rows:[
-            ["완료 판수 / DAU", e => e.fin/e.ud, p1, false,
-              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다(data.result로 clear/fail이 갈립니다). 판당 슬롯 발화의 분모이기도 합니다"],
-            ["판수 평균 / 유저-일", e => e.avg, p2, false,
-              "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮게 나옵니다. 두 값의 차이가 곧 로그인 로그 누락분입니다"],
-            ["판수 p50 / 유저-일", e => e.p50, p1, false,
-              "중앙값입니다. 평균만 오르고 이 값이 그대로면 '다수가 더 한 것'이 아니라 헤비 tail이 두꺼워진 것입니다", false, false, true],
-            ["판수 p90 / 유저-일", e => e.p90, p1, false,
-              "상위 10% 경계입니다. 평균 상승분이 여기서 왔는지 확인하는 자리입니다", false, false, true],
-            ["플레이 유저 비율", e => e.play, pc, false,
-              "그날 한 판이라도 끝낸 유저-일 비중입니다. 판수 p50이 0인 구간에서는 이 값이 실질 분모입니다"],
-            ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, false,
+            ["완료 판수 / DAU", e => e.fin/e.ud, p1, "g_play", false,
+              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다. 판당 슬롯 발화의 분모이기도 합니다"],
+            ["판수 평균 / 유저-일", e => e.avg, p2, "g_play", false,
+              "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮습니다. 중앙값은 두 빌드 모두 그대로였습니다(기존 3 → 3, 신규 0 → 0) — 평균 상승은 헤비 tail이 두꺼워진 것이지 다수가 더 한 것이 아닙니다"],
+            ["플레이 유저 비율", e => e.play, pc, "g_playpct", false,
+              "그날 한 판이라도 끝낸 유저-일 비중입니다",
+              false, e => [Math.round(e.play / 100 * e.uday), e.uday]],
+            ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, "g_ads", false,
               "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외했습니다"],
-            ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, false,
-              "3110 ÷ 3100. 생성 다이얼로그는 공유와 같은 결과창 슬롯을 두고 경쟁합니다 — 세그로 가르면 신규 +45% / 기존 −55%로 극단적으로 갈립니다"],
+            ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, "g_rate", false,
+              "3110 ÷ 3100. 생성 다이얼로그는 공유와 같은 결과창 슬롯을 두고 경쟁합니다",
+              false, e => [e.cr_ok, e.cr_try]],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
           sub:"9/3 코호트 · 486이 9/3 시작이라 아직 D+1만 도래했습니다",
           rows:[] },
       ];
 
-      const SEGS = [["ALL","전체"],["RU","기존 유저"],["NRU","신규 유저"]];
+      // 두 비율 검정(pooled z). 유저-일 기준이라 같은 유저가 이틀 걸치면 독립이 아니어서
+      // 실제 유효 표본은 이보다 작다 — 즉 이 p 값은 낙관적인 하한이다.
+      function ptest(x1, n1, x2, n2) {
+        if (![x1, n1, x2, n2].every(v => typeof v === "number" && isFinite(v)) || !n1 || !n2) return null;
+        const pp = (x1 + x2) / (n1 + n2);
+        const se = Math.sqrt(pp * (1 - pp) * (1 / n1 + 1 / n2));
+        if (!se) return null;
+        const z = (x2 / n2 - x1 / n1) / se;
+        // 정규 꼬리확률 근사(Zelen & Severo). 소수 셋째 자리까지면 판정에 충분하다.
+        const t = 1 / (1 + 0.2316419 * Math.abs(z));
+        const d = 0.3989423 * Math.exp(-z * z / 2);
+        return 2 * d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      }
+      const sigTag = p => p == null ? `<span class="sg2">검정 불가</span>`
+        : p < 0.001 ? `<span class="sg2 ok">p&lt;.001</span>`
+        : p < 0.05  ? `<span class="sg2 ok">p=${p.toFixed(3)}</span>`
+        : `<span class="sg2">n.s.</span>`;
+
       const DAYS = [1,2,3,4,5,6,7];
 
-      // 패널 하나 = 한 세그먼트의 485·486 막대 두 줄 + Δ.
-      // 스케일은 그 지표 행 안에서 6개 막대가 공유한다 — 패널마다 자기 최대로 늘리면
-      // "기존이 신규보다 3배 크다" 같은 세그 간 크기 차이가 사라진다.
-      function panel(vp, vc, fmt, neutral, mx, why, sg, tipBase) {
-        if (vp == null || vc == null || !isFinite(vp) || !isFinite(vc))
-          return `<div class="bp na" data-sg="${sg}">${why}</div>`;
-        const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
-        const key = neutral ? "spec" : (Math.abs(pct) < 5 ? "mute" : pct > 0 ? "good" : "bad");
-        const w = v => (mx > 0 ? Math.max(v / mx * 100, v > 0 ? 1.5 : 0) : 0).toFixed(1);
-        const bar = (lab, v, cls) => `<div class="br"><span class="bl">${lab}</span>`
-          + `<div class="bt"><i class="${cls}" style="width:${w(v)}%"></i></div>`
-          + `<span class="bv ${cls}">${fmt(v)}</span></div>`;
-        return `<div class="bp" data-sg="${sg}" data-tip="${tipBase} · ${sg}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
-          + `${neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않습니다)" : ""}">
-          ${bar("485", vp, "a")}${bar("486", vc, "b")}
-          <div class="bd ${key}">${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</div>
-        </div>`;
-      }
-
-      function metricRow(lab, f, fmt, neutral, note, key, noSeg, onlySeg) {
-        const vals = SEGS.map(([g]) => {
-          if ((noSeg && g !== "ALL") || (onlySeg && g === "ALL")) return null;
-          const A = agg("485", g), B = agg("486", g);
-          if (!A || !B) return null;
-          const vp = f(A), vc = f(B);
-          return [vp, vc].some(x => x == null || !isFinite(x)) ? null : [vp, vc];
-        });
-        const mx = Math.max(...vals.filter(Boolean).flat(), 1e-9) * 1.12;
-        const cells = SEGS.map(([g, l], k) => {
-          const why = noSeg && g !== "ALL" ? "세그 분해 불가"
-                    : onlySeg && g === "ALL" ? "세그별만" : "미수신";
-          return vals[k] ? panel(vals[k][0], vals[k][1], fmt, neutral, mx, why, l, lab)
-                         : `<div class="bp na" data-sg="${l}">${why}</div>`;
-        }).join("");
-        return `<div class="mr${key ? " key" : ""}"><div class="ml">${lab}`
-             + `${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>${cells}</div>`;
-      }
-
-      function retRow(n) {
-        const arrived = retArrived(n);
-        const val = (v, g) => {
-          const R = RET[v];
-          const coh = g === "ALL" ? R.NRU.coh + R.RU.coh : R[g].coh;
-          const bk  = g === "ALL"
-            ? (R.NRU.d[n] == null || R.RU.d[n] == null ? null : R.NRU.d[n] + R.RU.d[n])
-            : (R[g].d[n] ?? null);
-          return bk == null ? null : bk / coh * 100;
-        };
-        const vals = SEGS.map(([g]) => {
-          const a = val("485", g), b = val("486", g);
-          return a == null || b == null ? null : [a, b];
-        });
-        const mx = Math.max(...vals.filter(Boolean).flat(), 1e-9) * 1.12;
-        const fmt = x => x.toFixed(1) + "%";
-        const cells = SEGS.map(([g, l], k) => vals[k]
-          ? panel(vals[k][0], vals[k][1], fmt, false, mx, "미수신", l, `D+${n} 리텐션`)
-          : `<div class="bp na" data-sg="${l}">${arrived ? "미수신" : "미도래"}</div>`).join("");
-        return `<div class="mr${arrived ? "" : " dim"}"><div class="ml">D+${n}`
-             + `<span class="q" data-tip="9/3 코호트가 9/${3 + n}에 다시 로그인한 비율입니다.`
-             + `${arrived ? "" : " 9/" + (3 + n) + "이 아직 오지 않았습니다."}">ⓘ</span></div>${cells}</div>`;
-      }
-
       function renderBoard() {
-        const head = `<div class="mr hd"><div class="ml"></div>${SEGS.map(([g, l]) => {
-          const A = agg("485", g), B = agg("486", g);
-          return `<div class="sg">${l}${A && B ? `<em>${nf(A.ud)} vs ${nf(B.ud)} 유저-일</em>` : ""}</div>`;
-        }).join("")}</div>`;
+        const A = agg("485", "ALL"), B = agg("486", "ALL");
 
-        const body = GROUPS.map(g => `<section class="gp" style="--g:${g.acc}">
-            <h3>${g.name}<span>${g.sub}</span></h3>
-            ${g.days ? DAYS.map(retRow).join("") : g.rows.map(r => metricRow(...r)).join("")}
-          </section>`).join("");
+        // 스케일 그룹별 최대 — 같은 단위 계열 안에서만 막대 길이를 견준다.
+        const GMX = {};
+        GROUPS.forEach(g => (g.rows || []).forEach(([, f, , grp]) => {
+          [f(A), f(B)].forEach(v => { if (v != null && isFinite(v)) GMX[grp] = Math.max(GMX[grp] || 0, v); });
+        }));
+        const retVals = DAYS.flatMap(n => ["485","486"].map(v => {
+          const R = RET[v], bk = (R.NRU.d[n] == null || R.RU.d[n] == null) ? null : R.NRU.d[n] + R.RU.d[n];
+          return bk == null ? null : bk / (R.NRU.coh + R.RU.coh) * 100;
+        })).filter(v => v != null);
+        GMX.g_ret = Math.max(...retVals, 1e-9);
+
+        const bars = (vp, vc, fmt, mx) => {
+          const w = v => (mx > 0 ? Math.max(v / (mx * 1.1) * 100, v > 0 ? 1.5 : 0) : 0).toFixed(1);
+          const one = (lab, v, cls) => `<div class="br"><span class="bl">${lab}</span>`
+            + `<div class="bt"><i class="${cls}" style="width:${w(v)}%"></i></div>`
+            + `<span class="bv ${cls}">${fmt(v)}</span></div>`;
+          return one("485", vp, "a") + one("486", vc, "b");
+        };
+
+        const row = (lab, vp, vc, fmt, grp, neutral, note, key, pv, dim) => {
+          if (vp == null || vc == null || !isFinite(vp) || !isFinite(vc))
+            return `<div class="mr dim"><div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
+                 + `<div class="na">${dim || "미수신"}</div><div class="bd"></div></div>`;
+          const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
+          // 색은 "검정을 통과한 것"에만 준다. 유의성 미달이나 검정 불가인 행에 초록·빨강을 칠하면
+          // 확정된 개선·악화로 읽힌다 — 이 문서에서 그게 성립하는 지표는 공유 성공률 하나뿐이다.
+          const cls = neutral ? "spec"
+            : (pv == null || pv >= 0.05 || Math.abs(pct) < 5) ? "mute"
+            : pct > 0 ? "good" : "bad";
+          const tip = `${lab}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
+            + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않습니다)" : "")
+            + (pv != null ? `\n두 비율 검정 p=${pv < 0.001 ? "<0.001" : pv.toFixed(3)}` : "");
+          return `<div class="mr${key ? " key" : ""}" data-tip="${tip}">
+            <div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
+            <div class="bs">${bars(vp, vc, fmt, GMX[grp])}</div>
+            <div class="bd ${cls}">${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%${sigTag(pv)}</div>
+          </div>`;
+        };
+
+        const body = GROUPS.map(g => {
+          const rows = g.days
+            ? DAYS.map(n => {
+                const arrived = retArrived(n);
+                const val = v => { const R = RET[v];
+                  const bk = (R.NRU.d[n] == null || R.RU.d[n] == null) ? null : R.NRU.d[n] + R.RU.d[n];
+                  return bk == null ? null : { x: bk, n: R.NRU.coh + R.RU.coh }; };
+                const a = val("485"), b = val("486");
+                const note = `9/3 코호트가 9/${3 + n}에 다시 로그인한 비율입니다.`
+                  + (arrived ? "" : ` 9/${3 + n}이 아직 오지 않았습니다.`);
+                return row(`D+${n}`, a && a.x / a.n * 100, b && b.x / b.n * 100,
+                  x => x.toFixed(1) + "%", "g_ret", false, note, false,
+                  a && b ? ptest(a.x, a.n, b.x, b.n) : null, arrived ? "미수신" : "미도래");
+              }).join("")
+            : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts]) => {
+                const pv = parts ? ptest(...parts(A), ...parts(B)) : null;
+                return row(lab, f(A), f(B), fmt, grp, neutral, note, key, pv);
+              }).join("");
+          return `<section class="gp" style="--g:${g.acc}"><h3>${g.name}<span>${g.sub}</span></h3>${rows}</section>`;
+        }).join("");
 
         // 판정 전제 — 지표가 아니라 "이 그래프를 어디까지 믿어도 되는가"라 맨 위에 둔다.
-        // 두 비율 검정(pooled z)은 유저-일 기준이라, 같은 유저가 이틀 걸치면 독립이 아니어서
-        // 실제 유효 표본은 이보다 작다 — 즉 아래 p 값은 낙관적인 하한이다.
         const bal = `<div class="kb-bal">
-          <div class="bl"><b>표본 크기</b><span>주지표 유의성</span>
-            <span class="v"><span class="p">신규 p=0.07</span> <span class="n">기존 p=0.12</span></span>
-            <span class="d">미달</span>
-            <em>공유 성공/DAU의 신규 +61% · 기존 −23%는 <b>아직 통계적으로 유의하지 않습니다</b>(성공 건수가 20~71건) — 방향만 읽고 크기는 확정하지 마세요</em></div>
-          <div class="bl"><b>배정 균형</b><span>NRU 비중</span>
-            <span class="v"><span class="p">${A0.nru_share.toFixed(1)}%</span> → <span class="n">${B0.nru_share.toFixed(1)}%</span></span>
-            <span class="d">p=0.12</span>
-            <em>+${(B0.nru_share - A0.nru_share).toFixed(1)}%p 차이는 <b>표본 오차 범위</b>라 무작위 배정과 모순되지 않습니다 — 군 크기도 ${nf(A0.ud)} vs ${nf(B0.ud)}로 근사합니다</em></div>
+          <div class="bl"><b>유일한 확실</b><span>공유 성공률</span>
+            <span class="v"><span class="p">8.4%</span> → <span class="n">3.4%</span></span>
+            <span class="d">p&lt;.001</span>
+            <em>시도를 2.3배 늘리자 통과율이 그만큼 떨어졌습니다 — <b>공유 창구는 이미 포화였습니다.</b> 이 문서에서 통계적으로 확실한 지표는 이것 하나입니다</em></div>
+          <div class="bl"><b>나머지</b><span>주지표 포함</span>
+            <span class="v"><span class="p">공유 성공/DAU</span> <span class="n">n.s.</span></span>
+            <span class="d">p=0.64</span>
+            <em>−6%는 <b>0과 구별되지 않습니다</b>. 완료 판수·광고·생성률·리텐션도 전부 미달이라 방향만 참고하고 크기는 확정하지 마세요</em></div>
           <div class="bl"><b>초대 도달</b><span>성공 1건당 유입</span>
             <span class="v"><span class="p">초대 ${reachInv.toFixed(2)}</span> vs <span class="n">공유 ${reachSh.toFixed(2)}</span></span>
             <span class="d">1/16</span>
@@ -657,11 +667,16 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             <em>발신이 절반 잘린 날은 9/4 하루뿐이고 그마저 부분 집계입니다 — 아직 판정할 수 없습니다</em></div>
         </div>`;
 
-        document.getElementById("groups").innerHTML = bal + `<div class="mx">${head}${body}</div>`
-          + `<div class="kb-foot">막대 길이는 <b>한 지표 행 안에서만</b> 비교합니다 — 6개 막대가 같은 스케일을 쓰므로
-              세그먼트끼리도 크기를 견줄 수 있지만, <b>행이 다르면 단위가 달라 길이 비교가 불가</b>합니다 ·
+        document.getElementById("groups").innerHTML = bal
+          + `<div class="mx"><div class="mr hd"><div class="ml">지표</div>
+              <div class="bs"><span class="ha">485 교대 · ${nf(A.ud)} 유저-일</span>
+                <span class="hb">486 공유만 · ${nf(B.ud)} 유저-일</span></div>
+              <div class="bd">Δ</div></div>${body}</div>`
+          + `<div class="kb-foot">막대 길이는 <b>같은 단위 계열 안에서만</b> 비교합니다(발화율 / 시도 / 성공·미노출 / 비율 / 판수 / 광고 / 리텐션) — <b>계열이 다른 행끼리는 길이 비교가 불가</b>합니다 ·
               Δ 색 초록=개선 · 빨강=악화 · <b>청록=설계대로라 판정하지 않음</b> · 회색=변화 없음 ·
-              US · 9/3~9/4(9/4는 부분 집계)</div>`;
+              <b>초록·빨강은 두 비율 검정을 통과한 행에만</b> 칠합니다 — <b>n.s.</b>(유의성 미달)와
+              <b>검정 불가</b>(비율이 아니라 검정을 붙일 수 없는 지표)는 회색으로 두어 확정된 변화로 읽히지 않게 했습니다 ·
+              RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · 9/3~9/4(9/4는 부분 집계)</div>`;
       }
       renderBoard();
 
