@@ -3,993 +3,157 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>토너 클리어 소셜 슬롯 A/B — 485 이하 ↔ 486</title>
+    <title>토너 클리어 소셜 슬롯 — 485 ↔ 486</title>
     <meta
       name="description"
-      content="토너먼트 컨텍스트 판 클리어 소셜 슬롯을 공유↔초대 교대(485 이하)에서 공유 전용(486)으로 바꾼 변경의 추적 설계. 로그 지도·판정 기준·데이터 요청 쿼리 4종."
+      content="판 클리어 소셜 구좌를 공유↔초대 교대(485)에서 공유 전용(486)으로 바꾼 A/B. 두 빌드가 같은 날 반반 서빙돼 날짜 교란 없이 KPI를 대조한다."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
+    <!-- 이 <style>은 문서 전용 구역이다. 허브 공용 컴포넌트(.stat/.table-scroll/.note)는
+         "값 하나"나 "격자 표"를 보여주는 데 맞춰져 있어, 전/후 두 값 + 증감을 한 줄로 읽는
+         KPI 대조에는 세로 낭비가 크고 Δ가 눈에 안 들어온다. 그래서 이 페이지만 쓰는
+         델타 보드(.kb)를 따로 만들었고, 색·간격·모서리는 전부 허브 토큰을 그대로 물려받아
+         디자인 시스템에서 이탈하지 않게 했다. 전 선택자를 .kb / #tip 안으로 가뒀다. -->
     <style>
-      /* 쿼리 복사 버튼 정렬만 잡는다. 버튼 자체는 허브 공용 .mfx-btn 을 그대로 쓰고
-         --smg 토큰만 인라인으로 교체한다. sol-era-watch.html · sol-483-boot-latency.html 과 같은 방식. */
-      #sql .qcopy { display: flex; justify-content: flex-end; margin: 2px 0 10px; }
+      .kb { --good:#15803d; --bad:#dc2626; --mute:#9aa0b8; --a:#94a3b8; --b:#1d4ed8; }
+
+      /* 히어로 — 결론 3개. 값보다 "무엇을 뜻하는지"가 커야 해서 캡션을 두 줄로 받는다. */
+      .kb-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 26px}
+      .kb-hero .h{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+        padding:16px 18px;border-top:3px solid var(--acc,var(--mute))}
+      .kb-hero .hn{font-size:30px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;
+        color:var(--acc,var(--text));line-height:1.1}
+      .kb-hero .hn s{font-size:16px;font-weight:700;opacity:.5;text-decoration:none}
+      .kb-hero .ht{font-size:12.5px;font-weight:700;margin-top:7px}
+      .kb-hero .hs{font-size:11.5px;color:var(--text-dim);margin-top:3px;line-height:1.6}
+      @media (max-width:760px){ .kb-hero{grid-template-columns:1fr} }
+
+      /* 그룹 — 지표를 "설계대로 바뀐 것 / 실제 성과 / 가드레일"로 갈라야 Δ 부호를 잘못 읽지 않는다. */
+      .kb-grp{margin:0 0 22px;background:var(--surface);border:1px solid var(--border);
+        border-radius:var(--radius);overflow:hidden}
+      .kb-gh{display:flex;align-items:baseline;gap:10px;padding:12px 18px;background:var(--surface-2);
+        border-bottom:1px solid var(--border)}
+      .kb-gh b{font-size:13.5px}
+      .kb-gh span{font-size:11.5px;color:var(--text-dim)}
+
+      /* 한 행 = [지표 | 전→후 | 발산 막대 | Δ]. 막대를 0 기준 좌우로 뻗게 두면
+         부호·크기가 한눈에 잡혀서, 길이가 같은 막대 두 개를 비교하는 것보다 훨씬 빨리 읽힌다. */
+      .kb-row{display:grid;grid-template-columns:172px 128px 1fr 62px;gap:14px;align-items:center;
+        padding:11px 18px;border-bottom:1px solid var(--border-soft)}
+      .kb-row:last-child{border-bottom:none}
+      .kb-row.is-key{background:#fbfcfe}
+      .kb-lab{font-size:12.5px;font-weight:600}
+      .kb-lab .q{font-size:10.5px;font-weight:700;color:#c3c9d6;margin-left:3px;cursor:help}
+      .kb-lab .q:hover{color:var(--b)}
+      .kb-val{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+      .kb-val .p{color:var(--a);font-weight:700}
+      .kb-val .n{color:var(--b);font-weight:800}
+      .kb-val .ar{color:#c3c9d6;margin:0 4px}
+      .kb-den{display:block;font-size:9.5px;color:#b6bccb;font-weight:600;margin-top:1px}
+
+      /* 발산 막대 — 중앙선이 0. ±150%에서 자르고, 넘치면 촉을 세워 잘림을 알린다. */
+      .kb-bar{position:relative;height:16px;background:linear-gradient(#f4f6fa,#f4f6fa) padding-box;
+        border-radius:3px}
+      .kb-bar::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#dfe3ea}
+      .kb-bar i{position:absolute;top:2px;bottom:2px;border-radius:2px}
+      .kb-bar .cap{position:absolute;top:0;bottom:0;width:0;border-left:3px dotted #fff}
+      .kb-d{font-size:12.5px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+      .kb-scale{display:flex;justify-content:space-between;font-size:9.5px;color:#c3c9d6;font-weight:700;
+        padding:4px 18px 9px;letter-spacing:.02em}
+      @media (max-width:760px){
+        .kb-row{grid-template-columns:1fr 108px 52px;gap:8px}
+        .kb-bar,.kb-scale{display:none}
+      }
+
+      .kb-note{font-size:11.5px;color:var(--text-dim);line-height:1.8;padding:11px 18px 14px;
+        border-top:1px solid var(--border-soft);background:#fcfdfe}
+      .kb-note b{color:var(--text)}
+
+      #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:330px;
+        background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
+        line-height:1.55;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
+      #tip b{color:#ffd9a8;font-weight:800}
+      #sql .qcopy{display:flex;justify-content:flex-end;margin:2px 0 10px}
     </style>
   </head>
   <body>
+    <div id="tip"></div>
+
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
-        <a class="nav-back" href="#what">무엇이 바뀌었나</a>
-        <a class="nav-back" href="#found">관측 결과</a>
-        <a class="nav-back" href="#verdict">판정</a>
-        <a class="nav-back" href="#logs">로그 지도</a>
-        <a class="nav-back" href="#metric">판정 기준</a>
-        <a class="nav-back" href="#how">읽는 법</a>
-        <a class="nav-back" href="#sql">데이터 요청</a>
+        <a class="nav-back" href="#board">KPI</a>
+        <a class="nav-back" href="#raw">원본</a>
+        <a class="nav-back" href="#sql">쿼리</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
 
     <header class="doc-header">
       <div class="wrap wrap--wide">
-        <div class="doc-eyebrow">검증 · 실험 설계</div>
-        <h1 class="doc-title">토너 클리어 소셜 슬롯 — 485 이하 ↔ 486</h1>
+        <div class="doc-eyebrow">검증 · 라이브 데이터</div>
+        <h1 class="doc-title">토너 클리어 소셜 슬롯 — 485 ↔ 486</h1>
         <p class="doc-lede">
-          토너먼트 컨텍스트에서 판을 클리어하면 뜨는 <b>소셜 다이얼로그 1구좌</b>를,
-          <b>485 이하</b>의 <b>공유↔토너 초대 교대</b>에서 <b>486</b>의 <b>공유 전용</b>으로 바꿨습니다.
-          485와 486이 <b>같은 날 반반씩 동시 서빙</b>돼 날짜 교란이 통제된 상태로 이틀치를 뽑았습니다.
-          결론은 <b>무해하고 무익</b>입니다 — 없앤 초대는 장부상 97% 성공이었지만
-          <b>실제 도달은 공유의 1/16</b>이었고, 슬롯을 공유에 <b>2.2배 몰아줬는데 공유 성공은
-          90 → 84로 오히려 줄었습니다</b>. 손해도 이득도 아닙니다.
-          진짜 문제는 슬롯 배분이 아니라 <b>공유 성공률이 애초에 8.9%</b>라는 것입니다.
-          <b>롤백 대신 2~3일 더 관찰</b>을 권고합니다.
+          판 클리어 소셜 구좌를 <b>공유↔초대 교대(485)</b>에서 <b>공유 전용(486)</b>으로 바꿨습니다.
+          두 빌드가 <b>같은 날 반반 서빙</b>돼 요일·이벤트가 양쪽에 똑같이 걸립니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
-          <span class="tag">prod 브랜치 코드 실측</span>
-          <span class="tag">stash@{0} 대조</span>
-          <span class="tag">BigQuery ①~④ 완료 · ③-b 미수신</span>
-          <span class="tag">US · 2026-09-04 조회</span>
+          <span class="tag">BigQuery</span>
+          <span class="tag">US · 9/3~9/4</span>
+          <span class="tag">485 n=876 · 486 n=958 유저-일</span>
         </div>
       </div>
     </header>
 
     <main class="wrap wrap--wide">
-      <section class="doc-section" id="what">
-        <h2 class="doc-h2">
-          무엇이 바뀌었나
-          <span class="doc-h2-sub">FacebookPlatform.resolveTournamentSocialAction()</span>
-        </h2>
-
-        <p>
-          토너먼트 · P2P 컨텍스트에서 판을 클리어하면 소셜 다이얼로그를 <b>딱 하나</b> 띄웁니다.
-          그 하나를 무엇으로 채울지 고르는 분기가 아래입니다. 위에서부터 순서대로 걸리며,
-          <code>null</code>이면 아무것도 띄우지 않습니다.
-        </p>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>순서</th>
-                <th>조건</th>
-                <th>결과</th>
-                <th>남는 로그</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>1</td>
-                <td><code>!tournamentInviteEnabled</code></td>
-                <td><b>공유</b> — 486은 여기서 끝난다</td>
-                <td>3200 계열</td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>토너먼트 종료 시각 지남</td>
-                <td><b>공유</b></td>
-                <td>3200 계열</td>
-              </tr>
-              <tr>
-                <td>3</td>
-                <td>직전 발화로부터 쿨다운 이내</td>
-                <td><b>미발화</b></td>
-                <td>3230 <code>reason=cooldown</code></td>
-              </tr>
-              <tr>
-                <td>4</td>
-                <td><code>isNewPlayer</code></td>
-                <td><b>공유</b> — 순번은 소모하지 않는다</td>
-                <td>3200 계열</td>
-              </tr>
-              <tr>
-                <td>5</td>
-                <td>그 외</td>
-                <td><b>공유 ↔ 초대 교대</b> (FB 스토리지에 순번 저장)</td>
-                <td>3200 또는 3460 계열</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>버전</th>
-                <th><code>tournamentInviteEnabled</code></th>
-                <th>슬롯 동작</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>485 이하</b></td>
-                <td>시트 <code>10108</code> 값을 읽는다 (<code>1</code>이면 켬, 누락 시 <code>0</code>)</td>
-                <td>10108=1이면 <b>공유↔초대 교대</b>, 0이면 공유만</td>
-              </tr>
-              <tr>
-                <td><b>486</b></td>
-                <td>코드에서 <b><code>false</code> 고정</b> — 시트값을 보지 않는다</td>
-                <td><b>공유만</b></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--ok)">
-            <div class="note-title">대조군 성립 — 확인됨</div>
-            <p>
-              485가 <strong>교대군</strong>인 건 시트 <code>10108</code>이 <code>1</code>이었을 때만 참인데,
-              쿼리 ②가 이를 로그로 확정했습니다. 485 이하는 <strong>공유 4,095 : 초대 3,919</strong>로
-              <strong>51.1 : 48.9</strong> — 교대 로직이 설계대로 반반을 만들고 있었습니다.
-              486은 <strong>토너 초대 0건</strong>입니다. 처치가 정확히 걸렸고, 판정을 진행할 수 있습니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">486 변경은 아직 저장소에 커밋되어 있지 않다</div>
-            <p>
-              공유 전용으로 만든 diff는 현재 <code>stash@{0}</code>(<i>On prod: 토너먼트 토글 주석처리</i>)에만 있고,
-              <code>prod</code> · <code>main</code>의 <code>Const.ts</code>는 <strong>여전히 시트값을 읽습니다</strong>.
-              저장소의 <code>build-templates/fb-instant-games/main.js</code> <code>client_version</code>도
-              <strong>445에 멈춰 있어</strong> 코드만으로는 486이 언제부터 라이브인지 특정할 수 없습니다.
-              <strong>배포 시점은 로그(쿼리 ①)로 확정</strong>하고, 그 전에 이 diff를 커밋해 두는 편이 안전합니다 —
-              지금 상태로 누가 빌드를 다시 뽑으면 <strong>실험군이 조용히 사라집니다</strong>.
-            </p>
-          </div>
-        </div>
+      <section class="doc-section kb" id="board">
+        <div class="kb-hero" id="hero"></div>
+        <div id="groups"></div>
       </section>
 
-      <section class="doc-section" id="found">
-        <h2 class="doc-h2">
-          관측 결과
-          <span class="doc-h2-sub">선행 쿼리 ① · ② · US · 2026-09-04 조회</span>
-        </h2>
+      <section class="doc-section" id="raw">
+        <h2 class="doc-h2">원본 <span class="doc-h2-sub">막대의 합산 재료</span></h2>
+        <details class="fold">
+          <summary>일자 × 빌드 — 슬롯 퍼널 + 가드레일</summary>
+          <div class="fold-body"><div id="rawdaily"></div></div>
+        </details>
+        <details class="fold">
+          <summary>일자별 유입 세션</summary>
+          <div class="fold-body"><div id="rawinf"></div></div>
+        </details>
+        <details class="fold">
+          <summary>바뀐 코드 — <code>resolveTournamentSocialAction()</code></summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>// assets/script/Base/FacebookPlatform.ts
+if (!DataManager.const.tournamentInviteEnabled) return share;   // ← 486은 여기서 끝난다
+if (!isTournamentOngoing(tournament))          return share;
+if (now - lastViral &lt; COOLDOWN)                return null;     // 3230 reason=cooldown
+if (DataManager.isNewPlayer)                   return share;    // 순번 미소모
+useInvite = shouldInvitePopupNext;                              // FBDataKey.tournamentInviteNext
+_shouldInvitePopupNext = !useInvite;                            // 매 발화마다 토글
+return useInvite ? invite : share;
 
-        <div class="stat-row">
-          <div class="stat" style="--acc: var(--bad)">
-            <div class="stat-num">1<span class="stat-unit">/16</span></div>
-            <div class="stat-name">초대 성공 1건당 도달</div>
-            <div class="stat-sub">공유 0.66 vs 초대 0.04 세션</div>
+// 486 변경 (stash@{0} · 아직 커밋되지 않음)
+- return (this.getValueByKey(ConstKeyNumber.TOURNAMENT_INVITE_ENABLED) ?? 0) === 1;
++ return false;</pre></div>
+            <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
+              <b>485</b>는 시트 <code>10108</code>을 읽어 켜져 있으면 공유↔초대 교대,
+              <b>486</b>은 코드에서 <code>false</code> 고정이라 공유만.
+              ⚠ 이 diff는 <b>stash에만 있고 커밋되지 않았다</b> — 지금 빌드를 다시 뽑으면 실험군이 사라진다.
+            </div></div>
           </div>
-          <div class="stat" style="--acc: var(--bad)">
-            <div class="stat-num">90<span class="stat-unit">→84</span></div>
-            <div class="stat-name">공유 성공 절대량</div>
-            <div class="stat-sub">판당 시도는 2.2배인데 감소</div>
-          </div>
-          <div class="stat" style="--acc: var(--bad)">
-            <div class="stat-num">8.9<span class="stat-unit">→3.2%</span></div>
-            <div class="stat-name">공유 성공률</div>
-            <div class="stat-sub">추가 시도가 전부 실패로 흘렀다</div>
-          </div>
-          <div class="stat" style="--acc: var(--warn)">
-            <div class="stat-num">−11.1<span class="stat-unit">%</span></div>
-            <div class="stat-name">유입 총량 일평균</div>
-            <div class="stat-sub">부분 데이터 하루 · 판정 불가</div>
-          </div>
-        </div>
-
-        <h3 style="margin: 26px 0 8px; font-size: 15px">① 버전 롤아웃 — DAU</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>날짜</th>
-                <th style="text-align: right">480</th>
-                <th style="text-align: right">483</th>
-                <th style="text-align: right">485</th>
-                <th style="text-align: right">486</th>
-                <th style="text-align: right">합</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>9/1</td>
-                <td style="text-align: right">98</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">98</td>
-              </tr>
-              <tr>
-                <td>9/2</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">476</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">476</td>
-              </tr>
-              <tr>
-                <td>9/3</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">1,788</td>
-                <td style="text-align: right"><b>244</b></td>
-                <td style="text-align: right"><b>291</b></td>
-                <td style="text-align: right">2,323</td>
-              </tr>
-              <tr>
-                <td>9/4 <span class="tag">조회 시점까지</span></td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right"><b>624</b></td>
-                <td style="text-align: right"><b>658</b></td>
-                <td style="text-align: right">1,282</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">이게 이 문서에서 제일 중요한 발견이다 — 순차 배포가 아니다</div>
-            <p>
-              이 게임의 빌드 전환은 여태 <strong>하루 만에 전원 교체</strong>였습니다
-              (480 → 483: 9/1 98명 전부 → 9/2 0명). 그런데 485와 486은
-              <strong>9/3 244:291, 9/4 624:658로 이틀 연속 반반</strong>입니다. 한쪽이 밀려나지 않아요.
-              게다가 9/4에 <strong>485가 2.6배, 486이 2.3배로 같이 늘었습니다</strong> —
-              구버전 캐시 잔존이라면 485는 줄어야 합니다.
-              <strong>두 빌드가 의도적으로 동시 서빙되고 있다</strong>고 보는 게 맞습니다
-              (FB 퍼센트 롤아웃으로 추정). <strong>확인 필요</strong> —
-              FB 콘솔의 배포 설정을 보면 확정됩니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--ok)">
-            <div class="note-title">사실이라면 이 실험의 등급이 올라간다</div>
-            <p>
-              설계 당시 최대 약점은 <strong>"랜덤 배정이 아니라 배포 전후"</strong>였습니다.
-              같은 날 두 빌드가 나란히 서빙되고 DAU가 반반이면, <strong>요일 · 이벤트 · 프로모션 ·
-              시즌이 양쪽에 똑같이 걸립니다</strong> — 캘린더 교란이 통째로 사라집니다.
-              다만 <strong>배정이 무작위인지는 아직 모릅니다.</strong> FB가 지역 · 기기 · 세션 기준으로
-              나눴다면 유저 편향은 남습니다. 그래서 ③에 국가 · OS 분해를 붙여
-              <strong>양 군의 구성이 닮았는지</strong>부터 확인합니다. 닮지 않으면 그 축을 통제해야 합니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">이 표의 점유율은 "전체 대비"가 아니다</div>
-            <p>
-              쿼리 ①에 <code>client_version &gt;= 480</code> 필터가 걸려 있어,
-              원본의 점유율은 <strong>480 이상 안에서의 비중</strong>입니다.
-              9/1의 "480 = 100%"는 그날 480 미만이 없었다는 뜻이 아니라
-              <strong>필터에 안 잡혔다</strong>는 뜻입니다. 위 표는 그래서 비중 대신 DAU 원값만 실었습니다.
-              480 미만 잔존이 궁금하면 필터를 풀고 다시 뽑아야 합니다 — 다만 이 실험 판정에는 쓰이지 않습니다.
-            </p>
-          </div>
-        </div>
-
-        <h3 style="margin: 26px 0 8px; font-size: 15px">② 대조군 성립 확인</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>군</th>
-                <th style="text-align: right">유저수</th>
-                <th style="text-align: right">공유 시도</th>
-                <th style="text-align: right">초대 시도</th>
-                <th style="text-align: right">초대 성공</th>
-                <th style="text-align: right">초대 성공률</th>
-                <th style="text-align: right">공유 : 초대</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>A · 485 이하</b> <span class="tag">483 포함</span></td>
-                <td style="text-align: right">590</td>
-                <td style="text-align: right">4,095</td>
-                <td style="text-align: right">3,919</td>
-                <td style="text-align: right">3,834</td>
-                <td style="text-align: right">97.8%</td>
-                <td style="text-align: right"><b>51.1 : 48.9</b></td>
-              </tr>
-              <tr>
-                <td><b>B · 486</b></td>
-                <td style="text-align: right">232</td>
-                <td style="text-align: right">2,590</td>
-                <td style="text-align: right"><b>0</b></td>
-                <td style="text-align: right"><b>0</b></td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right"><b>100 : 0</b></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--ok)">
-            <div class="note-title">51.1 : 48.9 — 교대 로직이 코드대로 돌았다는 직접 증거</div>
-            <p>
-              한 번 걸러 한 번씩 띄우면 <strong>장기적으로 50 : 50</strong>이 나와야 합니다.
-              실측이 51.1 : 48.9입니다. 공유 쪽이 약간 많은 건 예상된 편차예요 —
-              분기 2 · 4(<strong>토너먼트 종료</strong> · <strong><code>isNewPlayer</code></strong>)가
-              <strong>순번을 소모하지 않고 공유로 빠지는</strong> 경로라 공유에만 더해집니다.
-              이 2.2%p가 그 경로의 크기입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">이 표의 절대 건수로는 A와 B를 비교할 수 없다</div>
-            <p>
-              A는 <strong>9일치이고 483 · 480까지 포함</strong>한 덩어리인 반면 B는
-              <strong>9/3~9/4 이틀치</strong>입니다. 기간도 빌드도 다릅니다 —
-              "A 공유 4,095 vs B 공유 2,590"을 그대로 읽으면 <strong>전부 오독</strong>입니다.
-              이 표가 답하는 건 오직 <strong>비율 두 개</strong>(교대 성립 · 초대 0)뿐입니다.
-              그래서 ③은 <strong>기간을 9/3부터로 자르고 485와 486만</strong> 남겨 다시 뽑습니다.
-              483을 A에 남겨 두면 <strong>483이 담고 있는 다른 변경분</strong>까지 처치 효과로 섞입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">없앤 지면은 성공률 97.8%짜리였다</div>
-            <p>
-              초대는 <strong>3,919번 쏴서 3,834번 성공</strong>했습니다. 공유 다이얼로그보다
-              훨씬 잘 통과하는 지면을 <strong>절반의 기회에서 통째로 뺀 것</strong>이라,
-              486의 공유가 <strong>2배 가까이 늘지 못하면 총 발화는 순손실</strong>입니다.
-              이게 ③에서 확인할 핵심 숫자이고, 이 실험이 실패할 수 있는 가장 그럴듯한 방향입니다.
-              한편 초대 성공률이 이렇게 높은 것 자체가 <strong>확인 필요</strong> 항목입니다 —
-              <code>3470</code>이 실제 발송 확정인지 다이얼로그 통과인지에 따라 의미가 달라집니다.
-            </p>
-          </div>
-        </div>
-
-        <h3 style="margin: 30px 0 8px; font-size: 15px">③ 메인 — 일자 × 빌드</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>날짜 · 빌드</th>
-                <th style="text-align: right">DAU</th>
-                <th style="text-align: right">판 종료</th>
-                <th style="text-align: right">공유 시도</th>
-                <th style="text-align: right">공유 성공</th>
-                <th style="text-align: right">초대 시도</th>
-                <th style="text-align: right">초대 성공</th>
-                <th style="text-align: right">미노출</th>
-                <th style="text-align: right">생성 성공</th>
-                <th style="text-align: right">전면광고</th>
-                <th style="text-align: right">RV</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>9/3 · <b>485</b></td>
-                <td style="text-align: right">244</td>
-                <td style="text-align: right">1,554</td>
-                <td style="text-align: right">237</td>
-                <td style="text-align: right">21</td>
-                <td style="text-align: right">232</td>
-                <td style="text-align: right">227</td>
-                <td style="text-align: right">134</td>
-                <td style="text-align: right">35</td>
-                <td style="text-align: right">950</td>
-                <td style="text-align: right">480</td>
-              </tr>
-              <tr>
-                <td>9/3 · <b>486</b></td>
-                <td style="text-align: right">291</td>
-                <td style="text-align: right">1,729</td>
-                <td style="text-align: right">722</td>
-                <td style="text-align: right">18</td>
-                <td style="text-align: right">0</td>
-                <td style="text-align: right">0</td>
-                <td style="text-align: right">108</td>
-                <td style="text-align: right">30</td>
-                <td style="text-align: right">1,065</td>
-                <td style="text-align: right">587</td>
-              </tr>
-              <tr>
-                <td>9/4 · <b>485</b></td>
-                <td style="text-align: right">632</td>
-                <td style="text-align: right">5,015</td>
-                <td style="text-align: right">776</td>
-                <td style="text-align: right">69</td>
-                <td style="text-align: right">742</td>
-                <td style="text-align: right">721</td>
-                <td style="text-align: right">418</td>
-                <td style="text-align: right">152</td>
-                <td style="text-align: right">3,087</td>
-                <td style="text-align: right">1,440</td>
-              </tr>
-              <tr>
-                <td>9/4 · <b>486</b></td>
-                <td style="text-align: right">667</td>
-                <td style="text-align: right">5,993</td>
-                <td style="text-align: right">1,882</td>
-                <td style="text-align: right">66</td>
-                <td style="text-align: right">0</td>
-                <td style="text-align: right">0</td>
-                <td style="text-align: right">377</td>
-                <td style="text-align: right">195</td>
-                <td style="text-align: right">3,506</td>
-                <td style="text-align: right">1,870</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">원본 표는 이렇게 읽는다 — 두 줄만 나란히 보면 된다</div>
-            <p>
-              9/4 한 줄씩만 보세요. <strong>공유 시도 776 → 1,882</strong>로 2.4배가 됐는데
-              <strong>공유 성공은 69 → 66</strong>입니다. 늘어난 1,106번의 시도가
-              <strong>단 한 건도 성공을 더 만들지 못했습니다</strong>. 그 사이 초대 성공 721이 0이 됐지만, ④-b가 보여주듯 그 721은 실제 도달을 거의 만들지 않았습니다.
-              나머지 열(생성 · 광고 · RV)은 가드레일이라 <strong>떨어지지 않았는지만</strong> 봅니다.
-            </p>
-          </div>
-        </div>
-
-        <h3 style="margin: 30px 0 8px; font-size: 15px">④-b 유입 세션 — 날짜축 · 버전 무관</h3>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>날짜</th>
-                <th style="text-align: right">공유 유입<br /><span class="tag">TOURNAMENT</span></th>
-                <th style="text-align: right">초대 유입<br /><span class="tag">TOURNAMENT_INVITE</span></th>
-                <th style="text-align: right">합</th>
-                <th style="text-align: right">초대 비중</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>8/28</td><td style="text-align: right">101</td><td style="text-align: right">37</td><td style="text-align: right">138</td><td style="text-align: right">26.8%</td></tr>
-              <tr><td>8/29</td><td style="text-align: right">125</td><td style="text-align: right">41</td><td style="text-align: right">166</td><td style="text-align: right">24.7%</td></tr>
-              <tr><td>8/30</td><td style="text-align: right">104</td><td style="text-align: right">39</td><td style="text-align: right">143</td><td style="text-align: right">27.3%</td></tr>
-              <tr><td>8/31</td><td style="text-align: right">96</td><td style="text-align: right">23</td><td style="text-align: right">119</td><td style="text-align: right">19.3%</td></tr>
-              <tr><td>9/1</td><td style="text-align: right">139</td><td style="text-align: right">26</td><td style="text-align: right">165</td><td style="text-align: right">15.8%</td></tr>
-              <tr><td>9/2</td><td style="text-align: right">133</td><td style="text-align: right">24</td><td style="text-align: right">157</td><td style="text-align: right">15.3%</td></tr>
-              <tr><td>9/3 <span class="tag">486 13%</span></td><td style="text-align: right">112</td><td style="text-align: right">33</td><td style="text-align: right">145</td><td style="text-align: right">22.8%</td></tr>
-              <tr><td>9/4 <span class="tag">486 51% · 부분</span></td><td style="text-align: right">89</td><td style="text-align: right">29</td><td style="text-align: right">118</td><td style="text-align: right">24.6%</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">초대 "성공" 948건이 만든 유입은 62 세션이다</div>
-            <p>
-              485·486이 반반이던 <strong>9/4 하루</strong>만 떼어 보면
-              <strong>공유 성공 135건 → 공유 유입 89 세션(성공 1건당 0.66)</strong>,
-              <strong>초대 성공 721건 → 초대 유입 29 세션(성공 1건당 0.04)</strong>.
-              <strong>16.4배 격차</strong>입니다.
-              게다가 초대는 <strong>메시지라 즉시 눌리고, 한 번에 여러 친구에게 갑니다</strong> —
-              시차로도 다중 수신으로도 유리한 쪽인데 결과가 반대입니다.
-              <code>3470_MSG_P2P_INVITE_SUCCESS</code>는 <strong>실제 도달이 아니라
-              다이얼로그 통과에 가깝다</strong>고 보는 게 맞습니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">유입 총량은 아직 판정할 수 없다</div>
-            <p>
-              발신이 실제로 절반 잘린 날은 <strong>9/4 하루뿐</strong>이고(9/3은 486이 13%밖에 안 됐습니다),
-              그 9/4마저 <strong>조회 시점까지의 부분 데이터</strong>입니다.
-              합계가 148.0 → 131.5(−11.1%)로 보이지만 <strong>이 숫자로 판정하면 안 됩니다.</strong>
-              게다가 <strong>이미 나간 초대 링크는 며칠 더 눌리므로</strong> 꼬리가 남아 있습니다 —
-              초대 유입이 −2.1%로 거의 안 줄어든 것도 그 꼬리로 설명됩니다.
-              <strong>완전한 하루가 2~3일 쌓인 뒤에 다시 봐야 합니다.</strong>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="doc-section" id="verdict">
-        <h2 class="doc-h2">
-          판정
-          <span class="doc-h2-sub">9/3~9/4 · US · 485 n=876 · 486 n=958 · ④-b 반영</span>
-        </h2>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">주지표 −92.6%는 철회한다 — 반증이 성립했다</div>
-            <p>
-              직전 판정은 <strong>"DAU당 성공 발화 1.185 → 0.088, −92.6%"</strong>였고,
-              그때 <strong>초대 성공률 97.3%가 허수일 수 있다</strong>는 것을 유일한 반증 경로로 걸어 뒀습니다.
-              ④-b가 <strong>그 반증을 확인시켰습니다</strong> — 초대 "성공" 1건이 만든 유입은
-              공유의 <strong>1/16</strong>입니다. <code>3210</code>과 <code>3470</code>을 같은 단위로 더한 게
-              애초에 잘못이었고, <strong>−92.6%는 지표 정의가 만든 숫자</strong>입니다.
-              아래 표는 <strong>도달로 환산한 값</strong>으로 다시 뽑았습니다.
-            </p>
-          </div>
-        </div>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>지표</th>
-                <th style="text-align: right">485 · 교대</th>
-                <th style="text-align: right">486 · 공유만</th>
-                <th style="text-align: right">변화</th>
-                <th>판정</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>DAU당 공유 성공</b> <span class="tag">실 도달</span></td>
-                <td style="text-align: right">0.103</td>
-                <td style="text-align: right">0.088</td>
-                <td style="text-align: right">−14.6%</td>
-                <td><span class="pill" style="--acc: var(--bad)">2배 기대 → 감소</span></td>
-              </tr>
-              <tr>
-                <td>공유 성공률</td>
-                <td style="text-align: right">8.9%</td>
-                <td style="text-align: right">3.2%</td>
-                <td style="text-align: right">−5.7%p</td>
-                <td><span class="pill" style="--acc: var(--bad)">하락</span></td>
-              </tr>
-              <tr>
-                <td>판당 공유 시도</td>
-                <td style="text-align: right">15.4%</td>
-                <td style="text-align: right">33.7%</td>
-                <td style="text-align: right">2.2배</td>
-                <td><span class="pill" style="--acc: var(--ok)">처치 정상</span></td>
-              </tr>
-              <tr>
-                <td>판당 슬롯 발화</td>
-                <td style="text-align: right">30.3%</td>
-                <td style="text-align: right">33.7%</td>
-                <td style="text-align: right">+3.4%p</td>
-                <td><span class="pill" style="--acc: var(--ok)">총량 유지</span></td>
-              </tr>
-              <tr>
-                <td>초대 성공 1건당 유입 <span class="tag">9/4</span></td>
-                <td style="text-align: right">0.04</td>
-                <td style="text-align: right">—</td>
-                <td style="text-align: right">공유의 1/16</td>
-                <td><span class="pill" style="--acc: var(--bad)">장부상 지표</span></td>
-              </tr>
-              <tr>
-                <td>유입 총량 <span class="tag">일평균</span></td>
-                <td style="text-align: right">148.0</td>
-                <td style="text-align: right">131.5</td>
-                <td style="text-align: right">−11.1%</td>
-                <td><span class="pill" style="--acc: var(--warn)">판정 불가 · 데이터 부족</span></td>
-              </tr>
-              <tr>
-                <td>DAU당 판 종료</td>
-                <td style="text-align: right">7.50</td>
-                <td style="text-align: right">8.06</td>
-                <td style="text-align: right">+7.5%</td>
-                <td><span class="pill" style="--acc: var(--ok)">가드레일 통과</span></td>
-              </tr>
-              <tr>
-                <td>DAU당 토너 생성 성공</td>
-                <td style="text-align: right">0.213</td>
-                <td style="text-align: right">0.235</td>
-                <td style="text-align: right">+10.0%</td>
-                <td><span class="pill" style="--acc: var(--ok)">가드레일 통과</span></td>
-              </tr>
-              <tr>
-                <td>DAU당 전면광고 · RV</td>
-                <td style="text-align: right">4.61 · 2.19</td>
-                <td style="text-align: right">4.77 · 2.56</td>
-                <td style="text-align: right">+3.5% · +17.0%</td>
-                <td><span class="pill" style="--acc: var(--ok)">가드레일 통과</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">486은 큰 실패가 아니다. 이득도 없다 — 무해하고 무익하다</div>
-            <p>
-              없앤 초대 지면은 <strong>장부상 97% 성공이었지만 실제 도달은 공유의 1/16</strong>이었습니다.
-              그러니 그걸 껐다고 바이럴이 무너지지 않습니다. 반대로,
-              <strong>슬롯을 공유에 2.2배 몰아줬는데 공유 성공은 오히려 줄었습니다</strong>(90 → 84).
-              양쪽 다 성립하는 결론은 하나입니다 — <strong>이 변경은 허수 지표를 지웠을 뿐
-              실제로는 아무것도 바꾸지 못했습니다.</strong> 손해도 이득도 아닙니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">그래서 진짜 문제는 슬롯 배분이 아니다 — 공유 성공률 8.9%다</div>
-            <p>
-              교대일 때조차 <strong>공유는 100번 쏴서 9번 성공</strong>했고, 전량 공유로 바꾸니
-              <strong>3번</strong>이 됐습니다. 시도를 두 배로 늘려도 성공 절대량이 안 늘었다는 건
-              <strong>공유 성공이 시도 수가 아니라 다른 상한에 걸려 있다</strong>는 뜻입니다.
-              슬롯을 어떻게 나누든 <strong>창구가 90% 넘게 새는 한 총량은 안 움직입니다.</strong>
-              다음 작업은 슬롯 배분이 아니라 <strong>공유 실패 사유(<code>3220</code>의
-              <code>error_code</code>) 분해</strong>여야 합니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">권고 — 롤백하지 말고 2~3일 더 둔다</div>
-            <p>
-              직전 권고는 <strong>롤백</strong>이었고, 근거는 −92.6%였습니다.
-              그 근거가 사라졌으니 <strong>권고도 바뀝니다</strong> — 지금 되돌리면
-              <strong>완전한 하루가 하나도 없는 상태로 실험을 닫는 것</strong>입니다.
-              유입 총량 −11.1%는 <strong>9/4 부분 데이터 하루</strong>에 기댄 값이고,
-              나간 초대의 꼬리도 아직 안 빠졌습니다.
-              <strong>486을 유지한 채 완전한 하루를 2~3일 쌓고 ④-b만 다시 뽑으면</strong> 확정됩니다.
-              되돌리는 비용은 <code>Const.ts</code> 한 줄이라 언제든 늦지 않습니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">가드레일 3종 우위는 여전히 배정과 분리되지 않았다</div>
-            <p>
-              판 종료 <strong>+7.5%</strong>, 생성 성공 <strong>+10.0%</strong>, RV <strong>+17.0%</strong>.
-              "초대 다이얼로그가 플레이를 방해했다"로 읽으면 그럴듯하지만,
-              <strong>③-b(국가 · OS 균형)를 아직 안 받았습니다.</strong>
-              처치와 무관한 축인 <strong>RV까지 같은 방향으로 올랐다</strong>는 점이 오히려
-              군 자체가 다를 가능성을 키웁니다. ③-b가 균형을 보여주기 전까지
-              이 세 줄은 <strong>"486이 좋다"의 근거로 쓰지 마세요.</strong>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="doc-section" id="logs">
-        <h2 class="doc-h2">
-          로그 지도
-          <span class="doc-h2-sub">두 갈래가 어떤 이벤트로 갈리는지</span>
-        </h2>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>갈래</th>
-                <th>발사</th>
-                <th>성공</th>
-                <th>실패</th>
-                <th>유입 payload <code>social</code></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>공유</b></td>
-                <td><code>3200_TOURNAMENT_SHARE</code></td>
-                <td><code>3210_TOURNAMENT_SHARE_SUCCESS</code></td>
-                <td><code>3220_TOURNAMENT_SHARE_FAIL</code></td>
-                <td><code>TOURNAMENT</code></td>
-              </tr>
-              <tr>
-                <td><b>초대</b></td>
-                <td><code>3460_MSG_P2P_INVITE</code></td>
-                <td><code>3470_MSG_P2P_INVITE_SUCCESS</code></td>
-                <td><code>3480_MSG_P2P_INVITE_FAIL</code></td>
-                <td><code>TOURNAMENT_INVITE</code></td>
-              </tr>
-              <tr>
-                <td><b>미노출</b></td>
-                <td><code>3230_TOURNAMENT_SHARE_SUPPRESSED</code> (<code>data.reason</code>)</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">3460 계열은 지면 공용이다 — position 필터가 필수다</div>
-            <p>
-              <code>3460</code>/<code>3470</code>/<code>3480</code>은 토너 슬롯 전용이 아니라
-              <strong>초대 지면 전체가 공유하는 이벤트</strong>입니다
-              (<code>invite_level_entry</code> · <code>invite_level_complete</code> · <code>invite_lobby</code> ·
-              <code>invite_leaderboard</code> · <code>invite_mail</code> · <code>invite_event</code>).
-              필터 없이 세면 <strong>사전 레벨·결과창 초대가 섞여</strong> 이 실험과 무관한 변동이 그대로 들어옵니다.
-              반드시 <code>JSON_VALUE(data,'$.position') = 'tournament_invite'</code>로 좁힙니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">3200은 "떴다"가 아니라 "쐈다"이다</div>
-            <p>
-              <code>3200</code>은 <strong>실제 발사 시점에만</strong> 남습니다. 유저 제스처를 기다리는
-              지연 경로가 전면광고 등으로 스킵되면 <strong>로그 자체가 남지 않습니다</strong>.
-              그래서 <code>3200</code>을 노출 모수로 쓰면 안 되고,
-              <strong>"슬롯이 몇 번 열렸나"의 분모는 판 종료(<code>2300</code>)</strong>로 잡아야 합니다.
-              <code>3230</code>은 그중 <strong>미노출 사유가 확정된 일부</strong>만 담기 때문에
-              <code>3200 + 3460 + 3230</code>이 슬롯 기회 총량과 맞아떨어지지 않는 게 정상입니다.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="doc-section" id="metric">
-        <h2 class="doc-h2">
-          판정 기준
-          <span class="doc-h2-sub">무엇이 어느 방향이면 486을 유지하는가</span>
-        </h2>
-
-        <p>
-          이 변경의 질문은 하나입니다 — <b>초대를 뺀 게 총 바이럴 발화를 늘렸는가, 줄였는가.</b>
-          교대였을 때는 두 번에 한 번만 공유였으니, 486에서 공유 발화가 <b>대략 두 배</b>가 되어야
-          본전입니다. 그 이하면 초대를 뺀 만큼을 공유가 메우지 못한 것입니다.
-        </p>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>구분</th>
-                <th>지표</th>
-                <th>정의</th>
-                <th>합격</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="is-dead">
-                <td><b>주지표</b> <span class="tag">폐기</span></td>
-                <td><s>DAU당 성공 발화</s></td>
-                <td><s>(<code>3210</code> + <code>3470</code>) ÷ DAU</s><sup class="fn">†</sup></td>
-                <td>—</td>
-              </tr>
-              <tr>
-                <td><b>주지표</b> <span class="tag">교체</span></td>
-                <td>DAU당 유입 세션</td>
-                <td>payload <code>social</code> = <code>TOURNAMENT</code> + <code>TOURNAMENT_INVITE</code></td>
-                <td>486 ≥ 485</td>
-              </tr>
-              <tr>
-                <td>보조</td>
-                <td>DAU당 공유 성공</td>
-                <td><code>3210</code> ÷ DAU</td>
-                <td>485 대비 <b>2배 근처</b></td>
-              </tr>
-              <tr>
-                <td>보조</td>
-                <td>공유 성공률</td>
-                <td><code>3210</code> ÷ <code>3200</code></td>
-                <td>하락 없음</td>
-              </tr>
-              <tr>
-                <td>보조</td>
-                <td>초대 성공률</td>
-                <td><code>3470</code> ÷ <code>3460</code> (<code>tournament_invite</code>)</td>
-                <td>485 구간 참고값</td>
-              </tr>
-              <tr>
-                <td>보조</td>
-                <td>미노출 사유 분포</td>
-                <td><code>3230</code> <code>reason</code>별 비중</td>
-                <td>구성 급변 없음</td>
-              </tr>
-              <tr>
-                <td>보조</td>
-                <td>유입 세션</td>
-                <td>payload <code>social</code> = <code>TOURNAMENT</code> / <code>TOURNAMENT_INVITE</code></td>
-                <td>합계 하락 없음</td>
-              </tr>
-              <tr>
-                <td><b>가드레일</b></td>
-                <td>DAU당 판 종료 · 토너 생성 · 광고</td>
-                <td><code>2300</code> · <code>3100</code>/<code>3110</code> · <code>4010</code> · <code>4210</code></td>
-                <td>유의한 하락 없음</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--balance)">
-            <div class="note-title">† 이 주지표는 폐기됐다 — 두 로그가 같은 단위가 아니었다</div>
-            <p>
-              <code>3210</code>과 <code>3470</code>을 합쳐 세면 <strong>"초대가 줄었다 / 공유가 늘었다"를
-              두 번 세는 걸 막을 수 있다</strong>고 보고 주지표로 삼았습니다.
-              그런데 ④-b가 보여준 건 <strong>둘이 애초에 같은 단위가 아니라는 것</strong>입니다 —
-              <code>3210</code> 1건은 유입 0.66 세션을 만들고 <code>3470</code> 1건은 0.04를 만듭니다.
-              <strong>16배 무게가 다른 값을 더한 합계</strong>는 초대 쪽이 사라질 때
-              실제와 무관하게 무너집니다. 그래서 주지표를 <strong>로그 발화가 아니라
-              유입 세션</strong>으로 옮겼습니다 — 도달은 단위가 하나뿐입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">유입은 버전으로 못 가른다 — 날짜로만 본다</div>
-            <p>
-              공유·초대를 <strong>보낸 쪽</strong>은 발신자의 빌드지만, 그걸 <strong>받고 들어온 쪽</strong>은
-              자기 빌드가 무엇이든 상관없습니다. 유입 세션에 <code>client_version</code>으로 군을 붙이면
-              <strong>수신자의 버전을 발신자의 처치로 착각</strong>하게 됩니다. 그래서 유입 쿼리(④)만
-              <strong>버전 축을 빼고 날짜 축으로</strong> 뽑고, 486 라이브일 전후로 잘라 읽습니다.
-              게다가 공유 링크는 며칠 뒤에도 눌리므로 <strong>유입에는 시차가 붙습니다</strong> —
-              발화량과 같은 창으로 나란히 놓지 마세요.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="doc-section" id="how">
-        <h2 class="doc-h2">
-          읽는 법
-          <span class="doc-h2-sub">이건 랜덤 A/B가 아니다</span>
-        </h2>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">같은 유저를 무작위로 나눈 게 아니라 배포 전후다</div>
-            <p>
-              군을 가르는 건 <code>client_version</code>뿐입니다. 무작위 배정이 아니므로
-              <strong>아래 교란이 그대로 결과에 섞입니다</strong>. "486이 더 높다"를 곧바로
-              "초대를 뺀 덕분"으로 읽지 마세요.
-            </p>
-          </div>
-        </div>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>교란</th>
-                <th>어떻게 결과를 비트나</th>
-                <th>대응</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>버전 롤아웃</td>
-                <td>새 빌드는 배포 당일 24~42%, 이틀째 100%. 첫날 486군은 <b>조기 업데이트 유저에 편향</b></td>
-                <td>배포 <b>다음 날부터</b> 창을 연다</td>
-              </tr>
-              <tr>
-                <td>잘린 하루</td>
-                <td>486 첫날은 시작이 잘린 세션이라 <b>DAU 분모 지표가 구조적으로 눌린다</b></td>
-                <td>첫날 제외 · 비율 지표 우선</td>
-              </tr>
-              <tr>
-                <td>시트값 미상</td>
-                <td>485 구간에 10108이 0이었으면 <b>대조 자체가 성립하지 않는다</b></td>
-                <td>쿼리 ②로 초대 건수 선확인</td>
-              </tr>
-              <tr>
-                <td>유입 시차</td>
-                <td>공유 링크는 며칠 뒤에도 눌린다 — <b>같은 창에서 발화와 유입을 나란히 못 본다</b></td>
-                <td>유입은 날짜축 별도 (쿼리 ④)</td>
-              </tr>
-              <tr>
-                <td>캘린더 · 요일</td>
-                <td>요일과 이벤트가 군에 섞여 들어간다</td>
-                <td>양쪽 창을 <b>같은 요일 길이</b>로 맞춘다</td>
-              </tr>
-              <tr>
-                <td>잔존 구버전</td>
-                <td>486 이후에도 485 이하가 남아 <b>두 군이 같은 날에 공존</b>한다</td>
-                <td>날짜가 아니라 <b>버전으로 군을 가른다</b> (쿼리 ③)</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">잔존 구버전은 함정이자 기회다</div>
-            <p>
-              배포 후에도 485 이하가 며칠 남습니다. 캘린더 교란만 보면 성가시지만,
-              <strong>같은 날 안에서 485와 486이 공존</strong>하기 때문에
-              <strong>날짜를 고정한 채 버전으로만 가르는 비교</strong>가 가능해집니다 — 요일·이벤트·프로모션이
-              양쪽에 똑같이 걸리므로 캘린더 교란이 상당 부분 상쇄됩니다.
-              다만 그때 남아 있는 485 유저는 <strong>업데이트가 느린 층</strong>이라
-              기기·이용 패턴이 다를 수 있습니다. 이 비교가 지우는 건 <strong>날짜 교란이지 유저 편향이 아닙니다.</strong>
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">이 문서가 답하지 않는 것</div>
-            <p>
-              발화량 · 성공률 · 유입 세션까지입니다. <strong>그렇게 들어온 사람이 남았는지(리텐션),
-              그 판이 매출로 이어졌는지</strong>는 다루지 않습니다 — 유입 시차가 며칠 붙는 데다
-              분모가 달라(보낸 시도 ÷ 받은 세션) 같은 표에 얹으면 오독합니다.
-              현재 수치는 <strong>한 줄도 채워져 있지 않습니다</strong> — 쿼리 4종의 결과가 들어오면 채웁니다.
-            </p>
-          </div>
-        </div>
+        </details>
       </section>
 
       <section class="doc-section" id="sql">
-        <h2 class="doc-h2">
-          데이터 요청
-          <span class="doc-h2-sub">BigQuery 콘솔에 그대로 붙인다 · ① → ② 순서 고정</span>
-        </h2>
-
-        <p>
-          기본 기준은 <b>국가 US</b>, 창은 <b>9/3부터 · 485와 486만</b>입니다
-          (483을 A에 남기면 483이 담은 다른 변경분이 처치 효과로 섞입니다).
-          <b>① · ② · ③ · ④-b 완료</b>, 결과는 <a href="#found">관측 결과</a>와 <a href="#verdict">판정</a>에 있습니다.
-          남은 건 <b>③-b(배정 균형)</b>와 <b>④-a(미노출 사유)</b>, 그리고
-          <b>완전한 하루가 2~3일 쌓인 뒤 ④-b 재실행</b>입니다 — 그것이 유입 총량을 확정합니다.
-          <code>data</code> 컬럼 스캔은 비싸므로 창을 다시 넓히지 마세요.
-        </p>
+        <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">BigQuery 콘솔에 그대로 붙인다</span></h2>
 
         <details class="fold">
-          <summary>① 버전 롤아웃 — 486이 언제부터 라이브인가 <b>· 완료</b></summary>
+          <summary>① 일자 × 빌드 — 슬롯 퍼널 + 가드레일 (보드 재료)</summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- 목적: 486 첫 등장일과 일자별 점유율. 이 결과로 나머지 쿼리의 날짜 창을 정한다.
--- data 컬럼을 참조하지 않아 저렴하다. 창을 넓게 잡아도 된다.
--- DAU는 세션이 아니라 1000_LOGIN_COMPLETE가 있는 (날짜, 플레이어) 쌍이다.
-SELECT
-    log_date        AS `날짜`,
-    client_version  AS `빌드`,
-    COUNT(DISTINCT player_id) AS `DAU`,
-    ROUND(COUNT(DISTINCT player_id) * 100.0
-          / SUM(COUNT(DISTINCT player_id)) OVER (PARTITION BY log_date), 1) AS `점유율_pct`
-FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 13 DAY) AND CURRENT_DATE()
-    AND event   = '1000_LOGIN_COMPLETE'
-    AND country = 'US'
-    AND client_version &gt;= 480
-GROUP BY `날짜`, `빌드`
-ORDER BY `날짜`, `빌드`;</pre></div>
-            <div class="notes">
-              <div class="note" style="--acc: var(--validate)">
-                <div class="note-title">결과 — 486 첫 등장 9/3, 그런데 485가 밀려나지 않았다</div>
-                <p>
-                  486은 <strong>9/3에 처음</strong> 나타났고, 이틀 내내 485와 <strong>반반</strong>입니다.
-                  당초 "배포 다음 날부터 창을 연다"는 계획은 <strong>순차 교체를 전제</strong>한 것이었는데
-                  전제가 깨졌습니다 — 동시 서빙이면 <strong>9/3부터 바로 쓸 수 있습니다.</strong>
-                  다만 9/3은 486이 뜨는 중이라 <strong>일자별로 나눠 보고 뒤집히지 않는지</strong> 확인합니다.
-                </p>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <details class="fold">
-          <summary>② 대조군 성립 확인 — 485 이하에 토너 초대가 실제로 있었나 <b>· 완료</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 목적: 485 이하 구간에 시트 10108이 켜져 있었는지를 로그로 역확인한다.
--- 485 이하의 `초대_시도`가 0에 가깝다면 그 구간도 사실상 공유만이었다는 뜻이고,
--- 그러면 이 A/B는 성립하지 않는다 — 여기서 멈추고 시트 이력을 확인한다.
--- position 필터가 없으면 사전 레벨·결과창 초대가 섞이므로 반드시 넣는다.
-SELECT
-    IF(client_version &gt;= 486, 'B_486_공유만', 'A_485이하_교대')          AS `군`,
-    COUNT(DISTINCT player_id)                                            AS `유저수`,
-    COUNTIF(event = '3460_MSG_P2P_INVITE'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_시도`,
-    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_성공`,
-    COUNTIF(event = '3460_MSG_P2P_INVITE')                               AS `초대_시도_전지면`,
-    COUNTIF(event = '3200_TOURNAMENT_SHARE')                             AS `공유_시도`
-FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 9 DAY) AND CURRENT_DATE()
-    AND country = 'US'
-    AND client_version &gt;= 480
-    AND event IN ('3460_MSG_P2P_INVITE', '3470_MSG_P2P_INVITE_SUCCESS', '3200_TOURNAMENT_SHARE')
-GROUP BY `군`
-ORDER BY `군`;</pre></div>
-            <div class="notes">
-              <div class="note" style="--acc: var(--ok)">
-                <div class="note-title">게이트 통과 — 그리고 B의 초대 20건은 정상이다</div>
-                <p>
-                  A는 초대 <strong>3,919</strong>, B는 <strong>0</strong>. 처치가 정확히 걸렸습니다.
-                  B의 <code>초대_시도_전지면</code> <strong>20건</strong>은 토너 슬롯이 아니라
-                  <strong>사전 레벨 · 결과창 · 로비 같은 다른 초대 지면</strong>에서 나온 것으로,
-                  이번 변경이 건드리지 않은 경로입니다 — 이 20건이 있다는 게 오히려
-                  <strong>"초대 로그 자체가 끊긴 게 아니라 토너 지면만 정확히 닫혔다"</strong>는 확인이 됩니다.
-                  A에서도 전지면 3,999 중 <strong>98%가 토너 지면</strong>이라, 이 게임의 초대는
-                  사실상 토너 슬롯 하나로 굴러가고 있었습니다.
-                </p>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <details class="fold">
-          <summary>③ 메인 — 일자 × 빌드 슬롯 퍼널 + 가드레일 <b>· 완료 (③-b 미수신)</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 목적: 이 문서의 판정 표를 그대로 만드는 원본. 1행 = (날짜, 빌드).
--- ①·② 결과 반영: 창을 9/3부터로 자르고 485·486만 남긴다.
---   · 483을 A에 남기면 483이 담은 다른 변경분이 처치 효과로 섞인다.
---   · 두 빌드가 같은 날 동시 서빙되므로 날짜를 고정한 채 빌드로만 가를 수 있다.
--- has_login 윈도우로 DAU를 잡으면 이벤트 행에도 그날 로그인 여부가 붙어
--- 분모(DAU)와 분자(이벤트)를 한 번의 스캔으로 같이 셀 수 있다.
-SELECT
+            <div class="table-scroll"><pre>SELECT
     log_date       AS `날짜`,
     client_version AS `빌드`,
     COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                   AS `DAU`,
@@ -1017,11 +181,33 @@ FROM (
 )
 GROUP BY `날짜`, `빌드`
 ORDER BY `날짜`, `빌드`;</pre></div>
+          </div>
+        </details>
 
-            <p style="margin-top: 18px"><b>③-b 배정 균형 확인 — 두 군의 구성이 닮았나</b></p>
-            <div class="table-scroll"><pre>-- 목적: 485·486 동시 서빙이 무작위 배정인지 간접 확인한다.
--- FB가 지역·기기 기준으로 갈랐다면 국가·OS 구성이 어긋나고, 그러면 유저 편향이 남는다.
--- 구성이 닮았으면 ③의 차이를 처치 효과로 읽어도 되고, 어긋나면 그 축을 통제해야 한다.
+        <details class="fold">
+          <summary>② 유입 세션 — 버전축 없이 날짜축으로만</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 수신자의 빌드는 발신자의 처치와 무관하므로 client_version 축을 넣지 않는다.
+-- entrypoint_now는 그 유저의 마지막 로그인 블롭이라 1000_LOGIN_COMPLETE로 고정해야 한다.
+SELECT
+    log_date AS `날짜`,
+    JSON_VALUE(entrypoint_now, '$.payload.social') AS `유입경로`,
+    COUNT(*)                  AS `세션수`,
+    COUNT(DISTINCT player_id) AS `유저수`
+FROM `game-log-359704.raw.solitaire_city_journey`
+WHERE log_date BETWEEN '2026-08-28' AND CURRENT_DATE()
+    AND event   = '1000_LOGIN_COMPLETE'
+    AND country = 'US'
+    AND JSON_VALUE(entrypoint_now, '$.payload.social') IN ('TOURNAMENT', 'TOURNAMENT_INVITE')
+GROUP BY `날짜`, `유입경로`
+ORDER BY `날짜`, `유입경로`;</pre></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>③ 배정 균형 — 무작위 배정인지 간접 확인 <b>· 미수신</b></summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- FB가 지역·기기 기준으로 갈랐다면 국가·OS 구성이 어긋나고, 그러면 유저 편향이 남는다.
 -- 국가 필터를 일부러 빼서 지역 배정 여부까지 본다.
 SELECT
     client_version AS `빌드`,
@@ -1037,136 +223,201 @@ WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
 GROUP BY `빌드`, `국가`, `OS`
 HAVING `유저수` &gt;= 10
 ORDER BY `국가`, `OS`, `빌드`;</pre></div>
-
-            <div class="notes">
-              <div class="note" style="--acc: var(--analysis)">
-                <div class="note-title">DAU가 아니라 판 종료로도 나눠 본다</div>
-                <p>
-                  <code>판_종료</code>를 같이 뽑는 건 <strong>슬롯이 열릴 기회 수</strong>에 가까운 분모이기 때문입니다.
-                  DAU당으로만 보면 <strong>"판을 더 많이 해서 발화가 늘어난 것"</strong>과
-                  <strong>"판당 발화율이 오른 것"</strong>이 구분되지 않습니다.
-                  주지표는 DAU당으로 쓰되, 방향이 애매하면 <code>공유_성공 ÷ 판_종료</code>를 같이 보세요.
-                </p>
-              </div>
-              <div class="note" style="--acc: var(--warn)">
-                <div class="note-title">③-b가 어긋나면 ③의 결론을 그대로 못 쓴다</div>
-                <p>
-                  동시 서빙이라는 사실만으로는 <strong>무작위 배정임이 증명되지 않습니다.</strong>
-                  ③-b에서 <strong>군내 국가·OS 비중이 서로 크게 다르면</strong>, 발화량 차이의 일부는
-                  처치가 아니라 <strong>"어떤 유저가 어느 빌드를 받았나"</strong>에서 옵니다.
-                  그때는 <strong>국가·OS를 고정한 부분집합에서 다시</strong> 비교해야 합니다.
-                  <code>HAVING</code>으로 10명 미만 칸을 잘라 두는 건, 꼬리 조각들이
-                  <strong>비중 표를 읽을 수 없게 만들기 때문</strong>입니다 — 잘린 만큼 합이 100%에 못 미칩니다.
-                </p>
-              </div>
-            </div>
           </div>
         </details>
-
-        <details class="fold">
-          <summary>④ 미노출 사유 · 유입 세션 <b>· ④-b 완료 / ④-a 미수신</b></summary>
-          <div class="fold-body">
-            <p><b>④-a 미노출 사유 분포</b></p>
-            <div class="table-scroll"><pre>-- 목적: 3230의 reason 구성이 빌드에 따라 달라졌는지. 현재 남는 값은 no_tournament / cooldown.
--- 구성이 급변하면 발화량 변화의 원인이 슬롯 로직이 아니라 진입 조건일 수 있다.
--- ③과 같은 창(9/3~ · 485·486만)으로 맞춰야 ③의 미노출 열과 대조가 된다.
-SELECT
-    client_version               AS `빌드`,
-    JSON_VALUE(data, '$.reason') AS `사유`,
-    COUNT(*)                     AS `건수`,
-    COUNT(DISTINCT player_id)    AS `유저수`,
-    ROUND(COUNT(*) * 100.0
-          / SUM(COUNT(*)) OVER (PARTITION BY client_version), 1) AS `군내_비중_pct`
-FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-    AND event   = '3230_TOURNAMENT_SHARE_SUPPRESSED'
-    AND country = 'US'
-    AND client_version IN (485, 486)
-GROUP BY `빌드`, `사유`
-ORDER BY `빌드`, `건수` DESC;</pre></div>
-
-            <p style="margin-top: 18px"><b>④-b 유입 세션 — 버전축 없이 날짜축으로만</b></p>
-            <div class="table-scroll"><pre>-- 목적: 공유·초대로 실제로 들어온 세션. 수신자의 빌드는 발신자의 처치와 무관하므로
--- 일부러 client_version 축을 넣지 않는다. 486 라이브일 전후로 잘라 읽는다.
--- entrypoint_now는 그 유저의 마지막 로그인 블롭이라 세션 경계 행에 이전 값이 붙는다.
--- 그래서 event = '1000_LOGIN_COMPLETE'로 고정해야 한다.
-SELECT
-    log_date AS `날짜`,
-    JSON_VALUE(entrypoint_now, '$.payload.social') AS `유입경로`,
-    COUNT(*)                  AS `세션수`,
-    COUNT(DISTINCT player_id) AS `유저수`
-FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN '2026-08-28' AND CURRENT_DATE()
-    AND event   = '1000_LOGIN_COMPLETE'
-    AND country = 'US'
-    AND JSON_VALUE(entrypoint_now, '$.payload.social') IN ('TOURNAMENT', 'TOURNAMENT_INVITE')
-GROUP BY `날짜`, `유입경로`
-ORDER BY `날짜`, `유입경로`;</pre></div>
-
-            <div class="notes">
-              <div class="note" style="--acc: var(--deploy)">
-                <div class="note-title">④-b의 두 줄은 합쳐서 본다</div>
-                <p>
-                  486 이후 <code>TOURNAMENT_INVITE</code> 유입이 <strong>0으로 수렴하는 건 설계</strong>입니다.
-                  판정은 <strong>두 줄의 합</strong>이 486 이후에도 유지되는지로 합니다.
-                  다만 발신은 즉시 멈춰도 <strong>이미 나간 초대 링크는 며칠 더 눌리므로</strong>
-                  꼬리가 남습니다 — 그 꼬리가 다 빠지기 전에 합계를 판정하면 <strong>486을 과대평가</strong>합니다.
-                </p>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <div class="foot">
-          <b>확인 범위</b> ①·②·③·④-b 실측 완료(US · 9/3~9/4 · 485 n=876 · 486 n=958). <b>v3.0의 주지표 −92.6%는 v4.0에서 철회</b>했습니다 — 초대 성공 로그가 실제 도달을 거의 만들지 않아 공유 성공과 같은 단위로 더할 수 없습니다. 유입 총량은 <b>완전한 하루가 없어 판정 불가</b>이고, ③-b 배정 균형은 <b>미수신</b>이라 가드레일 3종의 486 우위는 처치와 배정이 분리되지 않았습니다. 분기 로직 · 로그 이벤트 · payload 필드는 <code>prod</code> 브랜치 코드와
-          <code>stash@{0}</code>를 직접 읽어 확인했습니다. 486의 라이브 시점, 시트 <code>10108</code>의
-          실제 값 이력, 그리고 이 문서의 모든 수치는 <b>아직 확인되지 않았습니다</b> —
-          쿼리 ① · ②의 결과가 그 두 가지를 확정합니다.
-          컬럼 존재·타입은 <code>_ignore/bigquery-verified-columns.md</code>의 실측분을 따랐습니다.
-          dev 빌드 로그가 같은 테이블에 적재되므로, 수치가 어긋나면 <code>is_dev</code> 필터를 추가해 재확인합니다.
-        </div>
       </section>
     </main>
 
     <script>
-      // 쿼리 블록마다 복사 버튼을 붙인다. sol-era-watch.html 과 같은 구현.
+      // ── 데이터 ───────────────────────────────────────────────────────────
+      // 일자 × 빌드 원본. 보드는 전부 여기서 합산해 만든다 — 값을 손으로 적어두면 갱신 때 어긋난다.
+      const DAILY = [
+        { d:"09-03", ver:"485", ud:244, fin:1554, sh_try:237,  sh_ok:21, inv_try:232, inv_ok:227, sup:134, cr_try:363,  cr_ok:35,  it:950,  rv:480  },
+        { d:"09-03", ver:"486", ud:291, fin:1729, sh_try:722,  sh_ok:18, inv_try:0,   inv_ok:0,   sup:108, cr_try:486,  cr_ok:30,  it:1065, rv:587  },
+        { d:"09-04", ver:"485", ud:632, fin:5015, sh_try:776,  sh_ok:69, inv_try:742, inv_ok:721, sup:418, cr_try:1278, cr_ok:152, it:3087, rv:1440 },
+        { d:"09-04", ver:"486", ud:667, fin:5993, sh_try:1882, sh_ok:66, inv_try:0,   inv_ok:0,   sup:377, cr_try:1345, cr_ok:195, it:3506, rv:1870 },
+      ];
+      // 유입은 발신자 버전으로 못 가르므로 날짜축만 있다. 486 첫 등장은 9/3.
+      const INFLOW = [
+        { d:"08-28", t:101, ti:37 }, { d:"08-29", t:125, ti:41 },
+        { d:"08-30", t:104, ti:39 }, { d:"08-31", t:96,  ti:23 },
+        { d:"09-01", t:139, ti:26 }, { d:"09-02", t:133, ti:24 },
+        { d:"09-03", t:112, ti:33 }, { d:"09-04", t:89,  ti:29 },
+      ];
+      const POST = ["09-03", "09-04"];
+      const CAP = 150;                       // 발산 막대를 자르는 지점(%)
+      const nf = x => x == null ? "—" : Number(x).toLocaleString("en-US");
+
+      const sum = ver => DAILY.filter(r => r.ver === ver).reduce((t, r) => {
+        Object.entries(r).forEach(([k, v]) => { if (typeof v === "number") t[k] = (t[k] || 0) + v; });
+        return t;
+      }, {});
+      const A = sum("485"), B = sum("486");
+      const inf = post => INFLOW.filter(r => POST.includes(r.d) === post)
+        .reduce((t, r) => { t.t += r.t; t.ti += r.ti; t.n++; return t; }, { t:0, ti:0, n:0 });
+      const IP = inf(false), IC = inf(true);
+      const d4 = DAILY.filter(r => r.d === "09-04");
+      const shOk4 = d4.reduce((s, r) => s + r.sh_ok, 0);
+      const invOk4 = d4.reduce((s, r) => s + r.inv_ok, 0);
+      const i4 = INFLOW.find(r => r.d === "09-04");
+      const reachSh = i4.t / shOk4, reachInv = i4.ti / invOk4;
+
+      // ── 히어로 ───────────────────────────────────────────────────────────
+      document.getElementById("hero").innerHTML = [
+        { acc:"var(--bad)", n:"−15%", s:"", t:"공유 성공 / DAU",
+          d:"시도는 <b>+135%</b>인데 성공은 줄었다. 늘린 슬롯이 전부 실패로 흘렀다." },
+        { acc:"var(--bad)", n:"1/16", s:"", t:"초대 성공 1건당 실제 도달",
+          d:`9/4 · 공유 <b>${reachSh.toFixed(2)}</b> vs 초대 <b>${reachInv.toFixed(2)}</b> 세션.
+             <code>3470</code>은 도달이 아니라 <b>다이얼로그 통과</b>에 가깝다 — 초대 −100%를 손실로 읽으면 안 된다.` },
+        { acc:"var(--warn)", n:"−11%", s:"?", t:"유입 합계 / 일",
+          d:"발신이 절반 잘린 날은 <b>9/4 하루뿐</b>이고 그마저 부분 집계다. <b>아직 판정 불가.</b>" },
+      ].map(h => `<div class="h" style="--acc:${h.acc}">
+          <div class="hn">${h.n}${h.s ? `<s>${h.s}</s>` : ""}</div>
+          <div class="ht">${h.t}</div><div class="hs">${h.d}</div></div>`).join("");
+
+      // ── 그룹 보드 ─────────────────────────────────────────────────────────
+      // row = [라벨, 전, 후, 포맷, 모수전, 모수후, 중립, 주석, 강조]
+      const p1 = v => v.toFixed(1), p2 = v => v.toFixed(2), p3 = v => v.toFixed(3);
+      const pc = v => v.toFixed(1) + "%";
+      const GROUPS = [
+        { name:"처치", sub:"설계대로 바뀐 것 — 증감 자체는 좋고 나쁨이 아니다",
+          note:`판당 <b>슬롯 발화 총량</b>은 30.3% → 33.7%로 거의 그대로다. 처치는 <b>같은 슬롯을 공유로 채웠을 뿐</b> 발화 기회를 늘리지도 줄이지도 않았다 — 그래서 아래 성과 차이는 순수하게 <b>전환율</b>에서 온다.`,
+          rows:[
+            ["공유 시도 / DAU", A.sh_try/A.ud, B.sh_try/B.ud, p2, [A.sh_try,A.ud], [B.sh_try,B.ud], true,
+              "교대 → 전량 공유라 2배가 되는 게 설계다"],
+            ["초대 시도 / DAU", A.inv_try/A.ud, B.inv_try/B.ud, p2, [A.inv_try,A.ud], [B.inv_try,B.ud], true,
+              "3460 중 position=tournament_invite만. 486에서 0이 되는 게 설계다"],
+            ["초대 성공 / DAU", A.inv_ok/A.ud, B.inv_ok/B.ud, p3, [A.inv_ok,A.ud], [B.inv_ok,B.ud], true,
+              "3470. 실제 도달이 아니라 다이얼로그 통과에 가깝다 — 성과 그룹의 도달 행 참고"],
+            ["판당 슬롯 발화", (A.sh_try+A.inv_try)/A.fin*100, (B.sh_try+B.inv_try)/B.fin*100, pc,
+              [A.sh_try+A.inv_try,A.fin], [B.sh_try+B.inv_try,B.fin], true,
+              "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율"],
+          ]},
+        { name:"성과", sub:"실제로 무엇이 바뀌었나",
+          note:`공유에 슬롯을 <b>2.4배</b> 몰아줬는데 <b>공유 성공 절대량은 90 → 84로 줄었다</b>. 공유 성공은 시도 수가 아니라 <b>다른 상한에 걸려 있고 그 상한은 이미 차 있었다</b> — 이미 포화된 창구에 줄만 두 배로 세운 셈이다. 없앤 초대는 장부상 97% 성공이었지만 실제 도달은 공유의 1/16이라, <b>이 변경은 허수 지표를 지웠을 뿐 손해도 이득도 아니다.</b> 진짜 병목은 슬롯 배분이 아니라 <b>공유 성공률 8.9%</b>이고, 다음 작업은 <code>3220</code>의 <code>error_code</code> 분해다.`,
+          rows:[
+            ["공유 성공 / DAU", A.sh_ok/A.ud, B.sh_ok/B.ud, p3, [A.sh_ok,A.ud], [B.sh_ok,B.ud], false,
+              "실질 주지표. 시도가 2배면 여기도 2배가 되어야 본전이다", true],
+            ["공유 성공률", A.sh_ok/A.sh_try*100, B.sh_ok/B.sh_try*100, pc, [A.sh_ok,A.sh_try], [B.sh_ok,B.sh_try], false,
+              "3210 ÷ 3200. 교대일 때조차 8.9%였다", true],
+            ["공유 성공 (절대)", A.sh_ok, B.sh_ok, v => nf(Math.round(v)), null, null, false,
+              "DAU 보정 없는 원값. 486이 DAU가 더 큰데도 성공이 적다"],
+            ["유입 합계 / 일", (IP.t+IP.ti)/IP.n, (IC.t+IC.ti)/IC.n, p1, [IP.t+IP.ti,IP.n], [IC.t+IC.ti,IC.n], true,
+              "전 = 8/28~9/2 6일(전량 교대) · 후 = 9/3~9/4 2일(486 혼재). 축이 달라 참고값이다"],
+          ]},
+        { name:"가드레일", sub:"슬롯을 바꿔서 망가진 게 없는지",
+          note:`세 지표 모두 486이 우위다. <b>"초대 다이얼로그가 플레이를 방해했다"</b>로 읽으면 그럴듯하지만, <b>배정이 무작위인지 아직 확인되지 않았다</b>(쿼리 ③ 미수신). 처치와 무관한 축인 <b>RV까지 같은 방향으로 올랐다</b>는 점이 오히려 군 자체가 다를 가능성을 키운다 — 균형이 확인되기 전까지 이 그룹은 <b>"486이 좋다"의 근거로 쓰지 말 것.</b>`,
+          rows:[
+            ["판 종료 / DAU", A.fin/A.ud, B.fin/B.ud, p1, [A.fin,A.ud], [B.fin,B.ud], false, "2300"],
+            ["총광고 완료 / DAU", (A.it+A.rv)/A.ud, (B.it+B.rv)/B.ud, p2, [A.it+A.rv,A.ud], [B.it+B.rv,B.ud], false,
+              "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외"],
+            ["토너 생성률", A.cr_ok/A.cr_try*100, B.cr_ok/B.cr_try*100, pc, [A.cr_ok,A.cr_try], [B.cr_ok,B.cr_try], false,
+              "3110 ÷ 3100. 서버 등록 완료만 센다"],
+            ["미노출 / DAU", A.sup/A.ud, B.sup/B.ud, p3, [A.sup,A.ud], [B.sup,B.ud], true,
+              "3230. 쿨다운·토너 없음으로 슬롯이 안 열린 횟수 — 적은 쪽이 좋다"],
+          ]},
+      ];
+
+      document.getElementById("groups").innerHTML = GROUPS.map(g => {
+        const rows = g.rows.map(([lab, vp, vc, fmt, pp, pn, neutral, note, key]) => {
+          const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
+          const col = neutral ? "var(--mute)" : (Math.abs(pct) < 5 ? "var(--mute)" : pct > 0 ? "var(--good)" : "var(--bad)");
+          const w = Math.min(Math.abs(pct), CAP) / CAP * 50;      // 반폭 50% 기준
+          const clipped = Math.abs(pct) > CAP;
+          const side = pct >= 0 ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
+          const tip = `${lab}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
+            + (pp ? `\n${nf(pp[0])} ÷ ${nf(pp[1])} → ${nf(pn[0])} ÷ ${nf(pn[1])}` : "")
+            + (neutral ? "\n(설계대로 바뀌는 값이라 색 판정을 끔)" : "")
+            + (clipped ? `\n막대는 ±${CAP}%에서 잘렸다` : "");
+          return `<div class="kb-row${key ? " is-key" : ""}" data-tip="${tip}">
+            <div class="kb-lab">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
+            <div class="kb-val"><span class="p">${fmt(vp)}</span><span class="ar">→</span><span class="n">${fmt(vc)}</span>
+              ${pp ? `<span class="kb-den">${nf(pp[0])}÷${nf(pp[1])} → ${nf(pn[0])}÷${nf(pn[1])}</span>` : ""}</div>
+            <div class="kb-bar"><i style="${side};background:${col}${clipped ? ";opacity:.55" : ""}"></i></div>
+            <div class="kb-d" style="color:${col}">${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</div>
+          </div>`;
+        }).join("");
+        return `<div class="kb-grp">
+          <div class="kb-gh"><b>${g.name}</b><span>${g.sub}</span></div>
+          ${rows}
+          <div class="kb-scale"><span>−${CAP}%</span><span>0</span><span>+${CAP}%</span></div>
+          <div class="kb-note">${g.note}</div></div>`;
+      }).join("");
+
+      // ── 원본 표 ──────────────────────────────────────────────────────────
       (function () {
-        var blocks = document.querySelectorAll('#sql pre');
-        Array.prototype.forEach.call(blocks, function (pre) {
-          var bar = document.createElement('div');
-          bar.className = 'qcopy';
+        const COLS = [["ud","DAU"],["fin","판종료"],["sh_try","공유시도"],["sh_ok","공유성공"],
+          ["inv_try","초대시도"],["inv_ok","초대성공"],["sup","미노출"],
+          ["cr_try","생성시도"],["cr_ok","생성성공"],["it","전면광고"],["rv","RV"]];
+        document.getElementById("rawdaily").innerHTML = `<div class="table-scroll"><table>
+          <thead><tr><th>날짜</th><th>빌드</th>${COLS.map(c => `<th style="text-align:right">${c[1]}</th>`).join("")}</tr></thead>
+          <tbody>${DAILY.map(r => `<tr><td>${r.d}</td><td>${r.ver}</td>${
+            COLS.map(c => `<td style="text-align:right">${nf(r[c[0]])}</td>`).join("")}</tr>`).join("")}</tbody>
+        </table></div>`;
+        document.getElementById("rawinf").innerHTML = `<div class="table-scroll"><table>
+          <thead><tr><th>날짜</th><th style="text-align:right">공유 유입</th><th style="text-align:right">초대 유입</th>
+            <th style="text-align:right">합</th><th style="text-align:right">초대 비중</th></tr></thead>
+          <tbody>${INFLOW.map(r => `<tr${POST.includes(r.d) ? ' style="font-weight:700"' : ""}>`
+            + `<td>${r.d}${POST.includes(r.d) ? ' <span class="tag">486 혼재</span>' : ""}</td>`
+            + `<td style="text-align:right">${nf(r.t)}</td><td style="text-align:right">${nf(r.ti)}</td>`
+            + `<td style="text-align:right">${nf(r.t + r.ti)}</td>`
+            + `<td style="text-align:right">${(r.ti / (r.t + r.ti) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
+        </table></div>`;
+      })();
+
+      // ── 말풍선 ───────────────────────────────────────────────────────────
+      // 네이티브 title은 뜨는 데 1초 넘게 걸려 안 뜨는 것처럼 보인다. 즉시 뜨는 말풍선으로 대체.
+      (function () {
+        const tipEl = document.getElementById("tip");
+        let cur = null;
+        document.addEventListener("mouseover", ev => {
+          const t = ev.target.closest ? ev.target.closest("[data-tip]") : null;
+          if (!t) { if (cur) { tipEl.style.display = "none"; cur = null; } return; }
+          if (t === cur) return;
+          cur = t;
+          tipEl.innerHTML = t.getAttribute("data-tip").replace(/^([^\n]+)/, "<b>$1</b>");
+          tipEl.style.display = "block";
+        });
+        document.addEventListener("mousemove", ev => {
+          if (!cur) return;
+          const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+          tipEl.style.left = Math.min(ev.clientX + 14, window.innerWidth - w - 10) + "px";
+          tipEl.style.top = (ev.clientY + h + 22 > window.innerHeight ? ev.clientY - h - 12 : ev.clientY + 18) + "px";
+        });
+        document.addEventListener("mouseout", ev => {
+          if (cur && !ev.relatedTarget) { tipEl.style.display = "none"; cur = null; }
+        });
+      })();
+
+      // ── 쿼리 복사 ─────────────────────────────────────────────────────────
+      (function () {
+        document.querySelectorAll("#sql .fold-body .table-scroll").forEach(function (box) {
+          if (!box.querySelector("pre")) return;
+          var bar = document.createElement("div");
+          bar.className = "qcopy";
           bar.innerHTML = '<button class="mfx-btn" type="button" style="--smg: #b45309">쿼리 복사</button>';
-          var host = pre.closest('.table-scroll') || pre;
-          host.parentNode.insertBefore(bar, host);
+          box.parentNode.insertBefore(bar, box);
         });
-
-        document.addEventListener('click', function (ev) {
-          var btn = ev.target.closest ? ev.target.closest('#sql .qcopy button') : null;
+        document.addEventListener("click", function (ev) {
+          var btn = ev.target.closest ? ev.target.closest("#sql .qcopy button") : null;
           if (!btn) return;
-          var host = btn.parentNode.nextElementSibling;
-          var pre = host && (host.matches('pre') ? host : host.querySelector('pre'));
-          if (!pre) return;
-          copyText(pre.textContent, btn);
+          var pre = btn.parentNode.nextElementSibling.querySelector("pre");
+          if (pre) copyText(pre.textContent, btn);
         });
-
         function copyText(text, btn) {
           function done() {
-            btn.textContent = '복사됨';
-            btn.classList.add('is-done');
-            setTimeout(function () { btn.textContent = '쿼리 복사'; btn.classList.remove('is-done'); }, 1200);
+            btn.textContent = "복사됨"; btn.classList.add("is-done");
+            setTimeout(function () { btn.textContent = "쿼리 복사"; btn.classList.remove("is-done"); }, 1200);
           }
           function fallback() {
-            var ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.cssText = 'position:fixed;opacity:0';
-            document.body.appendChild(ta);
-            ta.select();
-            try { document.execCommand('copy'); done(); } catch (e) {}
+            var ta = document.createElement("textarea");
+            ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand("copy"); done(); } catch (e) {}
             document.body.removeChild(ta);
           }
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(done, fallback);
-          } else { fallback(); }
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+          else fallback();
         }
       })();
     </script>
