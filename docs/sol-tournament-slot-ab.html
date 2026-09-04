@@ -18,21 +18,42 @@
     <style>
       .kb { --good:#15803d; --bad:#dc2626; --spec:#0891b2; --mute:#9aa0b8; --a:#94a3b8; --b:#1d4ed8; }
 
-      /* 세그먼트 탭 — RU/NRU를 지표마다 행으로 늘리면 행이 세 배가 되고 같은 지표가 흩어진다.
-         축을 탭으로 올리면 비교가 한 자리에서 끝나고, 아직 못 뽑은 축도 눈에 띈다. */
-      .kb-tabs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 14px}
-      .kb-tabs button{font-size:12px;font-weight:800;padding:6px 15px;border-radius:20px;cursor:pointer;
-        border:1.5px solid var(--border);background:var(--surface);color:var(--text-dim);font-family:inherit}
-      .kb-tabs button:hover{border-color:var(--b);color:var(--b)}
-      .kb-tabs button.on{border-color:var(--b);background:var(--b);color:#fff}
-      .kb-tabs button.empty{color:#b6bccb;border-style:dashed}
-      .kb-tabs button.empty em{font-style:normal;font-size:10px;font-weight:800;opacity:.8}
-      .kb-tabs button.on.empty{background:#8b93a8;border-color:#8b93a8;color:#fff}
-      .kb-tabhint{font-size:10.5px;color:var(--text-faint);font-weight:600;margin-left:4px}
+      /* KPI 표 — 세그먼트(전체/기존/신규)를 탭으로 접으면 배정 불균형 때문에 반드시 같이 봐야 할
+         세 값이 서로 가려진다. 열로 펼쳐 두면 한 줄에서 세 군을 동시에 읽는다.
+         허브 공용 <table> 위에 정렬·색만 얹고 구조는 손대지 않는다. */
+      .kbt{font-variant-numeric:tabular-nums}
+      .kbt th,.kbt td{white-space:nowrap}
+      .kbt th.seg{text-align:center;border-left:2px solid var(--border)}
+      .kbt th.v0,.kbt th.v1,.kbt th.dd,.kbt td.v0,.kbt td.v1,.kbt td.dd{text-align:right}
+      .kbt th.v0,.kbt td.v0{border-left:2px solid var(--border)}
+      .kbt th.v0{color:#8b93a8} .kbt th.v1{color:var(--b)}
+      .kbt td.v0{color:#6b7488} .kbt td.v1{color:var(--text);font-weight:700}
+      .kbt td.dd{font-weight:800;padding-right:14px}
+      .kbt td.dd.good{color:var(--good)} .kbt td.dd.bad{color:var(--bad)}
+      .kbt td.dd.spec{color:var(--spec)} .kbt td.dd.mute{color:var(--mute)}
+      .kbt td.na{text-align:center;color:#c3c9d6;font-size:10.5px;font-weight:700;
+        border-left:2px solid var(--border);
+        background:repeating-linear-gradient(135deg,#fcfcfd 0 7px,#f7f8fb 7px 14px)}
+      .kbt td.lab{font-weight:600;white-space:normal;min-width:150px}
+      .kbt tr.key td{background:#fbfcfe}
+      .kbt tr.key td.lab{font-weight:800}
+      .kbt tr.dim td{opacity:.55}
+      /* 그룹 머리행 — tbody 마다 --g 를 받아 색이 바뀐다 */
+      .kbt tr.gh td{background:color-mix(in srgb, var(--g) 9%, #fff);
+        border-top:2px solid color-mix(in srgb, var(--g) 34%, var(--border));
+        padding-top:11px;padding-bottom:11px;white-space:normal}
+      .kbt tr.gh b{font-size:13px;color:color-mix(in srgb, var(--g) 70%, var(--text));
+        position:relative;padding-left:11px;margin-right:9px}
+      .kbt tr.gh b::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:4px;
+        border-radius:2px;background:var(--g)}
+      .kbt tr.gh span{font-size:11.5px;color:color-mix(in srgb, var(--g) 34%, var(--text-dim));font-weight:600}
+      .kbt .q{font-size:10px;font-weight:800;color:#c3c9d6;margin-left:3px;cursor:help}
+      .kbt .q:hover{color:var(--b)}
+      .kb-foot{font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.8;margin-top:10px}
+      .kb-foot b{color:var(--text)}
 
-      /* 배정 균형 — 지표가 아니라 "이 보드를 믿어도 되는가"의 전제라 표 안이 아니라 표 위에 둔다.
-         행으로 묻어두면 다른 지표와 같은 무게로 읽혀 판정 전에 확인되지 않는다. */
-      .kb-bal{margin:0 0 18px;padding:4px 16px;border-radius:var(--radius);
+      /* 판정 전제 — 지표가 아니라 "이 표를 믿어도 되는가"의 전제라 표 위에 둔다. */
+      .kb-bal{margin:0 0 16px;padding:4px 16px;border-radius:var(--radius);
         background:color-mix(in srgb, var(--warn) 7%, #fff);
         border:1px solid color-mix(in srgb, var(--warn) 30%, var(--border));
         border-left:4px solid var(--warn)}
@@ -48,87 +69,6 @@
       @media (max-width:820px){ .kb-bal .bl{grid-template-columns:1fr auto;gap:4px 8px}
         .kb-bal .bl span:nth-child(2){display:none} .kb-bal em{grid-column:1/-1} }
 
-      /* D+n 탭 — 잔존 전용. 도래하지 않은 날을 지우지 않고 비활성으로 남긴다.
-         지우면 "D1만 재는 지표"로 읽히고, 며칠 뒤 무엇을 다시 뽑아야 하는지도 사라진다. */
-      .kb-days{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:9px 18px;
-        background:color-mix(in srgb, var(--g) 4%, #fff);
-        border-bottom:1px solid color-mix(in srgb, var(--g) 14%, var(--border))}
-      .kb-days button{font-size:11px;font-weight:800;padding:3px 11px;border-radius:14px;cursor:help;
-        border:1.5px solid var(--border);background:#fff;color:var(--text-dim);font-family:inherit}
-      .kb-days button.on{border-color:var(--g);background:var(--g);color:#fff}
-      .kb-days button.off{color:#c3c9d6;border-style:dashed}
-      .kb-days button.on.off{background:#b6bccb;border-color:#b6bccb;color:#fff}
-      .kb-dayhint{font-size:10.5px;color:var(--text-faint);font-weight:600;margin-left:5px}
-
-      /* 그룹 — 지표를 흐름(슬롯 동작 → 발화 성과 → 플레이 → 잔존)으로 갈라야 Δ 부호를 잘못 읽지 않는다. */
-      .kb-grp{margin:0 0 22px;background:var(--surface);border-radius:var(--radius);overflow:hidden;
-        border:1px solid color-mix(in srgb, var(--g) 22%, var(--border))}
-      .kb-gh{display:flex;align-items:baseline;gap:10px;padding:12px 18px;
-        background:color-mix(in srgb, var(--g) 9%, #fff);
-        border-bottom:1px solid color-mix(in srgb, var(--g) 20%, var(--border))}
-      .kb-gh b{font-size:13.5px;color:color-mix(in srgb, var(--g) 70%, var(--text));
-        position:relative;padding-left:12px}
-      .kb-gh b::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;
-        border-radius:2px;background:var(--g)}
-      .kb-gh span{font-size:11.5px;color:color-mix(in srgb, var(--g) 34%, var(--text-dim));font-weight:600}
-
-      /* 한 행 = [지표 | 전→후 | 발산 막대 | Δ]. 막대를 0 기준 좌우로 뻗게 두면
-         부호·크기가 한눈에 잡혀서, 길이가 같은 막대 두 개를 비교하는 것보다 훨씬 빨리 읽힌다. */
-      .kb-row{display:grid;grid-template-columns:172px 128px 1fr 62px;gap:14px;align-items:center;
-        padding:11px 18px;border-bottom:1px solid var(--border-soft)}
-      .kb-row:last-child{border-bottom:none}
-      .kb-row.is-key{background:#fbfcfe}
-      /* 아직 안 뽑은 지표도 자리를 남긴다 — 빠진 축이 있다는 사실 자체가 정보다. */
-      .kb-row.is-wait{background:repeating-linear-gradient(135deg,#fcfcfd 0 7px,#f7f8fb 7px 14px)}
-      .kb-row.is-wait .kb-lab{color:#9aa0b8}
-      .kb-row.is-wait .kb-bar{background:#f4f6fa}
-      .kb-row.is-wait .kb-bar::before{background:#e4e8f0}
-      .kb-wait{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:800;
-        color:#8b93a8;background:#eef1f6}
-      /* 컬럼 헤더 — 값 열이 "485 → 486"이라는 걸 그룹마다 다시 말해준다.
-         스크롤해 내려가면 위쪽 범례가 화면 밖으로 나가기 때문이다. */
-      .kb-row.is-head{padding:7px 18px;background:var(--surface-2);border-bottom:1px solid var(--border);
-        font-size:10.5px;font-weight:800;color:#9aa0b8;letter-spacing:.02em}
-      /* 헤더의 485/486도 데이터 행과 똑같은 칩으로 둔다. 여기서 색만 덮어쓰면
-         .kb-val .n 의 파란 배경 위에 파란 글자가 얹혀 숫자가 사라진다(v6.0 버그). */
-      .kb-row.is-head .kb-val .p,.kb-row.is-head .kb-val .n{font-size:10.5px;padding:1px 7px}
-      .kb-row.is-head .axis{display:flex;justify-content:space-between;align-items:center}
-      .kb-row.is-head .axis b{font-weight:800;color:#b6bccb}
-      .kb-lab{font-size:12.5px;font-weight:600}
-      .kb-lab .q{font-size:10.5px;font-weight:700;color:#c3c9d6;margin-left:3px;cursor:help}
-      .kb-lab .q:hover{color:var(--b)}
-      .kb-val{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
-      .kb-val .p,.kb-val .n{display:inline-block;padding:1px 6px;border-radius:5px;font-weight:800}
-      .kb-val .p{color:#475569;background:#eef1f6}
-      .kb-val .n{color:#fff;background:var(--b)}
-      .kb-val .ar{color:#c3c9d6;margin:0 3px;font-weight:800}
-      .kb-den{display:block;font-size:9.5px;color:#b6bccb;font-weight:600;margin-top:1px}
-
-      /* 발산 막대 — 중앙선이 0. ±150%에서 자르고, 넘치면 촉을 세워 잘림을 알린다. */
-      /* 트랙 좌우에 옅은 워시를 깔아 "왼쪽=감소 / 오른쪽=증가"가 읽기 전에 보이게 한다.
-         중립 행은 색 판정을 끄므로 .is-neu 로 워시를 회색으로 되돌린다. */
-      .kb-bar{position:relative;height:16px;border-radius:3px;
-        background:linear-gradient(90deg,#fdf0f0 0 50%,#eff8f2 50% 100%)}
-      .kb-bar.is-neu{background:linear-gradient(90deg,#effafc 0 50%,#effafc 50% 100%)}
-      .kb-bar::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:#cfd6e2}
-      .kb-bar i{position:absolute;top:2px;bottom:2px;border-radius:2px;
-        box-shadow:0 1px 2px rgba(20,25,40,.18)}
-      .kb-bar .cap{position:absolute;top:0;bottom:0;width:0;border-left:3px dotted #fff}
-      .kb-d{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
-      .kb-d span{display:inline-block;padding:2px 7px;border-radius:20px;
-        background:color-mix(in srgb, currentColor 12%, #fff)}
-      .kb-scale{display:grid;grid-template-columns:172px 128px 1fr 62px;gap:14px;font-size:9.5px;
-        color:#c3c9d6;font-weight:700;padding:2px 18px 10px;letter-spacing:.02em}
-      .kb-scale .ax{display:flex;justify-content:space-between}
-      @media (max-width:760px){
-        .kb-row{grid-template-columns:1fr 108px 52px;gap:8px}
-        .kb-bar,.kb-scale{display:none}
-      }
-
-      .kb-note{font-size:11.5px;color:var(--text-dim);line-height:1.8;padding:11px 18px 14px;
-        border-top:1px solid var(--border-soft);background:#fcfdfe}
-      .kb-note b{color:var(--text)}
-
       #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:330px;
         background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
         line-height:1.55;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
@@ -142,7 +82,7 @@
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
-        <a class="nav-back" href="#board">KPI</a>
+        <a class="nav-back" href="#board">KPI 표</a>
         <a class="nav-back" href="#raw">원본</a>
         <a class="nav-back" href="#sql">쿼리</a>
         <span class="nav-spacer"></span>
@@ -466,9 +406,6 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       };
       const RET_COHORT = "2026-09-03";   // D+n 을 잴 수 있는 유일한 코호트일
       const RET_TODAY  = "2026-09-04";   // 마지막 조회일 — D+n 도래 여부 판정에 쓴다
-      let RD = 1;                        // 선택된 D+n
-      function setRD(n){ RD = n; renderBoard(); }
-      window.setRD = setRD;
       const retArrived = n => {
         const c = new Date(RET_COHORT + "T00:00:00Z");
         c.setUTCDate(c.getUTCDate() + n);
@@ -508,15 +445,9 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           t.p50 = null; t.p90 = null;            // 분위수는 합산 불가
           const n = DAILY.filter(r => r.ver === ver && r.seg === "NRU").reduce((x, r) => x + r.ud, 0);
           t.nru_ud = n; t.nru_share = n / t.ud * 100;
-          const R = RET[ver];
-          t.coh = R.NRU.coh + R.RU.coh;
-          const bn = R.NRU.d[RD], br = R.RU.d[RD];
-          t.back = (bn == null || br == null) ? null : bn + br;
         } else {
           Object.assign(t, E[seg]);
           t.nru_share = null;
-          t.coh = RET[ver][seg].coh;
-          t.back = RET[ver][seg].d[RD] ?? null;
         }
         return t;
       }
@@ -558,130 +489,121 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       const nfr = v => nf(Math.round(v));
 
       // row = [라벨, 값함수, 포맷, 모수함수, 중립, 주석, 강조, 세그분해불가]
+      // 슬롯 동작과 발화 성과는 같은 퍼널의 앞뒤라 한 덩어리로 둔다. 시도와 성공을 갈라 두면
+      // "얼마나 쐈나"와 "얼마나 닿았나"를 눈으로 이어 붙여야 해서 배수 비교가 안 된다.
+      // 순서: 기회 → 공유(시도·성공·성공률·절대) → 초대(시도·성공) → 미발화
       const GROUPS = [
-        { name:"슬롯 동작", acc:"#64748b", sub:"처치가 실제로 걸렸는지 봅니다 · 증감 자체가 좋고 나쁨이 아니라 Δ를 청록으로 둡니다",
+        { name:"소셜 슬롯", acc:"#dc2626",
+          sub:"슬롯이 몇 번 열려 몇 건이 나갔는지 · 청록 Δ는 설계대로 바뀌는 값이라 판정하지 않습니다",
           rows:[
-            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, e => [e.sh_try+e.inv_try, e.fin], true,
+            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, true,
               "(공유 시도 + 초대 시도) ÷ 완료 판수. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다"],
-            ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, e => [e.sh_try, e.ud], true,
+            ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, true,
               "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다"],
-            ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, e => [e.inv_try, e.ud], true,
-              "3460 중 position=tournament_invite만 셉니다. 486에서 0이 되는 것이 설계입니다"],
-            ["미노출 / DAU", e => e.sup/e.ud, p3, e => [e.sup, e.ud], true,
-              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다. 위 세 행과 같은 축이라 여기 두었습니다 — 발화가 는 것인지 미노출이 준 것인지 갈라 보셔야 합니다"],
-          ]},
-        { name:"발화 성과", acc:"#dc2626", sub:"그래서 몇 건이 실제로 나갔는지 봅니다 · 전체 −6%가 신규 +61% / 기존 −23%를 덮고 있습니다",
-          rows:[
-            ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, e => [e.sh_ok, e.ud], false,
-              "3210. 실질 주지표입니다. 전체 탭의 −6%는 정반대 두 층의 평균이니 신규/기존 탭을 눌러 갈라 보세요", true],
-            ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, e => [e.sh_ok, e.sh_try], false,
+            ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, false,
+              "3210. 실질 주지표입니다. 바로 위 시도가 2배면 여기도 2배가 되어야 본전인데, 전체 −6%가 신규 +61% / 기존 −23%를 덮고 있습니다", true],
+            ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, false,
               "3210 ÷ 3200. 485에서도 신규 14.1% / 기존 7.6%로 신규가 더 높았습니다 — 발화가 적어 피로가 덜 쌓인 쪽이 잘 통과합니다", true],
-            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, e => [e.inv_ok, e.ud], true,
-              "3470. 공유 성공과 나란히 두었지만, 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 성공 1건이 만든 유입이 공유의 1/16입니다(상단 판정 전제)"],
-            ["공유 성공 (절대)", e => e.sh_ok, nfr, null, false,
+            ["공유 성공 (절대)", e => e.sh_ok, nfr, false,
               "DAU 보정 없는 원값입니다. 9/4가 더 쌓이면서 v6.0의 90 → 84가 91 → 94로 뒤집혔습니다 — 부분 집계로 절대량을 판정하면 안 된다는 사례입니다"],
+            ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, true,
+              "3460 중 position=tournament_invite만 셉니다. 486에서 0이 되는 것이 설계입니다"],
+            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, true,
+              "3470. 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 성공 1건이 만든 유입이 공유의 1/16입니다(상단 판정 전제)"],
+            ["미노출 / DAU", e => e.sup/e.ud, p3, true,
+              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다. 발화가 는 것인지 미노출이 준 것인지 갈라 보셔야 합니다"],
           ]},
-        { name:"플레이 · 수익", acc:"#d97706", sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 봅니다 — 판수는 분모가 둘이라 나란히 두었습니다",
+        { name:"플레이 · 수익", acc:"#d97706",
+          sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 판수는 분모가 둘이라 나란히 두었습니다",
           rows:[
-            ["완료 판수 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false,
-              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다(data.result로 clear/fail이 갈립니다). 판당 슬롯 발화의 분모이기도 해서 뺄 수 없습니다. 분모가 '로그인 로그가 있는 유저-일'이라 아래 판수 평균과 값이 다릅니다"],
-            ["판수 평균 / 유저-일", e => e.avg, p2, null, false,
+            ["완료 판수 / DAU", e => e.fin/e.ud, p1, false,
+              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다(data.result로 clear/fail이 갈립니다). 판당 슬롯 발화의 분모이기도 합니다"],
+            ["판수 평균 / 유저-일", e => e.avg, p2, false,
               "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮게 나옵니다. 두 값의 차이가 곧 로그인 로그 누락분입니다"],
-            ["판수 p50 / 유저-일", e => e.p50, p1, null, false,
+            ["판수 p50 / 유저-일", e => e.p50, p1, false,
               "중앙값입니다. 평균만 오르고 이 값이 그대로면 '다수가 더 한 것'이 아니라 헤비 tail이 두꺼워진 것입니다", false, false, true],
-            ["판수 p90 / 유저-일", e => e.p90, p1, null, false,
+            ["판수 p90 / 유저-일", e => e.p90, p1, false,
               "상위 10% 경계입니다. 평균 상승분이 여기서 왔는지 확인하는 자리입니다", false, false, true],
-            ["플레이 유저 비율", e => e.play, pc, null, false,
+            ["플레이 유저 비율", e => e.play, pc, false,
               "그날 한 판이라도 끝낸 유저-일 비중입니다. 판수 p50이 0인 구간에서는 이 값이 실질 분모입니다"],
-            ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, e => [e.it+e.rv, e.ud], false,
+            ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, false,
               "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외했습니다"],
-            ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, e => [e.cr_ok, e.cr_try], false,
+            ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, false,
               "3110 ÷ 3100. 생성 다이얼로그는 공유와 같은 결과창 슬롯을 두고 경쟁합니다 — 세그로 가르면 신규 +45% / 기존 −55%로 극단적으로 갈립니다"],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
-          sub:"9/3 코호트 · D+n 을 골라 보세요 — 486이 9/3 시작이라 아직 D1만 도래했습니다",
-          rows:[
-            ["D+n 리텐션", e => e.back == null ? null : e.back/e.coh*100, pc, e => [e.back, e.coh], false,
-              "그날 코호트가 다음 날 다시 로그인한 비율입니다. 복귀 판정에는 빌드를 걸지 않습니다 — 걸면 업데이트를 이탈로 오독하게 됩니다. 코호트가 112~150명이라 2%p 차이는 표본 오차 범위입니다"],
-          ]},
+          sub:"9/3 코호트 · 486이 9/3 시작이라 아직 D+1만 도래했습니다",
+          rows:[] },
       ];
 
-      const SEGS = [["ALL","전체"],["RU","기존 유저"],["NRU","신규 유저"]];
-      let SEG = "ALL";
-      function setSeg(g){ SEG = g; renderBoard(); }
-      window.setSeg = setSeg;
+      const SEGS = [["ALL","전체"],["RU","기존"],["NRU","신규"]];
+      const DAYS = [1,2,3,4,5,6,7];
+
+      // Δ 셀 하나. 값이 없으면 사유를 남긴다 — 빈칸으로 두면 0으로 읽힌다.
+      function cell(f, fmt, A, B, neutral, why) {
+        if (!A || !B) return `<td colspan="3" class="na">${why}</td>`;
+        const vp = f(A), vc = f(B);
+        if ([vp, vc].some(x => x == null || !isFinite(x))) return `<td colspan="3" class="na">${why}</td>`;
+        const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
+        // 3색: 초록=개선 · 빨강=악화 · 청록=설계대로(판정 없음). 회색은 "변화 없음"에만.
+        const c = neutral ? "spec" : (Math.abs(pct) < 5 ? "mute" : pct > 0 ? "good" : "bad");
+        return `<td class="v0">${fmt(vp)}</td><td class="v1">${fmt(vc)}</td>`
+             + `<td class="dd ${c}">${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</td>`;
+      }
+
+      function rowHTML(lab, f, fmt, neutral, note, key, noSeg, onlySeg) {
+        const tds = SEGS.map(([g]) => {
+          if (noSeg && g !== "ALL") return `<td colspan="3" class="na">세그 분해 불가</td>`;
+          if (onlySeg && g === "ALL") return `<td colspan="3" class="na">세그별만</td>`;
+          return cell(f, fmt, agg("485", g), agg("486", g), neutral, "미수신");
+        }).join("");
+        return `<tr${key ? ' class="key"' : ""}><td class="lab">${lab}`
+             + `${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</td>${tds}</tr>`;
+      }
+
+      // 잔존은 지표 1개 × D+n 7행이라 같은 표에 D 를 행으로 편다.
+      function retRowHTML(n) {
+        const arrived = retArrived(n);
+        const tds = SEGS.map(([g]) => {
+          const val = v => {
+            const R = RET[v];
+            const coh = g === "ALL" ? R.NRU.coh + R.RU.coh : R[g].coh;
+            const bk  = g === "ALL"
+              ? (R.NRU.d[n] == null || R.RU.d[n] == null ? null : R.NRU.d[n] + R.RU.d[n])
+              : (R[g].d[n] ?? null);
+            return bk == null ? null : { back: bk, coh };
+          };
+          const a = val("485"), b = val("486");
+          if (!a || !b) return `<td colspan="3" class="na">${arrived ? "미수신" : "미도래"}</td>`;
+          return cell(e => e.back / e.coh * 100, x => x.toFixed(1) + "%", a, b, false, "미수신");
+        }).join("");
+        return `<tr${arrived ? "" : ' class="dim"'}><td class="lab">D+${n}`
+             + `<span class="q" data-tip="9/3 코호트가 9/${3 + n}에 다시 로그인한 비율입니다.`
+             + `${arrived ? "" : " 9/" + (3 + n) + "이 아직 오지 않았습니다."}">ⓘ</span></td>${tds}</tr>`;
+      }
 
       function renderBoard() {
-        const A = agg("485", SEG), B = agg("486", SEG);
-        const tabs = `<div class="kb-tabs">${SEGS.map(([g, l]) => {
-          const has = DAILY.some(r => r.seg === g);
-          return `<button class="${SEG === g ? "on" : ""}${has ? "" : " empty"}" onclick="setSeg('${g}')">`
-            + `${l}${has ? "" : ' <em>미수신</em>'}</button>`;
-        }).join("")}<span class="kb-tabhint">모든 지표가 이 축으로 다시 계산됩니다</span></div>`;
+        const head = `<thead>
+          <tr><th rowspan="2" class="lab">지표</th>${SEGS.map(([g, l]) =>
+            `<th colspan="3" class="seg">${l}</th>`).join("")}</tr>
+          <tr>${SEGS.map(() => `<th class="v0">485</th><th class="v1">486</th><th class="dd">Δ</th>`).join("")}</tr>
+        </thead>`;
 
         const body = GROUPS.map(g => {
-          const rows = g.rows.map(([lab, f, fmt, parts, neutral, note, key, noSeg, onlySeg]) => {
-            const wait = (why) => `<div class="kb-row is-wait"><div class="kb-lab">${lab}`
-              + `${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
-              + `<div class="kb-val"><span class="kb-wait">${why}</span></div>`
-              + `<div class="kb-bar"></div><div class="kb-d"></div></div>`;
-            // 세그 분해가 불가능한 지표는 전체 탭에서만 값이 있다 — 이유를 이름으로 남긴다.
-            if (!f) return wait("버전 분해 불가");
-            if (noSeg && SEG !== "ALL") return wait("세그 분해 불가");
-            if (onlySeg && SEG === "ALL") return wait("세그 탭에서만");
-            if (!A || !B) return wait("미수신");
-            const vp = f(A), vc = f(B);
-            if ([vp, vc].some(x => x == null || !isFinite(x)))
-              return wait(g.days ? (retArrived(RD) ? "미수신" : `D+${RD} 미도래`) : "미수신");
-
-            const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
-            // 3색: 초록=개선 · 빨강=악화 · 청록=설계대로(판정 없음). 회색은 "변화 없음"에만.
-            const col = neutral ? "var(--spec)" : (Math.abs(pct) < 5 ? "var(--mute)" : pct > 0 ? "var(--good)" : "var(--bad)");
-            const w = Math.min(Math.abs(pct), CAP) / CAP * 50;      // 반폭 50% 기준
-            const clipped = Math.abs(pct) > CAP;
-            const side = pct >= 0 ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
-            const pp = parts ? parts(A) : null, pn = parts ? parts(B) : null;
-            const tip = `${lab} · ${SEGS.find(x => x[0] === SEG)[1]}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
-              + (pp ? `\n${nf(pp[0])} ÷ ${nf(pp[1])} → ${nf(pn[0])} ÷ ${nf(pn[1])}` : "")
-              + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않습니다)" : "")
-              + (clipped ? `\n막대는 ±${CAP}%에서 잘렸습니다` : "");
-            return `<div class="kb-row${key ? " is-key" : ""}" data-tip="${tip}">
-              <div class="kb-lab">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
-              <div class="kb-val"><span class="p">${fmt(vp)}</span><span class="ar">→</span><span class="n">${fmt(vc)}</span>
-                ${pp ? `<span class="kb-den">${nf(pp[0])}÷${nf(pp[1])} → ${nf(pn[0])}÷${nf(pn[1])}</span>` : ""}</div>
-              <div class="kb-bar${neutral ? " is-neu" : ""}"><i style="${side};background:${col}${clipped ? ";opacity:.55" : ""}"></i></div>
-              <div class="kb-d" style="color:${col}"><span>${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</span></div>
-            </div>`;
-          }).join("");
-          // D+n 탭은 잔존 그룹에만 붙는다. 도래하지 않은 날은 눌러도 값이 없으니 비활성으로 그린다.
-          const daytabs = !g.days ? "" : `<div class="kb-days">${[1,2,3,4,5,6,7].map(n => {
-            const ok = retArrived(n), has = RET["486"].RU.d[n] != null;
-            return `<button class="${RD === n ? "on" : ""}${ok && has ? "" : " off"}" onclick="setRD(${n})"`
-              + ` data-tip="${ok ? (has ? `D+${n} · 9/3 코호트가 9/${3 + n}에 재로그인` : `D+${n} · 날짜는 지났지만 아직 안 뽑았습니다`)
-                                : `D+${n} · 9/${3 + n}이 아직 오지 않았습니다`}">D${n}</button>`;
-          }).join("")}<span class="kb-dayhint">코호트 2026-09-03 · 마지막 조회 2026-09-04</span></div>`;
-          return `<div class="kb-grp" style="--g:${g.acc}">
-            <div class="kb-gh"><b>${g.name}</b><span>${g.sub}</span></div>
-            ${daytabs}
-            <div class="kb-row is-head">
-              <div>지표</div>
-              <div class="kb-val"><span class="p">485</span> <span class="ar">→</span> <span class="n">486</span></div>
-              <div class="axis"><b>← 486이 적음</b><span>0</span><b>486이 많음 →</b></div>
-              <div style="text-align:right">Δ</div>
-            </div>
-            ${rows}
-            <div class="kb-scale"><span></span><span></span>
-              <span class="ax"><span>−${CAP}%</span><span>0</span><span>+${CAP}%</span></span><span></span></div>
-          </div>`;
+          const rows = g.days
+            ? DAYS.map(retRowHTML).join("")
+            : g.rows.map(r => rowHTML(...r)).join("");
+          return `<tbody style="--g:${g.acc}">
+            <tr class="gh"><td colspan="10"><b>${g.name}</b><span>${g.sub}</span></td></tr>
+            ${rows}</tbody>`;
         }).join("");
 
-        // 히어로 카드 4장을 걷어내고 그 안의 사실만 여기로 옮겼다. 이 세 줄은 지표가 아니라
-        // "보드를 어떻게 읽어야 하는가"의 전제라, 표 안에 행으로 묻으면 판정 전에 확인되지 않는다.
+        // 판정 전제 — 지표가 아니라 "보드를 어떻게 읽는가"라 표 위에 따로 둔다.
         const bal = `<div class="kb-bal">
           <div class="bl"><b>배정 균형</b><span>NRU 비중</span>
             <span class="v"><span class="p">${A0.nru_share.toFixed(1)}%</span> → <span class="n">${B0.nru_share.toFixed(1)}%</span></span>
             <span class="d">+${(B0.nru_share - A0.nru_share).toFixed(1)}%p</span>
-            <em>486에 신규가 더 많이 배정됐습니다 — 판정은 기존/신규 탭에서 하세요</em></div>
+            <em>486에 신규가 더 많이 배정됐습니다 — 판정은 기존/신규 열에서 하세요</em></div>
           <div class="bl"><b>초대 도달</b><span>성공 1건당 유입</span>
             <span class="v"><span class="p">초대 ${reachInv.toFixed(2)}</span> vs <span class="n">공유 ${reachSh.toFixed(2)}</span></span>
             <span class="d">1/16</span>
@@ -691,7 +613,11 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             <span class="d">−11%?</span>
             <em>발신이 절반 잘린 날은 9/4 하루뿐이고 그마저 부분 집계입니다 — 아직 판정할 수 없습니다</em></div>
         </div>`;
-        document.getElementById("groups").innerHTML = tabs + bal + body;
+
+        document.getElementById("groups").innerHTML = bal
+          + `<div class="table-scroll"><table class="kbt">${head}${body}</table></div>`
+          + `<div class="kb-foot">485 n=${nf(A0.ud)} · 486 n=${nf(B0.ud)} 유저-일 · US · 9/3~9/4(9/4는 부분 집계) ·
+              <b>Δ 색</b> 초록=개선 · 빨강=악화 · <b>청록=설계대로라 판정하지 않음</b> · 회색=변화 없음</div>`;
       }
       renderBoard();
 
