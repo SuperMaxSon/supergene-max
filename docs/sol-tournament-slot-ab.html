@@ -26,8 +26,21 @@
         color:var(--acc,var(--text));line-height:1.1}
       .kb-hero .hn s{font-size:16px;font-weight:700;opacity:.5;text-decoration:none}
       .kb-hero .ht{font-size:12.5px;font-weight:700;margin-top:7px}
-      .kb-hero .hs{font-size:11.5px;color:var(--text-dim);margin-top:3px;line-height:1.6}
+      .kb-hero .hv{font-size:12px;font-weight:700;color:var(--text-dim);margin-top:5px;
+        font-variant-numeric:tabular-nums}
+      .kb-hero .hk{font-size:10.5px;font-weight:600;color:var(--text-faint);margin-top:2px;
+        font-variant-numeric:tabular-nums}
       @media (max-width:760px){ .kb-hero{grid-template-columns:1fr} }
+
+      /* 범례 — 어느 색이 어느 빌드인지가 보드 전체의 전제라 맨 위에 고정으로 둔다. */
+      .kb-key{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:11px 16px;
+        background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:12px}
+      .kb-key .k{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+      .kb-key .k i{width:11px;height:11px;border-radius:3px;display:inline-block}
+      .kb-key .k s{font-weight:600;color:var(--text-dim);text-decoration:none}
+      .kb-key .ar{color:#c3c9d6;font-weight:800}
+      .kb-key .sep{flex:1}
+      .kb-key .hint{font-size:11px;color:var(--text-dim);font-weight:600}
 
       /* 그룹 — 지표를 "설계대로 바뀐 것 / 실제 성과 / 가드레일"로 갈라야 Δ 부호를 잘못 읽지 않는다. */
       .kb-grp{margin:0 0 22px;background:var(--surface);border:1px solid var(--border);
@@ -43,6 +56,13 @@
         padding:11px 18px;border-bottom:1px solid var(--border-soft)}
       .kb-row:last-child{border-bottom:none}
       .kb-row.is-key{background:#fbfcfe}
+      /* 컬럼 헤더 — 값 열이 "485 → 486"이라는 걸 그룹마다 다시 말해준다.
+         스크롤해 내려가면 위쪽 범례가 화면 밖으로 나가기 때문이다. */
+      .kb-row.is-head{padding:7px 18px;background:var(--surface-2);border-bottom:1px solid var(--border);
+        font-size:10.5px;font-weight:800;color:#9aa0b8;letter-spacing:.02em}
+      .kb-row.is-head .p{color:var(--a)} .kb-row.is-head .n{color:var(--b)}
+      .kb-row.is-head .axis{display:flex;justify-content:space-between;align-items:center}
+      .kb-row.is-head .axis b{font-weight:800;color:#b6bccb}
       .kb-lab{font-size:12.5px;font-weight:600}
       .kb-lab .q{font-size:10.5px;font-weight:700;color:#c3c9d6;margin-left:3px;cursor:help}
       .kb-lab .q:hover{color:var(--b)}
@@ -59,8 +79,9 @@
       .kb-bar i{position:absolute;top:2px;bottom:2px;border-radius:2px}
       .kb-bar .cap{position:absolute;top:0;bottom:0;width:0;border-left:3px dotted #fff}
       .kb-d{font-size:12.5px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
-      .kb-scale{display:flex;justify-content:space-between;font-size:9.5px;color:#c3c9d6;font-weight:700;
-        padding:4px 18px 9px;letter-spacing:.02em}
+      .kb-scale{display:grid;grid-template-columns:172px 128px 1fr 62px;gap:14px;font-size:9.5px;
+        color:#c3c9d6;font-weight:700;padding:2px 18px 10px;letter-spacing:.02em}
+      .kb-scale .ax{display:flex;justify-content:space-between}
       @media (max-width:760px){
         .kb-row{grid-template-columns:1fr 108px 52px;gap:8px}
         .kb-bar,.kb-scale{display:none}
@@ -109,6 +130,7 @@
 
     <main class="wrap wrap--wide">
       <section class="doc-section kb" id="board">
+        <div class="kb-key" id="key"></div>
         <div class="kb-hero" id="hero"></div>
         <div id="groups"></div>
       </section>
@@ -262,26 +284,39 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       const i4 = INFLOW.find(r => r.d === "09-04");
       const reachSh = i4.t / shOk4, reachInv = i4.ti / invOk4;
 
+      // ── 범례 ─────────────────────────────────────────────────────────────
+      // 막대의 좌우는 "버전"이 아니라 "증감 방향"이다. 이걸 오해하면 보드 전체를 잘못 읽어서
+      // 값 열의 색(회색=485, 파랑=486)과 막대 축을 여기서 한 번에 못박는다.
+      document.getElementById("key").innerHTML =
+        `<span class="k"><i style="background:var(--a)"></i>485 <s>교대 · ${nf(A.ud)} 유저-일</s></span>`
+      + `<span class="ar">→</span>`
+      + `<span class="k"><i style="background:var(--b)"></i>486 <s>공유만 · ${nf(B.ud)} 유저-일</s></span>`
+      + `<span class="sep"></span>`
+      + `<span class="hint">막대 좌우 = <b>증감 방향</b>(버전 아님) · 왼쪽으로 뻗으면 486이 적음 · ±${CAP}%에서 잘림</span>`;
+
       // ── 히어로 ───────────────────────────────────────────────────────────
+      // 결론 3개. 서술은 싣지 않는다 — 값과 전/후 원값만 두고, 해석은 그룹 부제와 ⓘ가 맡는다.
       document.getElementById("hero").innerHTML = [
-        { acc:"var(--bad)", n:"−15%", s:"", t:"공유 성공 / DAU",
-          d:"시도는 <b>+135%</b>인데 성공은 줄었다. 늘린 슬롯이 전부 실패로 흘렀다." },
-        { acc:"var(--bad)", n:"1/16", s:"", t:"초대 성공 1건당 실제 도달",
-          d:`9/4 · 공유 <b>${reachSh.toFixed(2)}</b> vs 초대 <b>${reachInv.toFixed(2)}</b> 세션.
-             <code>3470</code>은 도달이 아니라 <b>다이얼로그 통과</b>에 가깝다 — 초대 −100%를 손실로 읽으면 안 된다.` },
+        { acc:"var(--bad)",  n:"−15%",  t:"공유 성공 / DAU",
+          v:`${(A.sh_ok/A.ud).toFixed(3)} → ${(B.sh_ok/B.ud).toFixed(3)}`,
+          k:`시도 ${(A.sh_try/A.ud).toFixed(2)} → ${(B.sh_try/B.ud).toFixed(2)} (+135%)` },
+        { acc:"var(--bad)",  n:"1/16",  t:"초대 성공 1건당 실제 도달",
+          v:`공유 ${reachSh.toFixed(2)} vs 초대 ${reachInv.toFixed(2)} 세션`,
+          k:"9/4 · 485·486 반반인 날" },
         { acc:"var(--warn)", n:"−11%", s:"?", t:"유입 합계 / 일",
-          d:"발신이 절반 잘린 날은 <b>9/4 하루뿐</b>이고 그마저 부분 집계다. <b>아직 판정 불가.</b>" },
+          v:`${((IP.t+IP.ti)/IP.n).toFixed(1)} → ${((IC.t+IC.ti)/IC.n).toFixed(1)}`,
+          k:"9/4 부분 집계 · 판정 불가" },
       ].map(h => `<div class="h" style="--acc:${h.acc}">
           <div class="hn">${h.n}${h.s ? `<s>${h.s}</s>` : ""}</div>
-          <div class="ht">${h.t}</div><div class="hs">${h.d}</div></div>`).join("");
+          <div class="ht">${h.t}</div>
+          <div class="hv">${h.v}</div><div class="hk">${h.k}</div></div>`).join("");
 
       // ── 그룹 보드 ─────────────────────────────────────────────────────────
       // row = [라벨, 전, 후, 포맷, 모수전, 모수후, 중립, 주석, 강조]
       const p1 = v => v.toFixed(1), p2 = v => v.toFixed(2), p3 = v => v.toFixed(3);
       const pc = v => v.toFixed(1) + "%";
       const GROUPS = [
-        { name:"처치", sub:"설계대로 바뀐 것 — 증감 자체는 좋고 나쁨이 아니다",
-          note:`판당 <b>슬롯 발화 총량</b>은 30.3% → 33.7%로 거의 그대로다. 처치는 <b>같은 슬롯을 공유로 채웠을 뿐</b> 발화 기회를 늘리지도 줄이지도 않았다 — 그래서 아래 성과 차이는 순수하게 <b>전환율</b>에서 온다.`,
+        { name:"처치", sub:"설계대로 바뀐 것 · 증감 자체는 좋고 나쁨이 아니다 — Δ 색을 끈다",
           rows:[
             ["공유 시도 / DAU", A.sh_try/A.ud, B.sh_try/B.ud, p2, [A.sh_try,A.ud], [B.sh_try,B.ud], true,
               "교대 → 전량 공유라 2배가 되는 게 설계다"],
@@ -293,8 +328,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
               [A.sh_try+A.inv_try,A.fin], [B.sh_try+B.inv_try,B.fin], true,
               "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율"],
           ]},
-        { name:"성과", sub:"실제로 무엇이 바뀌었나",
-          note:`공유에 슬롯을 <b>2.4배</b> 몰아줬는데 <b>공유 성공 절대량은 90 → 84로 줄었다</b>. 공유 성공은 시도 수가 아니라 <b>다른 상한에 걸려 있고 그 상한은 이미 차 있었다</b> — 이미 포화된 창구에 줄만 두 배로 세운 셈이다. 없앤 초대는 장부상 97% 성공이었지만 실제 도달은 공유의 1/16이라, <b>이 변경은 허수 지표를 지웠을 뿐 손해도 이득도 아니다.</b> 진짜 병목은 슬롯 배분이 아니라 <b>공유 성공률 8.9%</b>이고, 다음 작업은 <code>3220</code>의 <code>error_code</code> 분해다.`,
+        { name:"성과", sub:"슬롯을 공유에 2.4배 몰아준 결과",
           rows:[
             ["공유 성공 / DAU", A.sh_ok/A.ud, B.sh_ok/B.ud, p3, [A.sh_ok,A.ud], [B.sh_ok,B.ud], false,
               "실질 주지표. 시도가 2배면 여기도 2배가 되어야 본전이다", true],
@@ -305,8 +339,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             ["유입 합계 / 일", (IP.t+IP.ti)/IP.n, (IC.t+IC.ti)/IC.n, p1, [IP.t+IP.ti,IP.n], [IC.t+IC.ti,IC.n], true,
               "전 = 8/28~9/2 6일(전량 교대) · 후 = 9/3~9/4 2일(486 혼재). 축이 달라 참고값이다"],
           ]},
-        { name:"가드레일", sub:"슬롯을 바꿔서 망가진 게 없는지",
-          note:`세 지표 모두 486이 우위다. <b>"초대 다이얼로그가 플레이를 방해했다"</b>로 읽으면 그럴듯하지만, <b>배정이 무작위인지 아직 확인되지 않았다</b>(쿼리 ③ 미수신). 처치와 무관한 축인 <b>RV까지 같은 방향으로 올랐다</b>는 점이 오히려 군 자체가 다를 가능성을 키운다 — 균형이 확인되기 전까지 이 그룹은 <b>"486이 좋다"의 근거로 쓰지 말 것.</b>`,
+        { name:"가드레일", sub:"배정 균형 미확인(쿼리 ③) — 486 우위를 처치로 단정할 수 없다",
           rows:[
             ["판 종료 / DAU", A.fin/A.ud, B.fin/B.ud, p1, [A.fin,A.ud], [B.fin,B.ud], false, "2300"],
             ["총광고 완료 / DAU", (A.it+A.rv)/A.ud, (B.it+B.rv)/B.ud, p2, [A.it+A.rv,A.ud], [B.it+B.rv,B.ud], false,
@@ -339,9 +372,16 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
         }).join("");
         return `<div class="kb-grp">
           <div class="kb-gh"><b>${g.name}</b><span>${g.sub}</span></div>
+          <div class="kb-row is-head">
+            <div>지표</div>
+            <div class="kb-val"><span class="p">485</span> <span class="ar">→</span> <span class="n">486</span></div>
+            <div class="axis"><b>← 486이 적음</b><span>0</span><b>486이 많음 →</b></div>
+            <div style="text-align:right">Δ</div>
+          </div>
           ${rows}
-          <div class="kb-scale"><span>−${CAP}%</span><span>0</span><span>+${CAP}%</span></div>
-          <div class="kb-note">${g.note}</div></div>`;
+          <div class="kb-scale"><span></span><span></span>
+            <span class="ax"><span>−${CAP}%</span><span>0</span><span>+${CAP}%</span></span><span></span></div>
+        </div>`;
       }).join("");
 
       // ── 원본 표 ──────────────────────────────────────────────────────────
