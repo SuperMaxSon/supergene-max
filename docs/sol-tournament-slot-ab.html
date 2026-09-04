@@ -48,6 +48,18 @@
       @media (max-width:820px){ .kb-bal .bl{grid-template-columns:1fr auto;gap:4px 8px}
         .kb-bal .bl span:nth-child(2){display:none} .kb-bal em{grid-column:1/-1} }
 
+      /* D+n 탭 — 잔존 전용. 도래하지 않은 날을 지우지 않고 비활성으로 남긴다.
+         지우면 "D1만 재는 지표"로 읽히고, 며칠 뒤 무엇을 다시 뽑아야 하는지도 사라진다. */
+      .kb-days{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:9px 18px;
+        background:color-mix(in srgb, var(--g) 4%, #fff);
+        border-bottom:1px solid color-mix(in srgb, var(--g) 14%, var(--border))}
+      .kb-days button{font-size:11px;font-weight:800;padding:3px 11px;border-radius:14px;cursor:help;
+        border:1.5px solid var(--border);background:#fff;color:var(--text-dim);font-family:inherit}
+      .kb-days button.on{border-color:var(--g);background:var(--g);color:#fff}
+      .kb-days button.off{color:#c3c9d6;border-style:dashed}
+      .kb-days button.on.off{background:#b6bccb;border-color:#b6bccb;color:#fff}
+      .kb-dayhint{font-size:10.5px;color:var(--text-faint);font-weight:600;margin-left:5px}
+
       /* 그룹 — 지표를 흐름(슬롯 동작 → 발화 성과 → 플레이 → 잔존)으로 갈라야 Δ 부호를 잘못 읽지 않는다. */
       .kb-grp{margin:0 0 22px;background:var(--surface);border-radius:var(--radius);overflow:hidden;
         border:1px solid color-mix(in srgb, var(--g) 22%, var(--border))}
@@ -204,7 +216,7 @@ return useInvite ? invite : share;
     log_date       AS `날짜`,
     client_version AS `빌드`,
     COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                   AS `DAU`,
-    COUNTIF(event = '2300_GAMEPLAY_FINISH')                              AS `판_종료`,
+    COUNTIF(event = '2300_GAMEPLAY_FINISH')                              AS `완료_판수`,
     COUNTIF(event = '3200_TOURNAMENT_SHARE')                             AS `공유_시도`,
     COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                     AS `공유_성공`,
     COUNTIF(event = '3460_MSG_P2P_INVITE'
@@ -327,12 +339,13 @@ ORDER BY `유저군`, `빌드`;</pre></div>
         </details>
 
         <details class="fold">
-          <summary>⑥ D1 리텐션 — 코호트일 × 빌드 × 유저군 <b>· 완료 (9/3 코호트만 유효)</b></summary>
+          <summary>⑥ D1~D7 리텐션 — 코호트일 × 빌드 × 유저군 <b>· D1만 도래</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>-- 코호트 = 그날 로그인한 유저를 그날의 빌드·유저군으로 묶은 것.
 -- 복귀 판정에는 빌드를 걸지 않는다 — 걸면 다음 날의 업데이트를 이탈로 오독한다.
--- ⚠ 486은 9/3부터라 D1을 볼 수 있는 코호트가 9/3 하루뿐이고 복귀일 9/4가 부분 집계다.
---    지금 값은 확정이 아니라 기준선이다 — 완전한 하루가 쌓인 뒤 다시 돌린다.
+-- ret 창을 코호트일 + 7일까지 넓혀 두면 D1~D7을 한 번에 뽑을 수 있다.
+-- ⚠ 486은 9/3부터라 지금은 D1만 도래했다. D2 이상은 날짜가 지난 뒤 이 쿼리를 그대로 다시 돌린다.
+--    ⓘ D+n 칸이 "미도래"면 아직 날짜가 안 온 것이고, "미수신"이면 날짜는 지났는데 안 뽑은 것이다.
 WITH cohort AS (
     SELECT
         log_date, player_id, client_version,
@@ -347,7 +360,7 @@ WITH cohort AS (
 ret AS (
     SELECT DISTINCT log_date, player_id
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
+    WHERE log_date BETWEEN '2026-09-03' AND DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
         AND event   = '1000_LOGIN_COMPLETE'
         AND country = 'US'
 )
@@ -355,16 +368,51 @@ SELECT
     c.log_date                    AS `코호트일`,
     c.client_version              AS `빌드`,
     IF(c.is_nru = 1, 'NRU', 'RU') AS `유저군`,
-    COUNT(DISTINCT c.player_id)                                    AS `코호트`,
-    COUNT(DISTINCT IF(r.player_id IS NOT NULL, c.player_id, NULL)) AS `D1_복귀`,
-    ROUND(COUNT(DISTINCT IF(r.player_id IS NOT NULL, c.player_id, NULL)) * 100.0
-          / COUNT(DISTINCT c.player_id), 1)                        AS `D1_리텐션_pct`
+    COUNT(DISTINCT c.player_id)   AS `코호트`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 1, c.player_id, NULL)) AS `D1`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 2, c.player_id, NULL)) AS `D2`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 3, c.player_id, NULL)) AS `D3`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 4, c.player_id, NULL)) AS `D4`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 5, c.player_id, NULL)) AS `D5`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 6, c.player_id, NULL)) AS `D6`,
+    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS `D7`
 FROM cohort c
 LEFT JOIN ret r
     ON r.player_id = c.player_id
-   AND r.log_date  = DATE_ADD(c.log_date, INTERVAL 1 DAY)
+   AND r.log_date  > c.log_date
+   AND r.log_date <= DATE_ADD(c.log_date, INTERVAL 7 DAY)
 GROUP BY `코호트일`, `빌드`, `유저군`
 ORDER BY `코호트일`, `빌드`, `유저군`;</pre></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>⑦ 클리어 / 실패 분해 — 완료 판수의 result 축 <b>· 미수신</b></summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 완료 판수(2300)는 클리어와 실패·포기를 함께 센다. 슬롯 다이얼로그는 클리어에서만 뜨므로,
+-- 486의 완료 판수 증가가 클리어에서 온 것인지 실패에서 온 것인지 갈라야 발화 기회 변화를 읽을 수 있다.
+SELECT
+    client_version               AS `빌드`,
+    IF(is_nru = 1, 'NRU', 'RU')  AS `유저군`,
+    JSON_VALUE(data, '$.result') AS `결과`,
+    COUNT(*)                     AS `판수`,
+    ROUND(COUNT(*) * 100.0
+          / SUM(COUNT(*)) OVER (PARTITION BY client_version, is_nru), 1) AS `비중_pct`
+FROM (
+    SELECT
+        player_id, data, client_version,
+        MAX(IF(event = '1000_LOGIN_COMPLETE'
+               AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0))
+            OVER (PARTITION BY log_date, player_id) AS is_nru,
+        event
+    FROM `game-log-359704.raw.solitaire_city_journey`
+    WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
+        AND country = 'US'
+        AND client_version IN (485, 486)
+)
+WHERE event = '2300_GAMEPLAY_FINISH'
+GROUP BY `빌드`, `유저군`, `결과`
+ORDER BY `유저군`, `빌드`, `결과`;</pre></div>
           </div>
         </details>
 
@@ -410,11 +458,28 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       // 쿼리 ⑤(판수 분포) · ⑥(D1 리텐션). 일자축이 없어 DAILY와 따로 둔다.
       // D1은 9/3 코호트만 유효하다 — 9/4 코호트의 복귀일(9/5)이 아직 오지 않았다.
       // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
+      // D+n 리텐션. d[n] = 그 코호트가 n일 뒤 돌아온 수. 지금은 D1만 있고, 486이 9/3 시작이라
+      // D2 이상은 코호트일 + n이 아직 오지 않았다(미도래). 값이 없는 칸은 비워 둔다.
+      const RET = {
+        "485": { NRU:{ coh:112, d:{ 1:22 } }, RU:{ coh:132, d:{ 1:66 } } },
+        "486": { NRU:{ coh:141, d:{ 1:25 } }, RU:{ coh:150, d:{ 1:72 } } },
+      };
+      const RET_COHORT = "2026-09-03";   // D+n 을 잴 수 있는 유일한 코호트일
+      const RET_TODAY  = "2026-09-04";   // 마지막 조회일 — D+n 도래 여부 판정에 쓴다
+      let RD = 1;                        // 선택된 D+n
+      function setRD(n){ RD = n; renderBoard(); }
+      window.setRD = setRD;
+      const retArrived = n => {
+        const c = new Date(RET_COHORT + "T00:00:00Z");
+        c.setUTCDate(c.getUTCDate() + n);
+        return c <= new Date(RET_TODAY + "T00:00:00Z");
+      };
+
       const EXTRA = {
-        "485": { NRU:{ coh:112, back:22, uday:481, avg:4.43, p50:0, p75:4,  p90:12, play:46.2, p50p:5 },
-                 RU: { coh:132, back:66, uday:552, avg:8.78, p50:3, p75:11, p90:23, play:68.8, p50p:7 } },
-        "486": { NRU:{ coh:141, back:25, uday:566, avg:4.76, p50:0, p75:5,  p90:14, play:48.8, p50p:5 },
-                 RU: { coh:150, back:72, uday:556, avg:10.13,p50:3, p75:12, p90:26, play:70.0, p50p:8 } },
+        "485": { NRU:{ uday:481, avg:4.43, p50:0, p75:4,  p90:12, play:46.2, p50p:5 },
+                 RU: { uday:552, avg:8.78, p50:3, p75:11, p90:23, play:68.8, p50p:7 } },
+        "486": { NRU:{ uday:566, avg:4.76, p50:0, p75:5,  p90:14, play:48.8, p50p:5 },
+                 RU: { uday:556, avg:10.13,p50:3, p75:12, p90:26, play:70.0, p50p:8 } },
       };
       // 유입 세션 — 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
       const INFLOW = [
@@ -437,16 +502,21 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
         }, {});
         const E = EXTRA[ver];
         if (seg === "ALL") {
-          t.coh = E.NRU.coh + E.RU.coh; t.back = E.NRU.back + E.RU.back;
           t.uday = E.NRU.uday + E.RU.uday;
           t.avg = (E.NRU.avg * E.NRU.uday + E.RU.avg * E.RU.uday) / t.uday;
           t.play = (E.NRU.play * E.NRU.uday + E.RU.play * E.RU.uday) / t.uday;
           t.p50 = null; t.p90 = null;            // 분위수는 합산 불가
           const n = DAILY.filter(r => r.ver === ver && r.seg === "NRU").reduce((x, r) => x + r.ud, 0);
           t.nru_ud = n; t.nru_share = n / t.ud * 100;
+          const R = RET[ver];
+          t.coh = R.NRU.coh + R.RU.coh;
+          const bn = R.NRU.d[RD], br = R.RU.d[RD];
+          t.back = (bn == null || br == null) ? null : bn + br;
         } else {
           Object.assign(t, E[seg]);
           t.nru_share = null;
+          t.coh = RET[ver][seg].coh;
+          t.back = RET[ver][seg].d[RD] ?? null;
         }
         return t;
       }
@@ -492,7 +562,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
         { name:"슬롯 동작", acc:"#64748b", sub:"처치가 실제로 걸렸는지 봅니다 · 증감 자체가 좋고 나쁨이 아니라 Δ를 청록으로 둡니다",
           rows:[
             ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, e => [e.sh_try+e.inv_try, e.fin], true,
-              "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다"],
+              "(공유 시도 + 초대 시도) ÷ 완료 판수. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다"],
             ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, e => [e.sh_try, e.ud], true,
               "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다"],
             ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, e => [e.inv_try, e.ud], true,
@@ -513,8 +583,8 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           ]},
         { name:"플레이 · 수익", acc:"#d97706", sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 봅니다 — 판수는 분모가 둘이라 나란히 두었습니다",
           rows:[
-            ["판 종료 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false,
-              "2300 ÷ DAU. 분모가 '로그인 로그가 있는 유저-일'이라 아래 판수 평균과 값이 다릅니다"],
+            ["완료 판수 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false,
+              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다(data.result로 clear/fail이 갈립니다). 판당 슬롯 발화의 분모이기도 해서 뺄 수 없습니다. 분모가 '로그인 로그가 있는 유저-일'이라 아래 판수 평균과 값이 다릅니다"],
             ["판수 평균 / 유저-일", e => e.avg, p2, null, false,
               "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮게 나옵니다. 두 값의 차이가 곧 로그인 로그 누락분입니다"],
             ["판수 p50 / 유저-일", e => e.p50, p1, null, false,
@@ -528,9 +598,10 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, e => [e.cr_ok, e.cr_try], false,
               "3110 ÷ 3100. 생성 다이얼로그는 공유와 같은 결과창 슬롯을 두고 경쟁합니다 — 세그로 가르면 신규 +45% / 기존 −55%로 극단적으로 갈립니다"],
           ]},
-        { name:"잔존", acc:"#7c3aed", sub:"9/3 코호트만 유효합니다 — 9/4 코호트의 복귀일(9/5)이 아직 오지 않았습니다",
+        { name:"잔존", acc:"#7c3aed", days:true,
+          sub:"9/3 코호트 · D+n 을 골라 보세요 — 486이 9/3 시작이라 아직 D1만 도래했습니다",
           rows:[
-            ["D1 리텐션", e => e.back/e.coh*100, pc, e => [e.back, e.coh], false,
+            ["D+n 리텐션", e => e.back == null ? null : e.back/e.coh*100, pc, e => [e.back, e.coh], false,
               "그날 코호트가 다음 날 다시 로그인한 비율입니다. 복귀 판정에는 빌드를 걸지 않습니다 — 걸면 업데이트를 이탈로 오독하게 됩니다. 코호트가 112~150명이라 2%p 차이는 표본 오차 범위입니다"],
           ]},
       ];
@@ -560,7 +631,8 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             if (onlySeg && SEG === "ALL") return wait("세그 탭에서만");
             if (!A || !B) return wait("미수신");
             const vp = f(A), vc = f(B);
-            if ([vp, vc].some(x => x == null || !isFinite(x))) return wait("미수신");
+            if ([vp, vc].some(x => x == null || !isFinite(x)))
+              return wait(g.days ? (retArrived(RD) ? "미수신" : `D+${RD} 미도래`) : "미수신");
 
             const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
             // 3색: 초록=개선 · 빨강=악화 · 청록=설계대로(판정 없음). 회색은 "변화 없음"에만.
@@ -581,8 +653,16 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
               <div class="kb-d" style="color:${col}"><span>${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</span></div>
             </div>`;
           }).join("");
+          // D+n 탭은 잔존 그룹에만 붙는다. 도래하지 않은 날은 눌러도 값이 없으니 비활성으로 그린다.
+          const daytabs = !g.days ? "" : `<div class="kb-days">${[1,2,3,4,5,6,7].map(n => {
+            const ok = retArrived(n), has = RET["486"].RU.d[n] != null;
+            return `<button class="${RD === n ? "on" : ""}${ok && has ? "" : " off"}" onclick="setRD(${n})"`
+              + ` data-tip="${ok ? (has ? `D+${n} · 9/3 코호트가 9/${3 + n}에 재로그인` : `D+${n} · 날짜는 지났지만 아직 안 뽑았습니다`)
+                                : `D+${n} · 9/${3 + n}이 아직 오지 않았습니다`}">D${n}</button>`;
+          }).join("")}<span class="kb-dayhint">코호트 2026-09-03 · 마지막 조회 2026-09-04</span></div>`;
           return `<div class="kb-grp" style="--g:${g.acc}">
             <div class="kb-gh"><b>${g.name}</b><span>${g.sub}</span></div>
+            ${daytabs}
             <div class="kb-row is-head">
               <div>지표</div>
               <div class="kb-val"><span class="p">485</span> <span class="ar">→</span> <span class="n">486</span></div>
@@ -617,7 +697,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
 
       // ── 원본 표 ──────────────────────────────────────────────────────────
       (function () {
-        const COLS = [["ud","DAU"],["fin","판종료"],["sh_try","공유시도"],["sh_ok","공유성공"],
+        const COLS = [["ud","DAU"],["fin","완료판수"],["sh_try","공유시도"],["sh_ok","공유성공"],
           ["inv_try","초대시도"],["inv_ok","초대성공"],["sup","미노출"],
           ["cr_try","생성시도"],["cr_ok","생성성공"],["it","전면광고"],["rv","RV"]];
         document.getElementById("rawdaily").innerHTML = `<div class="table-scroll"><table>
