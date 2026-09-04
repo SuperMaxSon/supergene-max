@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-04 09:04",
+  updated: "2026-09-04 10:30",
 };
 
 /* --------------------------------------------------------------------------
@@ -78,7 +78,7 @@ const SECTIONS = [
         project: "sol",
         status: "완료",
         version: "v7.0",
-        updated: "2026-09-04 09:04",
+        updated: "2026-09-04 10:30",
         pinned: false,
         tags: ["BigQuery", "로딩", "인터랙티브"],
       },
@@ -481,6 +481,17 @@ const SECTIONS = [
     accent: "plan",
     desc: "테스트 순서 · 케이스 · 이슈 트래커",
     cards: [
+      {
+        title: "SCJ 자동화 현황",
+        desc: "프리플레이 자동화가 돌린 판을 그대로 모은 현황. 클리어율·페르소나 성향·Health Check를 한 화면에서 본다.",
+        url: "docs/qa-auto-dashboard.html",
+        project: "sol",
+        status: "Live",
+        version: "v1.0",
+        updated: "2026-09-04 10:30",
+        pinned: false,
+        tags: ["코드 실측", "상시"],
+      },
       {
         title: "QA 이슈 트래커",
         desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",

@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SCJ 자동화 현황</title>
+    <meta
+      name="description"
+      content="솔리테어 시티 저니 프리플레이 자동화 결과. 클리어율·페르소나별 성향·Health Check를 실행 기록 그대로 본다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+    <style>
+      /* 페르소나 식별색 — 흰 배경에서 읽히도록 명도를 낮춘 값.
+         원본 대시보드는 다크 전제라 그 값(#3b82f6/#10b981/#f59e0b/#ef4444)을
+         그대로 쓰면 라이트에서 대비가 뜬다. */
+      :root {
+        --p-hardcore: #1d4ed8;
+        --p-average: #059669;
+        --p-casual: #b45309;
+        --p-struggling: #dc2626;
+      }
+      .qa-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 0; font-size: 12px; color: var(--text-dim); }
+      .qa-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: currentColor; }
+      .qa-chart { width: 100%; height: auto; display: block; }
+      .qa-hint { font-size: 12px; color: var(--text-faint); margin: 8px 0 0; }
+      .qa-alert-none { color: var(--ok); font-weight: 700; }
+      td.qa-p { font-weight: 700; }
+      .qa-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
+      .qa-toolbar select { font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+      .qa-state { color: var(--text-faint); font-size: 13px; padding: 14px 0; }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--full nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#now">현황</a>
+        <a class="nav-back" href="#alert">조치 필요</a>
+        <a class="nav-back" href="#trend">추이</a>
+        <a class="nav-back" href="#persona">페르소나</a>
+        <a class="nav-back" href="#health">Health</a>
+        <a class="nav-back" href="#stage">스테이지</a>
+        <span class="nav-spacer"></span>
+        <a class="nav-back" href="https://supergenehobby.github.io/Auto-test-dashboard/" target="_blank" rel="noopener">원본 대시보드 ↗</a>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--full">
+        <div class="doc-eyebrow">검증 · QA 자동화</div>
+        <h1 class="doc-title">SCJ 자동화 현황</h1>
+        <p class="doc-lede">
+          솔리테어 시티 저니(SCJ) 프리플레이 자동화 결과입니다. 페르소나 4종이 실제 클릭으로 플레이한
+          기록을 <b>요약해서 커밋해 둔 것</b>이라, 이 페이지는 외부와 통신하지 않습니다.
+          실행 직후의 실시간 상태가 필요하면 <a href="https://supergenehobby.github.io/Auto-test-dashboard/" target="_blank" rel="noopener">원본 대시보드</a>를 보세요.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--live)">상시 갱신</span>
+          <span class="tag" id="meta-range">…</span>
+          <span class="tag" id="meta-count">…</span>
+          <span class="tag" id="meta-gen">…</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--full">
+      <section class="doc-section" id="now">
+        <h2 class="doc-h2">종합 현황</h2>
+        <div id="now-body" class="qa-state">불러오는 중…</div>
+      </section>
+
+      <section class="doc-section" id="alert">
+        <h2 class="doc-h2">조치 필요</h2>
+        <div class="doc-h2-sub">
+          Health Check 실패 · 클리어율 이상 · 미실행 · 회귀를 한 자리에 모읍니다.
+          회귀 판정은 <b>양쪽 기간의 표본 수를 함께</b> 적습니다 — 직전 기간 표본이 적으면 과장되게 잡히기 때문입니다.
+        </div>
+        <div id="alert-body" class="qa-state">불러오는 중…</div>
+      </section>
+
+      <section class="doc-section" id="trend">
+        <h2 class="doc-h2">일별 추이</h2>
+        <div id="trend-body" class="qa-state">불러오는 중…</div>
+      </section>
+
+      <section class="doc-section" id="persona">
+        <h2 class="doc-h2">페르소나 비교</h2>
+        <div class="doc-h2-sub">
+          페르소나별 성향 차이가 수치로 드러나는 자리입니다. 지금 데이터에서는
+          <b>고수(hardcore)의 판당 소요가 하수의 3배를 넘습니다</b> — 실행이 0판으로 끝난 런을
+          빼도 값이 거의 같아(145.4초 → 145.3초) 집계 왜곡이 아니라 실제 성향 차이입니다.
+          전략이 실제로 그런 것인지, 아니면 고수가 더 깊은 스테이지를 잡고 있어서인지는 확인이 필요합니다.
+        </div>
+        <div id="persona-body" class="qa-state">불러오는 중…</div>
+      </section>
+
+      <section class="doc-section" id="health">
+        <h2 class="doc-h2">Health Check</h2>
+        <div class="doc-h2-sub">
+          SCJ는 공통 6종 + 전용 2종(<code>GOLD_INTEGRITY</code>, <code>BETTING_UNLOCK</code>) 총 8종을 받습니다.
+          <b>SKIP은 "판정을 못 한 것"</b>이지 통과가 아닙니다.
+        </div>
+        <div id="health-body" class="qa-state">불러오는 중…</div>
+      </section>
+
+      <section class="doc-section" id="stage">
+        <h2 class="doc-h2">스테이지 상세</h2>
+        <div class="doc-h2-sub">런을 고르면 그 판의 스테이지별 기록을 불러옵니다.</div>
+        <div class="qa-toolbar">
+          <select id="stage-pick"><option>불러오는 중…</option></select>
+        </div>
+        <div id="stage-body" class="qa-state">런을 선택하세요.</div>
+      </section>
+    </main>
+
+    <script>
+      /* ─────────────────────────────────────────────────────────
+         데이터는 같은 출처의 정적 JSON이다. 외부 CDN·API 호출 없음.
+         index = 런 헤더(항상 로드) / detail = 스테이지·체크 상세(선택 시)
+         ───────────────────────────────────────────────────────── */
+      const PERSONAS = ["hardcore", "average", "casual", "struggling"];
+      const KO = { hardcore: "고수", average: "중수", casual: "하수", struggling: "초보", auto: "AI선택" };
+      const PC = {
+        hardcore: "var(--p-hardcore)", average: "var(--p-average)",
+        casual: "var(--p-casual)", struggling: "var(--p-struggling)", auto: "var(--plan)",
+      };
+      const SEV_ORDER = { CRITICAL: 0, HIGH: 1, MEDIUM: 2 };
+
+      let INDEX = null, DETAIL = null;
+
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const pct = (v) => (v * 100).toFixed(1) + "%";
+      const mmss = (sec) => {
+        if (!sec && sec !== 0) return "–";
+        const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+        return m ? `${m}분 ${s}초` : `${s}초`;
+      };
+      const hours = (sec) => (sec / 3600).toFixed(1);
+      const days = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+      function fail(el, msg) {
+        $(el).innerHTML = `<div class="note" style="--acc: var(--bad)"><div class="note-title">데이터를 불러오지 못했습니다</div><p>${esc(msg)}</p></div>`;
+      }
+
+      /* ── 로드 ── */
+      fetch("data/qa-auto-index.json")
+        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then((d) => { INDEX = d; renderAll(); })
+        .catch((e) => {
+          ["now-body", "alert-body", "trend-body", "persona-body", "health-body"].forEach((id) => fail(id, e.message));
+        });
+
+      function renderAll() {
+        const runs = INDEX.runs || [];
+        if (!runs.length) { fail("now-body", "런 기록이 없습니다."); return; }
+        renderMeta(runs);
+        renderNow(runs);
+        renderAlerts(runs);
+        renderTrend(runs);
+        renderPersona(runs);
+        renderHealth(runs);
+        renderStagePicker(runs);
+      }
+
+      function renderMeta(runs) {
+        $("meta-range").textContent = `${runs[0].run_date} ~ ${runs[runs.length - 1].run_date}`;
+        $("meta-count").textContent = `${runs.length}런`;
+        const g = (INDEX.generated_at || "").slice(0, 16).replace("T", " ");
+        $("meta-gen").textContent = g ? `데이터 생성 ${g} UTC` : "";
+      }
+
+      /* ── §1 종합 현황 ── */
+      function renderNow(runs) {
+        const played = runs.reduce((a, r) => a + (r.levels_played || 0), 0);
+        const cleared = runs.reduce((a, r) => a + (r.levels_cleared || 0), 0);
+        const time = runs.reduce((a, r) => a + (r.total_time_sec || 0), 0);
+        const rate = played ? cleared / played : 0;
+        const last = runs[runs.length - 1];
+        const lastDate = last.run_date;
+        const gap = days(lastDate, new Date().toISOString().slice(0, 10));
+        const stale = gap >= 7 ? "var(--bad)" : gap >= 3 ? "var(--warn)" : "var(--ok)";
+        const vers = [...new Set(runs.map((r) => r.client_ver).filter(Boolean))];
+
+        $("now-body").innerHTML = `
+          <div class="stat-row">
+            <div class="stat" style="--acc: var(--sol)">
+              <div class="stat-num">${runs.length}<span class="stat-unit">런</span></div>
+              <div class="stat-name">누적 실행</div>
+              <div class="stat-sub">${runs[0].run_date} 부터</div>
+            </div>
+            <div class="stat" style="--acc: var(--sol)">
+              <div class="stat-num">${played}<span class="stat-unit">판</span></div>
+              <div class="stat-name">누적 플레이</div>
+              <div class="stat-sub">클리어 ${cleared}판</div>
+            </div>
+            <div class="stat" style="--acc: ${rate >= 0.8 ? "var(--ok)" : rate >= 0.5 ? "var(--warn)" : "var(--bad)"}">
+              <div class="stat-num">${pct(rate)}</div>
+              <div class="stat-name">전체 클리어율</div>
+              <div class="stat-sub">${cleared} / ${played}판</div>
+            </div>
+            <div class="stat" style="--acc: ${stale}">
+              <div class="stat-num">${gap}<span class="stat-unit">일 전</span></div>
+              <div class="stat-name">마지막 실행</div>
+              <div class="stat-sub">${lastDate} ${last.run_time || ""}</div>
+            </div>
+          </div>
+          <p class="qa-hint">
+            테스트 계정 <code>${esc(last.uid || "–")}</code> ·
+            누적 플레이 시간 ${hours(time)}시간 ·
+            관측된 클라이언트 빌드 ${vers.length}종 (최근 ${esc(vers[vers.length - 1] || "–")})
+          </p>`;
+      }
+
+      /* ── §2 조치 필요 ── */
+      function renderAlerts(runs) {
+        const items = [];
+        const today = new Date().toISOString().slice(0, 10);
+        const lastDate = runs[runs.length - 1].run_date;
+
+        // ① 최신 실행일의 Health FAIL
+        const lastDayRuns = runs.filter((r) => r.run_date === lastDate);
+        const failRuns = lastDayRuns.filter((r) => (r.health || {}).FAIL > 0);
+        if (failRuns.length) {
+          items.push({
+            sev: "bad", what: "Health Check 실패",
+            detail: `${lastDate} 실행 ${lastDayRuns.length}건 중 ${failRuns.length}건에서 FAIL — ${failRuns.map((r) => KO[r.persona] || r.persona).join(", ")}`,
+          });
+        }
+
+        // ② 미실행
+        const gap = days(lastDate, today);
+        if (gap >= 3) {
+          items.push({
+            sev: gap >= 7 ? "bad" : "warn", what: "실행 공백",
+            detail: `${gap}일째 실행 기록이 없습니다 (마지막 ${lastDate})`,
+          });
+        }
+
+        // ③ 클리어율 이상 (표본 10판 이상)
+        PERSONAS.forEach((p) => {
+          const rs = runs.filter((r) => r.persona === p);
+          const played = rs.reduce((a, r) => a + r.levels_played, 0);
+          const cleared = rs.reduce((a, r) => a + r.levels_cleared, 0);
+          if (played < 10) return;
+          const rate = cleared / played;
+          if (rate === 0) items.push({ sev: "bad", what: `${KO[p]} 클리어율 0%`, detail: `${played}판 전패 — 자동화 점검 필요` });
+          else if (rate < 0.5) items.push({ sev: "warn", what: `${KO[p]} 클리어율 ${pct(rate)}`, detail: `${cleared}/${played}판` });
+        });
+
+        // ④ 회귀 — 최근 7일 vs 직전 7일. 표본 수를 반드시 함께 적는다.
+        const end = new Date(lastDate);
+        const cut1 = new Date(end); cut1.setDate(cut1.getDate() - 7);
+        const cut2 = new Date(end); cut2.setDate(cut2.getDate() - 14);
+        const iso = (d) => d.toISOString().slice(0, 10);
+        const recent = runs.filter((r) => r.run_date > iso(cut1));
+        const prev = runs.filter((r) => r.run_date > iso(cut2) && r.run_date <= iso(cut1));
+        const agg = (rs) => {
+          const played = rs.reduce((a, r) => a + r.levels_played, 0);
+          const cleared = rs.reduce((a, r) => a + r.levels_cleared, 0);
+          const time = rs.reduce((a, r) => a + (r.total_time_sec || 0), 0);
+          return { n: rs.length, played, rate: played ? cleared / played : null, perLevel: played ? time / played : null };
+        };
+        const A = agg(recent), B = agg(prev);
+        if (A.rate != null && B.rate != null) {
+          const dp = (A.rate - B.rate) * 100;
+          const sample = `표본 최근 ${A.n}런/${A.played}판 vs 직전 ${B.n}런/${B.played}판`;
+          if (dp <= -20) items.push({ sev: "bad", what: `클리어율 회귀 ${dp.toFixed(1)}%p`, detail: `${pct(B.rate)} → ${pct(A.rate)} · ${sample}` });
+          else if (dp <= -10) items.push({ sev: "warn", what: `클리어율 회귀 ${dp.toFixed(1)}%p`, detail: `${pct(B.rate)} → ${pct(A.rate)} · ${sample}` });
+        }
+        if (A.perLevel != null && B.perLevel != null && B.perLevel > 0) {
+          const chg = ((A.perLevel - B.perLevel) / B.perLevel) * 100;
+          const sample = `표본 최근 ${A.played}판 vs 직전 ${B.played}판`;
+          if (chg >= 50) items.push({ sev: "bad", what: `판당 시간 +${chg.toFixed(0)}%`, detail: `${mmss(B.perLevel)} → ${mmss(A.perLevel)} · ${sample}` });
+          else if (chg >= 30) items.push({ sev: "warn", what: `판당 시간 +${chg.toFixed(0)}%`, detail: `${mmss(B.perLevel)} → ${mmss(A.perLevel)} · ${sample}` });
+        }
+
+        if (!items.length) {
+          $("alert-body").innerHTML = `<p class="qa-alert-none">조치가 필요한 항목이 없습니다.</p>`;
+          return;
+        }
+        const rank = { bad: 0, warn: 1 };
+        items.sort((a, b) => rank[a.sev] - rank[b.sev]);
+        $("alert-body").innerHTML = `
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th style="width:120px">등급</th><th style="width:260px">항목</th><th>내용</th></tr></thead>
+              <tbody>
+                ${items.map((i) => `
+                  <tr>
+                    <td><span class="mx ${i.sev === "bad" ? "mx-bad" : "mx-warn"}">${i.sev === "bad" ? "조치" : "주의"}</span></td>
+                    <td><b>${esc(i.what)}</b></td>
+                    <td>${esc(i.detail)}</td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      /* ── §3 일별 추이 (인라인 SVG) ── */
+      function renderTrend(runs) {
+        const byDate = {};
+        runs.forEach((r) => {
+          const d = (byDate[r.run_date] ||= { played: 0, cleared: 0, runs: 0 });
+          d.played += r.levels_played; d.cleared += r.levels_cleared; d.runs += 1;
+        });
+        const dates = Object.keys(byDate).sort().slice(-30);
+        if (dates.length < 2) { $("trend-body").innerHTML = `<p class="qa-hint">추이를 그리려면 최소 2일치가 필요합니다.</p>`; return; }
+
+        const W = 1000, H = 240, PAD = { t: 16, r: 16, b: 34, l: 40 };
+        const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
+        const maxRuns = Math.max(...dates.map((d) => byDate[d].runs));
+        const x = (i) => PAD.l + (dates.length === 1 ? iw / 2 : (i / (dates.length - 1)) * iw);
+        const yRate = (v) => PAD.t + ih - v * ih;
+
+        const pts = dates.map((d, i) => {
+          const b = byDate[d];
+          return { i, d, x: x(i), rate: b.played ? b.cleared / b.played : 0, runs: b.runs, played: b.played };
+        });
+        const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${yRate(p.rate).toFixed(1)}`).join(" ");
+        const bars = pts.map((p) => {
+          const bh = (p.runs / maxRuns) * (ih * 0.28);
+          return `<rect x="${(p.x - 3).toFixed(1)}" y="${(PAD.t + ih - bh).toFixed(1)}" width="6" height="${bh.toFixed(1)}" fill="var(--surface-2)" />`;
+        }).join("");
+        const dots = pts.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${yRate(p.rate).toFixed(1)}" r="3" fill="var(--sol)"><title>${p.d} · 클리어율 ${pct(p.rate)} · ${p.runs}런 ${p.played}판</title></circle>`).join("");
+        const grid = [0, 0.25, 0.5, 0.75, 1].map((v) => `
+          <line x1="${PAD.l}" y1="${yRate(v).toFixed(1)}" x2="${W - PAD.r}" y2="${yRate(v).toFixed(1)}" stroke="var(--border-soft)" />
+          <text x="${PAD.l - 8}" y="${(yRate(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--text-faint)">${v * 100}%</text>`).join("");
+        const step = Math.max(1, Math.ceil(dates.length / 8));
+        const xlab = pts.filter((_, i) => i % step === 0 || i === pts.length - 1)
+          .map((p) => `<text x="${p.x.toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--text-faint)">${p.d.slice(5)}</text>`).join("");
+
+        $("trend-body").innerHTML = `
+          <div class="table-scroll" style="padding: 8px">
+            <svg class="qa-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="일별 클리어율과 실행 횟수 추이">
+              ${grid}${bars}
+              <path d="${line}" fill="none" stroke="var(--sol)" stroke-width="2" />
+              ${dots}${xlab}
+            </svg>
+          </div>
+          <div class="qa-legend">
+            <span style="color: var(--sol)"><i></i>클리어율 (선·점)</span>
+            <span style="color: var(--text-faint)"><i style="background: var(--surface-2)"></i>실행 횟수 (막대, 최대 ${maxRuns}런)</span>
+          </div>
+          <p class="qa-hint">최근 ${dates.length}일치. 점에 마우스를 올리면 그날 수치가 보입니다.</p>`;
+      }
+
+      /* ── §4 페르소나 비교 ── */
+      function renderPersona(runs) {
+        const rows = PERSONAS.map((p) => {
+          const rs = runs.filter((r) => r.persona === p);
+          const played = rs.reduce((a, r) => a + r.levels_played, 0);
+          const cleared = rs.reduce((a, r) => a + r.levels_cleared, 0);
+          const time = rs.reduce((a, r) => a + (r.total_time_sec || 0), 0);
+          return { p, n: rs.length, played, cleared, rate: played ? cleared / played : 0, perLevel: played ? time / played : 0, last: rs.length ? rs[rs.length - 1].run_date : "–" };
+        }).filter((r) => r.n);
+
+        $("persona-body").innerHTML = `
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>페르소나</th><th style="text-align:right">런</th><th style="text-align:right">판</th>
+                <th style="text-align:right">클리어율</th><th style="text-align:right">판당 시간</th><th style="text-align:right">마지막</th>
+              </tr></thead>
+              <tbody>
+                ${rows.map((r) => `
+                  <tr>
+                    <td class="qa-p" style="color: ${PC[r.p]}">${KO[r.p] || r.p} <span style="color: var(--text-faint); font-weight: 400">${r.p}</span></td>
+                    <td class="num">${r.n}</td>
+                    <td class="num">${r.played}</td>
+                    <td class="num">${pct(r.rate)}<div class="bar" style="--acc: ${r.rate >= 0.8 ? "var(--ok)" : r.rate >= 0.5 ? "var(--warn)" : "var(--bad)"}"><i style="width: ${(r.rate * 100).toFixed(0)}%"></i></div></td>
+                    <td class="num">${mmss(r.perLevel)}</td>
+                    <td class="num">${r.last}</td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      /* ── §5 Health Check ── */
+      function renderHealth(runs) {
+        // index에는 상태별 카운트만 있다. 체크별 내역은 detail에서 읽는다.
+        loadDetail().then((det) => {
+          const agg = {};
+          Object.values(det.runs || {}).forEach((d) => {
+            (d.health_checks || []).forEach((c) => {
+              const a = (agg[c.check_id] ||= { severity: c.severity, PASS: 0, FAIL: 0, WARN: 0, SKIP: 0, msgs: {} });
+              a[c.status] = (a[c.status] || 0) + 1;
+              if (c.message && (c.status === "FAIL" || c.status === "WARN")) a.msgs[c.message] = (a.msgs[c.message] || 0) + 1;
+            });
+          });
+          const ids = Object.keys(agg).sort((a, b) => (SEV_ORDER[agg[a].severity] - SEV_ORDER[agg[b].severity]) || a.localeCompare(b));
+          if (!ids.length) { $("health-body").innerHTML = `<p class="qa-hint">Health Check 기록이 없습니다.</p>`; return; }
+
+          $("health-body").innerHTML = `
+            <div class="table-scroll">
+              <table>
+                <thead><tr>
+                  <th>체크</th><th>등급</th>
+                  <th style="text-align:right">PASS</th><th style="text-align:right">WARN</th>
+                  <th style="text-align:right">FAIL</th><th style="text-align:right">SKIP</th>
+                  <th>가장 잦은 지적</th>
+                </tr></thead>
+                <tbody>
+                  ${ids.map((id) => {
+                    const a = agg[id];
+                    const top = Object.entries(a.msgs).sort((x, y) => y[1] - x[1])[0];
+                    const sevClass = a.severity === "CRITICAL" ? "mx-bad" : a.severity === "HIGH" ? "mx-warn" : "";
+                    return `<tr>
+                      <td><code>${esc(id)}</code></td>
+                      <td><span class="mx ${sevClass}">${esc(a.severity)}</span></td>
+                      <td class="num">${a.PASS}</td>
+                      <td class="num">${a.WARN ? `<span class="mx mx-warn">${a.WARN}</span>` : 0}</td>
+                      <td class="num">${a.FAIL ? `<span class="mx mx-bad">${a.FAIL}</span>` : 0}</td>
+                      <td class="num">${a.SKIP || 0}</td>
+                      <td>${top ? `${esc(top[0])} <span style="color: var(--text-faint)">×${top[1]}</span>` : "–"}</td>
+                    </tr>`;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+            <p class="qa-hint">
+              SKIP은 판정 근거가 없어 건너뛴 것입니다 — 예를 들어 <code>SECURITY</code>는 보안 스캔 결과가 없는 런에서 SKIP이 됩니다.
+              통과로 읽으면 안 됩니다.
+            </p>`;
+        }).catch((e) => fail("health-body", e.message));
+      }
+
+      /* ── §6 스테이지 상세 ── */
+      function loadDetail() {
+        if (DETAIL) return Promise.resolve(DETAIL);
+        return fetch("data/qa-auto-detail.json")
+          .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+          .then((d) => (DETAIL = d));
+      }
+
+      function renderStagePicker(runs) {
+        const recent = runs.slice(-60).reverse();
+        $("stage-pick").innerHTML =
+          `<option value="">런 선택…</option>` +
+          recent.map((r) => `<option value="${esc(r.run_id)}">${r.run_date} ${r.run_time || ""} · ${KO[r.persona] || r.persona} · ${r.levels_cleared}/${r.levels_played}판</option>`).join("");
+        $("stage-pick").addEventListener("change", (e) => {
+          const id = e.target.value;
+          if (!id) { $("stage-body").innerHTML = `<div class="qa-state">런을 선택하세요.</div>`; return; }
+          $("stage-body").innerHTML = `<div class="qa-state">불러오는 중…</div>`;
+          loadDetail().then((det) => renderStages(id, (det.runs || {})[id])).catch((err) => fail("stage-body", err.message));
+        });
+      }
+
+      function renderStages(runId, d) {
+        if (!d) { $("stage-body").innerHTML = `<p class="qa-hint">이 런의 상세가 없습니다.</p>`; return; }
+        const m = d.metrics || {}, perf = m.perf || {}, sec = m.security || {};
+        const stages = d.stages || [];
+        const ev = d.notable_events_top || [];
+
+        $("stage-body").innerHTML = `
+          <div class="stat-row">
+            <div class="stat" style="--acc: var(--sol)"><div class="stat-num">${stages.length}<span class="stat-unit">판</span></div><div class="stat-name">스테이지</div><div class="stat-sub">${stages.filter((s) => s.result === "clear").length}판 클리어</div></div>
+            <div class="stat" style="--acc: ${(m.gold_pnl || 0) >= 0 ? "var(--ok)" : "var(--warn)"}"><div class="stat-num">${(m.gold_pnl || 0).toLocaleString()}</div><div class="stat-name">골드 증감</div><div class="stat-sub">${(m.gold_start || 0).toLocaleString()} → ${(m.gold_end || 0).toLocaleString()}</div></div>
+            <div class="stat" style="--acc: var(--sol)"><div class="stat-num">${perf.heap_max_mb || "–"}<span class="stat-unit">MB</span></div><div class="stat-name">힙 최대</div><div class="stat-sub">DOM 최대 ${perf.dom_max || "–"}</div></div>
+            <div class="stat" style="--acc: ${sec.fail_count ? "var(--warn)" : "var(--ok)"}"><div class="stat-num">${esc(sec.grade || "–")}</div><div class="stat-name">보안 등급</div><div class="stat-sub">${sec.fail_count ? sec.fail_count + "건 지적" : "지적 없음"}</div></div>
+          </div>
+          ${stages.length ? `
+          <div class="table-scroll" style="margin-top: 12px">
+            <table>
+              <thead><tr>
+                <th>스테이지</th><th style="text-align:right">레벨</th><th>결과</th>
+                <th style="text-align:right">시간</th><th style="text-align:right">턴</th><th style="text-align:right">매치</th>
+                <th style="text-align:right">난이도</th><th style="text-align:right">골드</th>
+                <th style="text-align:right">엑덱</th><th style="text-align:right">와일드</th>
+              </tr></thead>
+              <tbody>
+                ${stages.map((s) => `<tr>
+                  <td><code>${esc(s.stage)}</code></td>
+                  <td class="num">${s.level ?? "–"}</td>
+                  <td><span class="mx ${s.result === "clear" ? "mx-ok" : "mx-bad"}">${s.result === "clear" ? "클리어" : "실패"}</span></td>
+                  <td class="num">${s.time_sec != null ? s.time_sec + "s" : "–"}</td>
+                  <td class="num">${s.turns ?? "–"}</td>
+                  <td class="num">${s.matches ?? "–"}</td>
+                  <td class="num">${s.difficulty ?? "–"}</td>
+                  <td class="num">${s.gold_pnl != null ? s.gold_pnl.toLocaleString() : "–"}</td>
+                  <td class="num">${s.extra_decks ?? "–"}</td>
+                  <td class="num">${s.wild_card_count ?? "–"}</td>
+                </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>` : `<p class="qa-hint">이 런에는 기록된 스테이지가 없습니다.</p>`}
+          ${ev.length ? `
+          <div class="note" style="--acc: var(--validate); margin-top: 12px">
+            <div class="note-title">특이 이벤트</div>
+            ${ev.map((e) => `<p style="margin: 4px 0"><b>${esc(e.category || "")}</b> ${esc(e.description || "")}</p>`).join("")}
+          </div>` : ""}`;
+      }
+    </script>
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>
