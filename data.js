@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-04 22:00",
+  updated: "2026-09-04 23:15",
 };
 
 /* --------------------------------------------------------------------------
@@ -427,12 +427,12 @@ const SECTIONS = [
     cards: [
       {
         title: "토너 클리어 소셜 슬롯 — 485 ↔ 486",
-        desc: "485와 486이 같은 날 반반 서빙돼 날짜 교란 없이 KPI를 전/후로 대조한다. 전체·RU·NRU 탭으로 모든 지표가 유저군별로 다시 계산된다.",
+        desc: "전체 −6%가 신규 +61% / 기존 −23%라는 정반대 두 층을 덮고 있었다. 전체·기존·신규 탭으로 모든 지표를 갈라 본다.",
         url: "docs/sol-tournament-slot-ab.html",
         project: "sol",
         status: "진행중",
-        version: "v7.0",
-        updated: "2026-09-04 22:00",
+        version: "v8.0",
+        updated: "2026-09-04 23:15",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B"],
       },

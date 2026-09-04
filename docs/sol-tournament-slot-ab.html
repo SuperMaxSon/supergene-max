@@ -19,7 +19,7 @@
       .kb { --good:#15803d; --bad:#dc2626; --spec:#0891b2; --mute:#9aa0b8; --a:#94a3b8; --b:#1d4ed8; }
 
       /* 히어로 — 결론 3개. 값보다 "무엇을 뜻하는지"가 커야 해서 캡션을 두 줄로 받는다. */
-      .kb-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 26px}
+      .kb-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:0 0 22px}
       .kb-hero .h{border-radius:var(--radius);padding:16px 18px;
         background:color-mix(in srgb, var(--acc) 7%, #fff);
         border:1px solid color-mix(in srgb, var(--acc) 26%, var(--border));
@@ -164,7 +164,7 @@
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
           <span class="tag">US · 9/3~9/4</span>
-          <span class="tag">485 n=876 · 486 n=958 유저-일</span>
+          <span class="tag">485 n=928 · 486 n=1,023 유저-일</span>
         </div>
       </div>
     </header>
@@ -179,7 +179,7 @@
       <section class="doc-section" id="raw">
         <h2 class="doc-h2">원본 <span class="doc-h2-sub">막대의 합산 재료</span></h2>
         <details class="fold">
-          <summary>일자 × 빌드 — 슬롯 퍼널 + 가드레일</summary>
+          <summary>일자 × 빌드 × 유저군 — 슬롯 퍼널 + 가드레일</summary>
           <div class="fold-body"><div id="rawdaily"></div></div>
         </details>
         <details class="fold">
@@ -268,7 +268,7 @@ ORDER BY `날짜`, `유입경로`;</pre></div>
         </details>
 
         <details class="fold">
-          <summary>④ 보드 본체 — 일자 × 빌드 × <b>유저군</b> <b>· 미수신</b></summary>
+          <summary>④ 보드 본체 — 일자 × 빌드 × <b>유저군</b> <b>· 완료</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>-- 보드의 전체/RU/NRU 탭을 한 번에 채우는 쿼리. ①을 대체한다 —
 -- 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
@@ -310,7 +310,7 @@ ORDER BY `날짜`, `빌드`, `유저군`;</pre></div>
         </details>
 
         <details class="fold">
-          <summary>⑤ 판수 분포 — p50 · 빌드 × 유저군 <b>· 미수신</b></summary>
+          <summary>⑤ 판수 분포 — p50 · 빌드 × 유저군 <b>· 완료</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>-- 판 종료 ÷ DAU는 평균이라 헤비 유저 몇 명에 끌린다. 중앙값을 같이 봐야
 -- "다수가 더 했나"와 "소수가 많이 했나"가 갈린다. 단위는 유저-일이다.
@@ -343,7 +343,7 @@ ORDER BY `유저군`, `빌드`;</pre></div>
         </details>
 
         <details class="fold">
-          <summary>⑥ D1 리텐션 — 코호트일 × 빌드 × 유저군 <b>· 미수신</b></summary>
+          <summary>⑥ D1 리텐션 — 코호트일 × 빌드 × 유저군 <b>· 완료 (9/3 코호트만 유효)</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>-- 코호트 = 그날 로그인한 유저를 그날의 빌드·유저군으로 묶은 것.
 -- 복귀 판정에는 빌드를 걸지 않는다 — 걸면 다음 날의 업데이트를 이탈로 오독한다.
@@ -410,14 +410,29 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
 
     <script>
       // ── 데이터 ───────────────────────────────────────────────────────────
-      // 일자 × 빌드 원본. 보드는 전부 여기서 합산해 만든다 — 값을 손으로 적어두면 갱신 때 어긋난다.
+      // 일자 × 빌드 × 유저군 (쿼리 ④). 보드는 전부 여기서 합산해 만든다.
+      // 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
+      // ⚠ 9/4는 조회 시점까지의 부분 집계다 — 쿼리 ③보다 늦게 뽑아 그때보다 값이 더 쌓였다.
       const DAILY = [
-        { d:"09-03", seg:"ALL", ver:"485", ud:244, fin:1554, sh_try:237,  sh_ok:21, inv_try:232, inv_ok:227, sup:134, cr_try:363,  cr_ok:35,  it:950,  rv:480  },
-        { d:"09-03", seg:"ALL", ver:"486", ud:291, fin:1729, sh_try:722,  sh_ok:18, inv_try:0,   inv_ok:0,   sup:108, cr_try:486,  cr_ok:30,  it:1065, rv:587  },
-        { d:"09-04", seg:"ALL", ver:"485", ud:632, fin:5015, sh_try:776,  sh_ok:69, inv_try:742, inv_ok:721, sup:418, cr_try:1278, cr_ok:152, it:3087, rv:1440 },
-        { d:"09-04", seg:"ALL", ver:"486", ud:667, fin:5993, sh_try:1882, sh_ok:66, inv_try:0,   inv_ok:0,   sup:377, cr_try:1345, cr_ok:195, it:3506, rv:1870 },
+        { d:"09-03", ver:"485", seg:"NRU", ud:112, fin:478,  sh_try:42,   sh_ok:2,  inv_try:34,  inv_ok:33,  sup:78,  cr_try:109, cr_ok:9,   it:114,  rv:163  },
+        { d:"09-03", ver:"485", seg:"RU",  ud:132, fin:1076, sh_try:195,  sh_ok:19, inv_try:198, inv_ok:194, sup:56,  cr_try:254, cr_ok:26,  it:836,  rv:317  },
+        { d:"09-03", ver:"486", seg:"NRU", ud:141, fin:498,  sh_try:136,  sh_ok:0,  inv_try:0,   inv_ok:0,   sup:49,  cr_try:131, cr_ok:15,  it:222,  rv:131  },
+        { d:"09-03", ver:"486", seg:"RU",  ud:150, fin:1231, sh_try:586,  sh_ok:18, inv_try:0,   inv_ok:0,   sup:59,  cr_try:355, cr_ok:15,  it:843,  rv:456  },
+        { d:"09-04", ver:"485", seg:"NRU", ud:369, fin:1654, sh_try:100,  sh_ok:18, inv_try:77,  inv_ok:76,  sup:243, cr_try:459, cr_ok:82,  it:557,  rv:360  },
+        { d:"09-04", ver:"485", seg:"RU",  ud:315, fin:3767, sh_try:741,  sh_ok:52, inv_try:726, inv_ok:706, sup:204, cr_try:930, cr_ok:80,  it:2759, rv:1210 },
+        { d:"09-04", ver:"486", seg:"NRU", ud:425, fin:2196, sh_try:380,  sh_ok:38, inv_try:0,   inv_ok:0,   sup:276, cr_try:694, cr_ok:177, it:856,  rv:378  },
+        { d:"09-04", ver:"486", seg:"RU",  ud:307, fin:4395, sh_try:1676, sh_ok:38, inv_try:0,   inv_ok:0,   sup:130, cr_try:770, cr_ok:30,  it:3042, rv:1688 },
       ];
-      // 유입은 발신자 버전으로 못 가르므로 날짜축만 있다. 486 첫 등장은 9/3.
+      // 쿼리 ⑤(판수 분포) · ⑥(D1 리텐션). 일자축이 없어 DAILY와 따로 둔다.
+      // D1은 9/3 코호트만 유효하다 — 9/4 코호트의 복귀일(9/5)이 아직 오지 않았다.
+      // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
+      const EXTRA = {
+        "485": { NRU:{ coh:112, back:22, uday:481, avg:4.43, p50:0, p75:4,  p90:12, play:46.2, p50p:5 },
+                 RU: { coh:132, back:66, uday:552, avg:8.78, p50:3, p75:11, p90:23, play:68.8, p50p:7 } },
+        "486": { NRU:{ coh:141, back:25, uday:566, avg:4.76, p50:0, p75:5,  p90:14, play:48.8, p50p:5 },
+                 RU: { coh:150, back:72, uday:556, avg:10.13,p50:3, p75:12, p90:26, play:70.0, p50p:8 } },
+      };
+      // 유입 세션 — 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
       const INFLOW = [
         { d:"08-28", t:101, ti:37 }, { d:"08-29", t:125, ti:41 },
         { d:"08-30", t:104, ti:39 }, { d:"08-31", t:96,  ti:23 },
@@ -428,27 +443,49 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       const CAP = 150;                       // 발산 막대를 자르는 지점(%)
       const nf = x => x == null ? "—" : Number(x).toLocaleString("en-US");
 
-      const sum = ver => DAILY.filter(r => r.ver === ver && r.seg === "ALL").reduce((t, r) => {
-        Object.entries(r).forEach(([k, v]) => { if (typeof v === "number") t[k] = (t[k] || 0) + v; });
+      // 해당 세그먼트에 행이 없으면 null — "값이 0"과 "아직 안 뽑음"이 섞이지 않게 한다.
+      function agg(ver, seg) {
+        const rs = DAILY.filter(r => r.ver === ver && (seg === "ALL" || r.seg === seg));
+        if (!rs.length) return null;
+        const t = rs.reduce((o, r) => {
+          Object.entries(r).forEach(([k, v]) => { if (typeof v === "number") o[k] = (o[k] || 0) + v; });
+          return o;
+        }, {});
+        const E = EXTRA[ver];
+        if (seg === "ALL") {
+          t.coh = E.NRU.coh + E.RU.coh; t.back = E.NRU.back + E.RU.back;
+          t.uday = E.NRU.uday + E.RU.uday;
+          t.avg = (E.NRU.avg * E.NRU.uday + E.RU.avg * E.RU.uday) / t.uday;
+          t.play = (E.NRU.play * E.NRU.uday + E.RU.play * E.RU.uday) / t.uday;
+          t.p50 = null; t.p90 = null;            // 분위수는 합산 불가
+          const n = DAILY.filter(r => r.ver === ver && r.seg === "NRU").reduce((x, r) => x + r.ud, 0);
+          t.nru_ud = n; t.nru_share = n / t.ud * 100;
+        } else {
+          Object.assign(t, E[seg]);
+          t.nru_share = null;
+        }
         return t;
-      }, {});
-      const A = sum("485"), B = sum("486");
-      const inf = post => INFLOW.filter(r => POST.includes(r.d) === post)
+      }
+      const A0 = agg("485", "ALL"), B0 = agg("486", "ALL");
+
+      // 유입 전/후 · 9/4 도달비 — 히어로에서만 쓴다.
+      const infAgg = post => INFLOW.filter(r => POST.includes(r.d) === post)
         .reduce((t, r) => { t.t += r.t; t.ti += r.ti; t.n++; return t; }, { t:0, ti:0, n:0 });
-      const IP = inf(false), IC = inf(true);
+      const IP = infAgg(false), IC = infAgg(true);
       const d4 = DAILY.filter(r => r.d === "09-04");
       const shOk4 = d4.reduce((s, r) => s + r.sh_ok, 0);
       const invOk4 = d4.reduce((s, r) => s + r.inv_ok, 0);
       const i4 = INFLOW.find(r => r.d === "09-04");
       const reachSh = i4.t / shOk4, reachInv = i4.ti / invOk4;
+      const segShOk = (v, g) => { const e = agg(v, g); return e.sh_ok / e.ud; };
 
       // ── 범례 ─────────────────────────────────────────────────────────────
       // 막대의 좌우는 "버전"이 아니라 "증감 방향"이다. 이걸 오해하면 보드 전체를 잘못 읽어서
       // 값 열의 색(회색=485, 파랑=486)과 막대 축을 여기서 한 번에 못박는다.
       document.getElementById("key").innerHTML =
-        `<span class="k"><i style="background:var(--a)"></i>485 <s>교대 · ${nf(A.ud)} 유저-일</s></span>`
+        `<span class="k"><i style="background:var(--a)"></i>485 <s>교대 · ${nf(A0.ud)} 유저-일</s></span>`
       + `<span class="ar">→</span>`
-      + `<span class="k"><i style="background:var(--b)"></i>486 <s>공유만 · ${nf(B.ud)} 유저-일</s></span>`
+      + `<span class="k"><i style="background:var(--b)"></i>486 <s>공유만 · ${nf(B0.ud)} 유저-일</s></span>`
       + `<span class="sep"></span>`
       + `<span class="hint">막대 좌우 = <b>증감 방향</b>(버전 아님) · 왼쪽 = 486이 적음 · ±${CAP}%에서 잘림</span>`
       + `<span class="dk">`
@@ -461,10 +498,13 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       // ── 히어로 ───────────────────────────────────────────────────────────
       // 결론 3개. 서술은 싣지 않는다 — 값과 전/후 원값만 두고, 해석은 그룹 부제와 ⓘ가 맡는다.
       document.getElementById("hero").innerHTML = [
-        { acc:"var(--bad)",  n:"−15%",  t:"공유 성공 / DAU",
-          v:`${(A.sh_ok/A.ud).toFixed(3)} → ${(B.sh_ok/B.ud).toFixed(3)}`,
-          k:`시도 ${(A.sh_try/A.ud).toFixed(2)} → ${(B.sh_try/B.ud).toFixed(2)} (+135%)` },
-        { acc:"var(--bad)",  n:"1/16",  t:"초대 성공 1건당 실제 도달",
+        { acc:"var(--good)", n:"+61%", t:"공유 성공 / DAU · 신규",
+          v:`${segShOk("485","NRU").toFixed(3)} → ${segShOk("486","NRU").toFixed(3)}`,
+          k:"초대가 놀던 차례를 공유가 받았다" },
+        { acc:"var(--bad)",  n:"−23%", t:"공유 성공 / DAU · 기존",
+          v:`${segShOk("485","RU").toFixed(3)} → ${segShOk("486","RU").toFixed(3)}`,
+          k:"이미 포화된 창구에 줄만 늘렸다" },
+        { acc:"var(--bad)",  n:"1/16", t:"초대 성공 1건당 실제 도달",
           v:`공유 ${reachSh.toFixed(2)} vs 초대 ${reachInv.toFixed(2)} 세션`,
           k:"9/4 · 485·486 반반인 날" },
         { acc:"var(--warn)", n:"−11%", s:"?", t:"유입 합계 / 일",
@@ -496,33 +536,39 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, e => [e.sh_try+e.inv_try, e.fin], true,
               "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율 — 처치 전후로 거의 그대로다"],
           ]},
-        { name:"성과", acc:"#dc2626", sub:"슬롯을 공유에 2.4배 몰아준 결과",
+        { name:"성과", acc:"#dc2626", sub:"판당 공유 시도 2.3배 · 전체 −6%가 신규 +61% / 기존 −23%를 덮고 있다",
           rows:[
             ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, e => [e.sh_ok, e.ud], false,
-              "실질 주지표. 시도가 2배면 여기도 2배가 되어야 본전이다", true],
+              "실질 주지표. 전체 탭의 −6%는 정반대 두 층의 평균이다 — 신규/기존 탭을 눌러 갈라 보라", true],
             ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, e => [e.sh_ok, e.sh_try], false,
-              "3210 ÷ 3200. 교대일 때조차 8.9%였다", true],
+              "3210 ÷ 3200. 485에서도 신규 14.1% / 기존 7.6%로 신규가 더 높았다 — 발화가 적어 피로가 덜 쌓인 쪽이 잘 통과한다", true],
             ["공유 성공 (절대)", e => e.sh_ok, nfr, null, false,
-              "DAU 보정 없는 원값. 486이 DAU가 더 큰데도 성공이 적다"],
+              "DAU 보정 없는 원값. 9/4가 더 쌓이면서 v6.0의 90 → 84가 91 → 94로 뒤집혔다 — 부분 집계로 절대량을 판정하면 안 된다는 사례다"],
             ["유입 합계 / 일", null, p1, null, true,
-              "유입은 수신자 쪽 지표라 발신자의 빌드로도, 발신자의 RU/NRU로도 가를 수 없다. 히어로의 148.0 → 131.5가 전부다", false, true],
+              "유입은 수신자 쪽 지표라 발신자의 빌드로도 유저군으로도 가를 수 없다. 히어로의 148.0 → 131.5가 전부다", false, true],
           ]},
-        { name:"유저 · 리텐션", acc:"#7c3aed", sub:"쿼리 ④·⑤·⑥ 미수신 — 슬롯 변경이 잔존에 닿았는지는 아직 못 본다",
+        { name:"유저 · 리텐션", acc:"#7c3aed", sub:"D1은 9/3 코호트만 유효 · 분위수는 세그 탭에서만",
           rows:[
-            ["D1 리텐션", e => e.d1_ret, pc, e => [e.d1_back, e.d1_coh], false,
-              "그날 코호트가 다음 날 다시 로그인한 비율. 복귀 판정에는 빌드를 걸지 않는다 — 걸면 업데이트를 이탈로 오독한다"],
-            ["판수 p50 / 유저-일", e => e.fin_p50, p1, null, false,
-              "판 종료/DAU는 평균이라 헤비 유저에 끌린다. 중앙값을 같이 봐야 '다수가 더 했나'가 갈린다"],
+            ["D1 리텐션", e => e.back/e.coh*100, pc, e => [e.back, e.coh], false,
+              "9/3 코호트가 9/4에 다시 로그인한 비율. 복귀 판정에는 빌드를 걸지 않는다 — 걸면 업데이트를 이탈로 오독한다. 코호트가 112~150명이라 2%p 차이는 표본 오차 범위다"],
+            ["판수 평균 / 유저-일", e => e.avg, p2, null, false,
+              "모수는 DAU가 아니라 유저-일이다(로그인 로그 없는 날 포함). 그래서 가드레일의 판종료/DAU와 값이 다르다"],
+            ["판수 p50 / 유저-일", e => e.p50, p1, null, false,
+              "중앙값. 평균만 오르고 이게 그대로면 '다수가 더 한 것'이 아니라 헤비 tail이 두꺼워진 것이다", false, false, true],
+            ["판수 p90 / 유저-일", e => e.p90, p1, null, false,
+              "상위 10% 경계. 평균 상승분이 여기서 왔는지 확인하는 자리다", false, false, true],
+            ["플레이 유저 비율", e => e.play, pc, null, false,
+              "그날 한 판이라도 끝낸 유저-일 비중. 판수 p50이 0인 구간에서 이 값이 실질 분모다"],
             ["NRU 비중", e => e.nru_share, pc, e => [e.nru_ud, e.ud], true,
               "is_new_device=true인 유저-일 비중. 두 군의 구성이 다르면 아래 가드레일 차이가 처치가 아니라 유저 구성에서 온다", false, true],
           ]},
-        { name:"가드레일", acc:"#d97706", sub:"배정 균형 미확인(쿼리 ③) — 486 우위를 처치로 단정할 수 없다",
+        { name:"가드레일", acc:"#d97706", sub:"NRU 비중이 51.8% vs 55.3%로 어긋난다 — 486 우위를 처치로 단정할 수 없다",
           rows:[
             ["판 종료 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false, "2300"],
             ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, e => [e.it+e.rv, e.ud], false,
               "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외"],
             ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, e => [e.cr_ok, e.cr_try], false,
-              "3110 ÷ 3100. 서버 등록 완료만 센다"],
+              "3110 ÷ 3100. 세그로 가르면 신규 +45% / 기존 −55%로 극단적으로 갈린다 — 전체 +8%는 두 방향의 상쇄다"],
             ["미노출 / DAU", e => e.sup/e.ud, p3, e => [e.sup, e.ud], true,
               "3230. 쿨다운·토너 없음으로 슬롯이 안 열린 횟수 — 적은 쪽이 좋다"],
           ]},
@@ -533,16 +579,6 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       function setSeg(g){ SEG = g; renderBoard(); }
       window.setSeg = setSeg;
 
-      // 해당 세그먼트에 행이 없으면 null — 그래야 "값이 0"과 "아직 안 뽑음"이 안 섞인다.
-      function agg(ver, seg) {
-        const rs = DAILY.filter(r => r.ver === ver && r.seg === seg);
-        if (!rs.length) return null;
-        return rs.reduce((t, r) => {
-          Object.entries(r).forEach(([k, v]) => { if (typeof v === "number") t[k] = (t[k] || 0) + v; });
-          return t;
-        }, {});
-      }
-
       function renderBoard() {
         const A = agg("485", SEG), B = agg("486", SEG);
         const tabs = `<div class="kb-tabs">${SEGS.map(([g, l]) => {
@@ -552,14 +588,16 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
         }).join("")}<span class="kb-tabhint">모든 지표가 이 축으로 다시 계산된다</span></div>`;
 
         const body = GROUPS.map(g => {
-          const rows = g.rows.map(([lab, f, fmt, parts, neutral, note, key, noSeg]) => {
+          const rows = g.rows.map(([lab, f, fmt, parts, neutral, note, key, noSeg, onlySeg]) => {
             const wait = (why) => `<div class="kb-row is-wait"><div class="kb-lab">${lab}`
               + `${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
               + `<div class="kb-val"><span class="kb-wait">${why}</span></div>`
               + `<div class="kb-bar"></div><div class="kb-d"></div></div>`;
             // 세그 분해가 불가능한 지표는 전체 탭에서만 값이 있다 — 이유를 이름으로 남긴다.
+            if (!f) return wait("버전 분해 불가");
             if (noSeg && SEG !== "ALL") return wait("세그 분해 불가");
-            if (!f || !A || !B) return wait("미수신");
+            if (onlySeg && SEG === "ALL") return wait("세그 탭에서만");
+            if (!A || !B) return wait("미수신");
             const vp = f(A), vc = f(B);
             if ([vp, vc].some(x => x == null || !isFinite(x))) return wait("미수신");
 
@@ -606,8 +644,8 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           ["inv_try","초대시도"],["inv_ok","초대성공"],["sup","미노출"],
           ["cr_try","생성시도"],["cr_ok","생성성공"],["it","전면광고"],["rv","RV"]];
         document.getElementById("rawdaily").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>날짜</th><th>빌드</th>${COLS.map(c => `<th style="text-align:right">${c[1]}</th>`).join("")}</tr></thead>
-          <tbody>${DAILY.map(r => `<tr><td>${r.d}</td><td>${r.ver}</td>${
+          <thead><tr><th>날짜</th><th>빌드</th><th>유저군</th>${COLS.map(c => `<th style="text-align:right">${c[1]}</th>`).join("")}</tr></thead>
+          <tbody>${DAILY.map(r => `<tr><td>${r.d}</td><td>${r.ver}</td><td>${r.seg}</td>${
             COLS.map(c => `<td style="text-align:right">${nf(r[c[0]])}</td>`).join("")}</tr>`).join("")}</tbody>
         </table></div>`;
         document.getElementById("rawinf").innerHTML = `<div class="table-scroll"><table>
