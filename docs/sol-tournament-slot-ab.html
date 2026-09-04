@@ -63,7 +63,20 @@
       .kb-tabs button.on.empty{background:#8b93a8;border-color:#8b93a8;color:#fff}
       .kb-tabhint{font-size:10.5px;color:var(--text-faint);font-weight:600;margin-left:4px}
 
-      /* 그룹 — 지표를 "설계대로 바뀐 것 / 실제 성과 / 가드레일"로 갈라야 Δ 부호를 잘못 읽지 않는다. */
+      /* 배정 균형 — 지표가 아니라 "이 보드를 믿어도 되는가"의 전제라 표 안이 아니라 표 위에 둔다.
+         행으로 묻어두면 다른 지표와 같은 무게로 읽혀 판정 전에 확인되지 않는다. */
+      .kb-bal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 18px;padding:10px 16px;
+        border-radius:var(--radius);font-size:11.5px;font-weight:600;
+        background:color-mix(in srgb, var(--warn) 8%, #fff);
+        border:1px solid color-mix(in srgb, var(--warn) 32%, var(--border));
+        border-left:4px solid var(--warn)}
+      .kb-bal b{color:color-mix(in srgb, var(--warn) 70%, var(--text))}
+      .kb-bal .v{font-variant-numeric:tabular-nums;font-weight:800}
+      .kb-bal .v .p{color:#475569;background:#eef1f6;padding:1px 6px;border-radius:5px}
+      .kb-bal .v .n{color:#fff;background:var(--b);padding:1px 6px;border-radius:5px}
+      .kb-bal .d{color:var(--warn);font-weight:800}
+
+      /* 그룹 — 지표를 흐름(슬롯 동작 → 발화 성과 → 플레이 → 잔존)으로 갈라야 Δ 부호를 잘못 읽지 않는다. */
       .kb-grp{margin:0 0 22px;background:var(--surface);border-radius:var(--radius);overflow:hidden;
         border:1px solid color-mix(in srgb, var(--g) 22%, var(--border))}
       .kb-gh{display:flex;align-items:baseline;gap:10px;padding:12px 18px;
@@ -525,52 +538,49 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
 
       // row = [라벨, 값함수, 포맷, 모수함수, 중립, 주석, 강조, 세그분해불가]
       const GROUPS = [
-        { name:"처치", acc:"#64748b", sub:"설계대로 바뀐 것 · 증감 자체가 좋고 나쁨이 아니라 Δ를 청록으로 둔다",
+        { name:"슬롯 동작", acc:"#64748b", sub:"처치가 실제로 걸렸나 · 증감 자체가 좋고 나쁨이 아니라 Δ를 청록으로 둔다",
           rows:[
+            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, e => [e.sh_try+e.inv_try, e.fin], true,
+              "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율 — 처치 전후로 거의 그대로다. 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거"],
             ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, e => [e.sh_try, e.ud], true,
-              "교대 → 전량 공유라 2배가 되는 게 설계다"],
+              "3200. 교대 → 전량 공유라 2배가 되는 게 설계다"],
             ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, e => [e.inv_try, e.ud], true,
               "3460 중 position=tournament_invite만. 486에서 0이 되는 게 설계다"],
-            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, e => [e.inv_ok, e.ud], true,
-              "3470. 실제 도달이 아니라 다이얼로그 통과에 가깝다 — 히어로의 1/16 참고"],
-            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, e => [e.sh_try+e.inv_try, e.fin], true,
-              "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율 — 처치 전후로 거의 그대로다"],
+            ["미노출 / DAU", e => e.sup/e.ud, p3, e => [e.sup, e.ud], true,
+              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수. 위 세 행과 같은 축이라 여기 둔다 — 발화가 늘었는지 미노출이 줄어서인지 갈라 봐야 한다"],
           ]},
-        { name:"성과", acc:"#dc2626", sub:"판당 공유 시도 2.3배 · 전체 −6%가 신규 +61% / 기존 −23%를 덮고 있다",
+        { name:"발화 성과", acc:"#dc2626", sub:"그래서 몇 건이 실제로 나갔나 · 전체 −6%가 신규 +61% / 기존 −23%를 덮고 있다",
           rows:[
             ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, e => [e.sh_ok, e.ud], false,
-              "실질 주지표. 전체 탭의 −6%는 정반대 두 층의 평균이다 — 신규/기존 탭을 눌러 갈라 보라", true],
+              "3210. 실질 주지표. 전체 탭의 −6%는 정반대 두 층의 평균이다 — 신규/기존 탭을 눌러 갈라 보라", true],
             ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, e => [e.sh_ok, e.sh_try], false,
               "3210 ÷ 3200. 485에서도 신규 14.1% / 기존 7.6%로 신규가 더 높았다 — 발화가 적어 피로가 덜 쌓인 쪽이 잘 통과한다", true],
+            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, e => [e.inv_ok, e.ud], true,
+              "3470. 공유 성공과 나란히 두되, 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝다 — 성공 1건이 만든 유입이 공유의 1/16이다(히어로)"],
             ["공유 성공 (절대)", e => e.sh_ok, nfr, null, false,
               "DAU 보정 없는 원값. 9/4가 더 쌓이면서 v6.0의 90 → 84가 91 → 94로 뒤집혔다 — 부분 집계로 절대량을 판정하면 안 된다는 사례다"],
-            ["유입 합계 / 일", null, p1, null, true,
-              "유입은 수신자 쪽 지표라 발신자의 빌드로도 유저군으로도 가를 수 없다. 히어로의 148.0 → 131.5가 전부다", false, true],
           ]},
-        { name:"유저 · 리텐션", acc:"#7c3aed", sub:"D1은 9/3 코호트만 유효 · 분위수는 세그 탭에서만",
+        { name:"플레이 · 수익", acc:"#d97706", sub:"슬롯을 바꿔서 게임이 어떻게 됐나 — 판수는 분모가 둘이라 나란히 둔다",
           rows:[
-            ["D1 리텐션", e => e.back/e.coh*100, pc, e => [e.back, e.coh], false,
-              "9/3 코호트가 9/4에 다시 로그인한 비율. 복귀 판정에는 빌드를 걸지 않는다 — 걸면 업데이트를 이탈로 오독한다. 코호트가 112~150명이라 2%p 차이는 표본 오차 범위다"],
+            ["판 종료 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false,
+              "2300 ÷ DAU. 분모가 '로그인 로그가 있는 유저-일'이라 아래 판수 평균과 값이 다르다"],
             ["판수 평균 / 유저-일", e => e.avg, p2, null, false,
-              "모수는 DAU가 아니라 유저-일이다(로그인 로그 없는 날 포함). 그래서 가드레일의 판종료/DAU와 값이 다르다"],
+              "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮게 나온다. 두 값의 차이가 곧 로그인 로그 누락분이다"],
             ["판수 p50 / 유저-일", e => e.p50, p1, null, false,
               "중앙값. 평균만 오르고 이게 그대로면 '다수가 더 한 것'이 아니라 헤비 tail이 두꺼워진 것이다", false, false, true],
             ["판수 p90 / 유저-일", e => e.p90, p1, null, false,
               "상위 10% 경계. 평균 상승분이 여기서 왔는지 확인하는 자리다", false, false, true],
             ["플레이 유저 비율", e => e.play, pc, null, false,
-              "그날 한 판이라도 끝낸 유저-일 비중. 판수 p50이 0인 구간에서 이 값이 실질 분모다"],
-            ["NRU 비중", e => e.nru_share, pc, e => [e.nru_ud, e.ud], true,
-              "is_new_device=true인 유저-일 비중. 두 군의 구성이 다르면 아래 가드레일 차이가 처치가 아니라 유저 구성에서 온다", false, true],
-          ]},
-        { name:"가드레일", acc:"#d97706", sub:"NRU 비중이 51.8% vs 55.3%로 어긋난다 — 486 우위를 처치로 단정할 수 없다",
-          rows:[
-            ["판 종료 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false, "2300"],
+              "그날 한 판이라도 끝낸 유저-일 비중. 판수 p50이 0인 구간에서 이게 실질 분모다"],
             ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, e => [e.it+e.rv, e.ud], false,
               "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외"],
             ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, e => [e.cr_ok, e.cr_try], false,
-              "3110 ÷ 3100. 세그로 가르면 신규 +45% / 기존 −55%로 극단적으로 갈린다 — 전체 +8%는 두 방향의 상쇄다"],
-            ["미노출 / DAU", e => e.sup/e.ud, p3, e => [e.sup, e.ud], true,
-              "3230. 쿨다운·토너 없음으로 슬롯이 안 열린 횟수 — 적은 쪽이 좋다"],
+              "3110 ÷ 3100. 생성 다이얼로그는 공유와 같은 결과창 슬롯을 두고 경쟁한다 — 세그로 가르면 신규 +45% / 기존 −55%로 극단적으로 갈린다"],
+          ]},
+        { name:"잔존", acc:"#7c3aed", sub:"9/3 코호트만 유효 — 9/4 코호트의 복귀일(9/5)이 아직 오지 않았다",
+          rows:[
+            ["D1 리텐션", e => e.back/e.coh*100, pc, e => [e.back, e.coh], false,
+              "그날 코호트가 다음 날 다시 로그인한 비율. 복귀 판정에는 빌드를 걸지 않는다 — 걸면 업데이트를 이탈로 오독한다. 코호트가 112~150명이라 2%p 차이는 표본 오차 범위다"],
           ]},
       ];
 
@@ -634,7 +644,15 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           </div>`;
         }).join("");
 
-        document.getElementById("groups").innerHTML = tabs + body;
+        const bal = `<div class="kb-bal">
+          <b>배정 균형</b>
+          <span>NRU 비중</span>
+          <span class="v"><span class="p">${A0.nru_share.toFixed(1)}%</span> → <span class="n">${B0.nru_share.toFixed(1)}%</span></span>
+          <span class="d">+${(B0.nru_share - A0.nru_share).toFixed(1)}%p</span>
+          <span style="color:var(--text-dim)">486에 신규가 더 많이 배정됐다 — 신규는 판수가 절반이고 리텐션도 낮아,
+            <b>전체 탭의 차이 중 일부는 처치가 아니라 유저 구성에서 온다.</b> 판정은 기존/신규 탭에서 하라</span>
+        </div>`;
+        document.getElementById("groups").innerHTML = tabs + bal + body;
       }
       renderBoard();
 
