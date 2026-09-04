@@ -80,7 +80,7 @@
         background:color-mix(in srgb, var(--warn) 7%, #fff);
         border:1px solid color-mix(in srgb, var(--warn) 30%, var(--border));
         border-left:4px solid var(--warn)}
-      .kb-bal .bl{display:grid;grid-template-columns:74px 108px 168px 52px 1fr;gap:10px;align-items:center;
+      .kb-bal .bl{display:grid;grid-template-columns:70px 96px 176px 44px 1fr;gap:10px;align-items:center;
         padding:9px 0;font-size:11.5px;font-weight:600;border-bottom:1px solid color-mix(in srgb, var(--warn) 14%, #fff)}
       .kb-bal .bl:last-child{border-bottom:none}
       .kb-bal b{color:color-mix(in srgb, var(--warn) 72%, var(--text));font-size:12px}
@@ -524,7 +524,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, true,
               "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다"],
             ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, false,
-              "3210. 실질 주지표입니다. 바로 위 시도가 2배면 여기도 2배가 되어야 본전인데, 전체 −6%가 신규 +61% / 기존 −23%를 덮고 있습니다", true],
+              "3210. 실질 주지표입니다. 바로 위 시도가 2배면 여기도 2배가 되어야 본전인데, 전체 −6%가 신규 +61%(p=0.07) / 기존 −23%(p=0.12)를 덮고 있습니다. 두 방향이 반대라는 점은 읽되, 각각의 크기는 아직 유의하지 않아 확정할 수 없습니다", true],
             ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, false,
               "3210 ÷ 3200. 485에서도 신규 14.1% / 기존 7.6%로 신규가 더 높았습니다 — 발화가 적어 피로가 덜 쌓인 쪽이 잘 통과합니다", true],
             ["공유 성공 (절대)", e => e.sh_ok, nfr, false,
@@ -635,11 +635,18 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             ${g.days ? DAYS.map(retRow).join("") : g.rows.map(r => metricRow(...r)).join("")}
           </section>`).join("");
 
+        // 판정 전제 — 지표가 아니라 "이 그래프를 어디까지 믿어도 되는가"라 맨 위에 둔다.
+        // 두 비율 검정(pooled z)은 유저-일 기준이라, 같은 유저가 이틀 걸치면 독립이 아니어서
+        // 실제 유효 표본은 이보다 작다 — 즉 아래 p 값은 낙관적인 하한이다.
         const bal = `<div class="kb-bal">
+          <div class="bl"><b>표본 크기</b><span>주지표 유의성</span>
+            <span class="v"><span class="p">신규 p=0.07</span> <span class="n">기존 p=0.12</span></span>
+            <span class="d">미달</span>
+            <em>공유 성공/DAU의 신규 +61% · 기존 −23%는 <b>아직 통계적으로 유의하지 않습니다</b>(성공 건수가 20~71건) — 방향만 읽고 크기는 확정하지 마세요</em></div>
           <div class="bl"><b>배정 균형</b><span>NRU 비중</span>
             <span class="v"><span class="p">${A0.nru_share.toFixed(1)}%</span> → <span class="n">${B0.nru_share.toFixed(1)}%</span></span>
-            <span class="d">+${(B0.nru_share - A0.nru_share).toFixed(1)}%p</span>
-            <em>486에 신규가 더 많이 배정됐습니다 — 판정은 기존/신규 패널에서 하세요</em></div>
+            <span class="d">p=0.12</span>
+            <em>+${(B0.nru_share - A0.nru_share).toFixed(1)}%p 차이는 <b>표본 오차 범위</b>라 무작위 배정과 모순되지 않습니다 — 군 크기도 ${nf(A0.ud)} vs ${nf(B0.ud)}로 근사합니다</em></div>
           <div class="bl"><b>초대 도달</b><span>성공 1건당 유입</span>
             <span class="v"><span class="p">초대 ${reachInv.toFixed(2)}</span> vs <span class="n">공유 ${reachSh.toFixed(2)}</span></span>
             <span class="d">1/16</span>
