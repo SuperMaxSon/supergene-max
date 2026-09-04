@@ -25,7 +25,7 @@
       .mx .mr{display:grid;grid-template-columns:var(--lab) minmax(0,1fr) 104px;gap:14px;
         align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft)}
       /* 트랙 상한 — 와이드 랩에서 막대가 700px 넘게 늘어나면 같은 비율차도 훨씬 커 보인다. */
-      .mx .bs{max-width:380px}
+      .mx .bs{max-width:500px}
       .mx .mr:last-child{border-bottom:none}
       .mx .ml{font-size:12.5px;font-weight:700;color:var(--text)}
       .mx .mr.key .ml{font-weight:800}
@@ -45,7 +45,10 @@
 
       /* 막대 두 줄 — 값은 오른쪽 고정 폭 열로 뺐다. 막대 끝에 붙이면 긴 막대에서
          숫자가 막대 위로 올라타 읽히지 않는다. */
-      .mx .br{display:grid;grid-template-columns:26px 1fr 62px;gap:8px;align-items:center;margin:2px 0}
+      .mx .br{display:grid;grid-template-columns:26px 1fr 60px 88px;gap:8px;align-items:center;margin:2px 0}
+      /* 모수 — 비율만 보면 표본이 12건인지 1,200건인지 구분이 안 된다. 분자/분모를 옆에 붙인다. */
+      .mx .bn{font-size:9.5px;font-weight:700;color:#6b7488;text-align:right;
+        font-variant-numeric:tabular-nums;letter-spacing:-.1px;white-space:nowrap}   /* 4.69:1 */
       /* 485/486 꼬리표 — 종전 #b6bccb 은 1.9:1 이라 사실상 안 보였다. 4.69:1 로 올린 값이다. */
       .mx .bl{font-size:9.5px;font-weight:800;color:#6b7488;text-align:right;letter-spacing:-.2px}
       .mx .bt{position:relative;height:10px;background:#eef1f6;border-radius:3px}
@@ -78,8 +81,11 @@
       @media (max-width:760px){
         .mx{--lab:118px}
         .mx .mr{grid-template-columns:var(--lab) 1fr 88px;gap:9px}
-        .mx .br{grid-template-columns:26px 1fr 60px;gap:6px}
+        .mx .bs{max-width:none}
+        .mx .br{grid-template-columns:26px 1fr 62px;gap:6px}
         .mx .bv{font-size:12px} .mx .bd{font-size:15px}
+        /* 좁은 화면에선 4열이면 트랙이 사라진다 — 모수를 값 칸 아래로 접는다. */
+        .mx .bn{grid-column:3;font-size:8.5px;margin-top:-1px}
         .mx .hd .bs{flex-direction:column;align-items:flex-start;gap:2px;font-size:10px}
       }
 
@@ -534,7 +540,8 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
               "(공유 시도 + 초대 시도) ÷ 완료 판수. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다",
               false, e => [e.sh_try+e.inv_try, e.fin]],
             ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, "g_try", true,
-              "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다"],
+              "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다",
+              false, null, e => [e.sh_try, e.ud]],
             ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, "g_ok", false,
               "3210. 실질 주지표입니다. 시도를 2.3배 늘렸는데 성공은 제자리라, 늘린 슬롯이 그대로 실패로 흘렀다는 뜻입니다",
               true, e => [e.sh_ok, e.ud]],
@@ -544,24 +551,30 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             ["공유 성공 (절대)", e => e.sh_ok, nfr, "g_abs", false,
               "DAU 보정 없는 원값입니다. 9/4가 더 쌓이면서 v6.0의 90 → 84가 91 → 94로 뒤집혔습니다 — 부분 집계로 절대량을 판정하면 안 된다는 사례입니다"],
             ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, "g_try", true,
-              "3460 중 position=tournament_invite만 셉니다. 486에서 0이 되는 것이 설계입니다"],
+              "3460 중 position=tournament_invite만 셉니다. 486에서 0이 되는 것이 설계입니다",
+              false, null, e => [e.inv_try, e.ud]],
             ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, "g_ok", true,
-              "3470. 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 성공 1건이 만든 유입이 공유의 1/16입니다(상단 판정 전제)"],
+              "3470. 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 성공 1건이 만든 유입이 공유의 1/16입니다(상단 판정 전제)",
+              false, null, e => [e.inv_ok, e.ud]],
             ["미노출 / DAU", e => e.sup/e.ud, p3, "g_ok", true,
-              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다"],
+              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다",
+              false, null, e => [e.sup, e.ud]],
           ]},
         { name:"플레이 · 수익", acc:"#d97706",
           sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 전부 유의성 미달이라 방향만 참고합니다",
           rows:[
             ["완료 판수 / DAU", e => e.fin/e.ud, p1, "g_play", false,
-              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다. 판당 슬롯 발화의 분모이기도 합니다"],
+              "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다. 판당 슬롯 발화의 분모이기도 합니다",
+              false, null, e => [e.fin, e.ud]],
             ["판수 평균 / 유저-일", e => e.avg, p2, "g_play", false,
-              "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮습니다. 중앙값은 두 빌드 모두 그대로였습니다(기존 3 → 3, 신규 0 → 0) — 평균 상승은 헤비 tail이 두꺼워진 것이지 다수가 더 한 것이 아닙니다"],
+              "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮습니다. 중앙값은 두 빌드 모두 그대로였습니다(기존 3 → 3, 신규 0 → 0) — 평균 상승은 헤비 tail이 두꺼워진 것이지 다수가 더 한 것이 아닙니다",
+              false, null, e => [e.avg * e.uday, e.uday]],
             ["플레이 유저 비율", e => e.play, pc, "g_playpct", false,
               "그날 한 판이라도 끝낸 유저-일 비중입니다",
               false, e => [Math.round(e.play / 100 * e.uday), e.uday]],
             ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, "g_ads", false,
-              "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외했습니다"],
+              "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외했습니다",
+              false, null, e => [e.it + e.rv, e.ud]],
             ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, "g_rate", false,
               "3110 ÷ 3100. 생성 다이얼로그는 공유와 같은 결과창 슬롯을 두고 경쟁합니다",
               false, e => [e.cr_ok, e.cr_try]],
@@ -605,15 +618,18 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
         })).filter(v => v != null);
         GMX.g_ret = Math.max(...retVals, 1e-9);
 
-        const bars = (vp, vc, fmt, mx) => {
+        const bars = (vp, vc, fmt, mx, nA, nB) => {
           const w = v => (mx > 0 ? Math.max(v / (mx * 1.35) * 100, v > 0 ? 1.5 : 0) : 0).toFixed(1);
-          const one = (lab, v, cls) => `<div class="br"><span class="bl">${lab}</span>`
+          const den = np => !np || np[1] == null ? ""
+            : `${nf(Math.round(np[0]))} / ${nf(Math.round(np[1]))}`;
+          const one = (lab, v, cls, np) => `<div class="br"><span class="bl">${lab}</span>`
             + `<div class="bt"><i class="${cls}" style="width:${w(v)}%"></i></div>`
-            + `<span class="bv ${cls}">${fmt(v)}</span></div>`;
-          return one("485", vp, "a") + one("486", vc, "b");
+            + `<span class="bv ${cls}">${fmt(v)}</span>`
+            + `<span class="bn">${den(np)}</span></div>`;
+          return one("485", vp, "a", nA) + one("486", vc, "b", nB);
         };
 
-        const row = (lab, vp, vc, fmt, grp, neutral, note, key, pv, dim) => {
+        const row = (lab, vp, vc, fmt, grp, neutral, note, key, pv, dim, nA, nB) => {
           if (vp == null || vc == null || !isFinite(vp) || !isFinite(vc))
             return `<div class="mr dim"><div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
                  + `<div class="na">${dim || "미수신"}</div><div class="bd"></div></div>`;
@@ -623,12 +639,14 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           const cls = neutral ? "spec"
             : (pv == null || pv >= 0.05 || Math.abs(pct) < 5) ? "mute"
             : pct > 0 ? "good" : "bad";
-          const tip = `${lab}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
+          const nTip = (l, np) => !np || np[1] == null ? ""
+            : `\n${l} 모수 ${nf(Math.round(np[0]))} / ${nf(Math.round(np[1]))}`;
+          const tip = `${lab}\n485 ${fmt(vp)} → 486 ${fmt(vc)}` + nTip("485", nA) + nTip("486", nB)
             + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않습니다)" : "")
             + (pv != null ? `\n두 비율 검정 p=${pv < 0.001 ? "<0.001" : pv.toFixed(3)}` : "");
           return `<div class="mr${key ? " key" : ""}" data-tip="${tip}">
             <div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
-            <div class="bs">${bars(vp, vc, fmt, GMX[grp])}</div>
+            <div class="bs">${bars(vp, vc, fmt, GMX[grp], nA, nB)}</div>
             <div class="bd ${cls}">${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%${sigTag(pv)}</div>
           </div>`;
         };
@@ -645,11 +663,16 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
                   + (arrived ? "" : ` 9/${3 + n}이 아직 오지 않았습니다.`);
                 return row(`D+${n}`, a && a.x / a.n * 100, b && b.x / b.n * 100,
                   x => x.toFixed(1) + "%", "g_ret", false, note, false,
-                  a && b ? ptest(a.x, a.n, b.x, b.n) : null, arrived ? "미수신" : "미도래");
+                  a && b ? ptest(a.x, a.n, b.x, b.n) : null, arrived ? "미수신" : "미도래",
+                  a && [a.x, a.n], b && [b.x, b.n]);
               }).join("")
-            : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts]) => {
+            : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den]) => {
+                // parts 는 검정용(비율 지표만). den 은 표시 전용 — 유저당 건수처럼
+                // 두 비율 검정이 성립하지 않는 행도 모수는 보여줘야 표본 크기를 읽는다.
                 const pv = parts ? ptest(...parts(A), ...parts(B)) : null;
-                return row(lab, f(A), f(B), fmt, grp, neutral, note, key, pv);
+                const d = parts || den;
+                return row(lab, f(A), f(B), fmt, grp, neutral, note, key, pv, undefined,
+                  d && d(A), d && d(B));
               }).join("");
           return `<section class="gp" style="--g:${g.acc}"><h3>${g.name}<span>${g.sub}</span></h3>${rows}</section>`;
         }).join("");
@@ -683,6 +706,8 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
               Δ 색 초록=개선 · 빨강=악화 · <b>청록=설계대로라 판정하지 않음</b> · 회색=변화 없음 ·
               <b>초록·빨강은 두 비율 검정을 통과한 행에만</b> 칠합니다 — <b>n.s.</b>(유의성 미달)와
               <b>검정 불가</b>(비율이 아니라 검정을 붙일 수 없는 지표)는 회색으로 두어 확정된 변화로 읽히지 않게 했습니다 ·
+              값 오른쪽의 작은 숫자는 <b>모수(분자 / 분모)</b>입니다 — 같은 비율이라도 <b>분모가 작으면 흔들립니다</b> ·
+              <b>공유 성공 (절대)</b>는 값 자체가 원값이라 모수가 없습니다 ·
               RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · 9/3~9/4(9/4는 부분 집계)</div>`;
       }
       renderBoard();
