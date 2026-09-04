@@ -51,6 +51,18 @@
       .kb-key .d{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800}
       .kb-key .d i{width:16px;height:5px;border-radius:3px;background:currentColor;display:inline-block}
 
+      /* 세그먼트 탭 — RU/NRU를 지표마다 행으로 늘리면 행이 세 배가 되고 같은 지표가 흩어진다.
+         축을 탭으로 올리면 비교가 한 자리에서 끝나고, 아직 못 뽑은 축도 눈에 띈다. */
+      .kb-tabs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 14px}
+      .kb-tabs button{font-size:12px;font-weight:800;padding:6px 15px;border-radius:20px;cursor:pointer;
+        border:1.5px solid var(--border);background:var(--surface);color:var(--text-dim);font-family:inherit}
+      .kb-tabs button:hover{border-color:var(--b);color:var(--b)}
+      .kb-tabs button.on{border-color:var(--b);background:var(--b);color:#fff}
+      .kb-tabs button.empty{color:#b6bccb;border-style:dashed}
+      .kb-tabs button.empty em{font-style:normal;font-size:10px;font-weight:800;opacity:.8}
+      .kb-tabs button.on.empty{background:#8b93a8;border-color:#8b93a8;color:#fff}
+      .kb-tabhint{font-size:10.5px;color:var(--text-faint);font-weight:600;margin-left:4px}
+
       /* 그룹 — 지표를 "설계대로 바뀐 것 / 실제 성과 / 가드레일"로 갈라야 Δ 부호를 잘못 읽지 않는다. */
       .kb-grp{margin:0 0 22px;background:var(--surface);border-radius:var(--radius);overflow:hidden;
         border:1px solid color-mix(in srgb, var(--g) 22%, var(--border))}
@@ -73,6 +85,7 @@
       .kb-row.is-wait{background:repeating-linear-gradient(135deg,#fcfcfd 0 7px,#f7f8fb 7px 14px)}
       .kb-row.is-wait .kb-lab{color:#9aa0b8}
       .kb-row.is-wait .kb-bar{background:#f4f6fa}
+      .kb-row.is-wait .kb-bar::before{background:#e4e8f0}
       .kb-wait{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:800;
         color:#8b93a8;background:#eef1f6}
       /* 컬럼 헤더 — 값 열이 "485 → 486"이라는 걸 그룹마다 다시 말해준다.
@@ -201,7 +214,7 @@ return useInvite ? invite : share;
         <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">BigQuery 콘솔에 그대로 붙인다</span></h2>
 
         <details class="fold">
-          <summary>① 일자 × 빌드 — 슬롯 퍼널 + 가드레일 (보드 재료)</summary>
+          <summary>① 일자 × 빌드 — 슬롯 퍼널 + 가드레일 <b>· 완료 (유저군 축은 ④가 대체)</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>SELECT
     log_date       AS `날짜`,
@@ -235,7 +248,7 @@ ORDER BY `날짜`, `빌드`;</pre></div>
         </details>
 
         <details class="fold">
-          <summary>② 유입 세션 — 버전축 없이 날짜축으로만</summary>
+          <summary>② 유입 세션 — 버전축 없이 날짜축으로만 <b>· 완료</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>-- 수신자의 빌드는 발신자의 처치와 무관하므로 client_version 축을 넣지 않는다.
 -- entrypoint_now는 그 유저의 마지막 로그인 블롭이라 1000_LOGIN_COMPLETE로 고정해야 한다.
@@ -255,13 +268,15 @@ ORDER BY `날짜`, `유입경로`;</pre></div>
         </details>
 
         <details class="fold">
-          <summary>④ RU / NRU 분해 — 슬롯 퍼널 <b>· 미수신</b></summary>
+          <summary>④ 보드 본체 — 일자 × 빌드 × <b>유저군</b> <b>· 미수신</b></summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- is_new_device는 로그인 로그(1000)의 data에만 실린다. 그래서 윈도우로 유저-일 전체에 전파해야
--- 다른 이벤트 행에도 유저군을 붙일 수 있다 — has_login과 같은 방식이다.
--- 두 군의 NRU 비중이 다르면 판수·공유 차이가 처치가 아니라 유저 구성에서 온다.
+            <div class="table-scroll"><pre>-- 보드의 전체/RU/NRU 탭을 한 번에 채우는 쿼리. ①을 대체한다 —
+-- 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
+-- is_new_device는 로그인 로그(1000)의 data에만 실리므로, has_login과 같은 방식으로
+-- 윈도우를 써서 유저-일 전체에 전파해야 다른 이벤트 행에도 유저군이 붙는다.
 SELECT
-    client_version           AS `빌드`,
+    log_date                    AS `날짜`,
+    client_version              AS `빌드`,
     IF(is_nru = 1, 'NRU', 'RU') AS `유저군`,
     COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                   AS `DAU`,
     COUNTIF(event = '2300_GAMEPLAY_FINISH')                              AS `판_종료`,
@@ -270,10 +285,15 @@ SELECT
     COUNTIF(event = '3460_MSG_P2P_INVITE'
             AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_시도`,
     COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_성공`
+            AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_성공`,
+    COUNTIF(event = '3230_TOURNAMENT_SHARE_SUPPRESSED')                  AS `미노출`,
+    COUNTIF(event = '3100_TOURNAMENT_CREATE')                            AS `생성_시도`,
+    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                    AS `생성_성공`,
+    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                       AS `전면광고`,
+    COUNTIF(event = '4210_RV_FINISH')                                    AS `RV`
 FROM (
     SELECT
-        player_id, event, data, client_version,
+        log_date, player_id, event, data, client_version,
         MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
             OVER (PARTITION BY log_date, player_id) AS has_login,
         MAX(IF(event = '1000_LOGIN_COMPLETE'
@@ -284,19 +304,20 @@ FROM (
         AND country = 'US'
         AND client_version IN (485, 486)
 )
-GROUP BY `빌드`, `유저군`
-ORDER BY `유저군`, `빌드`;</pre></div>
+GROUP BY `날짜`, `빌드`, `유저군`
+ORDER BY `날짜`, `빌드`, `유저군`;</pre></div>
           </div>
         </details>
 
         <details class="fold">
-          <summary>⑤ 판수 분포 — p50 · 평균 <b>· 미수신</b></summary>
+          <summary>⑤ 판수 분포 — p50 · 빌드 × 유저군 <b>· 미수신</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>-- 판 종료 ÷ DAU는 평균이라 헤비 유저 몇 명에 끌린다. 중앙값을 같이 봐야
 -- "다수가 더 했나"와 "소수가 많이 했나"가 갈린다. 단위는 유저-일이다.
--- APPROX_QUANTILES는 NULL을 무시하므로 IF(n>0, n, NULL) 트릭으로 플레이한 유저만 따로 볼 수 있다.
+-- APPROX_QUANTILES는 NULL을 무시하므로 IF(n>0, n, NULL)로 플레이한 유저만 따로 볼 수 있다.
 SELECT
-    client_version AS `빌드`,
+    client_version              AS `빌드`,
+    IF(is_nru = 1, 'NRU', 'RU') AS `유저군`,
     COUNT(*)                                              AS `유저_일`,
     ROUND(AVG(n), 2)                                      AS `판수_평균`,
     APPROX_QUANTILES(n, 100)[OFFSET(50)]                  AS `판수_p50`,
@@ -307,53 +328,59 @@ SELECT
 FROM (
     SELECT
         log_date, player_id, client_version,
-        COUNTIF(event = '2300_GAMEPLAY_FINISH') AS n
+        COUNTIF(event = '2300_GAMEPLAY_FINISH') AS n,
+        MAX(IF(event = '1000_LOGIN_COMPLETE'
+               AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0)) AS is_nru
     FROM `game-log-359704.raw.solitaire_city_journey`
     WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
         AND country = 'US'
         AND client_version IN (485, 486)
     GROUP BY log_date, player_id, client_version
 )
-GROUP BY `빌드`
-ORDER BY `빌드`;</pre></div>
+GROUP BY `빌드`, `유저군`
+ORDER BY `유저군`, `빌드`;</pre></div>
           </div>
         </details>
 
         <details class="fold">
-          <summary>⑥ D1 리텐션 — 코호트일 × 빌드 <b>· 미수신</b></summary>
+          <summary>⑥ D1 리텐션 — 코호트일 × 빌드 × 유저군 <b>· 미수신</b></summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- 코호트 = 그날 로그인한 유저를 그날의 빌드로 묶은 것. 복귀 판정에는 빌드를 걸지 않는다
--- (다음 날 다른 빌드로 돌아와도 복귀는 복귀다 — 빌드를 걸면 업데이트를 이탈로 오독한다).
--- ⚠ 486은 9/3부터라 D1을 볼 수 있는 코호트가 9/3 하루뿐이고, 그 복귀일인 9/4가 부분 집계다.
+            <div class="table-scroll"><pre>-- 코호트 = 그날 로그인한 유저를 그날의 빌드·유저군으로 묶은 것.
+-- 복귀 판정에는 빌드를 걸지 않는다 — 걸면 다음 날의 업데이트를 이탈로 오독한다.
+-- ⚠ 486은 9/3부터라 D1을 볼 수 있는 코호트가 9/3 하루뿐이고 복귀일 9/4가 부분 집계다.
 --    지금 값은 확정이 아니라 기준선이다 — 완전한 하루가 쌓인 뒤 다시 돌린다.
 WITH cohort AS (
-    SELECT DISTINCT log_date, player_id, client_version
+    SELECT
+        log_date, player_id, client_version,
+        MAX(IF(JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0)) AS is_nru
     FROM `game-log-359704.raw.solitaire_city_journey`
     WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-        AND event = '1000_LOGIN_COMPLETE'
+        AND event   = '1000_LOGIN_COMPLETE'
         AND country = 'US'
         AND client_version IN (485, 486)
+    GROUP BY log_date, player_id, client_version
 ),
 ret AS (
     SELECT DISTINCT log_date, player_id
     FROM `game-log-359704.raw.solitaire_city_journey`
     WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-        AND event = '1000_LOGIN_COMPLETE'
+        AND event   = '1000_LOGIN_COMPLETE'
         AND country = 'US'
 )
 SELECT
-    c.log_date       AS `코호트일`,
-    c.client_version AS `빌드`,
-    COUNT(DISTINCT c.player_id)                                        AS `코호트`,
-    COUNT(DISTINCT IF(r.player_id IS NOT NULL, c.player_id, NULL))     AS `D1_복귀`,
+    c.log_date                    AS `코호트일`,
+    c.client_version              AS `빌드`,
+    IF(c.is_nru = 1, 'NRU', 'RU') AS `유저군`,
+    COUNT(DISTINCT c.player_id)                                    AS `코호트`,
+    COUNT(DISTINCT IF(r.player_id IS NOT NULL, c.player_id, NULL)) AS `D1_복귀`,
     ROUND(COUNT(DISTINCT IF(r.player_id IS NOT NULL, c.player_id, NULL)) * 100.0
-          / COUNT(DISTINCT c.player_id), 1)                            AS `D1_리텐션_pct`
+          / COUNT(DISTINCT c.player_id), 1)                        AS `D1_리텐션_pct`
 FROM cohort c
 LEFT JOIN ret r
     ON r.player_id = c.player_id
    AND r.log_date  = DATE_ADD(c.log_date, INTERVAL 1 DAY)
-GROUP BY `코호트일`, `빌드`
-ORDER BY `코호트일`, `빌드`;</pre></div>
+GROUP BY `코호트일`, `빌드`, `유저군`
+ORDER BY `코호트일`, `빌드`, `유저군`;</pre></div>
           </div>
         </details>
 
@@ -385,10 +412,10 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       // ── 데이터 ───────────────────────────────────────────────────────────
       // 일자 × 빌드 원본. 보드는 전부 여기서 합산해 만든다 — 값을 손으로 적어두면 갱신 때 어긋난다.
       const DAILY = [
-        { d:"09-03", ver:"485", ud:244, fin:1554, sh_try:237,  sh_ok:21, inv_try:232, inv_ok:227, sup:134, cr_try:363,  cr_ok:35,  it:950,  rv:480  },
-        { d:"09-03", ver:"486", ud:291, fin:1729, sh_try:722,  sh_ok:18, inv_try:0,   inv_ok:0,   sup:108, cr_try:486,  cr_ok:30,  it:1065, rv:587  },
-        { d:"09-04", ver:"485", ud:632, fin:5015, sh_try:776,  sh_ok:69, inv_try:742, inv_ok:721, sup:418, cr_try:1278, cr_ok:152, it:3087, rv:1440 },
-        { d:"09-04", ver:"486", ud:667, fin:5993, sh_try:1882, sh_ok:66, inv_try:0,   inv_ok:0,   sup:377, cr_try:1345, cr_ok:195, it:3506, rv:1870 },
+        { d:"09-03", seg:"ALL", ver:"485", ud:244, fin:1554, sh_try:237,  sh_ok:21, inv_try:232, inv_ok:227, sup:134, cr_try:363,  cr_ok:35,  it:950,  rv:480  },
+        { d:"09-03", seg:"ALL", ver:"486", ud:291, fin:1729, sh_try:722,  sh_ok:18, inv_try:0,   inv_ok:0,   sup:108, cr_try:486,  cr_ok:30,  it:1065, rv:587  },
+        { d:"09-04", seg:"ALL", ver:"485", ud:632, fin:5015, sh_try:776,  sh_ok:69, inv_try:742, inv_ok:721, sup:418, cr_try:1278, cr_ok:152, it:3087, rv:1440 },
+        { d:"09-04", seg:"ALL", ver:"486", ud:667, fin:5993, sh_try:1882, sh_ok:66, inv_try:0,   inv_ok:0,   sup:377, cr_try:1345, cr_ok:195, it:3506, rv:1870 },
       ];
       // 유입은 발신자 버전으로 못 가르므로 날짜축만 있다. 486 첫 등장은 9/3.
       const INFLOW = [
@@ -401,7 +428,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       const CAP = 150;                       // 발산 막대를 자르는 지점(%)
       const nf = x => x == null ? "—" : Number(x).toLocaleString("en-US");
 
-      const sum = ver => DAILY.filter(r => r.ver === ver).reduce((t, r) => {
+      const sum = ver => DAILY.filter(r => r.ver === ver && r.seg === "ALL").reduce((t, r) => {
         Object.entries(r).forEach(([k, v]) => { if (typeof v === "number") t[k] = (t[k] || 0) + v; });
         return t;
       }, {});
@@ -449,97 +476,129 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           <div class="hv">${h.v}</div><div class="hk">${h.k}</div></div>`).join("");
 
       // ── 그룹 보드 ─────────────────────────────────────────────────────────
-      // row = [라벨, 전, 후, 포맷, 모수전, 모수후, 중립, 주석, 강조]
+      // 세그먼트(전체/RU/NRU)를 바꾸면 보드 전체가 다시 그려진다. 지표마다 RU·NRU 행을
+      // 따로 두면 행이 두 배가 되고 같은 지표가 세 군데로 흩어져 비교가 안 된다 —
+      // 축을 하나 빼서 탭으로 올리는 편이 읽기도 쉽고 빠진 축도 눈에 띈다.
       const p1 = v => v.toFixed(1), p2 = v => v.toFixed(2), p3 = v => v.toFixed(3);
       const pc = v => v.toFixed(1) + "%";
+      const nfr = v => nf(Math.round(v));
+
+      // row = [라벨, 값함수, 포맷, 모수함수, 중립, 주석, 강조, 세그분해불가]
       const GROUPS = [
         { name:"처치", acc:"#64748b", sub:"설계대로 바뀐 것 · 증감 자체가 좋고 나쁨이 아니라 Δ를 청록으로 둔다",
           rows:[
-            ["공유 시도 / DAU", A.sh_try/A.ud, B.sh_try/B.ud, p2, [A.sh_try,A.ud], [B.sh_try,B.ud], true,
+            ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, e => [e.sh_try, e.ud], true,
               "교대 → 전량 공유라 2배가 되는 게 설계다"],
-            ["초대 시도 / DAU", A.inv_try/A.ud, B.inv_try/B.ud, p2, [A.inv_try,A.ud], [B.inv_try,B.ud], true,
+            ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, e => [e.inv_try, e.ud], true,
               "3460 중 position=tournament_invite만. 486에서 0이 되는 게 설계다"],
-            ["초대 성공 / DAU", A.inv_ok/A.ud, B.inv_ok/B.ud, p3, [A.inv_ok,A.ud], [B.inv_ok,B.ud], true,
-              "3470. 실제 도달이 아니라 다이얼로그 통과에 가깝다 — 성과 그룹의 도달 행 참고"],
-            ["판당 슬롯 발화", (A.sh_try+A.inv_try)/A.fin*100, (B.sh_try+B.inv_try)/B.fin*100, pc,
-              [A.sh_try+A.inv_try,A.fin], [B.sh_try+B.inv_try,B.fin], true,
-              "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율"],
+            ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, e => [e.inv_ok, e.ud], true,
+              "3470. 실제 도달이 아니라 다이얼로그 통과에 가깝다 — 히어로의 1/16 참고"],
+            ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, e => [e.sh_try+e.inv_try, e.fin], true,
+              "(공유 시도 + 초대 시도) ÷ 판 종료. 슬롯이 열린 비율 — 처치 전후로 거의 그대로다"],
           ]},
         { name:"성과", acc:"#dc2626", sub:"슬롯을 공유에 2.4배 몰아준 결과",
           rows:[
-            ["공유 성공 / DAU", A.sh_ok/A.ud, B.sh_ok/B.ud, p3, [A.sh_ok,A.ud], [B.sh_ok,B.ud], false,
+            ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, e => [e.sh_ok, e.ud], false,
               "실질 주지표. 시도가 2배면 여기도 2배가 되어야 본전이다", true],
-            ["공유 성공률", A.sh_ok/A.sh_try*100, B.sh_ok/B.sh_try*100, pc, [A.sh_ok,A.sh_try], [B.sh_ok,B.sh_try], false,
+            ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, e => [e.sh_ok, e.sh_try], false,
               "3210 ÷ 3200. 교대일 때조차 8.9%였다", true],
-            ["공유 성공 (절대)", A.sh_ok, B.sh_ok, v => nf(Math.round(v)), null, null, false,
+            ["공유 성공 (절대)", e => e.sh_ok, nfr, null, false,
               "DAU 보정 없는 원값. 486이 DAU가 더 큰데도 성공이 적다"],
-            ["유입 합계 / 일", (IP.t+IP.ti)/IP.n, (IC.t+IC.ti)/IC.n, p1, [IP.t+IP.ti,IP.n], [IC.t+IC.ti,IC.n], true,
-              "전 = 8/28~9/2 6일(전량 교대) · 후 = 9/3~9/4 2일(486 혼재). 축이 달라 참고값이다"],
+            ["유입 합계 / 일", null, p1, null, true,
+              "유입은 수신자 쪽 지표라 발신자의 빌드로도, 발신자의 RU/NRU로도 가를 수 없다. 히어로의 148.0 → 131.5가 전부다", false, true],
           ]},
         { name:"유저 · 리텐션", acc:"#7c3aed", sub:"쿼리 ④·⑤·⑥ 미수신 — 슬롯 변경이 잔존에 닿았는지는 아직 못 본다",
           rows:[
-            ["D1 리텐션", null, null, pc, null, null, false,
-              "9/3 코호트가 9/4에 다시 로그인한 비율. 486이 9/3부터라 코호트가 하루뿐이고, 9/4가 부분 집계라 지금 뽑아도 확정값이 아니다 — 며칠 뒤 재실행 전제로 기준선만 잡는다"],
-            ["판수 p50 / 유저-일", null, null, p1, null, null, false,
+            ["D1 리텐션", e => e.d1_ret, pc, e => [e.d1_back, e.d1_coh], false,
+              "그날 코호트가 다음 날 다시 로그인한 비율. 복귀 판정에는 빌드를 걸지 않는다 — 걸면 업데이트를 이탈로 오독한다"],
+            ["판수 p50 / 유저-일", e => e.fin_p50, p1, null, false,
               "판 종료/DAU는 평균이라 헤비 유저에 끌린다. 중앙값을 같이 봐야 '다수가 더 했나'가 갈린다"],
-            ["NRU 비중", null, null, pc, null, null, true,
-              "is_new_device=true인 유저-일 비중. 두 군의 NRU 구성이 다르면 판수·리텐션 차이가 처치가 아니라 유저 구성에서 온다"],
-            ["공유 성공 / DAU · NRU", null, null, p3, null, null, false,
-              "신규는 친구 그래프가 얇아 공유 성공률이 구조적으로 낮다. 분해하지 않으면 두 층의 평균만 본다"],
-            ["공유 성공 / DAU · RU", null, null, p3, null, null, false,
-              "기존 유저. 슬롯 배분 변경의 효과가 나타난다면 이쪽이다"],
+            ["NRU 비중", e => e.nru_share, pc, e => [e.nru_ud, e.ud], true,
+              "is_new_device=true인 유저-일 비중. 두 군의 구성이 다르면 아래 가드레일 차이가 처치가 아니라 유저 구성에서 온다", false, true],
           ]},
         { name:"가드레일", acc:"#d97706", sub:"배정 균형 미확인(쿼리 ③) — 486 우위를 처치로 단정할 수 없다",
           rows:[
-            ["판 종료 / DAU", A.fin/A.ud, B.fin/B.ud, p1, [A.fin,A.ud], [B.fin,B.ud], false, "2300"],
-            ["총광고 완료 / DAU", (A.it+A.rv)/A.ud, (B.it+B.rv)/B.ud, p2, [A.it+A.rv,A.ud], [B.it+B.rv,B.ud], false,
+            ["판 종료 / DAU", e => e.fin/e.ud, p1, e => [e.fin, e.ud], false, "2300"],
+            ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, e => [e.it+e.rv, e.ud], false,
               "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외"],
-            ["토너 생성률", A.cr_ok/A.cr_try*100, B.cr_ok/B.cr_try*100, pc, [A.cr_ok,A.cr_try], [B.cr_ok,B.cr_try], false,
+            ["토너 생성률", e => e.cr_ok/e.cr_try*100, pc, e => [e.cr_ok, e.cr_try], false,
               "3110 ÷ 3100. 서버 등록 완료만 센다"],
-            ["미노출 / DAU", A.sup/A.ud, B.sup/B.ud, p3, [A.sup,A.ud], [B.sup,B.ud], true,
+            ["미노출 / DAU", e => e.sup/e.ud, p3, e => [e.sup, e.ud], true,
               "3230. 쿨다운·토너 없음으로 슬롯이 안 열린 횟수 — 적은 쪽이 좋다"],
           ]},
       ];
 
-      document.getElementById("groups").innerHTML = GROUPS.map(g => {
-        const rows = g.rows.map(([lab, vp, vc, fmt, pp, pn, neutral, note, key]) => {
-          // 값이 없는 행은 자리만 잡는다. 빠진 축을 지우면 "다 봤다"로 읽힌다.
-          if (vp == null || vc == null)
-            return `<div class="kb-row is-wait"><div class="kb-lab">${lab}`
+      const SEGS = [["ALL","전체"],["RU","기존 유저"],["NRU","신규 유저"]];
+      let SEG = "ALL";
+      function setSeg(g){ SEG = g; renderBoard(); }
+      window.setSeg = setSeg;
+
+      // 해당 세그먼트에 행이 없으면 null — 그래야 "값이 0"과 "아직 안 뽑음"이 안 섞인다.
+      function agg(ver, seg) {
+        const rs = DAILY.filter(r => r.ver === ver && r.seg === seg);
+        if (!rs.length) return null;
+        return rs.reduce((t, r) => {
+          Object.entries(r).forEach(([k, v]) => { if (typeof v === "number") t[k] = (t[k] || 0) + v; });
+          return t;
+        }, {});
+      }
+
+      function renderBoard() {
+        const A = agg("485", SEG), B = agg("486", SEG);
+        const tabs = `<div class="kb-tabs">${SEGS.map(([g, l]) => {
+          const has = DAILY.some(r => r.seg === g);
+          return `<button class="${SEG === g ? "on" : ""}${has ? "" : " empty"}" onclick="setSeg('${g}')">`
+            + `${l}${has ? "" : ' <em>미수신</em>'}</button>`;
+        }).join("")}<span class="kb-tabhint">모든 지표가 이 축으로 다시 계산된다</span></div>`;
+
+        const body = GROUPS.map(g => {
+          const rows = g.rows.map(([lab, f, fmt, parts, neutral, note, key, noSeg]) => {
+            const wait = (why) => `<div class="kb-row is-wait"><div class="kb-lab">${lab}`
               + `${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
-              + `<div class="kb-val"><span class="kb-wait">미수신</span></div>`
-              + `<div class="kb-bar is-neu"></div><div class="kb-d"></div></div>`;
-          const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
-          // 3색: 초록=개선 · 빨강=악화 · 청록=설계대로(판정 없음). 회색은 "변화 없음"에만 쓴다.
-          const col = neutral ? "var(--spec)" : (Math.abs(pct) < 5 ? "var(--mute)" : pct > 0 ? "var(--good)" : "var(--bad)");
-          const w = Math.min(Math.abs(pct), CAP) / CAP * 50;      // 반폭 50% 기준
-          const clipped = Math.abs(pct) > CAP;
-          const side = pct >= 0 ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
-          const tip = `${lab}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
-            + (pp ? `\n${nf(pp[0])} ÷ ${nf(pp[1])} → ${nf(pn[0])} ÷ ${nf(pn[1])}` : "")
-            + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않는다)" : "")
-            + (clipped ? `\n막대는 ±${CAP}%에서 잘렸다` : "");
-          return `<div class="kb-row${key ? " is-key" : ""}" data-tip="${tip}">
-            <div class="kb-lab">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
-            <div class="kb-val"><span class="p">${fmt(vp)}</span><span class="ar">→</span><span class="n">${fmt(vc)}</span>
-              ${pp ? `<span class="kb-den">${nf(pp[0])}÷${nf(pp[1])} → ${nf(pn[0])}÷${nf(pn[1])}</span>` : ""}</div>
-            <div class="kb-bar${neutral ? " is-neu" : ""}"><i style="${side};background:${col}${clipped ? ";opacity:.55" : ""}"></i></div>
-            <div class="kb-d" style="color:${col}"><span>${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</span></div>
+              + `<div class="kb-val"><span class="kb-wait">${why}</span></div>`
+              + `<div class="kb-bar"></div><div class="kb-d"></div></div>`;
+            // 세그 분해가 불가능한 지표는 전체 탭에서만 값이 있다 — 이유를 이름으로 남긴다.
+            if (noSeg && SEG !== "ALL") return wait("세그 분해 불가");
+            if (!f || !A || !B) return wait("미수신");
+            const vp = f(A), vc = f(B);
+            if ([vp, vc].some(x => x == null || !isFinite(x))) return wait("미수신");
+
+            const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
+            // 3색: 초록=개선 · 빨강=악화 · 청록=설계대로(판정 없음). 회색은 "변화 없음"에만.
+            const col = neutral ? "var(--spec)" : (Math.abs(pct) < 5 ? "var(--mute)" : pct > 0 ? "var(--good)" : "var(--bad)");
+            const w = Math.min(Math.abs(pct), CAP) / CAP * 50;      // 반폭 50% 기준
+            const clipped = Math.abs(pct) > CAP;
+            const side = pct >= 0 ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
+            const pp = parts ? parts(A) : null, pn = parts ? parts(B) : null;
+            const tip = `${lab} · ${SEGS.find(x => x[0] === SEG)[1]}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
+              + (pp ? `\n${nf(pp[0])} ÷ ${nf(pp[1])} → ${nf(pn[0])} ÷ ${nf(pn[1])}` : "")
+              + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않는다)" : "")
+              + (clipped ? `\n막대는 ±${CAP}%에서 잘렸다` : "");
+            return `<div class="kb-row${key ? " is-key" : ""}" data-tip="${tip}">
+              <div class="kb-lab">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
+              <div class="kb-val"><span class="p">${fmt(vp)}</span><span class="ar">→</span><span class="n">${fmt(vc)}</span>
+                ${pp ? `<span class="kb-den">${nf(pp[0])}÷${nf(pp[1])} → ${nf(pn[0])}÷${nf(pn[1])}</span>` : ""}</div>
+              <div class="kb-bar${neutral ? " is-neu" : ""}"><i style="${side};background:${col}${clipped ? ";opacity:.55" : ""}"></i></div>
+              <div class="kb-d" style="color:${col}"><span>${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%</span></div>
+            </div>`;
+          }).join("");
+          return `<div class="kb-grp" style="--g:${g.acc}">
+            <div class="kb-gh"><b>${g.name}</b><span>${g.sub}</span></div>
+            <div class="kb-row is-head">
+              <div>지표</div>
+              <div class="kb-val"><span class="p">485</span> <span class="ar">→</span> <span class="n">486</span></div>
+              <div class="axis"><b>← 486이 적음</b><span>0</span><b>486이 많음 →</b></div>
+              <div style="text-align:right">Δ</div>
+            </div>
+            ${rows}
+            <div class="kb-scale"><span></span><span></span>
+              <span class="ax"><span>−${CAP}%</span><span>0</span><span>+${CAP}%</span></span><span></span></div>
           </div>`;
         }).join("");
-        return `<div class="kb-grp" style="--g:${g.acc}">
-          <div class="kb-gh"><b>${g.name}</b><span>${g.sub}</span></div>
-          <div class="kb-row is-head">
-            <div>지표</div>
-            <div class="kb-val"><span class="p">485</span> <span class="ar">→</span> <span class="n">486</span></div>
-            <div class="axis"><b>← 486이 적음</b><span>0</span><b>486이 많음 →</b></div>
-            <div style="text-align:right">Δ</div>
-          </div>
-          ${rows}
-          <div class="kb-scale"><span></span><span></span>
-            <span class="ax"><span>−${CAP}%</span><span>0</span><span>+${CAP}%</span></span><span></span></div>
-        </div>`;
-      }).join("");
+
+        document.getElementById("groups").innerHTML = tabs + body;
+      }
+      renderBoard();
 
       // ── 원본 표 ──────────────────────────────────────────────────────────
       (function () {
