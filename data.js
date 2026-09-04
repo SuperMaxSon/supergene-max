@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-04 10:30",
+  updated: "2026-09-04 17:20",
 };
 
 /* --------------------------------------------------------------------------
@@ -425,6 +425,18 @@ const SECTIONS = [
     accent: "validate",
     desc: "수정 전/후 결과 대조",
     cards: [
+      {
+        title: "토너 클리어 소셜 슬롯 A/B — 485 이하 ↔ 486",
+        desc: "없앤 초대는 장부상 97% 성공이었지만 실제 도달은 공유의 1/16. 슬롯을 공유에 2.2배 몰아줘도 공유 성공은 90 → 84로 감소. 무해하고 무익 — 진짜 병목은 공유 성공률 8.9%다.",
+        url: "docs/sol-tournament-slot-ab.html",
+        project: "sol",
+        status: "진행중",
+        version: "v4.0",
+        updated: "2026-09-04 17:20",
+        pinned: false,
+        tags: ["토너먼트", "BigQuery", "A/B"],
+        share: false,
+      },
       {
         title: "토너먼트 업데이트 KPI 검증 — 8/27 배포",
         desc: "P2P 오발송만 −29%, 공유·생성은 무변화. 클리어의 3.7%만 발사되고 병목은 유저 취소 93%.",
