@@ -245,6 +245,17 @@ const SECTIONS = [
         tags: ["머지", "인게임", "착수 범위"],
       },
       {
+        title: "스토리 머지 — 컨텐츠 TODO",
+        desc: "머지 게임에 들어가야 하는 컨텐츠 29개를 코어 13 · 리텐션 8 · 매출 5 · 소셜 3으로 갈라 우선순위와 현재 상태를 붙인 판. 코드 0줄이 19개. 착수 순서는 중요도순이 아니라 의존순 — 앨범은 체인 테이블 뒤, 상점은 에너지 뒤입니다.",
+        url: "docs/story-merge-content-todo.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-04 17:20",
+        pinned: false,
+        tags: ["머지", "컨텐츠", "우선순위"],
+      },
+      {
         title: "스토리 머지 — 리소스 예산",
         desc: "무엇이 무겁고 언제 불러오는가. 메모리는 파일이 아니라 해상도로 정해집니다 — 대화 애니 파일 7.3MB 가 메모리 90.8MB. 로딩 단위를 캐릭터가 아니라 감정(5.7MB)으로 잡아야 하는 이유를 솔리테어 실측으로 맞췄습니다.",
         url: "docs/story-merge-resource-budget.html",
