@@ -191,38 +191,36 @@ return useInvite ? invite : share;
       </section>
 
       <section class="doc-section" id="sql">
-        <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">BigQuery 콘솔에 그대로 붙여 넣으시면 됩니다</span></h2>
+        <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">이거 하나면 문서 전체가 채워집니다</span></h2>
         <div class="stale-bar" style="margin-bottom:14px">
-          <b>①~④가 보드를 채우는 전부입니다</b> — 번호가 문서의 데이터 블록(<code>DAILY</code> · <code>EXTRA</code> ·
-          <code>RET</code> · <code>INFLOW</code>) 순서와 같습니다. 갱신할 때는 <b>네 개를 연달아 뽑아 조회 시각을 맞추세요</b> —
-          하나만 다시 뽑으면 유입 ÷ 발화처럼 블록을 가로지르는 값이 어긋납니다(지금이 그 상태입니다).
-          ⑤·⑥은 <b>아직 뽑지 않은 부가 확인</b>이며 보드에는 들어가지 않습니다.
+          <b>블록을 쪼개 뽑지 않는 것이 이 쿼리의 목적입니다.</b> 예전에는 보드·분포·리텐션·유입을 따로 뽑았는데,
+          하나만 다시 뽑으면 <b>유입 ÷ 발화</b>처럼 블록을 가로지르는 값이 조용히 어긋났습니다(지금 문서가 그 상태입니다).
+          한 번에 뽑으면 모든 블록이 같은 시각이 되고, <code>0_META</code> 행이 그 조회 시각을 KST로 찍어 줍니다.
         </div>
-        <details class="fold">
-          <summary>① 보드 본체 — 일자 × 빌드 × <b>유저군</b> <b>· DAILY</b></summary>
+        <details class="fold" open>
+          <summary>전체 갱신 — 블록당 1행 · <b>붙여넣기 칸의 JSON 키 = 문서 JS 필드명</b></summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- 보드의 전체/RU/NRU 탭을 한 번에 채우는 쿼리.
--- 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
--- is_new_device는 로그인 로그(1000)의 data에만 실리므로, has_login과 같은 방식으로
--- 윈도우를 써서 유저-일 전체에 전파해야 다른 이벤트 행에도 유저군이 붙는다.
-SELECT
-    log_date                    AS `날짜`,
-    client_version              AS `빌드`,
-    IF(is_nru = 1, 'NRU', 'RU') AS `유저군`,
-    COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                   AS `DAU`,
-    COUNTIF(event = '2300_GAMEPLAY_FINISH')                              AS `판_종료`,
-    COUNTIF(event = '3200_TOURNAMENT_SHARE')                             AS `공유_시도`,
-    COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                     AS `공유_성공`,
-    COUNTIF(event = '3460_MSG_P2P_INVITE'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_시도`,
-    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite')    AS `초대_성공`,
-    COUNTIF(event = '3230_TOURNAMENT_SHARE_SUPPRESSED')                  AS `미노출`,
-    COUNTIF(event = '3100_TOURNAMENT_CREATE')                            AS `생성_시도`,
-    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                    AS `생성_성공`,
-    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                       AS `전면광고`,
-    COUNTIF(event = '4210_RV_FINISH')                                    AS `RV`
-FROM (
+            <div class="table-scroll"><pre>-- 문서의 데이터 블록 전부를 한 번에 뽑는다. 블록마다 따로 뽑으면 조회 시각이 섞여서
+-- '유입 ÷ 발화'처럼 블록을 가로지르는 값이 조용히 틀린다 — 그래서 쿼리를 하나로 합쳤다.
+-- 결과는 블록당 1행이고, 붙여넣기 칸의 JSON 키가 문서 JS의 필드명과 같다.
+WITH us AS (
+    -- 대부분의 블록이 쓰는 공통 모집단. 버전 필터를 여기 걸지 않는 것이 핵심이다 —
+    -- 리텐션의 복귀 판정은 다음 날 업데이트한 유저까지 세야 하기 때문이다.
+    SELECT log_date, player_id, event, data, entrypoint_now, client_version
+    FROM `game-log-359704.raw.solitaire_city_journey`
+    WHERE log_date BETWEEN '2026-08-28' AND CURRENT_DATE()
+        AND country = 'US'
+),
+glob AS (
+    -- 배정 균형만 국가 필터를 뺀다. FB가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
+    SELECT player_id, client_version, country, os
+    FROM `game-log-359704.raw.solitaire_city_journey`
+    WHERE log_date &gt;= '2026-09-03'
+        AND event = '1000_LOGIN_COMPLETE'
+        AND client_version IN (485, 486)
+),
+ab AS (
+    -- 로그인 여부·is_new_device는 1000 로그에만 실리므로 윈도우로 유저-일 전체에 전파한다.
     SELECT
         log_date, player_id, event, data, client_version,
         MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
@@ -230,161 +228,144 @@ FROM (
         MAX(IF(event = '1000_LOGIN_COMPLETE'
                AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0))
             OVER (PARTITION BY log_date, player_id) AS is_nru
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-        AND country = 'US'
+    FROM us
+    WHERE log_date &gt;= '2026-09-03'
         AND client_version IN (485, 486)
-)
-GROUP BY `날짜`, `빌드`, `유저군`
-ORDER BY `날짜`, `빌드`, `유저군`;</pre></div>
-          </div>
-        </details>
-        <details class="fold">
-          <summary>② 판수 분포 — p50 · 빌드 × 유저군 <b>· EXTRA</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 판 종료 ÷ DAU는 평균이라 헤비 유저 몇 명에 끌린다. 중앙값을 같이 봐야
--- "다수가 더 했나"와 "소수가 많이 했나"가 갈린다. 단위는 유저-일이다.
--- APPROX_QUANTILES는 NULL을 무시하므로 IF(n>0, n, NULL)로 플레이한 유저만 따로 볼 수 있다.
-SELECT
-    client_version              AS `빌드`,
-    IF(is_nru = 1, 'NRU', 'RU') AS `유저군`,
-    COUNT(*)                                              AS `유저_일`,
-    ROUND(AVG(n), 2)                                      AS `판수_평균`,
-    APPROX_QUANTILES(n, 100)[OFFSET(50)]                  AS `판수_p50`,
-    APPROX_QUANTILES(n, 100)[OFFSET(75)]                  AS `판수_p75`,
-    APPROX_QUANTILES(n, 100)[OFFSET(90)]                  AS `판수_p90`,
-    ROUND(COUNTIF(n > 0) * 100.0 / COUNT(*), 1)           AS `플레이유저비율_pct`,
-    APPROX_QUANTILES(IF(n > 0, n, NULL), 100)[OFFSET(50)] AS `p50_플레이유저`
-FROM (
+),
+daily AS (
+    SELECT
+        log_date, client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
+        COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
+        COUNTIF(event = '2300_GAMEPLAY_FINISH')                           AS fin,
+        COUNTIF(event = '3200_TOURNAMENT_SHARE')                          AS sh_try,
+        COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                  AS sh_ok,
+        COUNTIF(event = '3460_MSG_P2P_INVITE'
+                AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_try,
+        COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
+                AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_ok,
+        COUNTIF(event = '3230_TOURNAMENT_SHARE_SUPPRESSED')               AS sup,
+        COUNTIF(event = '3100_TOURNAMENT_CREATE')                         AS cr_try,
+        COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                 AS cr_ok,
+        COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                    AS it,
+        COUNTIF(event = '4210_RV_FINISH')                                 AS rv
+    FROM ab
+    GROUP BY log_date, client_version, seg
+),
+perday AS (
     SELECT
         log_date, player_id, client_version,
-        COUNTIF(event = '2300_GAMEPLAY_FINISH') AS n,
-        MAX(IF(event = '1000_LOGIN_COMPLETE'
-               AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0)) AS is_nru
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-        AND country = 'US'
-        AND client_version IN (485, 486)
+        IF(MAX(is_nru) = 1, 'NRU', 'RU')        AS seg,
+        COUNTIF(event = '2300_GAMEPLAY_FINISH') AS n
+    FROM ab
     GROUP BY log_date, player_id, client_version
-)
-GROUP BY `빌드`, `유저군`
-ORDER BY `유저군`, `빌드`;</pre></div>
-          </div>
-        </details>
-        <details class="fold">
-          <summary>③ D1~D7 리텐션 — 코호트일 × 빌드 × 유저군 <b>· RET · D1만 도래</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 코호트 = 그날 로그인한 유저를 그날의 빌드·유저군으로 묶은 것.
--- 복귀 판정에는 빌드를 걸지 않는다 — 걸면 다음 날의 업데이트를 이탈로 오독한다.
--- ret 창을 코호트일 + 7일까지 넓혀 두면 D1~D7을 한 번에 뽑을 수 있다.
--- ⚠ 486은 9/3부터라 지금은 D1만 도래했다. D2 이상은 날짜가 지난 뒤 이 쿼리를 그대로 다시 돌린다.
---    ⓘ D+n 칸이 "미도래"면 아직 날짜가 안 온 것이고, "미수신"이면 날짜는 지났는데 안 뽑은 것이다.
-WITH cohort AS (
+),
+dist AS (
+    -- 판 종료 ÷ DAU는 평균이라 헤비 유저에 끌린다. 중앙값을 같이 봐야
+    -- '다수가 더 했나'와 '소수가 많이 했나'가 갈린다. 단위는 유저-일이다.
+    SELECT
+        client_version, seg,
+        COUNT(*)                                              AS uday,
+        ROUND(AVG(n), 2)                                      AS avg_n,
+        APPROX_QUANTILES(n, 100)[OFFSET(50)]                  AS p50,
+        APPROX_QUANTILES(n, 100)[OFFSET(75)]                  AS p75,
+        APPROX_QUANTILES(n, 100)[OFFSET(90)]                  AS p90,
+        ROUND(COUNTIF(n &gt; 0) * 100.0 / COUNT(*), 1)           AS play,
+        APPROX_QUANTILES(IF(n &gt; 0, n, NULL), 100)[OFFSET(50)] AS p50p
+    FROM perday
+    GROUP BY client_version, seg
+),
+cohort AS (
     SELECT
         log_date, player_id, client_version,
-        MAX(IF(JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0)) AS is_nru
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-        AND event   = '1000_LOGIN_COMPLETE'
-        AND country = 'US'
-        AND client_version IN (485, 486)
+        IF(MAX(is_nru) = 1, 'NRU', 'RU') AS seg
+    FROM ab
+    WHERE event = '1000_LOGIN_COMPLETE'
     GROUP BY log_date, player_id, client_version
 ),
 ret AS (
+    -- 복귀 판정에는 빌드를 걸지 않는다 — 걸면 다음 날의 업데이트를 이탈로 오독한다.
     SELECT DISTINCT log_date, player_id
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-03' AND DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
-        AND event   = '1000_LOGIN_COMPLETE'
-        AND country = 'US'
-)
-SELECT
-    c.log_date                    AS `코호트일`,
-    c.client_version              AS `빌드`,
-    IF(c.is_nru = 1, 'NRU', 'RU') AS `유저군`,
-    COUNT(DISTINCT c.player_id)   AS `코호트`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 1, c.player_id, NULL)) AS `D1`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 2, c.player_id, NULL)) AS `D2`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 3, c.player_id, NULL)) AS `D3`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 4, c.player_id, NULL)) AS `D4`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 5, c.player_id, NULL)) AS `D5`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 6, c.player_id, NULL)) AS `D6`,
-    COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS `D7`
-FROM cohort c
-LEFT JOIN ret r
-    ON r.player_id = c.player_id
-   AND r.log_date  > c.log_date
-   AND r.log_date <= DATE_ADD(c.log_date, INTERVAL 7 DAY)
-GROUP BY `코호트일`, `빌드`, `유저군`
-ORDER BY `코호트일`, `빌드`, `유저군`;</pre></div>
-          </div>
-        </details>
-        <details class="fold">
-          <summary>④ 유입 세션 — 버전축 없이 날짜축으로만 <b>· INFLOW</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 수신자의 빌드는 발신자의 처치와 무관하므로 client_version 축을 넣지 않는다.
--- entrypoint_now는 그 유저의 마지막 로그인 블롭이라 1000_LOGIN_COMPLETE로 고정해야 한다.
-SELECT
-    log_date AS `날짜`,
-    JSON_VALUE(entrypoint_now, '$.payload.social') AS `유입경로`,
-    COUNT(*)                  AS `세션수`,
-    COUNT(DISTINCT player_id) AS `유저수`
-FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN '2026-08-28' AND CURRENT_DATE()
-    AND event   = '1000_LOGIN_COMPLETE'
-    AND country = 'US'
-    AND JSON_VALUE(entrypoint_now, '$.payload.social') IN ('TOURNAMENT', 'TOURNAMENT_INVITE')
-GROUP BY `날짜`, `유입경로`
-ORDER BY `날짜`, `유입경로`;</pre></div>
-          </div>
-        </details>
-        <details class="fold">
-          <summary>⑤ 클리어 / 실패 분해 — 완료 판수의 result 축 <b>· 미수신 · 보드 미반영</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- 완료 판수(2300)는 클리어와 실패·포기를 함께 센다. 슬롯 다이얼로그는 클리어에서만 뜨므로,
--- 486의 완료 판수 증가가 클리어에서 온 것인지 실패에서 온 것인지 갈라야 발화 기회 변화를 읽을 수 있다.
-SELECT
-    client_version               AS `빌드`,
-    IF(is_nru = 1, 'NRU', 'RU')  AS `유저군`,
-    JSON_VALUE(data, '$.result') AS `결과`,
-    COUNT(*)                     AS `판수`,
-    ROUND(COUNT(*) * 100.0
-          / SUM(COUNT(*)) OVER (PARTITION BY client_version, is_nru), 1) AS `비중_pct`
-FROM (
+    FROM us
+    WHERE log_date &gt;= '2026-09-03'
+        AND event = '1000_LOGIN_COMPLETE'
+),
+retn AS (
     SELECT
-        player_id, data, client_version,
-        MAX(IF(event = '1000_LOGIN_COMPLETE'
-               AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0))
-            OVER (PARTITION BY log_date, player_id) AS is_nru,
-        event
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-        AND country = 'US'
-        AND client_version IN (485, 486)
+        c.log_date, c.client_version, c.seg,
+        COUNT(DISTINCT c.player_id) AS coh,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 1, c.player_id, NULL)) AS d1,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 2, c.player_id, NULL)) AS d2,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 3, c.player_id, NULL)) AS d3,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 4, c.player_id, NULL)) AS d4,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 5, c.player_id, NULL)) AS d5,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 6, c.player_id, NULL)) AS d6,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS d7
+    FROM cohort c
+    LEFT JOIN ret r
+        ON r.player_id = c.player_id
+       AND r.log_date  &gt; c.log_date
+       AND r.log_date &lt;= DATE_ADD(c.log_date, INTERVAL 7 DAY)
+    GROUP BY c.log_date, c.client_version, c.seg
+),
+inflow AS (
+    -- 수신자의 빌드는 발신자의 처치와 무관하므로 버전축을 넣지 않는다.
+    SELECT
+        log_date,
+        COUNTIF(JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT')        AS t,
+        COUNTIF(JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT_INVITE') AS ti
+    FROM us
+    WHERE event = '1000_LOGIN_COMPLETE'
+    GROUP BY log_date
+),
+res AS (
+    -- 2300은 클리어와 실패·포기를 함께 센다. 슬롯은 클리어에서만 뜨므로 갈라야 한다.
+    SELECT
+        client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
+        JSON_VALUE(data, '$.result') AS result,
+        COUNT(*) AS n
+    FROM ab
+    WHERE event = '2300_GAMEPLAY_FINISH'
+    GROUP BY client_version, seg, result
+),
+bal AS (
+    SELECT
+        client_version, country, IFNULL(os, '(null)') AS os,
+        COUNT(DISTINCT player_id) AS users
+    FROM glob
+    GROUP BY client_version, country, os
+    HAVING users &gt;= 10
 )
-WHERE event = '2300_GAMEPLAY_FINISH'
-GROUP BY `빌드`, `유저군`, `결과`
-ORDER BY `유저군`, `빌드`, `결과`;</pre></div>
-          </div>
-        </details>
-        <details class="fold">
-          <summary>⑥ 배정 균형 — 무작위 배정인지 간접 확인 <b>· 미수신 · 보드 미반영</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>-- FB가 지역·기기 기준으로 갈랐다면 국가·OS 구성이 어긋나고, 그러면 유저 편향이 남는다.
--- 국가 필터를 일부러 빼서 지역 배정 여부까지 본다.
-SELECT
-    client_version AS `빌드`,
-    country        AS `국가`,
-    IFNULL(os, '(null)') AS `OS`,
-    COUNT(DISTINCT player_id) AS `유저수`,
-    ROUND(COUNT(DISTINCT player_id) * 100.0
-          / SUM(COUNT(DISTINCT player_id)) OVER (PARTITION BY client_version), 1) AS `군내_비중_pct`
-FROM `game-log-359704.raw.solitaire_city_journey`
-WHERE log_date BETWEEN '2026-09-03' AND CURRENT_DATE()
-    AND event = '1000_LOGIN_COMPLETE'
-    AND client_version IN (485, 486)
-GROUP BY `빌드`, `국가`, `OS`
-HAVING `유저수` &gt;= 10
-ORDER BY `국가`, `OS`, `빌드`;</pre></div>
+SELECT '0_META' AS `블록`, 1 AS `행수`,
+    TO_JSON_STRING(STRUCT(
+        FORMAT_DATETIME('%Y-%m-%d %H:%M', CURRENT_DATETIME('Asia/Seoul')) AS pulled_kst,
+        CURRENT_DATE() AS today_utc)) AS `붙여넣기`
+UNION ALL SELECT '1_DAILY', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, seg,
+    ud, fin, sh_try, sh_ok, inv_try, inv_ok, sup, cr_try, cr_ok, it, rv)
+    ORDER BY log_date, client_version, seg)) FROM daily
+UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    CAST(client_version AS STRING) AS ver, seg, uday, avg_n, p50, p75, p90, play, p50p)
+    ORDER BY seg, client_version)) FROM dist
+UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    log_date AS coh_date, CAST(client_version AS STRING) AS ver, seg,
+    coh, d1, d2, d3, d4, d5, d6, d7)
+    ORDER BY log_date, client_version, seg)) FROM retn
+UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
+    ORDER BY log_date)) FROM inflow
+UNION ALL SELECT '5_RESULT', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    CAST(client_version AS STRING) AS ver, seg, result, n)
+    ORDER BY seg, client_version, result)) FROM res
+UNION ALL SELECT '6_BALANCE', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    CAST(client_version AS STRING) AS ver, country, os, users)
+    ORDER BY country, os, client_version)) FROM bal
+ORDER BY `블록`;</pre></div>
+            <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
+              결과는 <b>7행</b>입니다 — <code>0_META</code>(조회 시각) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
+              <code>3_RET</code> · <code>4_INFLOW</code>이 보드를 채우고,
+              <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
+              <b>행수</b> 열이 비거나 예상보다 적으면 그 블록만 비어 있는 것이니 다른 블록까지 의심하지 않으셔도 됩니다.
+            </div></div>
           </div>
         </details>
       </section>
@@ -392,7 +373,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
 
     <script>
       // ── 데이터 ───────────────────────────────────────────────────────────
-      // 일자 × 빌드 × 유저군 (쿼리 ①). 보드는 전부 여기서 합산해 만든다.
+      // 일자 × 빌드 × 유저군 (갱신 쿼리의 1_DAILY 행). 보드는 전부 여기서 합산해 만든다.
       // 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
       // ⚠ 9/4는 여전히 부분 집계다 — 이 블록은 9/4 15:52 재집계분이고, EXTRA·RET·INFLOW는
       // 아직 13:03 분이다. 시각이 다른 블록끼리 나누거나 빼면 수치가 어긋난다.
@@ -406,7 +387,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
         { d:"09-04", ver:"486", seg:"NRU", ud:549, fin:2802, sh_try:474,  sh_ok:56, inv_try:0,   inv_ok:0,   sup:343, cr_try:911,  cr_ok:218, it:1096, rv:503  },
         { d:"09-04", ver:"486", seg:"RU",  ud:357, fin:5776, sh_try:2034, sh_ok:52, inv_try:0,   inv_ok:0,   sup:148, cr_try:911,  cr_ok:37,  it:4202, rv:2086 },
       ];
-      // 쿼리 ②(판수 분포) · ③(D1 리텐션). 일자축이 없어 DAILY와 따로 둔다.
+      // 2_EXTRA(판수 분포) · 3_RET(D1 리텐션) 행. 일자축이 없어 DAILY와 따로 둔다.
       // D1은 9/3 코호트만 유효하다 — 9/4 코호트의 복귀일(9/5)이 아직 오지 않았다.
       // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
       // D+n 리텐션. d[n] = 그 코호트가 n일 뒤 돌아온 수. 지금은 D1만 있고, 486이 9/3 시작이라
@@ -672,6 +653,7 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
           판수 분포(<code>EXTRA</code>) · 리텐션(<code>RET</code>) · 유입(<code>INFLOW</code>)은 아직 <b>9/4 13:03</b> 집계분입니다.
           같은 시각의 블록 안에서 나온 값(공유 성공률, 판당 발화, 완료 판수/DAU 등)은 그대로 읽으셔도 되지만,
           <b>시각이 다른 두 블록을 나눈 값은 이 문서에서 비워 두었습니다</b> — 아래 <b>판수 평균 · 플레이 유저 비율 · 잔존</b>은 옛 집계라 회색으로 표시했습니다.
+          아래 <b>쿼리</b> 하나를 다시 돌리면 일곱 블록이 같은 시각으로 맞춰지고 이 경고는 사라집니다.
         </div>`;
         document.getElementById("groups").innerHTML = staleBar + bal
           + `<div class="mx"><div class="mr hd"><div class="ml">지표</div>
