@@ -60,8 +60,12 @@
         letter-spacing:-.6px;line-height:1.15}
       .mx .bd.good,.mx .bd.bad,.mx .bd.spec{padding:3px 9px;border-radius:8px;
         background:color-mix(in srgb,currentColor 10%,#fff)}
-      .mx .bd.good{color:var(--good)} .mx .bd.bad{color:var(--bad)}
-      .mx .bd.spec{color:var(--spec)} .mx .bd.mute{color:#5f6878}   /* 6.03:1 — var(--mute)는 2.59:1 로 미달 */
+      .mx .bd.good{color:var(--good)}   /* 5.01:1 */
+      .mx .bd.bad{color:var(--bad)}     /* 4.83:1 */
+      .mx .bd.spec{color:var(--spec)}
+      /* 유의성 미달 행 — 회색은 "값이 없다"로 읽혀서 방향 색을 그대로 준다.
+         대신 칩(배경)을 빼서, 칩의 유무가 "검정을 통과했는가"의 표식이 된다. */
+      .mx .bd.ns{background:none;padding:3px 0}
       /* 유의성 꼬리표 — Δ 아래 작게. 크면 Δ 와 경쟁해서 어느 쪽이 결론인지 흐려진다. */
       .mx .sg2{display:block;font-size:10px;font-weight:800;color:#6b7488;letter-spacing:0;margin-top:1px}   /* 4.69:1 */
       .mx .sg2.ok{color:var(--good)}
@@ -503,10 +507,10 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
       + `<span class="sep"></span>`
       + `<span class="hint">막대 좌우 = <b>증감 방향</b>(버전 아님) · 왼쪽 = 486이 적음 · ±${CAP}%에서 잘립니다</span>`
       + `<span class="dk">`
-      +   `<span class="d" style="color:var(--good)"><i></i>개선</span>`
-      +   `<span class="d" style="color:var(--bad)"><i></i>악화</span>`
+      +   `<span class="d" style="color:var(--good)"><i></i>상승</span>`
+      +   `<span class="d" style="color:var(--bad)"><i></i>하락</span>`
       +   `<span class="d" style="color:var(--spec)"><i></i>설계대로 · 판정 없음</span>`
-      +   `<span class="d" style="color:var(--mute)"><i></i>변화 없음 · 미수신</span>`
+      +   `<span class="d" style="color:var(--text-dim)"><i style="background:none;box-shadow:inset 0 0 0 2px currentColor"></i>칩 없음 = 유의성 미달(n.s.)</span>`
       + `</span>`;
 
       // ── 그룹 보드 ─────────────────────────────────────────────────────────
@@ -616,11 +620,11 @@ ORDER BY `국가`, `OS`, `빌드`;</pre></div>
             return `<div class="mr dim"><div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
                  + `<div class="na">${dim || "미수신"}</div><div class="bd"></div></div>`;
           const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
-          // 색은 "검정을 통과한 것"에만 준다. 유의성 미달이나 검정 불가인 행에 초록·빨강을 칠하면
-          // 확정된 개선·악화로 읽힌다 — 이 문서에서 그게 성립하는 지표는 공유 성공률 하나뿐이다.
-          const cls = neutral ? "spec"
-            : (pv == null || pv >= 0.05 || Math.abs(pct) < 5) ? "mute"
-            : pct > 0 ? "good" : "bad";
+          // 색은 증감 방향을, 칩(배경)은 검정 통과 여부를 가리킨다. 미달 행을 회색으로 눕히면
+          // "값이 없다"로 읽혀 방향 정보까지 사라진다 — 방향은 남기고 확신만 칩으로 끊는다.
+          const sig = !neutral && pv != null && pv < 0.05 && Math.abs(pct) >= 5;
+          const dir = pct >= 0 ? "good" : "bad";
+          const cls = neutral ? "spec" : (sig ? dir : dir + " ns");
           const tip = `${lab}\n485 ${fmt(vp)} → 486 ${fmt(vc)}`
             + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않습니다)" : "")
             + (pv != null ? `\n두 비율 검정 p=${pv < 0.001 ? "<0.001" : pv.toFixed(3)}` : "");
