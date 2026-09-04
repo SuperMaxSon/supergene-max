@@ -40,11 +40,14 @@
       /* 쿼리는 읽으라고 둔 게 아니라 콘솔에 붙여 넣으라고 둔 것이다. 버튼 자체는 허브 공용
          .mfx-btn 을 그대로 쓰고(--smg 토큰만 인라인으로 갈아 끼움) 이 줄은 정렬만 잡는다. */
       #cmp .qcopy{display:flex;justify-content:flex-end;margin:2px 0 10px}
-      /* 빌드군 토글. 레이아웃은 .cmetric 을 그대로 쓰고, 켜졌을 때 색만 그 빌드군 색(--vc)으로 바꾼다. */
-      #cmp .cver button.on{border-color:var(--vc);background:color-mix(in srgb, var(--vc) 12%, var(--surface));color:var(--vc)}
-      #cmp .cver button i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;
+      /* 빌드군 토글. 레이아웃은 .cmetric 을 그대로 쓰고, 켜졌을 때 색만 그 빌드군 색(--vc)으로 바꾼다.
+         .cbench(타 프로젝트 기준선 토글)도 같은 규칙을 쓴다 — 색만 프로젝트 색으로 갈아 끼운다. */
+      #cmp .cver button.on, #cmp .cbench button.on{border-color:var(--vc);background:color-mix(in srgb, var(--vc) 12%, var(--surface));color:var(--vc)}
+      #cmp .cver button i, #cmp .cbench button i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;
         background:var(--vc);vertical-align:-1px;opacity:.3}
-      #cmp .cver button.on i{opacity:1}
+      #cmp .cver button.on i, #cmp .cbench button.on i{opacity:1}
+      /* 기준선은 점선이라 범례 스와치도 점선으로 구분한다. */
+      #cmp .cbench button i{border-radius:0;height:0;border-top:3px dashed var(--vc);background:none}
       #cmp .clegend span[data-g]{transition:opacity .12s}
       #cmp .clegend span[data-g].off{opacity:.28}
       /* 지표·빌드군 버튼은 NRU 차트 위에만 있었는데, RU 차트까지 내려가면 화면 밖으로 나가
@@ -97,7 +100,7 @@
           <span class="tag">완주 세션 기준</span>
           <span class="tag">2026-09-02 ~ 09-04</span>
           <span class="tag">NRU·RU 동일 창</span>
-          <span class="tag">2026-09-04 09:00 갱신</span>
+          <span class="tag">2026-09-04 09:04 갱신</span>
         </div>
       </div>
     </header>
@@ -129,6 +132,32 @@
           </tbody>
         </table>
       </div>
+      <p class="doc-h2-sub" style="margin:-6px 0 14px">
+        압축은 <b>485에서 처음 켜졌습니다</b> — 477이하도 압축이 빠진 빌드라 <b>최적 기준선이 아닙니다.</b>
+      </p>
+
+      <div class="stat-row" style="margin:0 0 18px">
+        <div class="stat" style="--acc: var(--bad)">
+          <div class="stat-name">3D가 얹은 비용</div>
+          <div class="stat-big"><span class="stat-num">+1,361</span><span class="stat-unit">ms</span></div>
+          <div class="stat-sub">477 → 483 · NRU p50 · <b>상한</b>(빌드 6개 갭)</div>
+        </div>
+        <div class="stat" style="--acc: #047857">
+          <div class="stat-name">압축이 되돌린 값</div>
+          <div class="stat-big"><span class="stat-num">−1,195</span><span class="stat-unit">ms</span></div>
+          <div class="stat-sub">483 → 485 · 인접 빌드 · 회수율 <b>88%</b></div>
+        </div>
+        <div class="stat" style="--acc: var(--text-dim)">
+          <div class="stat-name">남은 차이</div>
+          <div class="stat-big"><span class="stat-num">+166</span><span class="stat-unit">ms</span></div>
+          <div class="stat-sub">485 vs 477 · NRU · RU는 <b>−6ms</b></div>
+        </div>
+        <div class="stat" style="--acc: #ea580c">
+          <div class="stat-name">첫 로그에서 확정</div>
+          <div class="stat-big"><span class="stat-num">44~59</span><span class="stat-unit">%</span></div>
+          <div class="stat-sub">NRU 44 · RU 59 — 원인은 <b>다운로드 구간</b></div>
+        </div>
+      </div>
 
       <div class="cctl">
         <div class="cmetric">
@@ -147,6 +176,43 @@
           <button data-g="2" class="on" style="--vc:#9aa3b8"><i></i>477이하</button>
           <span class="cmnote">끄면 눈금이 다시 잡힙니다</span>
         </div>
+
+        <!-- 타 프로젝트 기준선. 벤치 4종은 1010 에만 data.time 이 있어 곡선이 아니라 가로선 한 개다.
+             기본은 전부 꺼둔다 — 결승선 정의가 프로젝트마다 달라 켠 채로 두면 순위표로 오독된다. -->
+        <div class="cmetric cbench">
+          <b>타 프로젝트</b>
+          <button data-b="cozy" style="--vc:#0d9488"><i></i>코지</button>
+          <button data-b="pbm" style="--vc:#7c3aed"><i></i>퍼블마</button>
+          <button data-b="mahjong" style="--vc:#be123c"><i></i>마종</button>
+          <button data-b="coin" style="--vc:#a16207"><i></i>코인매치</button>
+          <button data-b="sol" style="--vc:#16192a"><i></i>솔 · 동일조건</button>
+          <span class="cmnote">1010 도달 시각 한 점 · 기본 꺼짐</span>
+        </div>
+      </div>
+
+      <!-- 기준선을 켜면 바로 읽히는 자리에 둔다. 이 경고 없이는 곡선 위 가로선이 순위표로 읽힌다. -->
+      <div class="notes" style="margin:0 0 16px">
+        <div class="note" style="--acc: #be123c">
+          <div class="note-title">타 프로젝트 선은 순위표가 아니라 하한선입니다</div>
+          <p>
+            켤 수 있는 가로 점선은 각 프로젝트의 <code>1010_LOAD_COMPLETE</code> 도달 시각 <b>한 점</b>입니다.
+            단계별 분해는 <b>솔리테어에만 데이터가 있습니다</b> — 벤치 4종의 <code>INTRO_*</code> 로그는 페이로드가
+            아예 없고(<code>Fbi.logEvent(name)</code> 인자 1개), <code>1000</code>에 <code>time</code>을 싣는 것도
+            솔리테어 오버라이드뿐입니다(각 리포 코드 실측).
+          </p>
+          <p>
+            <b>더 중요한 건 결승선이 프로젝트마다 다르다</b>는 점입니다 —
+            코지는 <b>로그인 응답 +100ms</b>까지만 재고, 퍼블마·코인매치는 <b>ViewGame 표시 직후</b>,
+            마종은 <b>판 구성 완료 후</b>, 솔리테어는 NRU가 <b>인게임 표시</b> · RU가 <b>프리레벨 팝업</b> 시점입니다.
+            코지가 가장 유리한 자로 재고 마종이 가장 불리한 자로 잽니다. 숫자를 그대로 순위로 옮기면 오독입니다 —
+            근거는 <a href="loading-speed-compare.html">로딩 속도 비교 문서</a>에 있습니다.
+          </p>
+          <p class="cdim">
+            기준선 값은 <b>2026-09-03 하루 · country='US'</b> 조건입니다. 아래 곡선(무필터 · 09-02~09-04 3일)과
+            조건이 달라 <b>솔리테어 숫자가 서로 다릅니다</b> — 같은 자로 보라고 <b>솔·동일조건</b> 토글을 함께 뒀습니다.
+            RU 표본은 코지 16,398 · 마종 23,886인 반면 솔리테어는 2,493이라 p90은 흔들립니다.
+          </p>
+        </div>
       </div>
 
       <section class="doc-section" id="nru">
@@ -162,29 +228,10 @@
           <div class="cseg" id="seg-nru"></div>
         </div>
         <div class="notes">
-          <div class="note" style="--acc: #047857">
-            <div class="note-title">3D가 붙인 비용을, 압축이 88% 되돌렸습니다</div>
-            <p>
-              NRU 최종 p50 — <b>477이하 5,254 · 483 6,615 · 485 5,420 ms</b>.
-              <b>3D를 얹은 값 +1,361ms</b>(477→483) · <b>압축이 되돌린 값 −1,195ms</b>(483→485) = 순 <b>+166ms</b>.
-              RU는 +377 / −383으로 <b>−6ms</b>입니다. 평균 −16.1% · p90 −16.3%로 세 지표가 같이 내려갔고,
-              <b>p90까지 내려간 건 저사양·저회선 쪽이 손해 본 게 없다</b>는 뜻입니다.
-              <code>STAGE_MAPS</code>(1번 로그)에서 이미 2,422 / 3,006 / 2,478로 갈리므로 원인은 <b>번들 다운로드 구간</b>입니다.
-            </p>
-            <p>
-              <b>485가 477이하를 못 넘은 건 성능 문제가 아닙니다</b> — 477에는 3D가 없고, 477도 압축이 빠진 빌드라
-              그 5,254ms 역시 최적값이 아닙니다. “3D 없이 압축을 켠 빌드”는 존재한 적이 없습니다.
-              그리고 477→483 사이엔 <b>빌드 번호가 6개 비어</b> 있어, +1,361ms는 <strong>3D 비용의 상한</strong>으로 읽어야 합니다.
-            </p>
-          </div>
           <div class="note">
             <div class="note-title">아직 485의 바닥은 아닙니다</div>
-            <p>
-              창에 <b>배포일(09-02)이 섞여</b> 있습니다. 새 빌드는 에셋 해시가 전부 바뀌어 FB CDN 엣지 캐시가 비고,
-              그 자리를 채우는 초기 요청이 다운로드 시간에 실립니다 —
-              실제로 09-02~03만 봤을 땐 485가 <b>72세션에 8,679ms</b>로 가장 느렸습니다.
-              <b>Q1D</b> 기울기가 계속 음수면 진짜 값은 5,420보다 낮고, 회수율도 88%보다 높습니다.
-            </p>
+            <p>창에 <b>배포일(09-02)</b>이 섞여 있어 485는 CDN 엣지 캐시 불이익을 집니다 —
+            09-02~03만 보면 72세션에 8,679ms였습니다. <b>Q1D</b> 기울기로 확인하세요.</p>
           </div>
         </div>
         <details class="fold">
@@ -210,19 +257,9 @@
         </div>
         <div class="notes">
           <div class="note" style="--acc: #047857">
-            <div class="note-title">RU 이득은 거의 전부 첫 로그에서 확정됩니다</div>
-            <p>
-              485−483 p50 격차가 <b>1번 로그에서 이미 −227ms</b>이고 24단계를 다 거쳐도 <b>−383ms</b>입니다.
-              <strong>격차의 59%가 인트로가 시작되기도 전에 정해집니다</strong> — 인트로 22단계가 더하는 건 −156ms뿐입니다.
-              압축이 <b>번들 다운로드에만</b> 실렸고 실행 시간은 건드리지 않았다는 뜻입니다.
-            </p>
-          </div>
-          <div class="note">
-            <div class="note-title">세 지표가 다르면 p50을 따르세요</div>
-            <p>
-              부팅 시간은 꼬리가 두꺼워 평균이 소수 극단값에 끌려갑니다(485 RU 평균 <b>7,608</b> vs p50 <b>4,349</b>ms).
-              평균은 꼬리가 얼마나 무거운지, p90(<b>13,708</b>)은 저사양·느린 회선 유저의 체감으로 읽으세요. 대표값은 p50입니다.
-            </p>
+            <div class="note-title">압축은 다운로드에만 실렸습니다</div>
+            <p>RU 485−483 격차가 1번 로그에서 <b>−227ms</b>, 24단계 끝에서 <b>−383ms</b> —
+            <b>59%가 인트로 시작 전에 확정</b>됩니다. 실행 시간은 안 바뀌었습니다.</p>
           </div>
         </div>
         <details class="fold">
@@ -234,18 +271,10 @@
 
         <div class="foot">
           <b>확인 범위</b>
-          BigQuery <code>game-log-359704.raw.solitaire_city_journey</code> · 각 로그 <code>data.time</code>(부팅 시작 이후 경과 ms) · 2026-08-31 ~ 09-03 · <code>1010_LOAD_COMPLETE</code> 완주 세션만.
-          NRU = <code>logincount_total = 1</code>, RU = 그 외.
-          x축 순서는 <b>RU의 477이하 p50</b> 기준으로 고정해 지표를 바꿔도 축이 움직이지 않습니다 — NRU에서 <code>OBJECT_POOL ✓</code>가
-          <code>OBJECT_POOL</code>보다 앞서 보이는 건 그 로그의 표본이 작아(805 / 2,322) 빠른 세션 쪽으로 치우쳤기 때문입니다.
-          <code>FIRST_LOG</code> · <code>INTRO_FB_START</code> · <code>ALL_LOAD_FB</code> 등 main.js 부트 로그는
-          <b>곡선에 넣지 못했고</b>, 그 구간은 1번 로그의 격차에 뭉뚱그려져 있습니다.
-          <b style="color:#b91c1c">2026-09-03 정정</b> — 이전 판에서 그 이유를 "483에서 신설돼 477이하에 데이터가 없어서"라고 적었으나
-          <b>코드 실측 결과 사실이 아닙니다.</b> 이 로그들은 <code>2026-01-08</code> 초기 세팅부터 계속 전송되고 있었고,
-          곡선에 못 넣은 진짜 이유는 <strong>main.js 로그에 <code>data.time</code> 필드가 없었기 때문</strong>입니다.
-          그 필드는 <code>2026-09-02</code> 커밋에서 들어가 <b>485부터</b> 실립니다 — 483에도 없습니다.
-          자세한 영향은 아래 <a href="#q485">485 트래킹 준비</a>의 Q3 · Q3b에 적었습니다.
-          완주 세션만 대상이라 중간 이탈자는 빠져 있고, 도달률 회귀는 이 문서로 판정할 수 없습니다.
+          BigQuery <code>game-log-359704.raw.solitaire_city_journey</code> · <code>data.time</code>(부팅 시작 이후 경과 ms) ·
+          <b>2026-09-02 ~ 09-04</b> · <code>1010_LOAD_COMPLETE</code> 완주 세션만 · <code>is_dev</code> 제외.
+          NRU = <code>logincount_total &lt;= 1</code>. x축은 <b>RU 477이하 p50</b> 순으로 고정해 지표를 바꿔도 축이 안 움직입니다.
+          완주 세션만 보므로 <b>도달률 회귀는 이 문서로 판정할 수 없습니다</b> — Q2가 그 몫입니다.
         </div>
       </section>
 
@@ -262,16 +291,10 @@
         <div class="notes">
           <div class="note" style="--acc: #047857">
             <div class="note-title">1차 판정 — 개선. 최종은 Q2·Q4 통과 후</div>
-            <p>
-              09-04 기준 NRU 681 · RU 2,274 세션. 485는 483 대비 <b>NRU p50 −18.1% · RU −8.1%</b>이고 평균·p90도 같이 내려갔습니다.
-            </p>
-            <p>
-              <b>지연만 좋아진 걸로 통과시키면 안 됩니다.</b> 압축과 모듈 제거는
-              “덜 받아서 빨라진다”와 “빠진 게 있어서 안 뜬다”가 <strong>같은 변경에서 나옵니다</strong> —
-              <b>Q2</b>(도달률)와 <b>Q4</b>(실패·이탈)가 아직 안 돌았습니다.
-            </p>
+            <p>압축·모듈 제거는 “덜 받아서 빨라진다”와 “빠진 게 있어서 안 뜬다”가
+            <b>같은 변경에서 나옵니다</b> — 속도만 보고 통과시키면 안 됩니다.</p>
           </div>
-                </div>
+        </div>
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">무엇을 어떤 쿼리로 판정하는가</h3>
         <p class="doc-h2-sub">순서대로 돌립니다. Q0가 통과하지 못하면 나머지는 의미가 없습니다 — 다만 <b>Q1D는 표본이 적어도 답을 줍니다</b> — 기울기는 절대값보다 표본에 덜 민감하기 때문입니다.</p>
@@ -323,46 +346,22 @@
 
         <div class="notes">
           <div class="note" style="--acc: var(--bad)">
-            <div class="note-title">다운로드 구간의 결승선은 <code>ALL_LOAD_INTRO</code>입니다 — <code>ALL_LOAD_FB</code>가 아닙니다</div>
-            <p>
-              <code>main.js</code>의 <code>tryLog('LOAD_FB')</code>는 <code>FBInstant.getEntryPointAsync()</code>가
-              끝난 시점, 즉 <b>페이스북 SDK 준비 완료</b>일 뿐 엔진·번들 다운로드와 무관합니다.
-              용량이 실리는 곳은 <code>preloadSceneAsync(launchScene)</code>이 끝나는
-              <strong><code>ALL_LOAD_INTRO</code></strong>입니다. 판정선은 여기에 그어야 합니다.
-            </p>
-            <p>
-              Q1은 위 곡선과 똑같이 <b>완주 세션만</b> 보기 때문에 "빨리 끝난 사람만 남는" 생존 편향이 섞입니다.
-              Q3b의 <code>인트로씬로드_pct</code>가 안 올랐는데 Q1만 좋아졌다면
-              <b>용량 효과가 아니라 표본이 바뀐 것</b>으로 읽어야 합니다.
-            </p>
+            <div class="note-title">결승선은 <code>ALL_LOAD_INTRO</code>입니다 — <code>ALL_LOAD_FB</code>가 아닙니다</div>
+            <p><code>LOAD_FB</code>는 FB SDK 준비 완료일 뿐 다운로드와 무관합니다.
+            용량이 실리는 곳은 <code>preloadSceneAsync</code>가 끝나는 <b><code>ALL_LOAD_INTRO</code></b>입니다.</p>
           </div>
           <div class="note">
             <div class="note-title">Q4는 485끼리만 비교됩니다</div>
-            <p>
-              <code>INTRO_FB_ABANDON</code> · <code>INTRO_ENGINE_ABANDON</code> · <code>INTRO_SCRIPT_LOAD_FAIL</code>은
-              <b>2026-09-02에 새로 넣은 로그</b>라 483에는 아예 없습니다. 483 대비 증감을 낼 수 없고
-              <strong><code>FIRST_LOG</code> 대비 발생률의 절대값</strong>으로만 판정합니다.
-              용량을 줄이는 수단인 텍스처 양자화와 모듈 제거는 <b>"덜 받아서 빨라진다"와 "빠진 게 있어서 안 뜬다"가
-              같은 변경에서 나옵니다</b> — 속도만 보고 통과시키면 안 되는 이유입니다.
-            </p>
-            <p>
-              <b>주의</b> — 분모인 <code>FIRST_LOG</code>는 483에도 있으므로 <code>484-</code> 행도 값이 잡힙니다.
-              하지만 그 행의 실패율은 전부 <b>0으로 나올 수밖에 없습니다</b>(로그가 없으니까).
-              <strong>0을 "483이 더 안전했다"로 읽으면 안 됩니다.</strong> 485 행의 절대값만 봅니다.
-            </p>
+            <p>이탈·실패 로그는 <b>2026-09-02 신설</b>이라 483에 없습니다. <code>484-</code> 행의 0%는
+            “안전했다”가 아니라 <b>“로그가 없다”</b>입니다.</p>
           </div>
         </div>
 
         <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">쿼리 전문</h3>
         <p class="doc-h2-sub">
-          일곱 쿼리 모두 <code>WHERE log_date BETWEEN '2026-09-02' AND '2026-09-04'</code> 한 줄만 고쳐서 돌립니다.
-          <b>일부러 <code>DECLARE</code>를 쓰지 않았습니다</b> — 상수를 선언하면 BigQuery가 이걸 스크립트로 보고
-          <code>Could not compute bytes processed estimate for script</code>를 띄워
-          <strong>실행 전 스캔 비용을 못 보게 됩니다.</strong> <code>data</code>를 스캔하는 쿼리라 비용 확인이 가장 필요한 쪽이므로
-          날짜는 리터럴로 박아 둡니다(허브의 다른 BigQuery 문서와 같은 방식).
-          <b>위 곡선과 원본 표는 Q1 결과 그대로입니다</b> — 창을 옮겨 다시 그릴 때도 Q1 하나만 돌려
-          <code>json</code> 열을 통째로 갈아 끼웁니다. 세 빌드군이 한 쿼리에서 나와야
-          이상치 컷과 중복 제거 조건이 같아 서로 비교됩니다.
+          <code>WHERE log_date BETWEEN</code> 한 줄만 고쳐서 돌립니다.
+          <b><code>DECLARE</code>를 일부러 안 씁니다</b> — 상수를 선언하면 스크립트로 취급돼
+          <b>실행 전 스캔 비용이 안 보입니다.</b>
         </p>
 
         <details class="fold">
@@ -730,15 +729,10 @@ ORDER BY `빌드군` DESC</pre></div>
         </details>
 
         <div class="foot">
-          <b>전제와 한계</b>
-          버전 경계 <code>485+ / 483~484 / 477이하</code>는 <b>가정</b>입니다 — 484가 실제로 배포됐는지,
-          485가 최종 빌드 번호가 맞는지를 <b>Q0로 먼저 확인</b>하고 나머지 쿼리의 <code>CASE</code>를 함께 고쳐야 합니다.
-          NRU 판정을 <code>logincount_total &lt;= 1</code>로 잡은 것은 위 곡선의 <code>= 1</code>보다 넓은 조건이라
-          0이 섞인 세션까지 들어옵니다(허브의 다른 로딩 문서와 맞춘 조건) — 483 수치를 재산출해 함께 갈아 끼우는 이유입니다.
-          Q1·Q2는 <b>같은 기간에 세 빌드가 공존한다는 전제</b>입니다. 485가 100% 롤아웃되어 483 트래픽이 말라붙으면
-          483 열은 <b>배포 직전 기간을 따로 잡아</b> 뽑아야 하고, 그때는 기기·회선 구성이 달라진다는 걸 감안해야 합니다.
-          모든 쿼리에 <code>country</code> 필터가 없습니다 — 두 기간의 국가 구성이 크게 다르면 용량 효과와 구분이 안 되므로,
-          Q0에서 구성이 흔들려 보이면 <code>country = 'US'</code>를 추가해 다시 돌립니다.
+          <b>전제</b>
+          버전 경계 <code>485+ / 483~484 / 477이하</code>는 Q0로 확인하고 씁니다.
+          485가 100% 롤아웃되면 483 트래픽이 마르므로, 그때는 483을 <b>배포 직전 창</b>에서 따로 뽑아야 하고
+          기기·회선 구성 차이를 감안해야 합니다. <code>country</code> 필터는 없습니다 — 구성이 흔들리면 <code>country = 'US'</code>를 추가합니다.
           <code>data</code> 스캔은 비용이 크므로 기간은 <b>3~4일</b>을 넘기지 않습니다.
         </div>
       </section>
@@ -748,6 +742,37 @@ ORDER BY `빌드군` DESC</pre></div>
     <script>
       const D = {"order":["INTRO_DEBUG_STAGE_MAPS","INTRO_BUNDLE","INTRO_SIGNED_PLAYER_INFO","INTRO_FB_FRIEND","INTRO_FB_ENTRY_POINT","INTRO_FB_SUBSCRIBE_BOT","INTRO_GAME_DATA","INTRO_FB_SUBSCRIBE_BOT_FINISH","INTRO_OBJECT_POOL","INTRO_SIGNED_PLAYER_INFO_FINISH","INTRO_BUNDLE_FINISH","INTRO_DEBUG_FB_DATA","INTRO_OBJECT_POOL_FINISH","INTRO_FB_ENTRY_POINT_FINISH","INTRO_FB_ENTRY_DATA","INTRO_FB_ENTRY_DATA_FINISH","INTRO_DEBUG_STAGE_MAPS_FINISH","INTRO_FB_FRIEND_FINISH","INTRO_GAME_DATA_FINISH","INTRO_DEBUG_FB_DATA_FINISH","INTRO_LOGIN","INTRO_DEBUG_LOGIN_FINISH","1000_LOGIN_COMPLETE","1010_LOAD_COMPLETE"],"short":{"INTRO_DEBUG_STAGE_MAPS":"STAGE_MAPS","INTRO_BUNDLE":"BUNDLE","INTRO_SIGNED_PLAYER_INFO":"SIGNED_PLAYER_INFO","INTRO_FB_FRIEND":"FB_FRIEND","INTRO_FB_ENTRY_POINT":"FB_ENTRY_POINT","INTRO_FB_SUBSCRIBE_BOT":"FB_SUBSCRIBE_BOT","INTRO_GAME_DATA":"GAME_DATA","INTRO_FB_SUBSCRIBE_BOT_FINISH":"FB_SUBSCRIBE_BOT ✓","INTRO_OBJECT_POOL":"OBJECT_POOL","INTRO_BUNDLE_FINISH":"BUNDLE ✓","INTRO_SIGNED_PLAYER_INFO_FINISH":"SIGNED_PLAYER_INFO ✓","INTRO_DEBUG_FB_DATA":"FB_DATA","INTRO_OBJECT_POOL_FINISH":"OBJECT_POOL ✓","INTRO_FB_ENTRY_POINT_FINISH":"FB_ENTRY_POINT ✓","INTRO_FB_ENTRY_DATA":"FB_ENTRY_DATA","INTRO_FB_ENTRY_DATA_FINISH":"FB_ENTRY_DATA ✓","INTRO_DEBUG_FB_DATA_FINISH":"FB_DATA ✓","INTRO_GAME_DATA_FINISH":"GAME_DATA ✓","INTRO_DEBUG_STAGE_MAPS_FINISH":"STAGE_MAPS ✓","INTRO_FB_FRIEND_FINISH":"FB_FRIEND ✓","INTRO_LOGIN":"LOGIN","INTRO_DEBUG_LOGIN_FINISH":"LOGIN ✓","1000_LOGIN_COMPLETE":"1000_LOGIN_COMPLETE","1010_LOAD_COMPLETE":"1010_LOAD_COMPLETE"},"NRU":{"1000_LOGIN_COMPLETE":{"n":[681,1454,861],"avg":[7592,9272,6839],"p50":[4063,5002,4076],"p90":[12759,15170,12958]},"1010_LOAD_COMPLETE":{"n":[681,1454,861],"avg":[9416,11227,8540],"p50":[5420,6615,5254],"p90":[16013,19133,16787]},"INTRO_BUNDLE":{"n":[680,1453,861],"avg":[5276,6804,4690],"p50":[2495,3020,2435],"p90":[8957,11013,8864]},"INTRO_BUNDLE_FINISH":{"n":[671,1434,855],"avg":[5651,7328,5225],"p50":[2910,3496,2829],"p90":[9882,12138,10250]},"INTRO_DEBUG_FB_DATA":{"n":[680,1452,860],"avg":[5618,7166,5028],"p50":[2746,3344,2732],"p90":[9460,11503,9317]},"INTRO_DEBUG_FB_DATA_FINISH":{"n":[671,1426,847],"avg":[6157,7757,5489],"p50":[3127,3746,2988],"p90":[10471,12733,10607]},"INTRO_DEBUG_LOGIN_FINISH":{"n":[674,1443,859],"avg":[7600,9283,6828],"p50":[4037,4989,4064],"p90":[12822,15111,12932]},"INTRO_DEBUG_STAGE_MAPS":{"n":[680,1452,861],"avg":[5260,6789,4675],"p50":[2478,3006,2422],"p90":[8911,10999,8801]},"INTRO_DEBUG_STAGE_MAPS_FINISH":{"n":[679,1452,861],"avg":[6297,7861,5721],"p50":[3249,3871,3166],"p90":[10967,13006,10798]},"INTRO_FB_ENTRY_DATA":{"n":[679,1452,862],"avg":[5997,7597,5366],"p50":[3060,3698,3024],"p90":[10417,12623,10138]},"INTRO_FB_ENTRY_DATA_FINISH":{"n":[680,1452,862],"avg":[6064,7752,5390],"p50":[3079,3802,3029],"p90":[10470,12793,10225]},"INTRO_FB_ENTRY_POINT":{"n":[679,1452,861],"avg":[5299,6827,4707],"p50":[2513,3038,2446],"p90":[8997,11040,8897]},"INTRO_FB_ENTRY_POINT_FINISH":{"n":[679,1452,862],"avg":[5990,7588,5359],"p50":[3049,3687,3022],"p90":[10401,12609,10075]},"INTRO_FB_FRIEND":{"n":[679,1453,861],"avg":[5295,6820,4703],"p50":[2510,3034,2445],"p90":[8988,11038,8889]},"INTRO_FB_FRIEND_FINISH":{"n":[680,1453,860],"avg":[5963,7540,5380],"p50":[3110,3695,3088],"p90":[10454,12192,9662]},"INTRO_FB_SUBSCRIBE_BOT":{"n":[680,1453,861],"avg":[5300,6830,4711],"p50":[2515,3042,2448],"p90":[8992,11043,8907]},"INTRO_FB_SUBSCRIBE_BOT_FINISH":{"n":[680,1452,862],"avg":[5620,7247,5009],"p50":[2713,3390,2722],"p90":[9444,11830,9274]},"INTRO_GAME_DATA":{"n":[680,1453,861],"avg":[5499,7028,4906],"p50":[2655,3218,2619],"p90":[9173,11304,9142]},"INTRO_GAME_DATA_FINISH":{"n":[679,1453,862],"avg":[6283,7811,5682],"p50":[3231,3840,3144],"p90":[11009,12831,10767]},"INTRO_LOGIN":{"n":[681,1454,861],"avg":[6706,8405,6105],"p50":[3559,4290,3475],"p90":[11460,13888,11385]},"INTRO_OBJECT_POOL":{"n":[672,1442,858],"avg":[5544,7280,5161],"p50":[2858,3443,2778],"p90":[9804,12068,10351]},"INTRO_OBJECT_POOL_FINISH":{"n":[508,1129,655],"avg":[5190,7462,4920],"p50":[2649,3359,2545],"p90":[9885,12846,10014]},"INTRO_SIGNED_PLAYER_INFO":{"n":[680,1453,861],"avg":[5286,6815,4699],"p50":[2506,3030,2443],"p90":[8974,11035,8882]},"INTRO_SIGNED_PLAYER_INFO_FINISH":{"n":[681,1452,861],"avg":[5598,7151,5012],"p50":[2735,3321,2711],"p90":[9441,11479,9278]}},"RU":{"1000_LOGIN_COMPLETE":{"n":[2274,3290,2545],"avg":[5847,6760,5555],"p50":[3120,3423,3153],"p90":[9552,11340,9637]},"1010_LOAD_COMPLETE":{"n":[2274,3291,2545],"avg":[7608,8610,7537],"p50":[4349,4732,4355],"p90":[13708,15188,13291]},"INTRO_BUNDLE":{"n":[2258,3284,2562],"avg":[4045,4746,3705],"p50":[1640,1871,1581],"p90":[5744,6977,6139]},"INTRO_BUNDLE_FINISH":{"n":[2232,3258,2550],"avg":[4530,5266,4242],"p50":[1980,2223,1918],"p90":[6955,8380,7242]},"INTRO_DEBUG_FB_DATA":{"n":[2258,3283,2563],"avg":[4401,5133,4176],"p50":[1931,2172,1926],"p90":[6424,7669,7063]},"INTRO_DEBUG_FB_DATA_FINISH":{"n":[2158,3201,2518],"avg":[4830,5590,4835],"p50":[2308,2576,2370],"p90":[7431,9005,8469]},"INTRO_DEBUG_LOGIN_FINISH":{"n":[2217,3262,2539],"avg":[5723,6607,5527],"p50":[3125,3401,3128],"p90":[9504,11283,9487]},"INTRO_DEBUG_STAGE_MAPS":{"n":[2258,3283,2563],"avg":[4031,4731,3695],"p50":[1629,1856,1575],"p90":[5724,6937,6112]},"INTRO_DEBUG_STAGE_MAPS_FINISH":{"n":[2259,3286,2559],"avg":[4903,5715,4628],"p50":[2372,2632,2325],"p90":[7390,8935,7838]},"INTRO_FB_ENTRY_DATA":{"n":[2262,3283,2559],"avg":[4738,5497,4533],"p50":[2224,2461,2209],"p90":[7155,8604,7715]},"INTRO_FB_ENTRY_DATA_FINISH":{"n":[2262,3283,2560],"avg":[4786,5546,4583],"p50":[2254,2495,2247],"p90":[7233,8785,7866]},"INTRO_FB_ENTRY_POINT":{"n":[2257,3284,2563],"avg":[4065,4765,3723],"p50":[1652,1892,1594],"p90":[5773,7001,6170]},"INTRO_FB_ENTRY_POINT_FINISH":{"n":[2262,3284,2559],"avg":[4732,5490,4493],"p50":[2219,2455,2203],"p90":[7147,8599,7709]},"INTRO_FB_FRIEND":{"n":[2258,3284,2563],"avg":[4059,4761,3719],"p50":[1648,1889,1590],"p90":[5767,7000,6161]},"INTRO_FB_FRIEND_FINISH":{"n":[2259,3286,2560],"avg":[4804,5573,4573],"p50":[2270,2554,2346],"p90":[7221,8614,7505]},"INTRO_FB_SUBSCRIBE_BOT":{"n":[2257,3285,2562],"avg":[4069,4768,3727],"p50":[1659,1896,1596],"p90":[5779,7002,6183]},"INTRO_FB_SUBSCRIBE_BOT_FINISH":{"n":[2258,3283,2562],"avg":[4335,5045,3983],"p50":[1869,2109,1775],"p90":[6333,7554,6892]},"INTRO_GAME_DATA":{"n":[2259,3284,2562],"avg":[4191,4890,3848],"p50":[1750,2001,1679],"p90":[6062,7159,6524]},"INTRO_GAME_DATA_FINISH":{"n":[2258,3284,2562],"avg":[4915,5701,4631],"p50":[2372,2629,2348],"p90":[7594,9040,8082]},"INTRO_LOGIN":{"n":[2261,3287,2555],"avg":[5392,6305,5219],"p50":[2712,3000,2748],"p90":[8750,10528,8936]},"INTRO_OBJECT_POOL":{"n":[2243,3263,2550],"avg":[4490,5208,4180],"p50":[1933,2188,1865],"p90":[6800,8220,7161]},"INTRO_OBJECT_POOL_FINISH":{"n":[1928,2964,2414],"avg":[4373,5386,4643],"p50":[2011,2455,2126],"p90":[6895,8961,8309]},"INTRO_SIGNED_PLAYER_INFO":{"n":[2257,3282,2562],"avg":[4056,4756,3714],"p50":[1646,1881,1585],"p90":[5761,6997,6149]},"INTRO_SIGNED_PLAYER_INFO_FINISH":{"n":[2258,3283,2563],"avg":[4390,5121,4165],"p50":[1922,2156,1913],"p90":[6395,7655,7040]}}};
       const MET = { avg: '평균', p50: 'p50', p90: 'p90' };
+
+      // 타 프로젝트는 1010_LOAD_COMPLETE 한 점만 있다. INTRO_* 와 1000 에는 time 필드가 없다 —
+      // 벤치 4종의 인트로 로그는 sendIntroLog(name) → Fbi.logEvent(name) 로 페이로드가 아예 없고,
+      // 1000 에 time 을 싣는 건 솔리테어 오버라이드뿐이다(각 리포 코드 실측).
+      // 그래서 D 의 24단계 구조에 넣지 않고 가로 기준선으로 따로 관리한다.
+      // 'sol' 은 아래 곡선과 다른 조건(US·1일)으로 뽑은 대조값이다 — 곡선의 1010 과 숫자가 다르다.
+      const B = {
+        meta: [
+          { key: 'cozy',    name: '코지',     col: '#0d9488' },
+          { key: 'pbm',     name: '퍼블마',   col: '#7c3aed' },
+          { key: 'mahjong', name: '마종',     col: '#be123c' },
+          { key: 'coin',    name: '코인매치', col: '#a16207' },
+          { key: 'sol',     name: '솔·동일조건', col: '#16192a' },
+        ],
+        NRU: {
+          cozy:    { n: 1536, avg: 5064,  p50: 3060, p90: 9671 },
+          pbm:     { n: 1703, avg: 6158,  p50: 4017, p90: 11329 },
+          mahjong: { n: 1189, avg: 12082, p50: 6813, p90: 22463 },
+          coin:    { n: 879,  avg: 10480, p50: 5058, p90: 20413 },
+          sol:     { n: 1029, avg: 7778,  p50: 5141, p90: 14776 },
+        },
+        RU: {
+          cozy:    { n: 16398, avg: 4738, p50: 2489, p90: 8385 },
+          pbm:     { n: 10912, avg: 8145, p50: 4139, p90: 14308 },
+          mahjong: { n: 23886, avg: 7566, p50: 4320, p90: 12013 },
+          coin:    { n: 8097,  avg: 8775, p50: 4846, p90: 15376 },
+          sol:     { n: 2493,  avg: 7783, p50: 4395, p90: 14200 },
+        },
+      };
+      // 기본은 전부 꺼짐. 결승선 정의가 프로젝트마다 달라 켠 채로 두면 순위표로 오독된다.
+      const bshow = { cozy: false, pbm: false, mahjong: false, coin: false, sol: false };
       // 세 곡선이 붙어 있어 220px 로는 차이가 안 읽혔다. 플롯 높이를 2배로 늘리고
       // 아래 좌표를 전부 Y0 에서 계산하도록 바꿨다 — 다시 늘릴 땐 이 두 상수만 고치면 된다.
       // x축 레이블은 rotate(-52) 라 앵커에서 왼쪽·아래로 뻗는다. 가장 긴 라벨
@@ -774,9 +799,15 @@ ORDER BY `빌드군` DESC</pre></div>
 
       function rawMax(m) {
         let mx = 0;
-        for (const ru of ['NRU', 'RU'])
+        for (const ru of ['NRU', 'RU']) {
           for (const e of D.order)
             D[ru][e][m].forEach((v, k) => { if (v != null && show[k]) mx = Math.max(mx, v); });
+          // 켜진 기준선도 눈금에 넣는다. 빼면 마종처럼 솔보다 높은 값이 차트 밖으로 잘린다.
+          for (const b of B.meta) {
+            const r = bshow[b.key] && B[ru][b.key];
+            if (r && r[m] != null) mx = Math.max(mx, r[m]);
+          }
+        }
         return mx;
       }
 
@@ -797,6 +828,19 @@ ORDER BY `빌드군` DESC</pre></div>
             `<polyline fill="none" stroke="${COL[k]}" stroke-width="${WID[k]}" stroke-linejoin="round" points="${pts.join(' ')}"/>`
           ).join('');
         }
+
+        // 기준선을 먼저 깔아 곡선이 그 위에 오게 한다. 라벨은 곡선이 아직 낮은 왼쪽 끝에 붙인다.
+        let bench = '';
+        B.meta.forEach(b => {
+          const r = bshow[b.key] && B[ru][b.key];
+          if (!r || r[m] == null) return;
+          const y = sy(r[m]);
+          if (y < 14) return;                                          // 눈금 위로 새면 그리지 않는다
+          bench += `<line x1="${X0}" y1="${y.toFixed(1)}" x2="972" y2="${y.toFixed(1)}" stroke="${b.col}"`
+                +  ` stroke-width="1.5" stroke-dasharray="6 4" opacity=".8"/>`
+                +  `<text x="${X0 + 6}" y="${(y - 5).toFixed(1)}" fill="${b.col}" font-size="11" font-weight="800">`
+                +  `${b.name} ${fmt(r[m])}ms · n${fmt(r.n)}</text>`;
+        });
 
         let poly = '', dots = '', hits = '', xlab = '';
         for (let k = 2; k >= 0; k--) if (show[k]) poly += lines(k);   // 회색을 먼저 깔고 오렌지를 맨 위로
@@ -825,7 +869,7 @@ ORDER BY `빌드군` DESC</pre></div>
         return `<svg class="cchart" viewBox="0 0 1000 ${VB_H}" role="img" aria-label="${ru} 단계별 도달 시각">
           <g stroke="#eceff4" stroke-width="1"><line x1="${X0}" y1="${Y0}" x2="972" y2="${Y0}"/>${grid}</g>
           <g class="caxis" text-anchor="end"><text x="48" y="${Y0 + 3}">0</text>${ylab}</g>
-          ${poly}${dots}
+          ${bench}${poly}${dots}
           <g transform="translate(0,58)">${xlab}</g>${hits}</svg>`;
       }
 
@@ -867,10 +911,21 @@ ORDER BY `빌드군` DESC</pre></div>
         });
       });
 
-      document.querySelectorAll('.cmetric:not(.cver) button').forEach(b => {
+      // 타 프로젝트 기준선 토글. 전부 꺼도 되므로 빌드군 토글의 "마지막 하나" 규칙은 적용하지 않는다.
+      document.querySelectorAll('.cbench button').forEach(b => {
+        b.addEventListener('click', () => {
+          const k = b.dataset.b;
+          bshow[k] = !bshow[k];
+          b.classList.toggle('on', bshow[k]);
+          render();
+        });
+      });
+
+      // ⚠ .cbench 도 .cmetric 이라 :not(.cver) 만으로는 지표 버튼으로 잡힌다. 둘 다 제외한다.
+      document.querySelectorAll('.cmetric:not(.cver):not(.cbench) button').forEach(b => {
         b.addEventListener('click', () => {
           metric = b.dataset.m;
-          document.querySelectorAll('.cmetric:not(.cver) button').forEach(x => x.classList.toggle('on', x === b));
+          document.querySelectorAll('.cmetric:not(.cver):not(.cbench) button').forEach(x => x.classList.toggle('on', x === b));
           render();
         });
       });
