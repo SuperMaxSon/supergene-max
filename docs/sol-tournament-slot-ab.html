@@ -334,6 +334,16 @@ bal AS (
     FROM glob
     GROUP BY client_version, country, os
     HAVING users &gt;= 10
+),
+vers AS (
+    -- 실험이 아직 성립하는지부터 본다. 485가 말라 있으면 대조군이 없는 것이고,
+    -- 487 이상이 떴으면 처치가 하나 더 얹힌 것이라 486군이 오염된다.
+    SELECT log_date, client_version, COUNT(DISTINCT player_id) AS dau
+    FROM us
+    WHERE log_date &gt;= '2026-09-03'
+        AND event = '1000_LOGIN_COMPLETE'
+    GROUP BY log_date, client_version
+    HAVING dau &gt;= 10
 )
 SELECT '0_META' AS `블록`, 1 AS `행수`,
     TO_JSON_STRING(STRUCT(
@@ -359,11 +369,16 @@ UNION ALL SELECT '5_RESULT', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
 UNION ALL SELECT '6_BALANCE', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     CAST(client_version AS STRING) AS ver, country, os, users)
     ORDER BY country, os, client_version)) FROM bal
+UNION ALL SELECT '7_VERSION', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, dau)
+    ORDER BY log_date, client_version)) FROM vers
 ORDER BY `블록`;</pre></div>
             <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
-              결과는 <b>7행</b>입니다 — <code>0_META</code>(조회 시각) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
+              결과는 <b>8행</b>입니다 — <code>0_META</code>(조회 시각) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
               <code>3_RET</code> · <code>4_INFLOW</code>이 보드를 채우고,
               <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
+              <b><code>7_VERSION</code>을 가장 먼저 보세요</b> — 485가 말라 있으면 대조군이 없고, 487 이상이 떴으면 486군에
+              처치가 하나 더 얹힌 것이라 그 뒤 숫자는 A/B가 아닙니다.
               <b>행수</b> 열이 비거나 예상보다 적으면 그 블록만 비어 있는 것이니 다른 블록까지 의심하지 않으셔도 됩니다.
             </div></div>
           </div>
@@ -649,7 +664,9 @@ ORDER BY `블록`;</pre></div>
         </div>`;
 
         const staleBar = `<div class="stale-bar">
-          <b>블록별 조회 시각이 다릅니다.</b> 슬롯 퍼널·가드레일(<code>DAILY</code>)만 <b>9/4 15:52</b>에 다시 뽑았고,
+          <b>이 보드는 9/3~9/4 집계입니다 — 오늘은 9/7이라 사흘치가 빠져 있습니다.</b>
+          아래 쿼리를 한 번 돌리면 창이 9/7까지 늘어나고, <code>7_VERSION</code> 행이 그 사이 485가 남아 있었는지 · 487이 떴는지도 함께 알려줍니다.<br>
+          <b>블록별 조회 시각도 다릅니다.</b> 슬롯 퍼널·가드레일(<code>DAILY</code>)만 <b>9/4 15:52</b>에 다시 뽑았고,
           판수 분포(<code>EXTRA</code>) · 리텐션(<code>RET</code>) · 유입(<code>INFLOW</code>)은 아직 <b>9/4 13:03</b> 집계분입니다.
           같은 시각의 블록 안에서 나온 값(공유 성공률, 판당 발화, 완료 판수/DAU 등)은 그대로 읽으셔도 되지만,
           <b>시각이 다른 두 블록을 나눈 값은 이 문서에서 비워 두었습니다</b> — 아래 <b>판수 평균 · 플레이 유저 비율 · 잔존</b>은 옛 집계라 회색으로 표시했습니다.
