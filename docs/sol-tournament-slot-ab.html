@@ -140,12 +140,13 @@
         <p class="doc-lede">
           판 클리어 소셜 구좌를 <b>공유↔초대 교대(485)</b>에서 <b>공유 전용(486)</b>으로 바꿨습니다.
           두 빌드가 <b>같은 날 반반 서빙</b>돼 요일·이벤트가 양쪽에 똑같이 걸립니다.
+          나흘치로 보면 <b>공유 성공이 DAU당 65% 늘었고(p&lt;.001)</b>, 초대를 전부 없앴는데도 <b>유입 총량은 줄지 않았습니다</b>.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
-          <span class="tag">US · 9/3~9/4</span>
-          <span class="tag">485 n=1,123 · 486 n=1,197 유저-일</span>
+          <span class="tag">US · 9/3~9/6</span>
+          <span class="tag">485 n=3,545 · 486 n=3,753 유저-일</span>
         </div>
       </div>
     </header>
@@ -165,6 +166,18 @@
         <details class="fold">
           <summary>일자별 유입 세션</summary>
           <div class="fold-body"><div id="rawinf"></div></div>
+        </details>
+        <details class="fold">
+          <summary>일자별 빌드 점유 — 실험이 성립하는지</summary>
+          <div class="fold-body"><div id="rawver"></div></div>
+        </details>
+        <details class="fold">
+          <summary>클리어 / 실패 분해 — 완료 판수의 result 축</summary>
+          <div class="fold-body"><div id="rawres"></div></div>
+        </details>
+        <details class="fold">
+          <summary>배정 균형 — US OS 구성</summary>
+          <div class="fold-body"><div id="rawbal"></div></div>
         </details>
         <details class="fold">
           <summary>바뀐 코드 — <code>resolveTournamentSocialAction()</code></summary>
@@ -388,51 +401,99 @@ ORDER BY `블록`;</pre></div>
 
     <script>
       // ── 데이터 ───────────────────────────────────────────────────────────
-      // 일자 × 빌드 × 유저군 (갱신 쿼리의 1_DAILY 행). 보드는 전부 여기서 합산해 만든다.
+      // 전부 2026-09-07 08:48 KST 조회분이다. 갱신 쿼리 하나가 여덟 블록을 한꺼번에 뽑으므로
+      // 블록끼리 조회 시각이 어긋날 수 없다 — 예전에 유입 ÷ 발화가 틀어졌던 원인이 그것이었다.
+      const PULLED   = "2026-09-07 08:48";
+      const LAST_DAY = 6;   // 마지막 log_date(9월 n일). D+n 도래 판정의 유일한 기준이다.
+
+      // 1_DAILY — 일자 × 빌드 × 유저군. 보드는 전부 여기서 합산해 만든다.
       // 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
-      // ⚠ 9/4는 여전히 부분 집계다 — 이 블록은 9/4 15:52 재집계분이고, EXTRA·RET·INFLOW는
-      // 아직 13:03 분이다. 시각이 다른 블록끼리 나누거나 빼면 수치가 어긋난다.
+      // 9/3은 롤아웃 첫날이라 485·486이 각각 244·291명뿐이다(그날 DAU의 대부분은 483이었다).
       const DAILY = [
-        { d:"09-03", ver:"485", seg:"NRU", ud:112, fin:478,  sh_try:42,   sh_ok:2,  inv_try:34,  inv_ok:33,  sup:78,  cr_try:109, cr_ok:9,   it:114,  rv:163  },
-        { d:"09-03", ver:"485", seg:"RU",  ud:132, fin:1076, sh_try:195,  sh_ok:19, inv_try:198, inv_ok:194, sup:56,  cr_try:254, cr_ok:26,  it:836,  rv:317  },
-        { d:"09-03", ver:"486", seg:"NRU", ud:141, fin:498,  sh_try:136,  sh_ok:0,  inv_try:0,   inv_ok:0,   sup:49,  cr_try:131, cr_ok:15,  it:222,  rv:131  },
-        { d:"09-03", ver:"486", seg:"RU",  ud:150, fin:1231, sh_try:586,  sh_ok:18, inv_try:0,   inv_ok:0,   sup:59,  cr_try:355, cr_ok:15,  it:843,  rv:456  },
-        { d:"09-04", ver:"485", seg:"NRU", ud:517, fin:2114, sh_try:126,  sh_ok:22, inv_try:97,  inv_ok:96,  sup:339, cr_try:587,  cr_ok:116, it:738,  rv:513  },
-        { d:"09-04", ver:"485", seg:"RU",  ud:362, fin:4796, sh_try:994,  sh_ok:71, inv_try:971, inv_ok:944, sup:249, cr_try:1110, cr_ok:89,  it:3414, rv:1615 },
-        { d:"09-04", ver:"486", seg:"NRU", ud:549, fin:2802, sh_try:474,  sh_ok:56, inv_try:0,   inv_ok:0,   sup:343, cr_try:911,  cr_ok:218, it:1096, rv:503  },
-        { d:"09-04", ver:"486", seg:"RU",  ud:357, fin:5776, sh_try:2034, sh_ok:52, inv_try:0,   inv_ok:0,   sup:148, cr_try:911,  cr_ok:37,  it:4202, rv:2086 },
+        { d:"09-03", ver:"485", seg:"NRU", ud:112, fin:478,  sh_try:42,   sh_ok:2,   inv_try:34,   inv_ok:33,   sup:78,  cr_try:109,  cr_ok:9,   it:114,  rv:163  },
+        { d:"09-03", ver:"485", seg:"RU",  ud:132, fin:1076, sh_try:195,  sh_ok:19,  inv_try:198,  inv_ok:194,  sup:56,  cr_try:254,  cr_ok:26,  it:836,  rv:317  },
+        { d:"09-03", ver:"486", seg:"NRU", ud:141, fin:498,  sh_try:136,  sh_ok:0,   inv_try:0,    inv_ok:0,    sup:49,  cr_try:131,  cr_ok:15,  it:222,  rv:131  },
+        { d:"09-03", ver:"486", seg:"RU",  ud:150, fin:1231, sh_try:586,  sh_ok:18,  inv_try:0,    inv_ok:0,    sup:59,  cr_try:355,  cr_ok:15,  it:843,  rv:456  },
+        { d:"09-04", ver:"485", seg:"NRU", ud:630, fin:2797, sh_try:177,  sh_ok:29,  inv_try:143,  inv_ok:141,  sup:404, cr_try:772,  cr_ok:146, it:1021, rv:692  },
+        { d:"09-04", ver:"485", seg:"RU",  ud:415, fin:6118, sh_try:1207, sh_ok:83,  inv_try:1189, inv_ok:1155, sup:311, cr_try:1401, cr_ok:108, it:4212, rv:2160 },
+        { d:"09-04", ver:"486", seg:"NRU", ud:661, fin:3387, sh_try:594,  sh_ok:83,  inv_try:0,    inv_ok:0,    sup:397, cr_try:1069, cr_ok:244, it:1329, rv:620  },
+        { d:"09-04", ver:"486", seg:"RU",  ud:426, fin:6727, sh_try:2550, sh_ok:77,  inv_try:0,    inv_ok:0,    sup:187, cr_try:1137, cr_ok:64,  it:4824, rv:2567 },
+        { d:"09-05", ver:"485", seg:"NRU", ud:633, fin:3215, sh_try:260,  sh_ok:23,  inv_try:210,  inv_ok:177,  sup:369, cr_try:931,  cr_ok:130, it:1312, rv:603  },
+        { d:"09-05", ver:"485", seg:"RU",  ud:395, fin:5691, sh_try:1122, sh_ok:87,  inv_try:1118, inv_ok:1088, sup:309, cr_try:1060, cr_ok:90,  it:3669, rv:2713 },
+        { d:"09-05", ver:"486", seg:"NRU", ud:678, fin:3165, sh_try:452,  sh_ok:55,  inv_try:0,    inv_ok:0,    sup:342, cr_try:868,  cr_ok:120, it:1240, rv:587  },
+        { d:"09-05", ver:"486", seg:"RU",  ud:417, fin:6676, sh_try:2360, sh_ok:94,  inv_try:0,    inv_ok:0,    sup:189, cr_try:1177, cr_ok:77,  it:4553, rv:2295 },
+        { d:"09-06", ver:"485", seg:"NRU", ud:796, fin:3422, sh_try:184,  sh_ok:24,  inv_try:135,  inv_ok:122,  sup:482, cr_try:970,  cr_ok:189, it:1356, rv:581  },
+        { d:"09-06", ver:"485", seg:"RU",  ud:432, fin:6811, sh_try:1048, sh_ok:60,  inv_try:1028, inv_ok:966,  sup:358, cr_try:1453, cr_ok:127, it:4215, rv:3264 },
+        { d:"09-06", ver:"486", seg:"NRU", ud:821, fin:3972, sh_try:806,  sh_ok:94,  inv_try:0,    inv_ok:0,    sup:399, cr_try:1109, cr_ok:187, it:1438, rv:919  },
+        { d:"09-06", ver:"486", seg:"RU",  ud:459, fin:7152, sh_try:2727, sh_ok:151, inv_try:0,    inv_ok:0,    sup:238, cr_try:1203, cr_ok:87,  it:5261, rv:2658 },
       ];
-      // 2_EXTRA(판수 분포) · 3_RET(D1 리텐션) 행. 일자축이 없어 DAILY와 따로 둔다.
-      // D1은 9/3 코호트만 유효하다 — 9/4 코호트의 복귀일(9/5)이 아직 오지 않았다.
+
+      // 2_EXTRA — 판수 분포. 일자축이 없어 DAILY와 따로 둔다.
       // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
-      // D+n 리텐션. d[n] = 그 코호트가 n일 뒤 돌아온 수. 지금은 D1만 있고, 486이 9/3 시작이라
-      // D2 이상은 코호트일 + n이 아직 오지 않았다(미도래). 값이 없는 칸은 비워 둔다.
-      const RET = {
-        "485": { NRU:{ coh:112, d:{ 1:22 } }, RU:{ coh:132, d:{ 1:66 } } },
-        "486": { NRU:{ coh:141, d:{ 1:25 } }, RU:{ coh:150, d:{ 1:72 } } },
-      };
-      const RET_COHORT = "2026-09-03";   // D+n 을 잴 수 있는 유일한 코호트일
-      const RET_TODAY  = "2026-09-04";   // 마지막 조회일 — D+n 도래 여부 판정에 쓴다
-      const retArrived = n => {
-        const c = new Date(RET_COHORT + "T00:00:00Z");
-        c.setUTCDate(c.getUTCDate() + n);
-        return c <= new Date(RET_TODAY + "T00:00:00Z");
+      const EXTRA = {
+        "485": { NRU:{ uday:2171, avg:4.57,  p50:0, p75:4,  p90:12, play:44.4, p50p:5 },
+                 RU: { uday:1815, avg:10.85, p50:2, p75:10, p90:28, play:64.9, p50p:7 } },
+        "486": { NRU:{ uday:2301, avg:4.79,  p50:0, p75:5,  p90:13, play:45.8, p50p:6 },
+                 RU: { uday:1870, avg:11.65, p50:3, p75:11, p90:30, play:65.1, p50p:8 } },
       };
 
-      const EXTRA = {
-        "485": { NRU:{ uday:481, avg:4.43, p50:0, p75:4,  p90:12, play:46.2, p50p:5 },
-                 RU: { uday:552, avg:8.78, p50:3, p75:11, p90:23, play:68.8, p50p:7 } },
-        "486": { NRU:{ uday:566, avg:4.76, p50:0, p75:5,  p90:14, play:48.8, p50p:5 },
-                 RU: { uday:556, avg:10.13,p50:3, p75:12, p90:26, play:70.0, p50p:8 } },
+      // 3_RET — 코호트일 × 빌드 × 유저군. d[i] = 코호트가 i+1일 뒤 다시 로그인한 수.
+      // 코호트가 넷이라 D+n 마다 쓸 수 있는 코호트 수가 다르다 — D+1은 셋, D+3은 9/3 하나뿐이다.
+      // 그래서 D+1 → D+3 을 이어서 읽으면 안 된다. 각 행 안에서 485 ↔ 486 만 견준다.
+      const RET = [
+        { c:"09-03", ver:"485", seg:"NRU", coh:112, d:[28, 26, 26] },
+        { c:"09-03", ver:"485", seg:"RU",  coh:132, d:[88, 88, 70] },
+        { c:"09-03", ver:"486", seg:"NRU", coh:141, d:[34, 26, 27] },
+        { c:"09-03", ver:"486", seg:"RU",  coh:150, d:[99, 90, 98] },
+        { c:"09-04", ver:"485", seg:"NRU", coh:630, d:[90, 68] },
+        { c:"09-04", ver:"485", seg:"RU",  coh:415, d:[243, 213] },
+        { c:"09-04", ver:"486", seg:"NRU", coh:661, d:[100, 85] },
+        { c:"09-04", ver:"486", seg:"RU",  coh:426, d:[238, 230] },
+        { c:"09-05", ver:"485", seg:"NRU", coh:633, d:[95] },
+        { c:"09-05", ver:"485", seg:"RU",  coh:395, d:[234] },
+        { c:"09-05", ver:"486", seg:"NRU", coh:678, d:[111] },
+        { c:"09-05", ver:"486", seg:"RU",  coh:417, d:[241] },
+        { c:"09-06", ver:"485", seg:"NRU", coh:796, d:[] },
+        { c:"09-06", ver:"485", seg:"RU",  coh:432, d:[] },
+        { c:"09-06", ver:"486", seg:"NRU", coh:821, d:[] },
+        { c:"09-06", ver:"486", seg:"RU",  coh:459, d:[] },
+      ];
+      // 코호트일 + n 이 마지막 log_date 를 넘으면 그 코호트는 D+n 을 아직 못 잰다 — 분모에서도 뺀다.
+      // 안 빼면 도래하지 않은 코호트가 분모에 남아 리텐션이 실제보다 낮게 나온다.
+      const retDays  = n => RET.filter(r => Number(r.c.slice(3)) + n <= LAST_DAY);
+      const retDates = n => [...new Set(retDays(n).map(r => "9/" + Number(r.c.slice(3))))];
+      const retAgg   = (ver, n) => {
+        const rs = retDays(n).filter(r => r.ver === ver);
+        if (!rs.length) return null;
+        return { x: rs.reduce((t, r) => t + (r.d[n - 1] || 0), 0),
+                 n: rs.reduce((t, r) => t + r.coh, 0) };
       };
-      // 유입 세션 — 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
+
+      // 4_INFLOW — 유입 세션. 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
       const INFLOW = [
         { d:"08-28", t:101, ti:37 }, { d:"08-29", t:125, ti:41 },
         { d:"08-30", t:104, ti:39 }, { d:"08-31", t:96,  ti:23 },
         { d:"09-01", t:139, ti:26 }, { d:"09-02", t:133, ti:24 },
-        { d:"09-03", t:112, ti:33 }, { d:"09-04", t:89,  ti:29 },
+        { d:"09-03", t:112, ti:33 }, { d:"09-04", t:120, ti:31 },
+        { d:"09-05", t:142, ti:21 }, { d:"09-06", t:137, ti:18 },
       ];
-      const POST = ["09-03", "09-04"];
+      const POST = ["09-03", "09-04", "09-05", "09-06"];
+
+      // 5_RESULT · 6_BALANCE · 7_VERSION — 보드 막대가 아니라 원본 폴드와 판정 전제에서 쓴다.
+      const RESULT = [
+        { ver:"485", seg:"NRU", clear:9662,  fail:250 }, { ver:"486", seg:"NRU", clear:10639, fail:383 },
+        { ver:"485", seg:"RU",  clear:18973, fail:723 }, { ver:"486", seg:"RU",  clear:21185, fail:601 },
+      ];
+      const BALANCE_US = [
+        { os:"Android", a:1861, b:1939 }, { os:"Windows", a:664, b:695 },
+        { os:"iOS",     a:436,  b:460  }, { os:"OS X",    a:30,  b:41  },
+        { os:"(null)",  a:78,   b:85   },
+      ];
+      const VERSION = [
+        { d:"09-03", v483:1788, a:244,  b:291  }, { d:"09-04", v483:0, a:1045, b:1087 },
+        { d:"09-05", v483:0,    a:1028, b:1095 }, { d:"09-06", v483:0, a:1228, b:1280 },
+      ];
+
       const CAP = 150;                       // 발산 막대를 자르는 지점(%)
       const nf = x => x == null ? "—" : Number(x).toLocaleString("en-US");
 
@@ -503,40 +564,40 @@ ORDER BY `블록`;</pre></div>
           sub:"슬롯이 몇 번 열려 몇 건이 나갔는지 · 청록 Δ는 설계대로 바뀌는 값이라 판정하지 않습니다",
           rows:[
             ["판당 슬롯 발화", e => (e.sh_try+e.inv_try)/e.fin*100, pc, "g_fire", true,
-              "(공유 시도 + 초대 시도) ÷ 완료 판수. 슬롯이 열린 비율이며 처치 전후로 거의 그대로입니다 — 발화 기회를 늘린 게 아니라 같은 슬롯을 공유로 채운 것뿐이라는 증거입니다",
+              "(공유 시도 + 초대 시도) ÷ 완료 판수. 28.0% → 31.1%로 3.1%p 늘었습니다. 슬롯 자체를 늘린 것이 아니라, 485에서 쿨다운에 막혀 미발화로 빠지던 몫(미노출 0.67 → 0.50/DAU)이 공유로 돌아온 것입니다",
               false, e => [e.sh_try+e.inv_try, e.fin]],
             ["공유 시도 / DAU", e => e.sh_try/e.ud, p2, "g_try", true,
               "3200. 교대에서 전량 공유로 바뀌었으니 2배가 되는 것이 설계입니다",
               false, null, e => [e.sh_try, e.ud]],
             ["공유 성공 / DAU", e => e.sh_ok/e.ud, p3, "g_ok", false,
-              "3210. 실질 주지표입니다. DAU당 시도를 2.2배 늘렸는데 성공은 제자리라, 늘린 슬롯이 그대로 실패로 흘렀다는 뜻입니다",
+              "3210. 실질 주지표이고 이 실험에서 가장 중요한 행입니다. DAU당 시도를 2.3배 늘렸고 성공도 65% 늘었습니다(p&lt;.001) — 통과율은 떨어졌지만 절대 성공 건수는 확실히 늘었습니다",
               true, e => [e.sh_ok, e.ud]],
             ["공유 성공률", e => e.sh_ok/e.sh_try*100, pc, "g_rate", false,
-              "3210 ÷ 3200. 이 문서에서 유일하게 통계적으로 확실한 지표입니다 — 시도를 늘릴수록 통과율이 떨어진다는 뜻이고, 공유 창구가 이미 포화였다는 근거입니다",
+              "3210 ÷ 3200. 시도를 늘릴수록 통과율이 떨어진다는 뜻이고, 공유 창구가 이미 포화였다는 근거입니다. 성공 건수 증가(+65%)와 통과율 하락(−27%)은 둘 다 p&lt;.001로 동시에 성립합니다 — 더 밀어 넣어 덮은 것이라 증분이 계속 줄어드는 구간입니다",
               true, e => [e.sh_ok, e.sh_try]],
             ["공유 성공 (절대)", e => e.sh_ok, nfr, "g_abs", false,
-              "DAU 보정 없는 원값입니다. 같은 9/4를 세 번 뽑는 사이 90 → 84(v6.0)가 91 → 94(13:03), 다시 114 → 126(15:52)으로 벌어졌습니다 — 부분 집계로 절대량을 판정하면 안 된다는 사례입니다"],
+              "DAU 보정 없는 원값입니다. 나흘치로 327 → 572입니다. 같은 9/4 하루를 세 번 뽑는 동안 90 → 84, 91 → 94, 114 → 126으로 계속 바뀌었던 값이라, 부분 집계로 절대량을 판정하면 안 된다는 사례로 남겨 둡니다"],
             ["초대 시도 / DAU", e => e.inv_try/e.ud, p2, "g_try", true,
               "3460 중 position=tournament_invite만 셉니다. 486에서 0이 되는 것이 설계입니다",
               false, null, e => [e.inv_try, e.ud]],
             ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, "g_ok", true,
-              "3470. 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 성공 1건이 만든 유입이 공유의 1/16입니다(상단 판정 전제)",
+              "3470. 485의 초대 성공 3,876건이 486에서 0이 됐습니다. 다만 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 같은 기간 초대 유입 세션은 하루 25.8건뿐이라, 성공 수와 도달 수의 자릿수가 다릅니다",
               false, null, e => [e.inv_ok, e.ud]],
             ["미노출 / DAU", e => e.sup/e.ud, p3, "g_ok", true,
               "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다",
               false, null, e => [e.sup, e.ud]],
           ]},
         { name:"플레이 · 수익", acc:"#d97706",
-          sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 전부 유의성 미달이라 방향만 참고합니다",
+          sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 여기는 전부 유의성 미달이라 방향만 참고합니다",
           rows:[
             ["완료 판수 / DAU", e => e.fin/e.ud, p1, "g_play", false,
               "2300_GAMEPLAY_FINISH ÷ DAU. 앱 종료가 아니라 한 판이 끝난 횟수이며, 클리어와 실패·포기를 모두 셉니다. 판당 슬롯 발화의 분모이기도 합니다",
               false, null, e => [e.fin, e.ud]],
-            ["판수 평균 / 유저-일 (13:03)", e => e.avg, p2, "g_play", false,
-              "⚠ 이 행은 13:03 집계분이라 위 DAU 계열과 시각이 다릅니다. 분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮습니다. 중앙값은 두 빌드 모두 그대로였습니다(기존 3 → 3, 신규 0 → 0) — 평균 상승은 헤비 tail이 두꺼워진 것이지 다수가 더 한 것이 아닙니다",
+            ["판수 평균 / 유저-일", e => e.avg, p2, "g_play", false,
+              "분모가 유저-일 전체(로그인 로그 없는 날 포함)라 위 행보다 낮습니다. 중앙값은 기존 2 → 3, 신규 0 → 0이고 p90은 28 → 30입니다 — 기존 유저 쪽은 중앙값도 한 판 올라, 헤비 tail만 두꺼워진 것은 아닙니다",
               false, null, e => [e.avg * e.uday, e.uday]],
-            ["플레이 유저 비율 (13:03)", e => e.play, pc, "g_playpct", false,
-              "⚠ 이 행은 13:03 집계분입니다. 그날 한 판이라도 끝낸 유저-일 비중입니다",
+            ["플레이 유저 비율", e => e.play, pc, "g_playpct", false,
+              "그날 한 판이라도 끝낸 유저-일 비중입니다",
               false, e => [Math.round(e.play / 100 * e.uday), e.uday]],
             ["총광고 완료 / DAU", e => (e.it+e.rv)/e.ud, p2, "g_ads", false,
               "4010(전면) + 4210(RV). 4110 IRV는 다른 지면이라 제외했습니다",
@@ -546,7 +607,7 @@ ORDER BY `블록`;</pre></div>
               false, e => [e.cr_ok, e.cr_try]],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
-          sub:"9/3 코호트 · 486이 9/3 시작이라 아직 D+1만 도래했습니다 · <s class='old'>13:03 집계분 — 9/4 복귀가 더 쌓였으므로 D+1은 지금 값보다 높습니다</s>",
+          sub:"코호트 넷(9/3~9/6) · D+3까지 도래 · <s class='old'>행마다 쓰는 코호트가 달라 D+1 → D+3 을 이어 읽으면 안 됩니다</s>",
           rows:[] },
       ];
 
@@ -578,9 +639,9 @@ ORDER BY `블록`;</pre></div>
         GROUPS.forEach(g => (g.rows || []).forEach(([, f, , grp]) => {
           [f(A), f(B)].forEach(v => { if (v != null && isFinite(v)) GMX[grp] = Math.max(GMX[grp] || 0, v); });
         }));
-        const retVals = DAYS.flatMap(n => ["485","486"].map(v => {
-          const R = RET[v], bk = (R.NRU.d[n] == null || R.RU.d[n] == null) ? null : R.NRU.d[n] + R.RU.d[n];
-          return bk == null ? null : bk / (R.NRU.coh + R.RU.coh) * 100;
+        const retVals = DAYS.flatMap(n => ["485", "486"].map(v => {
+          const r = retAgg(v, n);
+          return r ? r.x / r.n * 100 : null;
         })).filter(v => v != null);
         GMX.g_ret = Math.max(...retVals, 1e-9);
 
@@ -620,16 +681,18 @@ ORDER BY `블록`;</pre></div>
         const body = GROUPS.map(g => {
           const rows = g.days
             ? DAYS.map(n => {
-                const arrived = retArrived(n);
-                const val = v => { const R = RET[v];
-                  const bk = (R.NRU.d[n] == null || R.RU.d[n] == null) ? null : R.NRU.d[n] + R.RU.d[n];
-                  return bk == null ? null : { x: bk, n: R.NRU.coh + R.RU.coh }; };
-                const a = val("485"), b = val("486");
-                const note = `9/3 코호트가 9/${3 + n}에 다시 로그인한 비율입니다.`
-                  + (arrived ? "" : ` 9/${3 + n}이 아직 오지 않았습니다.`);
+                // 코호트마다 D+n 도래 여부가 다르다. 도래한 코호트만 분자·분모에 함께 넣어야
+                // '아직 안 온 날'이 이탈로 둔갑하지 않는다.
+                const a = retAgg("485", n), b = retAgg("486", n);
+                const dates = retDates(n);
+                const note = dates.length
+                  ? `${dates.join(" · ")} 코호트가 ${n}일 뒤 다시 로그인한 비율입니다. `
+                    + `행마다 쓰는 코호트가 다르므로 <b>D+1 → D+3 을 이어서 읽으면 안 됩니다</b> — `
+                    + `한 행 안에서 485 ↔ 486 만 견주세요.`
+                  : `9/3 코호트조차 ${n}일 뒤가 아직 오지 않았습니다.`;
                 return row(`D+${n}`, a && a.x / a.n * 100, b && b.x / b.n * 100,
                   x => x.toFixed(1) + "%", "g_ret", false, note, false,
-                  a && b ? ptest(a.x, a.n, b.x, b.n) : null, arrived ? "미수신" : "미도래",
+                  a && b ? ptest(a.x, a.n, b.x, b.n) : null, "미도래",
                   a && [a.x, a.n], b && [b.x, b.n]);
               }).join("")
             : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den]) => {
@@ -645,32 +708,39 @@ ORDER BY `블록`;</pre></div>
 
         // 판정 전제 — 지표가 아니라 "이 그래프를 어디까지 믿어도 되는가"라 맨 위에 둔다.
         const bal = `<div class="kb-bal">
-          <div class="bl"><b>유일한 확실</b><span>공유 성공률</span>
-            <span class="v"><span class="p">8.4%</span> → <span class="n">3.9%</span></span>
-            <span class="d">p&lt;.001</span>
-            <em>시도를 2.4배 늘리자 통과율이 그만큼 떨어졌습니다 — <b>공유 창구는 이미 포화였습니다.</b> 이 문서에서 통계적으로 확실한 지표는 이것 하나이며, 9/4 재집계에서도 그대로 남았습니다</em></div>
-          <div class="bl"><b>나머지</b><span>주지표 포함</span>
-            <span class="v"><span class="p">공유 성공/DAU</span> <span class="n">n.s.</span></span>
-            <span class="d">p=0.77</span>
-            <em>9/4가 더 쌓이자 <b>−6%가 +4%로 뒤집혔습니다</b> — 부호가 바뀌어도 둘 다 <b>0과 구별되지 않습니다</b>. 완료 판수·광고·생성률·리텐션도 전부 미달이라 방향조차 확정하지 마세요</em></div>
-          <div class="bl stale"><b>초대 도달</b><span>성공 1건당 유입</span>
-            <span class="v"><span class="p">초대 —</span> vs <span class="n">공유 —</span></span>
-            <span class="d">재집계 필요</span>
-            <em>분자(유입)는 13:03, 분모(발화)는 15:52 집계라 <b>지금 나누면 시각이 섞입니다</b>. 직전 값은 1/16이었고, 3470은 도달이 아니라 다이얼로그 통과라는 해석은 그대로입니다 — 초대 −100%를 손실로 읽지 마세요</em></div>
-          <div class="bl"><b>유입 총량</b><span>일평균</span>
+          <div class="bl"><b>확실한 개선</b><span>공유 성공/DAU</span>
+            <span class="v"><span class="p">0.092</span> → <span class="n">0.152</span></span>
+            <span class="d">+65% · p&lt;.001</span>
+            <em>주지표가 <b>유의하게 올랐습니다.</b> 9/4 부분 집계에서는 −6%였다가 +4%로 뒤집혔던 값인데,
+            사흘치가 온전히 쌓이자 방향이 확정됐습니다 — <b>부분 집계로 판정하지 않기를 잘한 사례입니다</b></em></div>
+          <div class="bl"><b>같이 성립하는 사실</b><span>공유 성공률</span>
+            <span class="v"><span class="p">7.7%</span> → <span class="n">5.6%</span></span>
+            <span class="d">−27% · p&lt;.001</span>
+            <em>통과율은 떨어졌는데 성공 건수는 늘었습니다. 시도를 <b>2.3배</b> 밀어 넣어 통과율 하락을 덮은 것이라,
+            <b>창구가 포화라는 사실은 그대로</b>입니다 — 더 밀어도 더 나오지는 않는 구간이 가깝습니다</em></div>
+          <div class="bl"><b>총 발화는 급감</b><span>공유+초대 성공/DAU</span>
+            <span class="v"><span class="p">1.186</span> → <span class="n">0.152</span></span>
+            <span class="d">−87%</span>
+            <em>초대 성공 <b>3,876건이 0</b>이 됐기 때문입니다. 다만 3470은 도달이 아니라 다이얼로그 통과라
+            이 −87%를 손실로 읽으면 안 됩니다 — 실제 도달은 아래 유입으로 봅니다</em></div>
+          <div class="bl"><b>유입은 줄지 않음</b><span>일평균 세션</span>
             <span class="v"><span class="p">${((IP.t+IP.ti)/IP.n).toFixed(1)}</span> → <span class="n">${((IC.t+IC.ti)/IC.n).toFixed(1)}</span></span>
-            <span class="d">−11%?</span>
-            <em>발신이 절반 잘린 날은 9/4 하루뿐이고 그마저 부분 집계입니다 — 아직 판정할 수 없습니다. <b>이 값은 13:03 집계분입니다</b></em></div>
+            <span class="d">+4%</span>
+            <em>초대 유입 ${(IP.ti/IP.n).toFixed(1)} → ${(IC.ti/IC.n).toFixed(1)}을 공유 유입 ${(IP.t/IP.n).toFixed(1)} → ${(IC.t/IC.n).toFixed(1)}이 메웠습니다.
+            <b>발신은 절반만 처치된 상태</b>(485·486 반반 서빙)라 486 전량 배포면 폭이 더 커질 수 있습니다</em></div>
+          <div class="bl"><b>가드레일</b><span>전부 유의성 미달</span>
+            <span class="v"><span class="p">리텐션 D+1~D+3</span> <span class="n">n.s.</span></span>
+            <span class="d">p≥0.40</span>
+            <em>토너 생성률(p=0.47)도, 배정 균형(US Android 1,861 ↔ 1,939 등 OS별 3~6% 차)도 이상이 없습니다.
+            <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
         </div>`;
 
         const staleBar = `<div class="stale-bar">
-          <b>이 보드는 9/3~9/4 집계입니다 — 오늘은 9/7이라 사흘치가 빠져 있습니다.</b>
-          아래 쿼리를 한 번 돌리면 창이 9/7까지 늘어나고, <code>7_VERSION</code> 행이 그 사이 485가 남아 있었는지 · 487이 떴는지도 함께 알려줍니다.<br>
-          <b>블록별 조회 시각도 다릅니다.</b> 슬롯 퍼널·가드레일(<code>DAILY</code>)만 <b>9/4 15:52</b>에 다시 뽑았고,
-          판수 분포(<code>EXTRA</code>) · 리텐션(<code>RET</code>) · 유입(<code>INFLOW</code>)은 아직 <b>9/4 13:03</b> 집계분입니다.
-          같은 시각의 블록 안에서 나온 값(공유 성공률, 판당 발화, 완료 판수/DAU 등)은 그대로 읽으셔도 되지만,
-          <b>시각이 다른 두 블록을 나눈 값은 이 문서에서 비워 두었습니다</b> — 아래 <b>판수 평균 · 플레이 유저 비율 · 잔존</b>은 옛 집계라 회색으로 표시했습니다.
-          아래 <b>쿼리</b> 하나를 다시 돌리면 일곱 블록이 같은 시각으로 맞춰지고 이 경고는 사라집니다.
+          <b>여덟 블록 전부 ${PULLED} KST 한 번의 조회입니다</b> — 쿼리를 하나로 합쳐서 블록끼리 시각이 어긋날 수 없습니다.
+          기간은 <b>9/3~9/6</b>(마지막 log_date 9/6, 거의 꽉 찬 하루)이고,
+          <b>9/3은 롤아웃 첫날</b>이라 485·486이 아니라 483이 그날 DAU의 대부분(1,788명)을 차지했습니다 —
+          9/3의 485·486은 각각 244·291명뿐인 조기 업데이트 유저라, 이 날만 표본이 작고 편향돼 있습니다.
+          <b>487 이상은 아직 없습니다</b> — 실험은 아직 성립합니다.
         </div>`;
         document.getElementById("groups").innerHTML = staleBar + bal
           + `<div class="mx"><div class="mr hd"><div class="ml">지표</div>
@@ -683,7 +753,7 @@ ORDER BY `블록`;</pre></div>
               <b>검정 불가</b>(비율이 아니라 검정을 붙일 수 없는 지표)는 회색으로 두어 확정된 변화로 읽히지 않게 했습니다 ·
               값 오른쪽의 작은 숫자는 <b>모수(분자 / 분모)</b>입니다 — 같은 비율이라도 <b>분모가 작으면 흔들립니다</b> ·
               <b>공유 성공 (절대)</b>는 값 자체가 원값이라 모수가 없습니다 ·
-              RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · 9/3~9/4(9/4는 부분 집계)</div>`;
+              RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · 9/3~9/6 · 한 번의 조회(${PULLED} KST)</div>`;
       }
       renderBoard();
 
@@ -706,6 +776,37 @@ ORDER BY `블록`;</pre></div>
             + `<td style="text-align:right">${nf(r.t + r.ti)}</td>`
             + `<td style="text-align:right">${(r.ti / (r.t + r.ti) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
         </table></div>`;
+
+        // 빌드 점유 — 이 표가 '실험이 아직 성립하는가'의 근거다. 487 이상이 뜨면 그 뒤 날짜는 A/B가 아니다.
+        document.getElementById("rawver").innerHTML = `<div class="table-scroll"><table>
+          <thead><tr><th>날짜</th><th style="text-align:right">483</th><th style="text-align:right">485</th>
+            <th style="text-align:right">486</th><th style="text-align:right">486 점유</th></tr></thead>
+          <tbody>${VERSION.map(r => `<tr><td>${r.d}</td>`
+            + `<td style="text-align:right">${r.v483 ? nf(r.v483) : "—"}</td>`
+            + `<td style="text-align:right">${nf(r.a)}</td><td style="text-align:right">${nf(r.b)}</td>`
+            + `<td style="text-align:right">${(r.b / (r.a + r.b) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
+        </table></div><div class="kb-foot">DAU 10명 미만 빌드는 잘라 냈습니다 · <b>487 이상은 없습니다</b> ·
+          9/3만 483이 남아 있어 485·486 표본이 작습니다</div>`;
+
+        // 클리어/실패 — 슬롯은 클리어에서만 뜨므로 발화 기회가 실제로 늘었는지 여기서 갈린다.
+        document.getElementById("rawres").innerHTML = `<div class="table-scroll"><table>
+          <thead><tr><th>빌드</th><th>유저군</th><th style="text-align:right">클리어</th>
+            <th style="text-align:right">실패</th><th style="text-align:right">클리어 비중</th></tr></thead>
+          <tbody>${RESULT.map(r => `<tr><td>${r.ver}</td><td>${r.seg}</td>`
+            + `<td style="text-align:right">${nf(r.clear)}</td><td style="text-align:right">${nf(r.fail)}</td>`
+            + `<td style="text-align:right">${(r.clear / (r.clear + r.fail) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
+        </table></div><div class="kb-foot">완료 판수의 96~98%가 클리어입니다 —
+          <b>완료 판수 증가는 사실상 그대로 발화 기회 증가</b>입니다</div>`;
+
+        // 배정 균형 — FB가 지역·기기로 갈랐다면 여기서 구성이 어긋난다.
+        document.getElementById("rawbal").innerHTML = `<div class="table-scroll"><table>
+          <thead><tr><th>OS</th><th style="text-align:right">485</th><th style="text-align:right">486</th>
+            <th style="text-align:right">486 / 485</th></tr></thead>
+          <tbody>${BALANCE_US.map(r => `<tr><td>${r.os}</td>`
+            + `<td style="text-align:right">${nf(r.a)}</td><td style="text-align:right">${nf(r.b)}</td>`
+            + `<td style="text-align:right">${(r.b / r.a).toFixed(2)}</td></tr>`).join("")}</tbody>
+        </table></div><div class="kb-foot">US 기준입니다. 모든 OS에서 486이 3~6% 많고 <b>한쪽으로 쏠린 OS가 없습니다</b> —
+          기기로 가른 흔적은 보이지 않습니다. 국가 구성도 양쪽에 같은 나라가 같이 잡힙니다</div>`;
       })();
 
       // ── 말풍선 ───────────────────────────────────────────────────────────
