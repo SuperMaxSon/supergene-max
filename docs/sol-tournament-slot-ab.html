@@ -112,21 +112,28 @@
       .stale-bar b{color:var(--text)}
       .stale-bar code{background:#eef1f6;padding:0 4px;border-radius:4px;font-size:11px}
       s.old{text-decoration:none;color:var(--warn);font-weight:800}
-      /* 코호트 삼각 — 행이 코호트일, 열이 D+n. 아래로 갈수록 도래한 칸이 줄어 삼각형이 된다.
-         가중 합산 한 줄로 뭉개면 행마다 분모 집단이 달라져 곡선이 뒤집힌다 — 그래서 표로 편다. */
-      .tri-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:2px 0 4px}
-      @media (max-width:900px){ .tri-wrap{grid-template-columns:1fr} }
-      .tri h4{margin:0 0 6px;font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:6px}
-      .tri h4 i{width:9px;height:9px;border-radius:2px;display:inline-block}
-      .tri h4 s{text-decoration:none;color:var(--text-dim);font-weight:600}
-      .tri table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
-      .tri th{font-size:9.5px;font-weight:700;color:var(--text-dim);padding:3px 2px;text-align:right;white-space:nowrap}
-      .tri th:first-child,.tri td:first-child{text-align:left}
-      .tri td{font-size:11px;font-weight:700;padding:4px 3px;text-align:right;border-top:1px solid var(--border)}
-      .tri td.c{border-radius:3px}
-      .tri td.na{color:#c3c9d6;font-weight:600}
-      .tri td.coh{color:var(--text-dim);font-weight:600}
-      .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:6px}
+      /* 코호트 피라미드 — 행이 코호트일 × 빌드(485·486 한 쌍), 열이 D+n.
+         아래로 갈수록 도래한 칸이 줄어 삼각형이 된다. 두 빌드를 한 줄씩 붙여 두면
+         같은 코호트·같은 D 를 눈을 옮기지 않고 위아래로 바로 견줄 수 있다. */
+      .pyr{overflow-x:auto}
+      .pyr table{border-collapse:collapse;width:100%;min-width:520px;font-variant-numeric:tabular-nums}
+      .pyr th{font-size:9.5px;font-weight:700;color:var(--text-dim);padding:4px 3px;text-align:right;white-space:nowrap}
+      .pyr th:nth-child(-n+3){text-align:left}
+      .pyr td{font-size:11.5px;font-weight:700;padding:5px 4px;text-align:right}
+      .pyr td:nth-child(-n+2){text-align:left}
+      .pyr tr.va td{border-top:1px solid var(--border)}
+      .pyr td.day{font-weight:800;color:var(--text);vertical-align:middle}
+      .pyr td.ver{font-weight:800}
+      .pyr td.ver i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px}
+      .pyr td.coh{color:var(--text-dim);font-weight:600;font-size:10.5px}
+      .pyr td.c{border-radius:3px}
+      .pyr td.c b{font-weight:800}
+      .pyr td.c s{text-decoration:none;font-size:9px;margin-left:2px;opacity:.75}
+      .pyr td.na{color:#ccd2de;font-weight:600}
+      .pyr-key{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:10.5px;
+        font-weight:700;color:var(--text-dim);margin:0 0 8px}
+      .pyr-key i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+      .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:8px}
       .tri-foot b{color:var(--text)}
 
       #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:330px;
@@ -474,7 +481,7 @@ ORDER BY `블록`;</pre></div>
         { c:"09-06", ver:"486", seg:"NRU", coh:821, d:[] },
         { c:"09-06", ver:"486", seg:"RU",  coh:459, d:[] },
       ];
-      // 잔존은 코호트 삼각(아래 retTriangles)으로만 그린다. 코호트를 가로질러 가중 합산하면
+      // 잔존은 코호트 피라미드(아래 retPyramid)로만 그린다. 코호트를 가로질러 가중 합산하면
       // 행마다 분모 집단이 달라져 D+3이 D+1보다 높아지는 착시가 생긴다 — 그 합산을 만들지 않는다.
 
       // 4_INFLOW — 유입 세션. 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
@@ -615,7 +622,7 @@ ORDER BY `블록`;</pre></div>
               false, e => [e.cr_ok, e.cr_try]],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
-          sub:"코호트 삼각 두 벌 · 가로는 한 코호트의 시간, 세로는 코호트끼리 · <s class='old'>같은 줄끼리만 좌우로 견주세요</s>",
+          sub:"코호트 피라미드 · 485·486을 한 쌍으로 붙였습니다 · <s class='old'>비교는 붙어 있는 쌍 안에서 세로로</s>",
           rows:[] },
       ];
 
@@ -639,56 +646,72 @@ ORDER BY `블록`;</pre></div>
 
       const DAYS = [1,2,3,4,5,6,7];
 
-      // 코호트 삼각 두 벌(485 / 486). 한 코호트의 D+1~D+7 을 가로로 펴 두면
-      // '2일 39.9% → 3일 43.0%' 같은 반등이 그 코호트 안에서 실제로 일어난 일인지,
-      // 아니면 행마다 분모 집단이 바뀐 착시인지가 눈으로 갈린다.
+      // 코호트 피라미드 — 485·486 을 한 줄씩 붙여 하나의 표로 합친다.
+      // 가로는 한 코호트의 시간, 세로 쌍은 같은 코호트의 A/B. 코호트를 가로질러 가중 합산하면
+      // 행마다 분모 집단이 달라져 D+3이 D+1보다 높아지는 착시가 생기므로 합산은 만들지 않는다.
       const RET_COHORTS = [...new Set(RET.map(r => r.c))];
       const retCell = (c, ver, n) => {
-        if (Number(c.slice(3)) + n > LAST_DAY) return null;         // 미도래
+        if (Number(c.slice(3)) + n > LAST_DAY) return null;          // 미도래
         const rs = RET.filter(r => r.c === c && r.ver === ver);
         if (!rs.length) return null;
         return { x: rs.reduce((t, r) => t + (r.d[n - 1] || 0), 0),
                  n: rs.reduce((t, r) => t + r.coh, 0) };
       };
-      function retTriangles() {
-        // 두 표가 같은 농도 척도를 써야 좌우 비교가 성립한다.
-        let mx = 0;
-        RET_COHORTS.forEach(c => ["485", "486"].forEach(v => DAYS.forEach(n => {
-          const e = retCell(c, v, n); if (e) mx = Math.max(mx, e.x / e.n * 100);
-        })));
-        const one = (ver, color, label) => {
-          const head = `<tr><th>코호트일</th><th>코호트</th>`
-            + DAYS.map(n => `<th>D+${n}</th>`).join("") + `</tr>`;
-          const body = RET_COHORTS.map(c => {
-            const size = RET.filter(r => r.c === c && r.ver === ver)
-                            .reduce((t, r) => t + r.coh, 0);
-            const tds = DAYS.map(n => {
-              const e = retCell(c, ver, n);
-              if (!e) return `<td class="na">·</td>`;
-              const pct = e.x / e.n * 100;
-              const bg = `rgba(${color},${(pct / mx * 0.5).toFixed(3)})`;
-              return `<td class="c" style="background:${bg}" `
-                + `data-tip="${label} · ${c} 코호트 · D+${n}\n${pct.toFixed(1)}% `
-                + `(${nf(e.x)} / ${nf(e.n)})\n같은 코호트 안에서만 좌우로 이어 읽으세요">`
-                + `${pct.toFixed(1)}</td>`;
-            }).join("");
-            return `<tr><td>${c}</td><td class="coh">${nf(size)}</td>${tds}</tr>`;
-          }).join("");
-          return `<div class="tri"><h4><i style="background:${label === "485" ? "var(--a)" : "var(--b)"}"></i>`
-            + `${label} <s>${label === "485" ? "공유↔초대 교대" : "공유 전용"}</s></h4>`
-            + `<table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+      function retPyramid() {
+        const GAP_FULL = 8;   // 격차 8%p 에서 색이 가장 진해진다. 그 이상은 더 진해지지 않는다.
+        const cellHtml = (c, ver, n) => {
+          const me = retCell(c, ver, n);
+          if (!me) return `<td class="na">·</td>`;
+          const other = retCell(c, ver === "485" ? "486" : "485", n);
+          const mine = me.x / me.n * 100;
+          if (!other) return `<td class="c">${mine.toFixed(1)}</td>`;
+          const theirs = other.x / other.n * 100;
+          const gap = mine - theirs;
+          const pv = ptest(...(ver === "485" ? [me.x, me.n, other.x, other.n]
+                                             : [other.x, other.n, me.x, me.n]));
+          // 색은 '이 줄이 더 높다'는 사실만 칠한다. 유의성은 테두리로 따로 말한다 —
+          // 둘을 한 채널에 섞으면 큰 격차와 확실한 격차가 구분되지 않는다.
+          const win = gap > 0;
+          const al  = Math.min(Math.abs(gap) / GAP_FULL, 1) * 0.42;
+          const bg  = win ? `rgba(21,128,61,${al.toFixed(3)})` : "transparent";
+          const sig = pv != null && pv < 0.05;
+          const tip = `${c} 코호트 · D+${n} · ${ver}\n${mine.toFixed(1)}% (${nf(me.x)} / ${nf(me.n)})\n`
+            + `상대 ${theirs.toFixed(1)}% · 격차 ${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)}%p\n`
+            + `두 비율 검정 p=${pv == null ? "—" : pv < 0.001 ? "<0.001" : pv.toFixed(3)}`
+            + (sig ? "" : "\n유의성 미달 — 색은 방향만 뜻합니다");
+          return `<td class="c" style="background:${bg}${sig ? ";outline:1.5px solid var(--good);outline-offset:-1.5px" : ""}" data-tip="${tip}">`
+            + `<b>${mine.toFixed(1)}</b>${win ? `<s>▲</s>` : ""}</td>`;
         };
-        return `<div class="tri-wrap">${one("485", "22,163,74", "485")}`
-          + `${one("486", "29,78,216", "486")}</div>`
-          + `<div class="tri-foot">
+        const body = RET_COHORTS.map(c => ["485", "486"].map((ver, i) => {
+          const size = RET.filter(r => r.c === c && r.ver === ver)
+                          .reduce((t, r) => t + r.coh, 0);
+          return `<tr class="${i ? "vb" : "va"}">`
+            + (i ? "" : `<td class="day" rowspan="2">${c}</td>`)
+            + `<td class="ver"><i style="background:var(--${ver === "485" ? "a" : "b"})"></i>${ver}</td>`
+            + `<td class="coh">${nf(size)}</td>`
+            + DAYS.map(n => cellHtml(c, ver, n)).join("") + `</tr>`;
+        }).join("")).join("");
+        return `<div class="pyr-key">
+            <span><i style="background:rgba(21,128,61,.42)"></i>그 코호트·그 날짜에서 <b>더 높은 쪽</b> · 진할수록 격차가 큼(8%p에서 최대)</span>
+            <span><i style="outline:1.5px solid var(--good);outline-offset:-1.5px;background:transparent"></i>두 비율 검정 통과(p&lt;.05)</span>
+            <span><i style="background:#eef1f6"></i>· = 아직 안 온 날</span>
+          </div>
+          <div class="pyr"><table>
+            <thead><tr><th>코호트일</th><th>빌드</th><th>코호트</th>
+              ${DAYS.map(n => `<th>D+${n}</th>`).join("")}</tr></thead>
+            <tbody>${body}</tbody>
+          </table></div>
+          <div class="tri-foot">
             숫자는 <b>그 코호트가 정확히 N일 뒤 하루에 다시 접속한 비율(%)</b>입니다 — 누적 잔존이 아니라
             <b>그날 하루 출석률</b>이라, 하루 건너뛰고 이틀 뒤에 온 유저는 D+2에 빠지고 D+3에 잡힙니다.
             <b>구조적으로 오르내릴 수 있는 값</b>이고, 실제로 9/3 코호트 486은 D+2 39.9% → D+3 43.0%로 올라갑니다 —
             RU 150명 중 <b>8명</b> 차이(90 → 98)라 신호로 볼 크기가 아닙니다. 같은 일요일로 들어가는
-            9/4 코호트는 표본이 10배 큰데 <b>485·486 둘 다 내려갑니다</b>(31.9 → 26.9 · 31.1 → 29.0).
-            <b>· 이라고 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이고, 그래서 표가 아래로 갈수록 짧아집니다.
-            비교는 <b>같은 코호트일 줄끼리 좌우</b>로만 하세요 — 세로로 다른 코호트를 이어 읽으면
-            9/3(롤아웃 첫날, 조기 업데이트 헤비 유저)의 높은 값이 착시를 만듭니다.
+            9/4 코호트는 표본이 10배 큰데 <b>485·486 둘 다 내려갑니다</b>(31.9 → 26.9 · 31.1 → 29.0) —
+            <b>요일 효과로는 설명되지 않습니다.</b>
+            비교는 <b>붙어 있는 485·486 한 쌍 안에서 세로로</b>만 하세요. 가로로 D를 이어 읽는 것은 같은 코호트라 괜찮지만,
+            <b>다른 코호트일끼리 세로로 이어 읽으면 안 됩니다</b> — 9/3은 롤아웃 첫날이라 조기 업데이트 헤비 유저만 잡혀
+            D+1이 47%대이고 나머지 코호트는 32%대입니다.
+            <b>지금은 초록 테두리가 하나도 없습니다 — 어느 칸도 유의성에 이르지 못했고, 색은 방향만 뜻합니다.</b>
           </div>`;
       }
 
@@ -735,7 +758,7 @@ ORDER BY `블록`;</pre></div>
 
         const body = GROUPS.map(g => {
           const rows = g.days
-            ? retTriangles()
+            ? retPyramid()
             : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den]) => {
                 // parts 는 검정용(비율 지표만). den 은 표시 전용 — 유저당 건수처럼
                 // 두 비율 검정이 성립하지 않는 행도 모수는 보여줘야 표본 크기를 읽는다.

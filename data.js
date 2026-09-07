@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-07 10:34",
+  updated: "2026-09-07 11:02",
 };
 
 /* --------------------------------------------------------------------------
@@ -438,7 +438,7 @@ const SECTIONS = [
     cards: [
       {
         title: "토너먼트 연속 거절 차단 — A ↔ B",
-        desc: "생성 다이얼로그 연속 3회 거절 시 세션 내 차단. 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고, 다른 지면 이탈도 없습니다. 잔존 +는 유의성 미달입니다.",
+        desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 잔존 +는 유의성 미달입니다.",
         url: "docs/coin-match-tournament-reject-ab.html",
         project: "cmt",
         status: "진행중",
@@ -453,8 +453,8 @@ const SECTIONS = [
         url: "docs/sol-tournament-slot-ab.html",
         project: "sol",
         status: "진행중",
-        version: "v18.0",
-        updated: "2026-09-07 10:34",
+        version: "v18.1",
+        updated: "2026-09-07 11:02",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B"],
       },
