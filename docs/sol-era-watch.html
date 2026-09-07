@@ -76,11 +76,13 @@
         <div class="doc-eyebrow">분석 · 라이브 데이터</div>
         <h1 class="doc-title">솔리테어 483 전후 — 벤치 대조</h1>
         <p class="doc-lede">
-          <b>482 이하</b>(8/31~9/4 · 7,245 유저-일)와 <b>483 이상</b>(9/2~9/4 · 5,004 유저-일)을
+          <!-- WIN:START -->
+          <b>482 이하</b>(8/31~9/4 · 7,245 유저-일)와 <b>483 이상</b>(9/2~9/6 · 11,091 유저-일)을
           빌드별로 합산해 DAU당 지표 9개로 나란히 놓았습니다. 🎯 목표선은 <b>8/31~9/2 벤치 고정 기준선</b>
           (마종 · 초대만 퍼블마)이라 솔리테어 창이 바뀌어도 움직이지 않습니다.
-          483 이상은 9/2 저녁 배포분부터 <b>9/4 조회 시점까지</b>라 시작·끝이 잘린 하루가 섞여 있고,
-          그래서 DAU를 분모로 쓰는 행은 구조적으로 눌립니다 — 방향 판단은 비율 2행(생성률·공유율)부터 보세요.
+          483 이상 막대에는 <b>483 · 485 · 486</b> 빌드가 함께 들어 있고, 배포 당일과 조회 당일은 하루가 잘려 있어
+          DAU를 분모로 쓰는 행이 구조적으로 눌립니다 — 방향 판단은 비율 2행(생성률·공유율)부터 보세요.
+          <!-- WIN:END -->
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
@@ -158,7 +160,7 @@
               (<code>tournamentInviteEnabled</code> 임시 <code>false</code>)는 아직 커밋·배포되지 않았고,
               현재 <code>main</code>은 시트값을 그대로 읽습니다. 그래서 이 표는 A/B 대조가 아니라
               <strong>단순 빌드 전후</strong>이고, 실제 A/B는 차단 빌드(484 이상)가 나간 뒤에 성립합니다.
-              게다가 483 이상은 <strong>9/2 저녁 배포분부터 9/4 조회 시점까지</strong> 모인 5,004 유저-일이라,
+              게다가 483 이상은 <strong>배포 당일부터 조회 시점까지</strong> 모인 표본이라,
               하루를 온전히 쓴 세션 비중이 482보다 낮습니다 — 판수·광고 같은 <strong>DAU 분모 지표가
               구조적으로 낮게</strong> 찍히는 이유입니다.
             </p>
@@ -203,47 +205,81 @@
         </h2>
 
         <details class="fold">
-          <summary>1. 솔리테어 — 날짜 × 빌드군 원본 (이 문서 daily를 그대로 만드는 쿼리)</summary>
+          <summary>1. 솔리테어 — 날짜 × 빌드군 원본 (자동화가 매일 실행하는 쿼리 · <code>log_date IN</code> 은 결손일 목록이라 아래는 최근 3일을 넣은 예시)</summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- 결과 1행 = 이 문서 DATA.sol.daily 1행. 별칭을 JS 키와 같게 둬서 옮겨 적을 때 매핑이 없다.
--- 483 = A/B 대조군 빌드(토너 초대 지면 차단) 기준선 · 482 이하 = 비교군.
--- ★ver는 client_version &gt;= 483을 한 군으로 묶은 값이다 — 484·485가 나가면 여기 섞인다.
--- DAU는 세션이 아니라 1000_LOGIN_COMPLETE가 있는 (날짜, 플레이어) 쌍이다.
--- RV는 4210_RV_FINISH(일반 RV). 4110_INTERSTITIAL_RV_FINISH는 IRV로 다른 지면이라
--- 총광고에 넣지 않고 irv_fin으로 누락 확인용으로만 센다.
+            <!-- SQL:START -->
+            <div class="table-scroll"><pre>-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_era_watch.py 가 매일 KST 09시에 이 문자열을
+-- 그대로 실행하고, 같은 문자열을 문서의 SQL 폴드에 심는다 — 사본이 갈라질 수 없다.
+--
+-- 스캔 원칙
+--  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
+--  · 고정 창이 아니라 **결손일만** 읽는다. 평소에는 어제 하루뿐이라 스캔이 1일치로 고정된다.
+--    (맥이 며칠 꺼져 있었으면 그 며칠이 한 번에 들어온다 — 공백이 영구 결손으로 남지 않는다.)
+--  · 벤치 3사(코지·마종·퍼블마)는 이 쿼리에 없다. 8/31~9/2 고정 기준선이라 재조회하지 않는다.
+--
+-- 결과 1행 = 이 문서 DATA.sol.daily 1행. 별칭을 JS 키와 같게 둬서 옮겨 적을 때 매핑이 없다.
+-- ★ver 는 client_version &gt;= 483 을 한 군으로 묶은 값이다 — 485·486(슬롯 A/B)이 여기 섞인다.
+--   2_VERSION 블록이 그날 실제로 뜬 빌드를 그대로 보여주므로 혼합 여부를 눈으로 확인할 수 있다.
+-- DAU 는 세션이 아니라 1000_LOGIN_COMPLETE 가 있는 (날짜, 플레이어) 쌍이다.
+-- RV 는 4210_RV_FINISH(일반 RV). 4110_INTERSTITIAL_RV_FINISH 는 IRV 로 다른 지면이라
+-- 총광고에 넣지 않고 irv_fin 으로 누락 확인용으로만 센다.
 -- 초대: inv_* = 토너 초대(position='tournament_invite'), inv_all_* = 지면 무관 전체.
-SELECT
-    log_date AS d,
-    IF(client_version &gt;= 483, '483', '482') AS ver,
-    COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
-    COUNTIF(event = '2300_GAMEPLAY_FINISH')                           AS fin,
-    COUNTIF(event = '4210_RV_FINISH')                                 AS rv_fin,
-    COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                    AS it_fin,
-    COUNTIF(event = '4110_INTERSTITIAL_RV_FINISH')                    AS irv_fin,
-    COUNTIF(event = '3410_MSG_P2P_SUCCESS')                           AS msg_ok,
-    COUNTIF(event = '3510_FEED_SHARE_SUCCESS')                        AS feed_ok,
-    COUNTIF(event = '3100_TOURNAMENT_CREATE')                         AS cr_try,
-    COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                 AS cr_ok,
-    COUNTIF(event = '3200_TOURNAMENT_SHARE')                          AS sh_try,
-    COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                  AS sh_ok,
-    COUNTIF(event = '3460_MSG_P2P_INVITE'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_try,
-    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
-            AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_ok,
-    COUNTIF(event = '3460_MSG_P2P_INVITE')                            AS inv_all_try,
-    COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS')                    AS inv_all_ok
-FROM (
+WITH us AS (
     SELECT
         log_date, player_id, event, data, client_version,
         MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
             OVER (PARTITION BY log_date, player_id) AS has_login
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-08-31' AND '2026-09-04'
+    WHERE log_date IN (DATE '2026-09-04', DATE '2026-09-05', DATE '2026-09-06')
         AND is_dev IS DISTINCT FROM TRUE
         AND player_id &gt; 0
+),
+daily AS (
+    SELECT
+        CAST(log_date AS STRING) AS d,
+        IF(client_version &gt;= 483, '483', '482') AS ver,
+        COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
+        COUNTIF(event = '2300_GAMEPLAY_FINISH')                           AS fin,
+        COUNTIF(event = '4210_RV_FINISH')                                 AS rv_fin,
+        COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                    AS it_fin,
+        COUNTIF(event = '4110_INTERSTITIAL_RV_FINISH')                    AS irv_fin,
+        COUNTIF(event = '3410_MSG_P2P_SUCCESS')                           AS msg_ok,
+        COUNTIF(event = '3510_FEED_SHARE_SUCCESS')                        AS feed_ok,
+        COUNTIF(event = '3100_TOURNAMENT_CREATE')                         AS cr_try,
+        COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                 AS cr_ok,
+        COUNTIF(event = '3200_TOURNAMENT_SHARE')                          AS sh_try,
+        COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                  AS sh_ok,
+        COUNTIF(event = '3460_MSG_P2P_INVITE'
+                AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_try,
+        COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
+                AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_ok,
+        COUNTIF(event = '3460_MSG_P2P_INVITE')                            AS inv_all_try,
+        COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS')                    AS inv_all_ok
+    FROM us
+    GROUP BY d, ver
+),
+vers AS (
+    -- 483 이상 막대에 실제로 어떤 빌드가 섞여 있는지. 같은 us 를 다시 쓰므로 추가 스캔이 없다.
+    SELECT
+        CAST(log_date AS STRING) AS d,
+        CAST(client_version AS STRING) AS ver,
+        COUNT(DISTINCT IF(has_login = 1, player_id, NULL)) AS ud
+    FROM us
+    GROUP BY d, ver
 )
-GROUP BY d, ver
-ORDER BY d, ver DESC;</pre></div>
+SELECT '0_META' AS blk, TO_JSON_STRING(STRUCT(
+    FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', CURRENT_TIMESTAMP(), 'Asia/Seoul') AS pulled_kst,
+    CAST(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS STRING)              AS last_day)) AS payload
+UNION ALL
+SELECT '1_DAILY', TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    d, ver, ud, fin, rv_fin, it_fin, irv_fin, msg_ok, feed_ok,
+    cr_try, cr_ok, sh_try, sh_ok, inv_try, inv_ok, inv_all_try, inv_all_ok)
+    ORDER BY d, ver DESC)) FROM daily
+UNION ALL
+SELECT '2_VERSION', TO_JSON_STRING(ARRAY_AGG(STRUCT(d, ver, ud)
+    ORDER BY d, ver)) FROM vers
+ORDER BY blk</pre></div>
+            <!-- SQL:END -->
             <div class="notes">
               <div class="note" style="--acc: var(--validate)">
                 <p>
@@ -328,65 +364,44 @@ ORDER BY `프로젝트`;</pre></div>
     <div id="tip"></div>
 
     <script>
-      /* ── DATA — 갱신할 때 이 블록만 교체한다 ────────────────────────────────
-         era_cmp: 구간별 원값. org/ua 계층 없이 평평하게 줘도 되고, 그 경우 유입 토글은 안 뜬다.
-         bench3 : 목표선. 일별이 아니라 이미 3일 합산된 1덩어리를 넣는다.
-         전부 0인 지금은 각 행이 —(또는 "없던 기능")으로 그려진다. 깨지지 않는다. */
+      /* DATA:START */
+      /* ── DATA — scripts/refresh_sol_era_watch.py 가 생성한다. 손으로 고치면 사라진다.
+         bench : 목표선. 8/31~9/2 고정 기준선이라 자동화가 재조회하지 않는다(스크립트 상수).
+         sol   : 날짜 × 빌드군 실측. 막대 값은 손으로 더하지 않는다 — 코드가 daily 를 합산한다.
+         updated 는 실행 시각이 아니라 데이터의 마지막 날이다. */
       const DATA = {
-        updated: "2026-09-04",
+        updated: "2026-09-06",
         // 벤치 3일치 — 8/31~9/2 실측. ★고정 기준선이다: 솔 창이 바뀌어도 다시 뽑지 않는다.
         // 매번 같이 굴리면 목표선이 함께 흔들려 "무엇이 움직였는지"가 사라진다.
         bench: {
           win: "8/31~9/2 고정",
-          cozy:    { days:3, ud:46124, fin:587976, rv_fin:90158, it_fin:340549,
-                     msg_ok:78314, feed_ok:952,
-                     cr_try:159214, cr_ok:30202, sh_try:120947, sh_ok:23569,
-                     inv_try:0, inv_ok:0 },
-          mahjong: { days:3, ud:87727, fin:658721, rv_fin:77109, it_fin:362056,
-                     msg_ok:133148, feed_ok:6141,
-                     cr_try:289336, cr_ok:86316, sh_try:111227, sh_ok:35780,
-                     inv_try:0, inv_ok:0 },
-          pubma:   { days:3, ud:34402, fin:264078, rv_fin:64133, it_fin:115497,
-                     msg_ok:40851, feed_ok:847,
-                     cr_try:86557, cr_ok:9082, sh_try:69711, sh_ok:9801,
-                     inv_try:26583, inv_ok:25444 },
+          cozy:     { days:3, ud:46124, fin:587976, rv_fin:90158, it_fin:340549, msg_ok:78314, feed_ok:952, cr_try:159214, cr_ok:30202, sh_try:120947, sh_ok:23569, inv_try:0, inv_ok:0 },
+          mahjong:  { days:3, ud:87727, fin:658721, rv_fin:77109, it_fin:362056, msg_ok:133148, feed_ok:6141, cr_try:289336, cr_ok:86316, sh_try:111227, sh_ok:35780, inv_try:0, inv_ok:0 },
+          pubma:    { days:3, ud:34402, fin:264078, rv_fin:64133, it_fin:115497, msg_ok:40851, feed_ok:847, cr_try:86557, cr_ok:9082, sh_try:69711, sh_ok:9801, inv_try:26583, inv_ok:25444 },
         },
-        // 솔리테어 — 날짜×client_version 실측(2026-09-03 08:53 조회).
-        // ★막대 값은 손으로 더하지 않는다. 아래 daily를 코드가 버전별로 합산한다.
-        //   갱신할 때는 daily에 행을 덧붙이기만 하면 막대·Δ가 따라온다.
+        // 솔리테어 — 날짜 × client_version 실측(2026-09-07 15:20 KST 조회).
         sol: {
           arms: [
             { key:"pre", ver:"482", label:"482 이하", win:"8/31~9/4", color:"#9AA0B8" },
-            { key:"cur", ver:"483", label:"483 이상", win:"9/2~9/4",  color:"#15803D" },
+            { key:"cur", ver:"483", label:"483 이상", win:"9/2~9/6", color:"#15803D" },
           ],
           daily: [
-            { d:"2026-08-31", ver:"482", ud:2680, fin:29379, rv_fin:9178, it_fin:18236, irv_fin:0,
-              msg_ok:704, feed_ok:243, cr_try:5160, cr_ok:511, sh_try:4070, sh_ok:255,
-              inv_try:3883, inv_ok:3744, inv_all_try:3972, inv_all_ok:3825 },
-            { d:"2026-09-01", ver:"482", ud:2458, fin:27783, rv_fin:8562, it_fin:17200, irv_fin:0,
-              msg_ok:899, feed_ok:357, cr_try:5007, cr_ok:605, sh_try:4617, sh_ok:318,
-              inv_try:4457, inv_ok:4321, inv_all_try:4548, inv_all_ok:4405 },
-            { d:"2026-09-02", ver:"482", ud:2100, fin:20466, rv_fin:6204, it_fin:12869, irv_fin:0,
-              msg_ok:674, feed_ok:181, cr_try:3765, cr_ok:450, sh_try:3281, sh_ok:225,
-              inv_try:3155, inv_ok:3059, inv_all_try:3218, inv_all_ok:3118 },
-            { d:"2026-09-02", ver:"483", ud:815,  fin:5888,  rv_fin:1805, it_fin:3966,  irv_fin:0,
-              msg_ok:278, feed_ok:39,  cr_try:1362, cr_ok:173, sh_try:890,  sh_ok:55,
-              inv_try:856,  inv_ok:826,  inv_all_try:874,  inv_all_ok:844 },
-            { d:"2026-09-03", ver:"482", ud:6,    fin:310,   rv_fin:36,   it_fin:312,   irv_fin:0,
-              msg_ok:0,   feed_ok:0,   cr_try:6,    cr_ok:1,   sh_try:1,    sh_ok:0,
-              inv_try:1,    inv_ok:2,    inv_all_try:1,    inv_all_ok:2 },
-            { d:"2026-09-03", ver:"483", ud:2896, fin:27400, rv_fin:7571, it_fin:16646, irv_fin:0,
-              msg_ok:1081, feed_ok:338, cr_try:6107, cr_ok:641, sh_try:4730, sh_ok:351,
-              inv_try:3299, inv_ok:3223, inv_all_try:3385, inv_all_ok:3300 },
-            { d:"2026-09-04", ver:"482", ud:1,    fin:24,    rv_fin:3,    it_fin:25,    irv_fin:0,
-              msg_ok:0,   feed_ok:0,   cr_try:0,    cr_ok:0,   sh_try:0,    sh_ok:0,
-              inv_try:0,    inv_ok:0,    inv_all_try:0,    inv_all_ok:0 },
-            { d:"2026-09-04", ver:"483", ud:1293, fin:11811, rv_fin:3272, it_fin:7290,  irv_fin:0,
-              msg_ok:458, feed_ok:81,  cr_try:2569, cr_ok:310, sh_try:2764, sh_ok:124,
-              inv_try:864,  inv_ok:839,  inv_all_try:907,  inv_all_ok:877 },
+            { d:"2026-08-31", ver:"482", ud:2680, fin:29379, rv_fin:9178, it_fin:18236, irv_fin:0, msg_ok:704, feed_ok:243, cr_try:5160, cr_ok:511, sh_try:4070, sh_ok:255, inv_try:3883, inv_ok:3744, inv_all_try:3972, inv_all_ok:3825 },
+            { d:"2026-09-01", ver:"482", ud:2458, fin:27783, rv_fin:8562, it_fin:17200, irv_fin:0, msg_ok:899, feed_ok:357, cr_try:5007, cr_ok:605, sh_try:4617, sh_ok:318, inv_try:4457, inv_ok:4321, inv_all_try:4548, inv_all_ok:4405 },
+            { d:"2026-09-02", ver:"482", ud:2100, fin:20466, rv_fin:6204, it_fin:12869, irv_fin:0, msg_ok:674, feed_ok:181, cr_try:3765, cr_ok:450, sh_try:3281, sh_ok:225, inv_try:3155, inv_ok:3059, inv_all_try:3218, inv_all_ok:3118 },
+            { d:"2026-09-02", ver:"483", ud:815, fin:5888, rv_fin:1805, it_fin:3966, irv_fin:0, msg_ok:278, feed_ok:39, cr_try:1362, cr_ok:173, sh_try:890, sh_ok:55, inv_try:856, inv_ok:826, inv_all_try:874, inv_all_ok:844 },
+            { d:"2026-09-03", ver:"482", ud:6, fin:310, rv_fin:36, it_fin:312, irv_fin:0, msg_ok:0, feed_ok:0, cr_try:6, cr_ok:1, sh_try:1, sh_ok:0, inv_try:1, inv_ok:2, inv_all_try:1, inv_all_ok:2 },
+            { d:"2026-09-03", ver:"483", ud:2896, fin:27400, rv_fin:7571, it_fin:16646, irv_fin:0, msg_ok:1081, feed_ok:338, cr_try:6107, cr_ok:641, sh_try:4730, sh_ok:351, inv_try:3299, inv_ok:3223, inv_all_try:3385, inv_all_ok:3300 },
+            { d:"2026-09-04", ver:"482", ud:1, fin:24, rv_fin:3, it_fin:25, irv_fin:0, msg_ok:0, feed_ok:0, cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_ok:0, inv_all_try:0, inv_all_ok:0 },
+            { d:"2026-09-04", ver:"483", ud:1293, fin:11811, rv_fin:3272, it_fin:7290, irv_fin:0, msg_ok:458, feed_ok:81, cr_try:2569, cr_ok:310, sh_try:2764, sh_ok:124, inv_try:864, inv_ok:839, inv_all_try:907, inv_all_ok:877 },
+            { d:"2026-09-05", ver:"482", ud:0, fin:18, rv_fin:5, it_fin:18, irv_fin:0, msg_ok:0, feed_ok:0, cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_ok:0, inv_all_try:0, inv_all_ok:0 },
+            { d:"2026-09-05", ver:"483", ud:2786, fin:23189, rv_fin:7432, it_fin:13484, irv_fin:0, msg_ok:890, feed_ok:139, cr_try:5110, cr_ok:531, sh_try:5261, sh_ok:311, inv_try:1694, inv_ok:1616, inv_all_try:1765, inv_all_ok:1681 },
+            { d:"2026-09-06", ver:"482", ud:0, fin:14, rv_fin:0, it_fin:14, irv_fin:0, msg_ok:0, feed_ok:0, cr_try:0, cr_ok:0, sh_try:0, sh_ok:0, inv_try:0, inv_ok:0, inv_all_try:0, inv_all_ok:0 },
+            { d:"2026-09-06", ver:"483", ud:3301, fin:26853, rv_fin:9281, it_fin:15517, irv_fin:0, msg_ok:1134, feed_ok:187, cr_try:5886, cr_ok:753, sh_try:6171, sh_ok:423, inv_try:1600, inv_ok:1506, inv_all_try:1678, inv_all_ok:1579 },
           ],
         },
       };
+      /* DATA:END */
 
       // 기준일 스탬프 — DATA.updated에서 읽는다. 갱신할 때마다 헤더가 따라온다.
       document.getElementById("stamp").textContent =

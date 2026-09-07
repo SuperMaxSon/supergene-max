@@ -468,7 +468,7 @@ def main():
         log("읽을 날짜 %d일%s" % (len(days),
             (" (" + ", ".join(d.isoformat() for d in days) + ")") if days else " — raw 스캔 0"))
         blocks = run_query(days)
-        state  = merge_state(state, blocks)
+        state  = merge_state(state, blocks, days)
         check(state)
         block, rng = build_js(state)
         old, new   = splice(block)

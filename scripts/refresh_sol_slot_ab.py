@@ -256,11 +256,34 @@ def check(state):
     days = sorted({r["d"] for r in state["daily"]})
     if len(days) < 2:
         raise Guard("daily 날짜가 %d개뿐이다" % len(days))
+
+    # 중간 결손 검사. us CTE 는 최근 3일 고정 창이라(dist/res 가 날짜축 없는 롤링이어서
+    # 그 창이 필요하다) 맥이 나흘 넘게 꺼져 있으면 그 사이 날짜가 영구히 빈다.
+    # daily 는 날짜별 합산으로 보드를 만들므로, 구멍이 있으면 합계가 조용히 작아진다.
+    # 자기치유는 못 하니 최소한 조용히 틀리지는 않게 여기서 세운다.
+    want = []
+    d = datetime.date.fromisoformat(EXP_FROM)
+    while d <= datetime.date.fromisoformat(state["last_day"]):
+        want.append(d.strftime("%m-%d"))
+        d += datetime.timedelta(days=1)
+    gaps = [k for k in want if k not in set(days)]
+    if gaps:
+        raise Guard("중간 결손일 %d개 (%s) — 보드 합계가 틀린다. us 창(3일)보다 긴 공백이라 "
+                    "자동 복구되지 않는다: 창을 늘려 1회 수동 실행할 것"
+                    % (len(gaps), ", ".join(gaps[:5])))
+
+    # 부분 적재 검사. 전일 대비 ±50% 밴드는 70% 적재를 그냥 통과시켰다(실측 일간 변동은
+    # 88~105%). 최근 7일 중앙값의 75% 미만만 부분일로 본다 — 급증은 부분 적재가 아니므로
+    # 상한은 두지 않는다. 실험 초기 램프에서는 중앙값이 의미 없어 3일 미만이면 건너뛴다.
     dau = {d: sum(r["ud"] for r in state["daily"] if r["d"] == d) for d in days}
-    last, prev = days[-1], days[-2]
-    if dau[prev] and not (0.5 <= dau[last] / dau[prev] <= 1.5):
-        raise Guard("DAU 가 전일 대비 %.0f%% — 부분일이거나 집계 이상 (%s %d -> %s %d)"
-                    % (dau[last] / dau[prev] * 100, prev, dau[prev], last, dau[last]))
+    if len(days) >= 3:
+        ref = sorted(dau[k] for k in days[-7:])
+        med = ref[len(ref) // 2]
+        last = days[-1]
+        if med and dau[last] < med * 0.75:
+            raise Guard("%s DAU %d 이 최근 중앙값 %d 의 %.0f%% — 부분 적재로 보인다"
+                        % (last, dau[last], med, dau[last] / med * 100))
+    last = days[-1]
     for v in (A, B):
         if not any(r["ver"] == v for r in state["daily"] if r["d"] == last):
             raise Guard("%s 마지막 날에 빌드 %s 행이 없다 — 대조군이 사라졌다" % (last, v))

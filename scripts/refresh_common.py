@@ -137,6 +137,10 @@ def stamp(now, bust, rng):
     # 카드의 updated (url 뒤쪽 블록 안) 갱신
     d = re.sub(r'(url: "%s".*?updated: ")[^"]*(")' % url,
                r"\g<1>%s\g<2>" % now, d, count=1, flags=re.S)
+    # 자동 갱신되는 문서는 Live 다. 허브에서 Live 배지(빨강)는 '이 자동화가 돌고 있다'는
+    # 뜻이므로 사람이 카드를 손대다 상태를 되돌려도 다음 실행에 복구되게 한다.
+    d = re.sub(r'(url: "%s".*?status: ")[^"]*(")' % url,
+               r"\g<1>Live\g<2>", d, count=1, flags=re.S)
     open(DATA_JS, "w", encoding="utf-8").write(d)
 
     i = open(INDEX, encoding="utf-8").read()
