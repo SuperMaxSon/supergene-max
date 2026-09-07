@@ -48,17 +48,18 @@ def save_registry(reg):
 
 
 def hour_grid(hours):
-    """0~23 을 전부 깔아 놓고 토글한다. 쉼표 목록을 손으로 고치는 것보다
-    '지금 몇 시에 도는지'가 한눈에 보이고, 오타로 시각이 사라질 일이 없다."""
+    """0~23 을 전부 깔아 놓고 토글한다.
+
+    클릭 즉시 저장하지 않는다 — 여러 칸을 고칠 때 매번 저장·재렌더가 돌고,
+    실수로 누른 것을 되돌릴 방법이 없다. 공유 설정 페이지와 같이
+    '고른 뒤 적용하기' 로 맞춘다(되돌리기도 같이 둔다).
+    """
     on = set(hours)
     cells = []
     for h in range(24):
         cells.append(
-            '<form method="post" action="/hour" class="hcell">'
-            '<input type="hidden" name="h" value="%d">'
-            '<button class="hbtn%s" title="%02d:00 %s">%02d</button></form>'
-            % (h, " is-on" if h in on else "", h,
-               "끄기" if h in on else "켜기", h))
+            '<button type="button" class="hbtn%s" data-h="%d">%02d</button>'
+            % (" is-on" if h in on else "", h, h))
     return "".join(cells)
 
 
@@ -164,6 +165,12 @@ def page():
         color:var(--mut);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600}
   .hbtn:hover{border-color:var(--ac);color:var(--ac)}
   .hbtn.is-on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:800}
+  .hbtn{cursor:pointer}
+  .hbar{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .hstate{font-size:12.5px;color:var(--mut)}
+  .hstate.is-dirty{color:#b45309;font-weight:700}
+  .grow{flex:1}
+  button:disabled{opacity:.4;cursor:default}
   pre{background:#0f1115;color:#d6dae1;padding:14px;border-radius:10px;overflow:auto;
       font-size:12px;line-height:1.55;margin:0}
   .note{font-size:12px;color:var(--mut);margin-top:10px}
@@ -176,9 +183,18 @@ def page():
 
   <div class="card">
     <h2>공용 실행 시각 — 모든 자동화가 이 값을 봅니다</h2>
-    <div class="hgrid">{{HOURGRID}}</div>
-    <div class="note">누르면 바로 켜지고 꺼집니다(KST) · 선택 <b>{{HOURCOUNT}}개</b> ·
-      다음 실행 <b>{{NEXTRUN}}</b> · 개별 시각이 지정된 작업은 그 값이 우선합니다.</div>
+    <form method="post" action="/hours" id="hform">
+      <div class="hgrid">{{HOURGRID}}</div>
+      <input type="hidden" name="hours" id="hval" value="{{HOURS}}">
+      <div class="hbar">
+        <span class="hstate" id="hstate">선택 <b>{{HOURCOUNT}}개</b> · 다음 실행 <b>{{NEXTRUN}}</b></span>
+        <span class="grow"></span>
+        <button type="button" class="ghost" id="hundo" disabled>되돌리기</button>
+        <button type="submit" class="on" id="happly" disabled>적용하기</button>
+      </div>
+    </form>
+    <div class="note">시각을 고른 뒤 <b>적용하기</b>를 누르세요(KST) ·
+      개별 시각이 지정된 작업은 그 값이 우선합니다.</div>
   </div>
 
   <div class="card">
@@ -191,10 +207,60 @@ def page():
   </div>
 
   <div class="card"><h2>최근 로그</h2><pre>{{LOG}}</pre></div>
-</div></body></html>"""
+</div>
+<script>
+(function () {
+  var form  = document.getElementById("hform");
+  if (!form) return;
+  var val   = document.getElementById("hval");
+  var apply = document.getElementById("happly");
+  var undo  = document.getElementById("hundo");
+  var state = document.getElementById("hstate");
+  var cells = [].slice.call(form.querySelectorAll(".hbtn"));
+  var base  = val.value.split(",").map(function (x) { return x.trim(); })
+                 .filter(Boolean).map(Number).sort(function (a, b) { return a - b; });
+
+  function cur() {
+    return cells.filter(function (c) { return c.classList.contains("is-on"); })
+                .map(function (c) { return Number(c.dataset.h); })
+                .sort(function (a, b) { return a - b; });
+  }
+  function nextRun(hs) {
+    if (!hs.length) return "없음 (선택된 시각이 없습니다)";
+    var h = new Date().getHours();
+    var later = hs.filter(function (x) { return x > h; });
+    var t = later.length ? later[0] : hs[0];
+    return (later.length ? "오늘 " : "내일 ") + ("0" + t).slice(-2) + ":00";
+  }
+  function sync() {
+    var now = cur();
+    var same = now.length === base.length && now.every(function (v, i) { return v === base[i]; });
+    val.value = now.join(",");
+    apply.disabled = same;
+    undo.disabled  = same;
+    state.classList.toggle("is-dirty", !same);
+    state.innerHTML = "선택 <b>" + now.length + "개</b> · 다음 실행 <b>" + nextRun(now) + "</b>"
+      + (same ? "" : " · <b>적용 안 됨</b>");
+  }
+  cells.forEach(function (c) {
+    c.addEventListener("click", function () { c.classList.toggle("is-on"); sync(); });
+  });
+  undo.addEventListener("click", function () {
+    cells.forEach(function (c) { c.classList.toggle("is-on", base.indexOf(Number(c.dataset.h)) !== -1); });
+    sync();
+  });
+  // 적용 안 한 변경을 들고 떠나는 것을 막는다
+  window.addEventListener("beforeunload", function (e) {
+    if (!apply.disabled) { e.preventDefault(); e.returnValue = ""; }
+  });
+  sync();
+})();
+</script>
+</body></html>"""
     for k, v in (
         ("{{NOW}}",   datetime.datetime.now().strftime("%Y-%m-%d %H:%M")),
         ("{{HOURGRID}}", hour_grid(hours)),
+        ("{{HOURS}}", ",".join(map(str, hours))),
         ("{{HOURCOUNT}}", str(len(hours))),
         ("{{NEXTRUN}}", next_run(hours)),
         ("{{ROWS}}",  "".join(rows) or '<tr><td colspan="5" class="mut">등록된 작업이 없습니다</td></tr>'),
@@ -231,17 +297,12 @@ class H(BaseHTTPRequestHandler):
             if jid in reg.get("jobs", {}):
                 reg["jobs"][jid]["enabled"] = not reg["jobs"][jid].get("enabled")
                 save_registry(reg)
-        elif self.path == "/hour":
-            try:
-                h = int((form.get("h") or ["-1"])[0])
-            except ValueError:
-                h = -1
-            if 0 <= h <= 23:
-                hs = set(reg.get("defaults", {}).get("hours") or [])
-                hs.symmetric_difference_update({h})
-                # 전부 끄는 것은 막지 않는다 — '한동안 멈춤'이 유효한 선택이다.
-                reg.setdefault("defaults", {})["hours"] = sorted(hs)
-                save_registry(reg)
+        elif self.path == "/hours":
+            raw = (form.get("hours") or [""])[0]
+            hs  = sorted({int(x) for x in re_ints(raw) if 0 <= int(x) <= 23})
+            # 전부 끄는 것(빈 목록)도 허용한다 — '한동안 멈춤'이 유효한 선택이다.
+            reg.setdefault("defaults", {})["hours"] = hs
+            save_registry(reg)
         elif self.path == "/run":
             jid = (form.get("id") or [""])[0]
             job = reg.get("jobs", {}).get(jid)
