@@ -18,6 +18,20 @@ LOG      = os.path.join(HERE, "refresh.log")
 PORT     = 8787
 
 
+USD_PER_TIB = 6.25          # BigQuery 온디맨드 분석 단가(US)
+KRW_PER_USD = 1400          # 환산 표시용 어림값
+
+
+def cost_note(job):
+    """'1회 2.48 GiB' 만 적으면 그 숫자가 돈으로 읽힌다. 스캔량과 환산액을 같이 보인다.
+    슬롯 예약 프로젝트면 추가 청구액은 0이므로 '온디맨드 기준'임을 명시한다."""
+    gib = job.get("scan_gib")
+    if not gib:
+        return "1회 " + str(job.get("scan_per_run", "?"))
+    usd = gib / 1024.0 * USD_PER_TIB
+    return "1회 %.2f GiB · 온디맨드 기준 약 %d원" % (gib, round(usd * KRW_PER_USD))
+
+
 def load(p, d):
     try:
         return json.load(open(p, encoding="utf-8"))
@@ -74,7 +88,7 @@ def page():
             html.escape(j.get("label", jid)),
             html.escape(j.get("url", "#")),
             html.escape(j.get("script", "")),
-            html.escape(j.get("scan_per_run", "?")),
+            html.escape(cost_note(j)),
             pill,
             "공용" if not own else "개별 " + html.escape(",".join(map(str, own))),
             html.escape(last), mark,
