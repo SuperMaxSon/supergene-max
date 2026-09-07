@@ -443,7 +443,7 @@ const SECTIONS = [
         project: "cmt",
         status: "진행중",
         version: "v2.4",
-        updated: "2026-09-07 14:40",
+        updated: "2026-09-07 11:49",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B"],
       },
