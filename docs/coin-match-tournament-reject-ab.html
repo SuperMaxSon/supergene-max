@@ -82,31 +82,47 @@
       .kb-warn b{color:color-mix(in srgb, var(--warn) 72%, var(--text))}
       .kb-warn code{background:#fff;padding:0 4px;border-radius:4px;font-size:11px}
 
-      /* 리텐션 커브 — D+n 이 x축인 표준 잔존 곡선. 미러 막대(피라미드)에서 갈아탔다:
-         일차가 14개로 늘면 행이 14줄이 되어 표로는 곡선의 기울기가 안 읽힌다.
-         두 층(미노출/처치노출)을 스몰멀티플로 나누고 y축은 공유한다 — 층 간 수준 차이(5.7% ↔ 25.9%)가
+      /* 리텐션 피라미드 — 인구 피라미드와 같은 미러 막대를 D+1~D+14 로 세운 것.
+         가운데가 일차, 왼쪽으로 A, 오른쪽으로 B 가 자란다. 위에서 아래로 좁아지는 모양 자체가
+         이탈 곡선이 되고, 같은 행에서 좌우 길이를 바로 견줄 수 있어 A/B 대조에 선 차트보다 낫다.
+         두 층(미노출/처치노출)을 나란히 두되 스케일은 공유한다 — 층 간 수준 차이(5.7% ↔ 25.9%)가
          이 문서의 핵심 관찰이라 패널마다 스케일을 다시 잡으면 그 차이가 사라진다.
          A #16a34a / B #1d4ed8 은 validate_palette.js 통과(정상시 ΔE 35.6 · 적록 31.8). */
       .rc{--a:#16a34a;--b:#1d4ed8}
       .rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-      @media (max-width:860px){ .rc-grid{grid-template-columns:1fr} }
-      .rc-panel{border:1px solid var(--border);border-radius:var(--radius);background:#fff;padding:11px 13px 7px}
-      .rc-h{font-size:12.5px;font-weight:800;color:var(--text)}
-      .rc-h span{font-weight:700;color:var(--text-dim);font-size:10.5px;margin-left:6px}
-      .rc-legend{display:flex;gap:15px;margin:7px 0 4px;font-size:10.5px;font-weight:700;color:var(--text-dim)}
+      @media (max-width:900px){ .rc-grid{grid-template-columns:1fr} }
+      .rc-panel{border:1px solid var(--border);border-radius:var(--radius);background:#fff;
+        padding:11px 13px 9px;overflow:hidden}
+      .rc-h{font-size:12.5px;font-weight:800;color:var(--text);margin-bottom:8px}
+      .rc-h span{display:block;font-weight:700;color:var(--text-dim);font-size:10.5px;margin-top:1px}
+      .rc-legend{display:flex;gap:15px;margin:7px 0 12px;font-size:10.5px;font-weight:700;
+        color:var(--text-dim);flex-wrap:wrap}
       .rc-legend b{display:inline-flex;align-items:center;gap:5px;font-weight:700}
-      .rc-legend b::before{content:"";width:15px;height:3px;border-radius:2px}
+      .rc-legend b::before{content:"";width:15px;height:9px;border-radius:2px}
       .rc-legend b.a::before{background:var(--a)} .rc-legend b.b::before{background:var(--b)}
-      svg.rc-svg{width:100%;height:auto;display:block;overflow:visible}
-      .rc-svg .grid{stroke:#eceff4;stroke-width:1}
-      .rc-svg .axis{stroke:#dfe3ea;stroke-width:1}
-      .rc-svg text{font-size:9px;fill:#8b93a8;font-weight:700}
-      .rc-svg text.dl{font-size:10px;font-weight:800}
-      /* 마커에 흰 링을 둘러 두 계열이 겹칠 때 앞뒤가 구분되게 한다. */
-      .rc-svg .mk{stroke:#fff;stroke-width:2}
-      .rc-svg .ln{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-      .rc-svg .hit{fill:transparent;cursor:crosshair}
-      .rc-svg .cross{stroke:#b6bccb;stroke-width:1;stroke-dasharray:3 3;visibility:hidden}
+
+      /* 한 행 = [A값 | A막대(오른쪽 정렬) | D+n | B막대(왼쪽 정렬) | B값 | Δ] */
+      .rp{display:grid;grid-template-columns:44px 1fr 44px 1fr 44px 50px;
+        align-items:center;gap:0 5px;font-variant-numeric:tabular-nums}
+      .rp .hd{font-size:9.5px;font-weight:800;color:var(--text-faint);padding-bottom:5px;
+        border-bottom:1px solid var(--border);margin-bottom:3px}
+      .rp .row{display:contents}
+      .rp .row:hover .day{background:#e6ebf5}
+      .rp .va,.rp .vb{font-size:10.5px;font-weight:800;white-space:nowrap}
+      .rp .va{color:#15803d;text-align:right} .rp .vb{color:#1d4ed8}
+      .rp .day{font-size:9.5px;font-weight:800;color:var(--text-dim);text-align:center;
+        background:var(--surface-2);border-radius:3px;padding:2px 0;margin:1px 0}
+      .rp .tr{padding:2px 0}
+      .rp .tr i{display:block;height:11px;border-radius:2px}
+      .rp .tr.l i{margin-left:auto;background:var(--a)}
+      .rp .tr.r i{background:var(--b)}
+      .rp .dd{font-size:10px;font-weight:800;text-align:right;color:#5f6878;white-space:nowrap}
+      /* 미집계와 미도래를 다르게 칠한다 — 전자는 지금 뽑으면 나오고 후자는 시간이 지나야 나온다. */
+      .rp .hatch{height:11px;border-radius:2px;
+        background:repeating-linear-gradient(135deg,#f2f4f8 0 6px,#e8ebf1 6px 12px)}
+      .rp .hatch.soon{background:repeating-linear-gradient(135deg,#fdfaf1 0 6px,#f6efdc 6px 12px)}
+      .rp .row.na .day{opacity:.55} .rp .row.na .dd{color:#a8b0c2;font-size:9px}
+      @media (max-width:900px){ .rp{grid-template-columns:42px 1fr 42px 1fr 42px 46px} }
 
       /* 대조/처치 정의 — 어떤 두 군을 견주는지가 타이틀 바로 밑에서 끝나야 한다.
          이게 없으면 3374·3375 가 그냥 숫자로 보이고, 아래 보드의 초록/파랑이 무엇인지 알 수 없다.
@@ -265,12 +281,13 @@
       </section>
 
       <section class="doc-section rc" id="retention">
-        <h2 class="doc-h2">리텐션 커브 <span class="doc-h2-sub">D+1 ~ D+14 · 두 패널이 같은 y축을 씁니다</span></h2>
+        <h2 class="doc-h2">리텐션 피라미드 <span class="doc-h2-sub">classic Day-N · D+1~D+14 · 두 패널이 같은 스케일</span></h2>
 
         <div class="rc-legend">
           <b class="a">A · 3374 제한 없음</b>
           <b class="b">B · 3375 상한 3</b>
-          <span style="color:var(--text-faint)">점선 = 미집계 구간을 이은 것 · 빗금 = 미도래</span>
+          <span><span style="display:inline-block;width:15px;height:9px;border-radius:2px;vertical-align:middle;background:repeating-linear-gradient(135deg,#f2f4f8 0 6px,#e8ebf1 6px 12px)"></span> 미집계 — 지금 뽑으면 나옵니다</span>
+          <span><span style="display:inline-block;width:15px;height:9px;border-radius:2px;vertical-align:middle;background:repeating-linear-gradient(135deg,#fdfaf1 0 6px,#f6efdc 6px 12px)"></span> 미도래 — 9/10 이후</span>
         </div>
 
         <div class="rc-grid" id="rcgrid"></div>
@@ -283,7 +300,7 @@
               가장 이른 코호트(8/27)조차 <strong>D+11</strong> 까지만 도달했습니다.
               D+14 는 그 코호트 기준 <strong>9/10</strong>, 5일 코호트 창 기준 <strong>9/14</strong> 부터 측정됩니다.
               <strong>D+2~D+6 · D+8~D+11 은 도달했지만 아직 집계하지 않은 구간</strong>이며,
-              아래 쿼리를 돌리면 곡선이 채워집니다.
+              아래 쿼리를 돌리면 D+2~D+11 행이 채워집니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--validate)">
@@ -291,8 +308,8 @@
             <p>
               성숙한 코호트만 쓰는 삼각형 방식이라 <strong>뒤로 갈수록 표본이 줄어듭니다</strong> —
               D+1 은 11일치(군당 약 17.7만), D+7 은 5일치(약 8만), D+11 은 하루치(약 1.6만)입니다.
-              곡선 뒷부분이 흔들리면 효과가 아니라 표본이 얇아진 것일 수 있으므로,
-              점 위에 올려 <strong>그 날의 n 을 확인</strong>하고 읽으십시오.
+              아래쪽 행이 흔들리면 효과가 아니라 표본이 얇아진 것일 수 있으므로,
+              <strong>행 위에 올려 그 날의 Δ와 유의성을 확인</strong>하고 읽으십시오.
             </p>
           </div>
         </div>
@@ -547,7 +564,7 @@ GROUP BY s.stratum, s.ab_group, day_n
 ORDER BY s.stratum, s.ab_group, day_n</pre></div>
             <div class="foot" style="margin-top:10px">
               <b>결과를 문서에 넣는 법</b> 문서 스크립트의 <code>RC</code> 배열에서
-              <code>A:{1:5.70, 7:1.25}</code> 를 <code>{day_n: retention_pct}</code> 전체로 바꾸면 곡선이 채워집니다.
+              <code>A:{1:5.70, 7:1.25}</code> 를 <code>{day_n: retention_pct}</code> 전체로 바꾸면 피라미드가 채워집니다.
               <code>D_ARRIVED</code> 는 <code>run_date − 2026-08-27</code> 로 맞추십시오.
               <b>D+12~D+14</b> 는 <code>run_date</code> 가 <b>2026-09-10</b> 이상이어야 값이 나옵니다.
             </div>
@@ -703,92 +720,55 @@ ORDER BY s.stratum, s.ab_group, day_n</pre></div>
         if (e.target.closest("[data-tip]")) tip.style.display = "none";
       });
 
-      // ── 리텐션 커브 ────────────────────────────────────────────────────
-      // 값이 있는 날만 점을 찍고, 사이가 비면 점선으로 잇는다. 실선/점선을 나누는 이유는
-      // 비어 있는 구간을 실선으로 이으면 "측정해 보니 완만했다"로 읽히기 때문이다.
-      const DMAX = 14;          // x축 끝
+      // ── 리텐션 피라미드 ────────────────────────────────────────────────
+      // classic Day-N: '설치일 + n 일 그날 하루' 접속률. rolling 아니다.
+      const DMAX = 14;          // 피라미드 마지막 행
       const D_ARRIVED = 11;     // 오늘(9/7) 기준 도달한 최대 D+n — 그 뒤는 미도래
+      const SCALE = 27.21;      // 두 패널 공유 최대치 = 처치층 B 의 D+1
       const RC = [
-        { name:"미노출", sub:"연속 3회 미도달 · A 79,149 · B 78,977",
-          A:{1:5.70, 7:1.25}, B:{1:5.78, 7:1.30}, nA:79149, nB:78977 },
-        { name:"처치 노출", sub:"연속 3회 도달 · A 1,493 · B 1,540",
-          A:{1:25.92, 7:6.36}, B:{1:27.21, 7:7.53}, nA:1493, nB:1540 },
+        { name:"미노출", sub:"연속 3회 미도달 · A 79,149명 · B 78,977명",
+          A:{1:5.70, 7:1.25}, B:{1:5.78, 7:1.30} },
+        { name:"처치 노출", sub:"연속 3회 도달 · A 1,493명 · B 1,540명", key:true,
+          A:{1:25.92, 7:6.36}, B:{1:27.21, 7:7.53} },
       ];
-      const YMAX = 30;          // 두 패널 공유. 처치층 D+1(27.21%)이 들어가는 최소 눈금.
+      const SIG = { "미노출":{1:"p≈.49",7:"p≈.38"}, "처치 노출":{1:"p≈.42",7:"p≈.21"} };
 
-      const W = 460, H = 232, PL = 34, PR = 46, PT = 12, PB = 28;
-      const px = d => PL + (d - 1) / (DMAX - 1) * (W - PL - PR);
-      const py = v => PT + (1 - v / YMAX) * (H - PT - PB);
+      const wpc = v => Math.max(v / SCALE * 100, v > 0 ? 1.2 : 0).toFixed(1);
 
-      function pathFor(series) {
-        const days = Object.keys(series).map(Number).sort((a, b) => a - b);
-        let solid = "", dashed = "";
-        for (let i = 0; i < days.length - 1; i++) {
-          const d0 = days[i], d1 = days[i + 1];
-          const seg = `M${px(d0)},${py(series[d0])}L${px(d1)},${py(series[d1])}`;
-          (d1 - d0 === 1 ? (solid += seg) : (dashed += seg));
+      document.getElementById("rcgrid").innerHTML = RC.map(p => {
+        let rows = "";
+        for (let d = 1; d <= DMAX; d++) {
+          const a = p.A[d], b = p.B[d];
+          if (a == null || b == null) {
+            const soon = d > D_ARRIVED;
+            rows += `<div class="row na">`
+              + `<div class="va">—</div>`
+              + `<div class="tr l"><div class="hatch${soon ? " soon" : ""}"></div></div>`
+              + `<div class="day">D+${d}</div>`
+              + `<div class="tr r"><div class="hatch${soon ? " soon" : ""}"></div></div>`
+              + `<div class="vb">—</div>`
+              + `<div class="dd">${soon ? "미도래" : "미집계"}</div></div>`;
+            continue;
+          }
+          const dd = ((b - a) / a * 100);
+          rows += `<div class="row" data-tip="<b>${p.name} · D+${d}</b>\nA ${a.toFixed(2)}%  ·  B ${b.toFixed(2)}%\nΔ ${dd > 0 ? "+" : ""}${dd.toFixed(1)}%  (${SIG[p.name]?.[d] || "검정 없음"})">`
+            + `<div class="va">${a.toFixed(2)}%</div>`
+            + `<div class="tr l"><i style="width:${wpc(a)}%"></i></div>`
+            + `<div class="day">D+${d}</div>`
+            + `<div class="tr r"><i style="width:${wpc(b)}%"></i></div>`
+            + `<div class="vb">${b.toFixed(2)}%</div>`
+            + `<div class="dd">${dd > 0 ? "+" : ""}${dd.toFixed(1)}%</div></div>`;
         }
-        return { solid, dashed, days };
-      }
-
-      document.getElementById("rcgrid").innerHTML = RC.map((p, pi) => {
-        const gridY = [0, 10, 20, 30];
-        const ticks = [1, 3, 5, 7, 9, 11, 14];
-        const line = (key, cls) => {
-          const { solid, dashed, days } = pathFor(p[key]);
-          const last = days[days.length - 1];
-          return (dashed ? `<path class="ln" d="${dashed}" stroke="var(--${cls})" stroke-dasharray="4 4" opacity=".55"/>` : "")
-            + (solid ? `<path class="ln" d="${solid}" stroke="var(--${cls})"/>` : "")
-            + days.map(d => `<circle class="mk" cx="${px(d)}" cy="${py(p[key][d])}" r="4.5" fill="var(--${cls})"/>`).join("")
-            // 직접 라벨 — 범례만 두면 선이 겹칠 때 어느 쪽인지 세어 봐야 한다.
-            + `<text class="dl" x="${px(last) + 8}" y="${py(p[key][last]) + 3}" fill="var(--${cls})">${key}</text>`;
-        };
-        return `<div class="rc-panel">
+        return `<div class="rc-panel"${p.key ? ' style="border-color:color-mix(in srgb,#1d4ed8 25%,var(--border))"' : ""}>
           <div class="rc-h">${p.name}<span>${p.sub}</span></div>
-          <svg class="rc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${p.name} 층의 D+1~D+14 잔존 곡선">
-            ${gridY.map(v => `<line class="grid" x1="${PL}" y1="${py(v)}" x2="${W - PR}" y2="${py(v)}"/>
-              <text x="${PL - 6}" y="${py(v) + 3}" text-anchor="end">${v}%</text>`).join("")}
-            <rect x="${px(D_ARRIVED + 0.5)}" y="${PT}" width="${px(DMAX) - px(D_ARRIVED + 0.5) + 6}"
-              height="${H - PT - PB}" fill="url(#na)"/>
-            <text x="${(px(D_ARRIVED + 0.5) + px(DMAX)) / 2}" y="${PT + 12}" text-anchor="middle">미도래</text>
-            <line class="axis" x1="${PL}" y1="${py(0)}" x2="${W - PR}" y2="${py(0)}"/>
-            ${ticks.map(d => `<text x="${px(d)}" y="${H - PB + 14}" text-anchor="middle">D+${d}</text>`).join("")}
-            <line class="cross" id="cx${pi}" x1="0" y1="${PT}" x2="0" y2="${py(0)}"/>
-            ${line("A", "a")}${line("B", "b")}
-            <rect class="hit" data-panel="${pi}" x="${PL}" y="${PT}" width="${W - PL - PR}" height="${H - PT - PB}"/>
-          </svg>
+          <div class="rp">
+            <div class="hd" style="text-align:right">A 잔존</div><div class="hd"></div>
+            <div class="hd" style="text-align:center">일차</div><div class="hd"></div>
+            <div class="hd">B 잔존</div><div class="hd" style="text-align:right">Δ</div>
+            ${rows}
+          </div>
         </div>`;
-      }).join("")
-      + `<svg width="0" height="0" style="position:absolute"><defs>
-           <pattern id="na" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-             <rect width="8" height="8" fill="#f7f8fb"/><line x1="0" y1="0" x2="0" y2="8" stroke="#e4e8ee" stroke-width="4"/>
-           </pattern></defs></svg>`;
-
-      // 크로스헤어 + 툴팁. 선 차트는 점이 작아 점 자체를 노리게 하면 못 맞춘다 — 패널 전체를
-      // 히트 영역으로 두고 x 에서 가장 가까운 일차를 집는다.
-      document.querySelectorAll(".rc-svg .hit").forEach(hit => {
-        const svg = hit.closest("svg");
-        const pi = +hit.dataset.panel, P = RC[pi];
-        const cross = svg.querySelector(".cross");
-        hit.addEventListener("mousemove", ev => {
-          const r = svg.getBoundingClientRect();
-          const vx = (ev.clientX - r.left) / r.width * W;
-          const d = Math.min(DMAX, Math.max(1, Math.round((vx - PL) / (W - PL - PR) * (DMAX - 1) + 1)));
-          cross.setAttribute("x1", px(d)); cross.setAttribute("x2", px(d));
-          cross.style.visibility = "visible";
-          const has = P.A[d] != null && P.B[d] != null;
-          const state = d > D_ARRIVED ? "미도래 — 코호트가 아직 그날에 닿지 않았습니다" : "미집계 — 도달했지만 아직 뽑지 않았습니다";
-          tip.innerHTML = `<b>${P.name} · D+${d}</b>\n`
-            + (has ? `A ${P.A[d].toFixed(2)}%  ·  B ${P.B[d].toFixed(2)}%\nΔ ${((P.B[d] - P.A[d]) / P.A[d] * 100).toFixed(1)}%\nn ${P.nA.toLocaleString()} / ${P.nB.toLocaleString()}` : state);
-          tip.style.display = "block";
-          const pad = 14;
-          let x = ev.clientX + pad, y = ev.clientY + pad;
-          if (x + tip.offsetWidth > innerWidth - 8) x = ev.clientX - tip.offsetWidth - pad;
-          if (y + tip.offsetHeight > innerHeight - 8) y = ev.clientY - tip.offsetHeight - pad;
-          tip.style.left = x + "px"; tip.style.top = y + "px";
-        });
-        hit.addEventListener("mouseleave", () => { cross.style.visibility = "hidden"; tip.style.display = "none"; });
-      });
+      }).join("");
     </script>
     <script src="../app.js"></script>
   </body>
