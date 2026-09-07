@@ -123,7 +123,40 @@
   /* pill 을 섹션 id 로 찾아 두면 필터로 빈 섹션이 됐을 때 같이 숨길 수 있다. */
   var pillById = {};
 
-  SECTIONS.forEach(function (sec) {
+  /* ---------- 라이브 섹션 ----------
+     자동 갱신되는 문서는 status:"Live" 다 — scripts/refresh_common.py 가 실행할 때마다
+     data.js 의 그 카드에 되박는다. 여기서는 그 카드를 원래 섹션에서 빼내 맨 위
+     라이브 섹션 하나로 모은다.
+
+     복사가 아니라 **이동**이다. 복사면 한 카드가 허브에 두 번 나오고, 검색 결과도
+     두 줄이 된다(프로젝트 필터의 "좁히기만 하고 늘리지 않는다" 원칙과도 어긋난다).
+
+     data.js 의 live 섹션은 cards 가 비어 있고 이 코드가 채운다. 그래서
+     automation.json 에 작업을 등록하면 다음 실행에 status 가 Live 로 박히고,
+     카드를 옮기는 손질 없이 이 탭에 저절로 뜬다. 반대로 자동화를 끄고 상태를 내리면
+     원래 섹션으로 되돌아간다. */
+  var VIEW = SECTIONS.map(function (sec) {
+    return {
+      id: sec.id, label: sec.label, accent: sec.accent, desc: sec.desc,
+      cards: (sec.cards || []).slice(),
+    };
+  });
+  var liveSec = null;
+  VIEW.forEach(function (sec) { if (sec.id === "live") liveSec = sec; });
+  if (liveSec) {
+    VIEW.forEach(function (sec) {
+      if (sec === liveSec) return;
+      var keep = [];
+      sec.cards.forEach(function (c) {
+        // 원래 섹션 이름은 검색 색인용으로만 달고 간다 — "분석"으로도 계속 잡히게.
+        if (c.status === "Live") liveSec.cards.push(Object.assign({}, c, { _from: sec.label }));
+        else keep.push(c);
+      });
+      sec.cards = keep;
+    });
+  }
+
+  VIEW.forEach(function (sec) {
     // share:false 는 설정탭에서 숨긴 카드다. 플래그가 없으면 노출(기존 카드 무손상).
     var cards = (sec.cards || []).filter(function (c) {
       return c.share !== false;
@@ -155,7 +188,7 @@
        DOM 순서에 관여하지 않는다 — 필터를 걸어도 이 순서가 유지된다. */
     var list = el("div", "cards");
     byStatus(cards).forEach(function (c) {
-      list.appendChild(buildCard(c, sec.accent, sec.label));
+      list.appendChild(buildCard(c, sec.accent, sec.label + (c._from ? " " + c._from : "")));
     });
     s.appendChild(list);
     main.appendChild(s);
