@@ -48,8 +48,9 @@ DOC_URL  = "docs/coin-match-tournament-reject-ab.html"
 
 SQL = r"""
 WITH base AS (
-    -- 최근 3일만 읽는다. 예전에는 8/27~어제 전 구간을 매 실행 다시 읽어 7.2 GB 를 썼고,
-    -- 실험이 하루 길어질수록 0.6 GB 씩 커졌다. 지난 날짜의 로그는 불변이므로 다시 읽을 이유가 없다.
+    -- 아직 state 에 없는 날짜만 읽는다. 아래 log_date 목록은 스크립트가 채운다.
+    -- 평소에는 '어제' 하루뿐이라 0.59 GiB 이고, 맥이 며칠 꺼져 있었으면 빠진 날짜만 정확히 메운다.
+    -- 지난 날짜의 로그는 불변이므로 이미 가진 날을 다시 읽지 않는다.
     -- 아래 core 가 날짜별로 집계하고, 문서 쪽에서 날짜를 합산해 기간 값을 만든다.
     -- ⚠ 이 방식이 성립하는 이유: 보드의 모든 지표가 '더할 수 있는' 카운트다.
     --    COUNTIF 는 당연히 더해지고, sessions/sessions_300s 도 session_key 가 하루에만
@@ -63,8 +64,7 @@ WITH base AS (
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
         event
     FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
-                       AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE log_date IN UNNEST([{DAYS}])
       AND client_version IN (3374, 3375)
 ),
 core AS (
@@ -120,8 +120,7 @@ ret AS (
 vers AS (
     SELECT log_date, client_version, COUNT(DISTINCT player_id) AS dau
     FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
-                       AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE log_date IN UNNEST([{DAYS}])
       AND event = '1000_LOGIN_COMPLETE'
     GROUP BY log_date, client_version
     HAVING dau >= 100
@@ -172,11 +171,37 @@ class Guard(Exception):
 
 
 # ── 조회 ────────────────────────────────────────────────────────────────────
-def run_query():
+def missing_days(state):
+    """아직 state["core"] 에 없는 날짜. 평소에는 [어제] 하나다.
+
+    state 는 (군, "MM-DD") 키로 쌓이므로 '가진 날짜'를 정확히 알 수 있다.
+    고정 창(예: 최근 3일)을 쓰면 이미 가진 날을 매번 다시 읽는 낭비가 생기고,
+    반대로 창보다 긴 공백(맥이 주말에 꺼져 있었다)은 영구 결손으로 남는다.
+    결손일만 읽으면 둘 다 해결된다.
+    """
+    first = datetime.date.fromisoformat(EXP_FROM)
+    last  = datetime.date.today() - datetime.timedelta(days=1)
+    have  = {r["d"] for r in state.get("core", [])}
+    out, d = [], first
+    while d <= last:
+        if d.strftime("%m-%d") not in have:
+            out.append(d)
+        d += datetime.timedelta(days=1)
+    return out
+
+
+def run_query(days):
+    if days:
+        lst = ", ".join("DATE '%s'" % d.isoformat() for d in days)
+    else:
+        # 결손이 없어도 리텐션(stat)은 다시 읽어야 한다 — 지난 코호트의 D+n 이 매일 채워진다.
+        # 도래하지 않은 날짜를 넣어 raw 스캔을 0으로 만든다.
+        lst = "DATE '1970-01-01'"
+    sql = SQL.replace("{DAYS}", lst)
     out = subprocess.run(
         [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
          "--project_id=" + PROJECT, "--max_rows=100"],
-        input=SQL, capture_output=True, text=True, timeout=900)
+        input=sql, capture_output=True, text=True, timeout=900)
     if out.returncode != 0:
         raise Guard("bq query 실패: " + (out.stderr or out.stdout).strip()[:500])
     rows = json.loads(out.stdout)
@@ -184,9 +209,10 @@ def run_query():
     for r in rows:
         payload = r.get("payload")
         blocks[r["blk"]] = json.loads(payload) if payload else None
-    missing = [b for b in ("0_META", "1_CORE", "2_RET") if not blocks.get(b)]
-    if missing:
-        raise Guard("필수 블록이 비었다: " + ", ".join(missing))
+    need = ["0_META", "2_RET"] + (["1_CORE"] if days else [])
+    empty = [b for b in need if not blocks.get(b)]
+    if empty:
+        raise Guard("필수 블록이 비었다: " + ", ".join(empty))
     return blocks
 
 
@@ -207,7 +233,8 @@ def merge_state(state, blocks):
     state["last_day"]   = meta["last_day"]
     # core 는 이제 날짜 축이 있다 — 같은 (군, 날짜) 행만 덮어쓰고 새 날짜는 추가한다.
     # 그래서 3일 창으로도 8/27 부터의 기간 값이 유지된다.
-    state["core"]    = merge_by_key(state.get("core", []), blocks["1_CORE"], ["ab_group", "d"])
+    state["core"]    = merge_by_key(state.get("core", []), blocks.get("1_CORE") or [],
+                                    ["ab_group", "d"])
     state["version"] = merge_by_key(state.get("version", []), blocks.get("3_VERSION") or [],
                                     ["d", "ver"])
     # 리텐션은 코호트일 × 군 키로 병합한다. 지난 코호트의 D+n 은 나중에 채워진다.
@@ -221,6 +248,20 @@ def check(state):
     if state["last_day"] != y:
         raise Guard("마지막 날(%s)이 어제(%s)가 아니다 — 적재가 안 끝났거나 시각이 어긋났다"
                     % (state["last_day"], y))
+
+    # 부분일 방어. 결손일만 읽는 구조에서는 한 번 저장된 날을 다시 읽지 않으므로,
+    # 적재 중인 파티션을 읽어 부분값이 박히면 영구히 남는다. 여기서 걸러 저장을 막으면
+    # 그 날짜가 결손으로 남고 다음 실행이 다시 읽는다.
+    byday = {}
+    for r in state["core"]:
+        byday[r["d"]] = byday.get(r["d"], 0) + int(r["users_day"])
+    ds = sorted(byday)
+    if len(ds) >= 2:
+        lastd, prevd = ds[-1], ds[-2]
+        if byday[prevd] and not (0.5 <= byday[lastd] / byday[prevd] <= 1.5):
+            raise Guard("%s 유저-일이 전일 대비 %.0f%% — 부분일이거나 집계 이상 (%s %d -> %s %d)"
+                        % (lastd, byday[lastd] / byday[prevd] * 100,
+                           prevd, byday[prevd], lastd, byday[lastd]))
 
     core = sum_core(state)
     for g in ("A", "B"):
@@ -409,8 +450,11 @@ def main():
     a = ap.parse_args()
 
     try:
-        blocks = run_query()
         state  = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
+        days   = missing_days(state)
+        log("읽을 날짜 %d일%s" % (len(days),
+            (" (" + ", ".join(d.isoformat() for d in days) + ")") if days else " — raw 스캔 0"))
+        blocks = run_query(days)
         state  = merge_state(state, blocks)
         check(state)
         block, rng = build_js(state)
