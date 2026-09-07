@@ -38,7 +38,7 @@ PROJECT  = "game-log-359704"
 EXP_FROM = "2026-09-03"          # 실험 시작일
 A, B     = "485", "486"
 
-SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 가 매일 KST 11:00 에 이 문자열을
+SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 가 매일 KST 09·12·18시에 이 문자열을
 -- 그대로 실행하고, 같은 문자열을 문서의 SQL 폴드에 심는다 — 사본이 갈라질 수 없다.
 --
 -- 스캔 원칙

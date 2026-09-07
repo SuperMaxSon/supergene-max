@@ -464,7 +464,7 @@ const SECTIONS = [
         url: "docs/sol-tournament-slot-ab.html",
         project: "sol",
         status: "진행중",
-        version: "v24.4",
+        version: "v24.5",
         updated: "2026-09-07 13:55",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B"],
