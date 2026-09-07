@@ -114,13 +114,19 @@ def dirty(path):
 def push_pending(a):
     """데이터가 안 바뀌어도, 지난 실행에서 푸시하지 못한 커밋이 남아 있으면 올린다.
     이게 없으면 '커밋은 됐고 푸시만 실패' 상태를 재시도가 복구하지 못한다 —
-    두 번째 실행은 멱등 검사에서 '변화 없음'으로 끝나 push 까지 가지 않는다."""
-    if a.no_push:
-        return 0
+    두 번째 실행은 멱등 검사에서 '변화 없음'으로 끝나 push 까지 가지 않는다.
+
+    단 --dry-run 에서는 올리지 않는다. dry-run 은 '아무것도 바깥으로 내보내지 않는다'는
+    약속인데, 지난 실행이 남긴 커밋이라도 여기서 밀면 그 약속이 깨진다. 손으로 확인하려고
+    dry-run 을 돌렸다가 푸시가 나가면 놀랄 수밖에 없다 — 있다는 사실만 로그로 알린다."""
     r = git("rev-list", "--count", "@{u}..HEAD")
     n = r.stdout.strip()
     ahead = int(n) if r.returncode == 0 and n.isdigit() else 0
     if ahead == 0:
+        return 0
+    if a.no_push or a.dry_run:
+        log("미푸시 커밋 %d개가 있다 — %s 이므로 올리지 않는다"
+            % (ahead, "--dry-run" if a.dry_run else "--no-push"))
         return 0
     log("미푸시 커밋 %d개 — 밀어 올린다" % ahead)
     r = git("push", "-q", "origin", "HEAD")
