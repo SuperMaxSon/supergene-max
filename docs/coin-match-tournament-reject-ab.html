@@ -82,6 +82,23 @@
       .kb-warn b{color:color-mix(in srgb, var(--warn) 72%, var(--text))}
       .kb-warn code{background:#fff;padding:0 4px;border-radius:4px;font-size:11px}
 
+      /* 잔존 판정 표 — 승패 막대는 틴트가 아니라 원색이라 초록/파랑이 실제로 구분된다
+         (validate_palette.js: 정상시 ΔE 35.6 · 적록 31.8). 격자 셀의 옅은 틴트로는
+         같은 두 색이 ΔE 3 까지 떨어져 구분이 불가능해, 군별 색은 여기서만 쓴다. */
+      .wt{font-variant-numeric:tabular-nums}
+      .wt td.d{font-weight:800}
+      .wt td.n,.wt td.pv{text-align:right;color:var(--text-dim);font-weight:600;font-size:11px}
+      .wt td.v{text-align:right;font-weight:800}
+      .wt td.v.a{color:#15803d} .wt td.v.b{color:#1d4ed8}
+      .wt td.dl{text-align:right;font-weight:800}
+      .wt td.dl.a{color:#15803d} .wt td.dl.b{color:#1d4ed8}
+      .wt td.wl{white-space:nowrap}
+      .wt .wlbar{display:inline-flex;width:86px;height:9px;border-radius:3px;overflow:hidden;
+        vertical-align:middle;margin-right:7px;background:#eef1f6}
+      .wt .wlbar i{display:block;height:100%}
+      .wt .wlbar i.b{background:#1d4ed8} .wt .wlbar i.a{background:#16a34a}
+      .wt td.wl em{font-style:normal;font-size:11px;font-weight:700;color:var(--text-dim)}
+
       /* 리텐션 트라이앵글(코호트 격자) — docs/sol-tournament-slot-ab.html 의 .pyr 를 그대로 이식했다.
          행 = 코호트일 × 빌드(A·B 를 붙여 둠), 열 = D+N. 아직 안 온 날이 '·' 로 남아
          표가 아래로 갈수록 짧아지는 삼각형이 된다.
@@ -157,7 +174,8 @@
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#verdict">판정</a>
         <a class="nav-back" href="#board">KPI</a>
-        <a class="nav-back" href="#retention">잔존</a>
+        <a class="nav-back" href="#retwin">잔존 판정</a>
+        <a class="nav-back" href="#retention">코호트 격자</a>
         <a class="nav-back" href="#sql">쿼리</a>
         <span class="nav-spacer"></span>
       </div>
@@ -265,8 +283,94 @@
         <div id="groups"></div>
       </section>
 
+      <section class="doc-section" id="retwin">
+        <h2 class="doc-h2">잔존 판정 <span class="doc-h2-sub">어느 쪽이 더 좋은가 — 코호트를 합쳐 D+N 마다 한 번씩 견줍니다</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: #5f6878">
+            <div class="stat-num">무승부</div>
+            <div class="stat-name">종합 판정</div>
+            <div class="stat-sub">B로 기울지만 유의성 없음</div>
+          </div>
+          <div class="stat" style="--acc: #1d4ed8">
+            <div class="stat-num">8<span class="stat-unit">: 3</span></div>
+            <div class="stat-name">D+N 승패 (B : A)</div>
+            <div class="stat-sub">11개 구간 중 B가 8개에서 높음</div>
+          </div>
+          <div class="stat" style="--acc: #5f6878">
+            <div class="stat-num">0<span class="stat-unit">/ 66</span></div>
+            <div class="stat-name">유의한 칸</div>
+            <div class="stat-sub">최소 p=0.127 (D+2)</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">9<span class="stat-unit">: 2</span></div>
+            <div class="stat-name">처치 노출 층만</div>
+            <div class="stat-sub">부호검정 p≈0.065</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="wt">
+            <thead>
+              <tr>
+                <th>구간</th>
+                <th style="text-align:right">코호트 (A)</th>
+                <th style="text-align:right">A · 3374</th>
+                <th style="text-align:right">B · 3375</th>
+                <th style="text-align:right">Δ</th>
+                <th style="text-align:right">p</th>
+                <th>코호트별 승패 (B : A)</th>
+              </tr>
+            </thead>
+            <tbody>
+                  <tr><td class="d">D+1</td><td class="n">177,745</td><td class="v a">6.03%</td><td class="v b">6.10%</td><td class="dl b">+1.1%</td><td class="pv">0.401</td><td class="wl"><span class="wlbar"><i class="b" style="width:73%"></i><i class="a" style="width:27%"></i></span><em>8:3</em></td></tr>
+                  <tr><td class="d">D+2</td><td class="n">161,488</td><td class="v a">3.97%</td><td class="v b">3.87%</td><td class="dl a">-2.6%</td><td class="pv">0.127</td><td class="wl"><span class="wlbar"><i class="b" style="width:30%"></i><i class="a" style="width:70%"></i></span><em>3:7</em></td></tr>
+                  <tr><td class="d">D+3</td><td class="n">145,470</td><td class="v a">2.76%</td><td class="v b">2.81%</td><td class="dl b">+1.6%</td><td class="pv">0.475</td><td class="wl"><span class="wlbar"><i class="b" style="width:67%"></i><i class="a" style="width:33%"></i></span><em>6:3</em></td></tr>
+                  <tr><td class="d">D+4</td><td class="n">130,337</td><td class="v a">2.02%</td><td class="v b">2.09%</td><td class="dl b">+3.4%</td><td class="pv">0.217</td><td class="wl"><span class="wlbar"><i class="b" style="width:75%"></i><i class="a" style="width:25%"></i></span><em>6:2</em></td></tr>
+                  <tr><td class="d">D+5</td><td class="n">116,335</td><td class="v a">1.64%</td><td class="v b">1.66%</td><td class="dl b">+1.3%</td><td class="pv">0.690</td><td class="wl"><span class="wlbar"><i class="b" style="width:57%"></i><i class="a" style="width:43%"></i></span><em>4:3</em></td></tr>
+                  <tr><td class="d">D+6</td><td class="n">100,272</td><td class="v a">1.47%</td><td class="v b">1.52%</td><td class="dl b">+3.4%</td><td class="pv">0.360</td><td class="wl"><span class="wlbar"><i class="b" style="width:50%"></i><i class="a" style="width:50%"></i></span><em>3:3</em></td></tr>
+                  <tr><td class="d">D+7</td><td class="n">80,642</td><td class="v a">1.35%</td><td class="v b">1.43%</td><td class="dl b">+5.8%</td><td class="pv">0.182</td><td class="wl"><span class="wlbar"><i class="b" style="width:80%"></i><i class="a" style="width:20%"></i></span><em>4:1</em></td></tr>
+                  <tr><td class="d">D+8</td><td class="n">60,215</td><td class="v a">1.11%</td><td class="v b">1.12%</td><td class="dl b">+0.4%</td><td class="pv">0.947</td><td class="wl"><span class="wlbar"><i class="b" style="width:25%"></i><i class="a" style="width:75%"></i></span><em>1:3</em></td></tr>
+                  <tr><td class="d">D+9</td><td class="n">41,000</td><td class="v a">0.94%</td><td class="v b">0.94%</td><td class="dl a">-0.8%</td><td class="pv">0.913</td><td class="wl"><span class="wlbar"><i class="b" style="width:67%"></i><i class="a" style="width:33%"></i></span><em>2:1</em></td></tr>
+                  <tr><td class="d">D+10</td><td class="n">23,343</td><td class="v a">0.77%</td><td class="v b">0.78%</td><td class="dl b">+0.6%</td><td class="pv">0.957</td><td class="wl"><span class="wlbar"><i class="b" style="width:50%"></i><i class="a" style="width:50%"></i></span><em>1:1</em></td></tr>
+                  <tr><td class="d">D+11</td><td class="n">6,039</td><td class="v a">0.63%</td><td class="v b">0.54%</td><td class="dl a">-14.5%</td><td class="pv">0.510</td><td class="wl"><span class="wlbar"><i class="b" style="width:0%"></i><i class="a" style="width:100%"></i></span><em>0:1</em></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: #5f6878">
+            <div class="note-title">B가 조금 앞서지만 이길 만큼은 아닙니다</div>
+            <p>
+              11개 구간 중 <strong>8개에서 B가 높습니다</strong>. 그런데 격차가
+              <strong>D+7 의 +5.8% 가 최대</strong>이고 나머지는 대부분 ±3% 안쪽이며,
+              <strong>어느 구간도 p&lt;.05 에 닿지 못했습니다</strong>(최소 <code>p=0.127</code>).
+              코호트 단위로 세어도 <strong>66쌍 중 B 38 : A 28</strong>, 부호검정 <code>p≈0.268</code> 로
+              동전 던지기와 구분되지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">처치를 받은 층만 떼면 기울기가 커집니다</div>
+            <p>
+              전체 코호트의 <strong>1.9%</strong> 만 실제로 차단을 겪습니다. 그 층만 보면
+              <strong>11일 중 9일 B 우세</strong>(<code>p≈0.065</code>), D+7 격차가 <strong>+19.4%</strong> 입니다.
+              반대로 <strong>미노출 층은 6 : 4 로 평평</strong>합니다 — 처치를 받지 않은 쪽이 평평하다는 것이
+              이 기울기가 우연이 아닐 수 있다는 방증이지만, <strong>0.065 는 아직 유의수준이 아닙니다</strong>.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">뒤쪽 구간은 표본이 얇습니다</div>
+            <p>
+              D+1 은 코호트 17.8만이지만 <strong>D+11 은 6,039명 한 코호트뿐</strong>입니다.
+              D+11 의 <code>−14.5%</code> 는 38명 대 33명 차이라 방향을 읽을 값이 아닙니다.
+              <strong>D+1~D+7 까지만 신뢰</strong>하고 읽으십시오.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section class="doc-section" id="retention">
-        <h2 class="doc-h2">잔존 <span class="doc-h2-sub">D+N 리텐션 — 정확히 N일 뒤 그날 접속 · 붙어 있는 3374·3375 쌍 안에서 세로로만 견주세요</span></h2>
+        <h2 class="doc-h2">잔존 코호트 격자 <span class="doc-h2-sub">D+N 리텐션 — 정확히 N일 뒤 그날 접속 · 붙어 있는 3374·3375 쌍 안에서 세로로만 견주세요</span></h2>
 
         <div class="pyr-key">
           <span><i style="background:rgba(21,128,61,.42)"></i>그 코호트·그 날짜에서 <b>더 높은 쪽</b> · 진할수록 격차가 큼(0.5%p에서 최대)</span>
