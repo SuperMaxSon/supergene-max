@@ -10,85 +10,11 @@
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=light1" />
-    <!-- 이 <style>은 문서 전용 구역이다. 허브 공용 컴포넌트(.stat/.table-scroll/.note)는
-         "값 하나"나 "격자 표"를 보여주는 데 맞춰져 있어, 전/후 두 값 + 증감을 한 줄로 읽는
-         KPI 대조에는 세로 낭비가 크고 Δ가 눈에 안 들어온다. 그래서 이 페이지만 쓰는
-         델타 보드(.kb)를 따로 만들었고, 색·간격·모서리는 전부 허브 토큰을 그대로 물려받아
-         디자인 시스템에서 이탈하지 않게 했다. 전 선택자를 .kb / #tip 안으로 가뒀다. -->
+    <!-- 이 <style>은 문서 전용 구역이다. 델타 보드(.kb .mx)는 2026-09-07 에
+         style.css 공용 섹션으로 승격했다 — 여기서 다시 정의하지 않는다.
+         남은 것은 이 문서에만 있는 것들이다: 판정 전제(.kb-bal) · 갱신 경고(.stale-bar)
+         · 코호트 피라미드(.pyr) · 대조군 정의(.ab) · 갱신 시각(.doc-when) · 말풍선(#tip). -->
     <style>
-      .kb { --good:#15803d; --bad:#dc2626; --spec:#0891b2; --mute:#9aa0b8; --a:#16a34a; --b:#1d4ed8; }
-
-      /* 대조 막대 — sol-era-watch 의 #eracmp 방식. 한 행 = [라벨 | A·B 막대 두 줄 | Δ].
-         세그먼트(RU/NRU)는 패널로 쪼개 봤다가 걷어냈다 — 표본이 작아 어느 세그도 유의하지
-         않았고, 열이 셋이면 막대가 짧아져 그래프의 이점이 사라졌다. 분해는 원본 폴드에 있다. */
-      .mx{--lab:180px}
-      .mx .mr{display:grid;grid-template-columns:var(--lab) minmax(0,1fr) 104px;gap:14px;
-        align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft)}
-      /* 트랙 상한 — 와이드 랩에서 막대가 700px 넘게 늘어나면 같은 비율차도 훨씬 커 보인다. */
-      .mx .bs{max-width:500px}
-      .mx .mr:last-child{border-bottom:none}
-      .mx .ml{font-size:12.5px;font-weight:700;color:var(--text)}
-      .mx .mr.key .ml{font-weight:800}
-      .mx .mr.dim{opacity:.45}
-      .mx .mr[data-tip]{cursor:help}
-      .mx .q{font-size:10px;font-weight:800;color:#c3c9d6;margin-left:4px;cursor:help}
-      .mx .q:hover{color:var(--b)}
-
-      .mx .hd{padding-bottom:6px;border-bottom:2px solid var(--border);font-size:11px;font-weight:800}
-      .mx .hd .ml{font-size:11px;color:var(--text-dim)}
-      .mx .hd .bs{display:flex;gap:16px;align-items:center}
-      .mx .hd .ha,.mx .hd .hb{display:inline-flex;align-items:center;gap:5px;color:var(--text-dim);
-        font-variant-numeric:tabular-nums}
-      .mx .hd .ha::before,.mx .hd .hb::before{content:"";width:14px;height:8px;border-radius:2px}
-      .mx .hd .ha::before{background:var(--a)} .mx .hd .hb::before{background:var(--b)}
-      .mx .hd .bd{text-align:right;color:var(--text-dim)}
-
-      /* 막대 두 줄 — 값은 오른쪽 고정 폭 열로 뺐다. 막대 끝에 붙이면 긴 막대에서
-         숫자가 막대 위로 올라타 읽히지 않는다. */
-      .mx .br{display:grid;grid-template-columns:26px 1fr 60px 88px;gap:8px;align-items:center;margin:2px 0}
-      /* 모수 — 비율만 보면 표본이 12건인지 1,200건인지 구분이 안 된다. 분자/분모를 옆에 붙인다. */
-      .mx .bn{font-size:9.5px;font-weight:700;color:#6b7488;text-align:right;
-        font-variant-numeric:tabular-nums;letter-spacing:-.1px;white-space:nowrap}   /* 4.69:1 */
-      /* A/B 꼬리표 — 종전 #b6bccb 은 1.9:1 이라 사실상 안 보였다. 4.69:1 로 올린 값이다. */
-      .mx .bl{font-size:9.5px;font-weight:800;color:#6b7488;text-align:right;letter-spacing:-.2px}
-      .mx .bt{position:relative;height:10px;background:#eef1f6;border-radius:3px}
-      .mx .bt i{display:block;height:100%;border-radius:3px}
-      .mx .bt i.a{background:var(--a)} .mx .bt i.b{background:var(--b)}
-      .mx .bv{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;
-        letter-spacing:-.2px}
-      .mx .bv.a{color:#15803d}                     /* 5.01:1 — 막대(--a 녹색)와 같은 계열로 묶는다 */
-      .mx .bv.b{color:var(--b)}                    /* 6.70:1 */
-      .mx .na{font-size:10px;font-weight:800;color:#b6bccb;text-align:center;padding:6px 0;
-        border-radius:6px;background:repeating-linear-gradient(135deg,#fcfcfd 0 7px,#f6f7fa 7px 14px)}
-
-      .mx .bd{font-size:15px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;
-        letter-spacing:-.4px;line-height:1.2}
-      .mx .bd.good,.mx .bd.bad,.mx .bd.spec{padding:2px 7px;border-radius:6px;
-        background:color-mix(in srgb,currentColor 10%,#fff)}
-      .mx .bd.good{color:var(--good)} .mx .bd.bad{color:var(--bad)}
-      .mx .bd.spec{color:var(--spec)} .mx .bd.mute{color:#5f6878}   /* 6.03:1 — var(--mute)는 2.59:1 로 미달 */
-      /* 유의성 꼬리표 — Δ 아래 작게. 크면 Δ 와 경쟁해서 어느 쪽이 결론인지 흐려진다. */
-      .mx .sg2{display:block;font-size:9px;font-weight:800;color:#6b7488;letter-spacing:0;margin-top:1px}   /* 4.69:1 */
-      .mx .sg2.ok{color:var(--good)}
-
-      .mx .gp{margin:0 0 24px;padding-left:12px;border-left:4px solid var(--g);border-radius:2px}
-      .mx .gp h3{margin:0 0 4px;font-size:13.5px;color:color-mix(in srgb,var(--g) 70%,var(--text))}
-      .mx .gp h3 span{display:block;font-size:11.5px;font-weight:600;margin-top:2px;
-        color:color-mix(in srgb,var(--g) 30%,var(--text-dim))}
-      .kb-foot{font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.8;margin-top:14px}
-      .kb-foot b{color:var(--text)}
-
-      @media (max-width:760px){
-        .mx{--lab:118px}
-        .mx .mr{grid-template-columns:var(--lab) 1fr 88px;gap:9px}
-        .mx .bs{max-width:none}
-        .mx .br{grid-template-columns:26px 1fr 62px;gap:6px}
-        .mx .bv{font-size:12px} .mx .bd{font-size:15px}
-        /* 좁은 화면에선 4열이면 트랙이 사라진다 — 모수를 값 칸 아래로 접는다. */
-        .mx .bn{grid-column:3;font-size:8.5px;margin-top:-1px}
-        .mx .hd .bs{flex-direction:column;align-items:flex-start;gap:2px;font-size:10px}
-      }
-
       /* 판정 전제 — 지표가 아니라 "이 표를 믿어도 되는가"의 전제라 표 위에 둔다. */
       .kb-bal{margin:0 0 16px;padding:4px 16px;border-radius:var(--radius);
         background:color-mix(in srgb, var(--warn) 7%, #fff);
