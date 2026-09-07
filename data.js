@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-07 14:02",
+  updated: "2026-09-07 14:07",
 };
 
 /* --------------------------------------------------------------------------
@@ -446,6 +446,7 @@ const SECTIONS = [
         updated: "2026-09-07 12:08",
         pinned: false,
         tags: ["BigQuery", "stat", "레퍼런스"],
+        share: false,
       },
       {
         title: "토너먼트 연속 거절 차단 — A ↔ B",
