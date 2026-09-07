@@ -197,7 +197,7 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 A/B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 13:35</b> KST</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 13:44</b> KST</span>
           <span>데이터 <b>9/3~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
         </div>
         <p class="doc-lede">
@@ -504,87 +504,99 @@ ORDER BY `블록`;</pre></div>
 
     <script>
       // ── 데이터 ───────────────────────────────────────────────────────────
-      // 전부 2026-09-07 08:48 KST 조회분이다. 갱신 쿼리 하나가 여덟 블록을 한꺼번에 뽑으므로
-      // 블록끼리 조회 시각이 어긋날 수 없다 — 예전에 유입 ÷ 발화가 틀어졌던 원인이 그것이었다.
-      const PULLED   = "2026-09-07 08:48";
-      const LAST_DAY = 6;   // 마지막 log_date(9월 n일). D+n 도래 판정의 유일한 기준이다.
+      // DATA:START ~ DATA:END 사이는 scripts/refresh_sol_slot_ab.py 가 덮어쓴다.
+      // 손으로 고치면 다음 갱신에서 사라진다. 출처는 SQL 폴드에 실린 그 쿼리 하나다.
+      /* DATA:START */
+      // 이 블록은 scripts/refresh_sol_slot_ab.py 가 생성한다. 손으로 고치면 사라진다.
+      const PULLED = "2026-09-07 13:44";
+      const RANGE  = "9/3~9/6";
 
       // 1_DAILY — 일자 × 빌드 × 유저군. 보드는 전부 여기서 합산해 만든다.
-      // 유저-일은 RU이거나 NRU 둘 중 하나라 두 행을 더하면 '전체'가 그대로 나온다.
-      // 9/3은 롤아웃 첫날이라 A·B가 각각 244·291명뿐이다(그날 DAU의 대부분은 483이었다).
       const DAILY = [
-        { d:"09-03", ver:"485", seg:"NRU", ud:112, fin:478,  sh_try:42,   sh_ok:2,   inv_try:34,   inv_ok:33,   sup:78,  cr_try:109,  cr_ok:9,   it:114,  rv:163  },
-        { d:"09-03", ver:"485", seg:"RU",  ud:132, fin:1076, sh_try:195,  sh_ok:19,  inv_try:198,  inv_ok:194,  sup:56,  cr_try:254,  cr_ok:26,  it:836,  rv:317  },
-        { d:"09-03", ver:"486", seg:"NRU", ud:141, fin:498,  sh_try:136,  sh_ok:0,   inv_try:0,    inv_ok:0,    sup:49,  cr_try:131,  cr_ok:15,  it:222,  rv:131  },
-        { d:"09-03", ver:"486", seg:"RU",  ud:150, fin:1231, sh_try:586,  sh_ok:18,  inv_try:0,    inv_ok:0,    sup:59,  cr_try:355,  cr_ok:15,  it:843,  rv:456  },
-        { d:"09-04", ver:"485", seg:"NRU", ud:630, fin:2797, sh_try:177,  sh_ok:29,  inv_try:143,  inv_ok:141,  sup:404, cr_try:772,  cr_ok:146, it:1021, rv:692  },
-        { d:"09-04", ver:"485", seg:"RU",  ud:415, fin:6118, sh_try:1207, sh_ok:83,  inv_try:1189, inv_ok:1155, sup:311, cr_try:1401, cr_ok:108, it:4212, rv:2160 },
-        { d:"09-04", ver:"486", seg:"NRU", ud:661, fin:3387, sh_try:594,  sh_ok:83,  inv_try:0,    inv_ok:0,    sup:397, cr_try:1069, cr_ok:244, it:1329, rv:620  },
-        { d:"09-04", ver:"486", seg:"RU",  ud:426, fin:6727, sh_try:2550, sh_ok:77,  inv_try:0,    inv_ok:0,    sup:187, cr_try:1137, cr_ok:64,  it:4824, rv:2567 },
-        { d:"09-05", ver:"485", seg:"NRU", ud:633, fin:3215, sh_try:260,  sh_ok:23,  inv_try:210,  inv_ok:177,  sup:369, cr_try:931,  cr_ok:130, it:1312, rv:603  },
-        { d:"09-05", ver:"485", seg:"RU",  ud:395, fin:5691, sh_try:1122, sh_ok:87,  inv_try:1118, inv_ok:1088, sup:309, cr_try:1060, cr_ok:90,  it:3669, rv:2713 },
-        { d:"09-05", ver:"486", seg:"NRU", ud:678, fin:3165, sh_try:452,  sh_ok:55,  inv_try:0,    inv_ok:0,    sup:342, cr_try:868,  cr_ok:120, it:1240, rv:587  },
-        { d:"09-05", ver:"486", seg:"RU",  ud:417, fin:6676, sh_try:2360, sh_ok:94,  inv_try:0,    inv_ok:0,    sup:189, cr_try:1177, cr_ok:77,  it:4553, rv:2295 },
-        { d:"09-06", ver:"485", seg:"NRU", ud:796, fin:3422, sh_try:184,  sh_ok:24,  inv_try:135,  inv_ok:122,  sup:482, cr_try:970,  cr_ok:189, it:1356, rv:581  },
-        { d:"09-06", ver:"485", seg:"RU",  ud:432, fin:6811, sh_try:1048, sh_ok:60,  inv_try:1028, inv_ok:966,  sup:358, cr_try:1453, cr_ok:127, it:4215, rv:3264 },
-        { d:"09-06", ver:"486", seg:"NRU", ud:821, fin:3972, sh_try:806,  sh_ok:94,  inv_try:0,    inv_ok:0,    sup:399, cr_try:1109, cr_ok:187, it:1438, rv:919  },
-        { d:"09-06", ver:"486", seg:"RU",  ud:459, fin:7152, sh_try:2727, sh_ok:151, inv_try:0,    inv_ok:0,    sup:238, cr_try:1203, cr_ok:87,  it:5261, rv:2658 },
+        { d:"09-03", ver:"485", seg:"NRU", ud:112, fin:478, sh_try:42, sh_ok:2, inv_try:34, inv_ok:33, sup:78, cr_try:109, cr_ok:9, it:114, rv:163 },
+        { d:"09-03", ver:"485", seg:"RU", ud:132, fin:1076, sh_try:195, sh_ok:19, inv_try:198, inv_ok:194, sup:56, cr_try:254, cr_ok:26, it:836, rv:317 },
+        { d:"09-03", ver:"486", seg:"NRU", ud:141, fin:498, sh_try:136, sh_ok:0, inv_try:0, inv_ok:0, sup:49, cr_try:131, cr_ok:15, it:222, rv:131 },
+        { d:"09-03", ver:"486", seg:"RU", ud:150, fin:1231, sh_try:586, sh_ok:18, inv_try:0, inv_ok:0, sup:59, cr_try:355, cr_ok:15, it:843, rv:456 },
+        { d:"09-04", ver:"485", seg:"NRU", ud:630, fin:2797, sh_try:177, sh_ok:29, inv_try:143, inv_ok:141, sup:404, cr_try:772, cr_ok:146, it:1021, rv:692 },
+        { d:"09-04", ver:"485", seg:"RU", ud:415, fin:6118, sh_try:1207, sh_ok:83, inv_try:1189, inv_ok:1155, sup:311, cr_try:1401, cr_ok:108, it:4212, rv:2160 },
+        { d:"09-04", ver:"486", seg:"NRU", ud:661, fin:3387, sh_try:594, sh_ok:83, inv_try:0, inv_ok:0, sup:397, cr_try:1069, cr_ok:244, it:1329, rv:620 },
+        { d:"09-04", ver:"486", seg:"RU", ud:426, fin:6727, sh_try:2550, sh_ok:77, inv_try:0, inv_ok:0, sup:187, cr_try:1137, cr_ok:64, it:4824, rv:2567 },
+        { d:"09-05", ver:"485", seg:"NRU", ud:633, fin:3215, sh_try:260, sh_ok:23, inv_try:210, inv_ok:177, sup:369, cr_try:931, cr_ok:130, it:1312, rv:603 },
+        { d:"09-05", ver:"485", seg:"RU", ud:395, fin:5691, sh_try:1122, sh_ok:87, inv_try:1118, inv_ok:1088, sup:309, cr_try:1060, cr_ok:90, it:3669, rv:2713 },
+        { d:"09-05", ver:"486", seg:"NRU", ud:678, fin:3165, sh_try:452, sh_ok:55, inv_try:0, inv_ok:0, sup:342, cr_try:868, cr_ok:120, it:1240, rv:587 },
+        { d:"09-05", ver:"486", seg:"RU", ud:417, fin:6676, sh_try:2360, sh_ok:94, inv_try:0, inv_ok:0, sup:189, cr_try:1177, cr_ok:77, it:4553, rv:2295 },
+        { d:"09-06", ver:"485", seg:"NRU", ud:796, fin:3422, sh_try:184, sh_ok:24, inv_try:135, inv_ok:122, sup:482, cr_try:970, cr_ok:189, it:1356, rv:581 },
+        { d:"09-06", ver:"485", seg:"RU", ud:432, fin:6811, sh_try:1048, sh_ok:60, inv_try:1028, inv_ok:966, sup:358, cr_try:1453, cr_ok:127, it:4215, rv:3264 },
+        { d:"09-06", ver:"486", seg:"NRU", ud:821, fin:3972, sh_try:806, sh_ok:94, inv_try:0, inv_ok:0, sup:399, cr_try:1109, cr_ok:187, it:1438, rv:919 },
+        { d:"09-06", ver:"486", seg:"RU", ud:459, fin:7152, sh_try:2727, sh_ok:151, inv_try:0, inv_ok:0, sup:238, cr_try:1203, cr_ok:87, it:5261, rv:2658 },
       ];
 
-      // 2_EXTRA — 판수 분포. 일자축이 없어 DAILY와 따로 둔다.
+      // 2_EXTRA — 판수 분포. 날짜축이 없어 갱신마다 통째로 바뀐다(최근 3일 롤링).
       // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
       const EXTRA = {
-        "485": { NRU:{ uday:2171, avg:4.57,  p50:0, p75:4,  p90:12, play:44.4, p50p:5 },
-                 RU: { uday:1815, avg:10.85, p50:2, p75:10, p90:28, play:64.9, p50p:7 } },
-        "486": { NRU:{ uday:2301, avg:4.79,  p50:0, p75:5,  p90:13, play:45.8, p50p:6 },
-                 RU: { uday:1870, avg:11.65, p50:3, p75:11, p90:30, play:65.1, p50p:8 } },
+        "485": { NRU:{ uday:2059, avg:4.58, p50:0, p75:4, p90:12, play:44.3, p50p:5 }, RU:{ uday:1663, avg:11.2, p50:2, p75:10, p90:29, play:64.3, p50p:7 } },
+        "486": { NRU:{ uday:2160, avg:4.87, p50:0, p75:5, p90:13, play:46.3, p50p:6 }, RU:{ uday:1689, avg:12.17, p50:3, p75:12, p90:32, play:64.5, p50p:8 } },
       };
 
-      // 리텐션 — stat.solitaire_city_journey_nru_retention3 (사전집계, raw 스캔 없음).
-      // 팀 표준·데이터 스튜디오와 같은 정의다: 그날 '설치'한 신규(NRU) 코호트를
-      // 정확히 N일 뒤 그날 접속했는지로 본다(classic Day-N). d 는 인원, 비율은 화면에서 계산한다.
-      // 원본은 social(유입 경로)별로 쪼개져 있어 nru_count 가중합으로 합쳤다.
-      // ⚠ 우리가 raw 로 만들던 '활동일 코호트'(그날 로그인한 전체)와는 다른 지표다 —
-      //   기존 유저가 섞여 D+1이 32%대로 나오던 값이라, 대시보드와 두 배 어긋났었다.
+      // 3_RET — stat.solitaire_city_journey_nru_retention3 (사전집계, raw 스캔 없음).
+      // classic Day-N. d 는 인원이고 비율은 화면에서 계산한다. 원본이 social(유입 경로)별로
+      // 쪼개져 있어 nru_count 가중합으로 합쳤고, 광고분(adc/add)은 social='AD' 행이다.
+      // obs = 그 코호트를 며칠까지 관측했는지. D+n 도래 판정의 유일한 기준이다.
       const RET = [
-        { c:"09-03", ver:"485", seg:"NRU", coh:81,  d:[8, 10, 9], adc:69,  add:[8, 8, 8] },
-        { c:"09-03", ver:"486", seg:"NRU", coh:108, d:[15, 8, 8], adc:91,  add:[11, 7, 4] },
-        { c:"09-04", ver:"485", seg:"NRU", coh:533, d:[53, 34],   adc:465, add:[37, 21] },
-        { c:"09-04", ver:"486", seg:"NRU", coh:557, d:[50, 32],   adc:470, add:[36, 25] },
-        { c:"09-05", ver:"485", seg:"NRU", coh:546, d:[54],       adc:453, add:[40] },
-        { c:"09-05", ver:"486", seg:"NRU", coh:582, d:[59],       adc:480, add:[44] },
-        { c:"09-06", ver:"485", seg:"NRU", coh:707, d:[],         adc:619, add:[] },
-        { c:"09-06", ver:"486", seg:"NRU", coh:647, d:[],         adc:592, add:[] },
+        { c:"09-03", ver:"485", seg:"NRU", obs:3, coh:81, d:[8, 10, 9], adc:69, add:[8, 8, 8] },
+        { c:"09-03", ver:"486", seg:"NRU", obs:3, coh:108, d:[15, 8, 8], adc:91, add:[11, 7, 4] },
+        { c:"09-04", ver:"485", seg:"NRU", obs:2, coh:533, d:[53, 34], adc:465, add:[37, 21] },
+        { c:"09-04", ver:"486", seg:"NRU", obs:2, coh:557, d:[50, 32], adc:470, add:[36, 25] },
+        { c:"09-05", ver:"485", seg:"NRU", obs:1, coh:546, d:[54], adc:453, add:[40] },
+        { c:"09-05", ver:"486", seg:"NRU", obs:1, coh:582, d:[59], adc:480, add:[44] },
+        { c:"09-06", ver:"485", seg:"NRU", obs:0, coh:707, d:[], adc:619, add:[] },
+        { c:"09-06", ver:"486", seg:"NRU", obs:0, coh:693, d:[], adc:592, add:[] },
       ];
+
+      // 4_INFLOW — 유입 세션. 발신자 버전으로도 유저군으로도 못 가른다. 날짜축만 있다.
+      const INFLOW = [
+        { d:"08-28", t:101, ti:37 },
+        { d:"08-29", t:125, ti:41 },
+        { d:"08-30", t:104, ti:39 },
+        { d:"08-31", t:96, ti:23 },
+        { d:"09-01", t:139, ti:26 },
+        { d:"09-02", t:133, ti:24 },
+        { d:"09-03", t:112, ti:33 },
+        { d:"09-04", t:120, ti:31 },
+        { d:"09-05", t:142, ti:21 },
+        { d:"09-06", t:137, ti:18 },
+      ];
+      const POST = ["09-03", "09-04", "09-05", "09-06"];
+
+      // 5_RESULT · 6_BALANCE · 7_VERSION — 원본 폴드와 판정 전제에서 쓴다.
+      const RESULT = [
+        { ver:"485", seg:"NRU", clear:9203, fail:231 },
+        { ver:"486", seg:"NRU", clear:10161, fail:363 },
+        { ver:"485", seg:"RU", clear:17955, fail:665 },
+        { ver:"486", seg:"RU", clear:19978, fail:577 },
+      ];
+      const BALANCE_US = [
+        { os:"Android", a:1642, b:1715 },
+        { os:"Windows", a:573, b:611 },
+        { os:"iOS", a:384, b:391 },
+        { os:"(null)", a:68, b:76 },
+        { os:"OS X", a:28, b:38 },
+      ];
+      // vo = 485·486 이 아닌 다른 빌드의 DAU 합. OTHER_VERS 가 비어 있지 않으면 그 빌드가
+      // 실제로 떴다는 뜻이고, 487 이상이 섞이면 그 뒤 날짜는 A/B 대조가 아니다.
+      const VERSION = [
+        { d:"09-03", vo:1788, a:244, b:291 },
+        { d:"09-04", vo:0, a:1045, b:1087 },
+        { d:"09-05", vo:0, a:1028, b:1095 },
+        { d:"09-06", vo:0, a:1228, b:1280 },
+      ];
+      const OTHER_VERS = ["483"];
+      /* DATA:END */
+
       // 광고 유입은 캠페인이 정하는 값이라 슬롯 처치와 무관하다. 다만 코호트의 83~87%를
       // 차지해서, 넣으면 신호가 희석되고 빼면 표본이 하루 12~102명으로 무너진다.
       // 어느 쪽도 정답이 아니라 토글로 두고 둘 다 보게 한다.
       let RET_MODE = "all";   // all = 광고 포함 · noad = 광고 제외
-
-      // 4_INFLOW — 유입 세션. 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
-      const INFLOW = [
-        { d:"08-28", t:101, ti:37 }, { d:"08-29", t:125, ti:41 },
-        { d:"08-30", t:104, ti:39 }, { d:"08-31", t:96,  ti:23 },
-        { d:"09-01", t:139, ti:26 }, { d:"09-02", t:133, ti:24 },
-        { d:"09-03", t:112, ti:33 }, { d:"09-04", t:120, ti:31 },
-        { d:"09-05", t:142, ti:21 }, { d:"09-06", t:137, ti:18 },
-      ];
-      const POST = ["09-03", "09-04", "09-05", "09-06"];
-
-      // 5_RESULT · 6_BALANCE · 7_VERSION — 보드 막대가 아니라 원본 폴드와 판정 전제에서 쓴다.
-      const RESULT = [
-        { ver:"485", seg:"NRU", clear:9662,  fail:250 }, { ver:"486", seg:"NRU", clear:10639, fail:383 },
-        { ver:"485", seg:"RU",  clear:18973, fail:723 }, { ver:"486", seg:"RU",  clear:21185, fail:601 },
-      ];
-      const BALANCE_US = [
-        { os:"Android", a:1861, b:1939 }, { os:"Windows", a:664, b:695 },
-        { os:"iOS",     a:436,  b:460  }, { os:"OS X",    a:30,  b:41  },
-        { os:"(null)",  a:78,   b:85   },
-      ];
-      const VERSION = [
-        { d:"09-03", v483:1788, a:244,  b:291  }, { d:"09-04", v483:0, a:1045, b:1087 },
-        { d:"09-05", v483:0,    a:1028, b:1095 }, { d:"09-06", v483:0, a:1228, b:1280 },
-      ];
 
       const CAP = 150;                       // 발산 막대를 자르는 지점(%)
       // 화면에는 군 이름(A/B)만 쓴다. 빌드 번호는 정의 카드와 빌드 점유표에만 남긴다 —
@@ -731,8 +743,8 @@ ORDER BY `블록`;</pre></div>
       // 행마다 분모 집단이 달라져 D+3이 D+1보다 높아지는 착시가 생기므로 합산은 만들지 않는다.
       const RET_COHORTS = [...new Set(RET.map(r => r.c))];
       const retCell = (c, ver, n) => {
-        if (Number(c.slice(3)) + n > LAST_DAY) return null;          // 미도래
         const rs = RET.filter(r => r.c === c && r.ver === ver);
+        if (rs.length && n > rs[0].obs) return null;                 // 미도래 (쿼리가 준 관측일수 기준)
         if (!rs.length || rs.some(r => r.d[n - 1] == null)) return null;   // 0% 와 미수신을 섞지 않는다
         const sub = RET_MODE === "noad";   // 광고분을 빼면 그대로 광고 제외 코호트가 된다
         return { x: rs.reduce((t, r) => t + r.d[n - 1] - (sub ? r.add[n - 1] : 0), 0),
@@ -936,7 +948,7 @@ ORDER BY `블록`;</pre></div>
               <b>검정 불가</b>(비율이 아니라 검정을 붙일 수 없는 지표)는 회색으로 두어 확정된 변화로 읽히지 않게 했습니다 ·
               값 오른쪽의 작은 숫자는 <b>모수(분자 / 분모)</b>입니다 — 같은 비율이라도 <b>분모가 작으면 흔들립니다</b> ·
               <b>공유 성공 (절대)</b>는 값 자체가 원값이라 모수가 없습니다 ·
-              RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · 9/3~9/6 · 한 번의 조회(${PULLED} KST)</div>`;
+              RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · ${RANGE} · 한 번의 조회(${PULLED} KST)</div>`;
       }
       renderBoard();
 
@@ -962,14 +974,16 @@ ORDER BY `블록`;</pre></div>
 
         // 빌드 점유 — 이 표가 '실험이 아직 성립하는가'의 근거다. 487 이상이 뜨면 그 뒤 날짜는 A/B가 아니다.
         document.getElementById("rawver").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>날짜</th><th style="text-align:right">483</th><th style="text-align:right">A (485)</th>
+          <thead><tr><th>날짜</th><th style="text-align:right">기타 빌드</th><th style="text-align:right">A (485)</th>
             <th style="text-align:right">B (486)</th><th style="text-align:right">B 점유</th></tr></thead>
           <tbody>${VERSION.map(r => `<tr><td>${r.d}</td>`
-            + `<td style="text-align:right">${r.v483 ? nf(r.v483) : "—"}</td>`
+            + `<td style="text-align:right">${r.vo ? nf(r.vo) : "—"}</td>`
             + `<td style="text-align:right">${nf(r.a)}</td><td style="text-align:right">${nf(r.b)}</td>`
             + `<td style="text-align:right">${(r.b / (r.a + r.b) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
-        </table></div><div class="kb-foot">DAU 10명 미만 빌드는 잘라 냈습니다 · <b>487 이상은 없습니다</b> ·
-          9/3만 483이 남아 있어 A·B 표본이 작습니다</div>`;
+        </table></div><div class="kb-foot">DAU 10명 미만 빌드는 잘라 냈습니다 ·
+          기타 빌드: <b>${OTHER_VERS.length ? OTHER_VERS.join(" · ") : "없음"}</b>${OTHER_VERS.some(v => Number(v) > 486)
+            ? ' <b style="color:var(--bad)">— 487 이상이 떴습니다. 그 뒤 날짜는 A/B 대조가 아닙니다</b>' : ""}
+          · 롤아웃 첫날은 이전 빌드가 남아 A·B 표본이 작습니다</div>`;
 
         // 클리어/실패 — 슬롯은 클리어에서만 뜨므로 발화 기회가 실제로 늘었는지 여기서 갈린다.
         document.getElementById("rawres").innerHTML = `<div class="table-scroll"><table>
