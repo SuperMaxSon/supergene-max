@@ -133,21 +133,6 @@
       .pyr-key{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:10.5px;
         font-weight:700;color:var(--text-dim);margin:0 0 8px}
       .pyr-key i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
-      /* 각 군의 리텐션 값 — 이게 이 그룹의 결론이고, 아래 피라미드는 그 분해다.
-         행마다 쓰는 코호트가 다르므로 '쓰는 코호트' 열을 값 옆에 붙여 둔다. */
-      .rsum{overflow-x:auto;margin-bottom:14px}
-      .rsum table{border-collapse:collapse;width:100%;min-width:560px;font-variant-numeric:tabular-nums}
-      .rsum th{font-size:9.5px;font-weight:700;color:var(--text-dim);padding:5px 6px;text-align:right;white-space:nowrap}
-      .rsum th:first-child{text-align:left}
-      .rsum td{font-size:12px;font-weight:700;padding:7px 6px;text-align:right;border-top:1px solid var(--border)}
-      .rsum td:first-child{text-align:left;font-weight:800;font-size:12.5px}
-      .rsum td.va{color:var(--a)}
-      .rsum td.vb{color:var(--b)}
-      .rsum td.dl{font-weight:800}
-      .rsum td.meta{font-size:10px;font-weight:600;color:var(--text-dim);text-align:right;white-space:nowrap}
-      .rsum tr.dim td{color:#c3c9d6;font-weight:600}
-      .rsum-h{font-size:11.5px;font-weight:800;color:var(--text);margin:0 0 6px}
-      .rsum-h s{text-decoration:none;font-weight:600;color:var(--text-dim);margin-left:6px}
       .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:8px}
       .tri-foot b{color:var(--text)}
 
@@ -674,7 +659,7 @@ ORDER BY `블록`;</pre></div>
               false, null, e => [e.sup, e.ud]],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
-          sub:"누적 복귀율 — 1~n일 사이 한 번이라도 복귀 · <s class='old'>행마다 쓰는 코호트가 달라 세로로 이어 읽으면 안 됩니다</s>",
+          sub:"누적 복귀율 — 1~n일 사이 한 번이라도 복귀 · <s class='old'>붙어 있는 485·486 쌍 안에서 세로로만 견주세요</s>",
           rows:[] },
         { name:"플레이 · 수익", acc:"#d97706",
           sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 여기는 전부 유의성 미달이라 방향만 참고합니다",
@@ -728,44 +713,9 @@ ORDER BY `블록`;</pre></div>
         return { x: rs.reduce((t, r) => t + r.d[n - 1], 0),
                  n: rs.reduce((t, r) => t + r.coh, 0) };
       };
-      // 도래한 코호트를 전부 합친 각 군의 리텐션. 같은 n 안에서 485 ↔ 486 비교는 유효하다 —
-      // 무효한 것은 행끼리 세로로 이어 읽는 것뿐이라, 그 경계를 '쓰는 코호트' 열로 드러낸다.
-      const retPool = (ver, n) => {
-        const rs = RET.filter(r => r.ver === ver && Number(r.c.slice(3)) + n <= LAST_DAY);
-        if (!rs.length || rs.some(r => r.d[n - 1] == null)) return null;   // 0% 와 미수신을 섞지 않는다
-        return { x: rs.reduce((t, r) => t + r.d[n - 1], 0),
-                 n: rs.reduce((t, r) => t + r.coh, 0) };
-      };
-      function retSummary() {
-        const rows = DAYS.map(n => {
-          const a = retPool("485", n), b = retPool("486", n);
-          const arrived = 3 + n <= LAST_DAY;   // 9/3 코호트조차 못 채운 구간인지
-          if (!a || !b) return `<tr class="dim"><td>D+${n} 이내</td><td colspan="6">`
-            + `${arrived ? "미수신 — 갱신 쿼리를 다시 돌리면 채워집니다" : "미도래"}</td></tr>`;
-          const pa = a.x / a.n * 100, pb = b.x / b.n * 100, gap = pb - pa;
-          const pv = ptest(a.x, a.n, b.x, b.n);
-          const cohs = [...new Set(RET.filter(r => Number(r.c.slice(3)) + n <= LAST_DAY)
-                                      .map(r => "9/" + Number(r.c.slice(3))))].join(" · ");
-          const tip = `D+${n} 이내 복귀율(누적)\n485 ${pa.toFixed(1)}% (${nf(a.x)} / ${nf(a.n)})\n`
-            + `486 ${pb.toFixed(1)}% (${nf(b.x)} / ${nf(b.n)})\n격차 ${gap >= 0 ? "+" : "−"}`
-            + `${Math.abs(gap).toFixed(1)}%p · 두 비율 검정 p=${pv < 0.001 ? "<0.001" : pv.toFixed(3)}\n`
-            + `쓰는 코호트 ${cohs} — 다른 행과 집단이 다릅니다`;
-          const cls = pv < 0.05 ? (gap > 0 ? "good" : "bad") : "mute";
-          return `<tr data-tip="${tip}"><td>D+${n} 이내</td>`
-            + `<td class="va">${pa.toFixed(1)}%</td><td class="vb">${pb.toFixed(1)}%</td>`
-            + `<td class="dl" style="color:var(--${cls})">${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)}%p</td>`
-            + `<td>${sigTag(pv)}</td>`
-            + `<td class="meta">${nf(a.n)} / ${nf(b.n)}</td>`
-            + `<td class="meta">${cohs}</td></tr>`;
-        }).join("");
-        return `<div class="rsum-h">각 군의 리텐션 <s>1~n일 사이에 한 번이라도 복귀한 비율(누적) · 도래한 코호트를 전부 합친 값 · 같은 줄 안에서 485 ↔ 486 만 견주세요</s></div>
-          <div class="rsum"><table>
-            <thead><tr><th>구간</th><th>485</th><th>486</th><th>격차</th><th>유의성</th>
-              <th>코호트 n</th><th>쓰는 코호트</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table></div>`;
-      }
-
+      // 코호트 피라미드 — 485·486 을 한 줄씩 붙여 하나의 표로 낸다. 가로는 한 코호트의 시간,
+      // 세로 쌍은 같은 코호트의 A/B. 코호트를 가로질러 합산한 요약은 만들지 않는다 —
+      // 행마다 분모 집단이 달라져 세로로 이어 읽을 수 없는 표가 하나 더 생길 뿐이다.
       function retPyramid() {
         const GAP_FULL = 8;   // 격차 8%p 에서 색이 가장 진해진다. 그 이상은 더 진해지지 않는다.
         const cellHtml = (c, ver, n) => {
@@ -811,7 +761,6 @@ ORDER BY `블록`;</pre></div>
             <tbody>${body}</tbody>
           </table></div>
           <div class="tri-foot">
-            <b>위 표가 각 군의 리텐션 값이고, 이 피라미드는 그 값이 어느 코호트에서 나왔는지의 분해입니다.</b>
             숫자는 <b>그 코호트가 1~N일 사이에 한 번이라도 다시 접속한 비율(%)</b>입니다 — 누적이라
             <b>가로로 갈수록 반드시 오릅니다</b>. 매일 온 사람도 한 번만 세므로 날짜별 접속수의 합과는 다릅니다.
             <b>· 로 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이고, 그래서 표가 아래로 갈수록 짧아집니다.
@@ -864,7 +813,7 @@ ORDER BY `블록`;</pre></div>
 
         const body = GROUPS.map(g => {
           const rows = g.days
-            ? retSummary() + retPyramid()
+            ? retPyramid()
             : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den]) => {
                 // parts 는 검정용(비율 지표만). den 은 표시 전용 — 유저당 건수처럼
                 // 두 비율 검정이 성립하지 않는 행도 모수는 보여줘야 표본 크기를 읽는다.
@@ -901,7 +850,8 @@ ORDER BY `블록`;</pre></div>
           <div class="bl"><b>가드레일</b><span>전부 유의성 미달</span>
             <span class="v"><span class="p">누적 리텐션 D+1~D+3</span> <span class="n">n.s.</span></span>
             <span class="d">p≥0.83</span>
-            <em>누적 복귀율은 세 구간 모두 격차가 <b>1%p 미만</b>입니다(33.6↔33.3 · 41.6↔41.9 · 59.0↔58.1).
+            <em>누적 복귀율은 표본이 가장 큰 9/4 코호트(n≈1,050)에서 ≤D+1 31.9↔31.1(p=0.70) ·
+            ≤D+2 38.0↔39.2(p=0.57)로 <b>격차가 1%p 안팎</b>이고, 나머지 코호트도 모두 미달입니다.
             토너 생성률(p=0.47)도, 배정 균형(US Android 1,861 ↔ 1,939 등 OS별 3~6% 차)도 이상이 없습니다 —
             <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
         </div>`;
