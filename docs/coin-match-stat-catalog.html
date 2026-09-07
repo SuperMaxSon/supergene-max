@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>코인매치 stat 이벤트 카탈로그</title>
+    <meta
+      name="description"
+      content="stat.coin_match_prod 에 실려 있는 stat_name 전수 목록. 2026-09-06 하루, client_version 3374·3375 기준. raw 를 읽지 않고 쓸 수 있는 지표가 무엇인지 확인하는 용도."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <!-- 이 <style>은 문서 전용 구역이다. 허브 공용 컴포넌트로 표현되지 않는 것만 여기 둔다:
+         (1) 제목 아래 갱신 시각(.doc-when) — coin-match-tournament-reject-ab.html 과 동일
+         (2) 433행짜리 카탈로그를 훑기 위한 필터 입력과 행 강조 -->
+    <style>
+      .doc-when{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin:8px 0 2px;
+        font-size:11.5px;font-weight:700;color:var(--text-dim)}
+      .doc-when b{color:var(--text);font-variant-numeric:tabular-nums}
+      .doc-when i{width:6px;height:6px;border-radius:50%;background:var(--live);
+        display:inline-block;margin-right:6px;vertical-align:1px}
+
+      /* 카탈로그 필터 — 433행이라 검색 없이는 못 쓴다 */
+      .cf{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+      .cf input{flex:1 1 240px;min-width:0;padding:7px 11px;border:1px solid var(--border);
+        border-radius:var(--radius-sm);background:var(--surface);color:var(--text);
+        font-size:13px;font-family:inherit}
+      .cf input:focus{outline:none;border-color:var(--text-faint)}
+      .cf button{padding:6px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);
+        background:var(--surface);color:var(--text-dim);font-size:11.5px;font-weight:700;
+        font-family:inherit;cursor:pointer}
+      .cf button.on{background:var(--text);border-color:var(--text);color:#fff}
+      .cf .cnt{font-size:11.5px;font-weight:700;color:var(--text-faint);
+        font-variant-numeric:tabular-nums}
+
+      /* 카탈로그 표 — 이름은 등폭, 숫자는 tabular 로 세로 정렬을 맞춘다 */
+      table.cat td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+      table.cat td.n{text-align:right;font-variant-numeric:tabular-nums}
+      table.cat td.h{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-faint)}
+      table.cat tr.use td{background:rgba(5,150,105,.07)}
+      table.cat tr.use td:first-child{font-weight:700}
+      .gtag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--surface-2);
+        color:var(--text-dim);font-size:10px;font-weight:700}
+
+      /* 분해 축 패밀리 — 이름이 길어 표보다 목록이 읽기 쉽다 */
+      .fam{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+      .famc{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);
+        padding:11px 13px}
+      .famc h4{margin:0 0 7px;font-size:12px;font-weight:800;
+        font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+      .famc ul{margin:0;padding:0;list-style:none;font-size:11.5px}
+      .famc li{display:flex;justify-content:space-between;gap:10px;padding:2px 0;
+        border-bottom:1px solid var(--border-soft)}
+      .famc li:last-child{border-bottom:0}
+      .famc li b{font-variant-numeric:tabular-nums;color:var(--text-dim);font-weight:700}
+      .famc .more{color:var(--text-faint);font-weight:700;padding-top:4px}
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#warn">주의</a>
+        <a class="nav-back" href="#core">A/B가 쓰는 것</a>
+        <a class="nav-back" href="#catalog">전체 카탈로그</a>
+        <a class="nav-back" href="#fam">분해 축</a>
+        <a class="nav-back" href="#sql">쿼리</a>
+        <span class="nav-spacer"></span>
+        <a class="nav-back" href="coin-match-tournament-reject-ab.html">연속 거절 A/B →</a>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · 데이터 소스</div>
+        <h1 class="doc-title">코인매치 stat 이벤트 카탈로그</h1>
+        <div class="doc-when">
+          <span><i></i>문서 갱신 <b>2026-09-07 12:07</b> KST</span>
+          <span>기준 <b>2026-09-06</b> 하루 · <code>client_version</code> <b>3374 · 3375</b></span>
+        </div>
+        <p class="doc-lede">
+          <code>stat.coin_match_prod</code> 에 실려 있는 <code>stat_name</code> 전수 목록입니다.
+          <b>무엇을 <code>raw</code> 없이 가져올 수 있는지</b> 확인하는 용도이며,
+          여기 있는 이름은 <code>raw.coin_match</code> 를 읽지 않고 조회할 수 있습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--cmt)">코인매치</span>
+          <span class="tag">BigQuery</span>
+          <span class="tag">stat.coin_match_prod</span>
+          <span class="tag">2026-09-06 1일치</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="warn">
+        <h2 class="doc-h2">먼저 주의 <span class="doc-h2-sub">이 값을 그대로 쓰면 안 됩니다</span></h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--bad)">
+            <div class="stat-num">×2</div>
+            <div class="stat-name">값이 두 배로 나옵니다</div>
+            <div class="stat-sub">중복 축을 찾기 전까지 절대값 인용 금지</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">433</div>
+            <div class="stat-name">stat_name 종류</div>
+            <div class="stat-sub">분해 축 포함 · 본문 표는 282개</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">15<span class="stat-unit">/15</span></div>
+            <div class="stat-name">A/B 보드가 쓰는 이벤트</div>
+            <div class="stat-sub">전부 stat 에 있습니다</div>
+          </div>
+          <div class="stat" style="--acc: var(--ok)">
+            <div class="stat-num">3</div>
+            <div class="stat-name">집계 지표</div>
+            <div class="stat-sub">DAU · NRU · Session</div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">433개 값이 하나도 빠짐없이 짝수입니다</div>
+            <p>
+              우연이 아닙니다. <code>stat_name</code> 만으로 <code>GROUP BY</code> 하면
+              <strong>같은 로그가 두 번 세어집니다</strong>. 우리 A/B 보드와 대조하면 확인됩니다 —
+              <code>1000_LOGIN_COMPLETE</code> 176,146 ÷ 2 = <strong>88,073</strong> 인데
+              보드에서 역산한 일평균 세션이 약 <strong>82,000</strong>,
+              <code>2100_GAMEPLAY_START</code> 515,898 ÷ 2 = <strong>257,949</strong> 인데
+              보드 역산 일평균 판수가 약 <strong>235,000</strong> 입니다.
+              두 지표 모두 <strong>반으로 나눠야 맞습니다</strong>.
+              <code>type</code> · <code>player_type</code> · <code>os</code> 중 어느 축에 값이 두 벌 들어 있는지
+              <a href="#sql">아래 확인 쿼리</a>로 먼저 특정해야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              숫자는 <strong>2026-09-06 하루, 3374·3375 두 빌드 합계</strong>의 <code>log_count</code> 입니다.
+              발생 규모를 가늠하는 용도이지 <strong>지표로 인용할 값이 아닙니다</strong> —
+              위의 두 배 문제도 있고, 하루치라 요일 편차도 그대로 들어 있습니다.
+              이 문서의 목적은 <b>"이 이름이 stat 에 있는가"</b> 하나입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="core">
+        <h2 class="doc-h2">A/B 보드가 쓰는 이벤트 <span class="doc-h2-sub">15개 전부 stat 에 있습니다 — raw 없이 만들 수 있다는 뜻입니다</span></h2>
+        <div class="table-scroll">
+          <table class="cat"><thead><tr>
+            <th>stat_name</th><th style="text-align:right">log_count</th><th>쓰이는 곳</th>
+          </tr></thead><tbody id="coretb"></tbody></table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">세션과 고유 유저도 이미 있습니다</div>
+            <p>
+              <code>Session</code>(176,142)은 <code>1000_LOGIN_COMPLETE</code>(176,146)와 거의 같고,
+              <code>DAU</code>·<code>NRU</code> 도 따로 집계돼 있습니다.
+              <strong>세션 수를 직접 셀 필요가 없다</strong>는 뜻이라,
+              증분 중간 테이블에서 <code>HLL</code> 스케치가 필요 없어질 수 있습니다.
+              다만 <b>기간 전체 고유 유저</b>는 일별 <code>DAU</code> 를 더해서 만들 수 없습니다 —
+              그건 유저-일이 됩니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="catalog">
+        <h2 class="doc-h2">전체 카탈로그 <span class="doc-h2-sub">이름 일부를 입력하면 걸러집니다</span></h2>
+        <div class="cf">
+          <input id="q" type="search" placeholder="이름으로 검색 — 예: TOURNAMENT, PLAYTIME, MERGE" />
+          <button id="onlyuse" type="button">A/B가 쓰는 것만</button>
+          <span class="cnt" id="cnt"></span>
+        </div>
+        <div class="table-scroll">
+          <table class="cat"><thead><tr>
+            <th>stat_name</th><th>분류</th>
+            <th style="text-align:right">log_count</th>
+            <th style="text-align:right">÷2</th>
+          </tr></thead><tbody id="cattb"></tbody></table>
+        </div>
+        <div class="foot">
+          <b>÷2 열</b>은 위에서 말한 두 배 문제를 가정한 값입니다. <b>추정이며 검증 전입니다</b> —
+          중복 축이 특정되면 이 열을 지우고 실제 값으로 바꿉니다.
+          <b>분류</b>는 이름 앞자리로 묶은 것이라 공식 분류가 아닙니다.
+        </div>
+      </section>
+
+      <section class="doc-section" id="fam">
+        <h2 class="doc-h2">분해 축 <span class="doc-h2-sub">같은 지표를 유입 경로·OS 별로 쪼갠 이름들 — 카탈로그 표에는 넣지 않았습니다</span></h2>
+        <div class="fam" id="famwrap"></div>
+        <div class="foot">
+          <b>왜 표에서 뺐나</b> <code>Session-by-social-FEED-AD_WW_PAGE_TOURNAMENT_CP_2366_260216</code> 처럼
+          광고 캠페인 하나당 이름이 하나씩 생겨 150개가 넘습니다. 대부분 하루 2~8건이라
+          카탈로그를 훑는 데 방해만 됩니다. <b>상위 항목만 싣고 나머지는 건수로 줄였습니다.</b>
+          전체가 필요하면 <a href="#sql">아래 쿼리</a>에 <code>LIKE 'Session-by-social-%'</code> 를 붙이면 됩니다.
+        </div>
+      </section>
+
+      <section class="doc-section" id="sql">
+        <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">둘 다 raw 를 읽지 않습니다</span></h2>
+
+        <details class="fold" open>
+          <summary>① 이 문서를 만든 쿼리 — stat_name 전수</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>SELECT stat_name, SUM(log_count) AS log_count
+FROM `game-log-359704.stat.coin_match_prod`
+WHERE log_date = '2026-09-06'
+  AND client_version IN (3374, 3375)
+GROUP BY stat_name
+ORDER BY stat_name</pre></div>
+          </div>
+        </details>
+
+        <details class="fold" open>
+          <summary>② <b>다음에 돌려야 할 쿼리</b> — 두 배의 원인이 되는 축 찾기</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>-- 한 이벤트만 놓고 축을 전부 펼쳐 본다.
+-- 같은 log_count 가 두 행으로 갈라져 있으면 그 축이 범인이다.
+SELECT type, player_type, os, country,
+       COUNT(*)         AS row_count,
+       SUM(log_count)   AS log_count,
+       SUM(player_count) AS player_count
+FROM `game-log-359704.stat.coin_match_prod`
+WHERE log_date = '2026-09-06'
+  AND client_version = 3375
+  AND stat_name = '1000_LOGIN_COMPLETE'
+GROUP BY type, player_type, os, country
+ORDER BY log_count DESC
+LIMIT 50</pre></div>
+          </div>
+        </details>
+
+        <div class="foot">
+          <b>비용</b> 두 쿼리 모두 <code>stat</code> 만 읽습니다 — <b><code>raw</code> 스캔 0</b>.
+          <code>stat</code> 은 사전집계라 행 수가 작아 <code>raw</code> 한 파티션보다 훨씬 가볍습니다.
+          <b>갱신 지연</b> <code>stat</code> 은 하루 늦게 채워지므로 오늘 날짜로는 조회하지 마세요.
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const CAT = [["10000_D1", 3412, "리텐션", 0], ["10001_D2", 2526, "리텐션", 0], ["10002_D3", 1548, "리텐션", 0], ["10003_D4", 1460, "리텐션", 0], ["10004_D5", 1306, "리텐션", 0], ["10005_D6", 1130, "리텐션", 0], ["10006_D7", 954, "리텐션", 0], ["10007_D14", 514, "리텐션", 0], ["10008_D28", 326, "리텐션", 0], ["1000_LOGIN_COMPLETE", 176146, "세션·플레이타임", 1], ["1010_LOAD_COMPLETE", 159642, "세션·플레이타임", 0], ["11054_MERGE_PLAY_TUTO", 784, "머지", 0], ["11055_AUTO_MERGE_POPUP_OPEN", 3016, "머지", 0], ["11056_AUTO_MERGE_POPUP_CLOSE", 2976, "머지", 0], ["11061_MERGE_PLAY_TUTO_FINISH", 654, "머지", 0], ["1110_PLAYTIME_10S", 148900, "세션·플레이타임", 0], ["1111_PLAYTIME_20S", 134036, "세션·플레이타임", 0], ["1120_PLAYTIME_30S", 126042, "세션·플레이타임", 0], ["1121_PLAYTIME_40S", 120530, "세션·플레이타임", 0], ["1122_PLAYTIME_50S", 116234, "세션·플레이타임", 0], ["1130_PLAYTIME_60S", 112444, "세션·플레이타임", 0], ["1140_PLAYTIME_120S", 93340, "세션·플레이타임", 0], ["1150_PLAYTIME_180S", 78230, "세션·플레이타임", 0], ["1160_PLAYTIME_240S", 67174, "세션·플레이타임", 0], ["1170_PLAYTIME_300S", 58896, "세션·플레이타임", 1], ["1180_PLAYTIME_600S", 36646, "세션·플레이타임", 0], ["1190_PLAYTIME_900S", 26042, "세션·플레이타임", 0], ["12000_UGC", 8, "UGC", 0], ["1200_PLAYTIME_1200S", 19392, "세션·플레이타임", 0], ["12010_UGC_PLAYTIME_10S", 4, "UGC", 0], ["12020_UGC_PLAYTIME_30S", 2, "UGC", 0], ["12030_UGC_PLAYTIME_60S", 2, "UGC", 0], ["12040_UGC_PLAYTIME_120S", 2, "UGC", 0], ["12050_UGC_PLAYTIME_180S", 2, "UGC", 0], ["12060_UGC_PLAYTIME_240S", 2, "UGC", 0], ["1210_PLAYTIME_1800S", 12024, "세션·플레이타임", 0], ["1220_PLAYTIME_3600S", 4134, "세션·플레이타임", 0], ["12400_UGC_LEVEL_CREATE", 2, "UGC", 0], ["12410_UGC_LEVEL_TEST", 8, "UGC", 0], ["12420_UGC_LEVEL_SAVE", 10, "UGC", 0], ["12440_UGC_LEVEL_PUBLISH", 4, "UGC", 0], ["20000_DEBUG_CREATE_TOURNAMENT_0", 1830, "게임플레이", 0], ["20010_DEBUG_VIEW_PRELOAD_COMPLETED", 176368, "게임플레이", 0], ["20012_DEBUG_BLOCK_PRELOAD_COMPLETED", 175018, "게임플레이", 0], ["20032_DEBUG_PLACEMENT_DOWNLOAD", 95252, "게임플레이", 0], ["20033_DEBUG_LOAD_AD", 490232, "게임플레이", 0], ["20034_DEBUG_AD_TOURNAMENT_DL", 42996, "게임플레이", 0], ["20035_DEBUG_AD_TOURNAMENT_DL_TO", 2588, "게임플레이", 0], ["2100_GAMEPLAY_START", 515898, "게임플레이", 1], ["2110_GAMEPLAY_FREE_BOOSTER", 4980, "게임플레이", 0], ["2111_GAMEPLAY_FREE_BOOSTER_SUCCESS", 908, "게임플레이", 0], ["2112_GAMEPLAY_FREE_BOOSTER_FAIL", 410, "게임플레이", 0], ["2113_GAMEPLAY_FREE_BOOSTER_FAIL", 2812, "게임플레이", 0], ["2120_GAMEPLAY_TURN_MODE_START", 286, "게임플레이", 0], ["2150_GAMEPLAY_MOVE1", 461998, "게임플레이", 0], ["2160_GAMEPLAY_ITEM_PIRATE_HOOK", 1990, "게임플레이", 0], ["2161_GAMEPLAY_ITEM_PIRATE_HOOK_SUCCESS", 1990, "게임플레이", 0], ["2170_GAMEPLAY_ITEM_SKULL_BOMB", 2380, "게임플레이", 0], ["2171_GAMEPLAY_ITEM_SKULL_BOMB_SUCCESS", 2380, "게임플레이", 0], ["2180_GAMEPLAY_ITEM_GREAT_CANNON", 11796, "게임플레이", 0], ["2181_GAMEPLAY_ITEM_GREAT_CANNON_SUCCESS", 10432, "게임플레이", 0], ["2182_GAMEPLAY_ITEM_GREAT_CANNON_FAIL", 820, "게임플레이", 0], ["2200_GAMEPLAY_EXTRA_MOVE", 154800, "게임플레이", 0], ["2210_GAMEPLAY_EXTRA_MOVE_SUCCESS", 91782, "게임플레이", 0], ["2220_GAMEPLAY_EXTRA_MOVE_FAIL", 55574, "게임플레이", 0], ["2250_GAMEPLAY_GOAL_COMPLETE", 384978, "게임플레이", 0], ["2300_GAMEPLAY_FINISH", 441140, "게임플레이", 1], ["2350_GAMEPLAY_TURN_MODE_FINISH", 280, "게임플레이", 0], ["2400_FINISH_REWARD", 434276, "게임플레이", 0], ["2410_FINISH_REWARD_SUCCESS", 245802, "게임플레이", 0], ["2420_FINISH_REWARD_DOUBLE_SUCCESS", 97504, "게임플레이", 0], ["2430_FINISH_REWARD_DOUBLE_FAIL", 10576, "게임플레이", 0], ["2460_FINISH_TURN_REWARD", 102, "게임플레이", 0], ["2470_FINISH_TURN_REWARD_SUCCESS", 42, "게임플레이", 0], ["2480_FINISH_TURN_REWARD_DOUBLE_SUCCESS", 58, "게임플레이", 0], ["2500_FINISH_RETRY", 21542, "게임플레이", 0], ["2600_FINISH_FRIEND_RAID", 55672, "게임플레이", 0], ["2610_FINISH_FRIEND_RAID_SUCCESS", 47598, "게임플레이", 0], ["2620_FINISH_FRIEND_RAID_FAIL", 31850, "게임플레이", 0], ["2700_FINISH_MINIGAME", 211974, "게임플레이", 0], ["2710_FINISH_MINIGAME_SUCCESS", 135246, "게임플레이", 0], ["2720_FINISH_MINIGAME_FAIL", 38474, "게임플레이", 0], ["2730_FINISH_MINIGAME_SHARE", 12742, "게임플레이", 0], ["2900_BTN_GAMEPLAY_SETTING", 5260, "게임플레이", 0], ["2910_BTN_GAMEPLAY_SETTING_RETRY", 986, "게임플레이", 0], ["2920_BTN_GAMEPLAY_SETTING_LOBBY", 1614, "게임플레이", 0], ["3000_SWITCH_CONTEXT_START", 341424, "소셜 지면", 1], ["3010_SWITCH_CONTEXT_SUCCESS", 200716, "소셜 지면", 1], ["3020_SWITCH_CONTEXT_FAIL", 136954, "소셜 지면", 0], ["3100_TOURNAMENT_CREATE", 186480, "소셜 지면", 1], ["3110_TOURNAMENT_CREATE_SUCCESS", 28622, "소셜 지면", 1], ["3120_TOURNAMENT_CREATE_FAIL", 154624, "소셜 지면", 0], ["3130_TOURNAMENT_CREATE_SUPPRESSED", 47800, "소셜 지면", 1], ["3200_TOURNAMENT_SHARE", 129560, "소셜 지면", 1], ["3210_TOURNAMENT_SHARE_SUCCESS", 24972, "소셜 지면", 1], ["3220_TOURNAMENT_SHARE_FAIL", 102040, "소셜 지면", 0], ["3300_TOURNAMENT_POST", 156136, "소셜 지면", 0], ["3310_TOURNAMENT_POST_SUCCESS", 155944, "소셜 지면", 0], ["3320_TOURNAMENT_POST_FAIL", 46, "소셜 지면", 0], ["3400_MSG_P2P", 67372, "소셜 지면", 1], ["3410_MSG_P2P_SUCCESS", 67040, "소셜 지면", 1], ["3420_MSG_P2P_FAIL", 86, "소셜 지면", 0], ["3430_MSG_P2P_RETRY", 2, "소셜 지면", 0], ["3440_MSG_P2P_RETRY_SUCCESS", 2, "소셜 지면", 0], ["3500_FEED_SHARE", 18132, "소셜 지면", 1], ["3510_FEED_SHARE_SUCCESS", 10758, "소셜 지면", 1], ["3520_FEED_SHARE_FAIL", 4062, "소셜 지면", 0], ["4000_INTERSTITIAL_AD_START", 371070, "광고", 0], ["4010_INTERSTITIAL_AD_FINISH", 231424, "광고", 0], ["4020_INTERSTITIAL_AD_ERROR", 128838, "광고", 0], ["4080_INTERSTITIAL_AD_PRELOAD_FINISH", 364472, "광고", 0], ["4090_INTERSTITIAL_AD_PRELOAD_ERROR", 22632, "광고", 0], ["4200_RV_START", 372624, "광고", 0], ["4210_RV_FINISH", 290240, "광고", 0], ["4220_RV_ERROR", 67292, "광고", 0], ["4280_RV_PRELOAD_FINISH", 439146, "광고", 0], ["4290_RV_PRELOAD_ERROR", 20898, "광고", 0], ["5100_BTN_MAIL_COLLECT", 610, "메일", 0], ["6000_FRIEND_COUNT", 178866, "카운터", 0], ["6001_FRIEND_TOURNAMENT_COUNT", 177344, "카운터", 0], ["6005_BANNER_AD_LOAD_ABLE", 517732, "카운터", 0], ["6006_BANNER_AD_LOAD_SUCCESS", 239000, "카운터", 0], ["6007_BANNER_AD_LOAD_FAIL", 163796, "카운터", 0], ["6010_GOODS_COUNT", 178802, "카운터", 0], ["6020_UNIQUE_STAGE_PLAY_COUNT", 178860, "카운터", 0], ["6030_UNIQUE_TOURNAMENT_COUNT_1", 177312, "카운터", 0], ["6040_UNIQUE_TOURNAMENT_COUNT_2", 40606, "카운터", 0], ["6050_PERSONAL_SETTING", 178748, "카운터", 0], ["6051_SETTING_LANGUAGE", 177236, "카운터", 0], ["6060_RECOMMEND_TOURNAMENT_RESULT", 186116, "카운터", 0], ["6070_MISMATCH_TOURNAMENT", 92, "카운터", 0], ["6090_NRU_LOBBY_FINISH_TUTORIAL", 3896, "카운터", 0], ["6100_RV_SKIP_TICKET_USE_TRY", 16, "카운터", 0], ["6110_RV_SKIP_TRICKET_USE_SUCCESS", 16, "카운터", 0], ["7000_BTN_LOBBY_PROFILE", 480, "버튼", 0], ["7010_BTN_LOBBY_COIN", 258, "버튼", 0], ["7030_BTN_LOBBY_SETTING", 236, "버튼", 0], ["7060_BTN_LOBBY_INVITE_FRIENDS", 110, "버튼", 0], ["7075_BTN_LOBBY_SHOP", 602, "버튼", 0], ["7080_BTN_LOBBY_MENU", 12498, "버튼", 0], ["7081_BTN_MENU_INBOX", 11080, "버튼", 0], ["7083_BTN_MENU_TOURNAMENTS", 26940, "버튼", 0], ["7086_BTN_LOBBY_TURN_MODE", 158, "버튼", 0], ["7100_BTN_PROFILE_TAB_PLAY_RECORD", 132, "버튼", 0], ["7110_BTN_PROFILE_TAB_WHEEL_RECORD", 202, "버튼", 0], ["8010_LOBBY", 318220, "로비·컨텐츠", 0], ["8200_FREE_COINS", 4296, "로비·컨텐츠", 0], ["8210_FREE_COINS_SUCCESS", 4168, "로비·컨텐츠", 0], ["8220_FREE_COINS_FAIL", 688, "로비·컨텐츠", 0], ["8300_INBOX", 11348, "로비·컨텐츠", 0], ["8310_INBOX_PLAY_WITH_FRIENDS", 688, "로비·컨텐츠", 0], ["8320_INBOX_WATCH_REWARD_VIDEO", 5524, "로비·컨텐츠", 0], ["8330_INBOX_PLAY_TOURNAMENT", 4726, "로비·컨텐츠", 0], ["8340_POPUP_INBOX_REWARD_CLAIM", 5398, "로비·컨텐츠", 0], ["8350_POPUP_INBOX_REWARD_CLAIM_ALL", 302, "로비·컨텐츠", 0], ["8400_PROFILE", 630, "로비·컨텐츠", 0], ["8500_PROFILE_FRIEND", 2334, "로비·컨텐츠", 0], ["8510_PROFILE_FRIEND_PLAY", 146, "로비·컨텐츠", 0], ["8550_SHOP", 1170, "로비·컨텐츠", 0], ["8551_SHOP_PURCHASE_TRY", 322, "로비·컨텐츠", 0], ["8560_SHOP_PURCHASE_SUCCESS", 2, "로비·컨텐츠", 0], ["8570_SHOP_PURCHASE_FAIL", 286, "로비·컨텐츠", 0], ["8580_GEM_HOT_TIME_OPEN", 508, "로비·컨텐츠", 0], ["8581_GEM_HOT_TIME_CLOSE", 498, "로비·컨텐츠", 0], ["8585_COIN_HOT_TIME_OPEN", 412, "로비·컨텐츠", 0], ["8586_COIN_HOT_TIME_CLOSE", 408, "로비·컨텐츠", 0], ["8590_FREE_AUTO_MERGE_OPEN", 3016, "로비·컨텐츠", 0], ["8591_FREE_AUTO_MERGE_CLOSE", 3042, "로비·컨텐츠", 0], ["8600_MERGE", 26048, "로비·컨텐츠", 0], ["8603_MERGE_TUTO", 1054, "로비·컨텐츠", 0], ["8605_MERGE_GACHA_ICON", 3034, "로비·컨텐츠", 0], ["8606_MERGE_GACHA_POPUP", 4438, "로비·컨텐츠", 0], ["8607_MERGE_GACHA_POPUP_OK", 1212, "로비·컨텐츠", 0], ["8610_MERGE_COLLECTION", 2602, "로비·컨텐츠", 0], ["8611_MERGE_COLLECTION_CLAIM", 2478, "로비·컨텐츠", 0], ["8612_MERGE_COLLECTION_CLAIM_ALL", 690, "로비·컨텐츠", 0], ["8630_MERGE_ALARM", 838, "로비·컨텐츠", 0], ["8640_MERGE_AUTO_MERGE", 3762, "로비·컨텐츠", 0], ["8650_MERGE_AUTO_MERGE_SUCCESS", 2824, "로비·컨텐츠", 0], ["8665_MERGE_FREE_GEMS", 11168, "로비·컨텐츠", 0], ["8666_MERGE_FREE_GEMS_SUCCESS", 9102, "로비·컨텐츠", 0], ["8667_MERGE_FREE_GEMS_FAIL", 1912, "로비·컨텐츠", 0], ["8670_MERGE_UNLOCK", 4488, "로비·컨텐츠", 0], ["8680_MERGE_UNLOCK_SHARE", 522, "로비·컨텐츠", 0], ["8695_MERGE_PLAY", 117976, "로비·컨텐츠", 0], ["8696_MERGE_PLAY_SUCCESS", 6462, "로비·컨텐츠", 0], ["8700_TOURNAMENT_REWARD", 5278, "로비·컨텐츠", 0], ["8710_TOURNAMENT_REWARD_SUCCESS", 5288, "로비·컨텐츠", 0], ["8720_TOURNAMENT_REWARD_DOUBLE_SUCCESS", 1732, "로비·컨텐츠", 0], ["8750_WELCOME_BACK", 10034, "로비·컨텐츠", 0], ["8751_WELCOME_BACK_REQUEST", 9098, "로비·컨텐츠", 0], ["8760_WELCOME_BACK_SUCCESS", 8996, "로비·컨텐츠", 0], ["8761_WELCOME_BACK_FAIL", 102, "로비·컨텐츠", 0], ["8800_TOURNAMENTS", 26882, "로비·컨텐츠", 0], ["8810_TURN_MODE", 422, "로비·컨텐츠", 0], ["8851_EVENT_INVITE_FRIEND_TRY_SUCCESS", 708, "로비·컨텐츠", 0], ["8861_RAKINGS_FRIENDS", 1330, "로비·컨텐츠", 0], ["8862_RAKINGS_GLOBAL", 3664, "로비·컨텐츠", 0], ["8870_GACHA", 7518, "로비·컨텐츠", 0], ["8871_GACHA_EXIT", 7114, "로비·컨텐츠", 0], ["8872_GACHA_ICON_INFO", 46, "로비·컨텐츠", 0], ["8873_GACHA_ICON_MERGE", 2694, "로비·컨텐츠", 0], ["8874_GACHA_DRAW_1", 19204, "로비·컨텐츠", 0], ["8875_GACHA_DRAW_1_REWARD", 18328, "로비·컨텐츠", 0], ["8876_GACHA_DRAW_10", 17304, "로비·컨텐츠", 0], ["8877_GACHA_DRAW_10_REWARD", 17126, "로비·컨텐츠", 0], ["8878_GACHA_DRAW_SKIP", 10340, "로비·컨텐츠", 0], ["8880_GACHA_POPUP_NOT_ENOUGH_COIN", 400, "로비·컨텐츠", 0], ["8881_GACHA_POPUP_NOT_ENOUGH_COIN_IAP", 2, "로비·컨텐츠", 0], ["8882_GACHA_POPUP_NOT_ENOUGH_COIN_PLAY", 20, "로비·컨텐츠", 0], ["8883_GACHA_POPUP_NOT_ENOUGH_COIN_FREE", 110, "로비·컨텐츠", 0], ["8884_GACHA_POPUP_NOT_ENOUGH_COIN_EXIT", 398, "로비·컨텐츠", 0], ["8890_GACHA_TUTO_INTRO", 654, "로비·컨텐츠", 0], ["8891_GACHA_TUTO_REWARD", 646, "로비·컨텐츠", 0], ["8892_GACHA_TUTO_FINISH", 646, "로비·컨텐츠", 0], ["8893_GACHA_DRAW_SHARE", 98, "로비·컨텐츠", 0], ["8894_GACHA_DRAW_SHARE_SUCCESS", 44, "로비·컨텐츠", 0], ["8895_GACHA_DRAW_SHARE_FAIL", 28, "로비·컨텐츠", 0], ["8900_BOT_SUBSCRIPTION_OPEN", 8, "로비·컨텐츠", 0], ["8920_SHORTCUT_ADD_OPEN", 5082, "로비·컨텐츠", 0], ["8930_BOT_SUBSCRIPTION_FAIL", 4, "로비·컨텐츠", 0], ["8930_BOT_SUBSCRIPTION_SUCCESS", 4, "로비·컨텐츠", 0], ["8930_SHORTCUT_ADD_FAIL", 2886, "로비·컨텐츠", 0], ["8930_SHORTCUT_ADD_SUCCESS", 2112, "로비·컨텐츠", 0], ["8980_ERROR_MESSAGE_RESTART", 134, "로비·컨텐츠", 0], ["8990_CROSS_PROMO", 4694, "로비·컨텐츠", 0], ["8990_CROSS_PROMO_EXIT", 4454, "로비·컨텐츠", 0], ["8990_CROSS_PROMO_FAIL", 216, "로비·컨텐츠", 0], ["8990_CROSS_PROMO_PLAY", 470, "로비·컨텐츠", 0], ["9100_SERVER_ERROR", 488, "에러·디버그", 0], ["9300_CLIENT_LOG", 922454, "에러·디버그", 0], ["9500_AFTER_CREATE_TOURNAMENT", 28596, "에러·디버그", 0], ["9991_PLAY_POINTERDOWN", 194438, "에러·디버그", 0], ["9992_PLAY_CLICK", 2496, "에러·디버그", 0], ["9998_ERROR_PAYLOAD", 4, "에러·디버그", 0], ["99999_PENDING_ERROR", 7540, "에러·디버그", 0], ["ALL_INTRO_DEBUG_ERROR_98", 18254, "로딩·네트워크", 0], ["ALL_INTRO_DEBUG_ERROR_PASS_AFTER_98", 10948, "로딩·네트워크", 0], ["ALL_LOAD_FB", 210236, "로딩·네트워크", 0], ["ALL_LOAD_INTRO", 200430, "로딩·네트워크", 0], ["ALL_LOAD_INTRO_FINISH", 200112, "로딩·네트워크", 0], ["ALL_LOAD_INTRO_START", 200436, "로딩·네트워크", 0], ["DAU", 111138, "집계", 0], ["FIRST_LOG", 230640, "로딩·네트워크", 0], ["INTRO_BUNDLE", 191168, "로딩·네트워크", 0], ["INTRO_BUNDLE_FINISH", 189280, "로딩·네트워크", 0], ["INTRO_CONSUME", 172974, "로딩·네트워크", 0], ["INTRO_CONSUME_FINISH", 170338, "로딩·네트워크", 0], ["INTRO_DEBUG_ERROR_GET_FRIEND_FAIL", 2756, "로딩·네트워크", 0], ["INTRO_DEBUG_ERROR_GET_SIGNED_INFO_FAIL", 150, "로딩·네트워크", 0], ["INTRO_FB_DATA", 191176, "로딩·네트워크", 0], ["INTRO_FB_DATA_FINISH", 188018, "로딩·네트워크", 0], ["INTRO_FB_ENTRY_DATA", 189684, "로딩·네트워크", 0], ["INTRO_FB_ENTRY_DATA_FINISH", 188032, "로딩·네트워크", 0], ["INTRO_FB_ENTRY_POINT", 191190, "로딩·네트워크", 0], ["INTRO_FB_ENTRY_POINT_FINISH", 189704, "로딩·네트워크", 0], ["INTRO_FB_ERROR", 7476, "로딩·네트워크", 0], ["INTRO_FB_FRIEND", 191172, "로딩·네트워크", 0], ["INTRO_FB_FRIEND_FINISH", 184280, "로딩·네트워크", 0], ["INTRO_FB_START", 230628, "로딩·네트워크", 0], ["INTRO_FB_START_FINISH", 217596, "로딩·네트워크", 0], ["INTRO_FB_SUBSCRIBE_BOT", 188628, "로딩·네트워크", 0], ["INTRO_FB_SUBSCRIBE_BOT_FINISH", 188588, "로딩·네트워크", 0], ["INTRO_LOGIN", 181670, "로딩·네트워크", 0], ["INTRO_OBJECT_POOL", 189270, "로딩·네트워크", 0], ["INTRO_OBJECT_POOL_FINISH", 189252, "로딩·네트워크", 0], ["INTRO_POPUP_HEADER", 189236, "로딩·네트워크", 0], ["INTRO_POPUP_HEADER_FINISH", 188560, "로딩·네트워크", 0], ["INTRO_PRELOAD_VIEW", 176998, "로딩·네트워크", 0], ["INTRO_PRELOAD_VIEW_FINISH", 162696, "로딩·네트워크", 0], ["INTRO_SIGNED_PLAYER_INFO", 191164, "로딩·네트워크", 0], ["INTRO_SIGNED_PLAYER_INFO_FINISH", 188682, "로딩·네트워크", 0], ["NETWORK_TIMEOUT", 241766, "로딩·네트워크", 0], ["NETWORK_TIMEOUT_RETRY", 238162, "로딩·네트워크", 0], ["NETWORK_TIMEOUT_RETRY_OVER", 3200, "로딩·네트워크", 0], ["NRU", 47460, "집계", 0], ["Session", 176142, "집계", 0], ["TRY_INIT_STARTERPACK", 192704, "로딩·네트워크", 0], ["TRY_INIT_STARTERPACK_FAIL", 83120, "로딩·네트워크", 0], ["TRY_INIT_STARTERPACK_SUCCESS", 440266, "로딩·네트워크", 0], ["WEB_RESOLUTION_INIT", 12854, "로딩·네트워크", 0], ["fb_mobile_purchase", 521638, "기타", 0]];
+
+      // 분해 축 패밀리 — 상위 항목만. [패밀리, [ [이름, 건수], … ], 생략된 개수]
+      const FAM = [
+        ["Session-by-entry-*", [
+          ["ad", 41782], ["bot_cta", 30636], ["in_game_menu", 21398], ["feed", 17222],
+          ["home_screen_shortcut", 16506], ["notification", 14472], ["admin_message", 11202],
+          ["facebook_gaming_tab", 8746], ["bookmark", 4288], ["web_games_hub", 3480],
+          ["group", 2486], ["shareable_link", 1668], ["game_switch", 1090]
+        ], 8],
+        ["Session-by-social-*", [
+          ["organic", 50848], ["AD", 41782], ["TOURNAMENT", 25782], ["A2U_BETA", 13630],
+          ["MESSAGE", 13104], ["A2U MESSAGE_SOLO", 11408], ["MSGBOT", 9704],
+          ["FB_DAILY_TOURNAMENT", 3348], ["A2U Message", 2078], ["PAGE_TOURNAMENT", 1502],
+          ["FEED", 1166], ["MESSAGE_PIC", 1152]
+        ], 45],
+        ["NRU-by-social-*", [
+          ["AD", 27320], ["TOURNAMENT", 11076], ["organic", 6284], ["MESSAGE_PIC", 728],
+          ["A2U MESSAGE_SOLO", 544], ["PAGE_TOURNAMENT", 354], ["MSGBOT", 318],
+          ["FB_DAILY_TOURNAMENT", 264], ["FEED", 254], ["A2U_BETA", 166]
+        ], 27],
+        ["LOAD_FB / LOAD_INTRO (OS별)", [
+          ["LOAD_FB_Android", 109208], ["LOAD_INTRO_Android", 104920],
+          ["LOAD_FB_etc", 11862], ["LOAD_INTRO_etc", 11698],
+          ["LOAD_FB_iOS", 3734], ["LOAD_INTRO_iOS", 3688]
+        ], 6],
+        ["FIRST_LOAD_* (신규 OS별)", [
+          ["FIRST_LOAD_FB_Android", 68058], ["FIRST_LOAD_INTRO_Android", 63046],
+          ["FIRST_LOAD_FB_iOS", 14774], ["FIRST_LOAD_INTRO_iOS", 14506],
+          ["FIRST_LOAD_FB_etc", 2632], ["FIRST_LOAD_INTRO_etc", 2580]
+        ], 6],
+        ["INTRO_DEBUG_ERROR_98 (OS별)", [
+          ["INTRO_DEBUG_ERROR_98_Android", 10402], ["FIRST_INTRO_DEBUG_ERROR_98_Android", 6520],
+          ["INTRO_DEBUG_ERROR_98_etc", 946], ["FIRST_INTRO_DEBUG_ERROR_98_iOS", 286],
+          ["FIRST_INTRO_DEBUG_ERROR_98_etc", 112], ["INTRO_DEBUG_ERROR_98_iOS", 38]
+        ], 6],
+      ];
+
+      const nf = v => v.toLocaleString("en-US");
+
+      // ── A/B 보드가 쓰는 15개 ───────────────────────────────────────────
+      const WHERE = {
+        "1000_LOGIN_COMPLETE": "유저 · 세션 (분모)",
+        "2100_GAMEPLAY_START": "판수 / 유저 · 판수 / 세션",
+        "2300_GAMEPLAY_FINISH": "판 완료율",
+        "1170_PLAYTIME_300S": "5분 이상 세션",
+        "3100_TOURNAMENT_CREATE": "생성 시도 / 유저",
+        "3110_TOURNAMENT_CREATE_SUCCESS": "생성 성공률 · 생성 성공 / 유저",
+        "3130_TOURNAMENT_CREATE_SUPPRESSED": "차단 발생 / 유저 (처치 지표)",
+        "3200_TOURNAMENT_SHARE": "토너 공유 성공률 (분모)",
+        "3210_TOURNAMENT_SHARE_SUCCESS": "토너 공유 성공률",
+        "3400_MSG_P2P": "P2P 시도 / 유저",
+        "3410_MSG_P2P_SUCCESS": "P2P 성공률",
+        "3500_FEED_SHARE": "피드 시도 / 유저",
+        "3510_FEED_SHARE_SUCCESS": "피드 성공률",
+        "3000_SWITCH_CONTEXT_START": "컨텍스트 전환 성공률 (분모)",
+        "3010_SWITCH_CONTEXT_SUCCESS": "컨텍스트 전환 성공률 · 감시 지표",
+      };
+      document.getElementById("coretb").innerHTML = CAT
+        .filter(r => r[3])
+        .sort((a, b) => (WHERE[a[0]] || "").localeCompare(WHERE[b[0]] || ""))
+        .map(([n, c]) => `<tr class="use"><td>${n}</td><td class="n">${nf(c)}</td><td>${WHERE[n]}</td></tr>`)
+        .join("");
+
+      // ── 전체 카탈로그 + 필터 ───────────────────────────────────────────
+      const tb = document.getElementById("cattb");
+      const q = document.getElementById("q");
+      const btn = document.getElementById("onlyuse");
+      const cnt = document.getElementById("cnt");
+      let onlyUse = false;
+
+      function render() {
+        const term = q.value.trim().toUpperCase();
+        const rows = CAT.filter(([n, , , u]) =>
+          (!onlyUse || u) && (!term || n.toUpperCase().includes(term)));
+        tb.innerHTML = rows.map(([n, c, g, u]) =>
+          `<tr class="${u ? "use" : ""}"><td>${n}</td>`
+          + `<td><span class="gtag">${g}</span></td>`
+          + `<td class="n">${nf(c)}</td><td class="h">${nf(c / 2)}</td></tr>`).join("");
+        cnt.textContent = `${nf(rows.length)} / ${nf(CAT.length)}개`;
+      }
+      q.addEventListener("input", render);
+      btn.addEventListener("click", () => {
+        onlyUse = !onlyUse;
+        btn.classList.toggle("on", onlyUse);
+        render();
+      });
+      render();
+
+      // ── 분해 축 카드 ───────────────────────────────────────────────────
+      document.getElementById("famwrap").innerHTML = FAM.map(([name, items, more]) =>
+        `<div class="famc"><h4>${name}</h4><ul>`
+        + items.map(([k, v]) => `<li><span>${k}</span><b>${nf(v)}</b></li>`).join("")
+        + `</ul>${more ? `<div class="more">그 밖 ${more}개 (대부분 하루 2~8건)</div>` : ""}</div>`
+      ).join("");
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>
