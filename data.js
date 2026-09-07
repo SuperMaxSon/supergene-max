@@ -438,12 +438,12 @@ const SECTIONS = [
     cards: [
       {
         title: "토너먼트 연속 거절 차단 — A ↔ B",
-        desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 잔존 +는 유의성 미달입니다.",
+        desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 잔존은 처치 층만 보면 D+7 +18.4%까지 커지지만 n이 5배 모자랍니다.",
         url: "docs/coin-match-tournament-reject-ab.html",
         project: "cmt",
         status: "진행중",
-        version: "v1.1",
-        updated: "2026-09-07 09:12",
+        version: "v1.2",
+        updated: "2026-09-07 09:41",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B"],
       },

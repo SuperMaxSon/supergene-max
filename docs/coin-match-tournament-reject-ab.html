@@ -82,6 +82,48 @@
       .kb-warn b{color:color-mix(in srgb, var(--warn) 72%, var(--text))}
       .kb-warn code{background:#fff;padding:0 4px;border-radius:4px;font-size:11px}
 
+      /* 리텐션 피라미드 — 인구 피라미드와 같은 미러 막대. 가운데가 일차, 왼쪽으로 A,
+         오른쪽으로 B 가 자란다. 위에서 아래로 좁아지는 모양 자체가 이탈 곡선이 된다.
+         스케일 최대는 D+0(100%)이 아니라 D+1 이다 — 100% 를 기준으로 잡으면 6% 인 D+1 이
+         바늘처럼 눌려서 D+1↔D+7 비교가 아예 안 된다. 대신 코호트 행은 막대 없이 숫자만 둔다. */
+      .pyr{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+      .pyr th{font-size:10.5px;font-weight:800;color:var(--text-dim);padding:6px 8px;
+        border-bottom:2px solid var(--border);white-space:nowrap}
+      .pyr th.ha,.pyr th.hb{color:var(--text)}
+      .pyr th.ha::before,.pyr th.hb::before{content:"";display:inline-block;width:12px;height:8px;
+        border-radius:2px;margin-right:5px}
+      .pyr th.ha::before{background:#16a34a} .pyr th.hb::before{background:#1d4ed8}
+      .pyr td{padding:5px 8px;border-bottom:1px solid var(--border-soft);font-size:12px;font-weight:700}
+      .pyr tr:last-child td{border-bottom:none}
+      .pyr .day{text-align:center;font-size:11px;font-weight:800;color:var(--text);
+        background:var(--surface-2);white-space:nowrap;width:56px}
+      .pyr .v{font-size:12.5px;font-weight:800;white-space:nowrap}
+      .pyr .v.a{color:#15803d;text-align:right} .pyr .v.b{color:#1d4ed8}
+      .pyr .n{font-size:10px;font-weight:700;color:var(--text-faint);white-space:nowrap}
+      .pyr .n.a{text-align:right}
+      .pyr .bar{width:38%;padding:5px 6px}
+      .pyr .bar i{display:block;height:13px;border-radius:3px}
+      .pyr .bar.l{text-align:right}
+      .pyr .bar.l i{margin-left:auto;background:#16a34a}
+      .pyr .bar.r i{background:#1d4ed8}
+      /* 코호트 행 — 막대 스케일이 D+1 기준이라 여기에 막대를 그리면 거짓말이 된다. */
+      .pyr tr.base td{background:color-mix(in srgb,var(--surface-2) 60%,#fff);
+        border-bottom:2px solid var(--border)}
+      .pyr tr.base .v{color:var(--text)}
+      /* 미집계 — 빈칸으로 두면 "없는 값"인지 "0"인지 구분이 안 된다. */
+      .pyr tr.na td{opacity:.5}
+      .pyr .hatch{height:13px;border-radius:3px;
+        background:repeating-linear-gradient(135deg,#f2f4f8 0 6px,#e8ebf1 6px 12px)}
+      /* 층 구분 헤더 — 블록이 셋이라 어디서 끊기는지 보이지 않으면 세로로 읽다 섞인다. */
+      .pyr tr.strat td{background:var(--surface-2);font-size:11px;font-weight:800;color:var(--text);
+        border-top:2px solid var(--border);border-bottom:1px solid var(--border)}
+      .pyr tr.strat span{font-weight:700;color:var(--text-dim);margin-left:6px;font-size:10.5px}
+      .pyr tr.strat.key td{background:color-mix(in srgb,#1d4ed8 8%,var(--surface-2))}
+      .pyr tr.key td{background:color-mix(in srgb,#1d4ed8 3%,transparent)}
+      .pyr .d{text-align:right;font-size:12px;font-weight:800;white-space:nowrap}
+      .pyr .d .sg{display:block;font-size:9px;font-weight:800;color:#6b7488;margin-top:1px}
+      @media (max-width:760px){ .pyr .n{display:none} .pyr .bar{width:30%} }
+
       /* 대조/처치 정의 — 어떤 두 군을 견주는지가 타이틀 바로 밑에서 끝나야 한다.
          이게 없으면 3374·3375 가 그냥 숫자로 보이고, 아래 보드의 초록/파랑이 무엇인지 알 수 없다.
          docs/sol-tournament-slot-ab.html 의 .ab 를 그대로 가져왔다 — A/B 문서끼리 같은 자리에
@@ -130,6 +172,7 @@
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#verdict">판정</a>
         <a class="nav-back" href="#board">KPI</a>
+        <a class="nav-back" href="#retention">잔존</a>
         <a class="nav-back" href="#sql">쿼리</a>
         <span class="nav-spacer"></span>
       </div>
@@ -195,9 +238,9 @@
             <div class="stat-sub">2.82 → 2.90</div>
           </div>
           <div class="stat" style="--acc: #5f6878">
-            <div class="stat-num">n.s.</div>
-            <div class="stat-name">D1 · D7 잔존</div>
-            <div class="stat-sub">방향은 +지만 유의성 미달</div>
+            <div class="stat-num">+18.4<span class="stat-unit">%</span></div>
+            <div class="stat-name">D+7 잔존 (처치 층)</div>
+            <div class="stat-sub">방향은 +지만 p≈0.21 · 미달</div>
           </div>
         </div>
 
@@ -211,11 +254,13 @@
             </p>
           </div>
           <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">단 잔존은 근거가 되지 못합니다</div>
+            <div class="note-title">잔존은 아직 근거가 되지 못합니다</div>
             <p>
-              D1 <code>+1.9%</code> · D7 <code>+5.1%</code> 는 코호트 8만 명에서도
-              <strong>두 비율 검정 p&gt;0.2</strong> 로 노이즈와 구분되지 않습니다.
-              방향만 참고하고 판정 근거로 쓰지 마십시오.
+              전체 코호트로 보면 D+1 <code>+1.9%</code> · D+7 <code>+5.1%</code> 가 <strong>p&gt;0.2</strong> 로 묻힙니다.
+              처치를 실제로 받은 유저가 코호트의 <strong>1.9%</strong> 뿐이라 희석된 것이어서,
+              그 층만 떼면 D+7 격차가 <strong>+18.4%</strong> 까지 커집니다 —
+              그래도 <strong>n 이 5배 모자라 여전히 미달</strong>입니다.
+              <a href="#retention">리텐션 피라미드</a>에 층별 수치와 필요 표본을 정리했습니다.
             </p>
           </div>
         </div>
@@ -233,6 +278,145 @@
         </div>
 
         <div id="groups"></div>
+      </section>
+
+      <section class="doc-section" id="retention">
+        <h2 class="doc-h2">리텐션 피라미드 <span class="doc-h2-sub">가운데가 일차 · 왼쪽 A · 오른쪽 B · 세 블록이 같은 스케일</span></h2>
+        <div class="table-scroll">
+          <table class="pyr">
+            <thead>
+              <tr>
+                <th class="ha" style="text-align:right" colspan="2">A · 3374</th>
+                <th>일차</th>
+                <th class="hb" style="text-align:left" colspan="2">B · 3375</th>
+                <th style="text-align:right">Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="strat">
+                <td colspan="6">전체 코호트 <span>A 80,642명 · B 80,517명</span></td>
+              </tr>
+              <tr>
+                <td class="v a">6.07%</td>
+                <td class="bar l"><i style="width:22.3%"></i></td>
+                <td class="day">D+1</td>
+                <td class="bar r"><i style="width:22.7%"></i></td>
+                <td class="v b">6.19%</td>
+                <td class="d mute">+1.9%<span class="sg">n.s. p≈.32</span></td>
+              </tr>
+              <tr class="na">
+                <td class="v a">—</td>
+                <td class="bar l"><div class="hatch"></div></td>
+                <td class="day">D+2~6</td>
+                <td class="bar r"><div class="hatch"></div></td>
+                <td class="v b">—</td>
+                <td class="d mute">미집계</td>
+              </tr>
+              <tr>
+                <td class="v a">1.34%</td>
+                <td class="bar l"><i style="width:4.9%"></i></td>
+                <td class="day">D+7</td>
+                <td class="bar r"><i style="width:5.2%"></i></td>
+                <td class="v b">1.41%</td>
+                <td class="d mute">+5.1%<span class="sg">n.s. p≈.23</span></td>
+              </tr>
+              <tr class="strat">
+                <td colspan="6">미노출 — 연속 3회 미도달 <span>A 79,149명 · B 78,977명</span></td>
+              </tr>
+              <tr>
+                <td class="v a">5.70%</td>
+                <td class="bar l"><i style="width:20.9%"></i></td>
+                <td class="day">D+1</td>
+                <td class="bar r"><i style="width:21.2%"></i></td>
+                <td class="v b">5.78%</td>
+                <td class="d mute">+1.4%<span class="sg">n.s. p≈.49</span></td>
+              </tr>
+              <tr class="na">
+                <td class="v a">—</td>
+                <td class="bar l"><div class="hatch"></div></td>
+                <td class="day">D+2~6</td>
+                <td class="bar r"><div class="hatch"></div></td>
+                <td class="v b">—</td>
+                <td class="d mute">미집계</td>
+              </tr>
+              <tr>
+                <td class="v a">1.25%</td>
+                <td class="bar l"><i style="width:4.6%"></i></td>
+                <td class="day">D+7</td>
+                <td class="bar r"><i style="width:4.8%"></i></td>
+                <td class="v b">1.30%</td>
+                <td class="d mute">+4.0%<span class="sg">n.s. p≈.38</span></td>
+              </tr>
+              <tr class="strat key">
+                <td colspan="6">처치 노출 — 연속 3회 도달 <span>A 1,493명 · B 1,540명</span></td>
+              </tr>
+              <tr class="key">
+                <td class="v a">25.92%</td>
+                <td class="bar l"><i style="width:95.3%"></i></td>
+                <td class="day">D+1</td>
+                <td class="bar r"><i style="width:100.0%"></i></td>
+                <td class="v b">27.21%</td>
+                <td class="d mute">+5.0%<span class="sg">n.s. p≈.42</span></td>
+              </tr>
+              <tr class="na key">
+                <td class="v a">—</td>
+                <td class="bar l"><div class="hatch"></div></td>
+                <td class="day">D+2~6</td>
+                <td class="bar r"><div class="hatch"></div></td>
+                <td class="v b">—</td>
+                <td class="d mute">미집계</td>
+              </tr>
+              <tr class="key">
+                <td class="v a">6.36%</td>
+                <td class="bar l"><i style="width:23.4%"></i></td>
+                <td class="day">D+7</td>
+                <td class="bar r"><i style="width:27.7%"></i></td>
+                <td class="v b">7.53%</td>
+                <td class="d mute">+18.4%<span class="sg">n.s. p≈.21</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--ok)">
+            <div class="note-title">층화는 성공했습니다</div>
+            <p>
+              <strong>미노출 층에서는 A·B가 갈리지 않습니다</strong>(D+1 <code>p≈0.49</code>).
+              처치를 안 받은 유저에게 차이가 없다는 것은 층화가 오염되지 않았다는 뜻입니다.
+              두 층을 더하면 코호트와 정확히 일치하고(A 79,149+1,493=80,642 · B 78,977+1,540=80,517),
+              층 크기 비율도 <strong>1.85% : 1.91%</strong> 로 균형입니다 —
+              연속 3회 도달은 처치보다 먼저 일어나므로 처치가 이 비율을 바꾸지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">희석 가설이 맞았습니다 — 다만 아직 부족합니다</div>
+            <p>
+              처치 층만 보면 D+7 격차가 <code>+0.07%p</code> 에서 <strong><code>+1.17%p</code>(+18.4%)</strong> 로 커집니다.
+              필요 표본이 군당 <strong>790,370 → 7,420 명</strong>으로 <strong>107배</strong> 줄었습니다.
+              그런데 처치 층의 현재 n 이 <strong>1,493</strong> 이라 여전히 <strong>5배</strong> 모자랍니다.
+              접속일수(연속형)도 <code>+0.052일 (+5.7%, p≈0.36)</code> 로 방향은 같지만 미달입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: #5f6878">
+            <div class="note-title">지금 말할 수 있는 것</div>
+            <p>
+              처치 층의 세 지표(D+1 +5.0% · D+7 +18.4% · 접속일수 +5.7%)가 <strong>모두 같은 방향</strong>이고
+              미노출 층은 평평합니다. 정황은 일관되지만 <strong>어느 것도 유의수준을 넘지 못했습니다</strong>.
+              <strong>코호트를 5일에서 25일로 넓히면 D+7 은 판정 가능</strong>해집니다 —
+              단 그때까지 B 빌드가 살아 있어야 합니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <b>층 정의</b> 설치 당일(D+0) 한 세션 안에서 <code>3120_TOURNAMENT_CREATE_FAIL</code>
+          <code>error_code=USER_INPUT</code> 이 성공 없이 3회 연속 발생하면 '도달'로 봅니다.
+          노출을 D+0 으로 한정한 이유는 잔존 측정보다 먼저 일어나야 역인과(오래 논 사람이 더 많이 거절)가 섞이지 않기 때문입니다.
+          <b>막대 스케일</b> 세 블록 공통으로 <b>100% = 27.21%</b>(처치 층 B 의 D+1)입니다 —
+          코호트 100% 를 기준으로 잡으면 나머지가 전부 눌려 비교가 불가능해집니다.
+          빗금은 0이 아니라 <b>미집계</b>입니다.
+        </div>
       </section>
 
       <section class="doc-section" id="sql">
@@ -351,6 +535,112 @@ ORDER BY sort_key</pre></div>
           </div>
         </details>
 
+        <details class="fold">
+          <summary>층화 쿼리 — 리텐션 피라미드 세 블록을 만드는 쿼리</summary>
+          <div class="fold-body">
+            <div class="table-scroll"><pre>WITH first_seen AS (
+    SELECT player_id, MIN(log_date) AS install_date
+    FROM `game-log-359704.raw.coin_match`
+    WHERE log_date BETWEEN '2026-07-01' AND '2026-09-07'
+      AND event = '1000_LOGIN_COMPLETE'
+    GROUP BY player_id
+),
+nru AS (
+    SELECT player_id, install_date
+    FROM first_seen
+    WHERE install_date BETWEEN '2026-08-27' AND '2026-08-31'
+),
+arm AS (
+    SELECT
+        n.player_id,
+        n.install_date,
+        CASE WHEN MIN(l.client_version) = 3375 THEN 'B' ELSE 'A' END AS ab_group
+    FROM nru n
+    JOIN `game-log-359704.raw.coin_match` l
+      ON l.player_id = n.player_id
+     AND l.log_date = n.install_date
+    WHERE l.log_date BETWEEN '2026-08-27' AND '2026-08-31'
+      AND l.event = '1000_LOGIN_COMPLETE'
+      AND l.client_version IN (3374, 3375)
+    GROUP BY n.player_id, n.install_date
+),
+-- 설치 당일의 생성 시도 결과열. 성공이 나올 때마다 streak_group 이 올라가
+-- '연속' 구간이 끊긴다(클라이언트의 성공 시 카운터 리셋과 같은 규칙).
+d0 AS (
+    SELECT
+        a.player_id,
+        l.logincount_total,
+        l.log_time,
+        l.event,
+        JSON_VALUE(l.data, '$.error_code') AS error_code,
+        SUM(CASE WHEN l.event = '3110_TOURNAMENT_CREATE_SUCCESS' THEN 1 ELSE 0 END)
+            OVER (PARTITION BY a.player_id, l.logincount_total ORDER BY l.log_time
+                  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS streak_group
+    FROM arm a
+    JOIN `game-log-359704.raw.coin_match` l
+      ON l.player_id = a.player_id
+     AND l.log_date = a.install_date
+    WHERE l.log_date BETWEEN '2026-08-27' AND '2026-08-31'
+      AND l.event IN ('3110_TOURNAMENT_CREATE_SUCCESS', '3120_TOURNAMENT_CREATE_FAIL')
+),
+runs AS (
+    SELECT player_id, logincount_total, streak_group, COUNT(*) AS consecutive_rejects
+    FROM d0
+    WHERE event = '3120_TOURNAMENT_CREATE_FAIL'
+      AND error_code = 'USER_INPUT'
+    GROUP BY player_id, logincount_total, streak_group
+),
+strat AS (
+    SELECT
+        a.player_id,
+        a.install_date,
+        a.ab_group,
+        CASE WHEN COALESCE(MAX(r.consecutive_rejects), 0) &gt;= 3
+             THEN '2_처치노출(연속3회 도달)' ELSE '1_미노출' END AS stratum
+    FROM arm a
+    LEFT JOIN runs r ON r.player_id = a.player_id
+    GROUP BY a.player_id, a.install_date, a.ab_group
+),
+activity AS (
+    SELECT DISTINCT player_id, log_date
+    FROM `game-log-359704.raw.coin_match`
+    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-07'
+      AND event = '1000_LOGIN_COMPLETE'
+),
+per_user AS (
+    SELECT
+        s.stratum,
+        s.ab_group,
+        s.player_id,
+        MAX(CASE WHEN DATE_DIFF(a.log_date, s.install_date, DAY) = 1 THEN 1 ELSE 0 END) AS d1,
+        MAX(CASE WHEN DATE_DIFF(a.log_date, s.install_date, DAY) = 7 THEN 1 ELSE 0 END) AS d7,
+        COUNT(DISTINCT CASE WHEN DATE_DIFF(a.log_date, s.install_date, DAY) BETWEEN 1 AND 7
+                            THEN a.log_date END) AS days_active_d1_d7
+    FROM strat s
+    LEFT JOIN activity a ON a.player_id = s.player_id
+    GROUP BY s.stratum, s.ab_group, s.player_id
+)
+SELECT
+    stratum,
+    ab_group,
+    COUNT(*) AS users,
+    ROUND(AVG(d1) * 100, 2) AS d1_retention_pct,
+    ROUND(AVG(d7) * 100, 2) AS d7_retention_pct,
+    ROUND(AVG(days_active_d1_d7), 3) AS avg_days_active,
+    ROUND(STDDEV(days_active_d1_d7), 3) AS sd_days_active
+FROM per_user
+GROUP BY stratum, ab_group
+ORDER BY stratum, ab_group</pre></div>
+            <div class="foot" style="margin-top:10px">
+              <b>D+2~D+6 을 채우려면</b> <code>per_user</code> 의 <code>d1</code>·<code>d7</code> 자리에
+              <code>DATE_DIFF(...) = 2 … 6</code> 을 같은 모양으로 추가하면 됩니다.
+              <b>표본을 키우려면</b> <code>nru</code> 의 <code>install_date</code> 범위를 넓히고
+              <code>activity</code>·<code>first_seen</code> 의 상한을 오늘로 맞추면 됩니다 —
+              D+7 을 재려면 코호트일 + 7일이 지나 있어야 합니다.
+            </div>
+          </div>
+        </details>
+
         <div class="foot">
           <b>확인 범위</b>
           A/B 구분자는 <code>client_version</code> 뿐입니다 — 페이스북이 어느 호스팅을 서빙했는지로 갈립니다.
@@ -408,15 +698,6 @@ ORDER BY sort_key</pre></div>
               "2300_GAMEPLAY_FINISH ÷ 2100_GAMEPLAY_START"],
             ["5분 이상 세션", 32.64, 32.74, pc, "g_pct", "mute",
               "1170_PLAYTIME_300S 가 찍힌 세션 비중. 0.1%p 차이는 노이즈입니다"],
-          ]},
-
-        { name:"잔존", acc:"#7c3aed",
-          sub:"8/27~8/31 신규 코호트 · 두 행 모두 유의성 미달입니다",
-          rows:[
-            ["D1 잔존", 6.07, 6.19, pc, "g_ret", "mute",
-              "코호트 8만에서도 p≈0.32 로 노이즈와 구분되지 않습니다", false, "n.s. p≈.32"],
-            ["D7 잔존", 1.34, 1.41, pc, "g_ret", "mute",
-              "p≈0.23. +5.1% 라는 숫자가 커 보이지만 분모가 1.34% 라 절대 폭은 0.07%p 입니다", false, "n.s. p≈.23"],
           ]},
 
         { name:"토너먼트 생성", acc:"#1d4ed8",
