@@ -169,7 +169,8 @@ def notify(msg, title="코인매치 A/B 갱신 실패"):
     try:
         subprocess.run(["/usr/bin/osascript", "-e",
                         'display notification %s with title %s'
-                        % (json.dumps(msg[:200]), json.dumps(title))], timeout=20)
+                        % (json.dumps(msg[:200], ensure_ascii=False),
+                           json.dumps(title, ensure_ascii=False))], timeout=20)
     except Exception:
         pass
 

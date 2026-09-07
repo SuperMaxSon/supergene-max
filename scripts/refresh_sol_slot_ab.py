@@ -214,7 +214,7 @@ def notify(msg):
     try:
         subprocess.run(["/usr/bin/osascript", "-e",
                         'display notification %s with title "슬롯 A/B 갱신 실패"'
-                        % json.dumps(msg[:200])], timeout=20)
+                        % json.dumps(msg[:200], ensure_ascii=False)], timeout=20)
     except Exception:
         pass
 
