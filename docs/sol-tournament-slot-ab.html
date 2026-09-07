@@ -133,6 +133,13 @@
       .pyr-key{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:10.5px;
         font-weight:700;color:var(--text-dim);margin:0 0 8px}
       .pyr-key i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+      /* 광고 포함/제외 토글 — 어느 쪽도 정답이 아니라 둘 다 눌러 보게 둔다. */
+      .rtg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-right:12px}
+      .rtg button{border:0;background:#fff;font:inherit;font-size:10.5px;font-weight:800;color:var(--text-dim);
+        padding:4px 10px;cursor:pointer;line-height:1.6}
+      .rtg button+button{border-left:1px solid var(--border)}
+      .rtg button.on{background:var(--text);color:#fff}
+      .rtg button:hover:not(.on){background:#eef1f6;color:var(--text)}
       .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:8px}
       .tri-foot b{color:var(--text)}
 
@@ -190,7 +197,7 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 A/B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 16:05</b> KST</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 16:38</b> KST</span>
           <span>데이터 <b>9/3~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
         </div>
         <p class="doc-lede">
@@ -534,15 +541,19 @@ ORDER BY `블록`;</pre></div>
       // ⚠ 우리가 raw 로 만들던 '활동일 코호트'(그날 로그인한 전체)와는 다른 지표다 —
       //   기존 유저가 섞여 D+1이 32%대로 나오던 값이라, 대시보드와 두 배 어긋났었다.
       const RET = [
-        { c:"09-03", ver:"485", seg:"NRU", coh:81,  d:[8, 10, 9] },
-        { c:"09-03", ver:"486", seg:"NRU", coh:108, d:[15, 8, 8] },
-        { c:"09-04", ver:"485", seg:"NRU", coh:533, d:[53, 34] },
-        { c:"09-04", ver:"486", seg:"NRU", coh:557, d:[50, 32] },
-        { c:"09-05", ver:"485", seg:"NRU", coh:546, d:[54] },
-        { c:"09-05", ver:"486", seg:"NRU", coh:582, d:[59] },
-        { c:"09-06", ver:"485", seg:"NRU", coh:707, d:[] },
-        { c:"09-06", ver:"486", seg:"NRU", coh:647, d:[] },
+        { c:"09-03", ver:"485", seg:"NRU", coh:81,  d:[8, 10, 9], adc:69,  add:[8, 8, 8] },
+        { c:"09-03", ver:"486", seg:"NRU", coh:108, d:[15, 8, 8], adc:91,  add:[11, 7, 4] },
+        { c:"09-04", ver:"485", seg:"NRU", coh:533, d:[53, 34],   adc:465, add:[37, 21] },
+        { c:"09-04", ver:"486", seg:"NRU", coh:557, d:[50, 32],   adc:470, add:[36, 25] },
+        { c:"09-05", ver:"485", seg:"NRU", coh:546, d:[54],       adc:453, add:[40] },
+        { c:"09-05", ver:"486", seg:"NRU", coh:582, d:[59],       adc:480, add:[44] },
+        { c:"09-06", ver:"485", seg:"NRU", coh:707, d:[],         adc:619, add:[] },
+        { c:"09-06", ver:"486", seg:"NRU", coh:647, d:[],         adc:592, add:[] },
       ];
+      // 광고 유입은 캠페인이 정하는 값이라 슬롯 처치와 무관하다. 다만 코호트의 83~87%를
+      // 차지해서, 넣으면 신호가 희석되고 빼면 표본이 하루 12~102명으로 무너진다.
+      // 어느 쪽도 정답이 아니라 토글로 두고 둘 다 보게 한다.
+      let RET_MODE = "all";   // all = 광고 포함 · noad = 광고 제외
 
       // 4_INFLOW — 유입 세션. 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
       const INFLOW = [
@@ -717,9 +728,20 @@ ORDER BY `블록`;</pre></div>
         if (Number(c.slice(3)) + n > LAST_DAY) return null;          // 미도래
         const rs = RET.filter(r => r.c === c && r.ver === ver);
         if (!rs.length || rs.some(r => r.d[n - 1] == null)) return null;   // 0% 와 미수신을 섞지 않는다
-        return { x: rs.reduce((t, r) => t + r.d[n - 1], 0),
-                 n: rs.reduce((t, r) => t + r.coh, 0) };
+        const sub = RET_MODE === "noad";   // 광고분을 빼면 그대로 광고 제외 코호트가 된다
+        return { x: rs.reduce((t, r) => t + r.d[n - 1] - (sub ? r.add[n - 1] : 0), 0),
+                 n: rs.reduce((t, r) => t + r.coh - (sub ? r.adc : 0), 0) };
       };
+      // D+1 합산(도래한 코호트만). 토글 상태를 그대로 반영한다.
+      const retTotals = mode => ["485", "486"].map(v => {
+        let x = 0, n = 0;
+        RET.filter(r => r.ver === v).forEach(r => {
+          if (!r.d.length) return;
+          n += r.coh - (mode === "noad" ? r.adc : 0);
+          x += r.d[0] - (mode === "noad" ? r.add[0] : 0);
+        });
+        return { x, n };
+      });
       // 코호트 피라미드 — A·B 를 한 줄씩 붙여 하나의 표로 낸다. 가로는 한 코호트의 시간,
       // 세로 쌍은 같은 코호트의 A/B. 코호트를 가로질러 합산한 요약은 만들지 않는다 —
       // 행마다 분모 집단이 달라져 세로로 이어 읽을 수 없는 표가 하나 더 생길 뿐이다.
@@ -749,15 +771,24 @@ ORDER BY `블록`;</pre></div>
             + `<b>${mine.toFixed(1)}</b>${win ? `<s>▲</s>` : ""}</td>`;
         };
         const body = RET_COHORTS.map(c => ["485", "486"].map((ver, i) => {
+          // 코호트 수도 토글을 따라가야 한다 — 안 그러면 분모가 81인데 값은 12명 기준이 된다.
           const size = RET.filter(r => r.c === c && r.ver === ver)
-                          .reduce((t, r) => t + r.coh, 0);
+                          .reduce((t, r) => t + r.coh - (RET_MODE === "noad" ? r.adc : 0), 0);
           return `<tr class="${i ? "vb" : "va"}">`
             + (i ? "" : `<td class="day" rowspan="2">${c}</td>`)
             + `<td class="ver"><i style="background:var(--${ver === "485" ? "a" : "b"})"></i>${VL(ver)}</td>`
             + `<td class="coh">${nf(size)}</td>`
             + DAYS.map(n => cellHtml(c, ver, n)).join("") + `</tr>`;
         }).join("")).join("");
+        const tt = retTotals(RET_MODE), tA = tt[0], tB = tt[1];
+        const pAll = ptest(tA.x, tA.n, tB.x, tB.n);
         return `<div class="pyr-key">
+            <span class="rtg">
+              <button data-ret="all"${RET_MODE === "all" ? ' class="on"' : ""}>광고 포함</button>
+              <button data-ret="noad"${RET_MODE === "noad" ? ' class="on"' : ""}>광고 제외</button>
+            </span>
+            <span>D+1 합산 <b>A ${(tA.x / tA.n * 100).toFixed(2)}%</b> ↔ <b>B ${(tB.x / tB.n * 100).toFixed(2)}%</b>
+              · n=${nf(tA.n)} / ${nf(tB.n)}</span>
             <span><i style="background:rgba(21,128,61,.42)"></i>그 코호트·그 날짜에서 <b>더 높은 쪽</b> · 진할수록 격차가 큼(8%p에서 최대)</span>
             <span><i style="outline:1.5px solid var(--good);outline-offset:-1.5px;background:transparent"></i>두 비율 검정 통과(p&lt;.05)</span>
             <span><i style="background:#eef1f6"></i>· = 아직 안 온 날</span>
@@ -774,16 +805,24 @@ ORDER BY `블록`;</pre></div>
             <b>· 로 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이라 아래로 갈수록 표가 짧아집니다.
             비교는 <b>붙어 있는 A·B 한 쌍 안에서 세로로</b>만 하세요.
             <br><br>
-            <b>⚠ 이 값의 83~87%가 광고 유입입니다.</b> 광고로 들어온 신규는 토너 슬롯을 볼 일이 거의 없어
-            처치와 무관한데, 분모의 대부분을 차지하면서 D1을 8.6%로 눌러 <b>신호를 희석합니다</b>.
-            3일(9/3~9/5) 합산으로 갈라 보면 —
-            <b>광고 제외 A 17.3% ↔ B 16.0%</b>(n=173/206 · p=0.73) ·
-            전체 A 9.91% ↔ B 9.95%(p=0.98) ·
-            <b>광고만 A 8.61% ↔ B 8.74%(p=0.92)</b>입니다.
-            광고만 본 값이 양쪽에서 같다는 것은 <b>처치와 무관해야 할 집단이 실제로 무관했다</b>는 뜻이라,
-            배정 편향이 없다는 근거가 하나 더 됩니다(사실상 A/A 통과).
-            광고를 빼는 쪽이 원칙에 맞지만 <b>표본이 173/206으로 줄어 MDE가 10.7%p</b>가 되어
-            지금은 어느 쪽으로도 판정할 수 없습니다 — 그래서 막대는 표본이 버티는 전체 기준으로 그렸습니다.
+            <b>⚠ 코호트의 83~87%가 광고 유입입니다.</b> 광고로 들어온 신규는 토너 슬롯을 볼 일이 거의 없어
+            처치와 무관한데 분모의 대부분을 차지하면서 D1을 8.6%로 눌러 <b>신호를 희석합니다</b> —
+            그래서 위 토글로 갈라 볼 수 있게 했습니다.
+            ${RET_MODE === "noad"
+              ? `<b>지금은 광고 제외 상태입니다.</b> 원칙에는 맞지만 <b>표본이 173/206으로 줄어 MDE가 10.7%p</b>가 됩니다 —
+                 D1이 17% 근처인데 10.7%p 이상 벌어져야 검출되므로 <b>지금 격차로는 어느 쪽도 판정할 수 없습니다.</b>
+                 9/3 코호트는 광고를 빼면 A 12명 · B 17명뿐이라 그 줄은 읽지 마세요.`
+              : `<b>지금은 광고 포함 상태입니다.</b> 코호트당 500~700명이라 막대는 안정적이지만,
+                 처치와 무관한 광고가 85%를 차지해 <b>진짜 효과가 있어도 약 1/7로 줄어듭니다</b> —
+                 "차이 없음"으로 보이는 것이 <b>차이가 없어서인지 못 보는 것인지 구분되지 않습니다.</b>`}
+            <b>광고만 보면 A 8.61% ↔ B 8.74%(p=0.92)</b>로 양쪽이 같습니다 —
+            처치와 무관해야 할 집단이 실제로 무관했다는 뜻이라, 배정 편향이 없다는 근거가 하나 더 됩니다(사실상 A/A 통과).
+            <br><br>
+            <b>이 표의 '코호트' 수는 보드 위쪽의 유저-일과 다른 모수입니다.</b>
+            보드는 <b>그날 접속한 전체 유저-일</b>(A 3,545 · B 3,753 · raw)이고,
+            여기는 <b>그날 설치한 신규</b>(A 1,867 · B 1,894 · stat)입니다.
+            원본 폴드의 NRU(<code>is_new_device</code> 기준 A 2,171 · B 2,301)와도 14~18% 어긋납니다 —
+            디바이스 기준이라 재설치·브라우저 변경이 신규로 섞이기 때문입니다.
           </div>`;
       }
 
@@ -950,6 +989,15 @@ ORDER BY `블록`;</pre></div>
           기기로 가른 흔적은 보이지 않습니다. 국가 구성도 양쪽에 같은 나라가 같이 잡힙니다</div>`;
 
       })();
+
+      // ── 광고 토글 ─────────────────────────────────────────────────────────
+      // innerHTML 로 다시 그리므로 버튼에 직접 걸지 않고 문서 위임으로 받는다.
+      document.addEventListener("click", ev => {
+        const b = ev.target.closest ? ev.target.closest("[data-ret]") : null;
+        if (!b || b.dataset.ret === RET_MODE) return;
+        RET_MODE = b.dataset.ret;
+        renderBoard();
+      });
 
       // ── 말풍선 ───────────────────────────────────────────────────────────
       // 네이티브 title은 뜨는 데 1초 넘게 걸려 안 뜨는 것처럼 보인다. 즉시 뜨는 말풍선으로 대체.
