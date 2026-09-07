@@ -384,6 +384,9 @@ ret AS (
     WHERE log_date &gt;= '2026-09-03'
         AND event = '1000_LOGIN_COMPLETE'
 ),
+last_day AS (
+    SELECT MAX(log_date) AS max_log_date FROM ret
+),
 retn AS (
     -- 누적 복귀율. c_n = 코호트 중 1~n일 사이에 '한 번이라도' 다시 로그인한 사람 수.
     -- COUNT(DISTINCT)가 합집합을 세므로 매일 온 사람이 중복으로 잡히지 않는다.
@@ -391,6 +394,9 @@ retn AS (
     SELECT
         c.log_date, c.client_version, c.seg,
         COUNT(DISTINCT c.player_id) AS coh,
+        -- 이 코호트를 며칠까지 관측했는지. cN 은 N &lt;= observed_days 인 칸만 유효하고,
+        -- 마지막 날이 오늘(부분일)이면 그 한 칸은 더 빼야 한다 — 안 그러면 이탈로 오독한다.
+        DATE_DIFF((SELECT max_log_date FROM last_day), c.log_date, DAY) AS observed_days,
         COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 1, c.player_id, NULL)) AS c1,
         COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 2, c.player_id, NULL)) AS c2,
         COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 3, c.player_id, NULL)) AS c3,
@@ -456,7 +462,7 @@ UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     ORDER BY seg, client_version)) FROM dist
 UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     log_date AS coh_date, CAST(client_version AS STRING) AS ver, seg,
-    coh, c1, c2, c3, c4, c5, c6, c7)
+    coh, observed_days, c1, c2, c3, c4, c5, c6, c7)
     ORDER BY log_date, client_version, seg)) FROM retn
 UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
@@ -477,6 +483,8 @@ ORDER BY `블록`;</pre></div>
               <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
               <code>3_RET</code>의 <code>c1~c7</code>은 <b>누적 복귀율</b>입니다 — 1~n일 사이에 한 번이라도 돌아온 사람 수라,
               n이 커질수록 반드시 오르고 그 날짜가 지나면 값이 확정됩니다.
+              <b><code>observed_days</code>에서 1을 빼고 쓰세요</b> — 마지막 날은 조회 시점까지만 쌓인 부분일이라,
+              그 칸을 그대로 넣으면 하루가 덜 찬 것이 이탈로 찍힙니다.
               <b><code>7_VERSION</code>을 가장 먼저 보세요</b> — 485가 말라 있으면 대조군이 없고, 487 이상이 떴으면 486군에
               처치가 하나 더 얹힌 것이라 그 뒤 숫자는 A/B가 아닙니다.
               <b>행수</b> 열이 비거나 예상보다 적으면 그 블록만 비어 있는 것이니 다른 블록까지 의심하지 않으셔도 됩니다.
@@ -524,22 +532,23 @@ ORDER BY `블록`;</pre></div>
                  RU: { uday:1870, avg:11.65, p50:3, p75:11, p90:30, play:65.1, p50p:8 } },
       };
 
-      // 3_RET — 코호트일 × 빌드 × 유저군. c[i] = 1~(i+1)일 사이에 한 번이라도 복귀한 수(누적).
-      // ⚠ 누적으로 정의를 바꾼 직후라 값이 비어 있다. d(그날 하루 접속)에서 계산해 낼 수 없고
-      //   — 합집합이라 매일 온 사람이 중복 제거된다 — 갱신 쿼리를 다시 돌려야 채워진다.
+      // 3_RET — 코호트일 × 빌드 × 유저군. d[i] = 1~(i+1)일 사이에 한 번이라도 복귀한 수(누적).
+      // 조회 시점에 9/7이 4시간치만 쌓여 있었다 — 그 부분일을 넣으면 9/6 코호트 D+1이 20.8%로
+      // 찍혀 9/5 코호트의 32.0%보다 낮게 나온다. 이탈이 아니라 하루가 덜 찬 것이므로
+      // 마지막 완전한 날(9/6)까지만 쓴다. 각 배열이 그 코호트의 도래분까지만 들어 있는 이유다.
       const RET = [
-        { c:"09-03", ver:"485", seg:"NRU", coh:112, d:[] },
-        { c:"09-03", ver:"485", seg:"RU",  coh:132, d:[] },
-        { c:"09-03", ver:"486", seg:"NRU", coh:141, d:[] },
-        { c:"09-03", ver:"486", seg:"RU",  coh:150, d:[] },
-        { c:"09-04", ver:"485", seg:"NRU", coh:630, d:[] },
-        { c:"09-04", ver:"485", seg:"RU",  coh:415, d:[] },
-        { c:"09-04", ver:"486", seg:"NRU", coh:661, d:[] },
-        { c:"09-04", ver:"486", seg:"RU",  coh:426, d:[] },
-        { c:"09-05", ver:"485", seg:"NRU", coh:633, d:[] },
-        { c:"09-05", ver:"485", seg:"RU",  coh:395, d:[] },
-        { c:"09-05", ver:"486", seg:"NRU", coh:678, d:[] },
-        { c:"09-05", ver:"486", seg:"RU",  coh:417, d:[] },
+        { c:"09-03", ver:"485", seg:"NRU", coh:112, d:[28, 36, 39] },
+        { c:"09-03", ver:"485", seg:"RU",  coh:132, d:[88, 103, 105] },
+        { c:"09-03", ver:"486", seg:"NRU", coh:141, d:[34, 42, 46] },
+        { c:"09-03", ver:"486", seg:"RU",  coh:150, d:[99, 109, 123] },
+        { c:"09-04", ver:"485", seg:"NRU", coh:630, d:[90, 119] },
+        { c:"09-04", ver:"485", seg:"RU",  coh:415, d:[243, 278] },
+        { c:"09-04", ver:"486", seg:"NRU", coh:661, d:[100, 132] },
+        { c:"09-04", ver:"486", seg:"RU",  coh:426, d:[238, 294] },
+        { c:"09-05", ver:"485", seg:"NRU", coh:633, d:[95] },
+        { c:"09-05", ver:"485", seg:"RU",  coh:395, d:[234] },
+        { c:"09-05", ver:"486", seg:"NRU", coh:678, d:[111] },
+        { c:"09-05", ver:"486", seg:"RU",  coh:417, d:[241] },
         { c:"09-06", ver:"485", seg:"NRU", coh:796, d:[] },
         { c:"09-06", ver:"485", seg:"RU",  coh:432, d:[] },
         { c:"09-06", ver:"486", seg:"NRU", coh:821, d:[] },
@@ -664,6 +673,9 @@ ORDER BY `블록`;</pre></div>
               "3230. 코드상 사유는 둘뿐입니다 — no_tournament(토너 컨텍스트 없음)와 cooldown. 486은 첫 게이트에서 공유를 반환해 쿨다운 분기에 닿지 못하므로 486의 미노출은 전부 no_tournament입니다. 즉 줄어든 0.17/DAU가 485에서 쿨다운에 막히던 몫이고, 그게 공유로 돌아왔습니다",
               false, null, e => [e.sup, e.ud]],
           ]},
+        { name:"잔존", acc:"#7c3aed", days:true,
+          sub:"누적 복귀율 — 1~n일 사이 한 번이라도 복귀 · <s class='old'>행마다 쓰는 코호트가 달라 세로로 이어 읽으면 안 됩니다</s>",
+          rows:[] },
         { name:"플레이 · 수익", acc:"#d97706",
           sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 여기는 전부 유의성 미달이라 방향만 참고합니다",
           rows:[
@@ -705,9 +717,6 @@ ORDER BY `블록`;</pre></div>
 
       const DAYS = [1,2,3,4,5,6,7];
 
-      // ⏸ 아래 잔존 렌더(retSummary / retPyramid)는 지금 보드에 걸려 있지 않다.
-      //    누적 정의로 바꾼 직후라 RET 값이 비어 있어 전 칸이 '미수신'으로만 찍히기 때문이다.
-      //    갱신 쿼리로 c1~c7 을 받으면 GROUPS 에 잔존 그룹 한 줄을 되살리면 된다.
       // 코호트 피라미드 — 485·486 을 한 줄씩 붙여 하나의 표로 합친다.
       // 가로는 한 코호트의 시간, 세로 쌍은 같은 코호트의 A/B. 코호트를 가로질러 가중 합산하면
       // 행마다 분모 집단이 달라져 D+3이 D+1보다 높아지는 착시가 생기므로 합산은 만들지 않는다.
@@ -889,12 +898,12 @@ ORDER BY `블록`;</pre></div>
             <span class="d">+4%</span>
             <em>초대 유입 ${(IP.ti/IP.n).toFixed(1)} → ${(IC.ti/IC.n).toFixed(1)}을 공유 유입 ${(IP.t/IP.n).toFixed(1)} → ${(IC.t/IC.n).toFixed(1)}이 메웠습니다.
             <b>발신은 절반만 처치된 상태</b>(485·486 반반 서빙)라 486 전량 배포면 폭이 더 커질 수 있습니다</em></div>
-          <div class="bl stale"><b>가드레일</b><span>생성률 · 배정 균형</span>
-            <span class="v"><span class="p">리텐션</span> <span class="n">재조회 중</span></span>
-            <span class="d">누적 정의</span>
-            <em>토너 생성률(p=0.47)도, 배정 균형(US Android 1,861 ↔ 1,939 등 OS별 3~6% 차)도 이상이 없습니다.
-            리텐션은 <b>누적 정의로 바꾸는 중</b>이라 값이 비어 있습니다 — 직전 정의(그날 하루 접속)로는
-            D+1~D+3 전부 유의성 미달이었습니다</em></div>
+          <div class="bl"><b>가드레일</b><span>전부 유의성 미달</span>
+            <span class="v"><span class="p">누적 리텐션 D+1~D+3</span> <span class="n">n.s.</span></span>
+            <span class="d">p≥0.83</span>
+            <em>누적 복귀율은 세 구간 모두 격차가 <b>1%p 미만</b>입니다(33.6↔33.3 · 41.6↔41.9 · 59.0↔58.1).
+            토너 생성률(p=0.47)도, 배정 균형(US Android 1,861 ↔ 1,939 등 OS별 3~6% 차)도 이상이 없습니다 —
+            <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
         </div>`;
 
         const staleBar = `<div class="stale-bar">
