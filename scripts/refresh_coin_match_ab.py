@@ -163,14 +163,14 @@ GROUP BY ab_group
 """
 
 
-def notify(msg, title="코인매치 A/B 갱신 실패"):
-    """맥 알림. 실패는 물론 '실제로 값이 바뀐' 갱신에도 띄운다.
-    변화 없이 끝난 실행은 알리지 않는다 — 매일 같은 알림이 오면 아무도 안 본다."""
+def notify(msg):
+    """실패했을 때만 맥 알림을 띄운다. 로그만 남기면 아무도 안 본다.
+    ensure_ascii=False 가 필요하다 — 기본값이면 한글이 \\uXXXX 로 나가
+    AppleScript 가 syntax error 로 죽고 알림이 조용히 사라진다."""
     try:
         subprocess.run(["/usr/bin/osascript", "-e",
-                        'display notification %s with title %s'
-                        % (json.dumps(msg[:200], ensure_ascii=False),
-                           json.dumps(title, ensure_ascii=False))], timeout=20)
+                        'display notification %s with title "코인매치 A/B 갱신 실패"'
+                        % json.dumps(msg[:200], ensure_ascii=False)], timeout=20)
     except Exception:
         pass
 
@@ -435,23 +435,6 @@ def stamp(now, bust, rng):
     open(INDEX, "w", encoding="utf-8").write(i)
 
 
-def summary(state):
-    """알림 한 줄. 기간과 주지표(생성 성공/유저)의 A->B 변화를 담는다.
-
-    core 는 날짜별 행이므로 sum_core 로 기간 합을 만들어 쓴다 — 보드가 보는 값과 같다.
-    """
-    try:
-        c = sum_core(state)
-        a = c["A"]["tc_success"] / c["A"]["users"]
-        b = c["B"]["tc_success"] / c["B"]["users"]
-        users = c["A"]["users"] + c["B"]["users"]
-        return "%s 까지 반영 · 유저 %s명 · 생성 성공/유저 %+.1f%%" % (
-            state["last_day"], format(users, ","), (b - a) / a * 100)
-    except Exception:
-        # 알림 문구 때문에 갱신을 실패시키지 않는다.
-        return "%s 까지 반영" % state.get("last_day", "?")
-
-
 def git(*args):
     return subprocess.run(["git", "-C", REPO] + list(args),
                           capture_output=True, text=True, timeout=300)
@@ -515,7 +498,6 @@ def main():
         notify("푸시 실패")
         return 1
     log("갱신 완료: %s" % msg)
-    notify(summary(state), "코인매치 A/B 갱신됨")
     return 0
 
 
