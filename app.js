@@ -154,6 +154,19 @@
       });
       sec.cards = keep;
     });
+
+    /* 라이브 카드는 원래 섹션(분석·검증…) 순서로 모이므로 프로젝트가 흩어진다 —
+       솔·솔·코인매치·솔 처럼 한 프로젝트가 가운데 끼면 눈이 매번 다시 찾아야 한다.
+       PROJECTS 선언 순서로 묶는다: 프로젝트 버튼 줄과 같은 순서라 두 곳이 어긋나지 않는다.
+       같은 프로젝트 안에서는 원래 순서 그대로다(안정 정렬 + 인덱스 tiebreak). */
+    var porder = typeof PROJECTS !== "undefined" ? Object.keys(PROJECTS) : [];
+    liveSec.cards = liveSec.cards
+      .map(function (c, i) {
+        var r = porder.indexOf(c.project);
+        return { c: c, i: i, r: r < 0 ? porder.length : r };   // project 없는 카드는 맨 뒤
+      })
+      .sort(function (a, b) { return a.r - b.r || a.i - b.i; })
+      .map(function (x) { return x.c; });
   }
 
   VIEW.forEach(function (sec) {
