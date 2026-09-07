@@ -31,7 +31,9 @@ HTML     = os.path.join(REPO, "docs", "sol-tournament-slot-ab.html")
 STATE    = os.path.join(REPO, "docs", "data", "sol-slot-ab.json")
 DATA_JS  = os.path.join(REPO, "data.js")
 INDEX    = os.path.join(REPO, "index.html")
-LOG      = os.path.join(REPO, "scripts", "refresh.log")   # launchd stdout 은 refresh.launchd.log 로 분리
+LOG      = os.path.join(REPO, "scripts", "refresh.log")
+REGISTRY = os.path.join(REPO, "scripts", "automation.json")
+JOB_ID   = "sol-slot-ab"   # launchd stdout 은 refresh.launchd.log 로 분리
 
 BQ       = "/opt/homebrew/bin/bq"
 PROJECT  = "game-log-359704"
@@ -441,11 +443,26 @@ def git(*args):
                           capture_output=True, text=True, timeout=300)
 
 
+def enabled():
+    """제어판(scripts/control_panel.py)이 끈 작업은 아무것도 하지 않는다.
+    launchd 를 껐다 켜는 것보다 이쪽이 안전하다 — 스케줄 정의를 건드리지 않는다."""
+    try:
+        reg = json.load(open(REGISTRY, encoding="utf-8"))
+        return bool(reg["jobs"][JOB_ID]["enabled"])
+    except Exception:
+        return True          # 레지스트리가 깨졌으면 멈추지 않는다
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-push", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force", action="store_true", help="꺼져 있어도 실행")
     a = ap.parse_args()
+
+    if not a.force and not enabled():
+        log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
+        return 0
 
     try:
         blocks = run_query()

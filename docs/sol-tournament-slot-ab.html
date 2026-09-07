@@ -197,8 +197,9 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 A/B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 13:55</b> KST</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 14:02</b> KST</span>
           <span>데이터 <b>9/3~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
+          <span id="fresh"></span>
         </div>
         <p class="doc-lede">
           판 클리어 소셜 구좌에서 <b>초대를 빼면 바이럴이 줄어드는가</b>를 봅니다.
@@ -919,6 +920,21 @@ ORDER BY blk</pre></div>
               <b>공유 성공 (절대)</b>는 값 자체가 원값이라 모수가 없습니다 ·
               RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · ${RANGE} · 한 번의 조회(${PULLED} KST)</div>`;
       }
+
+      // 자동 갱신이 조용히 멈추는 것을 페이지가 스스로 알린다 — PULLED 를 지금과 비교한다.
+      // 스크립트가 죽어도 이 계산은 브라우저에서 매번 돌기 때문에 반드시 드러난다.
+      (function freshness() {
+        const el = document.getElementById("fresh");
+        if (!el) return;
+        const t = new Date(PULLED.replace(" ", "T") + ":00+09:00");
+        const h = (Date.now() - t.getTime()) / 3600000;
+        if (h < 30) { el.innerHTML = '<b style="color:var(--good)">자동 갱신 정상</b>'; return; }
+        const d = Math.floor(h / 24);
+        const bad = h >= 72;
+        el.innerHTML = `<b style="color:var(--${bad ? "bad" : "warn"})">`
+          + `${bad ? "⚠ 자동 갱신이 멈춘 것 같습니다" : "갱신 지연"} · ${d}일 전 조회</b>`;
+      })();
+
       renderBoard();
 
       // ── 원본 표 ──────────────────────────────────────────────────────────
