@@ -195,6 +195,16 @@ ORDER BY blk
 """
 
 
+def notify(msg):
+    """실패했을 때만 맥 알림을 띄운다. 로그만 남기면 아무도 안 본다."""
+    try:
+        subprocess.run(["/usr/bin/osascript", "-e",
+                        'display notification %s with title "슬롯 A/B 갱신 실패"'
+                        % json.dumps(msg[:200])], timeout=20)
+    except Exception:
+        pass
+
+
 def log(msg):
     line = "%s  %s" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg)
     print(line)
@@ -446,9 +456,11 @@ def main():
         old, new   = splice(block)
     except Guard as e:
         log("중단(가드): %s" % e)
+        notify(str(e))
         return 1
     except Exception as e:
         log("중단(예외): %s: %s" % (type(e).__name__, e))
+        notify("%s: %s" % (type(e).__name__, e))
         return 1
 
     # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면 데이터는 그대로라는 뜻이므로
@@ -474,6 +486,7 @@ def main():
     r = git("commit", "-q", "-m", msg)
     if r.returncode != 0:
         log("커밋 실패: %s" % (r.stderr or r.stdout).strip()[:300])
+        notify("커밋 실패")
         return 1
     if a.no_push:
         log("커밋 완료(푸시 생략): %s" % msg)
@@ -481,6 +494,7 @@ def main():
     r = git("push", "-q", "origin", "HEAD")
     if r.returncode != 0:
         log("푸시 실패: %s" % (r.stderr or r.stdout).strip()[:300])
+        notify("푸시 실패 — 인증이 만료됐을 수 있습니다")
         return 1
     log("갱신 완료: %s" % msg)
     return 0
