@@ -12,12 +12,14 @@
     · 멱등하다. 같은 데이터가 나오면 아무것도 커밋하지 않는다.
     · 페이지는 fetch 를 쓰지 않는다 — 데이터를 HTML 에 직접 심어 자기완결로 둔다.
       JSON 은 스크립트의 누적 상태(state)일 뿐이다.
-    · 지표 정의를 바꾸지 않는다. 자동 갱신 값은 수동으로 뽑던 값과 같아야 한다.
-      그래서 KPI 보드는 날짜 축 없이 기간 전체를 매 실행 재조회한다
-      (기간 고유 유저·세션은 일별 합산으로 복원할 수 없다).
+    · 이미 가진 날짜는 다시 읽지 않는다. state 에 없는 날짜만 조회하므로 평소에는
+      '어제' 하루뿐이고, 맥이 며칠 꺼져 있었으면 빠진 날짜만 정확히 메운다.
+    · 「유저-일」은 기간 고유 유저가 아니다. 기간 고유 player_id 는 날짜별로 더할 수
+      없어 증분과 양립하지 않으므로, 날짜별 고유 유저의 합을 쓴다. 두 군의 배분이
+      반반인지 보는 값이고 어떤 비율의 분모도 아니다(비율 분모는 sessions).
 
 데이터 소스
-    · KPI 보드  raw.coin_match          — base CTE 하나, 기간만큼 1회 스캔
+    · KPI 보드  raw.coin_match          — 결손일만, 평소 1일 0.59 GiB
     · 리텐션    stat.coin_match_prod_nru_retention3 — 사전집계, raw 스캔 0
 
 사용
@@ -25,26 +27,29 @@
     python3 scripts/refresh_coin_match_ab.py --no-push   # 커밋만
     python3 scripts/refresh_coin_match_ab.py --dry-run   # 파일도 안 건드림
 """
-import argparse
 import datetime
 import json
 import os
-import re
 import subprocess
 import sys
+
+import refresh_common as C
+from refresh_common import Guard, git, j, log, merge_by_key, notify, stamp
 
 REPO    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML    = os.path.join(REPO, "docs", "coin-match-tournament-reject-ab.html")
 STATE   = os.path.join(REPO, "docs", "data", "coin-match-ab.json")
-DATA_JS = os.path.join(REPO, "data.js")
-INDEX   = os.path.join(REPO, "index.html")
-LOG     = os.path.join(REPO, "scripts", "refresh.log")
 
 BQ       = "/opt/homebrew/bin/bq"
 PROJECT  = "game-log-359704"
 EXP_FROM = "2026-08-27"      # 두 빌드가 함께 서빙되기 시작한 날
 A, B     = "3374", "3375"
 DOC_URL  = "docs/coin-match-tournament-reject-ab.html"
+JOB_ID   = "coin-match-reject-ab"
+
+C.configure(job_id=JOB_ID, log_prefix="[cm] ", notify_title="코인매치 A/B 갱신 실패",
+            html=HTML, state=STATE, doc_url=DOC_URL,
+            commit_msg="[Max] 코인매치 연속거절 A/B 자동 갱신 — %s 까지 (%s)")
 
 SQL = r"""
 WITH base AS (
@@ -131,60 +136,48 @@ SELECT '0_META' AS blk, 1 AS rows_n,
         DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_day,
         DATE '2026-08-27' AS exp_from)) AS payload
 UNION ALL SELECT '1_CORE', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    ab_group, FORMAT_DATE('%m-%d', log_date) AS d,
+    ab_group, FORMAT_DATE('%Y-%m-%d', log_date) AS d,
     users_day, sessions, play_starts, play_finishes, sessions_300s,
     tc_try, tc_success, tc_suppressed, ts_try, ts_success,
     p2p_try, p2p_success, feed_try, feed_success, sc_try, sc_success)
     ORDER BY log_date, ab_group)) FROM core
 UNION ALL SELECT '2_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    FORMAT_DATE('%m-%d', join_date) AS c, ab_group AS g, cohort,
+    FORMAT_DATE('%Y-%m-%d', join_date) AS c, ab_group AS g, cohort,
     r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14)
     ORDER BY join_date, ab_group)) FROM ret
 UNION ALL SELECT '3_VERSION', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, dau)
+    FORMAT_DATE('%Y-%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, dau)
     ORDER BY log_date, client_version)) FROM vers
 ORDER BY blk
 """
-
-
-def notify(msg):
-    """실패했을 때만 맥 알림을 띄운다. 로그만 남기면 아무도 안 본다.
-    ensure_ascii=False 가 필요하다 — 기본값이면 한글이 \\uXXXX 로 나가
-    AppleScript 가 syntax error 로 죽고 알림이 조용히 사라진다."""
-    try:
-        subprocess.run(["/usr/bin/osascript", "-e",
-                        'display notification %s with title "코인매치 A/B 갱신 실패"'
-                        % json.dumps(msg[:200], ensure_ascii=False)], timeout=20)
-    except Exception:
-        pass
-
-
-def log(msg):
-    line = "%s  [cm] %s" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg)
-    print(line)
-    with open(LOG, "a", encoding="utf-8") as f:
-        f.write(line + "\n")
-
-
-class Guard(Exception):
-    pass
 
 
 # ── 조회 ────────────────────────────────────────────────────────────────────
 def missing_days(state):
     """아직 state["core"] 에 없는 날짜. 평소에는 [어제] 하나다.
 
-    state 는 (군, "MM-DD") 키로 쌓이므로 '가진 날짜'를 정확히 알 수 있다.
     고정 창(예: 최근 3일)을 쓰면 이미 가진 날을 매번 다시 읽는 낭비가 생기고,
     반대로 창보다 긴 공백(맥이 주말에 꺼져 있었다)은 영구 결손으로 남는다.
     결손일만 읽으면 둘 다 해결된다.
+
+    '가졌다'의 기준은 **두 군이 모두 있는 날**이다. 한쪽 군만 적재된 날을 가진 것으로
+    치면 나머지 군이 영구 결손으로 남고, sum_core 가 그 군의 분모만 조용히 깎아
+    보드의 모든 비율이 왜곡된다.
+
+    empty_days 에 든 날짜는 조회해도 데이터가 없던 날이라 다시 요청하지 않는다.
+    그러지 않으면 트래픽이 0인 날에서 결손 목록이 영구히 줄지 않아 자동화가 멈춘다.
     """
     first = datetime.date.fromisoformat(EXP_FROM)
     last  = datetime.date.today() - datetime.timedelta(days=1)
-    have  = {r["d"] for r in state.get("core", [])}
+    byday = {}
+    for r in state.get("core", []):
+        byday.setdefault(r["d"], set()).add(r["ab_group"])
+    have  = {d for d, gs in byday.items() if {"A", "B"} <= gs}
+    empty = set(state.get("empty_days") or [])
     out, d = [], first
     while d <= last:
-        if d.strftime("%m-%d") not in have:
+        k = d.isoformat()
+        if k not in have and k not in empty:
             out.append(d)
         d += datetime.timedelta(days=1)
     return out
@@ -209,37 +202,92 @@ def run_query(days):
     for r in rows:
         payload = r.get("payload")
         blocks[r["blk"]] = json.loads(payload) if payload else None
-    need = ["0_META", "2_RET"] + (["1_CORE"] if days else [])
-    empty = [b for b in need if not blocks.get(b)]
+    # 1_CORE 는 요청한 날에 3374/3375 트래픽이 하나도 없으면 정상적으로 빈다
+    # (강제 업데이트로 두 빌드가 사라진 날 등). 그걸 실패로 보면 그 날짜가 영구 결손으로
+    # 남아 매일 같은 요청을 반복하고 자동화가 멈춘다 — empty_days 로 기록해 넘긴다.
+    empty = [b for b in ("0_META", "2_RET") if not blocks.get(b)]
     if empty:
         raise Guard("필수 블록이 비었다: " + ", ".join(empty))
     return blocks
 
 
 # ── 병합 ────────────────────────────────────────────────────────────────────
-def merge_by_key(old, new, keys):
-    """코호트 축이 있는 블록: 같은 키의 행은 덮어쓰고 새 키는 추가한다."""
-    idx = {tuple(str(r[k]) for k in keys): r for r in old}
-    for r in new:
-        idx[tuple(str(r[k]) for k in keys)] = r
-    return [idx[k] for k in sorted(idx)]
-
-
-def merge_state(state, blocks):
+def merge_state(state, blocks, days=()):
     meta = blocks["0_META"]
     if isinstance(meta, list):
         meta = meta[0]
     state["pulled_kst"] = meta["pulled_kst"]
     state["last_day"]   = meta["last_day"]
-    # core 는 이제 날짜 축이 있다 — 같은 (군, 날짜) 행만 덮어쓰고 새 날짜는 추가한다.
-    # 그래서 3일 창으로도 8/27 부터의 기간 값이 유지된다.
-    state["core"]    = merge_by_key(state.get("core", []), blocks.get("1_CORE") or [],
-                                    ["ab_group", "d"])
+
+    fresh = blocks.get("1_CORE") or []
+
+    # 요청했는데 두 군이 다 오지 않은 날은 저장하지 않는다. 어제는 적재 지연일 수 있어
+    # 그대로 결손으로 남겨 다음 실행이 다시 읽게 하고, 그보다 과거인 날은 정말로 비어
+    # 있는 날이므로 empty_days 에 넣어 영구 재요청을 끊는다.
+    got = {}
+    for r in fresh:
+        got.setdefault(r["d"], set()).add(r["ab_group"])
+    yesterday = meta["last_day"]
+    edrop, marked = set(), set(state.get("empty_days") or [])
+    for d in days:
+        k = d.isoformat()
+        if {"A", "B"} <= got.get(k, set()):
+            continue
+        edrop.add(k)
+        if k != yesterday:
+            marked.add(k)
+            log("%s: 두 군 데이터가 없다 — 빈 날로 기록하고 다시 요청하지 않는다" % k)
+        else:
+            log("%s(어제): 데이터가 아직 안 찼다 — 다음 실행에서 다시 읽는다" % k)
+    if marked:
+        state["empty_days"] = sorted(marked)
+    fresh = [r for r in fresh if r["d"] not in edrop]
+
+    # ── 부분일 방어 ──
+    # 한 번 저장된 날은 다시 읽지 않으므로, 적재 중인 파티션을 읽어 부분값이 박히면
+    # 영구히 남는다. 여기서 그 날짜만 떨어내면 결손으로 남아 다음 실행이 다시 읽는다.
+    # 가드로 예외를 던지지 않는 이유: 같은 실행에서 받아온 정상 날짜와 리텐션 갱신까지
+    # 통째로 폐기되고, 결손 목록이 매일 늘어 비용이 오히려 증가했다.
+    fresh = drop_partial(state, fresh)
+
+    state["core"]    = merge_by_key(state.get("core", []), fresh, ["ab_group", "d"])
     state["version"] = merge_by_key(state.get("version", []), blocks.get("3_VERSION") or [],
                                     ["d", "ver"])
     # 리텐션은 코호트일 × 군 키로 병합한다. 지난 코호트의 D+n 은 나중에 채워진다.
     state["ret"] = merge_by_key(state.get("ret", []), blocks["2_RET"], ["c", "g"])
     return state
+
+
+def drop_partial(state, fresh):
+    """부분 적재로 보이는 날짜를 새 데이터에서 떨어낸다.
+
+    기준은 **이미 저장된 최근 7일의 중앙값**이다. 실측 일간 변동은 88~105% 라
+    0.5~1.5 밴드는 70% 적재를 그냥 통과시켰다. 0.75 미만만 부분일로 본다
+    (급증은 부분 적재가 아니므로 상한은 두지 않는다).
+
+    실험 초기 램프(08-27 -> 08-28 이 275%)에서는 중앙값이 의미가 없으므로,
+    저장된 날이 3일 미만이면 판정하지 않는다.
+    """
+    have = {}
+    for r in state.get("core", []):
+        have[r["d"]] = have.get(r["d"], 0) + int(r["users_day"])
+    if len(have) < 3:
+        return fresh
+    ref = sorted(have[d] for d in sorted(have)[-7:])
+    med = ref[len(ref) // 2]
+    if not med:
+        return fresh
+
+    new = {}
+    for r in fresh:
+        new[r["d"]] = new.get(r["d"], 0) + int(r["users_day"])
+    bad = set()
+    for d, v in new.items():
+        if v < med * 0.75:
+            bad.add(d)
+            log("%s: 유저-일 %d 이 최근 중앙값 %d 의 %.0f%% — 부분 적재로 보고 저장하지 않는다"
+                % (d, v, med, v / med * 100))
+    return [r for r in fresh if r["d"] not in bad]
 
 
 # ── 가드 ────────────────────────────────────────────────────────────────────
@@ -249,19 +297,13 @@ def check(state):
         raise Guard("마지막 날(%s)이 어제(%s)가 아니다 — 적재가 안 끝났거나 시각이 어긋났다"
                     % (state["last_day"], y))
 
-    # 부분일 방어. 결손일만 읽는 구조에서는 한 번 저장된 날을 다시 읽지 않으므로,
-    # 적재 중인 파티션을 읽어 부분값이 박히면 영구히 남는다. 여기서 걸러 저장을 막으면
-    # 그 날짜가 결손으로 남고 다음 실행이 다시 읽는다.
-    byday = {}
-    for r in state["core"]:
-        byday[r["d"]] = byday.get(r["d"], 0) + int(r["users_day"])
-    ds = sorted(byday)
-    if len(ds) >= 2:
-        lastd, prevd = ds[-1], ds[-2]
-        if byday[prevd] and not (0.5 <= byday[lastd] / byday[prevd] <= 1.5):
-            raise Guard("%s 유저-일이 전일 대비 %.0f%% — 부분일이거나 집계 이상 (%s %d -> %s %d)"
-                        % (lastd, byday[lastd] / byday[prevd] * 100,
-                           prevd, byday[prevd], lastd, byday[lastd]))
+    # 결손일이 남아 있으면 보드 합계가 조용히 틀린다. 부분일은 drop_partial 이 이미
+    # 떨궈 결손으로 만들었으므로, 여기서는 '어제를 제외한 구멍'만 실패로 본다.
+    gaps = [d.isoformat() for d in missing_days(state)
+            if d.isoformat() != state["last_day"]]
+    if gaps:
+        raise Guard("중간 결손일 %d개 (%s…) — 보드 합계가 틀린다"
+                    % (len(gaps), ", ".join(gaps[:3])))
 
     core = sum_core(state)
     for g in ("A", "B"):
@@ -300,10 +342,6 @@ def check(state):
 
 
 # ── JS 블록 생성 ────────────────────────────────────────────────────────────
-def j(v):
-    return json.dumps(v, ensure_ascii=False)
-
-
 def pct(num, den):
     return round(num / den * 100, 2) if den else 0.0
 
@@ -313,8 +351,8 @@ def sum_core(state):
 
     보드의 모든 지표가 더할 수 있는 카운트라서 성립한다 — COUNTIF 는 물론이고
     sessions/sessions_300s 도 session_key 가 하루에만 속하므로 날짜별 distinct 를
-    더하면 기간 distinct 와 같다. 기간 고유 유저(users)만 예외이고 그건 state["users"] 에
-    「유저」 행은 유저-일(날짜별 고유의 합)로 쓴다 — 추가 조회 없이 전 기간을 담는다.
+    더하면 기간 distinct 와 같다. 기간 고유 유저만은 날짜별로 더할 수 없어서,
+    「유저-일」 행은 날짜별 고유 유저의 합으로 쓴다 — 추가 조회 없이 전 기간을 담는다.
     """
     out = {}
     for r in state["core"]:
@@ -326,7 +364,7 @@ def sum_core(state):
     # 「유저」 행은 두 군이 반반으로 서빙됐는지 확인하는 용도이고 어떤 비율의 분모도 아니다.
     # 예전에는 기간 고유 player_id 를 쓰려고 8/27~어제 전 구간을 주 1회 다시 읽었다(5.73 GiB/월 23 GiB).
     # 그 값은 날짜별로 더할 수 없어 증분이 불가능했기 때문이다.
-    # 유저-일(날짜별 고유 유저의 합)로 바꾸면 이미 읽은 3일 창에서 나오므로 추가 조회가 0이고,
+    # 유저-일(날짜별 고유 유저의 합)로 바꾸면 이미 읽은 결손일 조회에서 나오므로 추가 조회가 0이고,
     # 전 기간을 쓰며, 배분 판정에는 같은 답을 준다(0.24% -> 0.36%).
     for g in out:
         out[g]["users"] = out[g].get("users_day", 0)
@@ -338,7 +376,7 @@ def build_js(state):
     a, b = c["A"], c["B"]
 
     # 리텐션 코호트 크기 — NRU 코호트 행은 실험 첫 5일(8/27~8/31) 코호트의 합이다.
-    NRU_TO = "08-31"
+    NRU_TO = "2026-08-31"   # 연도 포함 — 키가 YYYY-MM-DD 라 "08-31" 로는 문자열 비교가 항상 거짓이 된다
     coh = {g: sum(int(r["cohort"]) for r in state["ret"]
                   if r["g"] == g and r["c"] <= NRU_TO) for g in ("A", "B")}
 
@@ -366,7 +404,7 @@ def build_js(state):
     ]
 
     days   = sorted({r["c"] for r in state["ret"]})
-    md     = lambda d: "%d/%d" % (int(d[:2]), int(d[3:]))   # "09-06" -> "9/6"
+    md     = lambda d: "%d/%d" % (int(d[5:7]), int(d[8:10]))  # "2026-09-06" -> "9/6"
     rng    = "%s~%s" % (md(days[0]), md(days[-1]))
 
     L = []
@@ -374,8 +412,10 @@ def build_js(state):
     L.append('      const PULLED = %s;' % j(state["pulled_kst"]))
     L.append('      const RANGE  = %s;' % j(rng))
     L.append("")
-    L.append("      // V — 지표 키 → [A(3374), B(3375)]. 기간 전체를 매 실행 재조회하므로")
-    L.append("      //     날짜 축이 없다. 값의 정의는 지금 문서와 동일하게 유지한다.")
+    L.append("      // V — 지표 키 → [A(3374), B(3375)]. 날짜별로 조회해 누적한 값을 기간 합산한 것이다.")
+    L.append("      //     users 는 '유저-일'(날짜별 고유 유저의 합)이며 기간 고유 유저가 아니다 —")
+    L.append("      //     기간 고유 player_id 는 날짜별로 더할 수 없어 증분 갱신과 양립하지 않는다.")
+    L.append("      //     '/유저-일' 행들의 분모가 이 값이고, 비율 지표의 분모는 sessions 다.")
     L.append("      const V = {")
     w = max(len(k) for k, _, _ in V) + 1
     for k, (va, vb), dp in V:
@@ -388,8 +428,6 @@ def build_js(state):
     L.append("      // 코호트일 축이 있어 갱신 시 날짜 키로 병합된다.")
     L.append("      const TRI = [")
 
-    today = datetime.date.today()
-    year  = today.year
     for cday in days:
         rs = {r["g"]: r for r in state["ret"] if r["c"] == cday}
         if "A" not in rs or "B" not in rs:
@@ -397,7 +435,7 @@ def build_js(state):
         ca, cb = int(rs["A"]["cohort"]), int(rs["B"]["cohort"])
         # D+n 이 실제로 도래했는지는 코호트일 기준으로 판정한다.
         # stat 은 하루 지연이므로 관측 가능한 마지막 날은 last_day 다.
-        cd   = datetime.date(year, int(cday[:2]), int(cday[3:]))
+        cd   = datetime.date.fromisoformat(cday)
         last = datetime.date.fromisoformat(state["last_day"])
         obs  = (last - cd).days
         cells = {}
@@ -405,7 +443,7 @@ def build_js(state):
             if n > obs:
                 continue
             cells[str(n)] = [int(rs["A"]["r%d" % n]), int(rs["B"]["r%d" % n])]
-        L.append('        [%s,%d,%d,%s],' % (j(cday), ca, cb, j(cells)))
+        L.append('        [%s,%d,%d,%s],' % (j(cday[5:]), ca, cb, j(cells)))
     L.append("      ];")
     L.append("      /* DATA:END */")
     return "\n".join(L), rng
@@ -418,36 +456,11 @@ def splice(block):
     return s, s[:a] + block + s[b:]
 
 
-def stamp(now, bust, rng):
-    s = open(HTML, encoding="utf-8").read()
-    s = re.sub(r"문서 갱신 <b>[^<]*</b> KST", "문서 갱신 <b>%s</b> KST" % now, s, count=1)
-    s = re.sub(r"데이터 <b>[^<]*</b>", "데이터 <b>%s</b>" % rng, s, count=1)
-    open(HTML, "w", encoding="utf-8").write(s)
-
-    d = open(DATA_JS, encoding="utf-8").read()
-    m = re.search(r'(url: "%s".*?)version: "v(\d+)\.(\d+)"' % re.escape(DOC_URL), d, re.S)
-    if m:
-        ver = 'version: "v%s.%d"' % (m.group(2), int(m.group(3)) + 1)
-        d = d[:m.start()] + m.group(1) + ver + d[m.end():]
-    d = re.sub(r'(url: "%s".*?updated: ")[^"]*(")' % re.escape(DOC_URL),
-               r"\g<1>%s\g<2>" % now, d, count=1, flags=re.S)
-    open(DATA_JS, "w", encoding="utf-8").write(d)
-
-    i = open(INDEX, encoding="utf-8").read()
-    i = re.sub(r"data\.js\?v=\d{12}", "data.js?v=" + bust, i)
-    open(INDEX, "w", encoding="utf-8").write(i)
-
-
-def git(*args):
-    return subprocess.run(["git", "-C", REPO] + list(args),
-                          capture_output=True, text=True, timeout=300)
-
-
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--no-push", action="store_true")
-    ap.add_argument("--dry-run", action="store_true")
-    a = ap.parse_args()
+    a = C.parse_args()
+    if not a.force and not C.enabled():
+        log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
+        return 0
 
     try:
         state  = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
@@ -468,42 +481,7 @@ def main():
         notify("%s: %s" % (type(e).__name__, e))
         return 1
 
-    # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면 데이터는 그대로라는 뜻이므로
-    # 커밋하지 않는다 — 안 그러면 같은 값을 매일 새 커밋으로 쌓는다.
-    strip = lambda t: re.sub(r'\n *const PULLED = "[^"]*";', "", t)
-    if strip(old) == strip(new):
-        log("변화 없음 — 커밋하지 않는다 (last_day=%s)" % state["last_day"])
-        return 0
-    if a.dry_run:
-        log("dry-run: 변화 있음 (last_day=%s, 기간=%s) — 파일은 건드리지 않았다"
-            % (state["last_day"], rng))
-        sys.stdout.write(block + "\n")
-        return 0
-
-    os.makedirs(os.path.dirname(STATE), exist_ok=True)
-    json.dump(state, open(STATE, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1, sort_keys=True)
-    open(HTML, "w", encoding="utf-8").write(new)
-    now = datetime.datetime.now()
-    stamp(now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y%m%d%H%M"), rng)
-
-    git("add", "-A")
-    msg = "[Max] 코인매치 연속거절 A/B 자동 갱신 — %s 까지 (%s)" % (state["last_day"], rng)
-    r = git("commit", "-q", "-m", msg)
-    if r.returncode != 0:
-        log("커밋 실패: %s" % (r.stderr or r.stdout).strip()[:300])
-        notify("커밋 실패")
-        return 1
-    if a.no_push:
-        log("커밋 완료(푸시 생략): %s" % msg)
-        return 0
-    r = git("push", "-q", "origin", "HEAD")
-    if r.returncode != 0:
-        log("푸시 실패: %s" % (r.stderr or r.stdout).strip()[:300])
-        notify("푸시 실패")
-        return 1
-    log("갱신 완료: %s" % msg)
-    return 0
+    return C.finish(a, state, rng, old, new, dry_dump=block)
 
 
 if __name__ == "__main__":

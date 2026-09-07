@@ -39,6 +39,15 @@ def load(path, default):
         return default
 
 
+def save(state):
+    """임시 파일에 쓰고 교체한다. 쓰는 중에 죽으면 깨진 JSON 이 남고,
+    load() 가 그걸 {} 로 삼켜 모든 슬롯을 잊는다."""
+    tmp = STATE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=1, sort_keys=True)
+    os.replace(tmp, STATE)
+
+
 def main():
     reg   = load(REGISTRY, None)
     if not reg:
@@ -62,29 +71,41 @@ def main():
         slot = "%s %02d" % (today, due[-1])
         st   = state.get(job_id, {})
         if st.get("slot") == slot:
-            # 성공했으면 끝. 실패했으면 한 번만 더 시도한다 —
-            # 하루 1회 스케줄에서는 실패가 곧 '그날 갱신 없음'이 되기 때문이다.
-            # 무한 재시도는 막는다(15분마다 같은 실패를 반복하면 스캔만 태운다).
-            if st.get("ok") or st.get("tries", 1) >= MAX_TRIES:
+            if st.get("ok"):
                 continue
-            log("%s 재시도 (%d/%d)" % (job_id, st.get("tries", 1) + 1, MAX_TRIES))
+            if st.get("tries", 0) >= MAX_TRIES:
+                if not st.get("gave_up"):
+                    log("%s 오늘은 포기 — %d회 모두 실패" % (job_id, MAX_TRIES))
+                    st["gave_up"] = True
+                    save(state)
+                continue
+            log("%s 재시도 (%d/%d)" % (job_id, st.get("tries", 0) + 1, MAX_TRIES))
 
         script = os.path.join(HERE, job["script"])
         if not os.path.exists(script):
             log("%s: 스크립트가 없다 (%s)" % (job_id, job["script"]))
             continue
         log("%s 실행 (슬롯 %s시)" % (job_id, due[-1]))
-        r = subprocess.run([PYTHON, script], capture_output=True, text=True, timeout=1800)
-        ok = r.returncode == 0
-        if not ok:
-            log("%s 실패 rc=%d %s" % (job_id, r.returncode, (r.stderr or "").strip()[:200]))
+        try:
+            r  = subprocess.run([PYTHON, script],
+                                capture_output=True, text=True, timeout=1800)
+            ok = r.returncode == 0
+            if not ok:
+                log("%s 실패 rc=%d %s"
+                    % (job_id, r.returncode, (r.stderr or "").strip()[:200]))
+        except Exception as e:
+            # 이 except 가 없으면 시간초과가 main() 을 뚫고 나가 상태 저장을 건너뛴다.
+            # 슬롯이 기록되지 않으니 15분마다 같은 시간초과를 무한 반복하게 된다.
+            ok = False
+            log("%s 중단 %s: %s" % (job_id, type(e).__name__, str(e)[:200]))
         tries = (st.get("tries", 0) + 1) if st.get("slot") == slot else 1
         state.setdefault(job_id, {})
         state[job_id].update(slot=slot, at=now.strftime("%Y-%m-%d %H:%M:%S"),
                              ok=ok, tries=tries)
+        state[job_id].pop("gave_up", None)
+        save(state)          # 다음 작업이 죽어도 이 결과는 남는다
 
-    json.dump(state, open(STATE, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1, sort_keys=True)
+    save(state)
     return 0
 
 

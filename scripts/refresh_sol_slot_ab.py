@@ -18,22 +18,24 @@
     python3 scripts/refresh_sol_slot_ab.py --no-push    # 커밋만
     python3 scripts/refresh_sol_slot_ab.py --dry-run    # 파일도 안 건드림
 """
-import argparse
 import datetime
 import json
 import os
-import re
 import subprocess
 import sys
 
-REPO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HTML     = os.path.join(REPO, "docs", "sol-tournament-slot-ab.html")
-STATE    = os.path.join(REPO, "docs", "data", "sol-slot-ab.json")
-DATA_JS  = os.path.join(REPO, "data.js")
-INDEX    = os.path.join(REPO, "index.html")
-LOG      = os.path.join(REPO, "scripts", "refresh.log")
-REGISTRY = os.path.join(REPO, "scripts", "automation.json")
-JOB_ID   = "sol-slot-ab"   # launchd stdout 은 refresh.launchd.log 로 분리
+import refresh_common as C
+from refresh_common import Guard, git, j, log, merge_by_key, notify, stamp
+
+REPO    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HTML    = os.path.join(REPO, "docs", "sol-tournament-slot-ab.html")
+STATE   = os.path.join(REPO, "docs", "data", "sol-slot-ab.json")
+DOC_URL = "docs/sol-tournament-slot-ab.html"
+JOB_ID  = "sol-slot-ab"
+
+C.configure(job_id=JOB_ID, log_prefix="", notify_title="슬롯 A/B 갱신 실패",
+            html=HTML, state=STATE, doc_url=DOC_URL,
+            commit_msg="[Max] 슬롯 A/B 자동 갱신 — %s 까지 (%s)")
 
 BQ       = "/opt/homebrew/bin/bq"
 PROJECT  = "game-log-359704"
@@ -209,27 +211,6 @@ ORDER BY blk
 """
 
 
-def notify(msg):
-    """실패했을 때만 맥 알림을 띄운다. 로그만 남기면 아무도 안 본다."""
-    try:
-        subprocess.run(["/usr/bin/osascript", "-e",
-                        'display notification %s with title "슬롯 A/B 갱신 실패"'
-                        % json.dumps(msg[:200], ensure_ascii=False)], timeout=20)
-    except Exception:
-        pass
-
-
-def log(msg):
-    line = "%s  %s" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg)
-    print(line)
-    with open(LOG, "a", encoding="utf-8") as f:
-        f.write(line + "\n")
-
-
-class Guard(Exception):
-    pass
-
-
 # ── 조회 ────────────────────────────────────────────────────────────────────
 def run_query():
     out = subprocess.run(
@@ -250,14 +231,6 @@ def run_query():
 
 
 # ── 병합 ────────────────────────────────────────────────────────────────────
-def merge_by_key(old, new, keys):
-    """날짜 축이 있는 블록: 같은 키의 행은 덮어쓰고 새 키는 추가한다."""
-    idx = {tuple(str(r[k]) for k in keys): r for r in old}
-    for r in new:
-        idx[tuple(str(r[k]) for k in keys)] = r
-    return [idx[k] for k in sorted(idx)]
-
-
 def merge_state(state, blocks):
     meta = blocks["0_META"]
     state["pulled"]   = meta["pulled_kst"]
@@ -297,10 +270,6 @@ def check(state):
 
 
 # ── JS 블록 생성 ────────────────────────────────────────────────────────────
-def j(v):
-    return json.dumps(v, ensure_ascii=False)
-
-
 def build_js(state):
     days   = sorted({r["d"] for r in state["daily"]})
     rng    = "%d/%d~%d/%d" % (int(days[0][:2]), int(days[0][3:]),
@@ -427,52 +396,9 @@ def splice(block):
     return s, new
 
 
-def stamp(now, bust, rng):
-    s = open(HTML, encoding="utf-8").read()
-    s = re.sub(r"문서 갱신 <b>[^<]*</b> KST", "문서 갱신 <b>%s</b> KST" % now, s, count=1)
-    s = re.sub(r"데이터 <b>[^<]*</b>", "데이터 <b>%s</b>" % rng, s, count=1)
-    open(HTML, "w", encoding="utf-8").write(s)
-
-    d = open(DATA_JS, encoding="utf-8").read()
-    d = re.sub(r'(\n  updated: ")[^"]*(")', r"\g<1>%s\g<2>" % now, d, count=1)
-    m = re.search(r'(url: "docs/sol-tournament-slot-ab\.html".*?)version: "v(\d+)\.(\d+)"',
-                  d, re.S)
-    if m:
-        ver = 'version: "v%s.%d"' % (m.group(2), int(m.group(3)) + 1)
-        d = d[:m.start()] + m.group(1) + ver + d[m.end():]
-    # 카드의 updated (url 뒤쪽 블록 안) 갱신
-    d = re.sub(r'(url: "docs/sol-tournament-slot-ab\.html".*?updated: ")[^"]*(")',
-               r"\g<1>%s\g<2>" % now, d, count=1, flags=re.S)
-    open(DATA_JS, "w", encoding="utf-8").write(d)
-
-    i = open(INDEX, encoding="utf-8").read()
-    i = re.sub(r"data\.js\?v=\d{12}", "data.js?v=" + bust, i)
-    open(INDEX, "w", encoding="utf-8").write(i)
-
-
-def git(*args):
-    return subprocess.run(["git", "-C", REPO] + list(args),
-                          capture_output=True, text=True, timeout=300)
-
-
-def enabled():
-    """제어판(scripts/control_panel.py)이 끈 작업은 아무것도 하지 않는다.
-    launchd 를 껐다 켜는 것보다 이쪽이 안전하다 — 스케줄 정의를 건드리지 않는다."""
-    try:
-        reg = json.load(open(REGISTRY, encoding="utf-8"))
-        return bool(reg["jobs"][JOB_ID]["enabled"])
-    except Exception:
-        return True          # 레지스트리가 깨졌으면 멈추지 않는다
-
-
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--no-push", action="store_true")
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--force", action="store_true", help="꺼져 있어도 실행")
-    a = ap.parse_args()
-
-    if not a.force and not enabled():
+    a = C.parse_args()
+    if not a.force and not C.enabled():
         log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
         return 0
 
@@ -492,41 +418,7 @@ def main():
         notify("%s: %s" % (type(e).__name__, e))
         return 1
 
-    # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면 데이터는 그대로라는 뜻이므로
-    # 커밋하지 않는다 — 안 그러면 같은 값을 매일 새 커밋으로 쌓는다.
-    strip = lambda t: re.sub(r'\n *const PULLED = "[^"]*";', "", t)
-    if strip(old) == strip(new):
-        log("변화 없음 — 커밋하지 않는다 (last_day=%s)" % state["last_day"])
-        return 0
-    if a.dry_run:
-        log("dry-run: 변화 있음 (last_day=%s, 기간=%s) — 파일은 건드리지 않았다"
-            % (state["last_day"], rng))
-        return 0
-
-    os.makedirs(os.path.dirname(STATE), exist_ok=True)
-    json.dump(state, open(STATE, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1, sort_keys=True)
-    open(HTML, "w", encoding="utf-8").write(new)
-    now  = datetime.datetime.now()
-    stamp(now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y%m%d%H%M"), rng)
-
-    git("add", "-A")
-    msg = "[Max] 슬롯 A/B 자동 갱신 — %s 까지 (%s)" % (state["last_day"], rng)
-    r = git("commit", "-q", "-m", msg)
-    if r.returncode != 0:
-        log("커밋 실패: %s" % (r.stderr or r.stdout).strip()[:300])
-        notify("커밋 실패")
-        return 1
-    if a.no_push:
-        log("커밋 완료(푸시 생략): %s" % msg)
-        return 0
-    r = git("push", "-q", "origin", "HEAD")
-    if r.returncode != 0:
-        log("푸시 실패: %s" % (r.stderr or r.stdout).strip()[:300])
-        notify("푸시 실패 — 인증이 만료됐을 수 있습니다")
-        return 1
-    log("갱신 완료: %s" % msg)
-    return 0
+    return C.finish(a, state, rng, old, new)
 
 
 if __name__ == "__main__":
