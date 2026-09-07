@@ -197,7 +197,7 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 A/B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 14:02</b> KST</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 14:14</b> KST</span>
           <span>데이터 <b>9/3~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
           <span id="fresh"></span>
         </div>
@@ -307,7 +307,8 @@ return useInvite ? invite : share;
 -- 스캔 원칙
 --  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
 --  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 뽑혀 있고 불변이다.
---  · 가벼운 컬럼만 읽는 스캔(lite)은 전 구간이어도 싸다 — 실험 성립 판정은 전 구간이 필요하다.
+--  · raw 스캔은 이 3일 창 하나뿐이다. DAU·빌드 점유·배정 균형은 stat 사전집계에서 뽑는다.
+--  · 초대(3460 position)와 유입(payload.social)만 raw 전용이다 — stat 에 그 차원이 없다.
 --  · 리텐션은 raw 조인을 쓰지 않는다. stat 사전집계를 읽는다.
 --  · 블록을 쪼개지 않는다. 하나만 다시 뽑으면 블록을 가로지르는 값이 조용히 어긋난다.
 WITH us AS (
@@ -317,11 +318,16 @@ WITH us AS (
                        AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
         AND country = 'US'
 ),
-lite AS (
-    SELECT log_date, player_id, client_version, country, os
-    FROM `game-log-359704.raw.solitaire_city_journey`
+slog AS (
+    -- 로그인 사전집계. 예전에는 이 몫도 raw 전 구간을 훑었다(0.33 GiB, 실험이 길어지면 계속 증가).
+    -- stat 에 같은 차원이 다 있어 옮겼다 — 이제 스캔량이 기간과 무관하게 고정된다.
+    -- ⚠ player_type 은 ALL 만 읽는다. ALL/NRU/RU 가 같은 유저를 중복 적재하므로 섞으면 2배가 된다.
+    SELECT log_date, client_version, IFNULL(country, '(null)') AS country,
+           IFNULL(os, '(null)') AS os, player_count
+    FROM `game-log-359704.stat.solitaire_city_journey`
     WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-        AND event = '1000_LOGIN_COMPLETE'
+        AND stat_name = '1000_LOGIN_COMPLETE'
+        AND player_type = 'ALL'
 ),
 ab AS (
     SELECT
@@ -411,17 +417,23 @@ res AS (
     GROUP BY client_version, seg, result
 ),
 bal AS (
-    SELECT
-        client_version, country, IFNULL(os, '(null)') AS os,
-        COUNT(DISTINCT player_id) AS users
-    FROM lite
+    -- 배정 균형만 국가 필터를 뺀다. FB 가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
+    -- ⚠ 어제 하루 기준이다. stat 은 날짜별 유니크만 갖고 있어 여러 날을 더하면 유저가 중복된다
+    --   (HLL 테이블에 버전·OS 차원이 없어 기간 누적 유니크를 만들 수 없다).
+    --   묻는 것이 '배정이 한쪽으로 쏠렸나'라 하루 구성만으로 답이 나온다.
+    SELECT client_version, country, os, player_count AS users
+    FROM slog
     WHERE client_version IN (485, 486)
-    GROUP BY client_version, country, os
-    HAVING users &gt;= 10
+        AND log_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND player_count &gt;= 10
 ),
 vers AS (
-    SELECT log_date, client_version, COUNT(DISTINCT player_id) AS dau
-    FROM lite
+    -- 실험이 아직 성립하는지부터 본다. 485 가 말라 있으면 대조군이 없는 것이고,
+    -- 487 이상이 떴으면 처치가 하나 더 얹힌 것이라 486군이 오염된다.
+    -- os 축을 합치므로 하루에 두 OS 로 접속한 유저가 중복된다 — 실측 오차 0.3%(1,232 vs 1,228)로
+    -- '대조군이 살아 있나 / 새 빌드가 떴나' 판정에는 영향이 없다.
+    SELECT log_date, client_version, SUM(player_count) AS dau
+    FROM slog
     WHERE country = 'US'
     GROUP BY log_date, client_version
     HAVING dau &gt;= 10
@@ -485,7 +497,7 @@ ORDER BY blk</pre></div>
       // 손으로 고치면 다음 갱신에서 사라진다. 출처는 SQL 폴드에 실린 그 쿼리 하나다.
       /* DATA:START */
       // 이 블록은 scripts/refresh_sol_slot_ab.py 가 생성한다. 손으로 고치면 사라진다.
-      const PULLED = "2026-09-07 13:55";
+      const PULLED = "2026-09-07 14:14";
       const RANGE  = "9/3~9/6";
 
       // 1_DAILY — 일자 × 빌드 × 유저군. 보드는 전부 여기서 합산해 만든다.
@@ -553,19 +565,19 @@ ORDER BY blk</pre></div>
         { ver:"486", seg:"RU", clear:19978, fail:577 },
       ];
       const BALANCE_US = [
-        { os:"Android", a:1642, b:1715 },
-        { os:"Windows", a:573, b:611 },
-        { os:"iOS", a:384, b:391 },
-        { os:"(null)", a:68, b:76 },
-        { os:"OS X", a:28, b:38 },
+        { os:"Android", a:730, b:745 },
+        { os:"Windows", a:282, b:308 },
+        { os:"iOS", a:168, b:177 },
+        { os:"(null)", a:36, b:40 },
+        { os:"OS X", a:16, b:18 },
       ];
       // vo = 485·486 이 아닌 다른 빌드의 DAU 합. OTHER_VERS 가 비어 있지 않으면 그 빌드가
       // 실제로 떴다는 뜻이고, 487 이상이 섞이면 그 뒤 날짜는 A/B 대조가 아니다.
       const VERSION = [
-        { d:"09-03", vo:1788, a:244, b:291 },
-        { d:"09-04", vo:0, a:1045, b:1087 },
-        { d:"09-05", vo:0, a:1028, b:1095 },
-        { d:"09-06", vo:0, a:1228, b:1280 },
+        { d:"09-03", vo:1794, a:244, b:293 },
+        { d:"09-04", vo:0, a:1049, b:1096 },
+        { d:"09-05", vo:0, a:1032, b:1101 },
+        { d:"09-06", vo:0, a:1232, b:1288 },
       ];
       const OTHER_VERS = ["483"];
       /* DATA:END */
@@ -903,7 +915,10 @@ ORDER BY blk</pre></div>
             <span class="d">9.91 ↔ 9.95</span>
             <em>팀 표준(설치 코호트) 기준 3일 합산 D+1이 A 9.91% ↔ B 9.95%(p=0.98)로 사실상 동일합니다.
             광고를 빼면 A 17.3 ↔ B 16.0(p=0.73)인데 표본이 작아 판정 보류입니다.
-            토너 생성률(p=0.47)도, 배정 균형(US Android A 1,861 ↔ B 1,939 등 OS별 3~6% 차)도 이상이 없습니다 —
+            토너 생성률(p=0.47)도, 배정 균형(${(() => {
+              const r = BALANCE_US.find(x => x.os === "Android") || BALANCE_US[0];
+              return r ? `US ${r.os} A ${nf(r.a)} ↔ B ${nf(r.b)}, 어제 하루 기준` : "배정";
+            })()})도 이상이 없습니다 —
             <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
         </div>`;
 
@@ -990,8 +1005,21 @@ ORDER BY blk</pre></div>
           <tbody>${BALANCE_US.map(r => `<tr><td>${r.os}</td>`
             + `<td style="text-align:right">${nf(r.a)}</td><td style="text-align:right">${nf(r.b)}</td>`
             + `<td style="text-align:right">${(r.b / r.a).toFixed(2)}</td></tr>`).join("")}</tbody>
-        </table></div><div class="kb-foot">US 기준입니다. 모든 OS에서 B가 3~6% 많고 <b>한쪽으로 쏠린 OS가 없습니다</b> —
-          기기로 가른 흔적은 보이지 않습니다. 국가 구성도 양쪽에 같은 나라가 같이 잡힙니다</div>`;
+        </table></div><div class="kb-foot">${(() => {
+            // '3~6%' 같은 손으로 쓴 범위는 데이터가 바뀌면 거짓이 된다 — 매번 계산한다.
+            const rs = BALANCE_US.filter(r => r.a > 0);
+            const pct = rs.map(r => (r.b / r.a - 1) * 100);
+            const lo = Math.min(...pct), hi = Math.max(...pct);
+            const worst = rs[pct.indexOf(Math.max(...pct.map(Math.abs)))];
+            const skew = Math.abs(worst.b / worst.a - 1) * 100;
+            const fmt = v => (v >= 0 ? "+" : "") + v.toFixed(0) + "%";
+            return `US · <b>어제 하루 기준</b>입니다(stat 사전집계는 날짜별 유니크만 있어 여러 날을 더하면
+              유저가 중복됩니다) · OS별 B/A 편차 <b>${fmt(lo)} ~ ${fmt(hi)}</b> ·
+              가장 치우친 OS는 <b>${worst.os}</b>(${skew.toFixed(0)}%)입니다 — `
+              + (skew < 15
+                  ? `<b>한쪽으로 쏠린 OS가 없습니다.</b> 기기로 가른 흔적은 보이지 않습니다`
+                  : `<b style="color:var(--bad)">편차가 큽니다 — 기기로 갈렸을 가능성을 확인해야 합니다</b>`);
+          })()}</div>`;
 
       })();
 

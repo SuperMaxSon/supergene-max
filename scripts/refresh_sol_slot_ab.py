@@ -46,7 +46,8 @@ SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py �
 -- 스캔 원칙
 --  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
 --  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 뽑혀 있고 불변이다.
---  · 가벼운 컬럼만 읽는 스캔(lite)은 전 구간이어도 싸다 — 실험 성립 판정은 전 구간이 필요하다.
+--  · raw 스캔은 이 3일 창 하나뿐이다. DAU·빌드 점유·배정 균형은 stat 사전집계에서 뽑는다.
+--  · 초대(3460 position)와 유입(payload.social)만 raw 전용이다 — stat 에 그 차원이 없다.
 --  · 리텐션은 raw 조인을 쓰지 않는다. stat 사전집계를 읽는다.
 --  · 블록을 쪼개지 않는다. 하나만 다시 뽑으면 블록을 가로지르는 값이 조용히 어긋난다.
 WITH us AS (
@@ -56,11 +57,16 @@ WITH us AS (
                        AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
         AND country = 'US'
 ),
-lite AS (
-    SELECT log_date, player_id, client_version, country, os
-    FROM `game-log-359704.raw.solitaire_city_journey`
+slog AS (
+    -- 로그인 사전집계. 예전에는 이 몫도 raw 전 구간을 훑었다(0.33 GiB, 실험이 길어지면 계속 증가).
+    -- stat 에 같은 차원이 다 있어 옮겼다 — 이제 스캔량이 기간과 무관하게 고정된다.
+    -- ⚠ player_type 은 ALL 만 읽는다. ALL/NRU/RU 가 같은 유저를 중복 적재하므로 섞으면 2배가 된다.
+    SELECT log_date, client_version, IFNULL(country, '(null)') AS country,
+           IFNULL(os, '(null)') AS os, player_count
+    FROM `game-log-359704.stat.solitaire_city_journey`
     WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-        AND event = '1000_LOGIN_COMPLETE'
+        AND stat_name = '1000_LOGIN_COMPLETE'
+        AND player_type = 'ALL'
 ),
 ab AS (
     SELECT
@@ -150,17 +156,23 @@ res AS (
     GROUP BY client_version, seg, result
 ),
 bal AS (
-    SELECT
-        client_version, country, IFNULL(os, '(null)') AS os,
-        COUNT(DISTINCT player_id) AS users
-    FROM lite
+    -- 배정 균형만 국가 필터를 뺀다. FB 가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
+    -- ⚠ 어제 하루 기준이다. stat 은 날짜별 유니크만 갖고 있어 여러 날을 더하면 유저가 중복된다
+    --   (HLL 테이블에 버전·OS 차원이 없어 기간 누적 유니크를 만들 수 없다).
+    --   묻는 것이 '배정이 한쪽으로 쏠렸나'라 하루 구성만으로 답이 나온다.
+    SELECT client_version, country, os, player_count AS users
+    FROM slog
     WHERE client_version IN (485, 486)
-    GROUP BY client_version, country, os
-    HAVING users >= 10
+        AND log_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND player_count >= 10
 ),
 vers AS (
-    SELECT log_date, client_version, COUNT(DISTINCT player_id) AS dau
-    FROM lite
+    -- 실험이 아직 성립하는지부터 본다. 485 가 말라 있으면 대조군이 없는 것이고,
+    -- 487 이상이 떴으면 처치가 하나 더 얹힌 것이라 486군이 오염된다.
+    -- os 축을 합치므로 하루에 두 OS 로 접속한 유저가 중복된다 — 실측 오차 0.3%(1,232 vs 1,228)로
+    -- '대조군이 살아 있나 / 새 빌드가 떴나' 판정에는 영향이 없다.
+    SELECT log_date, client_version, SUM(player_count) AS dau
+    FROM slog
     WHERE country = 'US'
     GROUP BY log_date, client_version
     HAVING dau >= 10
