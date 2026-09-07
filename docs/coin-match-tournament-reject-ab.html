@@ -82,49 +82,32 @@
       .kb-warn b{color:color-mix(in srgb, var(--warn) 72%, var(--text))}
       .kb-warn code{background:#fff;padding:0 4px;border-radius:4px;font-size:11px}
 
-      /* 리텐션 피라미드 — 인구 피라미드와 같은 미러 막대를 D+1~D+14 로 세운 것.
-         가운데가 일차, 왼쪽으로 A, 오른쪽으로 B 가 자란다. 위에서 아래로 좁아지는 모양 자체가
-         이탈 곡선이 되고, 같은 행에서 좌우 길이를 바로 견줄 수 있어 A/B 대조에 선 차트보다 낫다.
-         두 층(미노출/처치노출)을 나란히 두되 스케일은 공유한다 — 층 간 수준 차이(5.7% ↔ 25.9%)가
-         이 문서의 핵심 관찰이라 패널마다 스케일을 다시 잡으면 그 차이가 사라진다.
-         A #16a34a / B #1d4ed8 은 validate_palette.js 통과(정상시 ΔE 35.6 · 적록 31.8). */
-      .rc{--a:#16a34a;--b:#1d4ed8}
-      .rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-      @media (max-width:900px){ .rc-grid{grid-template-columns:1fr} }
-      .rc-panel{border:1px solid var(--border);border-radius:var(--radius);background:#fff;
-        padding:11px 13px 9px;overflow:hidden}
-      .rc-h{font-size:12.5px;font-weight:800;color:var(--text);margin-bottom:8px}
-      .rc-h span{display:block;font-weight:700;color:var(--text-dim);font-size:10.5px;margin-top:1px}
-      .rc-legend{display:flex;gap:15px;margin:7px 0 12px;font-size:10.5px;font-weight:700;
-        color:var(--text-dim);flex-wrap:wrap}
-      .rc-legend b{display:inline-flex;align-items:center;gap:5px;font-weight:700}
-      .rc-legend b::before{content:"";width:15px;height:9px;border-radius:2px}
-      .rc-legend b.a::before{background:var(--a)} .rc-legend b.b::before{background:var(--b)}
-
-      /* 한 행 = [A값 | A막대(오른쪽 정렬) | D+n | B막대(왼쪽 정렬) | B값 | Δ] */
-      .rp{display:grid;grid-template-columns:44px 1fr 44px 1fr 44px 50px;
-        align-items:center;gap:0 5px;font-variant-numeric:tabular-nums}
-      .rp .hd{font-size:9.5px;font-weight:800;color:var(--text-faint);padding-bottom:5px;
-        border-bottom:1px solid var(--border);margin-bottom:3px}
-      .rp .row{display:contents}
-      .rp .row:hover .day{background:#e6ebf5}
-      .rp .va,.rp .vb{font-size:10.5px;font-weight:800;white-space:nowrap}
-      .rp .va{color:#15803d;text-align:right} .rp .vb{color:#1d4ed8}
-      .rp .day{font-size:9.5px;font-weight:800;color:var(--text-dim);text-align:center;
-        background:var(--surface-2);border-radius:3px;padding:2px 0;margin:1px 0}
-      .rp .tr{padding:2px 0}
-      .rp .tr i{display:block;height:11px;border-radius:2px}
-      .rp .tr.l i{margin-left:auto;background:var(--a)}
-      .rp .tr.r i{background:var(--b)}
-      .rp .dd{font-size:10px;font-weight:800;text-align:right;color:#5f6878;white-space:nowrap}
-      /* 미집계와 미도래를 다르게 칠한다 — 전자는 지금 뽑으면 나오고 후자는 시간이 지나야 나온다. */
-      .rp .hatch{height:11px;border-radius:2px;
-        background:repeating-linear-gradient(135deg,#f2f4f8 0 6px,#e8ebf1 6px 12px)}
-      .rp .hatch.soon{background:repeating-linear-gradient(135deg,#fdfaf1 0 6px,#f6efdc 6px 12px)}
-      /* p<.05 행 — 다중비교 보정 전이라 '주목'이지 '결론'이 아니다. 색이 아니라 밑줄로 표시한다. */
-      .rp .row.sig .dd{color:#1d4ed8;text-decoration:underline;text-underline-offset:2px}
-      .rp .row.na .day{opacity:.55} .rp .row.na .dd{color:#a8b0c2;font-size:9px}
-      @media (max-width:900px){ .rp{grid-template-columns:42px 1fr 42px 1fr 42px 46px} }
+      /* 리텐션 트라이앵글(코호트 격자) — docs/sol-tournament-slot-ab.html 의 .pyr 를 그대로 이식했다.
+         행 = 코호트일 × 빌드(A·B 를 붙여 둠), 열 = D+N. 아직 안 온 날이 '·' 로 남아
+         표가 아래로 갈수록 짧아지는 삼각형이 된다.
+         색은 '이 줄이 더 높다'는 사실만 칠하고(양쪽 다 같은 초록), 유의성은 테두리로 따로 말한다 —
+         둘을 한 채널에 섞으면 '큰 격차'와 '확실한 격차'가 구분되지 않는다.
+         군 식별은 색이 아니라 왼쪽 스와치+빌드번호가 진다. */
+      .pyr{overflow-x:auto}
+      .pyr table{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+      .pyr th{font-size:9.5px;font-weight:700;color:var(--text-dim);padding:4px 3px;text-align:right;white-space:nowrap}
+      .pyr th:nth-child(-n+3){text-align:left}
+      .pyr td{font-size:11.5px;font-weight:700;padding:5px 4px;text-align:right}
+      .pyr td:nth-child(-n+2){text-align:left}
+      .pyr tr.va td{border-top:1px solid var(--border)}
+      .pyr td.day{font-weight:800;color:var(--text);vertical-align:middle}
+      .pyr td.ver{font-weight:800}
+      .pyr td.ver i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px}
+      .pyr td.coh{color:var(--text-dim);font-weight:600;font-size:10.5px}
+      .pyr td.c{border-radius:3px}
+      .pyr td.c b{font-weight:800}
+      .pyr td.c s{text-decoration:none;font-size:9px;margin-left:2px;opacity:.75}
+      .pyr td.na{color:#ccd2de;font-weight:600}
+      .pyr-key{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:10.5px;
+        font-weight:700;color:var(--text-dim);margin:0 0 8px}
+      .pyr-key i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+      .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:8px}
+      .tri-foot b{color:var(--text)}
 
       /* 대조/처치 정의 — 어떤 두 군을 견주는지가 타이틀 바로 밑에서 끝나야 한다.
          이게 없으면 3374·3375 가 그냥 숫자로 보이고, 아래 보드의 초록/파랑이 무엇인지 알 수 없다.
@@ -242,7 +225,7 @@
           <div class="stat" style="--acc: #5f6878">
             <div class="stat-num">+19.4<span class="stat-unit">%</span></div>
             <div class="stat-name">D+7 잔존 (처치 층)</div>
-            <div class="stat-sub">11일 중 9일 B 우세 · 부호검정 p≈0.065</div>
+            <div class="stat-sub">처치 층 9/11일 우세 · p≈0.065 · 미달</div>
           </div>
         </div>
 
@@ -282,51 +265,52 @@
         <div id="groups"></div>
       </section>
 
-      <section class="doc-section rc" id="retention">
-        <h2 class="doc-h2">리텐션 피라미드 <span class="doc-h2-sub">classic Day-N · D+1~D+14 · 두 패널이 같은 스케일</span></h2>
+      <section class="doc-section" id="retention">
+        <h2 class="doc-h2">잔존 <span class="doc-h2-sub">D+N 리텐션 — 정확히 N일 뒤 그날 접속 · 붙어 있는 3374·3375 쌍 안에서 세로로만 견주세요</span></h2>
 
-        <div class="rc-legend">
-          <b class="a">A · 3374 제한 없음</b>
-          <b class="b">B · 3375 상한 3</b>
-          <span><span style="display:inline-block;width:15px;height:9px;border-radius:2px;vertical-align:middle;background:repeating-linear-gradient(135deg,#f2f4f8 0 6px,#e8ebf1 6px 12px)"></span> 미집계 — 지금 뽑으면 나옵니다</span>
-          <span><span style="display:inline-block;width:15px;height:9px;border-radius:2px;vertical-align:middle;background:repeating-linear-gradient(135deg,#fdfaf1 0 6px,#f6efdc 6px 12px)"></span> 미도래 — 9/10 이후</span>
+        <div class="pyr-key">
+          <span><i style="background:rgba(21,128,61,.42)"></i>그 코호트·그 날짜에서 <b>더 높은 쪽</b> · 진할수록 격차가 큼(0.5%p에서 최대)</span>
+          <span><i style="outline:1.5px solid var(--ok);outline-offset:-1.5px;background:transparent"></i>두 비율 검정 통과(p&lt;.05)</span>
+          <span><i style="background:#eef1f6"></i>· = 아직 안 온 날</span>
+        </div>
+        <div class="pyr" id="tri"></div>
+        <div class="tri-foot">
+          숫자는 <b>그 코호트가 정확히 N일 뒤 그날 다시 접속한 비율(%)</b>입니다 — 업계에서 말하는
+          D1 / D3 / D7 리텐션과 같은 정의입니다. 누적이 아니라 <b>그날 하루 출석률</b>이라
+          보통은 내려가지만 <b>단조 감소가 보장되지는 않습니다</b> — 하루 건너뛰고 이틀 뒤에 온 유저는
+          D+2에서 빠지고 D+3에 잡히기 때문입니다. 실제로 <b>08-27 코호트는 A·B 모두 D+6 → D+7 에서 올라갑니다</b>
+          (2.24 → 2.32 · 2.04 → 2.20).
+          <b>· 로 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이고, 그래서 표가 아래로 갈수록 짧아집니다.
+          비교는 <b>붙어 있는 A·B 한 쌍 안에서 세로로</b>만 하세요 —
+          <b>다른 코호트일끼리 가로로 이어 읽으면 안 됩니다</b>.
+          08-27은 롤아웃 첫날이라 조기 업데이트 유저만 잡혀 D+1이 8.5%대이고 나머지 코호트는 6%대입니다.
+          <b>D+12~D+14 는 전 칸이 '·'</b> 입니다 — 실험이 8/27 시작이라 오늘(9/7) 기준 어느 코호트도 그 날짜에 닿지 않았습니다.
         </div>
 
-        <div class="rc-grid" id="rcgrid"></div>
-
         <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">처치 층은 11일 중 9일 B가 앞섭니다</div>
-            <p>
-              부호만 보면 처치 층은 <strong>B 우세 9일 · A 우세 2일</strong>(부호검정 <code>p≈0.065</code>)이고,
-              미노출 층은 <strong>6 : 4</strong>(D+5 동률)로 균형입니다.
-              처치를 받은 층에서만 방향이 한쪽으로 쏠린다는 뜻이지만, <strong>0.065 는 아직 유의수준이 아닙니다</strong>.
-              가장 큰 격차는 D+7 <code>+19.4%</code>, D+9 <code>+21.6%</code> 이며 둘 다 개별 검정으로는 미달입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">밑줄 친 두 칸은 결론이 아닙니다</div>
-            <p>
-              <strong>미노출 D+2</strong>(<code>p=0.049</code> · B가 3.5% <em>낮음</em>)와
-              <strong>처치 D+3</strong>(<code>p=0.035</code> · B가 15.0% 높음)이 개별 <code>p&lt;.05</code> 입니다.
-              그런데 이 표에서 <strong>22번 검정</strong>했으므로 우연히 하나 이상 걸릴 확률이 높고
-              (Bonferroni 기준은 <code>α=0.0023</code>), 특히 미노출 D+2 는
-              <strong>처치를 받지 않은 층</strong>이라 실체가 있을 수 없는 자리입니다 — 위양성으로 보는 것이 맞습니다.
-            </p>
-          </div>
           <div class="note" style="--acc: #5f6878">
-            <div class="note-title">D+12 ~ D+14 는 오늘 뽑을 수 없습니다</div>
+            <div class="note-title">코호트 격자로는 방향 쏠림이 없습니다</div>
             <p>
-              실험이 <strong>8/27</strong> 에 시작했고 오늘이 <strong>9/7</strong> 이라
-              가장 이른 코호트조차 <strong>D+11</strong> 까지만 도달했습니다. D+14 는 <strong>9/10</strong> 부터입니다.
-              또한 <strong>D+n 마다 코호트가 다릅니다</strong> — D+1 은 17.4만 명, D+7 은 7.9만, D+11 은 5,894명(처치 층은 145명)이라
-              아래로 갈수록 흔들립니다. 처치 층 D+11 의 <code>−28.6%</code> 는 8명 대 5명의 차이입니다.
+              값이 찬 <strong>66쌍</strong> 중 B가 높은 칸이 <strong>38</strong>, A가 높은 칸이 <strong>28</strong> 로
+              부호검정 <code>p≈0.268</code> — 동전 던지기와 구분되지 않습니다.
+              테두리가 쳐진 <strong>2칸</strong>(08-27 D+9 은 A가, 08-28 D+5 는 B가 우세)도
+              <strong>66번 검정하면 우연히 3.3칸</strong>이 나오는 자리라 위양성으로 보는 것이 맞습니다.
+              격차 자체도 <strong>중앙값 0.11%p · 최대 0.53%p</strong> 로 작습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">단 처치를 받은 층만 떼면 달라집니다</div>
+            <p>
+              이 격자는 <strong>코호트 전체</strong>라, 실제로 차단을 겪은 <strong>1.9%</strong> 의 신호가 묻힙니다.
+              연속 3회 도달 층만 보면 <strong>11일 중 9일 B 우세</strong>(부호검정 <code>p≈0.065</code>)이고
+              D+7 격차가 <strong>+19.4%</strong> 까지 벌어집니다 — 아래 폴드에 층별 수치가 있습니다.
+              <strong>그래도 유의수준은 넘지 못했습니다.</strong>
             </p>
           </div>
         </div>
 
         <details class="fold">
-          <summary>표로 보기 — 층 × D+1~D+11 전체 수치</summary>
+          <summary>처치 노출 여부로 나눈 층별 수치 — 위 격자를 코호트 합산해 두 층으로 쪼갠 것</summary>
           <div class="fold-body">
             <div class="table-scroll">
               <table>
@@ -747,64 +731,68 @@ ORDER BY s.stratum, s.ab_group, day_n</pre></div>
         if (e.target.closest("[data-tip]")) tip.style.display = "none";
       });
 
-      // ── 리텐션 피라미드 ────────────────────────────────────────────────
-      // classic Day-N: '설치일 + n 일 그날 하루' 접속률. rolling 아니다.
-      const DMAX = 14;          // 피라미드 마지막 행
-      const D_ARRIVED = 11;     // 오늘(9/7) 기준 도달한 최대 D+n — 그 뒤는 미도래
-      const SCALE = 27.21;      // 두 패널 공유 최대치 = 처치층 B 의 D+1
-      const RC = [
-        { name:"미노출", sub:"연속 3회 미도달 · D+n 마다 성숙 코호트만 집계",
-          A:{1:5.65,2:3.72,3:2.56,4:1.85,5:1.51,6:1.35,7:1.25,8:1.02,9:0.87,10:0.70,11:0.51},
-          B:{1:5.71,2:3.59,3:2.57,4:1.92,5:1.51,6:1.40,7:1.31,8:1.01,9:0.84,10:0.72,11:0.47},
-          N:{1:[174299,173964],2:[158355,158055],3:[142643,142320],4:[127819,127395],5:[114116,113286],
-             6:[98406,97705],7:[79149,78977],8:[59059,59084],9:[40169,40264],10:[22857,22860],11:[5894,6004]},
-          P:{1:.433,2:.049,3:.903,4:.211,5:.994,6:.376,7:.345,8:.811,9:.651,10:.868,11:.738} },
-        { name:"처치 노출", sub:"연속 3회 도달 · D+n 마다 성숙 코호트만 집계", key:true,
-          A:{1:25.25,2:16.50,3:13.05,4:10.76,5:8.07,6:7.56,7:6.36,8:5.80,9:4.57,10:3.50,11:5.52},
-          B:{1:25.37,2:17.62,3:15.01,4:10.82,5:9.08,6:7.45,7:7.60,8:6.60,9:5.56,10:3.55,11:3.94},
-          N:{1:[3446,3493],2:[3133,3132],3:[2827,2812],4:[2518,2533],5:[2219,2235],
-             6:[1866,1919],7:[1493,1540],8:[1156,1182],9:[831,845],10:[486,479],11:[145,127]},
-          P:{1:.910,2:.238,3:.035,4:.950,5:.226,6:.903,7:.183,8:.421,9:.356,10:.966,11:.542} },
+      // ── 리텐션 트라이앵글(코호트 격자) ────────────────────────────────
+      // classic Day-N: 설치일 + n 일 '그날 하루' 접속. 누적(rolling) 아님.
+      // 값은 재현 가능하도록 비율이 아니라 원본 카운트(retained/cohort)로 둔다 — 검정에 분모가 필요하다.
+      const DAYS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+      const GAP_FULL = 0.5;   // 격차 0.5%p 에서 색이 가장 진해진다(66쌍 최대 0.53%p).
+      // [코호트일, A코호트, B코호트, {D+n: [A retained, B retained]}]
+      const TRI = [
+        ["08-27", 6039, 6131, {1:[516,526],2:[299,319],3:[230,258],4:[175,191],5:[142,156],6:[135,125],7:[140,135],8:[114,101],9:[111,80],10:[89,78],11:[38,33]}],
+        ["08-28",17304,17208, {1:[1025,1008],2:[723,651],3:[499,499],4:[387,391],5:[267,316],6:[290,313],7:[262,292],8:[212,208],9:[182,195],10:[91,103]}],
+        ["08-29",17657,17770, {1:[1051,1076],2:[720,690],3:[474,495],4:[349,359],5:[322,299],6:[280,277],7:[283,290],8:[211,239],9:[94,110]}],
+        ["08-30",19215,19157, {1:[1146,1153],2:[735,741],3:[505,480],4:[392,388],5:[333,295],6:[314,317],7:[282,290],8:[133,125]}],
+        ["08-31",20427,20251, {1:[1160,1218],2:[732,751],3:[522,564],4:[384,435],5:[339,324],6:[302,341],7:[122,143]}],
+        ["09-01",19630,19107, {1:[1183,1136],2:[821,786],3:[604,590],4:[399,411],5:[352,373],6:[152,140]}],
+        ["09-02",16063,15897, {1:[1090,1098],2:[753,691],3:[483,484],4:[388,359],5:[150,153]}],
+        ["09-03",14002,14407, {1:[1006,999],2:[617,616],3:[451,455],4:[165,186]}],
+        ["09-04",15133,15204, {1:[986,994],2:[657,632],3:[251,248]}],
+        ["09-05",16018,16055, {1:[1001,1017],2:[357,357]}],
+        ["09-06",16257,16270, {1:[555,596]}],
       ];
 
-      const wpc = v => Math.max(v / SCALE * 100, v > 0 ? 1.2 : 0).toFixed(1);
+      // 두 비율 검정(pooled z) + 정규 꼬리확률 근사(Zelen & Severo).
+      function ptest(x1, n1, x2, n2) {
+        if (!n1 || !n2) return null;
+        const pp = (x1 + x2) / (n1 + n2);
+        const se = Math.sqrt(pp * (1 - pp) * (1 / n1 + 1 / n2));
+        if (!se) return null;
+        const z = (x2 / n2 - x1 / n1) / se;
+        const t = 1 / (1 + 0.2316419 * Math.abs(z));
+        const d = 0.3989423 * Math.exp(-z * z / 2);
+        return 2 * d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      }
+      const nf = v => v.toLocaleString("en-US");
 
-      document.getElementById("rcgrid").innerHTML = RC.map(p => {
-        let rows = "";
-        for (let d = 1; d <= DMAX; d++) {
-          const a = p.A[d], b = p.B[d];
-          if (a == null || b == null) {
-            const soon = d > D_ARRIVED;
-            rows += `<div class="row na">`
-              + `<div class="va">—</div>`
-              + `<div class="tr l"><div class="hatch${soon ? " soon" : ""}"></div></div>`
-              + `<div class="day">D+${d}</div>`
-              + `<div class="tr r"><div class="hatch${soon ? " soon" : ""}"></div></div>`
-              + `<div class="vb">—</div>`
-              + `<div class="dd">${soon ? "미도래" : "미집계"}</div></div>`;
-            continue;
-          }
-          const dd = ((b - a) / a * 100);
-          const pv = p.P[d], n = p.N[d];
-          const sig = pv < .05 ? " sig" : "";
-          rows += `<div class="row${sig}" data-tip="<b>${p.name} · D+${d}</b>\nA ${a.toFixed(2)}%  ·  B ${b.toFixed(2)}%\nΔ ${dd > 0 ? "+" : ""}${dd.toFixed(1)}%  ·  p=${pv.toFixed(3)}\nn ${n[0].toLocaleString()} / ${n[1].toLocaleString()}">`
-            + `<div class="va">${a.toFixed(2)}%</div>`
-            + `<div class="tr l"><i style="width:${wpc(a)}%"></i></div>`
-            + `<div class="day">D+${d}</div>`
-            + `<div class="tr r"><i style="width:${wpc(b)}%"></i></div>`
-            + `<div class="vb">${b.toFixed(2)}%</div>`
-            + `<div class="dd">${dd > 0 ? "+" : ""}${dd.toFixed(1)}%</div></div>`;
-        }
-        return `<div class="rc-panel"${p.key ? ' style="border-color:color-mix(in srgb,#1d4ed8 25%,var(--border))"' : ""}>
-          <div class="rc-h">${p.name}<span>${p.sub}</span></div>
-          <div class="rp">
-            <div class="hd" style="text-align:right">A 잔존</div><div class="hd"></div>
-            <div class="hd" style="text-align:center">일차</div><div class="hd"></div>
-            <div class="hd">B 잔존</div><div class="hd" style="text-align:right">Δ</div>
-            ${rows}
-          </div>
-        </div>`;
-      }).join("");
+      document.getElementById("tri").innerHTML = `<table>
+        <thead><tr><th>코호트일</th><th>빌드</th><th>코호트</th>
+          ${DAYS.map(n => `<th>D+${n}</th>`).join("")}</tr></thead>
+        <tbody>${TRI.map(([c, cA, cB, cells]) => ["A", "B"].map((ver, i) => {
+          const n0 = ver === "A" ? cA : cB;
+          const tds = DAYS.map(n => {
+            const pair = cells[n];
+            if (!pair) return `<td class="na">·</td>`;
+            const [rA, rB] = pair;
+            const pa = rA / cA * 100, pb = rB / cB * 100;
+            const mine = ver === "A" ? pa : pb, theirs = ver === "A" ? pb : pa;
+            const gap = mine - theirs, win = gap > 0;
+            const pv = ptest(rA, cA, rB, cB);
+            const al = Math.min(Math.abs(gap) / GAP_FULL, 1) * 0.42;
+            const bg = win ? `rgba(21,128,61,${al.toFixed(3)})` : "transparent";
+            const sig = pv != null && pv < 0.05;
+            const tip = `<b>${c} 코호트 · D+${n} · ${ver === "A" ? "3374" : "3375"}</b>\n`
+              + `${mine.toFixed(2)}% (${nf(ver === "A" ? rA : rB)} / ${nf(n0)})\n`
+              + `상대 ${theirs.toFixed(2)}% · 격차 ${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(2)}%p\n`
+              + `두 비율 검정 p=${pv == null ? "—" : pv < 0.001 ? "<0.001" : pv.toFixed(3)}`
+              + (sig ? "" : "\n유의성 미달 — 색은 방향만 뜻합니다");
+            return `<td class="c" style="background:${bg}${sig ? ";outline:1.5px solid var(--ok);outline-offset:-1.5px" : ""}" data-tip="${tip}">`
+              + `<b>${mine.toFixed(2)}</b>${win ? "<s>▲</s>" : ""}</td>`;
+          }).join("");
+          return `<tr class="${i ? "vb" : "va"}">`
+            + (i ? "" : `<td class="day" rowspan="2">${c}</td>`)
+            + `<td class="ver"><i style="background:${ver === "A" ? "#16a34a" : "#1d4ed8"}"></i>${ver === "A" ? "3374" : "3375"}</td>`
+            + `<td class="coh">${nf(n0)}</td>${tds}</tr>`;
+        }).join("")).join("")}</tbody></table>`;
     </script>
     <script src="../app.js"></script>
   </body>
