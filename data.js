@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-07 15:35",
+  updated: "2026-09-07 16:56",
 };
 
 /* --------------------------------------------------------------------------
@@ -104,6 +104,7 @@ const SECTIONS = [
         updated: "2026-09-07 16:18",
         pinned: false,
         tags: ["BigQuery", "공유", "이식"],
+        share: false,
       },
       {
         title: "게임 장르별 AWS 아키텍처 — 2024",
