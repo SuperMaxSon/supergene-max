@@ -31,7 +31,7 @@ HTML     = os.path.join(REPO, "docs", "sol-tournament-slot-ab.html")
 STATE    = os.path.join(REPO, "docs", "data", "sol-slot-ab.json")
 DATA_JS  = os.path.join(REPO, "data.js")
 INDEX    = os.path.join(REPO, "index.html")
-LOG      = os.path.join(REPO, "scripts", "refresh.log")
+LOG      = os.path.join(REPO, "scripts", "refresh.log")   # launchd stdout 은 refresh.launchd.log 로 분리
 
 BQ       = "/opt/homebrew/bin/bq"
 PROJECT  = "game-log-359704"
@@ -431,7 +431,10 @@ def main():
         log("중단(예외): %s: %s" % (type(e).__name__, e))
         return 1
 
-    if old == new:
+    # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면 데이터는 그대로라는 뜻이므로
+    # 커밋하지 않는다 — 안 그러면 같은 값을 매일 새 커밋으로 쌓는다.
+    strip = lambda t: re.sub(r'\n *const PULLED = "[^"]*";', "", t)
+    if strip(old) == strip(new):
         log("변화 없음 — 커밋하지 않는다 (last_day=%s)" % state["last_day"])
         return 0
     if a.dry_run:
