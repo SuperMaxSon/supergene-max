@@ -92,6 +92,9 @@ def page():
   .wrap{max-width:940px;margin:0 auto}
   h1{font-size:20px;margin:0 0 4px}
   .lede{color:var(--mut);margin:0 0 22px;font-size:13px}
+  .nav{display:flex;gap:14px;margin:0 0 14px;font-size:13px}
+  .nav a{color:var(--ac);text-decoration:none;font-weight:600}
+  .nav a:hover{text-decoration:underline}
   .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:16px}
   h2{font-size:14px;margin:0 0 12px;color:var(--mut);letter-spacing:.02em}
   table{width:100%;border-collapse:collapse}
@@ -117,6 +120,8 @@ def page():
       font-size:12px;line-height:1.55;margin:0}
   .note{font-size:12px;color:var(--mut);margin-top:10px}
 </style></head><body><div class="wrap">
+  <div class="nav"><a href="http://localhost:4173/">← 공유 설정</a>
+    <a href="http://localhost:4173/index.html" target="_blank">허브 미리보기 ↗</a></div>
   <h1>자동화 제어판</h1>
   <p class="lede">실행 판정은 <code>run_due.py</code>가 15분마다 확인합니다 —
      지난 슬롯을 놓쳤으면 켜는 즉시 따라잡습니다(catch-up). 지금 {{NOW}}</p>
