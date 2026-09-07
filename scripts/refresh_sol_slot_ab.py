@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""토너 클리어 소셜 슬롯 A/B 문서 자동 갱신.
+"""판 클리어 초대 제거 A/B 문서 자동 갱신.
 
 흐름
     bq query (블록당 1행 JSON)
