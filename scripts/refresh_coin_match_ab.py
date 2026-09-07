@@ -436,16 +436,20 @@ def stamp(now, bust, rng):
 
 
 def summary(state):
-    """알림 한 줄. 기간과 주지표(생성 성공/유저)의 A->B 변화를 담는다."""
-    c = {r["ab_group"]: r for r in state["core"]}
+    """알림 한 줄. 기간과 주지표(생성 성공/유저)의 A->B 변화를 담는다.
+
+    core 는 날짜별 행이므로 sum_core 로 기간 합을 만들어 쓴다 — 보드가 보는 값과 같다.
+    """
     try:
-        a = int(c["A"]["tc_success"]) / int(c["A"]["users"])
-        b = int(c["B"]["tc_success"]) / int(c["B"]["users"])
-        delta = " · 생성 성공/유저 %+.1f%%" % ((b - a) / a * 100) if a else ""
+        c = sum_core(state)
+        a = c["A"]["tc_success"] / c["A"]["users"]
+        b = c["B"]["tc_success"] / c["B"]["users"]
+        users = c["A"]["users"] + c["B"]["users"]
+        return "%s 까지 반영 · 유저 %s명 · 생성 성공/유저 %+.1f%%" % (
+            state["last_day"], format(users, ","), (b - a) / a * 100)
     except Exception:
-        delta = ""
-    users = sum(int(c[g]["users"]) for g in ("A", "B") if g in c)
-    return "%s 까지 반영 · 유저 %s명%s" % (state["last_day"], format(users, ","), delta)
+        # 알림 문구 때문에 갱신을 실패시키지 않는다.
+        return "%s 까지 반영" % state.get("last_day", "?")
 
 
 def git(*args):
