@@ -29,7 +29,10 @@ def cost_note(job):
     if not gib:
         return "1회 " + str(job.get("scan_per_run", "?"))
     usd = gib / 1024.0 * USD_PER_TIB
-    return "1회 %.2f GiB · 온디맨드 기준 약 %d원" % (gib, round(usd * KRW_PER_USD))
+    txt = "1회 %.2f GiB · 온디맨드 기준 약 %d원" % (gib, round(usd * KRW_PER_USD))
+    if job.get("scan_note"):
+        txt += " · <b style='color:#b45309'>⚠ " + html.escape(job["scan_note"]) + "</b>"
+    return txt
 
 
 def load(p, d):
@@ -42,6 +45,31 @@ def load(p, d):
 def save_registry(reg):
     json.dump(reg, open(REGISTRY, "w", encoding="utf-8"),
               ensure_ascii=False, indent=1, sort_keys=False)
+
+
+def hour_grid(hours):
+    """0~23 을 전부 깔아 놓고 토글한다. 쉼표 목록을 손으로 고치는 것보다
+    '지금 몇 시에 도는지'가 한눈에 보이고, 오타로 시각이 사라질 일이 없다."""
+    on = set(hours)
+    cells = []
+    for h in range(24):
+        cells.append(
+            '<form method="post" action="/hour" class="hcell">'
+            '<input type="hidden" name="h" value="%d">'
+            '<button class="hbtn%s" title="%02d:00 %s">%02d</button></form>'
+            % (h, " is-on" if h in on else "", h,
+               "끄기" if h in on else "켜기", h))
+    return "".join(cells)
+
+
+def next_run(hours):
+    if not hours:
+        return "없음 (선택된 시각이 없습니다)"
+    now = datetime.datetime.now()
+    later = [h for h in sorted(hours) if h > now.hour]
+    if later:
+        return "오늘 %02d:00" % later[0]
+    return "내일 %02d:00" % sorted(hours)[0]
 
 
 def page():
@@ -88,7 +116,7 @@ def page():
             html.escape(j.get("label", jid)),
             html.escape(j.get("url", "#")),
             html.escape(j.get("script", "")),
-            html.escape(cost_note(j)),
+            cost_note(j),          # 내부 생성 문자열이다. 사용자 입력은 안에서 escape 한다
             pill,
             "공용" if not own else "개별 " + html.escape(",".join(map(str, own))),
             html.escape(last), mark,
@@ -129,7 +157,13 @@ def page():
         letter-spacing:.04em}
   .pill.on{background:#dcfce7;color:var(--ok)}
   .pill.off{background:#f1f2f4;color:var(--mut)}
-  input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;width:180px}
+  .hgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;margin:2px 0 4px}
+  @media(max-width:640px){.hgrid{grid-template-columns:repeat(6,1fr)}}
+  .hcell{margin:0}
+  .hbtn{width:100%;padding:9px 0;border:1px solid var(--bd);border-radius:8px;background:#fff;
+        color:var(--mut);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600}
+  .hbtn:hover{border-color:var(--ac);color:var(--ac)}
+  .hbtn.is-on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:800}
   pre{background:#0f1115;color:#d6dae1;padding:14px;border-radius:10px;overflow:auto;
       font-size:12px;line-height:1.55;margin:0}
   .note{font-size:12px;color:var(--mut);margin-top:10px}
@@ -142,11 +176,9 @@ def page():
 
   <div class="card">
     <h2>공용 실행 시각 — 모든 자동화가 이 값을 봅니다</h2>
-    <form method="post" action="/hours">
-      <input type="text" name="hours" value="{{HOURS}}" placeholder="9, 12, 18">
-      <button class="on">저장</button>
-    </form>
-    <div class="note">0~23 시(KST), 쉼표로 구분. 개별 시각이 지정된 작업은 그 값이 우선합니다.</div>
+    <div class="hgrid">{{HOURGRID}}</div>
+    <div class="note">누르면 바로 켜지고 꺼집니다(KST) · 선택 <b>{{HOURCOUNT}}개</b> ·
+      다음 실행 <b>{{NEXTRUN}}</b> · 개별 시각이 지정된 작업은 그 값이 우선합니다.</div>
   </div>
 
   <div class="card">
@@ -162,7 +194,9 @@ def page():
 </div></body></html>"""
     for k, v in (
         ("{{NOW}}",   datetime.datetime.now().strftime("%Y-%m-%d %H:%M")),
-        ("{{HOURS}}", html.escape(", ".join(map(str, hours)))),
+        ("{{HOURGRID}}", hour_grid(hours)),
+        ("{{HOURCOUNT}}", str(len(hours))),
+        ("{{NEXTRUN}}", next_run(hours)),
         ("{{ROWS}}",  "".join(rows) or '<tr><td colspan="5" class="mut">등록된 작업이 없습니다</td></tr>'),
         ("{{LOG}}",   html.escape(tail)),
     ):
@@ -197,11 +231,16 @@ class H(BaseHTTPRequestHandler):
             if jid in reg.get("jobs", {}):
                 reg["jobs"][jid]["enabled"] = not reg["jobs"][jid].get("enabled")
                 save_registry(reg)
-        elif self.path == "/hours":
-            raw = (form.get("hours") or [""])[0]
-            hs  = sorted({int(x) for x in re_ints(raw) if 0 <= int(x) <= 23})
-            if hs:
-                reg.setdefault("defaults", {})["hours"] = hs
+        elif self.path == "/hour":
+            try:
+                h = int((form.get("h") or ["-1"])[0])
+            except ValueError:
+                h = -1
+            if 0 <= h <= 23:
+                hs = set(reg.get("defaults", {}).get("hours") or [])
+                hs.symmetric_difference_update({h})
+                # 전부 끄는 것은 막지 않는다 — '한동안 멈춤'이 유효한 선택이다.
+                reg.setdefault("defaults", {})["hours"] = sorted(hs)
                 save_registry(reg)
         elif self.path == "/run":
             jid = (form.get("id") or [""])[0]
