@@ -309,8 +309,11 @@ def build_js(state):
         b = BENCH[k]
         L.append("          %-9s { %s }," % (k + ":",
                  ", ".join("%s:%d" % (c, b[c]) for c in BENCH_COLS)))
+    # ★조회 시각을 이 블록에 적지 않는다. 매 실행마다 바뀌므로 데이터가 그대로여도
+    #   HTML 이 달라져 C.finish 의 멱등 검사를 통과해 버린다 — 값이 안 변한 날에도
+    #   커밋·푸시가 하루 한 번씩 쌓인다. 조회 시각은 상태 파일과 refresh.log 에 남는다.
     L += ["        },",
-          "        // 솔리테어 — 날짜 × client_version 실측(%s KST 조회)." % state["pulled_kst"],
+          "        // 솔리테어 — 날짜 × client_version 실측. daily 를 코드가 버전별로 합산한다.",
           "        sol: {",
           "          arms: [",
           '            { key:"pre", ver:"482", label:"482 이하", win:%s, color:"#9AA0B8" },'

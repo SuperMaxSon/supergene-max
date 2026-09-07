@@ -98,6 +98,19 @@ def git(*args):
                           capture_output=True, text=True, timeout=300)
 
 
+def dirty(path):
+    """이 파일에 우리가 건드리기 전부터 미커밋 변경이 있었나.
+
+    data.js · index.html 은 허브 공유 파일이라 사람이 편집 중일 수 있다. 그대로
+    git add 하면 남의 미완성 작업이 자동화 커밋에 실려 푸시된다 — 2026-09-07 에
+    실제로 그렇게 됐다(라이브 섹션 정의만 먼저 커밋되고 그걸 채우는 app.js 는 빠졌다).
+
+    판정 불가(리턴코드 2 이상)는 '더럽다'로 본다. 못 믿을 때는 건드리지 않는 쪽이 안전하다.
+    """
+    r = git("diff", "--quiet", "HEAD", "--", path)
+    return r.returncode != 0
+
+
 def push_pending(a):
     """데이터가 안 바뀌어도, 지난 실행에서 푸시하지 못한 커밋이 남아 있으면 올린다.
     이게 없으면 '커밋은 됐고 푸시만 실패' 상태를 재시도가 복구하지 못한다 —
@@ -120,11 +133,23 @@ def push_pending(a):
 
 
 def stamp(now, bust, rng):
-    """문서 머리의 갱신 시각·기간, 허브 카드(data.js), 캐시 버스터(index.html)."""
+    """문서 머리의 갱신 시각·기간, 허브 카드(data.js), 캐시 버스터(index.html).
+
+    **실제로 쓴 공유 파일 목록을 돌려준다.** 사람이 편집 중인 파일은 쓰지도, 담지도 않는다.
+    카드가 한 번 낡은 채로 남지만 다음 실행이 따라잡는다 — 남의 작업을 실어 보내는 쪽이
+    훨씬 비싸다. 문서 본문(_C["html"])은 이 작업 전용 파일이고 splice 가 마커 밖을
+    보존하며 병합하므로 이 판정에서 뺀다.
+    """
     s = open(_C["html"], encoding="utf-8").read()
     s = re.sub(r"문서 갱신 <b>[^<]*</b> KST", "문서 갱신 <b>%s</b> KST" % now, s, count=1)
     s = re.sub(r"데이터 <b>[^<]*</b>", "데이터 <b>%s</b>" % rng, s, count=1)
     open(_C["html"], "w", encoding="utf-8").write(s)
+
+    touched = []
+    if dirty(DATA_JS):
+        log("⚠ data.js 에 미커밋 변경이 있다 — 허브 카드 갱신을 건너뛴다"
+            " (남의 편집을 자동화 커밋에 싣지 않기 위해). 다음 실행이 따라잡는다.")
+        return touched
 
     url = re.escape(_C["doc_url"])
     d = open(DATA_JS, encoding="utf-8").read()
@@ -142,10 +167,19 @@ def stamp(now, bust, rng):
     d = re.sub(r'(url: "%s".*?status: ")[^"]*(")' % url,
                r"\g<1>Live\g<2>", d, count=1, flags=re.S)
     open(DATA_JS, "w", encoding="utf-8").write(d)
+    touched.append(DATA_JS)
 
+    # 캐시 버스터는 data.js 를 실제로 바꿨을 때만 올린다. 위에서 건너뛰었으면
+    # 여기까지 오지 않는다 — 바뀌지도 않은 파일의 캐시를 깨봐야 얻는 게 없다.
+    if dirty(INDEX):
+        log("⚠ index.html 에 미커밋 변경이 있다 — 캐시 버스터를 건너뛴다."
+            " data.js 는 갱신됐으므로 팀에는 최대 10분 늦게 보인다.")
+        return touched
     i = open(INDEX, encoding="utf-8").read()
     i = re.sub(r"data\.js\?v=\d{12}", "data.js?v=" + bust, i)
     open(INDEX, "w", encoding="utf-8").write(i)
+    touched.append(INDEX)
+    return touched
 
 
 def finish(a, state, rng, old, new, dry_dump=None):
@@ -168,11 +202,12 @@ def finish(a, state, rng, old, new, dry_dump=None):
               ensure_ascii=False, indent=1, sort_keys=True)
     open(_C["html"], "w", encoding="utf-8").write(new)
     now = datetime.datetime.now()
-    stamp(now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y%m%d%H%M"), rng)
+    shared = stamp(now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y%m%d%H%M"), rng)
 
-    # 저장소 전체(-A)가 아니라 이 작업이 쓰는 파일만 담는다 —
+    # 저장소 전체(-A)가 아니라 이 작업이 실제로 쓴 파일만 담는다 —
     # 09시에 작업 중인 미커밋 파일이 자동화 커밋에 휩쓸리지 않게.
-    git("add", "--", _C["html"], _C["state"], DATA_JS, INDEX)
+    # shared 는 stamp() 가 정말로 고친 공유 파일만 들어 있다(더러운 것은 빠진다).
+    git("add", "--", _C["html"], _C["state"], *shared)
     msg = _C["commit_msg"] % (state["last_day"], rng)
     r = git("commit", "-q", "-m", msg)
     if r.returncode != 0:
