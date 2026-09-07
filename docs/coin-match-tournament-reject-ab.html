@@ -194,8 +194,8 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너먼트 연속 거절 차단 — A ↔ B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 11:49</b> KST</span>
-          <span>데이터 <b>8/27~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 12:00</b> KST</span>
+          <span>데이터 <b>8/27~9/6</b> · 리텐션 <b>stat 사전집계</b>(raw 0) · KPI 보드 <b>raw 12 파티션-일</b></span>
         </div>
         <p class="doc-lede">
           토너먼트 생성 다이얼로그를 <b>연속 3회 거절</b>하면 그 세션에서는 더 띄우지 않습니다.
@@ -386,7 +386,7 @@
       <section class="doc-section" id="sql">
         <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">이거 하나로 위 보드가 전부 채워집니다</span></h2>
         <details class="fold">
-          <summary>단일 쿼리 — 지표를 행, A/B를 열로 피벗</summary>
+          <summary>단일 쿼리 — 지표를 행, A/B를 열로 피벗 · <b>raw 12 파티션-일</b></summary>
           <div class="fold-body">
             <div class="table-scroll"><pre>WITH base AS (
     SELECT
@@ -395,8 +395,8 @@
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
         event
     FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-07'
-      AND client_version IN (3374, 3375, 3376, 3377, 3378)
+    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-06'
+      AND client_version IN (3374, 3375)
 ),
 core AS (
     SELECT
@@ -420,45 +420,6 @@ core AS (
     FROM base
     GROUP BY ab_group
 ),
-first_seen AS (
-    SELECT player_id, MIN(log_date) AS install_date
-    FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-07-01' AND '2026-09-07'
-      AND event = '1000_LOGIN_COMPLETE'
-    GROUP BY player_id
-),
-nru_group AS (
-    SELECT
-        f.player_id,
-        f.install_date,
-        CASE WHEN MIN(l.client_version) = 3375 THEN 'B' ELSE 'A' END AS ab_group
-    FROM first_seen f
-    JOIN `game-log-359704.raw.coin_match` l
-      ON l.player_id = f.player_id
-     AND l.log_date = f.install_date
-    WHERE f.install_date BETWEEN '2026-08-27' AND '2026-08-31'
-      AND l.log_date BETWEEN '2026-08-27' AND '2026-08-31'
-      AND l.event = '1000_LOGIN_COMPLETE'
-      AND l.client_version IN (3374, 3375, 3376, 3377, 3378)
-    GROUP BY f.player_id, f.install_date
-),
-activity AS (
-    SELECT DISTINCT player_id, log_date
-    FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-07'
-      AND event = '1000_LOGIN_COMPLETE'
-),
-retention AS (
-    SELECT
-        g.ab_group,
-        COUNT(DISTINCT g.player_id) AS cohort_size,
-        COUNT(DISTINCT CASE WHEN DATE_DIFF(a.log_date, g.install_date, DAY) = 1 THEN g.player_id END) AS d1,
-        COUNT(DISTINCT CASE WHEN DATE_DIFF(a.log_date, g.install_date, DAY) = 7 THEN g.player_id END) AS d7
-    FROM nru_group g
-    LEFT JOIN activity a
-      ON a.player_id = g.player_id
-    GROUP BY g.ab_group
-),
 metrics AS (
     SELECT 1 AS sort_key, 'users' AS metric, ab_group, CAST(users AS FLOAT64) AS value FROM core
     UNION ALL SELECT 2, 'sessions', ab_group, CAST(sessions AS FLOAT64) FROM core
@@ -466,18 +427,15 @@ metrics AS (
     UNION ALL SELECT 4, 'plays_per_session', ab_group, SAFE_DIVIDE(play_starts, sessions) FROM core
     UNION ALL SELECT 5, 'finish_rate_pct', ab_group, SAFE_DIVIDE(play_finishes, play_starts) * 100 FROM core
     UNION ALL SELECT 6, 'session_300s_pct', ab_group, SAFE_DIVIDE(sessions_300s, sessions) * 100 FROM core
-    UNION ALL SELECT 7, 'nru_cohort_size', ab_group, CAST(cohort_size AS FLOAT64) FROM retention
-    UNION ALL SELECT 8, 'd1_retention_pct', ab_group, SAFE_DIVIDE(d1, cohort_size) * 100 FROM retention
-    UNION ALL SELECT 9, 'd7_retention_pct', ab_group, SAFE_DIVIDE(d7, cohort_size) * 100 FROM retention
-    UNION ALL SELECT 10, 'tournament_create_try_per_user', ab_group, SAFE_DIVIDE(tc_try, users) FROM core
-    UNION ALL SELECT 11, 'tournament_create_success_rate_pct', ab_group, SAFE_DIVIDE(tc_success, tc_try) * 100 FROM core
-    UNION ALL SELECT 12, 'tournament_suppressed_per_user', ab_group, SAFE_DIVIDE(tc_suppressed, users) FROM core
-    UNION ALL SELECT 13, 'tournament_share_success_rate_pct', ab_group, SAFE_DIVIDE(ts_success, ts_try) * 100 FROM core
-    UNION ALL SELECT 14, 'msg_p2p_try_per_user', ab_group, SAFE_DIVIDE(p2p_try, users) FROM core
-    UNION ALL SELECT 15, 'msg_p2p_success_rate_pct', ab_group, SAFE_DIVIDE(p2p_success, p2p_try) * 100 FROM core
-    UNION ALL SELECT 16, 'feed_share_try_per_user', ab_group, SAFE_DIVIDE(feed_try, users) FROM core
-    UNION ALL SELECT 17, 'feed_share_success_rate_pct', ab_group, SAFE_DIVIDE(feed_success, feed_try) * 100 FROM core
-    UNION ALL SELECT 18, 'switch_context_success_rate_pct', ab_group, SAFE_DIVIDE(sc_success, sc_try) * 100 FROM core
+    UNION ALL SELECT 7, 'tournament_create_try_per_user', ab_group, SAFE_DIVIDE(tc_try, users) FROM core
+    UNION ALL SELECT 8, 'tournament_create_success_rate_pct', ab_group, SAFE_DIVIDE(tc_success, tc_try) * 100 FROM core
+    UNION ALL SELECT 9, 'tournament_suppressed_per_user', ab_group, SAFE_DIVIDE(tc_suppressed, users) FROM core
+    UNION ALL SELECT 10, 'tournament_share_success_rate_pct', ab_group, SAFE_DIVIDE(ts_success, ts_try) * 100 FROM core
+    UNION ALL SELECT 11, 'msg_p2p_try_per_user', ab_group, SAFE_DIVIDE(p2p_try, users) FROM core
+    UNION ALL SELECT 12, 'msg_p2p_success_rate_pct', ab_group, SAFE_DIVIDE(p2p_success, p2p_try) * 100 FROM core
+    UNION ALL SELECT 13, 'feed_share_try_per_user', ab_group, SAFE_DIVIDE(feed_try, users) FROM core
+    UNION ALL SELECT 14, 'feed_share_success_rate_pct', ab_group, SAFE_DIVIDE(feed_success, feed_try) * 100 FROM core
+    UNION ALL SELECT 15, 'switch_context_success_rate_pct', ab_group, SAFE_DIVIDE(sc_success, sc_try) * 100 FROM core
 ),
 pivoted AS (
     SELECT
@@ -584,12 +542,12 @@ GROUP BY player_id</pre></div>
         </details>
 
         <div class="stale-bar" style="margin:14px 0 0">
-          <b>raw 스캔 비용에 대해</b> 이 문서의 쿼리는 <code>raw.coin_match</code> 를 직접 읽습니다.
+          <b>raw 스캔 비용에 대해</b> 리텐션은 <code>stat</code> 사전집계로 옮겨 <b>raw 스캔 0</b> 입니다.
+          KPI 보드만 <code>raw.coin_match</code> 를 읽고, <code>base</code> CTE 하나로 묶여 있어
+          <b>실행 1회에 12 파티션-일</b>입니다.
           <b>과거 날짜 집계를 반복 실행하지 마십시오</b> — <code>raw</code> 는 한 번 쌓인 행이 바뀌지 않으므로
-          같은 기간을 다시 계산할 이유가 없고, 결과를 중간 집계 테이블에 한 번 저장해 재사용하는 편이 맞습니다.
-          팀에 <code>stat</code> 사전집계 데이터셋(주요 이벤트 횟수·리텐션)이 있으므로,
-          <b>정기 갱신은 그쪽으로 옮기는 것이 원칙</b>입니다 — 이 문서의 쿼리는 A/B 군 배정(설치일 <code>client_version</code>)과
-          처치 노출 층(설치 당일 연속 거절 3회)이 <code>stat</code> 에 있는지 확인되기 전까지의 임시판입니다.
+          같은 기간을 다시 계산할 이유가 없습니다.
+          실험이 길어지면 <b>일 단위로 중간 테이블에 쌓아</b> 갱신 1회당 1 파티션-일로 고정하는 것이 맞습니다.
         </div>
 
         <div class="foot">
@@ -626,8 +584,8 @@ GROUP BY player_id</pre></div>
               "1000_LOGIN_COMPLETE 의 고유 player_id. 0.2% 차이는 사실상 완전 반반입니다"],
             ["세션", 495640, 490388, nfr, "g_cnt", "spec",
               "player_id + logincount_total 조합. 1.1% 차이"],
-            ["NRU 코호트", 80642, 80517, nfr, "g_cnt", "spec",
-              "8/27~8/31 신규 유저. 리텐션 행의 분모입니다"],
+            ["NRU 코호트", 60522, 60608, nfr, "g_cnt", "spec",
+              "8/27~8/31 설치 코호트. 출처는 stat.coin_match_prod_nru_retention3 이고 아래 리텐션 격자의 분모와 같은 값입니다"],
           ]},
 
         { name:"감시 지표", acc:"#b45309",
