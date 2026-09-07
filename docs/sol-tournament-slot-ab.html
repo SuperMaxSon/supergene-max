@@ -373,22 +373,21 @@ last_day AS (
     SELECT MAX(log_date) AS max_log_date FROM ret
 ),
 retn AS (
-    -- 누적 복귀율. c_n = 코호트 중 1~n일 사이에 '한 번이라도' 다시 로그인한 사람 수.
-    -- COUNT(DISTINCT)가 합집합을 세므로 매일 온 사람이 중복으로 잡히지 않는다.
-    -- 집합이 커지기만 하므로 n이 커질수록 반드시 오르고, 그 날짜가 지나면 값이 확정된다.
+    -- 클래식 Day-N 리텐션. d_n = 코호트 중 정확히 n일 뒤 그날 다시 로그인한 사람 수.
+    -- 업계 표준 D1/D3/D7 과 같은 정의이고, 매일 독립으로 재므로 단조 감소가 보장되지는 않는다.
     SELECT
         c.log_date, c.client_version, c.seg,
         COUNT(DISTINCT c.player_id) AS coh,
-        -- 이 코호트를 며칠까지 관측했는지. cN 은 N &lt;= observed_days 인 칸만 유효하고,
+        -- 이 코호트를 며칠까지 관측했는지. dN 은 N &lt;= observed_days 인 칸만 유효하고,
         -- 마지막 날이 오늘(부분일)이면 그 한 칸은 더 빼야 한다 — 안 그러면 이탈로 오독한다.
         DATE_DIFF((SELECT max_log_date FROM last_day), c.log_date, DAY) AS observed_days,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 1, c.player_id, NULL)) AS c1,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 2, c.player_id, NULL)) AS c2,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 3, c.player_id, NULL)) AS c3,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 4, c.player_id, NULL)) AS c4,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 5, c.player_id, NULL)) AS c5,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 6, c.player_id, NULL)) AS c6,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 7, c.player_id, NULL)) AS c7
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 1, c.player_id, NULL)) AS d1,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 2, c.player_id, NULL)) AS d2,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 3, c.player_id, NULL)) AS d3,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 4, c.player_id, NULL)) AS d4,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 5, c.player_id, NULL)) AS d5,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 6, c.player_id, NULL)) AS d6,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS d7
     FROM cohort c
     LEFT JOIN ret r
         ON r.player_id = c.player_id
@@ -447,7 +446,7 @@ UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     ORDER BY seg, client_version)) FROM dist
 UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     log_date AS coh_date, CAST(client_version AS STRING) AS ver, seg,
-    coh, observed_days, c1, c2, c3, c4, c5, c6, c7)
+    coh, observed_days, d1, d2, d3, d4, d5, d6, d7)
     ORDER BY log_date, client_version, seg)) FROM retn
 UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
@@ -466,8 +465,8 @@ ORDER BY `블록`;</pre></div>
               결과는 <b>8행</b>입니다 — <code>0_META</code>(조회 시각) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
               <code>3_RET</code> · <code>4_INFLOW</code>이 보드를 채우고,
               <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
-              <code>3_RET</code>의 <code>c1~c7</code>은 <b>누적 복귀율</b>입니다 — 1~n일 사이에 한 번이라도 돌아온 사람 수라,
-              n이 커질수록 반드시 오르고 그 날짜가 지나면 값이 확정됩니다.
+              <code>3_RET</code>의 <code>d1~d7</code>은 <b>클래식 Day-N 리텐션</b>입니다 — 정확히 n일 뒤 그날 접속한 사람 수로,
+              업계 표준 D1/D3/D7 과 같은 정의입니다.
               <b><code>observed_days</code>에서 1을 빼고 쓰세요</b> — 마지막 날은 조회 시점까지만 쌓인 부분일이라,
               그 칸을 그대로 넣으면 하루가 덜 찬 것이 이탈로 찍힙니다.
               <b><code>7_VERSION</code>을 가장 먼저 보세요</b> — 485가 말라 있으면 대조군이 없고, 487 이상이 떴으면 486군에
@@ -517,19 +516,20 @@ ORDER BY `블록`;</pre></div>
                  RU: { uday:1870, avg:11.65, p50:3, p75:11, p90:30, play:65.1, p50p:8 } },
       };
 
-      // 3_RET — 코호트일 × 빌드 × 유저군. d[i] = 1~(i+1)일 사이에 한 번이라도 복귀한 수(누적).
-      // 조회 시점에 9/7이 4시간치만 쌓여 있었다 — 그 부분일을 넣으면 9/6 코호트 D+1이 20.8%로
-      // 찍혀 9/5 코호트의 32.0%보다 낮게 나온다. 이탈이 아니라 하루가 덜 찬 것이므로
-      // 마지막 완전한 날(9/6)까지만 쓴다. 각 배열이 그 코호트의 도래분까지만 들어 있는 이유다.
+      // 3_RET — 코호트일 × 빌드 × 유저군. d[i] = 코호트가 정확히 (i+1)일 뒤 그날 접속한 수.
+      // 업계 표준 D1/D3/D7 과 같은 정의다. 매일 독립으로 재는 출석률이라 보통 내려가지만
+      // 단조 감소가 보장되지는 않는다 — 하루 걸러 오는 유저가 있으면 톱니가 생긴다.
+      // 조회 시점에 9/7이 4시간치뿐이라(9/6 코호트 D+1이 20.8%로 찍힌다) 마지막 완전한 날인
+      // 9/6까지만 쓴다. 각 배열이 그 코호트의 도래분까지만 들어 있는 이유다.
       const RET = [
-        { c:"09-03", ver:"485", seg:"NRU", coh:112, d:[28, 36, 39] },
-        { c:"09-03", ver:"485", seg:"RU",  coh:132, d:[88, 103, 105] },
-        { c:"09-03", ver:"486", seg:"NRU", coh:141, d:[34, 42, 46] },
-        { c:"09-03", ver:"486", seg:"RU",  coh:150, d:[99, 109, 123] },
-        { c:"09-04", ver:"485", seg:"NRU", coh:630, d:[90, 119] },
-        { c:"09-04", ver:"485", seg:"RU",  coh:415, d:[243, 278] },
-        { c:"09-04", ver:"486", seg:"NRU", coh:661, d:[100, 132] },
-        { c:"09-04", ver:"486", seg:"RU",  coh:426, d:[238, 294] },
+        { c:"09-03", ver:"485", seg:"NRU", coh:112, d:[28, 26, 26] },
+        { c:"09-03", ver:"485", seg:"RU",  coh:132, d:[88, 88, 70] },
+        { c:"09-03", ver:"486", seg:"NRU", coh:141, d:[34, 26, 27] },
+        { c:"09-03", ver:"486", seg:"RU",  coh:150, d:[99, 90, 98] },
+        { c:"09-04", ver:"485", seg:"NRU", coh:630, d:[90, 68] },
+        { c:"09-04", ver:"485", seg:"RU",  coh:415, d:[243, 213] },
+        { c:"09-04", ver:"486", seg:"NRU", coh:661, d:[100, 85] },
+        { c:"09-04", ver:"486", seg:"RU",  coh:426, d:[238, 230] },
         { c:"09-05", ver:"485", seg:"NRU", coh:633, d:[95] },
         { c:"09-05", ver:"485", seg:"RU",  coh:395, d:[234] },
         { c:"09-05", ver:"486", seg:"NRU", coh:678, d:[111] },
@@ -659,7 +659,7 @@ ORDER BY `블록`;</pre></div>
               false, null, e => [e.sup, e.ud]],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
-          sub:"누적 복귀율 — 1~n일 사이 한 번이라도 복귀 · <s class='old'>붙어 있는 485·486 쌍 안에서 세로로만 견주세요</s>",
+          sub:"D+N 리텐션 — 정확히 N일 뒤 그날 접속 · <s class='old'>붙어 있는 485·486 쌍 안에서 세로로만 견주세요</s>",
           rows:[] },
         { name:"플레이 · 수익", acc:"#d97706",
           sub:"슬롯을 바꿔서 게임이 어떻게 됐는지 · 여기는 전부 유의성 미달이라 방향만 참고합니다",
@@ -734,7 +734,7 @@ ORDER BY `블록`;</pre></div>
           const al  = Math.min(Math.abs(gap) / GAP_FULL, 1) * 0.42;
           const bg  = win ? `rgba(21,128,61,${al.toFixed(3)})` : "transparent";
           const sig = pv != null && pv < 0.05;
-          const tip = `${c} 코호트 · D+${n} 이내 · ${ver}\n${mine.toFixed(1)}% (${nf(me.x)} / ${nf(me.n)})\n`
+          const tip = `${c} 코호트 · D+${n} · ${ver}\n${mine.toFixed(1)}% (${nf(me.x)} / ${nf(me.n)})\n`
             + `상대 ${theirs.toFixed(1)}% · 격차 ${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)}%p\n`
             + `두 비율 검정 p=${pv == null ? "—" : pv < 0.001 ? "<0.001" : pv.toFixed(3)}`
             + (sig ? "" : "\n유의성 미달 — 색은 방향만 뜻합니다");
@@ -757,16 +757,22 @@ ORDER BY `블록`;</pre></div>
           </div>
           <div class="pyr"><table>
             <thead><tr><th>코호트일</th><th>빌드</th><th>코호트</th>
-              ${DAYS.map(n => `<th>≤D+${n}</th>`).join("")}</tr></thead>
+              ${DAYS.map(n => `<th>D+${n}</th>`).join("")}</tr></thead>
             <tbody>${body}</tbody>
           </table></div>
           <div class="tri-foot">
-            숫자는 <b>그 코호트가 1~N일 사이에 한 번이라도 다시 접속한 비율(%)</b>입니다 — 누적이라
-            <b>가로로 갈수록 반드시 오릅니다</b>. 매일 온 사람도 한 번만 세므로 날짜별 접속수의 합과는 다릅니다.
+            숫자는 <b>그 코호트가 정확히 N일 뒤 그날 다시 접속한 비율(%)</b>입니다 — 업계에서 말하는
+            D1 / D3 / D7 리텐션과 같은 정의입니다. 누적이 아니라 <b>그날 하루 출석률</b>이라
+            보통은 내려가지만 <b>단조 감소가 보장되지는 않습니다</b> — 하루 건너뛰고 이틀 뒤에 온 유저는
+            D+2에서 빠지고 D+3에 잡히기 때문입니다.
+            실제로 <b>9/3 코호트 486만 D+2 39.9% → D+3 43.0%로 올라갑니다</b> —
+            RU 150명 중 <b>8명</b> 차이(90 → 98)입니다. 요일 때문이 아닙니다:
+            같은 일요일(9/6)로 들어가는 9/4 코호트는 표본이 10배 큰데 <b>485·486 둘 다 내려갑니다</b>
+            (31.9 → 26.9 · 31.1 → 29.0).
             <b>· 로 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이고, 그래서 표가 아래로 갈수록 짧아집니다.
-            비교는 <b>붙어 있는 485·486 한 쌍 안에서 세로로</b>만 하세요. 가로로 이어 읽는 것은 같은 코호트라 괜찮지만,
-            <b>다른 코호트일끼리 세로로 이어 읽으면 안 됩니다</b> — 9/3은 롤아웃 첫날이라 조기 업데이트 헤비 유저만 잡혀
-            복귀율이 다른 코호트보다 높습니다.
+            비교는 <b>붙어 있는 485·486 한 쌍 안에서 세로로</b>만 하세요 —
+            <b>다른 코호트일끼리 세로로 이어 읽으면 안 됩니다</b>. 9/3은 롤아웃 첫날이라
+            조기 업데이트 헤비 유저만 잡혀 D+1이 47%대이고 나머지 코호트는 32%대입니다.
           </div>`;
       }
 
@@ -848,10 +854,10 @@ ORDER BY `블록`;</pre></div>
             <em>초대 유입 ${(IP.ti/IP.n).toFixed(1)} → ${(IC.ti/IC.n).toFixed(1)}을 공유 유입 ${(IP.t/IP.n).toFixed(1)} → ${(IC.t/IC.n).toFixed(1)}이 메웠습니다.
             <b>발신은 절반만 처치된 상태</b>(485·486 반반 서빙)라 486 전량 배포면 폭이 더 커질 수 있습니다</em></div>
           <div class="bl"><b>가드레일</b><span>전부 유의성 미달</span>
-            <span class="v"><span class="p">누적 리텐션 D+1~D+3</span> <span class="n">n.s.</span></span>
-            <span class="d">p≥0.83</span>
-            <em>누적 복귀율은 표본이 가장 큰 9/4 코호트(n≈1,050)에서 ≤D+1 31.9↔31.1(p=0.70) ·
-            ≤D+2 38.0↔39.2(p=0.57)로 <b>격차가 1%p 안팎</b>이고, 나머지 코호트도 모두 미달입니다.
+            <span class="v"><span class="p">리텐션 D+1~D+3</span> <span class="n">n.s.</span></span>
+            <span class="d">전 칸 미달</span>
+            <em>표본이 가장 큰 9/4 코호트(n≈1,050)에서 D+1 31.9↔31.1(p=0.70) ·
+            D+2 26.9↔29.0(p=0.28)이고, 다른 코호트·구간도 모두 유의성에 이르지 못했습니다.
             토너 생성률(p=0.47)도, 배정 균형(US Android 1,861 ↔ 1,939 등 OS별 3~6% 차)도 이상이 없습니다 —
             <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
         </div>`;
