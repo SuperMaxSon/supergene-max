@@ -197,7 +197,7 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 A/B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 13:45</b> KST</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 13:55</b> KST</span>
           <span>데이터 <b>9/3~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
         </div>
         <p class="doc-lede">
@@ -291,27 +291,25 @@ return useInvite ? invite : share;
       <section class="doc-section" id="sql">
         <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">이거 하나면 문서 전체가 채워집니다</span></h2>
         <div class="stale-bar" style="margin-bottom:14px">
-          <b>블록을 쪼개 뽑지 않는 것이 이 쿼리의 목적입니다.</b> 예전에는 보드·분포·리텐션·유입을 따로 뽑았는데,
-          하나만 다시 뽑으면 <b>유입 ÷ 발화</b>처럼 블록을 가로지르는 값이 조용히 어긋났습니다(지금 문서가 그 상태입니다).
-          한 번에 뽑으면 모든 블록이 같은 시각이 되고, <code>0_META</code> 행이 그 조회 시각을 KST로 찍어 줍니다.
+          <b>아래 쿼리는 이 문서를 채우는 스크립트가 실제로 실행하는 문자열 그대로입니다</b> —
+          <code>scripts/refresh_sol_slot_ab.py</code>가 자기 쿼리를 여기에 심으므로 사본이 갈라질 수 없습니다.
+          블록을 쪼개 뽑지 않는 것이 이 쿼리의 목적입니다: 하나만 다시 뽑으면
+          <b>유입 ÷ 발화</b>처럼 블록을 가로지르는 값이 조용히 어긋납니다.
         </div>
         <details class="fold" open>
-          <summary>전체 갱신 — 블록당 1행 · <b>붙여넣기 칸의 JSON 키 = 문서 JS 필드명</b></summary>
+          <summary>전체 갱신 쿼리 — 블록당 1행 · <b>매일 KST 11:00 자동 실행</b></summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>-- 문서의 데이터 블록 전부를 한 번에 뽑는다. 블록마다 따로 뽑으면 조회 시각이 섞여서
--- '유입 ÷ 발화'처럼 블록을 가로지르는 값이 조용히 틀린다 — 그래서 쿼리를 하나로 합쳤다.
--- 결과는 블록당 1행이고, 붙여넣기 칸의 JSON 키가 문서 JS의 필드명과 같다.
+            <!-- SQL:START -->
+            <div class="table-scroll"><pre>-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 가 매일 KST 11:00 에 이 문자열을
+-- 그대로 실행하고, 같은 문자열을 문서의 SQL 폴드에 심는다 — 사본이 갈라질 수 없다.
 --
--- 스캔 원칙 (2026-09-07 개정)
---  · 오늘은 절대 넣지 않는다. 마지막 날이 잘린 하루면 그 하루가 이탈로 오독된다.
---  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 문서에
---    박혀 있고 로그는 불변이라 다시 읽을 이유가 없다. 3일 창이 자기치유 구간이다.
+-- 스캔 원칙
+--  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
+--  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 뽑혀 있고 불변이다.
 --  · 가벼운 컬럼만 읽는 스캔(lite)은 전 구간이어도 싸다 — 실험 성립 판정은 전 구간이 필요하다.
 --  · 리텐션은 raw 조인을 쓰지 않는다. stat 사전집계를 읽는다.
+--  · 블록을 쪼개지 않는다. 하나만 다시 뽑으면 블록을 가로지르는 값이 조용히 어긋난다.
 WITH us AS (
-    -- 무거운 컬럼(data · entrypoint_now)을 읽는 유일한 스캔이다. 최근 3일 · 오늘 제외.
-    -- 이전 판에서는 이 창이 8/28~오늘이었는데, 그 유일한 이유가 리텐션의 복귀 판정이었다.
-    -- 리텐션이 stat 으로 빠지면서 긴 창의 근거가 사라졌다 — 이 쿼리 최대의 절감이다.
     SELECT log_date, player_id, event, data, entrypoint_now, client_version
     FROM `game-log-359704.raw.solitaire_city_journey`
     WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
@@ -319,15 +317,12 @@ WITH us AS (
         AND country = 'US'
 ),
 lite AS (
-    -- 가벼운 컬럼만 읽는다. data / entrypoint_now 를 건드리지 않으므로 창이 길어도 싸다.
-    -- 버전 필터를 걸지 않는 것이 핵심이다 — 487 이상이 떴는지를 봐야 하기 때문이다.
     SELECT log_date, player_id, client_version, country, os
     FROM `game-log-359704.raw.solitaire_city_journey`
     WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
         AND event = '1000_LOGIN_COMPLETE'
 ),
 ab AS (
-    -- 로그인 여부·is_new_device는 1000 로그에만 실리므로 윈도우로 유저-일 전체에 전파한다.
     SELECT
         log_date, player_id, event, data, client_version,
         MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
@@ -339,7 +334,6 @@ ab AS (
     WHERE client_version IN (485, 486)
 ),
 daily AS (
-    -- 날짜 축이 있으므로 문서 JS 에서 같은 log_date 행을 덮어쓰고 새 날짜만 추가한다.
     SELECT
         log_date, client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
         COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
@@ -367,9 +361,6 @@ perday AS (
     GROUP BY log_date, player_id, client_version
 ),
 dist AS (
-    -- 판 종료 ÷ DAU는 평균이라 헤비 유저에 끌린다. 중앙값을 같이 봐야
-    -- '다수가 더 했나'와 '소수가 많이 했나'가 갈린다. 단위는 유저-일이다.
-    -- ⚠ 날짜 축이 없으므로 갱신할 때마다 통째로 바뀐다 — 즉 최근 3일 롤링이다.
     SELECT
         client_version, seg,
         COUNT(*)                                              AS uday,
@@ -383,10 +374,6 @@ dist AS (
     GROUP BY client_version, seg
 ),
 retn AS (
-    -- 리텐션 — stat 사전집계. raw 스캔도 조인도 없다.
-    -- 코호트 기준이 join_date(가입일)라 raw 의 is_new_device 기준과 모집단이 다르다.
-    -- 실측상 is_new_device 쪽이 NRU 를 14~28% 과대계상한다 — 대시보드와 맞는 쪽은 이쪽이다.
-    -- dN 은 비율이므로 국가·OS 행을 합칠 때 nru_count 로 가중해 인원수로 되돌린다.
     SELECT
         join_date, client_version, social,
         SUM(nru_count) AS coh,
@@ -405,8 +392,6 @@ retn AS (
     GROUP BY join_date, client_version, social
 ),
 inflow AS (
-    -- 수신자의 빌드는 발신자의 처치와 무관하므로 버전축을 넣지 않는다.
-    -- 8/28~9/2 기준선은 이미 문서에 박혀 있다 — 여기서는 새 날짜만 나온다.
     SELECT
         log_date,
         COUNTIF(JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT')        AS t,
@@ -416,8 +401,6 @@ inflow AS (
     GROUP BY log_date
 ),
 res AS (
-    -- 2300은 클리어와 실패·포기를 함께 센다. 슬롯은 클리어에서만 뜨므로 갈라야 한다.
-    -- ⚠ dist 와 같이 날짜 축이 없다 — 최근 3일 롤링이다.
     SELECT
         client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
         JSON_VALUE(data, '$.result') AS result,
@@ -427,7 +410,6 @@ res AS (
     GROUP BY client_version, seg, result
 ),
 bal AS (
-    -- 배정 균형만 국가 필터를 뺀다. FB가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
     SELECT
         client_version, country, IFNULL(os, '(null)') AS os,
         COUNT(DISTINCT player_id) AS users
@@ -437,19 +419,17 @@ bal AS (
     HAVING users &gt;= 10
 ),
 vers AS (
-    -- 실험이 아직 성립하는지부터 본다. 485가 말라 있으면 대조군이 없는 것이고,
-    -- 487 이상이 떴으면 처치가 하나 더 얹힌 것이라 486군이 오염된다.
     SELECT log_date, client_version, COUNT(DISTINCT player_id) AS dau
     FROM lite
     WHERE country = 'US'
     GROUP BY log_date, client_version
     HAVING dau &gt;= 10
 )
-SELECT '0_META' AS `블록`, 1 AS `행수`,
+SELECT '0_META' AS blk, 1 AS rows_n,
     TO_JSON_STRING(STRUCT(
         FORMAT_DATETIME('%Y-%m-%d %H:%M', CURRENT_DATETIME('Asia/Seoul')) AS pulled_kst,
         DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_day,
-        DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AS heavy_scan_from)) AS `붙여넣기`
+        DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AS heavy_scan_from)) AS payload
 UNION ALL SELECT '1_DAILY', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, seg,
     ud, fin, sh_try, sh_ok, inv_try, inv_ok, sup, cr_try, cr_ok, it, rv)
@@ -473,29 +453,25 @@ UNION ALL SELECT '6_BALANCE', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
 UNION ALL SELECT '7_VERSION', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, dau)
     ORDER BY log_date, client_version)) FROM vers
-ORDER BY `블록`;</pre></div>
+ORDER BY blk</pre></div>
+            <!-- SQL:END -->
             <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
-              결과는 <b>8행</b>입니다 — <code>0_META</code>(조회 시각·창) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
-              <code>3_RET</code> · <code>4_INFLOW</code>이 보드를 채우고,
-              <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
-              <b>이 쿼리는 오늘을 읽지 않습니다</b> — 마지막 날은 항상 <b>어제</b>라, 부분일이 이탈로 오독되는 사고가
-              구조적으로 막힙니다. 그래서 <code>observed_days</code>를 더 빼지 않고 그대로 씁니다.
-              <b>무거운 스캔은 최근 3일뿐입니다</b>(<code>us</code>) — 그 이전 날짜는 이미 아래 배열에 박혀 있고 로그는 불변입니다.
+              <b>이 쿼리는 오늘을 읽지 않습니다</b> — 마지막 날은 항상 <b>어제</b>라, 부분일이 이탈로
+              오독되는 사고가 구조적으로 막힙니다.
+              <b>무거운 스캔은 최근 3일뿐입니다</b>(<code>us</code>) — 그 이전 날짜는 이미 뽑혀 있고 로그는 불변입니다.
               날짜 축이 있는 <code>1_DAILY</code> · <code>4_INFLOW</code> · <code>7_VERSION</code>은
-              <b>같은 날짜 행을 덮어쓰고 새 날짜만 추가</b>하세요. 3일 창이 자기치유 구간이라 최근 정정은 자동 반영됩니다.
-              <b>날짜 축이 없는 <code>2_EXTRA</code> · <code>5_RESULT</code>는 최근 3일 롤링</b>입니다 — 누적이 아니라
-              통째로 교체되는 값이니 전 기간 분포로 읽지 마세요.
+              같은 날짜 행을 덮어쓰고 새 날짜만 추가하므로 3일 창이 <b>자기치유 구간</b>입니다.
+              <b>날짜 축이 없는 <code>2_EXTRA</code> · <code>5_RESULT</code>는 최근 3일 롤링</b>입니다 —
+              누적이 아니라 통째로 교체되는 값이니 전 기간 분포로 읽지 마세요.
               <code>3_RET</code>은 <b><code>stat.solitaire_city_journey_nru_retention3</code></b>에서 읽습니다(raw 스캔 없음).
               코호트 기준이 <code>join_date</code>라 raw의 <code>is_new_device</code> 기준과 모집단이 다릅니다 —
               실측상 <code>is_new_device</code> 쪽이 NRU를 14~28% 과대계상하며, 대시보드와 맞는 쪽은 stat입니다.
-              <code>d1~d7</code>은 <b>클래식 Day-N 리텐션</b>이고, 비율을 인원수로 되돌린 값입니다.
-              <b>광고 포함/제외 토글은 <code>social = 'AD'</code>로 갈립니다</b> — <code>3_RET</code>의 행 중
-              <code>AD</code>가 광고 유입이고 나머지(<code>organic</code> · <code>TOURNAMENT</code> ·
-              <code>CROSS_*</code> · <code>INVITE</code> 등)를 합친 것이 비광고입니다.
-              2026-09-07 실측으로 문서의 기존 값과 완전히 일치함을 확인했습니다.
-              <b><code>7_VERSION</code>을 가장 먼저 보세요</b> — A(485)가 말라 있으면 대조군이 없고, 487 이상이 떴으면 B군에
-              처치가 하나 더 얹힌 것이라 그 뒤 숫자는 A/B가 아닙니다.
-              <b>행수</b> 열이 비거나 예상보다 적으면 그 블록만 비어 있는 것이니 다른 블록까지 의심하지 않으셔도 됩니다.
+              광고 포함/제외 토글은 <code>social = 'AD'</code>로 갈립니다.
+              <b>갱신이 멈추는 조건</b>: 마지막 날이 어제가 아님 · DAU가 전일 대비 ±50% 밖 ·
+              마지막 날에 A 또는 B 빌드 행이 없음 · 필수 블록 공백. 걸리면 <b>커밋하지 않고 로그만 남깁니다</b>.
+              487 이상 빌드는 차단하지 않고 <b>빌드 점유표에 붉게 노출</b>합니다.
+              ⚠ <b>숫자는 자동이지만 판정 문장은 수동입니다</b> — 아래 해석 문구는 갱신되지 않으니,
+              숫자가 크게 움직였으면 문장도 다시 읽어야 합니다.
             </div></div>
           </div>
         </details>
@@ -508,7 +484,7 @@ ORDER BY `블록`;</pre></div>
       // 손으로 고치면 다음 갱신에서 사라진다. 출처는 SQL 폴드에 실린 그 쿼리 하나다.
       /* DATA:START */
       // 이 블록은 scripts/refresh_sol_slot_ab.py 가 생성한다. 손으로 고치면 사라진다.
-      const PULLED = "2026-09-07 13:45";
+      const PULLED = "2026-09-07 13:55";
       const RANGE  = "9/3~9/6";
 
       // 1_DAILY — 일자 × 빌드 × 유저군. 보드는 전부 여기서 합산해 만든다.
@@ -930,14 +906,7 @@ ORDER BY `블록`;</pre></div>
             <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
         </div>`;
 
-        const staleBar = `<div class="stale-bar">
-          <b>여덟 블록 전부 ${PULLED} KST 한 번의 조회입니다</b> — 쿼리를 하나로 합쳐서 블록끼리 시각이 어긋날 수 없습니다.
-          기간은 <b>9/3~9/6</b>(마지막 log_date 9/6, 거의 꽉 찬 하루)이고,
-          <b>9/3은 롤아웃 첫날</b>이라 A·B가 아니라 483이 그날 DAU의 대부분(1,788명)을 차지했습니다 —
-          9/3의 A·B는 각각 244·291명뿐인 조기 업데이트 유저라, 이 날만 표본이 작고 편향돼 있습니다.
-          <b>487 이상은 아직 없습니다</b> — 실험은 아직 성립합니다.
-        </div>`;
-        document.getElementById("groups").innerHTML = staleBar + bal
+        document.getElementById("groups").innerHTML = bal
           + `<div class="mx"><div class="mr hd"><div class="ml">지표</div>
               <div class="bs"><span class="ha">A · 교대 · ${nf(A.ud)} 유저-일</span>
                 <span class="hb">B · 공유만 · ${nf(B.ud)} 유저-일</span></div>

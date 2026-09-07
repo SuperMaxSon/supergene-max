@@ -38,7 +38,15 @@ PROJECT  = "game-log-359704"
 EXP_FROM = "2026-09-03"          # 실험 시작일
 A, B     = "485", "486"
 
-SQL = r"""
+SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 가 매일 KST 11:00 에 이 문자열을
+-- 그대로 실행하고, 같은 문자열을 문서의 SQL 폴드에 심는다 — 사본이 갈라질 수 없다.
+--
+-- 스캔 원칙
+--  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
+--  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 뽑혀 있고 불변이다.
+--  · 가벼운 컬럼만 읽는 스캔(lite)은 전 구간이어도 싸다 — 실험 성립 판정은 전 구간이 필요하다.
+--  · 리텐션은 raw 조인을 쓰지 않는다. stat 사전집계를 읽는다.
+--  · 블록을 쪼개지 않는다. 하나만 다시 뽑으면 블록을 가로지르는 값이 조용히 어긋난다.
 WITH us AS (
     SELECT log_date, player_id, event, data, entrypoint_now, client_version
     FROM `game-log-359704.raw.solitaire_city_journey`
@@ -202,8 +210,8 @@ class Guard(Exception):
 def run_query():
     out = subprocess.run(
         [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
-         "--project_id=" + PROJECT, "--max_rows=100", SQL],
-        capture_output=True, text=True, timeout=900)
+         "--project_id=" + PROJECT, "--max_rows=100"],
+        input=SQL, capture_output=True, text=True, timeout=900)
     if out.returncode != 0:
         raise Guard("bq query 실패: " + (out.stderr or out.stdout).strip()[:500])
     rows = json.loads(out.stdout)
@@ -376,10 +384,22 @@ def build_js(state):
 
 # ── 파일 반영 ───────────────────────────────────────────────────────────────
 def splice(block):
+    """DATA 블록과 SQL 블록을 둘 다 재생성한다.
+
+    SQL 을 문서에 심는 이유: 손으로 유지하는 사본은 반드시 갈라진다. 실제로 한 번 갈라져서
+    '문서에 실린 쿼리로는 문서의 값이 재현되지 않는' 상태가 됐었다(2026-09-07 수정).
+    """
     s = open(HTML, encoding="utf-8").read()
     a = s.index("      /* DATA:START */")
     b = s.index("      /* DATA:END */") + len("      /* DATA:END */")
     new = s[:a] + block + s[b:]
+
+    esc = SQL.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    a = new.index("            <!-- SQL:START -->")
+    b = new.index("            <!-- SQL:END -->") + len("            <!-- SQL:END -->")
+    new = (new[:a] + "            <!-- SQL:START -->\n"
+           + '            <div class="table-scroll"><pre>' + esc + "</pre></div>\n"
+           + "            <!-- SQL:END -->" + new[b:])
     return s, new
 
 
