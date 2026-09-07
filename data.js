@@ -6,7 +6,10 @@
      title:   "카드 제목",            // 필수
      desc:    "한 줄 설명",           // 선택 · 한 문장 90자 이내 (아래 ★★)
      url:     "https://... 또는 docs/xxx.html",  // 필수 (없으면 "#")
-     status:  "진행중" | "초안" | "완료" (설정탭에서 배지 클릭으로 변경) · "Live" 는 상시 문서 전용.
+     status:  "진행중" | "초안" | "완료" (설정탭에서 배지 클릭으로 변경)
+              //   "Live" = scripts/automation.json 에 등록돼 매일 자동 갱신되는 문서.
+              //   손으로 적지 않는다 — refresh_common.py 가 실행할 때마다 되박고,
+              //   app.js 가 그 카드를 맨 위 「라이브」 섹션으로 옮긴다.
               //   섹션 안 정렬 순서: Live > 진행중 > 초안 > 완료 (pinned 가 그보다 우선)
      version: "v4.3",
      updated: "2026-08-07 10:48",     // 날짜 + 시각(HH:MM)
@@ -40,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-07 15:20",
+  updated: "2026-09-07 15:31",
 };
 
 /* --------------------------------------------------------------------------
@@ -66,6 +69,15 @@ const PROJECTS = {
 
 const SECTIONS = [
   {
+    // 카드를 여기에 적지 않는다. app.js 가 status:"Live" 카드를 원래 섹션에서
+    // 끌어와 채운다 — automation.json 에 작업을 등록하면 저절로 여기 뜬다.
+    id: "live",
+    label: "라이브",
+    accent: "live-badge",
+    desc: "매일 자동 갱신되는 문서 — scripts/automation.json 에 등록된 작업이 값을 다시 채운다",
+    cards: [],
+  },
+  {
     id: "analysis",
     label: "분석",
     accent: "analysis",
@@ -88,8 +100,8 @@ const SECTIONS = [
         url: "docs/sol-era-watch.html",
         project: "sol",
         status: "Live",
-        version: "v3.6",
-        updated: "2026-09-07 15:20",
+        version: "v3.7",
+        updated: "2026-09-07 15:31",
         pinned: false,
         tags: ["BigQuery", "공유", "이식"],
       },
