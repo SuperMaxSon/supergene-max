@@ -54,7 +54,8 @@ WITH base AS (
     -- ⚠ 이 방식이 성립하는 이유: 보드의 모든 지표가 '더할 수 있는' 카운트다.
     --    COUNTIF 는 당연히 더해지고, sessions/sessions_300s 도 session_key 가 하루에만
     --    속하므로(로그인은 한 번) 날짜별 distinct 를 더하면 기간 distinct 와 같다.
-    --    유일한 예외가 기간 고유 유저(users)이고, 그건 아래 USERS_SQL 로 따로 뽑는다.
+    --    기간 고유 유저만은 날짜별로 더할 수 없어서, 「유저」 행은 유저-일(날짜별 고유의 합)로
+    --    쓴다. 배분이 반반인지 보는 값이라 그 편이 활동량까지 반영해 더 낫고, 조회가 0이다.
     SELECT
         CASE WHEN client_version = 3375 THEN 'B' ELSE 'A' END AS ab_group,
         log_date,
@@ -147,22 +148,6 @@ ORDER BY blk
 """
 
 
-# 기간 고유 유저만 따로 뽑는다. 이것만은 날짜별로 쪼개 더할 수 없다
-# (여러 날 접속한 유저가 중복되므로). 보드에서 '두 군이 같은 크기인가' 확인에만 쓰이고
-# 어떤 비율의 분모도 아니라서, 매일 뽑지 않고 주 1회만 갱신한다.
-# player_id 컬럼 하나만 읽으므로 같은 창을 읽어도 base 보다 훨씬 싸다.
-USERS_SQL = r"""
-SELECT
-    CASE WHEN client_version = 3375 THEN 'B' ELSE 'A' END AS ab_group,
-    COUNT(DISTINCT player_id) AS users
-FROM `game-log-359704.raw.coin_match`
-WHERE log_date BETWEEN DATE '2026-08-27' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-  AND client_version IN (3374, 3375)
-  AND event = '1000_LOGIN_COMPLETE'
-GROUP BY ab_group
-"""
-
-
 def notify(msg):
     """실패했을 때만 맥 알림을 띄운다. 로그만 남기면 아무도 안 본다.
     ensure_ascii=False 가 필요하다 — 기본값이면 한글이 \\uXXXX 로 나가
@@ -214,33 +199,6 @@ def merge_by_key(old, new, keys):
     return [idx[k] for k in sorted(idx)]
 
 
-def refresh_users(state):
-    """기간 고유 유저를 주 1회만 다시 뽑는다.
-
-    이 값은 '두 군이 같은 크기인가' 확인에만 쓰이고 어떤 비율의 분모도 아니다.
-    매일 뽑으면 5.7 GiB 를 매일 쓰게 되므로, 7일마다 한 번으로 충분하다.
-    """
-    today = datetime.date.today().isoformat()
-    asof  = state.get("users_asof")
-    if asof and state.get("users"):
-        age = (datetime.date.today() - datetime.date.fromisoformat(asof)).days
-        if age < 7:
-            return state
-    out = subprocess.run(
-        [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
-         "--project_id=" + PROJECT, "--max_rows=10"],
-        input=USERS_SQL, capture_output=True, text=True, timeout=1800)
-    if out.returncode != 0:
-        # 실패해도 멈추지 않는다 — 지난 값을 그대로 쓰고 로그만 남긴다.
-        log("users 갱신 실패(지난 값 유지): %s" % (out.stderr or out.stdout).strip()[:200])
-        return state
-    rows = json.loads(out.stdout)
-    state["users"] = {r["ab_group"]: int(r["users"]) for r in rows}
-    state["users_asof"] = today
-    log("기간 고유 유저 갱신: %s" % state["users"])
-    return state
-
-
 def merge_state(state, blocks):
     meta = blocks["0_META"]
     if isinstance(meta, list):
@@ -276,7 +234,7 @@ def check(state):
         raise Guard("두 군 크기가 %.2f 배로 벌어졌다 (A %d / B %d) — 반반 서빙이 깨졌다"
                     % (ub / ua, ua, ub))
 
-    # 유저 수는 기간 누적이라 줄어들 수 없다. 줄었다면 적재 이상이다.
+    # 유저-일은 날짜별 합산이라 줄어들 수 없다. 줄었다면 적재 이상이다.
     prev = state.get("prev_users")
     if prev and ua + ub < prev * 0.98:
         raise Guard("누적 유저가 %d -> %d 로 줄었다 — 적재 이상"
@@ -315,7 +273,7 @@ def sum_core(state):
     보드의 모든 지표가 더할 수 있는 카운트라서 성립한다 — COUNTIF 는 물론이고
     sessions/sessions_300s 도 session_key 가 하루에만 속하므로 날짜별 distinct 를
     더하면 기간 distinct 와 같다. 기간 고유 유저(users)만 예외이고 그건 state["users"] 에
-    따로 들어 있다(USERS_SQL, 주 1회 갱신).
+    「유저」 행은 유저-일(날짜별 고유의 합)로 쓴다 — 추가 조회 없이 전 기간을 담는다.
     """
     out = {}
     for r in state["core"]:
@@ -324,9 +282,13 @@ def sum_core(state):
             if k in ("ab_group", "d"):
                 continue
             g[k] = g.get(k, 0) + int(v)
-    for g, u in (state.get("users") or {}).items():
-        if g in out:
-            out[g]["users"] = int(u)
+    # 「유저」 행은 두 군이 반반으로 서빙됐는지 확인하는 용도이고 어떤 비율의 분모도 아니다.
+    # 예전에는 기간 고유 player_id 를 쓰려고 8/27~어제 전 구간을 주 1회 다시 읽었다(5.73 GiB/월 23 GiB).
+    # 그 값은 날짜별로 더할 수 없어 증분이 불가능했기 때문이다.
+    # 유저-일(날짜별 고유 유저의 합)로 바꾸면 이미 읽은 3일 창에서 나오므로 추가 조회가 0이고,
+    # 전 기간을 쓰며, 배분 판정에는 같은 답을 준다(0.24% -> 0.36%).
+    for g in out:
+        out[g]["users"] = out[g].get("users_day", 0)
     return out
 
 
@@ -450,7 +412,6 @@ def main():
         blocks = run_query()
         state  = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
         state  = merge_state(state, blocks)
-        state  = refresh_users(state)      # 주 1회만 실제 조회한다
         check(state)
         block, rng = build_js(state)
         old, new   = splice(block)
