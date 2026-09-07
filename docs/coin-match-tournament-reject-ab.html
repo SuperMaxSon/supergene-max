@@ -583,108 +583,114 @@ ORDER BY sort_key</pre></div>
         </details>
 
         <details class="fold">
-          <summary>리텐션 커브 쿼리 — classic Day-N · D+1~D+14 · 층별</summary>
+          <summary>잔존 쿼리 — raw 를 <b>한 번만</b> 읽는 단일 스캔판 · 격자와 층별을 함께 반환</summary>
           <div class="fold-body">
-            <div class="table-scroll"><pre>DECLARE run_date DATE DEFAULT DATE '2026-09-07';   -- 성숙 판정 기준일
+            <div class="stale-bar" style="margin:0 0 12px">
+              <b>raw 스캔을 줄인 판본입니다.</b> 이전 판본은 같은 12일 구간을 세 번,
+              NRU 판정용 과거 60일을 한 번 더 읽어 <b>105 파티션-일</b>을 스캔했습니다.
+              이 판본은 <b>12 파티션-일 · 1회 스캔</b>으로 같은 결과를 냅니다(<b>−89%</b>).
+              과거 날짜 집계를 반복해서 <code>raw</code> 에 다시 던지지 말고,
+              결과를 중간 테이블로 <b>한 번 저장해 재사용</b>하십시오 —
+              <code>raw</code> 는 한 번 쌓인 행이 바뀌지 않으므로 다시 계산할 이유가 없습니다.
+            </div>
+            <div class="table-scroll"><pre>DECLARE run_date DATE DEFAULT DATE '2026-09-07';
 
-WITH first_seen AS (
-    SELECT player_id, MIN(log_date) AS install_date
+-- raw 는 여기서 딱 한 번만 읽는다. 이후 모든 CTE 는 이 결과에서 파생된다.
+-- 필요한 이벤트 3종 · 12일 파티션만 스캔한다.
+WITH base AS (
+    SELECT
+        player_id, log_date, log_time, event, client_version, logincount_total,
+        JSON_VALUE(data, '$.error_code') AS error_code
     FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-07-01' AND '2026-09-07'
-      AND event = '1000_LOGIN_COMPLETE'
-    GROUP BY player_id
+    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-07'
+      AND event IN ('1000_LOGIN_COMPLETE',
+                    '3110_TOURNAMENT_CREATE_SUCCESS',
+                    '3120_TOURNAMENT_CREATE_FAIL')
 ),
--- 코호트 창을 실험 시작 ~ 어제로 넓게 잡고, 성숙 여부는 D+n 별로 아래에서 거른다(삼각형).
+-- NRU 를 logincount_total = 1 로 잡으면 '과거에 없던 유저'를 확인하려고
+-- 60일치를 되짚어 읽을 필요가 사라진다(이전 판본의 69 파티션-일이 0 이 된다).
 nru AS (
-    SELECT player_id, install_date
-    FROM first_seen
-    WHERE install_date BETWEEN '2026-08-27' AND DATE_SUB(run_date, INTERVAL 1 DAY)
+    SELECT player_id, MIN(log_date) AS install_date, MIN(client_version) AS install_version
+    FROM base
+    WHERE event = '1000_LOGIN_COMPLETE' AND logincount_total = 1
+    GROUP BY player_id
 ),
 arm AS (
     SELECT
-        n.player_id,
-        n.install_date,
-        CASE WHEN MIN(l.client_version) = 3375 THEN 'B' ELSE 'A' END AS ab_group
-    FROM nru n
-    JOIN `game-log-359704.raw.coin_match` l
-      ON l.player_id = n.player_id
-     AND l.log_date = n.install_date
-    WHERE l.log_date BETWEEN '2026-08-27' AND '2026-09-07'
-      AND l.event = '1000_LOGIN_COMPLETE'
-      AND l.client_version IN (3374, 3375)
-    GROUP BY n.player_id, n.install_date
+        player_id, install_date,
+        CASE WHEN install_version = 3375 THEN 'B' ELSE 'A' END AS ab_group
+    FROM nru
+    WHERE install_version IN (3374, 3375)
+      AND install_date &lt;= DATE_SUB(run_date, INTERVAL 1 DAY)
 ),
--- 설치 당일의 생성 시도 결과열. 성공이 나올 때마다 streak_group 이 올라가
--- '연속' 구간이 끊긴다(클라이언트의 성공 시 카운터 리셋과 같은 규칙).
+-- 설치 당일의 생성 시도 결과열. 성공이 나올 때마다 streak_group 이 올라가 '연속'이 끊긴다.
 d0 AS (
     SELECT
-        a.player_id,
-        l.logincount_total,
-        l.log_time,
-        l.event,
-        JSON_VALUE(l.data, '$.error_code') AS error_code,
-        SUM(CASE WHEN l.event = '3110_TOURNAMENT_CREATE_SUCCESS' THEN 1 ELSE 0 END)
-            OVER (PARTITION BY a.player_id, l.logincount_total ORDER BY l.log_time
+        a.player_id, b.logincount_total, b.event, b.error_code,
+        SUM(CASE WHEN b.event = '3110_TOURNAMENT_CREATE_SUCCESS' THEN 1 ELSE 0 END)
+            OVER (PARTITION BY a.player_id, b.logincount_total ORDER BY b.log_time
                   ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS streak_group
     FROM arm a
-    JOIN `game-log-359704.raw.coin_match` l
-      ON l.player_id = a.player_id
-     AND l.log_date = a.install_date
-    WHERE l.log_date BETWEEN '2026-08-27' AND '2026-09-07'
-      AND l.event IN ('3110_TOURNAMENT_CREATE_SUCCESS', '3120_TOURNAMENT_CREATE_FAIL')
+    JOIN base b USING (player_id)
+    WHERE b.log_date = a.install_date
+      AND b.event IN ('3110_TOURNAMENT_CREATE_SUCCESS', '3120_TOURNAMENT_CREATE_FAIL')
 ),
 runs AS (
-    SELECT player_id, logincount_total, streak_group, COUNT(*) AS consecutive_rejects
+    SELECT player_id, logincount_total, streak_group, COUNT(*) AS rej
     FROM d0
-    WHERE event = '3120_TOURNAMENT_CREATE_FAIL'
-      AND error_code = 'USER_INPUT'
+    WHERE event = '3120_TOURNAMENT_CREATE_FAIL' AND error_code = 'USER_INPUT'
     GROUP BY player_id, logincount_total, streak_group
 ),
 strat AS (
     SELECT
-        a.player_id,
-        a.install_date,
-        a.ab_group,
-        CASE WHEN COALESCE(MAX(r.consecutive_rejects), 0) &gt;= 3
-             THEN '2_처치노출' ELSE '1_미노출' END AS stratum
+        a.player_id, a.install_date, a.ab_group,
+        CASE WHEN COALESCE(MAX(r.rej), 0) &gt;= 3 THEN '2_처치노출' ELSE '1_미노출' END AS stratum
     FROM arm a
-    LEFT JOIN runs r ON r.player_id = a.player_id
+    LEFT JOIN runs r USING (player_id)
     GROUP BY a.player_id, a.install_date, a.ab_group
 ),
-activity AS (
-    SELECT DISTINCT player_id, log_date
-    FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-07'
-      AND event = '1000_LOGIN_COMPLETE'
+per_user AS (
+    SELECT
+        s.player_id, s.install_date, s.ab_group, s.stratum,
+        ARRAY_AGG(DISTINCT DATE_DIFF(b.log_date, s.install_date, DAY) IGNORE NULLS) AS active_days
+    FROM strat s
+    LEFT JOIN base b
+      ON b.player_id = s.player_id AND b.event = '1000_LOGIN_COMPLETE'
+    GROUP BY s.player_id, s.install_date, s.ab_group, s.stratum
 )
--- classic Day-N: '설치일 + n 일 그날 하루' 에 접속했는지. 이후 아무 날이나 접속하면 인정하는
--- rolling retention 이 아니다. 코호트는 D+n 이 도래한 것만 포함하므로 n 이 커질수록 분모가 줄어든다.
+-- 가장 잘게 한 번만 뽑는다. 코호트 격자는 stratum 을, 층별 표는 cohort_date 를
+-- 각각 합치면 나오므로 쿼리를 두 번 돌릴 이유가 없다.
 SELECT
-    s.stratum,
-    s.ab_group,
+    install_date AS cohort_date,
+    ab_group,
+    stratum,
     day_n,
-    COUNT(DISTINCT s.player_id) AS cohort,
-    COUNT(DISTINCT CASE WHEN a.log_date = DATE_ADD(s.install_date, INTERVAL day_n DAY)
-                        THEN s.player_id END) AS retained,
-    ROUND(SAFE_DIVIDE(
-        COUNT(DISTINCT CASE WHEN a.log_date = DATE_ADD(s.install_date, INTERVAL day_n DAY)
-                            THEN s.player_id END),
-        COUNT(DISTINCT s.player_id)) * 100, 2) AS retention_pct
-FROM strat s
+    COUNT(*) AS cohort,
+    COUNTIF(day_n IN UNNEST(active_days)) AS retained
+FROM per_user
 CROSS JOIN UNNEST(GENERATE_ARRAY(1, 14)) AS day_n
-LEFT JOIN activity a
-  ON a.player_id = s.player_id
-WHERE DATE_ADD(s.install_date, INTERVAL day_n DAY) &lt;= run_date
-GROUP BY s.stratum, s.ab_group, day_n
-ORDER BY s.stratum, s.ab_group, day_n</pre></div>
+WHERE DATE_ADD(install_date, INTERVAL day_n DAY) &lt;= run_date
+GROUP BY cohort_date, ab_group, stratum, day_n
+ORDER BY cohort_date, ab_group, stratum, day_n</pre></div>
             <div class="foot" style="margin-top:10px">
-              <b>결과를 문서에 넣는 법</b> 문서 스크립트의 <code>RC</code> 배열에서
-              <code>A:{1:5.70, 7:1.25}</code> 를 <code>{day_n: retention_pct}</code> 전체로 바꾸면 피라미드가 채워집니다.
-              <code>D_ARRIVED</code> 는 <code>run_date − 2026-08-27</code> 로 맞추십시오.
-              <b>D+12~D+14</b> 는 <code>run_date</code> 가 <b>2026-09-10</b> 이상이어야 값이 나옵니다.
+              <b>검증이 필요한 변경</b> NRU 판정을 <code>MIN(log_date)</code> 과거 조회에서
+              <code>logincount_total = 1</code> 로 바꿨습니다. 재설치·스토리지 초기화로 카운터가
+              되감기면 두 정의가 어긋날 수 있으므로, <b>첫 실행 때 코호트 크기를 기존 수치와 한 번 대조</b>하십시오
+              (08-27 A 6,039 · B 6,131 / 전체 A 177,745).
+              <b>비율은 저장하지 않습니다</b> — <code>retained</code> 와 <code>cohort</code> 원본 카운트만 두면
+              어떤 층으로 합쳐도 비율을 다시 계산할 수 있고, 두 비율 검정에 분모가 필요합니다.
             </div>
           </div>
         </details>
+
+        <div class="stale-bar" style="margin:14px 0 0">
+          <b>raw 스캔 비용에 대해</b> 이 문서의 쿼리는 <code>raw.coin_match</code> 를 직접 읽습니다.
+          <b>과거 날짜 집계를 반복 실행하지 마십시오</b> — <code>raw</code> 는 한 번 쌓인 행이 바뀌지 않으므로
+          같은 기간을 다시 계산할 이유가 없고, 결과를 중간 집계 테이블에 한 번 저장해 재사용하는 편이 맞습니다.
+          팀에 <code>stat</code> 사전집계 데이터셋(주요 이벤트 횟수·리텐션)이 있으므로,
+          <b>정기 갱신은 그쪽으로 옮기는 것이 원칙</b>입니다 — 이 문서의 쿼리는 A/B 군 배정(설치일 <code>client_version</code>)과
+          처치 노출 층(설치 당일 연속 거절 3회)이 <code>stat</code> 에 있는지 확인되기 전까지의 임시판입니다.
+        </div>
 
         <div class="foot">
           <b>확인 범위</b>
