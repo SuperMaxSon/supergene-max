@@ -22,6 +22,7 @@ REGISTRY = os.path.join(HERE, "automation.json")
 STATE    = os.path.join(HERE, "run_state.json")
 LOG      = os.path.join(HERE, "refresh.log")
 PYTHON   = "/opt/homebrew/bin/python3"
+MAX_TRIES = 2      # 실패한 슬롯의 최대 시도 횟수
 
 
 def log(msg):
@@ -59,8 +60,14 @@ def main():
         if not due:
             continue
         slot = "%s %02d" % (today, due[-1])
-        if state.get(job_id, {}).get("slot") == slot:
-            continue                                  # 이 슬롯은 이미 돌았다
+        st   = state.get(job_id, {})
+        if st.get("slot") == slot:
+            # 성공했으면 끝. 실패했으면 한 번만 더 시도한다 —
+            # 하루 1회 스케줄에서는 실패가 곧 '그날 갱신 없음'이 되기 때문이다.
+            # 무한 재시도는 막는다(15분마다 같은 실패를 반복하면 스캔만 태운다).
+            if st.get("ok") or st.get("tries", 1) >= MAX_TRIES:
+                continue
+            log("%s 재시도 (%d/%d)" % (job_id, st.get("tries", 1) + 1, MAX_TRIES))
 
         script = os.path.join(HERE, job["script"])
         if not os.path.exists(script):
@@ -71,10 +78,10 @@ def main():
         ok = r.returncode == 0
         if not ok:
             log("%s 실패 rc=%d %s" % (job_id, r.returncode, (r.stderr or "").strip()[:200]))
-        # 실패도 슬롯을 소비한다 — 안 그러면 15분마다 같은 실패를 반복한다.
-        # 다음 슬롯에서 다시 시도하고, 실패 알림은 갱신 스크립트가 띄운다.
+        tries = (st.get("tries", 0) + 1) if st.get("slot") == slot else 1
         state.setdefault(job_id, {})
-        state[job_id].update(slot=slot, at=now.strftime("%Y-%m-%d %H:%M:%S"), ok=ok)
+        state[job_id].update(slot=slot, at=now.strftime("%Y-%m-%d %H:%M:%S"),
+                             ok=ok, tries=tries)
 
     json.dump(state, open(STATE, "w", encoding="utf-8"),
               ensure_ascii=False, indent=1, sort_keys=True)
