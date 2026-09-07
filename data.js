@@ -437,18 +437,6 @@ const SECTIONS = [
     desc: "수정 전/후 결과 대조",
     cards: [
       {
-        title: "코인매치 stat 이벤트 카탈로그",
-        desc: "stat.coin_match_prod 에 실려 있는 stat_name 433개 전수 목록. A/B 보드가 쓰는 이벤트 15개가 전부 들어 있고 Session·DAU·NRU 도 있어, raw 없이 지표를 만들 수 있습니다. 다만 값이 정확히 두 배로 나오는 문제가 있어 중복 축을 먼저 찾아야 합니다.",
-        url: "docs/coin-match-stat-catalog.html",
-        project: "cmt",
-        status: "진행중",
-        version: "v1.0",
-        updated: "2026-09-07 12:08",
-        pinned: false,
-        tags: ["BigQuery", "stat", "레퍼런스"],
-        share: false,
-      },
-      {
         title: "토너먼트 연속 거절 차단 — A ↔ B",
         desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 리텐션(stat 사전집계, raw 스캔 0)은 55쌍 24:31(p≈0.42)로 무승부입니다.",
         url: "docs/coin-match-tournament-reject-ab.html",

@@ -184,7 +184,6 @@
         <a class="nav-back" href="#board">KPI</a>
         <a class="nav-back" href="#retwin">리텐션 판정</a>
         <a class="nav-back" href="#retention">코호트 격자</a>
-        <a class="nav-back" href="#sql">쿼리</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -195,7 +194,7 @@
         <h1 class="doc-title">토너먼트 연속 거절 차단 — A ↔ B</h1>
         <div class="doc-when">
           <span><i></i>문서 갱신 <b>2026-09-07 14:03</b> KST</span>
-          <span>데이터 <b>8/27~9/6</b> · 리텐션 <b>stat 사전집계</b>(raw 0) · KPI 보드 <b>raw 12 파티션-일</b></span>
+          <span>데이터 <b>8/27~9/6</b> · 매일 자동 갱신 · 리텐션은 <b>stat 사전집계</b></span>
         </div>
         <p class="doc-lede">
           토너먼트 생성 다이얼로그를 <b>연속 3회 거절</b>하면 그 세션에서는 더 띄우지 않습니다.
@@ -383,186 +382,6 @@
         </div>
       </section>
 
-      <section class="doc-section" id="sql">
-        <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">이거 하나로 위 보드가 전부 채워집니다</span></h2>
-        <details class="fold">
-          <summary>단일 쿼리 — 지표를 행, A/B를 열로 피벗 · <b>raw 12 파티션-일</b></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>WITH base AS (
-    SELECT
-        CASE WHEN client_version = 3375 THEN 'B' ELSE 'A' END AS ab_group,
-        player_id,
-        CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
-        event
-    FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-06'
-      AND client_version IN (3374, 3375)
-),
-core AS (
-    SELECT
-        ab_group,
-        COUNT(DISTINCT CASE WHEN event = '1000_LOGIN_COMPLETE' THEN player_id END) AS users,
-        COUNT(DISTINCT CASE WHEN event = '1000_LOGIN_COMPLETE' THEN session_key END) AS sessions,
-        COUNTIF(event = '2100_GAMEPLAY_START') AS play_starts,
-        COUNTIF(event = '2300_GAMEPLAY_FINISH') AS play_finishes,
-        COUNT(DISTINCT CASE WHEN event = '1170_PLAYTIME_300S' THEN session_key END) AS sessions_300s,
-        COUNTIF(event = '3100_TOURNAMENT_CREATE') AS tc_try,
-        COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS') AS tc_success,
-        COUNTIF(event = '3130_TOURNAMENT_CREATE_SUPPRESSED') AS tc_suppressed,
-        COUNTIF(event = '3200_TOURNAMENT_SHARE') AS ts_try,
-        COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS') AS ts_success,
-        COUNTIF(event = '3400_MSG_P2P') AS p2p_try,
-        COUNTIF(event = '3410_MSG_P2P_SUCCESS') AS p2p_success,
-        COUNTIF(event = '3500_FEED_SHARE') AS feed_try,
-        COUNTIF(event = '3510_FEED_SHARE_SUCCESS') AS feed_success,
-        COUNTIF(event = '3000_SWITCH_CONTEXT_START') AS sc_try,
-        COUNTIF(event = '3010_SWITCH_CONTEXT_SUCCESS') AS sc_success
-    FROM base
-    GROUP BY ab_group
-),
-metrics AS (
-    SELECT 1 AS sort_key, 'users' AS metric, ab_group, CAST(users AS FLOAT64) AS value FROM core
-    UNION ALL SELECT 2, 'sessions', ab_group, CAST(sessions AS FLOAT64) FROM core
-    UNION ALL SELECT 3, 'plays_per_user', ab_group, SAFE_DIVIDE(play_starts, users) FROM core
-    UNION ALL SELECT 4, 'plays_per_session', ab_group, SAFE_DIVIDE(play_starts, sessions) FROM core
-    UNION ALL SELECT 5, 'finish_rate_pct', ab_group, SAFE_DIVIDE(play_finishes, play_starts) * 100 FROM core
-    UNION ALL SELECT 6, 'session_300s_pct', ab_group, SAFE_DIVIDE(sessions_300s, sessions) * 100 FROM core
-    UNION ALL SELECT 7, 'tournament_create_try_per_user', ab_group, SAFE_DIVIDE(tc_try, users) FROM core
-    UNION ALL SELECT 8, 'tournament_create_success_rate_pct', ab_group, SAFE_DIVIDE(tc_success, tc_try) * 100 FROM core
-    UNION ALL SELECT 9, 'tournament_suppressed_per_user', ab_group, SAFE_DIVIDE(tc_suppressed, users) FROM core
-    UNION ALL SELECT 10, 'tournament_share_success_rate_pct', ab_group, SAFE_DIVIDE(ts_success, ts_try) * 100 FROM core
-    UNION ALL SELECT 11, 'msg_p2p_try_per_user', ab_group, SAFE_DIVIDE(p2p_try, users) FROM core
-    UNION ALL SELECT 12, 'msg_p2p_success_rate_pct', ab_group, SAFE_DIVIDE(p2p_success, p2p_try) * 100 FROM core
-    UNION ALL SELECT 13, 'feed_share_try_per_user', ab_group, SAFE_DIVIDE(feed_try, users) FROM core
-    UNION ALL SELECT 14, 'feed_share_success_rate_pct', ab_group, SAFE_DIVIDE(feed_success, feed_try) * 100 FROM core
-    UNION ALL SELECT 15, 'switch_context_success_rate_pct', ab_group, SAFE_DIVIDE(sc_success, sc_try) * 100 FROM core
-),
-pivoted AS (
-    SELECT
-        sort_key,
-        metric,
-        MAX(IF(ab_group = 'A', value, NULL)) AS group_a,
-        MAX(IF(ab_group = 'B', value, NULL)) AS group_b
-    FROM metrics
-    GROUP BY sort_key, metric
-)
-SELECT
-    metric,
-    ROUND(group_a, 2) AS group_a,
-    ROUND(group_b, 2) AS group_b,
-    ROUND(group_b - group_a, 2) AS diff,
-    ROUND(SAFE_DIVIDE(group_b - group_a, group_a) * 100, 1) AS diff_pct
-FROM pivoted
-ORDER BY sort_key</pre></div>
-          </div>
-        </details>
-
-        <details class="fold">
-          <summary>리텐션 쿼리 — <b>raw 스캔 0</b> · 사전집계 테이블만 사용</summary>
-          <div class="fold-body">
-            <div class="stale-bar" style="margin:0 0 12px">
-              <b>이 격자는 <code>raw</code> 를 읽지 않습니다.</b> 팀 표준 사전집계 테이블
-              <code>stat.coin_match_prod_nru_retention3</code> 에 <code>join_date</code> · <code>client_version</code> ·
-              <code>nru_count</code> · <code>d1</code>~<code>d14</code> 가 모두 있어 A/B 코호트 격자가 그대로 나옵니다.
-              이전 판본은 <code>raw</code> 를 4번 읽어 <b>105 파티션-일</b>을 스캔했고, NRU 정의도 느슨해 수치가 틀렸습니다.
-            </div>
-            <div class="table-scroll"><pre>SELECT
-    join_date AS cohort_date,
-    CASE WHEN client_version = 3375 THEN 'B' ELSE 'A' END AS ab_group,
-    SUM(nru_count) AS cohort,
-    -- dN 은 (social × country × os) 행별 비율이라 nru_count 로 가중해야 한다.
-    -- 비율이 아니라 재접속 '수'로 복원하는 이유는 두 비율 검정에 분모가 필요해서다.
-    SUM(CAST(ROUND(d1  * nru_count) AS INT64)) AS r1,
-    SUM(CAST(ROUND(d2  * nru_count) AS INT64)) AS r2,
-    SUM(CAST(ROUND(d3  * nru_count) AS INT64)) AS r3,
-    SUM(CAST(ROUND(d4  * nru_count) AS INT64)) AS r4,
-    SUM(CAST(ROUND(d5  * nru_count) AS INT64)) AS r5,
-    SUM(CAST(ROUND(d6  * nru_count) AS INT64)) AS r6,
-    SUM(CAST(ROUND(d7  * nru_count) AS INT64)) AS r7,
-    SUM(CAST(ROUND(d8  * nru_count) AS INT64)) AS r8,
-    SUM(CAST(ROUND(d9  * nru_count) AS INT64)) AS r9,
-    SUM(CAST(ROUND(d10 * nru_count) AS INT64)) AS r10,
-    SUM(CAST(ROUND(d11 * nru_count) AS INT64)) AS r11,
-    SUM(CAST(ROUND(d12 * nru_count) AS INT64)) AS r12,
-    SUM(CAST(ROUND(d13 * nru_count) AS INT64)) AS r13,
-    SUM(CAST(ROUND(d14 * nru_count) AS INT64)) AS r14
-FROM `game-log-359704.stat.coin_match_prod_nru_retention3`
-WHERE join_date BETWEEN '2026-08-27' AND '2026-09-06'
-  AND client_version IN (3374, 3375)
-GROUP BY cohort_date, ab_group
-ORDER BY cohort_date, ab_group</pre></div>
-            <div class="foot" style="margin-top:10px">
-              <b>social · country · os 는 일부러 거르지 않았습니다</b> — 전부 합쳐야 그 코호트의 전체 NRU 가 됩니다.
-              <b><code>stat</code> 은 하루 지연</b>이라 <code>join_date</code> 상한을 어제로 둡니다.
-            </div>
-          </div>
-        </details>
-
-        <details class="fold">
-          <summary>처치 노출 층 — <code>raw</code> 를 한 번만 읽어 중간 테이블로 굳히는 쿼리</summary>
-          <div class="fold-body">
-            <div class="stale-bar" style="margin:0 0 12px">
-              층 구분(설치 당일 연속 3회 거절 도달)은 <b>이 실험 전용 축이라 <code>stat</code> 에 없습니다</b>.
-              대신 <code>player_id</code> 목록 하나면 되므로 <b>12 파티션-일 · 1회</b>만 읽어 테이블로 저장하고,
-              이후 재분석은 이 테이블과 <code>stat</code> 을 조인해 <b><code>raw</code> 를 다시 읽지 않습니다</b>.
-            </div>
-            <div class="table-scroll"><pre>CREATE OR REPLACE TABLE `game-log-359704.&lt;내_데이터셋&gt;.coin_match_ab_treated` AS
-WITH base AS (
-    SELECT player_id, log_date, log_time, logincount_total, event,
-           JSON_VALUE(data, '$.error_code') AS error_code
-    FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN '2026-08-27' AND '2026-09-06'
-      AND event IN ('3110_TOURNAMENT_CREATE_SUCCESS', '3120_TOURNAMENT_CREATE_FAIL')
-),
--- 성공이 나올 때마다 streak_group 이 올라가 '연속' 구간이 끊긴다
--- (클라이언트가 생성 성공 시 카운터를 0 으로 되돌리는 것과 같은 규칙).
-streak AS (
-    SELECT player_id, log_date, logincount_total, event, error_code,
-           SUM(CASE WHEN event = '3110_TOURNAMENT_CREATE_SUCCESS' THEN 1 ELSE 0 END)
-               OVER (PARTITION BY player_id, logincount_total ORDER BY log_time
-                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS streak_group
-    FROM base
-),
-runs AS (
-    SELECT player_id, log_date, COUNT(*) AS rej
-    FROM streak
-    WHERE event = '3120_TOURNAMENT_CREATE_FAIL' AND error_code = 'USER_INPUT'
-    GROUP BY player_id, log_date, logincount_total, streak_group
-)
-SELECT player_id, MIN(log_date) AS first_reached_date
-FROM runs
-WHERE rej &gt;= 3
-GROUP BY player_id</pre></div>
-            <div class="foot" style="margin-top:10px">
-              <b>층별 리텐션을 보려면</b> 이 테이블을 만든 뒤 <code>stat</code> 코호트와 조인해야 합니다.
-              다만 <code>stat</code> 은 코호트 집계라 개인 단위 조인이 불가능하므로,
-              <code>raw</code> 를 한 번 더 읽거나 층을 포함한 전용 집계 테이블이 필요합니다.
-            </div>
-          </div>
-        </details>
-
-        <div class="stale-bar" style="margin:14px 0 0">
-          <b>raw 스캔 비용에 대해</b> 리텐션은 <code>stat</code> 사전집계로 옮겨 <b>raw 스캔 0</b> 입니다.
-          KPI 보드만 <code>raw.coin_match</code> 를 읽고, <code>base</code> CTE 하나로 묶여 있어
-          <b>실행 1회에 12 파티션-일</b>입니다.
-          <b>과거 날짜 집계를 반복 실행하지 마십시오</b> — <code>raw</code> 는 한 번 쌓인 행이 바뀌지 않으므로
-          같은 기간을 다시 계산할 이유가 없습니다.
-          실험이 길어지면 <b>일 단위로 중간 테이블에 쌓아</b> 갱신 1회당 1 파티션-일로 고정하는 것이 맞습니다.
-        </div>
-
-        <div class="foot">
-          <b>확인 범위</b>
-          A/B 구분자는 <code>client_version</code> 뿐입니다 — 페이스북이 어느 호스팅을 서빙했는지로 갈립니다.
-          기간 내 버전 분포는 <code>3374</code> 224,799명 · <code>3375</code> 224,297명 · <code>3366</code> 44,325명이고
-          나머지(<code>3162·3363·3370·3372·3373·3377·3378</code>)는 전부 합쳐 15명 이하라 무시했습니다.
-          보드 수치는 지표 쿼리 1회분이고 이 분포는 이후 조회분이라, 유저 수가 양쪽 모두 209명씩 더 잡혀 있습니다.
-          <b>생성 성공 / 유저</b> 행은 쿼리 결과가 아니라
-          <code>tournament_create_try_per_user × tournament_create_success_rate_pct</code> 로 계산한 파생값이라,
-          반올림된 두 값의 곱이라는 오차가 있습니다.
-          유의성은 두 비율 검정(pooled z)이며, 분모를 <code>_per_user × users</code> 로 역산했으므로
-          역시 반올림 오차를 포함합니다. 비율이 아닌 행(판수 등)은 검정하지 않았습니다.
-        </div>
-      </section>
     </main>
 
     <script>
