@@ -23,20 +23,17 @@ import datetime
 import json
 import os
 import statistics
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import refresh_common as C
-from refresh_common import Guard, j, log, merge_by_key
+from refresh_common import Guard, bq_query, j, log, merge_by_key
 
 REPO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML     = os.path.join(REPO, "docs", "sol-era-watch.html")
 STATE    = os.path.join(REPO, "docs", "data", "sol-era-watch.json")
 JOB_ID   = "sol-era-watch"
 
-BQ       = "/opt/homebrew/bin/bq"
-PROJECT  = "game-log-359704"
 EXP_FROM = "2026-08-31"          # 문서가 다루는 첫 날
 CUT      = 483                   # 이 빌드 이상이 '개편 후'
 
@@ -174,14 +171,8 @@ def run_query(days):
         # 읽을 날이 없으면 raw 를 건드리지 않는다. 도래하지 않은 날짜로 스캔을 0 으로 만든다.
         days = [datetime.date(1970, 1, 1)]
     lst = ", ".join("DATE '%s'" % d.isoformat() for d in days)
-    out = subprocess.run(
-        [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
-         "--project_id=" + PROJECT, "--max_rows=100"],
-        input=SQL.replace("{DAYS}", lst), capture_output=True, text=True, timeout=900)
-    if out.returncode != 0:
-        raise Guard("bq query 실패: " + (out.stderr or out.stdout).strip()[:500])
     blocks = {}
-    for r in json.loads(out.stdout):
+    for r in bq_query(SQL.replace("{DAYS}", lst)):
         payload = r.get("payload")
         blocks[r["blk"]] = json.loads(payload) if payload else None
     if not blocks.get("0_META"):

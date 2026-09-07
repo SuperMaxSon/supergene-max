@@ -18,12 +18,16 @@ import os
 import re
 import subprocess
 import sys
+import uuid
 
 REPO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_JS  = os.path.join(REPO, "data.js")
 INDEX    = os.path.join(REPO, "index.html")
 LOG      = os.path.join(REPO, "scripts", "refresh.log")
 REGISTRY = os.path.join(REPO, "scripts", "automation.json")
+
+BQ       = "/opt/homebrew/bin/bq"
+PROJECT  = "game-log-359704"
 
 # 작업별 설정. configure() 로만 바꾼다.
 #   commit_msg 는 (last_day, rng) 두 값을 받는 %-템플릿이다.
@@ -73,6 +77,50 @@ def merge_by_key(old, new, keys):
     for r in new:
         idx[tuple(str(r[k]) for k in keys)] = r
     return [idx[k] for k in sorted(idx)]
+
+
+def log_scan(job_id):
+    """방금 돌린 쿼리가 실제로 읽은 양을 로그에 남긴다.
+
+    --job_id 를 직접 지정하고 bq show -j 로 되받는다. 이 경로는 bigquery.jobs.get
+    만 쓴다 — 이 프로젝트에서 막혀 있는 jobs.list 와 다르다(실측 확인).
+    추정(--dry_run)이 아니라 실제 실행된 잡의 값이다.
+
+    네 값을 다 남기는 이유: 이 프로젝트는 reservation(edition=STANDARD)이 붙어 있어
+    바이트 청구와 슬롯 과금 중 무엇이 실제 비용인지 확정되지 않았다. 한쪽만 적으면
+    나중에 요금을 대조할 수 없다.
+
+    측정이 실패해도 예외를 올리지 않는다 — 비용 기록 때문에 갱신이 멈추면 안 된다.
+    """
+    r = subprocess.run([BQ, "show", "--format=json", "-j", job_id],
+                       capture_output=True, text=True, timeout=120)
+    if r.returncode != 0:
+        log("스캔량 조회 실패(갱신은 계속): %s" % (r.stderr or r.stdout).strip()[:150])
+        return
+    try:
+        st = json.loads(r.stdout).get("statistics", {})
+        q  = st.get("query", {})
+        pick = lambda k: st.get(k) or q.get(k) or 0
+        gib  = lambda v: int(v) / 1024.0 ** 3
+        log("스캔 %.3f GiB · 청구 %.3f GiB · 슬롯 %.1f초 · 파티션 %s%s"
+            % (gib(pick("totalBytesProcessed")), gib(pick("totalBytesBilled")),
+               int(pick("totalSlotMs")) / 1000.0, pick("totalPartitionsProcessed"),
+               " · 캐시 적용(청구 없음)" if q.get("cacheHit") else ""))
+    except Exception as e:
+        log("스캔량 파싱 실패(갱신은 계속): %s: %s" % (type(e).__name__, e))
+
+
+def bq_query(sql):
+    """쿼리를 돌려 파싱된 행을 준다. 읽은 양은 log_scan() 이 로그에 남긴다."""
+    jid = "auto_%s_%s" % (_C["job_id"].replace("-", "_"), uuid.uuid4().hex[:10])
+    out = subprocess.run(
+        [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
+         "--project_id=" + PROJECT, "--max_rows=100", "--job_id=" + jid],
+        input=sql, capture_output=True, text=True, timeout=900)
+    if out.returncode != 0:
+        raise Guard("bq query 실패: " + (out.stderr or out.stdout).strip()[:500])
+    log_scan(jid)
+    return json.loads(out.stdout)
 
 
 def parse_args():

@@ -30,18 +30,15 @@
 import datetime
 import json
 import os
-import subprocess
 import sys
 
 import refresh_common as C
-from refresh_common import Guard, git, j, log, merge_by_key, notify, stamp
+from refresh_common import Guard, bq_query, j, log, merge_by_key, notify
 
 REPO    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML    = os.path.join(REPO, "docs", "coin-match-tournament-reject-ab.html")
 STATE   = os.path.join(REPO, "docs", "data", "coin-match-ab.json")
 
-BQ       = "/opt/homebrew/bin/bq"
-PROJECT  = "game-log-359704"
 EXP_FROM = "2026-08-27"      # 두 빌드가 함께 서빙되기 시작한 날
 A, B     = "3374", "3375"
 DOC_URL  = "docs/coin-match-tournament-reject-ab.html"
@@ -191,13 +188,7 @@ def run_query(days):
         # 도래하지 않은 날짜를 넣어 raw 스캔을 0으로 만든다.
         lst = "DATE '1970-01-01'"
     sql = SQL.replace("{DAYS}", lst)
-    out = subprocess.run(
-        [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
-         "--project_id=" + PROJECT, "--max_rows=100"],
-        input=sql, capture_output=True, text=True, timeout=900)
-    if out.returncode != 0:
-        raise Guard("bq query 실패: " + (out.stderr or out.stdout).strip()[:500])
-    rows = json.loads(out.stdout)
+    rows = bq_query(sql)
     blocks = {}
     for r in rows:
         payload = r.get("payload")

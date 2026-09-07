@@ -21,11 +21,10 @@
 import datetime
 import json
 import os
-import subprocess
 import sys
 
 import refresh_common as C
-from refresh_common import Guard, git, j, log, merge_by_key, notify, stamp
+from refresh_common import Guard, bq_query, j, log, merge_by_key, notify
 
 REPO    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML    = os.path.join(REPO, "docs", "sol-tournament-slot-ab.html")
@@ -37,8 +36,6 @@ C.configure(job_id=JOB_ID, log_prefix="", notify_title="슬롯 A/B 갱신 실패
             html=HTML, state=STATE, doc_url=DOC_URL,
             commit_msg="[Max] 슬롯 A/B 자동 갱신 — %s 까지 (%s)")
 
-BQ       = "/opt/homebrew/bin/bq"
-PROJECT  = "game-log-359704"
 EXP_FROM = "2026-09-03"          # 실험 시작일
 A, B     = "485", "486"
 
@@ -213,13 +210,7 @@ ORDER BY blk
 
 # ── 조회 ────────────────────────────────────────────────────────────────────
 def run_query():
-    out = subprocess.run(
-        [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
-         "--project_id=" + PROJECT, "--max_rows=100"],
-        input=SQL, capture_output=True, text=True, timeout=900)
-    if out.returncode != 0:
-        raise Guard("bq query 실패: " + (out.stderr or out.stdout).strip()[:500])
-    rows = json.loads(out.stdout)
+    rows = bq_query(SQL)
     blocks = {}
     for r in rows:
         payload = r.get("payload")
