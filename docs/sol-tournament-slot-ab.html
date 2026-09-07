@@ -136,6 +136,29 @@
       .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:8px}
       .tri-foot b{color:var(--text)}
 
+      /* 대조/처치 정의 — 어떤 두 군을 견주는지가 타이틀 바로 밑에서 끝나야 한다.
+         이게 없으면 485·486 이 그냥 숫자로 보이고, 아래 보드의 초록/파랑이 무엇인지 알 수 없다. */
+      .ab{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px}
+      @media (max-width:760px){ .ab{grid-template-columns:1fr} }
+      .ab-c{--c:#16a34a;border:1px solid var(--border);border-left:3px solid var(--c);
+        border-radius:var(--radius);padding:11px 13px;background:#fff}
+      .ab-c.b{--c:#1d4ed8}
+      .ab-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:6px}
+      .ab-h em{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.4px;
+        color:#fff;background:var(--c);border-radius:4px;padding:2px 6px}
+      .ab-h b{font-size:16px;font-weight:800;color:var(--c);font-variant-numeric:tabular-nums}
+      .ab-h span{font-size:12.5px;font-weight:800;color:var(--text)}
+      .ab-c p{margin:0 0 7px;font-size:11.5px;line-height:1.65;color:var(--text-dim);font-weight:600}
+      .ab-c p b{color:var(--text)}
+      .ab-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;
+        background:#f6f8fb;border:1px solid var(--border);border-radius:6px;padding:6px 8px;
+        color:var(--text-dim);white-space:pre-wrap;word-break:break-all}
+      .ab-code b{color:var(--c)}
+      .ab-n{margin-top:7px;font-size:10.5px;font-weight:700;color:var(--text-dim)}
+      .ab-n b{color:var(--text);font-variant-numeric:tabular-nums}
+      .ab-same{grid-column:1/-1;font-size:11px;line-height:1.7;font-weight:600;color:var(--text-dim);
+        border:1px dashed var(--border);border-radius:var(--radius);padding:8px 12px;background:#fbfcfe}
+      .ab-same b{color:var(--text)}
       #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:330px;
         background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
         line-height:1.55;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
@@ -161,10 +184,31 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 — 485 ↔ 486</h1>
         <p class="doc-lede">
-          판 클리어 소셜 구좌를 <b>공유↔초대 교대(485)</b>에서 <b>공유 전용(486)</b>으로 바꿨습니다.
-          두 빌드가 <b>같은 날 반반 서빙</b>돼 요일·이벤트가 양쪽에 똑같이 걸립니다.
+          판 클리어 소셜 구좌에서 <b>초대를 빼면 바이럴이 줄어드는가</b>를 봅니다.
           나흘치로 보면 <b>공유 성공이 DAU당 65% 늘었고(p&lt;.001)</b>, 초대를 전부 없앴는데도 <b>유입 총량은 줄지 않았습니다</b>.
         </p>
+        <div class="ab">
+          <div class="ab-c">
+            <div class="ab-h"><em>A · 대조</em><b>485</b><span>공유 ↔ 초대 교대</span></div>
+            <p>판을 깰 때마다 <b>공유와 초대를 번갈아</b> 띄웁니다. 다만 직전 발화로부터 쿨다운이
+              안 지났으면 <b>아무것도 띄우지 않습니다</b>(3230 <code>cooldown</code>).</p>
+            <div class="ab-code">tournamentInviteEnabled = <b>시트 10108 값</b></div>
+            <div class="ab-n"><b>3,545</b> 유저-일 · 코호트 4일</div>
+          </div>
+          <div class="ab-c b">
+            <div class="ab-h"><em>B · 처치</em><b>486</b><span>공유 전용</span></div>
+            <p>첫 게이트에서 <b>바로 공유를 반환</b>합니다. 초대 분기도, 쿨다운 게이트도
+              아예 타지 않아 <b>클리어할 때마다 공유가 뜹니다</b>.</p>
+            <div class="ab-code">tournamentInviteEnabled = <b>false</b> (하드코딩)</div>
+            <div class="ab-n"><b>3,753</b> 유저-일 · 코호트 4일</div>
+          </div>
+          <div class="ab-same">
+            <b>바뀐 것은 게이트 한 줄뿐입니다</b> —
+            <code>resolveTournamentSocialAction()</code>의 첫 조건이 485는 시트값, 486은 <code>false</code> 고정입니다.
+            그 뒤 공유 다이얼로그·문구·지면은 <b>양쪽이 완전히 같습니다</b>.
+            두 빌드가 <b>같은 날 반반 서빙</b>돼(9/4~9/6 점유 49:51) 요일·이벤트·이용자 구성이 양쪽에 똑같이 걸립니다.
+          </div>
+        </div>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--sol)">솔리테어</span>
           <span class="tag">BigQuery</span>
@@ -599,7 +643,7 @@ ORDER BY `블록`;</pre></div>
               "3470. 485의 초대 성공 3,876건이 486에서 0이 됐습니다. 다만 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 같은 기간 초대 유입 세션은 하루 25.8건뿐이라, 성공 수와 도달 수의 자릿수가 다릅니다",
               false, null, e => [e.inv_ok, e.ud]],
             ["미노출 / DAU", e => e.sup/e.ud, p3, "g_ok", true,
-              "3230. 쿨다운·토너 없음으로 슬롯이 아예 안 열린 횟수입니다",
+              "3230. 코드상 사유는 둘뿐입니다 — no_tournament(토너 컨텍스트 없음)와 cooldown. 486은 첫 게이트에서 공유를 반환해 쿨다운 분기에 닿지 못하므로 486의 미노출은 전부 no_tournament입니다. 즉 줄어든 0.17/DAU가 485에서 쿨다운에 막히던 몫이고, 그게 공유로 돌아왔습니다",
               false, null, e => [e.sup, e.ud]],
           ]},
         { name:"플레이 · 수익", acc:"#d97706",
