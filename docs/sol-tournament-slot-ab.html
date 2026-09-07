@@ -385,6 +385,9 @@ ret AS (
         AND event = '1000_LOGIN_COMPLETE'
 ),
 retn AS (
+    -- d = 정확히 n일 뒤 '그날 하루' 접속. 누적이 아니라 출석률이라 n이 커져도 오르내릴 수 있다.
+    -- c = 1~n일 중 '한 번이라도' 복귀(누적). COUNT(DISTINCT)가 합집합을 세므로 d의 합과 다르고,
+    --     집합이 커지기만 하므로 n이 커질수록 반드시 오른다. 그 날짜가 지나면 값이 확정된다.
     SELECT
         c.log_date, c.client_version, c.seg,
         COUNT(DISTINCT c.player_id) AS coh,
@@ -394,7 +397,14 @@ retn AS (
         COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 4, c.player_id, NULL)) AS d4,
         COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 5, c.player_id, NULL)) AS d5,
         COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 6, c.player_id, NULL)) AS d6,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS d7
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS d7,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 1, c.player_id, NULL)) AS c1,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 2, c.player_id, NULL)) AS c2,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 3, c.player_id, NULL)) AS c3,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 4, c.player_id, NULL)) AS c4,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 5, c.player_id, NULL)) AS c5,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 6, c.player_id, NULL)) AS c6,
+        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) BETWEEN 1 AND 7, c.player_id, NULL)) AS c7
     FROM cohort c
     LEFT JOIN ret r
         ON r.player_id = c.player_id
@@ -453,7 +463,7 @@ UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     ORDER BY seg, client_version)) FROM dist
 UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     log_date AS coh_date, CAST(client_version AS STRING) AS ver, seg,
-    coh, d1, d2, d3, d4, d5, d6, d7)
+    coh, d1, d2, d3, d4, d5, d6, d7, c1, c2, c3, c4, c5, c6, c7)
     ORDER BY log_date, client_version, seg)) FROM retn
 UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
@@ -472,6 +482,8 @@ ORDER BY `블록`;</pre></div>
               결과는 <b>8행</b>입니다 — <code>0_META</code>(조회 시각) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
               <code>3_RET</code> · <code>4_INFLOW</code>이 보드를 채우고,
               <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
+              <code>3_RET</code>은 <b>d(정확히 n일 뒤 하루 접속)</b>와 <b>c(1~n일 중 한 번이라도 복귀 · 누적)</b>를 함께 담습니다 —
+              보드의 잔존은 <b>c</b>를 씁니다.
               <b><code>7_VERSION</code>을 가장 먼저 보세요</b> — 485가 말라 있으면 대조군이 없고, 487 이상이 떴으면 486군에
               처치가 하나 더 얹힌 것이라 그 뒤 숫자는 A/B가 아닙니다.
               <b>행수</b> 열이 비거나 예상보다 적으면 그 블록만 비어 있는 것이니 다른 블록까지 의심하지 않으셔도 됩니다.
