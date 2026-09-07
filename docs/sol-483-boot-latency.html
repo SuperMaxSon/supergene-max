@@ -110,7 +110,7 @@
           <span class="tag">NRU·RU 동일 창</span>
           <span class="tag">country = US</span>
           <span class="tag">빌드군 = 일자 교란</span>
-          <span class="tag">2026-09-07 08:48 갱신</span>
+          <span class="tag">2026-09-07 09:20 갱신 · 종결</span>
         </div>
       </div>
     </header>
@@ -343,7 +343,7 @@
         <h2 class="doc-h2" style="--acc: #ea580c">485 판정</h2>
         <p class="doc-h2-sub">빌드 용량 37MB → 25MB · 485 첫 로그 <b>09-03</b> · 09-04부터 <b>485 100%</b>(483 잔존 0) ·
           <b style="color:#047857">판정: RU만 개선</b> · <b>NRU는 4일 내내 동률</b> ·
-          <b style="color:#b91c1c">캐시 워밍 가설 기각</b></p>
+          <b style="color:#b91c1c">캐시 워밍 가설 기각</b> · <b style="color:#047857">회귀 없음 — 트래킹 종결</b></p>
 
         <div class="notes">
           <div class="note" style="--acc: var(--bad)">
@@ -405,15 +405,41 @@
             483의 09-02 표본이 NRU 164 · RU 495뿐인 것도 감안해야 합니다.
             <b>3D 페널티의 크기는 이 데이터로 확정할 수 없습니다.</b></p>
           </div>
+          <div class="note" style="--acc: #047857">
+            <div class="note-title">에셋 회귀는 없습니다 — 확인하고 닫았습니다</div>
+            <p>압축·모듈 제거가 무언가를 깨뜨렸다면 <code>INTRO_SCRIPT_LOAD_FAIL</code>(<code>&lt;script&gt;</code> 로드 실패)이
+            늘어야 합니다. <b>오히려 줄었습니다</b> — 신규기기 0.062% → 0.030%, 재방문기기 0.041% → 0.000%.
+            게다가 <b>신규기기 인트로씬 로드 도달률이 92.14% → 92.94%로 +0.80pp 올랐습니다</b> —
+            <b>용량 효과는 속도가 아니라 도달률에서 나왔습니다.</b> 아래 ④ 표가 근거입니다.</p>
+          </div>
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">남은 숫자 하나 — 재방문 FB 초기화 실패 1.307%</div>
+            <p><code>INTRO_FB_START_FAIL</code>(<code>FBInstant.initializeAsync</code> 실패)이 483 0.041%(1건) →
+            485 1.307%(124건)입니다. <b>이 단계는 우리 에셋과 무관</b>하고, 재방문기기 도달률이 −0.91pp 빠진 것도
+            앞단에서 이만큼 튕겨서 생긴 산수입니다(<code>FB준비완료</code>도 −1.42pp).
+            <b>다만 483은 09-02~03, 485는 09-03~07이라 “빌드 탓”과 “그날 FB 탓”을 이 데이터로는 못 가릅니다.</b>
+            <span class="why">485 판정과 분리해 별건으로 남깁니다 — 이 문서의 결론(압축 효과)에는 영향이 없습니다.</span></p>
+          </div>
           <div class="note">
-            <div class="note-title">아직 확인하지 않은 회귀</div>
-            <p>이 문서는 <b>완주 세션만</b> 봅니다. 그래서 <b>도달률·중간 이탈·실패 로그는 판정 범위 밖</b>입니다.
-            압축·모듈 제거는 “덜 받아서 빨라진다”와 “빠진 게 있어서 안 뜬다”가 <b>같은 변경에서 나오므로</b>,
-            <code>INTRO_SCRIPT_LOAD_FAIL</code>·<code>INTRO_ENGINE_ABANDON</code> 발생률과
-            <code>ALL_LOAD_INTRO</code> 도달률은 따로 확인해야 합니다.
-            <span class="why">해당 쿼리(도달률·실패 로그·main.js 부트·타 프로젝트)는 이 판에서 문서 밖으로 뺐습니다 — 커밋 <code>7e1a22a</code> 이전 판에 전문이 있습니다.</span></p>
+            <div class="note-title">엔진 이탈률은 485 이전부터 1%를 넘고 있었습니다</div>
+            <p><code>INTRO_ENGINE_ABANDON</code>(FB 초기화 후 부팅 전 <code>pagehide</code> = 로딩 중 창을 닫음)은
+            신규기기에서 483 1.053% → 485 1.440%입니다. <b>485가 만든 회귀가 아니라 원래 넘고 있던 값</b>이고,
+            483 표본이 1,615뿐인 데다 두 군의 날짜 창도 다릅니다. 절대 규모는 6일간 233건입니다.</p>
           </div>
         </div>
+
+        <h3 class="doc-h2" style="--acc: var(--sol); font-size: 15px; margin-top: 26px">④ 도달률 · 실패 로그 — 완주 세션 밖</h3>
+        <p class="doc-h2-sub">위 ①~③은 <b>1010에 도달한 세션만</b> 봅니다. 에셋이 깨져 인트로가 안 뜬 유저는 거기서 아예 안 보이므로,
+          분모를 <code>FIRST_LOG</code>(main.js가 실행된 모든 브라우저)로 바꿔 한 번 확인했습니다.
+          <b>2026-09-02~09-07 · US · 신규 여부는 <code>data.isNewDevice</code></b>(테이블 컬럼이 아니라 main.js가 직접 싣는 값 —
+          이 구간 로그는 <code>player_id</code>가 <code>-1</code>이라 세션 판정을 못 씁니다).</p>
+        <div class="table-scroll" style="--acc: #047857"><table><thead><tr><th>기기</th><th>지표</th><th style="text-align:right">483~484</th><th style="text-align:right">485+</th><th style="text-align:right">Δ</th></tr></thead><tbody><tr><td rowspan="6"><b>신규기기</b><br /><span class="cdim">FIRST_LOG 1,615 → 6,596</span></td><td>FB준비완료</td><td style="text-align:right">96.47%</td><td style="text-align:right">96.12%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">−0.35pp</span></td></tr><tr><td>인트로씬로드</td><td style="text-align:right">92.14%</td><td style="text-align:right">92.94%</td><td style="text-align:right"><span style="color:#047857;font-weight:700">+0.80pp</span></td></tr><tr><td>인트로씬표시</td><td style="text-align:right">91.95%</td><td style="text-align:right">92.78%</td><td style="text-align:right"><span style="color:#047857;font-weight:700">+0.83pp</span></td></tr><tr><td>스크립트실패</td><td style="text-align:right">0.062%</td><td style="text-align:right">0.030%</td><td style="text-align:right"><span style="color:#047857;font-weight:700">−0.03pp</span></td></tr><tr><td>엔진이탈</td><td style="text-align:right">1.05%</td><td style="text-align:right">1.44%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">+0.39pp</span></td></tr><tr><td>FB초기화실패</td><td style="text-align:right">0.000%</td><td style="text-align:right">0.045%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">+0.04pp</span></td></tr><tr><td rowspan="6"><b>재방문기기</b><br /><span class="cdim">FIRST_LOG 2,430 → 9,490</span></td><td>FB준비완료</td><td style="text-align:right">98.81%</td><td style="text-align:right">97.39%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">−1.42pp</span></td></tr><tr><td>인트로씬로드</td><td style="text-align:right">96.79%</td><td style="text-align:right">95.88%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">−0.91pp</span></td></tr><tr><td>인트로씬표시</td><td style="text-align:right">96.71%</td><td style="text-align:right">95.85%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">−0.86pp</span></td></tr><tr><td>스크립트실패</td><td style="text-align:right">0.041%</td><td style="text-align:right">0.000%</td><td style="text-align:right"><span style="color:#047857;font-weight:700">−0.04pp</span></td></tr><tr><td>엔진이탈</td><td style="text-align:right">0.370%</td><td style="text-align:right">0.337%</td><td style="text-align:right"><span style="color:#047857;font-weight:700">−0.03pp</span></td></tr><tr><td>FB초기화실패</td><td style="text-align:right">0.041%</td><td style="text-align:right">1.31%</td><td style="text-align:right"><span style="color:#b91c1c;font-weight:700">+1.27pp</span></td></tr></tbody></table></div>
+        <p class="doc-h2-sub" style="margin-top:10px">
+          <b>판정: 통과.</b> 에셋 실패는 줄었고 신규기기 도달률은 올랐습니다.
+          <span class="cdim">이 표는 <b>종결된 확인</b>이라 재현 쿼리를 문서에 두지 않았습니다 —
+          다시 봐야 할 일이 생기면 <code>FIRST_LOG</code>을 분모로, 빌드군은 <b>테이블 컬럼</b> <code>client_version</code>으로 잡으면 됩니다
+          (<code>data.client_version</code>은 <code>FIRST_LOG</code>에 없습니다).</span>
+        </p>
 
         <details class="fold">
           <summary>판정 표의 원본 — 일자 × 빌드군 (10행)</summary>
