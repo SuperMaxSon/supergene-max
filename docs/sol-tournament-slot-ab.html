@@ -112,6 +112,22 @@
       .stale-bar b{color:var(--text)}
       .stale-bar code{background:#eef1f6;padding:0 4px;border-radius:4px;font-size:11px}
       s.old{text-decoration:none;color:var(--warn);font-weight:800}
+      /* 코호트 삼각 — 행이 코호트일, 열이 D+n. 아래로 갈수록 도래한 칸이 줄어 삼각형이 된다.
+         가중 합산 한 줄로 뭉개면 행마다 분모 집단이 달라져 곡선이 뒤집힌다 — 그래서 표로 편다. */
+      .tri-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:2px 0 4px}
+      @media (max-width:900px){ .tri-wrap{grid-template-columns:1fr} }
+      .tri h4{margin:0 0 6px;font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+      .tri h4 i{width:9px;height:9px;border-radius:2px;display:inline-block}
+      .tri h4 s{text-decoration:none;color:var(--text-dim);font-weight:600}
+      .tri table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+      .tri th{font-size:9.5px;font-weight:700;color:var(--text-dim);padding:3px 2px;text-align:right;white-space:nowrap}
+      .tri th:first-child,.tri td:first-child{text-align:left}
+      .tri td{font-size:11px;font-weight:700;padding:4px 3px;text-align:right;border-top:1px solid var(--border)}
+      .tri td.c{border-radius:3px}
+      .tri td.na{color:#c3c9d6;font-weight:600}
+      .tri td.coh{color:var(--text-dim);font-weight:600}
+      .tri-foot{font-size:10.5px;line-height:1.75;color:var(--text-dim);font-weight:600;margin-top:6px}
+      .tri-foot b{color:var(--text)}
 
       #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:330px;
         background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
@@ -178,10 +194,6 @@
         <details class="fold">
           <summary>배정 균형 — US OS 구성</summary>
           <div class="fold-body"><div id="rawbal"></div></div>
-        </details>
-        <details class="fold">
-          <summary>코호트별 잔존 — 막대를 9/3으로 고정한 이유</summary>
-          <div class="fold-body"><div id="rawret"></div></div>
         </details>
         <details class="fold">
           <summary>바뀐 코드 — <code>resolveTournamentSocialAction()</code></summary>
@@ -462,25 +474,8 @@ ORDER BY `블록`;</pre></div>
         { c:"09-06", ver:"486", seg:"NRU", coh:821, d:[] },
         { c:"09-06", ver:"486", seg:"RU",  coh:459, d:[] },
       ];
-      // D+n 행은 전부 같은 코호트를 써야 한다. 도래한 코호트를 전부 합치면 행마다 분모 집단이
-      // 달라져서, D+3(9/3 코호트만)이 D+1(9/3+9/4+9/5)보다 높게 나온다 — 잔존이 늘어난 게 아니라
-      // 9/3 코호트의 복귀율이 원래 높기 때문이다(롤아웃 첫날 = 조기 업데이트 헤비 유저, D+1 47.5%
-      // vs 다른 코호트 32%). 그래서 막대는 D+3까지 다 있는 9/3 코호트로 고정한다.
-      const RET_BASE = "09-03";
-      const retAgg = (ver, n) => {
-        const rs = RET.filter(r => r.c === RET_BASE && r.ver === ver);
-        if (!rs.length || Number(RET_BASE.slice(3)) + n > LAST_DAY) return null;
-        return { x: rs.reduce((t, r) => t + (r.d[n - 1] || 0), 0),
-                 n: rs.reduce((t, r) => t + r.coh, 0) };
-      };
-      // 도래한 코호트를 전부 합친 값. 표본이 훨씬 크지만 행끼리 집단이 달라 막대로는 못 쓴다 —
-      // 같은 n 안에서 485 ↔ 486 을 견주는 데는 유효하므로 주석(ⓘ)으로만 보여 준다.
-      const retPooled = (ver, n) => {
-        const rs = RET.filter(r => r.ver === ver && Number(r.c.slice(3)) + n <= LAST_DAY);
-        if (!rs.length) return null;
-        return { x: rs.reduce((t, r) => t + (r.d[n - 1] || 0), 0),
-                 n: rs.reduce((t, r) => t + r.coh, 0) };
-      };
+      // 잔존은 코호트 삼각(아래 retTriangles)으로만 그린다. 코호트를 가로질러 가중 합산하면
+      // 행마다 분모 집단이 달라져 D+3이 D+1보다 높아지는 착시가 생긴다 — 그 합산을 만들지 않는다.
 
       // 4_INFLOW — 유입 세션. 발신자 버전으로도 발신자 유저군으로도 못 가른다. 날짜축만 있다.
       const INFLOW = [
@@ -620,7 +615,7 @@ ORDER BY `블록`;</pre></div>
               false, e => [e.cr_ok, e.cr_try]],
           ]},
         { name:"잔존", acc:"#7c3aed", days:true,
-          sub:"<s class='old'>9/3 코호트 고정</s>(485 n=244 · 486 n=291) · D+3까지 도래 · 코호트를 고정해야 행끼리 이어 읽을 수 있습니다 · 코호트별 원본은 아래 폴드에",
+          sub:"코호트 삼각 두 벌 · 가로는 한 코호트의 시간, 세로는 코호트끼리 · <s class='old'>같은 줄끼리만 좌우로 견주세요</s>",
           rows:[] },
       ];
 
@@ -644,6 +639,59 @@ ORDER BY `블록`;</pre></div>
 
       const DAYS = [1,2,3,4,5,6,7];
 
+      // 코호트 삼각 두 벌(485 / 486). 한 코호트의 D+1~D+7 을 가로로 펴 두면
+      // '2일 39.9% → 3일 43.0%' 같은 반등이 그 코호트 안에서 실제로 일어난 일인지,
+      // 아니면 행마다 분모 집단이 바뀐 착시인지가 눈으로 갈린다.
+      const RET_COHORTS = [...new Set(RET.map(r => r.c))];
+      const retCell = (c, ver, n) => {
+        if (Number(c.slice(3)) + n > LAST_DAY) return null;         // 미도래
+        const rs = RET.filter(r => r.c === c && r.ver === ver);
+        if (!rs.length) return null;
+        return { x: rs.reduce((t, r) => t + (r.d[n - 1] || 0), 0),
+                 n: rs.reduce((t, r) => t + r.coh, 0) };
+      };
+      function retTriangles() {
+        // 두 표가 같은 농도 척도를 써야 좌우 비교가 성립한다.
+        let mx = 0;
+        RET_COHORTS.forEach(c => ["485", "486"].forEach(v => DAYS.forEach(n => {
+          const e = retCell(c, v, n); if (e) mx = Math.max(mx, e.x / e.n * 100);
+        })));
+        const one = (ver, color, label) => {
+          const head = `<tr><th>코호트일</th><th>코호트</th>`
+            + DAYS.map(n => `<th>D+${n}</th>`).join("") + `</tr>`;
+          const body = RET_COHORTS.map(c => {
+            const size = RET.filter(r => r.c === c && r.ver === ver)
+                            .reduce((t, r) => t + r.coh, 0);
+            const tds = DAYS.map(n => {
+              const e = retCell(c, ver, n);
+              if (!e) return `<td class="na">·</td>`;
+              const pct = e.x / e.n * 100;
+              const bg = `rgba(${color},${(pct / mx * 0.5).toFixed(3)})`;
+              return `<td class="c" style="background:${bg}" `
+                + `data-tip="${label} · ${c} 코호트 · D+${n}\n${pct.toFixed(1)}% `
+                + `(${nf(e.x)} / ${nf(e.n)})\n같은 코호트 안에서만 좌우로 이어 읽으세요">`
+                + `${pct.toFixed(1)}</td>`;
+            }).join("");
+            return `<tr><td>${c}</td><td class="coh">${nf(size)}</td>${tds}</tr>`;
+          }).join("");
+          return `<div class="tri"><h4><i style="background:${label === "485" ? "var(--a)" : "var(--b)"}"></i>`
+            + `${label} <s>${label === "485" ? "공유↔초대 교대" : "공유 전용"}</s></h4>`
+            + `<table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+        };
+        return `<div class="tri-wrap">${one("485", "22,163,74", "485")}`
+          + `${one("486", "29,78,216", "486")}</div>`
+          + `<div class="tri-foot">
+            숫자는 <b>그 코호트가 정확히 N일 뒤 하루에 다시 접속한 비율(%)</b>입니다 — 누적 잔존이 아니라
+            <b>그날 하루 출석률</b>이라, 하루 건너뛰고 이틀 뒤에 온 유저는 D+2에 빠지고 D+3에 잡힙니다.
+            <b>구조적으로 오르내릴 수 있는 값</b>이고, 실제로 9/3 코호트 486은 D+2 39.9% → D+3 43.0%로 올라갑니다 —
+            RU 150명 중 <b>8명</b> 차이(90 → 98)라 신호로 볼 크기가 아닙니다. 같은 일요일로 들어가는
+            9/4 코호트는 표본이 10배 큰데 <b>485·486 둘 다 내려갑니다</b>(31.9 → 26.9 · 31.1 → 29.0).
+            <b>· 이라고 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이고, 그래서 표가 아래로 갈수록 짧아집니다.
+            비교는 <b>같은 코호트일 줄끼리 좌우</b>로만 하세요 — 세로로 다른 코호트를 이어 읽으면
+            9/3(롤아웃 첫날, 조기 업데이트 헤비 유저)의 높은 값이 착시를 만듭니다.
+          </div>`;
+      }
+
       function renderBoard() {
         const A = agg("485", "ALL"), B = agg("486", "ALL");
 
@@ -652,12 +700,6 @@ ORDER BY `블록`;</pre></div>
         GROUPS.forEach(g => (g.rows || []).forEach(([, f, , grp]) => {
           [f(A), f(B)].forEach(v => { if (v != null && isFinite(v)) GMX[grp] = Math.max(GMX[grp] || 0, v); });
         }));
-        const retVals = DAYS.flatMap(n => ["485", "486"].map(v => {
-          const r = retAgg(v, n);
-          return r ? r.x / r.n * 100 : null;
-        })).filter(v => v != null);
-        GMX.g_ret = Math.max(...retVals, 1e-9);
-
         const bars = (vp, vc, fmt, mx, nA, nB) => {
           const w = v => (mx > 0 ? Math.max(v / (mx * 1.35) * 100, v > 0 ? 1.5 : 0) : 0).toFixed(1);
           const den = np => !np || np[1] == null ? ""
@@ -693,24 +735,7 @@ ORDER BY `블록`;</pre></div>
 
         const body = GROUPS.map(g => {
           const rows = g.days
-            ? DAYS.map(n => {
-                // 코호트마다 D+n 도래 여부가 다르다. 도래한 코호트만 분자·분모에 함께 넣어야
-                // '아직 안 온 날'이 이탈로 둔갑하지 않는다.
-                const a = retAgg("485", n), b = retAgg("486", n);
-                const pa = retPooled("485", n), pb = retPooled("486", n);
-                const pct1 = r => r ? (r.x / r.n * 100).toFixed(1) + "%" : "—";
-                const note = a
-                  ? `9/3 코호트가 <b>정확히 ${n}일 뒤</b>(9/${3 + n})에 다시 로그인한 비율입니다. `
-                    + `모든 D+ 행이 <b>같은 9/3 코호트</b>를 쓰므로 위아래로 이어 읽어도 됩니다. `
-                    + `누적이 아니라 그날 하루 복귀라, 주말이 끼면 오르내릴 수 있습니다(9/5 토 · 9/6 일). `
-                    + `도래한 코호트를 전부 합치면 485 ${pct1(pa)} · 486 ${pct1(pb)}(n=${nf(pa && pa.n)}/${nf(pb && pb.n)})인데, `
-                    + `<b>행마다 집단이 달라져 막대로는 쓰지 않습니다.</b>`
-                  : `9/3 코호트도 ${n}일 뒤(9/${3 + n})가 아직 오지 않았습니다.`;
-                return row(`D+${n}`, a && a.x / a.n * 100, b && b.x / b.n * 100,
-                  x => x.toFixed(1) + "%", "g_ret", false, note, false,
-                  a && b ? ptest(a.x, a.n, b.x, b.n) : null, "미도래",
-                  a && [a.x, a.n], b && [b.x, b.n]);
-              }).join("")
+            ? retTriangles()
             : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den]) => {
                 // parts 는 검정용(비율 지표만). den 은 표시 전용 — 유저당 건수처럼
                 // 두 비율 검정이 성립하지 않는 행도 모수는 보여줘야 표본 크기를 읽는다.
@@ -824,31 +849,6 @@ ORDER BY `블록`;</pre></div>
         </table></div><div class="kb-foot">US 기준입니다. 모든 OS에서 486이 3~6% 많고 <b>한쪽으로 쏠린 OS가 없습니다</b> —
           기기로 가른 흔적은 보이지 않습니다. 국가 구성도 양쪽에 같은 나라가 같이 잡힙니다</div>`;
 
-        // 코호트별 잔존 — 보드가 왜 9/3 코호트로 고정됐는지의 근거표.
-        // 9/3 행만 D+1 이 47%대이고 나머지는 32%대다. 이 차이가 행마다 섞이면 곡선이 뒤집힌다.
-        const RD = [1, 2, 3];
-        const cell = (c, ver, n) => {
-          const rs = RET.filter(r => r.c === c && r.ver === ver);
-          if (Number(c.slice(3)) + n > LAST_DAY) return `<td style="text-align:right;color:var(--text-dim)">미도래</td>`;
-          const x = rs.reduce((t, r) => t + (r.d[n - 1] || 0), 0);
-          const d = rs.reduce((t, r) => t + r.coh, 0);
-          return `<td style="text-align:right">${(x / d * 100).toFixed(1)}%</td>`;
-        };
-        const cohs = [...new Set(RET.map(r => r.c))];
-        document.getElementById("rawret").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>코호트일</th><th>빌드</th><th style="text-align:right">코호트</th>
-            ${RD.map(n => `<th style="text-align:right">D+${n}</th>`).join("")}</tr></thead>
-          <tbody>${cohs.flatMap(c => ["485", "486"].map(ver => {
-            const d = RET.filter(r => r.c === c && r.ver === ver).reduce((t, r) => t + r.coh, 0);
-            return `<tr${c === RET_BASE ? ' style="font-weight:700"' : ""}>`
-              + `<td>${c}${c === RET_BASE ? ' <span class="tag">막대 기준</span>' : ""}</td><td>${ver}</td>`
-              + `<td style="text-align:right">${nf(d)}</td>${RD.map(n => cell(c, ver, n)).join("")}</tr>`;
-          })).join("")}</tbody>
-        </table></div><div class="kb-foot">
-          <b>9/3 코호트만 D+1이 47%대이고 9/4·9/5는 32%대입니다</b> — 롤아웃 첫날이라 조기 업데이트 유저(헤비)만 잡힌 탓입니다.
-          도래한 코호트를 전부 합치면 D+1은 셋, D+2는 둘, D+3은 하나를 쓰게 되어 <b>행마다 집단이 바뀌고, 그래서 D+3이 D+1보다 높아집니다</b> —
-          잔존이 늘어난 것이 아닙니다. 보드 막대는 D+3까지 다 있는 9/3 코호트로 고정했습니다.
-          표본이 큰 합산값(D+1 485 33.6% · 486 33.3%, n=2,317/2,473)은 각 행의 ⓘ에 적어 두었습니다</div>`;
       })();
 
       // ── 말풍선 ───────────────────────────────────────────────────────────
