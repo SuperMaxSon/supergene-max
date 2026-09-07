@@ -48,19 +48,29 @@ DOC_URL  = "docs/coin-match-tournament-reject-ab.html"
 
 SQL = r"""
 WITH base AS (
+    -- 최근 3일만 읽는다. 예전에는 8/27~어제 전 구간을 매 실행 다시 읽어 7.2 GB 를 썼고,
+    -- 실험이 하루 길어질수록 0.6 GB 씩 커졌다. 지난 날짜의 로그는 불변이므로 다시 읽을 이유가 없다.
+    -- 아래 core 가 날짜별로 집계하고, 문서 쪽에서 날짜를 합산해 기간 값을 만든다.
+    -- ⚠ 이 방식이 성립하는 이유: 보드의 모든 지표가 '더할 수 있는' 카운트다.
+    --    COUNTIF 는 당연히 더해지고, sessions/sessions_300s 도 session_key 가 하루에만
+    --    속하므로(로그인은 한 번) 날짜별 distinct 를 더하면 기간 distinct 와 같다.
+    --    유일한 예외가 기간 고유 유저(users)이고, 그건 아래 USERS_SQL 로 따로 뽑는다.
     SELECT
         CASE WHEN client_version = 3375 THEN 'B' ELSE 'A' END AS ab_group,
+        log_date,
         player_id,
         CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
         event
     FROM `game-log-359704.raw.coin_match`
-    WHERE log_date BETWEEN DATE '2026-08-27' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
+                       AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
       AND client_version IN (3374, 3375)
 ),
 core AS (
     SELECT
         ab_group,
-        COUNT(DISTINCT CASE WHEN event = '1000_LOGIN_COMPLETE' THEN player_id END)   AS users,
+        log_date,
+        COUNT(DISTINCT CASE WHEN event = '1000_LOGIN_COMPLETE' THEN player_id END)   AS users_day,
         COUNT(DISTINCT CASE WHEN event = '1000_LOGIN_COMPLETE' THEN session_key END) AS sessions,
         COUNTIF(event = '2100_GAMEPLAY_START')              AS play_starts,
         COUNTIF(event = '2300_GAMEPLAY_FINISH')             AS play_finishes,
@@ -77,7 +87,7 @@ core AS (
         COUNTIF(event = '3000_SWITCH_CONTEXT_START')        AS sc_try,
         COUNTIF(event = '3010_SWITCH_CONTEXT_SUCCESS')      AS sc_success
     FROM base
-    GROUP BY ab_group
+    GROUP BY ab_group, log_date
 ),
 -- 리텐션은 사전집계 테이블만 쓴다. dN 은 (social × country × os) 행별 비율이라
 -- nru_count 로 가중해 재접속 '수'로 복원한다 — 두 비율 검정에 분모가 필요하다.
@@ -121,10 +131,11 @@ SELECT '0_META' AS blk, 1 AS rows_n,
         DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_day,
         DATE '2026-08-27' AS exp_from)) AS payload
 UNION ALL SELECT '1_CORE', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    ab_group, users, sessions, play_starts, play_finishes, sessions_300s,
+    ab_group, FORMAT_DATE('%m-%d', log_date) AS d,
+    users_day, sessions, play_starts, play_finishes, sessions_300s,
     tc_try, tc_success, tc_suppressed, ts_try, ts_success,
     p2p_try, p2p_success, feed_try, feed_success, sc_try, sc_success)
-    ORDER BY ab_group)) FROM core
+    ORDER BY log_date, ab_group)) FROM core
 UNION ALL SELECT '2_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', join_date) AS c, ab_group AS g, cohort,
     r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14)
@@ -136,12 +147,29 @@ ORDER BY blk
 """
 
 
-def notify(msg):
-    """실패했을 때만 맥 알림을 띄운다. 로그만 남기면 아무도 안 본다."""
+# 기간 고유 유저만 따로 뽑는다. 이것만은 날짜별로 쪼개 더할 수 없다
+# (여러 날 접속한 유저가 중복되므로). 보드에서 '두 군이 같은 크기인가' 확인에만 쓰이고
+# 어떤 비율의 분모도 아니라서, 매일 뽑지 않고 주 1회만 갱신한다.
+# player_id 컬럼 하나만 읽으므로 같은 창을 읽어도 base 보다 훨씬 싸다.
+USERS_SQL = r"""
+SELECT
+    CASE WHEN client_version = 3375 THEN 'B' ELSE 'A' END AS ab_group,
+    COUNT(DISTINCT player_id) AS users
+FROM `game-log-359704.raw.coin_match`
+WHERE log_date BETWEEN DATE '2026-08-27' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+  AND client_version IN (3374, 3375)
+  AND event = '1000_LOGIN_COMPLETE'
+GROUP BY ab_group
+"""
+
+
+def notify(msg, title="코인매치 A/B 갱신 실패"):
+    """맥 알림. 실패는 물론 '실제로 값이 바뀐' 갱신에도 띄운다.
+    변화 없이 끝난 실행은 알리지 않는다 — 매일 같은 알림이 오면 아무도 안 본다."""
     try:
         subprocess.run(["/usr/bin/osascript", "-e",
-                        'display notification %s with title "코인매치 A/B 갱신 실패"'
-                        % json.dumps(msg[:200])], timeout=20)
+                        'display notification %s with title %s'
+                        % (json.dumps(msg[:200]), json.dumps(title))], timeout=20)
     except Exception:
         pass
 
@@ -185,15 +213,44 @@ def merge_by_key(old, new, keys):
     return [idx[k] for k in sorted(idx)]
 
 
+def refresh_users(state):
+    """기간 고유 유저를 주 1회만 다시 뽑는다.
+
+    이 값은 '두 군이 같은 크기인가' 확인에만 쓰이고 어떤 비율의 분모도 아니다.
+    매일 뽑으면 5.7 GiB 를 매일 쓰게 되므로, 7일마다 한 번으로 충분하다.
+    """
+    today = datetime.date.today().isoformat()
+    asof  = state.get("users_asof")
+    if asof and state.get("users"):
+        age = (datetime.date.today() - datetime.date.fromisoformat(asof)).days
+        if age < 7:
+            return state
+    out = subprocess.run(
+        [BQ, "query", "--use_legacy_sql=false", "--format=json", "--quiet",
+         "--project_id=" + PROJECT, "--max_rows=10"],
+        input=USERS_SQL, capture_output=True, text=True, timeout=1800)
+    if out.returncode != 0:
+        # 실패해도 멈추지 않는다 — 지난 값을 그대로 쓰고 로그만 남긴다.
+        log("users 갱신 실패(지난 값 유지): %s" % (out.stderr or out.stdout).strip()[:200])
+        return state
+    rows = json.loads(out.stdout)
+    state["users"] = {r["ab_group"]: int(r["users"]) for r in rows}
+    state["users_asof"] = today
+    log("기간 고유 유저 갱신: %s" % state["users"])
+    return state
+
+
 def merge_state(state, blocks):
     meta = blocks["0_META"]
     if isinstance(meta, list):
         meta = meta[0]
     state["pulled_kst"] = meta["pulled_kst"]
     state["last_day"]   = meta["last_day"]
-    # core / version 은 날짜 축이 없거나 최근 3일 롤링이라 통째로 갈아끼운다.
-    state["core"]    = blocks["1_CORE"]
-    state["version"] = blocks.get("3_VERSION") or []
+    # core 는 이제 날짜 축이 있다 — 같은 (군, 날짜) 행만 덮어쓰고 새 날짜는 추가한다.
+    # 그래서 3일 창으로도 8/27 부터의 기간 값이 유지된다.
+    state["core"]    = merge_by_key(state.get("core", []), blocks["1_CORE"], ["ab_group", "d"])
+    state["version"] = merge_by_key(state.get("version", []), blocks.get("3_VERSION") or [],
+                                    ["d", "ver"])
     # 리텐션은 코호트일 × 군 키로 병합한다. 지난 코호트의 D+n 은 나중에 채워진다.
     state["ret"] = merge_by_key(state.get("ret", []), blocks["2_RET"], ["c", "g"])
     return state
@@ -206,7 +263,7 @@ def check(state):
         raise Guard("마지막 날(%s)이 어제(%s)가 아니다 — 적재가 안 끝났거나 시각이 어긋났다"
                     % (state["last_day"], y))
 
-    core = {r["ab_group"]: r for r in state["core"]}
+    core = sum_core(state)
     for g in ("A", "B"):
         if g not in core:
             raise Guard("core 에 %s 군이 없다 — 대조군이 사라졌다" % g)
@@ -251,9 +308,29 @@ def pct(num, den):
     return round(num / den * 100, 2) if den else 0.0
 
 
+def sum_core(state):
+    """날짜별 core 행을 군별로 합산해 기간 값을 만든다.
+
+    보드의 모든 지표가 더할 수 있는 카운트라서 성립한다 — COUNTIF 는 물론이고
+    sessions/sessions_300s 도 session_key 가 하루에만 속하므로 날짜별 distinct 를
+    더하면 기간 distinct 와 같다. 기간 고유 유저(users)만 예외이고 그건 state["users"] 에
+    따로 들어 있다(USERS_SQL, 주 1회 갱신).
+    """
+    out = {}
+    for r in state["core"]:
+        g = out.setdefault(r["ab_group"], {})
+        for k, v in r.items():
+            if k in ("ab_group", "d"):
+                continue
+            g[k] = g.get(k, 0) + int(v)
+    for g, u in (state.get("users") or {}).items():
+        if g in out:
+            out[g]["users"] = int(u)
+    return out
+
+
 def build_js(state):
-    c = {r["ab_group"]: {k: int(v) for k, v in r.items() if k != "ab_group"}
-         for r in state["core"]}
+    c = sum_core(state)
     a, b = c["A"], c["B"]
 
     # 리텐션 코호트 크기 — NRU 코호트 행은 실험 첫 5일(8/27~8/31) 코호트의 합이다.
@@ -357,6 +434,19 @@ def stamp(now, bust, rng):
     open(INDEX, "w", encoding="utf-8").write(i)
 
 
+def summary(state):
+    """알림 한 줄. 기간과 주지표(생성 성공/유저)의 A->B 변화를 담는다."""
+    c = {r["ab_group"]: r for r in state["core"]}
+    try:
+        a = int(c["A"]["tc_success"]) / int(c["A"]["users"])
+        b = int(c["B"]["tc_success"]) / int(c["B"]["users"])
+        delta = " · 생성 성공/유저 %+.1f%%" % ((b - a) / a * 100) if a else ""
+    except Exception:
+        delta = ""
+    users = sum(int(c[g]["users"]) for g in ("A", "B") if g in c)
+    return "%s 까지 반영 · 유저 %s명%s" % (state["last_day"], format(users, ","), delta)
+
+
 def git(*args):
     return subprocess.run(["git", "-C", REPO] + list(args),
                           capture_output=True, text=True, timeout=300)
@@ -372,6 +462,7 @@ def main():
         blocks = run_query()
         state  = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
         state  = merge_state(state, blocks)
+        state  = refresh_users(state)      # 주 1회만 실제 조회한다
         check(state)
         block, rng = build_js(state)
         old, new   = splice(block)
@@ -419,6 +510,7 @@ def main():
         notify("푸시 실패")
         return 1
     log("갱신 완료: %s" % msg)
+    notify(summary(state), "코인매치 A/B 갱신됨")
     return 0
 
 
