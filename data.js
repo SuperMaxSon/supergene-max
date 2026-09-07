@@ -40,7 +40,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-07 13:26",
+  updated: "2026-09-07 09:42",
 };
 
 /* --------------------------------------------------------------------------
@@ -652,12 +652,12 @@ const SECTIONS = [
       },
       {
         title: "솔리테어 커밋 히스토리 — 왜 이렇게 고쳤나",
-        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~08-27 Max 커밋 173건 diff 전량 실측.",
+        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~09-03 Max 커밋 179건 diff 전량 실측.",
         url: "docs/commit-history-solitaire.html",
         project: "sol",
         status: "진행중",
-        version: "v11.0",
-        updated: "2026-08-28 18:40",
+        version: "v12.0",
+        updated: "2026-09-07 09:42",
         pinned: false,
         tags: ["커밋 히스토리", "상시"],
       },
