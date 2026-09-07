@@ -84,7 +84,7 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
-        title: "[솔리테어] 부팅 로딩 빌드 대조",
+        title: "부팅 로딩 빌드 대조",
         desc: "압축·3D 모듈 조합이 다른 485·483·477 세 빌드군의 부팅 24단계 곡선. 3D가 붙인 +1,361ms를 압축이 88% 되돌렸다. 압축은 485에서 처음 켜져, 477도 최적 기준선이 아니다.",
         url: "docs/sol-483-boot-latency.html",
         project: "sol",
@@ -95,7 +95,7 @@ const SECTIONS = [
         tags: ["BigQuery", "로딩", "도구"],
       },
       {
-        title: "[솔리테어] 483 전후 벤치 대조",
+        title: "483 전후 벤치 대조",
         desc: "482 이하와 483 이상을 빌드별로 합산해 DAU당 9행으로 대조한다. 목표선은 벤치 3사 고정 기준선이고, 일자별 원본과 갱신 쿼리는 폴드에 그대로 둔다.",
         url: "docs/sol-era-watch.html",
         project: "sol",
@@ -117,7 +117,7 @@ const SECTIONS = [
         tags: ["인프라"],
       },
       {
-        title: "[스토리머지] 로그 적용 매트릭스",
+        title: "로그 적용 매트릭스",
         desc: "주요 게임 5개 로그를 전량 실측해 프로토에 넣을 수 있는 것만 골랐다. 호출문이 이미 심긴 18계열과 새로 넣을 16계열을 갈랐고, 공통 로그 등록·호출 규약을 붙였다.",
         url: "docs/story-merge-log-matrix.html",
         project: "smg",
@@ -128,7 +128,7 @@ const SECTIONS = [
         tags: ["로그", "코드 실측"],
       },
       {
-        title: "[다중대조] FB 게이밍 탭 복귀 지면",
+        title: "FB 게이밍 탭 복귀 지면",
         desc: "포스트는 그 지면에 자동으로 실린다. 문제는 이틀간 발사가 2건뿐이라는 것. 게이트 6개가 무로그로 막고 있다.",
         url: "docs/fb-exit-surface-investigation.html",
         project: "multi",
@@ -140,7 +140,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[다중대조] 광고 유입 NRU 첫터치",
+        title: "광고 유입 NRU 첫터치",
         desc: "업데이트·빌드·클라 결함 전부 배제. 같은 조건 대조군이 45.9%·70.7%인데 광고만 7.3%. 남은 원인은 유입 의도.",
         url: "docs/ua-ad-nru-first-touch.html",
         project: "multi",
@@ -152,7 +152,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 주간 KPI 3축",
+        title: "주간 KPI 3축",
         desc: "광고 노출 · 플레이 횟수 · 공유 3축을 전주 대비 숫자로만 본다. 매주 갱신되는 분석 입구.",
         url: "docs/weekly-kpi.html",
         project: "sol",
@@ -164,7 +164,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[다중대조] 공유 · 메시지 실패",
+        title: "공유 · 메시지 실패",
         desc: "피드공유 실패의 81%가 유저 취소가 아니라 호출 충돌. 겹치는 호출 후보는 4개까지 좁혀졌다.",
         url: "docs/viral-surface-cross-project.html",
         project: "multi",
@@ -176,7 +176,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 생성 · 수락률",
+        title: "토너 생성 · 수락률",
         desc: "공유 격차의 100%가 수락률이고 발사는 1.22배 더 많다. 생성은 모바일만 붕괴.",
         url: "docs/tournament-share-rate.html",
         project: "sol",
@@ -188,7 +188,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 초대 유입률",
+        title: "토너 초대 유입률",
         desc: "시도/DAU는 퍼블마의 2배인데 시도당 유입은 절반. 남은 가설은 친구 그래프 성숙도 하나.",
         url: "docs/invite-inflow-channel-maturity.html",
         project: "sol",
@@ -200,7 +200,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[다중대조] NRU 0~10분 온보딩",
+        title: "NRU 0~10분 온보딩",
         desc: "같은 정의로 재는 지표 4개에서 3승 1패. 값이 갈리는 이유는 가설 7건으로 분해했다.",
         url: "docs/nru-first-10min-compare.html",
         project: "multi",
@@ -212,7 +212,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[다중대조] 소셜 코드 대조표",
+        title: "소셜 코드 대조표",
         desc: "공유 호출 · 지면 게이트 · 로그를 5개 프로젝트 코드로 나란히 놓은 28행 대조표.",
         url: "docs/social-code-matrix.html",
         project: "multi",
@@ -223,7 +223,7 @@ const SECTIONS = [
         tags: ["공유", "코드 실측", "정본"],
       },
       {
-        title: "[다중대조] 로딩 속도 비교",
+        title: "로딩 속도 비교",
         desc: "부팅 지연 전량이 LOAD_FB→LOAD_INTRO 한 구간에 몰린다(코지의 3.3배).",
         url: "docs/loading-speed-compare.html",
         project: "multi",
@@ -235,7 +235,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[다중대조] 전면광고 지면 비교",
+        title: "전면광고 지면 비교",
         desc: "솔리테어 · 퍼블마 · 코지 · 마종의 전면광고를 유저 플로우 13개 노드에 올려 비교.",
         url: "docs/ad-placements.html",
         project: "multi",
@@ -247,7 +247,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[스토리머지] 역기획 구현 범위",
+        title: "역기획 구현 범위",
         desc: "목표는 Gossip Harbor 급. 레퍼런스 위키를 정본으로 시스템 20종을 세우고, 붙이기 전에 형태를 확정해야 하는 게이트 6개와 L0 보드 · L1 재화 · L2 진행까지 층을 갈랐습니다.",
         url: "docs/story-merge-kickoff-slim.html",
         project: "smg",
@@ -258,7 +258,7 @@ const SECTIONS = [
         tags: ["머지", "기획 범위"],
       },
       {
-        title: "[스토리머지] 컨텐츠 TODO",
+        title: "컨텐츠 TODO",
         desc: "머지 게임에 들어가야 하는 컨텐츠 29개를 코어 13 · 리텐션 8 · 매출 5 · 소셜 3으로 갈라 우선순위와 현재 상태를 붙인 판. 코드 0줄이 19개. 착수 순서는 중요도순이 아니라 의존순 — 앨범은 체인 테이블 뒤, 상점은 에너지 뒤입니다.",
         url: "docs/story-merge-content-todo.html",
         project: "smg",
@@ -269,7 +269,7 @@ const SECTIONS = [
         tags: ["머지", "기획 범위"],
       },
       {
-        title: "[스토리머지] 리소스 예산",
+        title: "리소스 예산",
         desc: "무엇이 무겁고 언제 불러오는가. 메모리는 파일이 아니라 해상도로 정해집니다 — 대화 애니 파일 7.3MB 가 메모리 90.8MB. 로딩 단위를 캐릭터가 아니라 감정(5.7MB)으로 잡아야 하는 이유를 솔리테어 실측으로 맞췄습니다.",
         url: "docs/story-merge-resource-budget.html",
         project: "smg",
@@ -288,7 +288,7 @@ const SECTIONS = [
     desc: "프로젝트별 전체 지면 플로우 맵 — 오픈맵 + 와이어프레임 캔버스",
     cards: [
       {
-        title: "[솔리테어] 부팅 로그 플로우",
+        title: "부팅 로그 플로우",
         desc: "앱이 켜지고 게임 시작 화면이 뜰 때까지 찍히는 로그를 실행 순서대로 세운 지도입니다. 구간마다 색을 고정해 어느 로그가 어느 구간을 재는지 색만 보고 갈리고, 2026-09-01 빌드 480 사고가 났던 1b 구간은 주황으로 따로 세웠습니다. 퍼널 게이트 9개 · 실패 분기 16개 · 공통 필드 6개를 파일·줄 번호까지 붙여 실측했습니다.",
         url: "docs/boot-log-flow.html",
         project: "sol",
@@ -299,7 +299,7 @@ const SECTIONS = [
         tags: ["코드 실측", "로그"],
       },
       {
-        title: "[솔리테어] 지면 플로우 맵",
+        title: "솔리테어 지면 플로우 맵",
         desc: "한 판의 라이프사이클을 세로 스파인으로 세운 오픈맵입니다. 부팅 → 로비 → 프리게임 → 인게임 → 결과 → 결과 후 7단계 → 로비 복귀가 위에서 아래로 한 줄기로 읽히고, 지면을 열면 프리팹 실측 화면 요소 1,575개로 그린 와이어프레임과 버튼별 흐름 · 컨텍스트 상태 기계 · FB 지면 15종이 나옵니다.",
         url: "docs/solitaire-flow-map.html",
         project: "sol",
@@ -310,7 +310,7 @@ const SECTIONS = [
         tags: ["프리팹 실측", "도구"],
       },
       {
-        title: "[코인매치] 지면 플로우 맵",
+        title: "코인매치 지면 플로우 맵",
         desc: "한 판의 진행을 세로 스파인으로 세운 오픈맵입니다. 부팅 → 진입 라우팅 → 로비 → 인게임 → 정산 → 판 종료 후 7단계가 위에서 아래로 한 줄기로 읽히고, 지면을 열면 세로 화면 와이어프레임 위에서 버튼을 눌러 호출 사슬을 그 자리에서 펼칩니다. 메소드·프리팹·버튼 이름으로 3,280항목을 검색해 그 지면의 상세까지 열어 줍니다.",
         url: "docs/coin-match-flow-map.html",
         project: "cmt",
@@ -321,7 +321,7 @@ const SECTIONS = [
         tags: ["프리팹 실측", "도구"],
       },
       {
-        title: "[코지] 지면 플로우 맵",
+        title: "코지 지면 플로우 맵",
         desc: "한 판의 진행을 세로 스파인으로 세운 오픈맵입니다. 로비가 껍데기고 탭 프리팹 5장이 실제 화면이라는 것, 판 종료 후 6단계가 위에서 아래로 한 줄기로 읽힙니다. 지면을 열면 프리팹 실측 화면 요소 1,449개로 그린 와이어프레임 위에서 버튼을 눌러 호출 사슬을 그 자리에서 펼칩니다.",
         url: "docs/cozytiles-flow-map.html",
         project: "coz",
@@ -332,7 +332,7 @@ const SECTIONS = [
         tags: ["프리팹 실측", "도구"],
       },
       {
-        title: "[마종] 지면 플로우 맵",
+        title: "마종 지면 플로우 맵",
         desc: "코지와 같은 판형으로 세운 오픈맵입니다. 마종은 로비에 탭이 없고 상점·도감·친구·토너먼트가 독립 View 4장이라는 점이 갈리는 지점입니다. 판 종료 후 5단계와 추천 매치가 다음 판의 컨텍스트를 정하는 구조를 폈습니다.",
         url: "docs/mahjong-flow-map.html",
         project: "mah",
@@ -343,7 +343,7 @@ const SECTIONS = [
         tags: ["프리팹 실측", "도구"],
       },
       {
-        title: "[퍼블마] 지면 플로우 맵",
+        title: "퍼블마 지면 플로우 맵",
         desc: "이 게임만 부팅이 로비를 건너뛰고 판으로 직행합니다. 그래서 맵의 띠 순서도 인게임 → 판 종료 후 5단계 → 로비입니다. 전면광고 호출부가 3곳(마종 38·코지 27)인 대신 토너먼트 생성이 6곳으로 가장 많은 것도 이 구조에서 나옵니다.",
         url: "docs/block-blast-flow-map.html",
         project: "pbm",
@@ -354,7 +354,7 @@ const SECTIONS = [
         tags: ["프리팹 실측", "도구"],
       },
       {
-        title: "[스토리머지] 지면 플로우 맵",
+        title: "스토리머지 지면 플로우 맵",
         desc: "맵을 세로로 세웠습니다. 가운데 줄기가 실제 재생 순서(켜짐 → 진입 → 노드 1~11 → 종료)이고 왼쪽은 읽는 것, 오른쪽은 여는 지면입니다. 노드 11개를 카드 안에 접지 않고 줄기 위에 펴서, 대사·태스크·삽화가 번갈아 나오는 진행이 한눈에 보입니다.",
         url: "docs/story-merge-flow-map.html",
         project: "smg",
@@ -376,7 +376,7 @@ const SECTIONS = [
     desc: "열어서 값을 만지는 웹툴 — 맞춘 값이 그대로 코드 상수로 나온다",
     cards: [
       {
-        title: "[스토리머지] 머지 피드백 연출집",
+        title: "머지 피드백 연출집",
         desc: "연출 14종의 시간·이징·세기를 표에서 직접 고치면 옆 무대가 그 값으로 논다. 병합은 4×4 샌드박스라 칩이 계속 차오르고, 창고에서 보드로 올리고, 문구는 누른 칩 위로 떠오른다. [설정 복사] 로 붙여넣기 가능한 cc.tween 상수를 그대로 가져간다.",
         url: "docs/merge-feedback-anim.html",
         project: "smg",
@@ -387,7 +387,7 @@ const SECTIONS = [
         tags: ["연출", "도구"],
       },
       {
-        title: "[스토리머지] 아이템 체인 검수대",
+        title: "아이템 체인 검수대",
         desc: "레벨 1~9 아이템을 나란히 놓고 실루엣·그레이스케일로 바꿔 보고, 실제 셀 크기와 폰 배율로 줄여 본다. canvas 로 픽셀을 읽어 인접 레벨의 실루엣 면적·색 거리·명도 대비를 재고, 세 단서가 전부 미달인 쌍을 구분 위험으로 잡는다. 엑셀 표는 긁어 붙이고 이미지는 끌어다 놓는다.",
         url: "docs/item-chain-review.html",
         project: "smg",
@@ -398,7 +398,7 @@ const SECTIONS = [
         tags: ["아트", "도구"],
       },
       {
-        title: "[스토리머지] 대화 연출 미리보기",
+        title: "대화 연출 미리보기",
         desc: "채팅 한 줄이 뜨는 연출을 코코스와 같은 값으로 재생한다. chat_show.anim 을 직접 읽어 놀고, 맞춘 값은 교체용 .anim 으로 뽑아 덮어쓰면 된다. 시트 대사를 붙여 넣으면 로더 규칙·대사 길이·아트 인계 규격을 게임 켜기 전에 검사한다.",
         url: "docs/dialogue-preview.html",
         project: "smg",
@@ -409,7 +409,7 @@ const SECTIONS = [
         tags: ["연출", "도구"],
       },
       {
-        title: "[스토리머지] 데코 등장 연출",
+        title: "데코 등장 연출",
         desc: "빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다. 등장 연출 9종에 키값(DROP_IN · POP_UP · FILL_FROM_LEFT …)이 붙어 있고, 키값마다 값 · 이징을 표에서 맞춰 저장하고 주고받는다 — 맞춘 값이 그대로 Cocos 코드로 나온다.",
         url: "docs/deco-tween-iso.html",
         status: "진행중",
@@ -420,7 +420,7 @@ const SECTIONS = [
         tags: ["데코", "도구"],
       },
       {
-        title: "[스토리머지] 채팅 애니 용량 계산기",
+        title: "채팅 애니 용량 계산기",
         desc: "캐릭터와 감정이 늘면 용량이 어디까지 가나. 프레임 시퀀스 · 노드 트랜스폼 · Spine 세 방식을 같은 조건에 놓고 계산한다.",
         url: "docs/chat-anim-size-calc.html",
         status: "초안",
@@ -431,7 +431,7 @@ const SECTIONS = [
         tags: ["코드 실측", "아트", "도구"],
       },
       {
-        title: "[스토리머지] 머지 플로우 시뮬레이터",
+        title: "머지 플로우 시뮬레이터",
         desc: "지금 코드가 각 단계에서 램을 얼마나 쓰는지 재는 페이지. 노드 11개·대사 37행을 그대로 태워 돌리고 단계별 MB 를 찍습니다 — 첫 대사에서 95MB, 예산의 158%. 고친 뒤 다시 열어 내려갔는지만 보면 됩니다.",
         url: "docs/merge-flow-sim.html",
         project: "smg",
@@ -450,7 +450,7 @@ const SECTIONS = [
     desc: "수정 전/후 결과 대조",
     cards: [
       {
-        title: "[코인매치] 토너 거절 차단 A/B",
+        title: "토너 거절 차단 A/B",
         desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 리텐션(stat 사전집계, raw 스캔 0)은 55쌍 24:31(p≈0.42)로 무승부입니다.",
         url: "docs/coin-match-tournament-reject-ab.html",
         project: "cmt",
@@ -461,7 +461,7 @@ const SECTIONS = [
         tags: ["토너먼트", "BigQuery", "A/B"],
       },
       {
-        title: "[솔리테어] 토너 클리어 소셜 슬롯",
+        title: "토너 클리어 소셜 슬롯",
         desc: "A(485 교대) ↔ B(486 공유 전용) · 9/3~9/6 나흘치. 주지표(공유 성공/DAU)가 +65%로 유의하게 올랐고(p<.001), 초대를 전부 없앴는데도 유입 총량은 오히려 +4%입니다. 통과율은 7.7% → 5.6%로 떨어졌지만 시도를 2.3배 밀어 성공 건수를 늘렸습니다. 리텐션(팀 표준 NRU 설치 코호트)·생성률·배정 균형은 이상 없습니다.",
         url: "docs/sol-tournament-slot-ab.html",
         project: "sol",
@@ -472,7 +472,7 @@ const SECTIONS = [
         tags: ["토너먼트", "BigQuery", "A/B", "상시"],
       },
       {
-        title: "[솔리테어] 토너 8/27 배포 KPI",
+        title: "토너 8/27 배포 KPI",
         desc: "P2P 오발송만 −29%, 공유·생성은 무변화. 클리어의 3.7%만 발사되고 병목은 유저 취소 93%.",
         url: "docs/tournament-update-kpi-0828.html",
         project: "sol",
@@ -484,7 +484,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 전환 지면 중복 제거",
+        title: "전환 지면 중복 제거",
         desc: "조인 진입 판의 중복 지면을 없앤 8/20 배포. A/B 비교 — 포스트 +28.0%p · 피드 +20.4%p, 토너 공유·생성은 지면 1개분 도달률 감소.",
         url: "docs/switch-surface-dedupe-viral.html",
         project: "sol",
@@ -496,7 +496,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 공유 실패 복구",
+        title: "토너 공유 실패 복구",
         desc: "거절 두 원인의 전후 비교. 점수 없음은 8.3%→0.4%, 광고 충돌은 5.1%→4.0%.",
         url: "docs/tournament-share-fail-result.html",
         project: "sol",
@@ -508,7 +508,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 생성 실패 복구",
+        title: "토너 생성 실패 복구",
         desc: "문구 변형까지 되살리게 고친 결과. 못 살린 생성은 전후 모두 0, iOS 마침표 변형만 잡혔다.",
         url: "docs/tournament-create-recovery-result.html",
         project: "sol",
@@ -528,7 +528,7 @@ const SECTIONS = [
     desc: "테스트 순서 · 케이스 · 이슈 트래커",
     cards: [
       {
-        title: "[솔리테어] 프리플레이 자동화",
+        title: "프리플레이 자동화",
         desc: "프리플레이 자동화가 돌린 판을 그대로 모은 현황. 클리어율·페르소나 성향·Health Check를 한 화면에서 본다.",
         url: "docs/qa-auto-dashboard.html",
         project: "sol",
@@ -539,7 +539,7 @@ const SECTIONS = [
         tags: ["코드 실측", "상시"],
       },
       {
-        title: "[솔리테어] QA 이슈 트래커",
+        title: "QA 이슈 트래커",
         desc: "솔리테어 QA 채널 이슈 상시 목록. 줄을 펼치면 어떤 커밋으로 어떻게 고쳤는지 나온다.",
         url: "docs/qa-issue-code-audit.html",
         project: "sol",
@@ -551,7 +551,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 참가 다이얼로그",
+        title: "토너 참가 다이얼로그",
         desc: "전환 다이얼로그를 Play 1회로 줄이고 참가 불가 토너를 목록에서 뺀 수정의 QA 순서.",
         url: "docs/tournament-join-context-qa.html",
         project: "sol",
@@ -563,7 +563,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 생성 복구 · 솔로 대기",
+        title: "토너 생성 복구 · 솔로 대기",
         desc: "끊긴 채 만들어진 토너를 성공 처리하고 솔로 대기를 30초→2초로 줄인 수정의 QA 순서.",
         url: "docs/tournament-create-recovery-qa.html",
         project: "sol",
@@ -575,7 +575,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 인게임 재도전",
+        title: "인게임 재도전",
         desc: "나가기 팝업 Retry 버튼 QA 순서 26케이스. v3.0에서 정산 시점과 복귀 지점이 바뀌었다.",
         url: "docs/ingame-retry-qa-flow.html",
         project: "sol",
@@ -587,7 +587,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 나가기 종료 처리 순서",
+        title: "나가기 종료 처리 순서",
         desc: "종료 알림을 전면광고보다 먼저 보내도록 바꾼 수정의 QA 순서. 광고 중 앱 종료가 핵심.",
         url: "docs/quit-gameend-order-qa.html",
         project: "sol",
@@ -599,7 +599,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[솔리테어] 토너 초대 토글",
+        title: "토너 초대 토글",
         desc: "토너 판을 깰 때 공유와 초대가 번갈아 뜨는 기능의 QA 순서. 안 뜨는 게 정상인 경우 포함.",
         url: "docs/spec-038-qa-flow.html",
         project: "sol",
@@ -619,7 +619,7 @@ const SECTIONS = [
     desc: "작업 기록 · 이식 가이드 — 사내 툴은 「도구」 섹션",
     cards: [
       {
-        title: "[스토리머지] 데코 아트 리소스 트리",
+        title: "데코 아트 리소스 트리",
         desc: "이전 네이티브 프로젝트에서 데코 영역 아트 리소스를 어떤 트리로 공유받았는지. 이유는 상태별 대응 — 망가짐→고쳐짐 · 5단 성장 · 완성 3종 택1이 같은 형태로 흡수된다.",
         url: "docs/deco-area-prefab-structure.html",
         project: "smg",
@@ -630,7 +630,7 @@ const SECTIONS = [
         tags: ["아트", "데코"],
       },
       {
-        title: "[스토리머지] 아트 인계 · 이미지 관리",
+        title: "아트 인계 · 이미지 관리",
         desc: "아트 인계 규격 + 부팅 예산 상한 4축(전송 1.5MB / 파싱 2.0MB / 디코드 3Mpx / bpp 2.0). 웹 빌드 2종 부팅 페이로드 실측. 오픈맵·단편형 2안은 타사 머지 FB IG 실측.",
         url: "docs/art-resource-handoff.html",
         project: "smg",
@@ -642,7 +642,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "[스토리머지] 커밋 히스토리",
+        title: "스토리머지 커밋 히스토리",
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 틀만 세워 둔 상태 — 수록 0건, 첫 커밋부터 채운다.",
         url: "docs/commit-history-story-merge.html",
         project: "smg",
@@ -653,7 +653,7 @@ const SECTIONS = [
         tags: ["커밋 히스토리", "상시"],
       },
       {
-        title: "[코인매치] 커밋 히스토리",
+        title: "코인매치 커밋 히스토리",
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 06-02~08-28 커밋 47건 · 작성자 6명 · 영역·작성자 두 축 필터.",
         url: "docs/commit-history-coin-match.html",
         project: "cmt",
@@ -664,7 +664,7 @@ const SECTIONS = [
         tags: ["커밋 히스토리", "상시"],
       },
       {
-        title: "[솔리테어] 커밋 히스토리",
+        title: "솔리테어 커밋 히스토리",
         desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 07-13~09-03 Max 커밋 179건 diff 전량 실측.",
         url: "docs/commit-history-solitaire.html",
         project: "sol",
@@ -675,7 +675,7 @@ const SECTIONS = [
         tags: ["커밋 히스토리", "상시"],
       },
       {
-        title: "[다중대조] 토너 생성 복구 이식",
+        title: "토너 생성 복구 이식",
         desc: "이식할 것은 에러 문구 끝 마침표를 떼는 것 하나. 4개 프로젝트 11곳의 현재 상태 · 조치.",
         url: "docs/tournament-recovery-message-port.html",
         project: "multi",

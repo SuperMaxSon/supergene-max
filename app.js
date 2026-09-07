@@ -26,11 +26,6 @@
      안 그러면 검색으로만 닿는 문서가 된다. */
   var NOPROJ = "__none__";
 
-  /* 카드에 찍을 이름. 앞머리 `[프로젝트]` 는 칩과 겹치므로 뗀다. 브라켓이 없으면 그대로다. */
-  function cardName(title) {
-    return String(title || "").replace(/^\s*\[[^\]]*\]\s*/, "");
-  }
-
   /* ---------- 상태 우선순위 ----------
      섹션 안에서 손이 필요한 문서가 위로 오게 한다: 진행중 > 초안 > 완료.
      Live 는 매주 갱신되는 상시 문서라 그보다 위. 목록에 없는 값은 맨 뒤로 보낸다 —
@@ -89,11 +84,7 @@
     var top = el("div", "card-top");
     // 색만으로는 어느 프로젝트인지 알 수 없으니 이름 칩을 제목 앞에 세운다.
     if (proj) top.appendChild(el("span", "card-proj", proj.name));
-    /* 제목은 `[프로젝트] 이름` 한 문자열이 정본이다 — 문서의 <title>·<h1> 과 같은 값이라야
-       탭·북마크·슬랙 링크에서도 어느 게임인지 갈린다. 다만 카드에는 바로 왼쪽에 프로젝트
-       칩이 이미 서 있으므로, 여기서만 앞 브라켓을 떼어 같은 말을 두 번 하지 않게 한다.
-       검색 색인(dataset.search)에는 원문을 그대로 넣어 "[솔리테어]" 로도 잡히게 둔다. */
-    top.appendChild(el("span", "card-title", cardName(card.title)));
+    top.appendChild(el("span", "card-title", card.title));
     if (isExternal(url)) top.appendChild(el("span", "card-ext", "↗"));
     if (card.status) {
       var st = el("span", "status", card.status);
