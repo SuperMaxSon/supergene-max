@@ -197,7 +197,7 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">토너 클리어 소셜 슬롯 A/B</h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-07 11:19</b> KST</span>
+          <span><i></i>문서 갱신 <b>2026-09-07 12:17</b> KST</span>
           <span>데이터 <b>9/3~9/6</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
         </div>
         <p class="doc-lede">
@@ -301,21 +301,30 @@ return useInvite ? invite : share;
             <div class="table-scroll"><pre>-- 문서의 데이터 블록 전부를 한 번에 뽑는다. 블록마다 따로 뽑으면 조회 시각이 섞여서
 -- '유입 ÷ 발화'처럼 블록을 가로지르는 값이 조용히 틀린다 — 그래서 쿼리를 하나로 합쳤다.
 -- 결과는 블록당 1행이고, 붙여넣기 칸의 JSON 키가 문서 JS의 필드명과 같다.
+--
+-- 스캔 원칙 (2026-09-07 개정)
+--  · 오늘은 절대 넣지 않는다. 마지막 날이 잘린 하루면 그 하루가 이탈로 오독된다.
+--  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 문서에
+--    박혀 있고 로그는 불변이라 다시 읽을 이유가 없다. 3일 창이 자기치유 구간이다.
+--  · 가벼운 컬럼만 읽는 스캔(lite)은 전 구간이어도 싸다 — 실험 성립 판정은 전 구간이 필요하다.
+--  · 리텐션은 raw 조인을 쓰지 않는다. stat 사전집계를 읽는다.
 WITH us AS (
-    -- 대부분의 블록이 쓰는 공통 모집단. 버전 필터를 여기 걸지 않는 것이 핵심이다 —
-    -- 리텐션의 복귀 판정은 다음 날 업데이트한 유저까지 세야 하기 때문이다.
+    -- 무거운 컬럼(data · entrypoint_now)을 읽는 유일한 스캔이다. 최근 3일 · 오늘 제외.
+    -- 이전 판에서는 이 창이 8/28~오늘이었는데, 그 유일한 이유가 리텐션의 복귀 판정이었다.
+    -- 리텐션이 stat 으로 빠지면서 긴 창의 근거가 사라졌다 — 이 쿼리 최대의 절감이다.
     SELECT log_date, player_id, event, data, entrypoint_now, client_version
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN '2026-08-28' AND CURRENT_DATE()
+    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
+                       AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
         AND country = 'US'
 ),
-glob AS (
-    -- 배정 균형만 국가 필터를 뺀다. FB가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
-    SELECT player_id, client_version, country, os
+lite AS (
+    -- 가벼운 컬럼만 읽는다. data / entrypoint_now 를 건드리지 않으므로 창이 길어도 싸다.
+    -- 버전 필터를 걸지 않는 것이 핵심이다 — 487 이상이 떴는지를 봐야 하기 때문이다.
+    SELECT log_date, player_id, client_version, country, os
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date &gt;= '2026-09-03'
+    WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
         AND event = '1000_LOGIN_COMPLETE'
-        AND client_version IN (485, 486)
 ),
 ab AS (
     -- 로그인 여부·is_new_device는 1000 로그에만 실리므로 윈도우로 유저-일 전체에 전파한다.
@@ -327,10 +336,10 @@ ab AS (
                AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0))
             OVER (PARTITION BY log_date, player_id) AS is_nru
     FROM us
-    WHERE log_date &gt;= '2026-09-03'
-        AND client_version IN (485, 486)
+    WHERE client_version IN (485, 486)
 ),
 daily AS (
+    -- 날짜 축이 있으므로 문서 JS 에서 같은 log_date 행을 덮어쓰고 새 날짜만 추가한다.
     SELECT
         log_date, client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
         COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
@@ -360,6 +369,7 @@ perday AS (
 dist AS (
     -- 판 종료 ÷ DAU는 평균이라 헤비 유저에 끌린다. 중앙값을 같이 봐야
     -- '다수가 더 했나'와 '소수가 많이 했나'가 갈린다. 단위는 유저-일이다.
+    -- ⚠ 날짜 축이 없으므로 갱신할 때마다 통째로 바뀐다 — 즉 최근 3일 롤링이다.
     SELECT
         client_version, seg,
         COUNT(*)                                              AS uday,
@@ -372,49 +382,31 @@ dist AS (
     FROM perday
     GROUP BY client_version, seg
 ),
-cohort AS (
-    SELECT
-        log_date, player_id, client_version,
-        IF(MAX(is_nru) = 1, 'NRU', 'RU') AS seg
-    FROM ab
-    WHERE event = '1000_LOGIN_COMPLETE'
-    GROUP BY log_date, player_id, client_version
-),
-ret AS (
-    -- 복귀 판정에는 빌드를 걸지 않는다 — 걸면 다음 날의 업데이트를 이탈로 오독한다.
-    SELECT DISTINCT log_date, player_id
-    FROM us
-    WHERE log_date &gt;= '2026-09-03'
-        AND event = '1000_LOGIN_COMPLETE'
-),
-last_day AS (
-    SELECT MAX(log_date) AS max_log_date FROM ret
-),
 retn AS (
-    -- 클래식 Day-N 리텐션. d_n = 코호트 중 정확히 n일 뒤 그날 다시 로그인한 사람 수.
-    -- 업계 표준 D1/D3/D7 과 같은 정의이고, 매일 독립으로 재므로 단조 감소가 보장되지는 않는다.
+    -- 리텐션 — stat 사전집계. raw 스캔도 조인도 없다.
+    -- 코호트 기준이 join_date(가입일)라 raw 의 is_new_device 기준과 모집단이 다르다.
+    -- 실측상 is_new_device 쪽이 NRU 를 14~28% 과대계상한다 — 대시보드와 맞는 쪽은 이쪽이다.
+    -- dN 은 비율이므로 국가·OS 행을 합칠 때 nru_count 로 가중해 인원수로 되돌린다.
     SELECT
-        c.log_date, c.client_version, c.seg,
-        COUNT(DISTINCT c.player_id) AS coh,
-        -- 이 코호트를 며칠까지 관측했는지. dN 은 N &lt;= observed_days 인 칸만 유효하고,
-        -- 마지막 날이 오늘(부분일)이면 그 한 칸은 더 빼야 한다 — 안 그러면 이탈로 오독한다.
-        DATE_DIFF((SELECT max_log_date FROM last_day), c.log_date, DAY) AS observed_days,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 1, c.player_id, NULL)) AS d1,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 2, c.player_id, NULL)) AS d2,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 3, c.player_id, NULL)) AS d3,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 4, c.player_id, NULL)) AS d4,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 5, c.player_id, NULL)) AS d5,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 6, c.player_id, NULL)) AS d6,
-        COUNT(DISTINCT IF(DATE_DIFF(r.log_date, c.log_date, DAY) = 7, c.player_id, NULL)) AS d7
-    FROM cohort c
-    LEFT JOIN ret r
-        ON r.player_id = c.player_id
-       AND r.log_date  &gt; c.log_date
-       AND r.log_date &lt;= DATE_ADD(c.log_date, INTERVAL 7 DAY)
-    GROUP BY c.log_date, c.client_version, c.seg
+        join_date, client_version, social,
+        SUM(nru_count) AS coh,
+        DATE_DIFF(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY), join_date, DAY) AS observed_days,
+        ROUND(SUM(nru_count * d1)) AS d1,
+        ROUND(SUM(nru_count * d2)) AS d2,
+        ROUND(SUM(nru_count * d3)) AS d3,
+        ROUND(SUM(nru_count * d4)) AS d4,
+        ROUND(SUM(nru_count * d5)) AS d5,
+        ROUND(SUM(nru_count * d6)) AS d6,
+        ROUND(SUM(nru_count * d7)) AS d7
+    FROM `game-log-359704.stat.solitaire_city_journey_nru_retention3`
+    WHERE join_date &gt;= DATE '2026-09-03'
+        AND client_version IN (485, 486)
+        AND country = 'US'
+    GROUP BY join_date, client_version, social
 ),
 inflow AS (
     -- 수신자의 빌드는 발신자의 처치와 무관하므로 버전축을 넣지 않는다.
+    -- 8/28~9/2 기준선은 이미 문서에 박혀 있다 — 여기서는 새 날짜만 나온다.
     SELECT
         log_date,
         COUNTIF(JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT')        AS t,
@@ -425,6 +417,7 @@ inflow AS (
 ),
 res AS (
     -- 2300은 클리어와 실패·포기를 함께 센다. 슬롯은 클리어에서만 뜨므로 갈라야 한다.
+    -- ⚠ dist 와 같이 날짜 축이 없다 — 최근 3일 롤링이다.
     SELECT
         client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
         JSON_VALUE(data, '$.result') AS result,
@@ -434,10 +427,12 @@ res AS (
     GROUP BY client_version, seg, result
 ),
 bal AS (
+    -- 배정 균형만 국가 필터를 뺀다. FB가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
     SELECT
         client_version, country, IFNULL(os, '(null)') AS os,
         COUNT(DISTINCT player_id) AS users
-    FROM glob
+    FROM lite
+    WHERE client_version IN (485, 486)
     GROUP BY client_version, country, os
     HAVING users &gt;= 10
 ),
@@ -445,16 +440,16 @@ vers AS (
     -- 실험이 아직 성립하는지부터 본다. 485가 말라 있으면 대조군이 없는 것이고,
     -- 487 이상이 떴으면 처치가 하나 더 얹힌 것이라 486군이 오염된다.
     SELECT log_date, client_version, COUNT(DISTINCT player_id) AS dau
-    FROM us
-    WHERE log_date &gt;= '2026-09-03'
-        AND event = '1000_LOGIN_COMPLETE'
+    FROM lite
+    WHERE country = 'US'
     GROUP BY log_date, client_version
     HAVING dau &gt;= 10
 )
 SELECT '0_META' AS `블록`, 1 AS `행수`,
     TO_JSON_STRING(STRUCT(
         FORMAT_DATETIME('%Y-%m-%d %H:%M', CURRENT_DATETIME('Asia/Seoul')) AS pulled_kst,
-        CURRENT_DATE() AS today_utc)) AS `붙여넣기`
+        DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_day,
+        DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AS heavy_scan_from)) AS `붙여넣기`
 UNION ALL SELECT '1_DAILY', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, seg,
     ud, fin, sh_try, sh_ok, inv_try, inv_ok, sup, cr_try, cr_ok, it, rv)
@@ -463,9 +458,9 @@ UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     CAST(client_version AS STRING) AS ver, seg, uday, avg_n, p50, p75, p90, play, p50p)
     ORDER BY seg, client_version)) FROM dist
 UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    log_date AS coh_date, CAST(client_version AS STRING) AS ver, seg,
-    coh, observed_days, d1, d2, d3, d4, d5, d6, d7)
-    ORDER BY log_date, client_version, seg)) FROM retn
+    FORMAT_DATE('%m-%d', join_date) AS coh_date, CAST(client_version AS STRING) AS ver,
+    social, coh, observed_days, d1, d2, d3, d4, d5, d6, d7)
+    ORDER BY join_date, client_version, social)) FROM retn
 UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
     ORDER BY log_date)) FROM inflow
@@ -480,13 +475,22 @@ UNION ALL SELECT '7_VERSION', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     ORDER BY log_date, client_version)) FROM vers
 ORDER BY `블록`;</pre></div>
             <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
-              결과는 <b>8행</b>입니다 — <code>0_META</code>(조회 시각) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
+              결과는 <b>8행</b>입니다 — <code>0_META</code>(조회 시각·창) · <code>1_DAILY</code> · <code>2_EXTRA</code> ·
               <code>3_RET</code> · <code>4_INFLOW</code>이 보드를 채우고,
               <code>5_RESULT</code>(클리어/실패 분해) · <code>6_BALANCE</code>(배정 균형)는 아직 보드에 반영하지 않은 부가 확인입니다.
-              <code>3_RET</code>의 <code>d1~d7</code>은 <b>클래식 Day-N 리텐션</b>입니다 — 정확히 n일 뒤 그날 접속한 사람 수로,
-              업계 표준 D1/D3/D7 과 같은 정의입니다.
-              <b><code>observed_days</code>에서 1을 빼고 쓰세요</b> — 마지막 날은 조회 시점까지만 쌓인 부분일이라,
-              그 칸을 그대로 넣으면 하루가 덜 찬 것이 이탈로 찍힙니다.
+              <b>이 쿼리는 오늘을 읽지 않습니다</b> — 마지막 날은 항상 <b>어제</b>라, 부분일이 이탈로 오독되는 사고가
+              구조적으로 막힙니다. 그래서 <code>observed_days</code>를 더 빼지 않고 그대로 씁니다.
+              <b>무거운 스캔은 최근 3일뿐입니다</b>(<code>us</code>) — 그 이전 날짜는 이미 아래 배열에 박혀 있고 로그는 불변입니다.
+              날짜 축이 있는 <code>1_DAILY</code> · <code>4_INFLOW</code> · <code>7_VERSION</code>은
+              <b>같은 날짜 행을 덮어쓰고 새 날짜만 추가</b>하세요. 3일 창이 자기치유 구간이라 최근 정정은 자동 반영됩니다.
+              <b>날짜 축이 없는 <code>2_EXTRA</code> · <code>5_RESULT</code>는 최근 3일 롤링</b>입니다 — 누적이 아니라
+              통째로 교체되는 값이니 전 기간 분포로 읽지 마세요.
+              <code>3_RET</code>은 <b><code>stat.solitaire_city_journey_nru_retention3</code></b>에서 읽습니다(raw 스캔 없음).
+              코호트 기준이 <code>join_date</code>라 raw의 <code>is_new_device</code> 기준과 모집단이 다릅니다 —
+              실측상 <code>is_new_device</code> 쪽이 NRU를 14~28% 과대계상하며, 대시보드와 맞는 쪽은 stat입니다.
+              <code>d1~d7</code>은 <b>클래식 Day-N 리텐션</b>이고, 비율을 인원수로 되돌린 값입니다.
+              <b>광고 포함/제외 토글은 <code>social</code> 값 매핑이 아직 미확정입니다</b> — 어떤 값이 광고 유입인지
+              확인한 뒤 <code>3_RET</code>의 <code>social</code> 행을 코호트/광고코호트로 접습니다.
               <b><code>7_VERSION</code>을 가장 먼저 보세요</b> — A(485)가 말라 있으면 대조군이 없고, 487 이상이 떴으면 B군에
               처치가 하나 더 얹힌 것이라 그 뒤 숫자는 A/B가 아닙니다.
               <b>행수</b> 열이 비거나 예상보다 적으면 그 블록만 비어 있는 것이니 다른 블록까지 의심하지 않으셔도 됩니다.
