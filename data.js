@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-08 12:09",
+  updated: "2026-09-09 08:49",
 };
 
 /* --------------------------------------------------------------------------
@@ -222,6 +222,7 @@ const SECTIONS = [
         updated: "2026-08-19 08:55",
         pinned: false,
         tags: ["공유", "코드 실측", "정본"],
+        share: false,
       },
       {
         title: "로딩 속도 비교",
@@ -269,6 +270,7 @@ const SECTIONS = [
         updated: "2026-09-04 17:20",
         pinned: false,
         tags: ["머지", "기획 범위"],
+        share: false,
       },
       {
         title: "리소스 예산",
@@ -300,6 +302,7 @@ const SECTIONS = [
         updated: "2026-09-02 12:11",
         pinned: false,
         tags: ["코드 실측", "로그"],
+        share: false,
       },
       {
         title: "솔리테어 지면 플로우 맵",
@@ -333,6 +336,7 @@ const SECTIONS = [
         updated: "2026-08-28 16:40",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
       },
       {
         title: "마종 지면 플로우 맵",
@@ -344,6 +348,7 @@ const SECTIONS = [
         updated: "2026-08-28 16:40",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
       },
       {
         title: "퍼블마 지면 플로우 맵",
@@ -355,6 +360,7 @@ const SECTIONS = [
         updated: "2026-08-28 17:10",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
       },
       {
         title: "스토리머지 지면 플로우 맵",
@@ -499,6 +505,7 @@ const SECTIONS = [
         updated: "2026-09-08 09:22",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B"],
+        share: false,
       },
       {
         title: "판 클리어 초대 제거 A/B",
