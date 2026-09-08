@@ -27,7 +27,18 @@
   function start() {
     var el = document.getElementById("nextrun");
     var A = window.AUTORUN;
-    if (!el || !A || !A.pulled || !A.hours || !A.hours.length) return false;
+    if (!el || !A) return false;
+
+    /* 자동 갱신이 꺼진 문서(제어판에서 OFF)에서 "다음 갱신 07:12:33 남음" 은
+       오지 않을 갱신을 세는 거짓말이다. 통째로 감춘다 — 대체 문구도 넣지 않는다.
+       헤더의 "문서 갱신 … KST · 데이터 …" 가 남아 있어 데이터가 어느 시점에
+       굳었는지는 그대로 보인다. 다시 켜면 이 줄이 그대로 돌아온다. */
+    if (A.enabled === false) {
+      el.style.display = "none";
+      return true;
+    }
+
+    if (!A.pulled || !A.hours || !A.hours.length) return false;
 
     var hours = A.hours.slice().sort(function (a, b) { return a - b; });
     var pulled = Date.parse(A.pulled.replace(" ", "T") + ":00+09:00");
@@ -110,6 +121,13 @@
     return r == null ? 90 : r;
   }
 
+  /* paused = 제어판에서 자동 갱신을 끈 문서(scripts/control_panel.py 가 data.js 에 박는다).
+     status 는 "Live" 그대로 둔다 — 카드를 라이브 섹션에서 빼내지 않고 그 안에서만
+     아래로 내린다. 멈춘 문서가 조용히 사라지는 것보다, 멈춘 채로 보이는 편이 안전하다. */
+  function pausedRank(card) {
+    return card.paused ? 1 : 0;
+  }
+
   /* pinned 는 사람이 직접 올린 것이라 자동 정렬이 끌어내리면 안 된다 — 상태보다 우선.
      sort 는 안정 정렬이라 순위가 같으면 data.js 선언 순서가 그대로 유지된다. */
   function byStatus(cards) {
@@ -117,6 +135,8 @@
       var pa = a.pinned ? 0 : 1;
       var pb = b.pinned ? 0 : 1;
       if (pa !== pb) return pa - pb;
+      var ra = pausedRank(a), rb = pausedRank(b);
+      if (ra !== rb) return ra - rb;
       return statusRank(a) - statusRank(b);
     });
   }
@@ -160,8 +180,14 @@
     top.appendChild(el("span", "card-title", card.title));
     if (isExternal(url)) top.appendChild(el("span", "card-ext", "↗"));
     if (card.status) {
-      var st = el("span", "status", card.status);
+      /* data-status 는 원래 값을 그대로 둔다(색·모양 규칙이 여기 걸려 있다).
+         멈춘 라이브 문서만 문구를 바꾸고 is-paused 로 회색 처리한다 —
+         회색만으로는 스크린샷·색약 환경에서 "그냥 흐린 Live" 로 읽힌다. */
+      var paused = !!card.paused;
+      var st = el("span", "status" + (paused ? " is-paused" : ""),
+                  paused && card.status === "Live" ? "Live 중지" : card.status);
       st.setAttribute("data-status", card.status);
+      if (paused) st.title = "자동 갱신이 꺼져 있습니다 — 데이터가 마지막 갱신 시점에 멈춰 있습니다";
       top.appendChild(st);
     }
     a.appendChild(top);
@@ -236,9 +262,12 @@
     liveSec.cards = liveSec.cards
       .map(function (c, i) {
         var r = porder.indexOf(c.project);
-        return { c: c, i: i, r: r < 0 ? porder.length : r };   // project 없는 카드는 맨 뒤
+        return { c: c, i: i, r: r < 0 ? porder.length : r,     // project 없는 카드는 맨 뒤
+                 p: pausedRank(c) };
       })
-      .sort(function (a, b) { return a.r - b.r || a.i - b.i; })
+      /* 멈춘 카드는 프로젝트 묶음보다 먼저 갈린다 — 돌고 있는 문서 사이에 끼면
+         회색이라도 눈에 안 띈다. 섹션 맨 아래에 따로 모은다. */
+      .sort(function (a, b) { return a.p - b.p || a.r - b.r || a.i - b.i; })
       .map(function (x) { return x.c; });
   }
 
