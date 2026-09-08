@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-08 12:05",
+  updated: "2026-09-08 12:08",
 };
 
 /* --------------------------------------------------------------------------
@@ -126,6 +126,7 @@ const SECTIONS = [
         updated: "2026-08-28 12:05",
         pinned: false,
         tags: ["로그", "코드 실측"],
+        share: false,
       },
       {
         title: "FB 게이밍 탭 복귀 지면",
@@ -256,6 +257,7 @@ const SECTIONS = [
         updated: "2026-09-01 10:36",
         pinned: false,
         tags: ["머지", "기획 범위"],
+        share: false,
       },
       {
         title: "컨텐츠 TODO",
@@ -278,6 +280,7 @@ const SECTIONS = [
         updated: "2026-09-01 15:54",
         pinned: false,
         tags: ["머지", "리소스 실측"],
+        share: false,
       },
     ],
   },
@@ -396,6 +399,7 @@ const SECTIONS = [
         updated: "2026-09-03 10:33",
         pinned: false,
         tags: ["아트", "도구"],
+        share: false,
       },
       {
         title: "대화 연출 미리보기",
@@ -407,6 +411,7 @@ const SECTIONS = [
         updated: "2026-09-03 15:04",
         pinned: false,
         tags: ["연출", "도구"],
+        share: false,
       },
       {
         title: "데코 등장 연출",
@@ -440,6 +445,7 @@ const SECTIONS = [
         updated: "2026-09-01 15:31",
         pinned: false,
         tags: ["머지", "리소스 실측", "도구"],
+        share: false,
       },
     ],
   },
