@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-07 16:56",
+  updated: "2026-09-08 08:53",
 };
 
 /* --------------------------------------------------------------------------
@@ -440,6 +440,39 @@ const SECTIONS = [
         updated: "2026-09-01 15:31",
         pinned: false,
         tags: ["머지", "리소스 실측", "도구"],
+      },
+    ],
+  },
+  {
+    // 「도구」와 갈라 두는 이유: 이 섹션의 카드는 열어서 값을 만지는 웹툴이 아니라
+    // 받아서 설치하는 에디터 확장이다. 카드를 눌렀을 때 벌어지는 일이 달라서 섹션을 나눴다.
+    // 색은 「도구」와 같은 --tool 을 쓴다 — 성격이 같은 계열이고, 새 토큰은 style.css 를 건드려야 한다.
+    // 문서 페이지는 이 섹션만 허브 템플릿(style.css/app.js) 대신 docs/ext.css 를 쓴다.
+    // 설명서는 수치를 대조해 읽는 문서가 아니라 위에서 아래로 따라 하는 글이라 판형을 달리 잡았다.
+    id: "util",
+    label: "유틸",
+    accent: "tool",
+    desc: "받아서 설치하는 Cocos Creator 2.4 에디터 확장 — 전역 설치 · mac · Windows 공용",
+    cards: [
+      {
+        title: "Component Search",
+        desc: "노드에 컴포넌트를 붙일 때 메뉴를 뒤지지 않고 이름을 타이핑해서 찾는다. 3.x 의 검색창을 2.4 로 백포트한 확장.",
+        url: "docs/ext-component-search.html",
+        status: "완료",
+        version: "v1.0.1",
+        updated: "2026-09-08 08:53",
+        pinned: false,
+        tags: ["에디터", "상시"],
+      },
+      {
+        title: "Sprite Batch",
+        desc: "이미지 수백 장의 packable · trimType 을 한 번에 바꾼다. 2.4 인스펙터가 한 장씩만 보여주는 것을 메꾼 확장.",
+        url: "docs/ext-sprite-batch.html",
+        status: "완료",
+        version: "v1.0.0",
+        updated: "2026-09-08 08:53",
+        pinned: false,
+        tags: ["에디터", "상시"],
       },
     ],
   },
