@@ -22,7 +22,12 @@ REGISTRY = os.path.join(HERE, "automation.json")
 STATE    = os.path.join(HERE, "run_state.json")
 LOG      = os.path.join(HERE, "refresh.log")
 PYTHON   = "/opt/homebrew/bin/python3"
+GCLOUD   = "/opt/homebrew/bin/gcloud"
 MAX_TRIES = 2      # 실패한 슬롯의 최대 시도 횟수
+
+# BQ 자격증명이 만료됐을 때 bq 가 뱉는 말. 이건 '실패'가 아니라 '사람이 필요함'이다.
+AUTH_MARKS = ("Reauthentication failed", "gcloud auth login",
+              "Your default credentials", "invalid_grant")
 
 
 def log(msg):
@@ -46,6 +51,42 @@ def save(state):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=1, sort_keys=True)
     os.replace(tmp, STATE)
+
+
+def needs_login(out):
+    return any(m in out for m in AUTH_MARKS)
+
+
+def prompt_login():
+    """터미널 창을 띄워 거기서 gcloud auth login 을 돌린다.
+
+    launchd 아래에서는 gcloud 가 재인증을 물을 수 없다("cannot prompt during
+    non-interactive execution"). 알림만 띄우면 사람이 로그인 명령을 직접 찾아 쳐야 하고,
+    그 사이 슬롯이 지나간다 — 2026-09-08 09:07 에 실제로 그랬다.
+
+    슬롯당 한 번만 부른다. 15분마다 창이 뜨면 아무도 안 본다.
+    gcloud 는 절대경로로 부른다 — 터미널 PATH 를 믿을 수 없다.
+    """
+    cmd = ("%s auth login && echo '' && "
+           "echo '✅ 로그인 완료 — 15분 안에 자동화가 알아서 다시 시도합니다'" % GCLOUD)
+    # ensure_ascii=False 가 필요하다 — 기본값이면 한글이 \uXXXX 로 나가 AppleScript 가
+    # "Expected \" but found unknown token" 으로 죽고 창이 조용히 안 뜬다.
+    # refresh_common.notify() 가 같은 함정에 한 번 빠졌던 자리다.
+    script = ('tell application "Terminal" to do script %s'
+              % json.dumps(cmd, ensure_ascii=False))
+    try:
+        subprocess.run(["/usr/bin/osascript",
+                        "-e", script,
+                        "-e", 'tell application "Terminal" to activate'], timeout=30)
+        log("BQ 인증 만료 — 터미널을 띄워 로그인을 요청했다")
+    except Exception as e:
+        log("로그인 창을 띄우지 못했다 %s: %s" % (type(e).__name__, str(e)[:150]))
+    try:
+        subprocess.run(["/usr/bin/osascript", "-e",
+                        'display notification "터미널에서 로그인해 주세요" '
+                        'with title "BQ 인증 만료"'], timeout=20)
+    except Exception:
+        pass
 
 
 def main():
@@ -86,11 +127,13 @@ def main():
             log("%s: 스크립트가 없다 (%s)" % (job_id, job["script"]))
             continue
         log("%s 실행 (슬롯 %s시)" % (job_id, due[-1]))
+        auth = False
         try:
             r  = subprocess.run([PYTHON, script],
                                 capture_output=True, text=True, timeout=1800)
             ok = r.returncode == 0
             if not ok:
+                auth = needs_login((r.stdout or "") + (r.stderr or ""))
                 log("%s 실패 rc=%d %s"
                     % (job_id, r.returncode, (r.stderr or "").strip()[:200]))
         except Exception as e:
@@ -98,6 +141,18 @@ def main():
             # 슬롯이 기록되지 않으니 15분마다 같은 시간초과를 무한 반복하게 된다.
             ok = False
             log("%s 중단 %s: %s" % (job_id, type(e).__name__, str(e)[:200]))
+
+        # 인증 만료는 시도 횟수를 깎지 않는다. 재시도해서 풀릴 성질이 아니라 사람이
+        # 로그인해야 풀리는 것이고, 로그인만 되면 다음 깨어남이 알아서 따라잡는다.
+        # 여기서 tries 를 소모하면 로그인이 30분 늦었다는 이유로 그날 갱신이 통째로 날아간다.
+        # 쿼리가 아예 실행되지 않으므로 재시도 비용도 0 이다.
+        if auth:
+            if state.get("_auth_prompt_slot") != slot:
+                prompt_login()
+                state["_auth_prompt_slot"] = slot
+                save(state)
+            continue
+
         tries = (st.get("tries", 0) + 1) if st.get("slot") == slot else 1
         state.setdefault(job_id, {})
         state[job_id].update(slot=slot, at=now.strftime("%Y-%m-%d %H:%M:%S"),
