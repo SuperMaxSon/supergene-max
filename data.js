@@ -488,6 +488,7 @@ const SECTIONS = [
         url: "docs/coin-match-tournament-reject-ab.html",
         project: "cmt",
         status: "Live",
+        paused: true,
         version: "v2.10",
         updated: "2026-09-08 09:22",
         pinned: false,
