@@ -141,6 +141,32 @@ def enabled():
         return True          # 레지스트리가 깨졌으면 멈추지 않는다
 
 
+AUTO_RE = re.compile(r"<!-- AUTO:START -->.*?<!-- AUTO:END -->", re.S)
+
+
+def schedule():
+    """이 작업의 예정 시각 목록. 작업별 hours 가 있으면 그것, 없으면 defaults."""
+    try:
+        reg   = json.load(open(REGISTRY, encoding="utf-8"))
+        job   = reg["jobs"][_C["job_id"]]
+        hours = job.get("hours") or reg.get("defaults", {}).get("hours") or []
+        return sorted(int(h) for h in hours), bool(job.get("enabled", True))
+    except Exception:
+        return [], True
+
+
+def auto_block(now):
+    """문서 페이지가 '다음 갱신까지 얼마나 남았는지'를 계산하려면 스케줄을 알아야 한다.
+    automation.json 은 scripts/ 안에 있어 브라우저가 못 읽으므로, 실행할 때마다 문서에 심는다.
+    읽는 쪽은 app.js 의 liveTimer()."""
+    hours, en = schedule()
+    return ('<!-- AUTO:START --><script>\n'
+            '      /* scripts/refresh_common.py 가 매 실행마다 덮어쓴다. 손으로 고치면 다음 갱신에 사라진다. */\n'
+            '      window.AUTORUN = { hours: %s, pulled: "%s", enabled: %s };\n'
+            '    </script><!-- AUTO:END -->'
+            % (j(hours), now, "true" if en else "false"))
+
+
 def git(*args):
     return subprocess.run(["git", "-C", REPO] + list(args),
                           capture_output=True, text=True, timeout=300)
@@ -197,6 +223,13 @@ def stamp(now, bust, rng):
     s = open(_C["html"], encoding="utf-8").read()
     s = re.sub(r"문서 갱신 <b>[^<]*</b> KST", "문서 갱신 <b>%s</b> KST" % now, s, count=1)
     s = re.sub(r"데이터 <b>[^<]*</b>", "데이터 <b>%s</b>" % rng, s, count=1)
+    # 스케줄·조회시각 블록. 마커가 없으면 <body> 뒤에 새로 넣는다 — 손으로 심는 것을 잊어도 붙는다.
+    # 치환은 lambda 로 한다: 문자열 replacement 는 \g 같은 시퀀스를 해석해 블록을 깨뜨릴 수 있다.
+    blk = auto_block(now)
+    if AUTO_RE.search(s):
+        s = AUTO_RE.sub(lambda m: blk, s, count=1)
+    else:
+        s = re.sub(r"<body>", lambda m: "<body>\n    " + blk, s, count=1)
     open(_C["html"], "w", encoding="utf-8").write(s)
 
     touched = []
@@ -240,7 +273,11 @@ def finish(a, state, rng, old, new, dry_dump=None):
     """멱등 검사부터 커밋·푸시까지. 두 스크립트에서 완전히 같던 꼬리다."""
     # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면 데이터는 그대로라는 뜻이므로
     # 커밋하지 않는다 — 안 그러면 같은 값을 매일 새 커밋으로 쌓는다.
-    strip = lambda t: re.sub(r'\n *const PULLED = "[^"]*";', "", t)
+    # AUTORUN.pulled 도 같은 이유로 뺀다 — 매 실행마다 바뀌므로 남겨두면 매일 빈 커밋이 쌓인다.
+    # hours 는 빼지 않는다(스케줄이 바뀌면 커밋되어야 한다). 다만 old·new 둘 다 stamp() 이전
+    # 상태라 스케줄 변경 자체가 여기서 보이지는 않는다 — 다음 내용 변경 때 문서에 반영된다.
+    strip = lambda t: re.sub(r'pulled: "[^"]*"', "",
+                             re.sub(r'\n *const PULLED = "[^"]*";', "", t))
     if strip(old) == strip(new):
         log("변화 없음 — 커밋하지 않는다 (last_day=%s)" % state["last_day"])
         return push_pending(a)

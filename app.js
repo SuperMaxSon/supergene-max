@@ -5,6 +5,105 @@
    테마 전환은 라이트 단일 테마로 정리하면서 제거됨.
    ========================================================================== */
 
+/* ==========================================================================
+   라이브 문서 헤더의 "다음 갱신까지" 타이머.
+
+   허브 렌더 IIFE 밖(위)에 두는 이유: 그 IIFE 는 #nav/#main 이 없으면 즉시 리턴하고,
+   문서 페이지에는 둘 다 없다. 안에 넣으면 문서에서 영영 돌지 않는다.
+
+   window.AUTORUN 은 scripts/refresh_common.py 의 auto_block() 이 각 라이브 문서에
+   심는다({hours, pulled, enabled}). 허브에는 #nextrun 도 AUTORUN 도 없어 그대로 no-op.
+
+   ★ 항상 그린다. 하루 1회 갱신이라 "다음 갱신"은 언제나 존재한다.
+   예정 시각이 지났는데 아직 안 들어왔으면 카운트다운을 멈추는 대신 카운트업으로 넘어간다
+   ("갱신 중 · N 지남"). launchd 가 정각이 아니라 15분 간격으로 깨기 때문에 이 구간이
+   매일 몇 분씩 생기고, v1 은 그때 빈칸이 됐다.
+
+   "지남"은 이 페이지가 들고 있는 데이터 기준이라 항상 참이다 — 갱신이 서버에 들어와도
+   페이지를 다시 받기 전까지 내가 보고 있는 것은 갱신 전 데이터가 맞다.
+   ========================================================================== */
+(function liveTimer() {
+  var STALE_H = 30; /* 이 시간을 넘겨 밀리면 색을 --bad 로. 문서 freshness() 와 같은 임계. */
+
+  function start() {
+    var el = document.getElementById("nextrun");
+    var A = window.AUTORUN;
+    if (!el || !A || !A.pulled || !A.hours || !A.hours.length) return false;
+
+    var hours = A.hours.slice().sort(function (a, b) { return a - b; });
+    var pulled = Date.parse(A.pulled.replace(" ", "T") + ":00+09:00");
+    if (isNaN(pulled)) return false;
+
+    /* 시간대를 KST 로 못박는다. 뷰어가 어느 TZ 에 있든 팀이 보는 시각은 하나다.
+       epoch 을 +9h 옮기면 그 Date 의 getUTC* 가 곧 KST 달력값이 된다. */
+    function kst(ms) { return new Date(ms + 9 * 3600000); }
+    function slot(ms, h) {
+      var k = kst(ms);
+      return Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate(), h) - 9 * 3600000;
+    }
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+    /* ms 직후의 첫 예정 시각. "얼마나 밀렸나"는 지금 놓친 슬롯이 아니라
+       마지막 갱신 다음에 왔어야 할 슬롯부터 재야 한다 — 이틀을 걸렀는데
+       "3시간 지남"이라고 하면 멀쩡해 보인다. hours 는 하루 안이므로 이틀만 훑으면 반드시 잡힌다. */
+    function firstSlotAfter(ms) {
+      for (var d = 0; d < 2; d++) {
+        for (var i = 0; i < hours.length; i++) {
+          var t = slot(ms + d * 86400000, hours[i]);
+          if (t > ms) return t;
+        }
+      }
+      return ms;
+    }
+
+    function paint() {
+      var now = Date.now();
+
+      /* 직전 슬롯(지금까지 지난 마지막 예정 시각)과 다음 슬롯. 오늘 안에 없으면
+         각각 어제 마지막 / 내일 첫 시각으로 넘어간다. control_panel.py 의
+         next_run() 과 같은 규칙이다 — 제어판과 페이지가 다른 말을 하면 안 된다. */
+      var prev = null, next = null, i, t;
+      for (i = 0; i < hours.length; i++) {
+        t = slot(now, hours[i]);
+        if (t <= now) prev = t;
+        else if (next === null) next = t;
+      }
+      if (prev === null) prev = slot(now - 86400000, hours[hours.length - 1]);
+      if (next === null) next = slot(now + 86400000, hours[0]);
+
+      /* 직전 슬롯분이 아직 안 들어왔으면(맥이 자고 있었다거나, launchd 가 아직 안 깼다거나)
+         다음 슬롯까지 세는 건 틀린 정보다. 대신 예정 시각으로부터 얼마나 지났는지를 센다.
+         색으로만 구분한다 — 몇 분은 정상 동작(--warn), 하루가 넘으면 고장(--bad). */
+      var late = pulled < prev;
+      var sec = Math.max(0, Math.round(
+        (late ? now - firstSlotAfter(pulled) : next - now) / 1000));
+      var tint = !late ? "--live" : (now - pulled >= STALE_H * 3600000 ? "--bad" : "--warn");
+
+      var clock = pad(Math.floor(sec / 3600) % 24) + ":" +
+                  pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60);
+      var days = Math.floor(sec / 86400);
+      if (days) clock = days + "일 " + clock;
+
+      var head = late
+        ? "갱신 중"
+        : "다음 갱신 <b>" +
+          (kst(next).getUTCDate() === kst(now).getUTCDate() ? "오늘" : "내일") +
+          " " + pad(kst(next).getUTCHours()) + ":00</b>";
+
+      el.innerHTML = head + ' · <b style="color:var(' + tint + ')">' + clock + "</b> " +
+        (late ? "지남" : "남음");
+    }
+
+    paint();
+    setInterval(paint, 1000);
+    return true;
+  }
+
+  /* app.js 는 문서에서 body 끝에 실려 헤더를 만드는 인라인 스크립트보다 뒤에 돈다.
+     그래도 순서가 바뀔 수 있으니 한 번 더 기회를 준다. */
+  if (!start()) document.addEventListener("DOMContentLoaded", start);
+})();
+
 (function () {
   "use strict";
 
