@@ -14,16 +14,15 @@
    window.AUTORUN 은 scripts/refresh_common.py 의 auto_block() 이 각 라이브 문서에
    심는다({hours, pulled, enabled}). 허브에는 #nextrun 도 AUTORUN 도 없어 그대로 no-op.
 
-   ★ 항상 그린다. 하루 1회 갱신이라 "다음 갱신"은 언제나 존재한다.
-   예정 시각이 지났는데 아직 안 들어왔으면 카운트다운을 멈추는 대신 카운트업으로 넘어간다
-   ("갱신 중 · N 지남"). launchd 가 정각이 아니라 15분 간격으로 깨기 때문에 이 구간이
-   매일 몇 분씩 생기고, v1 은 그때 빈칸이 됐다.
+   ★ 항상 그린다. 하루 1회 갱신이라 "다음 갱신"은 언제나 존재하고, 예정 시각이 지나면
+   그 순간 다음 날 시각으로 넘어가 24시간을 다시 센다. 그래서 빈칸도, 멈춘 숫자도 없다.
 
-   "지남"은 이 페이지가 들고 있는 데이터 기준이라 항상 참이다 — 갱신이 서버에 들어와도
-   페이지를 다시 받기 전까지 내가 보고 있는 것은 갱신 전 데이터가 맞다.
+   launchd 가 정각이 아니라 15분 간격으로 깨기 때문에 실제 갱신은 09:00~09:15 사이
+   아무 때나 들어온다. 그 몇 분을 "밀렸다"고 표시하면 매일 아침 경고가 뜬다 — 정상 동작인데.
+   그래서 시각은 예정 시각(09:00)으로 고정해 세고, 정말 고장났는지는 색으로만 알린다.
    ========================================================================== */
 (function liveTimer() {
-  var STALE_H = 30; /* 이 시간을 넘겨 밀리면 색을 --bad 로. 문서 freshness() 와 같은 임계. */
+  var STALE_H = 30; /* 마지막 갱신이 이보다 오래됐으면 색을 --bad 로. 문서 freshness() 와 같은 임계. */
 
   function start() {
     var el = document.getElementById("nextrun");
@@ -43,55 +42,30 @@
     }
     function pad(n) { return (n < 10 ? "0" : "") + n; }
 
-    /* ms 직후의 첫 예정 시각. "얼마나 밀렸나"는 지금 놓친 슬롯이 아니라
-       마지막 갱신 다음에 왔어야 할 슬롯부터 재야 한다 — 이틀을 걸렀는데
-       "3시간 지남"이라고 하면 멀쩡해 보인다. hours 는 하루 안이므로 이틀만 훑으면 반드시 잡힌다. */
-    function firstSlotAfter(ms) {
-      for (var d = 0; d < 2; d++) {
-        for (var i = 0; i < hours.length; i++) {
-          var t = slot(ms + d * 86400000, hours[i]);
-          if (t > ms) return t;
-        }
-      }
-      return ms;
-    }
-
     function paint() {
       var now = Date.now();
 
-      /* 직전 슬롯(지금까지 지난 마지막 예정 시각)과 다음 슬롯. 오늘 안에 없으면
-         각각 어제 마지막 / 내일 첫 시각으로 넘어간다. control_panel.py 의
-         next_run() 과 같은 규칙이다 — 제어판과 페이지가 다른 말을 하면 안 된다. */
-      var prev = null, next = null, i, t;
-      for (i = 0; i < hours.length; i++) {
+      /* 다음 예정 시각. 오늘 남은 것이 없으면 내일 첫 시각으로 넘어간다 —
+         09:00 을 지나는 순간 카운터가 23:59:59 로 되감기며 24시간을 다시 센다.
+         control_panel.py 의 next_run() 과 같은 규칙이다. */
+      var next = null, i, t;
+      for (i = 0; i < hours.length && next === null; i++) {
         t = slot(now, hours[i]);
-        if (t <= now) prev = t;
-        else if (next === null) next = t;
+        if (t > now) next = t;
       }
-      if (prev === null) prev = slot(now - 86400000, hours[hours.length - 1]);
       if (next === null) next = slot(now + 86400000, hours[0]);
 
-      /* 직전 슬롯분이 아직 안 들어왔으면(맥이 자고 있었다거나, launchd 가 아직 안 깼다거나)
-         다음 슬롯까지 세는 건 틀린 정보다. 대신 예정 시각으로부터 얼마나 지났는지를 센다.
-         색으로만 구분한다 — 몇 분은 정상 동작(--warn), 하루가 넘으면 고장(--bad). */
-      var late = pulled < prev;
-      var sec = Math.max(0, Math.round(
-        (late ? now - firstSlotAfter(pulled) : next - now) / 1000));
-      var tint = !late ? "--live" : (now - pulled >= STALE_H * 3600000 ? "--bad" : "--warn");
+      /* 예정 시각이 몇 분 지나 아직 안 들어온 것은 정상 동작이라 건드리지 않는다.
+         하루가 넘도록 안 들어왔을 때만 색으로 알린다. */
+      var sec = Math.max(0, Math.round((next - now) / 1000));
+      var tint = now - pulled >= STALE_H * 3600000 ? "--bad" : "--live";
 
-      var clock = pad(Math.floor(sec / 3600) % 24) + ":" +
-                  pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60);
-      var days = Math.floor(sec / 86400);
-      if (days) clock = days + "일 " + clock;
-
-      var head = late
-        ? "갱신 중"
-        : "다음 갱신 <b>" +
-          (kst(next).getUTCDate() === kst(now).getUTCDate() ? "오늘" : "내일") +
-          " " + pad(kst(next).getUTCHours()) + ":00</b>";
-
-      el.innerHTML = head + ' · <b style="color:var(' + tint + ')">' + clock + "</b> " +
-        (late ? "지남" : "남음");
+      el.innerHTML =
+        "다음 갱신 <b>" +
+        (kst(next).getUTCDate() === kst(now).getUTCDate() ? "오늘" : "내일") +
+        " " + pad(kst(next).getUTCHours()) + ':00</b> · <b style="color:var(' + tint + ')">' +
+        pad(Math.floor(sec / 3600)) + ":" + pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60) +
+        "</b> 남음";
     }
 
     paint();
