@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-08 08:53",
+  updated: "2026-09-08 09:19",
 };
 
 /* --------------------------------------------------------------------------
@@ -499,8 +499,8 @@ const SECTIONS = [
         url: "docs/sol-tournament-slot-ab.html",
         project: "sol",
         status: "Live",
-        version: "v24.9",
-        updated: "2026-09-07 16:18",
+        version: "v24.10",
+        updated: "2026-09-08 09:19",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B", "상시"],
       },
