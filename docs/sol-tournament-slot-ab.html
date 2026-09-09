@@ -12,27 +12,11 @@
     <link rel="stylesheet" href="../style.css?v=light2" />
     <!-- 이 <style>은 문서 전용 구역이다. 델타 보드(.kb .mx)는 2026-09-07 에
          style.css 공용 섹션으로 승격했다 — 여기서 다시 정의하지 않는다.
-         남은 것은 이 문서에만 있는 것들이다: 판정 전제(.kb-bal) · 갱신 경고(.stale-bar)
+         남은 것은 이 문서에만 있는 것들이다: 갱신 경고(.stale-bar)
          · 코호트 피라미드(.pyr) · 대조군 정의(.ab) · 갱신 시각(.doc-when) · 말풍선(#tip). -->
     <style>
       /* 판정 전제 — 지표가 아니라 "이 표를 믿어도 되는가"의 전제라 표 위에 둔다. */
-      .kb-bal{margin:0 0 16px;padding:4px 16px;border-radius:var(--radius);
-        background:color-mix(in srgb, var(--warn) 7%, #fff);
-        border:1px solid color-mix(in srgb, var(--warn) 30%, var(--border));
-        border-left:4px solid var(--warn)}
-      .kb-bal .bl{display:grid;grid-template-columns:70px 96px 176px 44px 1fr;gap:10px;align-items:center;
-        padding:9px 0;font-size:11.5px;font-weight:600;border-bottom:1px solid color-mix(in srgb, var(--warn) 14%, #fff)}
-      .kb-bal .bl:last-child{border-bottom:none}
-      .kb-bal b{color:color-mix(in srgb, var(--warn) 72%, var(--text));font-size:12px}
-      .kb-bal .v{font-variant-numeric:tabular-nums;font-weight:800;white-space:nowrap}
-      .kb-bal .v .p{color:#475569;background:#eef1f6;padding:1px 6px;border-radius:5px}
-      .kb-bal .v .n{color:#fff;background:var(--b);padding:1px 6px;border-radius:5px}
-      .kb-bal .d{color:var(--warn);font-weight:800;text-align:right}
-      .kb-bal em{font-style:normal;color:var(--text-dim);font-weight:600}
-      @media (max-width:820px){ .kb-bal .bl{grid-template-columns:1fr auto;gap:4px 8px}
-        .kb-bal .bl span:nth-child(2){display:none} .kb-bal em{grid-column:1/-1} }
       /* 블록마다 조회 시각이 다르면 나눗셈이 조용히 틀린다 — 어느 블록이 옛것인지 맨 위에 박아 둔다. */
-      .kb-bal .bl.stale .v .p,.kb-bal .bl.stale .v .n{background:#eef1f6;color:#94a3b8}
       .stale-bar{margin:0 0 12px;padding:9px 14px;border:1px dashed #cbd5e1;border-left:3px solid var(--warn);
         border-radius:var(--radius);background:#fffdf5;font-size:11.5px;line-height:1.7;color:var(--text-dim);font-weight:600}
       .stale-bar b{color:var(--text)}
@@ -42,7 +26,7 @@
          아래로 갈수록 도래한 칸이 줄어 삼각형이 된다. 두 빌드를 한 줄씩 붙여 두면
          같은 코호트·같은 D 를 눈을 옮기지 않고 위아래로 바로 견줄 수 있다. */
       .pyr{overflow-x:auto}
-      .pyr table{border-collapse:collapse;width:100%;min-width:520px;font-variant-numeric:tabular-nums}
+      .pyr table{border-collapse:collapse;width:100%;min-width:780px;font-variant-numeric:tabular-nums}
       .pyr th{font-size:9.5px;font-weight:700;color:var(--text-dim);padding:4px 3px;text-align:right;white-space:nowrap}
       .pyr th:nth-child(-n+3){text-align:left}
       .pyr td{font-size:11.5px;font-weight:700;padding:5px 4px;text-align:right}
@@ -102,7 +86,6 @@
         background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
         line-height:1.55;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
       #tip b{color:#ffd9a8;font-weight:800}
-      #sql .qcopy{display:flex;justify-content:flex-end;margin:2px 0 10px}
     </style>
   </head>
   <body>
@@ -116,8 +99,6 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#board">KPI</a>
-        <a class="nav-back" href="#raw">원본</a>
-        <a class="nav-back" href="#sql">쿼리</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -173,252 +154,7 @@
         <div id="groups"></div>
       </section>
 
-      <section class="doc-section" id="raw">
-        <h2 class="doc-h2">원본 <span class="doc-h2-sub">막대의 합산 재료입니다</span></h2>
-        <details class="fold">
-          <summary>일자 × 빌드 × 유저군 — 슬롯 퍼널 + 가드레일</summary>
-          <div class="fold-body"><div id="rawdaily"></div></div>
-        </details>
-        <details class="fold">
-          <summary>일자별 유입 세션</summary>
-          <div class="fold-body"><div id="rawinf"></div></div>
-        </details>
-        <details class="fold">
-          <summary>일자별 빌드 점유 — 실험이 성립하는지</summary>
-          <div class="fold-body"><div id="rawver"></div></div>
-        </details>
-        <details class="fold">
-          <summary>클리어 / 실패 분해 — 완료 판수의 result 축</summary>
-          <div class="fold-body"><div id="rawres"></div></div>
-        </details>
-        <details class="fold">
-          <summary>배정 균형 — US OS 구성</summary>
-          <div class="fold-body"><div id="rawbal"></div></div>
-        </details>
-        <details class="fold">
-          <summary>바뀐 코드 — <code>resolveTournamentSocialAction()</code></summary>
-          <div class="fold-body">
-            <div class="table-scroll"><pre>// assets/script/Base/FacebookPlatform.ts
-if (!DataManager.const.tournamentInviteEnabled) return share;   // ← B는 여기서 끝난다
-if (!isTournamentOngoing(tournament))          return share;
-if (now - lastViral &lt; COOLDOWN)                return null;     // 3230 reason=cooldown
-if (DataManager.isNewPlayer)                   return share;    // 순번 미소모
-useInvite = shouldInvitePopupNext;                              // FBDataKey.tournamentInviteNext
-_shouldInvitePopupNext = !useInvite;                            // 매 발화마다 토글
-return useInvite ? invite : share;
 
-// B 변경 (stash@{0} · 아직 커밋되지 않음)
-- return (this.getValueByKey(ConstKeyNumber.TOURNAMENT_INVITE_ENABLED) ?? 0) === 1;
-+ return false;</pre></div>
-            <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
-              <b>A(485)</b>는 시트 <code>10108</code>을 읽어 켜져 있으면 공유↔초대 교대,
-              <b>B(486)</b>는 코드에서 <code>false</code> 고정이라 공유만 띄웁니다.
-              ⚠ 이 diff는 <b>stash에만 있고 커밋되지 않았습니다</b> — 지금 빌드를 다시 뽑으면 실험군이 사라집니다.
-            </div></div>
-          </div>
-        </details>
-      </section>
-
-      <section class="doc-section" id="sql">
-        <h2 class="doc-h2">쿼리 <span class="doc-h2-sub">이거 하나면 문서 전체가 채워집니다</span></h2>
-        <div class="stale-bar" style="margin-bottom:14px">
-          <b>아래 쿼리는 이 문서를 채우는 스크립트가 실제로 실행하는 문자열 그대로입니다</b> —
-          <code>scripts/refresh_sol_slot_ab.py</code>가 자기 쿼리를 여기에 심으므로 사본이 갈라질 수 없습니다.
-          블록을 쪼개 뽑지 않는 것이 이 쿼리의 목적입니다: 하나만 다시 뽑으면
-          <b>유입 ÷ 발화</b>처럼 블록을 가로지르는 값이 조용히 어긋납니다.
-        </div>
-        <details class="fold" open>
-          <summary>전체 갱신 쿼리 — 블록당 1행 · <b>매일 KST 09시 자동 실행</b></summary>
-          <div class="fold-body">
-            <!-- SQL:START -->
-            <div class="table-scroll"><pre>-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 가 매일 KST 09시(scripts/automation.json 기준)에 이 문자열을
--- 그대로 실행하고, 같은 문자열을 문서의 SQL 폴드에 심는다 — 사본이 갈라질 수 없다.
---
--- 스캔 원칙
---  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
---  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 뽑혀 있고 불변이다.
---  · raw 스캔은 이 3일 창 하나뿐이다. DAU·빌드 점유·배정 균형은 stat 사전집계에서 뽑는다.
---  · 초대(3460 position)와 유입(payload.social)만 raw 전용이다 — stat 에 그 차원이 없다.
---  · 리텐션은 raw 조인을 쓰지 않는다. stat 사전집계를 읽는다.
---  · 블록을 쪼개지 않는다. 하나만 다시 뽑으면 블록을 가로지르는 값이 조용히 어긋난다.
-WITH us AS (
-    SELECT log_date, player_id, event, data, entrypoint_now, client_version
-    FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
-                       AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-        AND country = 'US'
-),
-slog AS (
-    -- 로그인 사전집계. 예전에는 이 몫도 raw 전 구간을 훑었다(0.33 GiB, 실험이 길어지면 계속 증가).
-    -- stat 에 같은 차원이 다 있어 옮겼다 — 이제 스캔량이 기간과 무관하게 고정된다.
-    -- ⚠ player_type 은 ALL 만 읽는다. ALL/NRU/RU 가 같은 유저를 중복 적재하므로 섞으면 2배가 된다.
-    SELECT log_date, client_version, IFNULL(country, '(null)') AS country,
-           IFNULL(os, '(null)') AS os, player_count
-    FROM `game-log-359704.stat.solitaire_city_journey`
-    WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-        AND stat_name = '1000_LOGIN_COMPLETE'
-        AND player_type = 'ALL'
-),
-ab AS (
-    SELECT
-        log_date, player_id, event, data, client_version,
-        MAX(IF(event = '1000_LOGIN_COMPLETE', 1, 0))
-            OVER (PARTITION BY log_date, player_id) AS has_login,
-        MAX(IF(event = '1000_LOGIN_COMPLETE'
-               AND JSON_VALUE(data, '$.is_new_device') = 'true', 1, 0))
-            OVER (PARTITION BY log_date, player_id) AS is_nru
-    FROM us
-    WHERE client_version IN (485, 486)
-),
-daily AS (
-    SELECT
-        log_date, client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
-        COUNT(DISTINCT IF(has_login = 1, player_id, NULL))                AS ud,
-        COUNTIF(event = '2300_GAMEPLAY_FINISH')                           AS fin,
-        COUNTIF(event = '3200_TOURNAMENT_SHARE')                          AS sh_try,
-        COUNTIF(event = '3210_TOURNAMENT_SHARE_SUCCESS')                  AS sh_ok,
-        COUNTIF(event = '3460_MSG_P2P_INVITE'
-                AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_try,
-        COUNTIF(event = '3470_MSG_P2P_INVITE_SUCCESS'
-                AND JSON_VALUE(data, '$.position') = 'tournament_invite') AS inv_ok,
-        COUNTIF(event = '3230_TOURNAMENT_SHARE_SUPPRESSED')               AS sup,
-        COUNTIF(event = '3100_TOURNAMENT_CREATE')                         AS cr_try,
-        COUNTIF(event = '3110_TOURNAMENT_CREATE_SUCCESS')                 AS cr_ok,
-        COUNTIF(event = '4010_INTERSTITIAL_AD_FINISH')                    AS it,
-        COUNTIF(event = '4210_RV_FINISH')                                 AS rv
-    FROM ab
-    GROUP BY log_date, client_version, seg
-),
-perday AS (
-    SELECT
-        log_date, player_id, client_version,
-        IF(MAX(is_nru) = 1, 'NRU', 'RU')        AS seg,
-        COUNTIF(event = '2300_GAMEPLAY_FINISH') AS n
-    FROM ab
-    GROUP BY log_date, player_id, client_version
-),
-dist AS (
-    SELECT
-        client_version, seg,
-        COUNT(*)                                              AS uday,
-        ROUND(AVG(n), 2)                                      AS avg_n,
-        APPROX_QUANTILES(n, 100)[OFFSET(50)]                  AS p50,
-        APPROX_QUANTILES(n, 100)[OFFSET(75)]                  AS p75,
-        APPROX_QUANTILES(n, 100)[OFFSET(90)]                  AS p90,
-        ROUND(COUNTIF(n &gt; 0) * 100.0 / COUNT(*), 1)           AS play,
-        APPROX_QUANTILES(IF(n &gt; 0, n, NULL), 100)[OFFSET(50)] AS p50p
-    FROM perday
-    GROUP BY client_version, seg
-),
-retn AS (
-    SELECT
-        join_date, client_version, social,
-        SUM(nru_count) AS coh,
-        DATE_DIFF(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY), join_date, DAY) AS observed_days,
-        ROUND(SUM(nru_count * d1)) AS d1,
-        ROUND(SUM(nru_count * d2)) AS d2,
-        ROUND(SUM(nru_count * d3)) AS d3,
-        ROUND(SUM(nru_count * d4)) AS d4,
-        ROUND(SUM(nru_count * d5)) AS d5,
-        ROUND(SUM(nru_count * d6)) AS d6,
-        ROUND(SUM(nru_count * d7)) AS d7
-    FROM `game-log-359704.stat.solitaire_city_journey_nru_retention3`
-    WHERE join_date &gt;= DATE '2026-09-03'
-        AND client_version IN (485, 486)
-        AND country = 'US'
-    GROUP BY join_date, client_version, social
-),
-inflow AS (
-    SELECT
-        log_date,
-        COUNTIF(JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT')        AS t,
-        COUNTIF(JSON_VALUE(entrypoint_now, '$.payload.social') = 'TOURNAMENT_INVITE') AS ti
-    FROM us
-    WHERE event = '1000_LOGIN_COMPLETE'
-    GROUP BY log_date
-),
-res AS (
-    SELECT
-        client_version, IF(is_nru = 1, 'NRU', 'RU') AS seg,
-        JSON_VALUE(data, '$.result') AS result,
-        COUNT(*) AS n
-    FROM ab
-    WHERE event = '2300_GAMEPLAY_FINISH'
-    GROUP BY client_version, seg, result
-),
-bal AS (
-    -- 배정 균형만 국가 필터를 뺀다. FB 가 지역으로 갈랐는지 보려면 US 밖이 필요하다.
-    -- ⚠ 어제 하루 기준이다. stat 은 날짜별 유니크만 갖고 있어 여러 날을 더하면 유저가 중복된다
-    --   (HLL 테이블에 버전·OS 차원이 없어 기간 누적 유니크를 만들 수 없다).
-    --   묻는 것이 '배정이 한쪽으로 쏠렸나'라 하루 구성만으로 답이 나온다.
-    SELECT client_version, country, os, player_count AS users
-    FROM slog
-    WHERE client_version IN (485, 486)
-        AND log_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-        AND player_count &gt;= 10
-),
-vers AS (
-    -- 실험이 아직 성립하는지부터 본다. 485 가 말라 있으면 대조군이 없는 것이고,
-    -- 487 이상이 떴으면 처치가 하나 더 얹힌 것이라 486군이 오염된다.
-    -- os 축을 합치므로 하루에 두 OS 로 접속한 유저가 중복된다 — 실측 오차 0.3%(1,232 vs 1,228)로
-    -- '대조군이 살아 있나 / 새 빌드가 떴나' 판정에는 영향이 없다.
-    SELECT log_date, client_version, SUM(player_count) AS dau
-    FROM slog
-    WHERE country = 'US'
-    GROUP BY log_date, client_version
-    HAVING dau &gt;= 10
-)
-SELECT '0_META' AS blk, 1 AS rows_n,
-    TO_JSON_STRING(STRUCT(
-        FORMAT_DATETIME('%Y-%m-%d %H:%M', CURRENT_DATETIME('Asia/Seoul')) AS pulled_kst,
-        DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_day,
-        DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AS heavy_scan_from)) AS payload
-UNION ALL SELECT '1_DAILY', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, seg,
-    ud, fin, sh_try, sh_ok, inv_try, inv_ok, sup, cr_try, cr_ok, it, rv)
-    ORDER BY log_date, client_version, seg)) FROM daily
-UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    CAST(client_version AS STRING) AS ver, seg, uday, avg_n, p50, p75, p90, play, p50p)
-    ORDER BY seg, client_version)) FROM dist
-UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    FORMAT_DATE('%m-%d', join_date) AS coh_date, CAST(client_version AS STRING) AS ver,
-    social, coh, observed_days, d1, d2, d3, d4, d5, d6, d7)
-    ORDER BY join_date, client_version, social)) FROM retn
-UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
-    ORDER BY log_date)) FROM inflow
-UNION ALL SELECT '5_RESULT', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    CAST(client_version AS STRING) AS ver, seg, result, n)
-    ORDER BY seg, client_version, result)) FROM res
-UNION ALL SELECT '6_BALANCE', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    CAST(client_version AS STRING) AS ver, country, os, users)
-    ORDER BY country, os, client_version)) FROM bal
-UNION ALL SELECT '7_VERSION', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
-    FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, dau)
-    ORDER BY log_date, client_version)) FROM vers
-ORDER BY blk</pre></div>
-            <!-- SQL:END -->
-            <div class="kb"><div class="kb-note" style="border:1px solid var(--border);border-radius:var(--radius);margin-top:10px">
-              <b>이 쿼리는 오늘을 읽지 않습니다</b> — 마지막 날은 항상 <b>어제</b>라, 부분일이 이탈로
-              오독되는 사고가 구조적으로 막힙니다.
-              <b>무거운 스캔은 최근 3일뿐입니다</b>(<code>us</code>) — 그 이전 날짜는 이미 뽑혀 있고 로그는 불변입니다.
-              날짜 축이 있는 <code>1_DAILY</code> · <code>4_INFLOW</code> · <code>7_VERSION</code>은
-              같은 날짜 행을 덮어쓰고 새 날짜만 추가하므로 3일 창이 <b>자기치유 구간</b>입니다.
-              <b>날짜 축이 없는 <code>2_EXTRA</code> · <code>5_RESULT</code>는 최근 3일 롤링</b>입니다 —
-              누적이 아니라 통째로 교체되는 값이니 전 기간 분포로 읽지 마세요.
-              <code>3_RET</code>은 <b><code>stat.solitaire_city_journey_nru_retention3</code></b>에서 읽습니다(raw 스캔 없음).
-              코호트 기준이 <code>join_date</code>라 raw의 <code>is_new_device</code> 기준과 모집단이 다릅니다 —
-              실측상 <code>is_new_device</code> 쪽이 NRU를 14~28% 과대계상하며, 대시보드와 맞는 쪽은 stat입니다.
-              광고 포함/제외 토글은 <code>social = 'AD'</code>로 갈립니다.
-              <b>갱신이 멈추는 조건</b>: 마지막 날이 어제가 아님 · DAU가 전일 대비 ±50% 밖 ·
-              마지막 날에 A 또는 B 빌드 행이 없음 · 필수 블록 공백. 걸리면 <b>커밋하지 않고 로그만 남깁니다</b>.
-              487 이상 빌드는 차단하지 않고 <b>빌드 점유표에 붉게 노출</b>합니다.
-              ⚠ <b>숫자는 자동이지만 판정 문장은 수동입니다</b> — 아래 해석 문구는 갱신되지 않으니,
-              숫자가 크게 움직였으면 문장도 다시 읽어야 합니다.
-            </div></div>
-          </div>
-        </details>
-      </section>
     </main>
 
     <script>
@@ -625,6 +361,9 @@ ORDER BY blk</pre></div>
             ["초대 성공 / DAU", e => e.inv_ok/e.ud, p3, "g_ok", true,
               "3470. A의 초대 성공 3,876건이 B에서 0이 됐습니다. 다만 이 값은 실제 도달이 아니라 다이얼로그 통과에 가깝습니다 — 같은 기간 초대 유입 세션은 하루 25.8건뿐이라, 성공 수와 도달 수의 자릿수가 다릅니다",
               false, null, e => [e.inv_ok, e.ud]],
+            ["초대 성공률", e => e.inv_try ? e.inv_ok / e.inv_try * 100 : null, pc, "g_rate", true,
+              "3470 ÷ 3460. 초대 다이얼로그를 띄운 것 중 통과한 비율입니다. B는 초대 분기 자체가 없어 시도가 0이라 값이 성립하지 않습니다 — 없어진 것이지 나빠진 것이 아닙니다",
+              false, e => [e.inv_ok, e.inv_try], null, "B 시도 0"],
             ["미노출 / DAU", e => e.sup/e.ud, p3, "g_ok", true,
               "3230. 코드상 사유는 둘뿐입니다 — no_tournament(토너 컨텍스트 없음)와 cooldown. B는 첫 게이트에서 공유를 반환해 쿨다운 분기에 닿지 못하므로 B의 미노출은 전부 no_tournament입니다. 즉 줄어든 0.17/DAU가 485에서 쿨다운에 막히던 몫이고, 그게 공유로 돌아왔습니다",
               false, null, e => [e.sup, e.ud]],
@@ -671,7 +410,7 @@ ORDER BY blk</pre></div>
         : p < 0.05  ? `<span class="sg2 ok">p=${p.toFixed(3)}</span>`
         : `<span class="sg2">n.s.</span>`;
 
-      const DAYS = [1,2,3,4,5,6,7];
+      const DAYS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14];
 
       // 코호트 피라미드 — A·B 를 한 줄씩 붙여 하나의 표로 합친다.
       // 가로는 한 코호트의 시간, 세로 쌍은 같은 코호트의 A/B. 코호트를 가로질러 가중 합산하면
@@ -743,40 +482,13 @@ ORDER BY blk</pre></div>
             </span>
             <span>D+1 합산 <b>A ${(tA.x / tA.n * 100).toFixed(2)}%</b> ↔ <b>B ${(tB.x / tB.n * 100).toFixed(2)}%</b>
               · n=${nf(tA.n)} / ${nf(tB.n)}</span>
-            <span><i style="background:rgba(21,128,61,.42)"></i>그 코호트·그 날짜에서 <b>더 높은 쪽</b> · 진할수록 격차가 큼(8%p에서 최대)</span>
-            <span><i style="background:#eef1f6"></i>· = 아직 안 온 날</span>
           </div>
           <div class="pyr"><table>
             <thead><tr><th>코호트일</th><th>군</th><th>코호트</th>
               ${DAYS.map(n => `<th>D+${n}</th>`).join("")}</tr></thead>
             <tbody>${body}</tbody>
           </table></div>
-          <div class="tri-foot">
-            <b>출처는 <code>stat.solitaire_city_journey_nru_retention3</code></b>(사전집계)입니다 —
-            raw 스캔이 없고, <b>데이터 스튜디오와 같은 정의</b>입니다.
-            그날 <b>설치한 신규(NRU)</b>를 코호트로 잡아, 정확히 N일 뒤 그날 접속한 비율을 봅니다(classic Day-N).
-            <b>· 로 찍힌 칸은 아직 그 날짜가 오지 않은 것</b>이라 아래로 갈수록 표가 짧아집니다.
-            비교는 <b>붙어 있는 A·B 한 쌍 안에서 세로로</b>만 하세요.
-            <br><br>
-            <b>⚠ 코호트의 83~87%가 광고 유입입니다.</b> 광고로 들어온 신규는 토너 슬롯을 볼 일이 거의 없어
-            처치와 무관한데 분모의 대부분을 차지하면서 D1을 8.6%로 눌러 <b>신호를 희석합니다</b> —
-            그래서 위 토글로 갈라 볼 수 있게 했습니다.
-            ${RET_MODE === "noad"
-              ? `<b>지금은 광고 제외 상태입니다.</b> 원칙에는 맞지만 <b>표본이 173/206으로 줄어 MDE가 10.7%p</b>가 됩니다 —
-                 D1이 17% 근처인데 10.7%p 이상 벌어져야 검출되므로 <b>지금 격차로는 어느 쪽도 판정할 수 없습니다.</b>
-                 9/3 코호트는 광고를 빼면 A 12명 · B 17명뿐이라 그 줄은 읽지 마세요.`
-              : `<b>지금은 광고 포함 상태입니다.</b> 코호트당 500~700명이라 막대는 안정적이지만,
-                 처치와 무관한 광고가 85%를 차지해 <b>진짜 효과가 있어도 약 1/7로 줄어듭니다</b> —
-                 "차이 없음"으로 보이는 것이 <b>차이가 없어서인지 못 보는 것인지 구분되지 않습니다.</b>`}
-            <b>광고만 보면 A 8.61% ↔ B 8.74%(p=0.92)</b>로 양쪽이 같습니다 —
-            처치와 무관해야 할 집단이 실제로 무관했다는 뜻이라, 배정 편향이 없다는 근거가 하나 더 됩니다(사실상 A/A 통과).
-            <br><br>
-            <b>이 표의 '코호트' 수는 보드 위쪽의 유저-일과 다른 모수입니다.</b>
-            보드는 <b>그날 접속한 전체 유저-일</b>(A 3,545 · B 3,753 · raw)이고,
-            여기는 <b>그날 설치한 신규</b>(A 1,867 · B 1,894 · stat)입니다.
-            원본 폴드의 NRU(<code>is_new_device</code> 기준 A 2,171 · B 2,301)와도 14~18% 어긋납니다 —
-            디바이스 기준이라 재설치·브라우저 변경이 신규로 섞이기 때문입니다.
-          </div>`;
+          `;
       }
 
       function renderBoard() {
@@ -823,63 +535,22 @@ ORDER BY blk</pre></div>
         const body = GROUPS.map(g => {
           const rows = g.days
             ? retPyramid()
-            : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den]) => {
+            : g.rows.map(([lab, f, fmt, grp, neutral, note, key, parts, den, dim]) => {
                 // parts 는 검정용(비율 지표만). den 은 표시 전용 — 유저당 건수처럼
                 // 두 비율 검정이 성립하지 않는 행도 모수는 보여줘야 표본 크기를 읽는다.
                 const pv = parts ? ptest(...parts(A), ...parts(B)) : null;
                 const d = parts || den;
-                return row(lab, f(A), f(B), fmt, grp, neutral, note, key, pv, undefined,
+                return row(lab, f(A), f(B), fmt, grp, neutral, note, key, pv, dim,
                   d && d(A), d && d(B));
               }).join("");
           return `<section class="gp" style="--g:${g.acc}"><h3>${g.name}<span>${g.sub}</span></h3>${rows}</section>`;
         }).join("");
 
-        // 판정 전제 — 지표가 아니라 "이 그래프를 어디까지 믿어도 되는가"라 맨 위에 둔다.
-        const bal = `<div class="kb-bal">
-          <div class="bl"><b>확실한 개선</b><span>공유 성공/DAU</span>
-            <span class="v"><span class="p">0.092</span> → <span class="n">0.152</span></span>
-            <span class="d">+65% · p&lt;.001</span>
-            <em>주지표가 <b>유의하게 올랐습니다.</b> 9/4 부분 집계에서는 −6%였다가 +4%로 뒤집혔던 값인데,
-            사흘치가 온전히 쌓이자 방향이 확정됐습니다 — <b>부분 집계로 판정하지 않기를 잘한 사례입니다</b></em></div>
-          <div class="bl"><b>같이 성립하는 사실</b><span>공유 성공률</span>
-            <span class="v"><span class="p">7.7%</span> → <span class="n">5.6%</span></span>
-            <span class="d">−27% · p&lt;.001</span>
-            <em>통과율은 떨어졌는데 성공 건수는 늘었습니다. 시도를 <b>2.3배</b> 밀어 넣어 통과율 하락을 덮은 것이라,
-            <b>창구가 포화라는 사실은 그대로</b>입니다 — 더 밀어도 더 나오지는 않는 구간이 가깝습니다</em></div>
-          <div class="bl"><b>총 발화는 급감</b><span>공유+초대 성공/DAU</span>
-            <span class="v"><span class="p">1.186</span> → <span class="n">0.152</span></span>
-            <span class="d">−87%</span>
-            <em>초대 성공 <b>3,876건이 0</b>이 됐기 때문입니다. 다만 3470은 도달이 아니라 다이얼로그 통과라
-            이 −87%를 손실로 읽으면 안 됩니다 — 실제 도달은 아래 유입으로 봅니다</em></div>
-          <div class="bl"><b>유입은 줄지 않음</b><span>일평균 세션</span>
-            <span class="v"><span class="p">${((IP.t+IP.ti)/IP.n).toFixed(1)}</span> → <span class="n">${((IC.t+IC.ti)/IC.n).toFixed(1)}</span></span>
-            <span class="d">+4%</span>
-            <em>초대 유입 ${(IP.ti/IP.n).toFixed(1)} → ${(IC.ti/IC.n).toFixed(1)}을 공유 유입 ${(IP.t/IP.n).toFixed(1)} → ${(IC.t/IC.n).toFixed(1)}이 메웠습니다.
-            <b>발신은 절반만 처치된 상태</b>(A·B 반반 서빙)라 B 전량 배포면 폭이 더 커질 수 있습니다</em></div>
-          <div class="bl"><b>가드레일</b><span>전부 유의성 미달</span>
-            <span class="v"><span class="p">NRU 리텐션 D+1</span> <span class="n">n.s.</span></span>
-            <span class="d">9.91 ↔ 9.95</span>
-            <em>팀 표준(설치 코호트) 기준 3일 합산 D+1이 A 9.91% ↔ B 9.95%(p=0.98)로 사실상 동일합니다.
-            광고를 빼면 A 17.3 ↔ B 16.0(p=0.73)인데 표본이 작아 판정 보류입니다.
-            토너 생성률(p=0.47)도, 배정 균형(${(() => {
-              const r = BALANCE_US.find(x => x.os === "Android") || BALANCE_US[0];
-              return r ? `US ${r.os} A ${nf(r.a)} ↔ B ${nf(r.b)}, 어제 하루 기준` : "배정";
-            })()})도 이상이 없습니다 —
-            <b>슬롯을 바꿔서 망가진 것은 확인되지 않습니다</b></em></div>
-        </div>`;
-
-        document.getElementById("groups").innerHTML = bal
-          + `<div class="mx"><div class="mr hd"><div class="ml">지표</div>
+        document.getElementById("groups").innerHTML =
+          `<div class="mx"><div class="mr hd"><div class="ml">지표</div>
               <div class="bs"><span class="ha">A · 교대 · ${nf(A.ud)} 유저-일</span>
                 <span class="hb">B · 공유만 · ${nf(B.ud)} 유저-일</span></div>
-              <div class="bd">Δ</div></div>${body}</div>`
-          + `<div class="kb-foot">막대 길이는 <b>같은 단위 계열 안에서만</b> 비교합니다(발화율 / 시도 / 성공·미노출 / 비율 / 판수 / 광고 / 리텐션) — <b>계열이 다른 행끼리는 길이 비교가 불가</b>합니다 ·
-              Δ 색 초록=개선 · 빨강=악화 · <b>청록=설계대로라 판정하지 않음</b> · 회색=변화 없음 ·
-              <b>초록·빨강은 두 비율 검정을 통과한 행에만</b> 칠합니다 — <b>n.s.</b>(유의성 미달)와
-              <b>검정 불가</b>(비율이 아니라 검정을 붙일 수 없는 지표)는 회색으로 두어 확정된 변화로 읽히지 않게 했습니다 ·
-              값 오른쪽의 작은 숫자는 <b>모수(분자 / 분모)</b>입니다 — 같은 비율이라도 <b>분모가 작으면 흔들립니다</b> ·
-              <b>공유 성공 (절대)</b>는 값 자체가 원값이라 모수가 없습니다 ·
-              RU/NRU 분해는 <b>원본</b> 폴드에 있습니다 · US · ${RANGE} · 한 번의 조회(${PULLED} KST)</div>`;
+              <div class="bd">Δ</div></div>${body}</div>`;
       }
 
       // 자동 갱신이 조용히 멈추는 것을 페이지가 스스로 알린다 — PULLED 를 지금과 비교한다.
@@ -898,76 +569,6 @@ ORDER BY blk</pre></div>
 
       renderBoard();
 
-      // ── 원본 표 ──────────────────────────────────────────────────────────
-      (function () {
-        const COLS = [["ud","DAU"],["fin","완료판수"],["sh_try","공유시도"],["sh_ok","공유성공"],
-          ["inv_try","초대시도"],["inv_ok","초대성공"],["sup","미노출"],
-          ["cr_try","생성시도"],["cr_ok","생성성공"],["it","전면광고"],["rv","RV"]];
-        document.getElementById("rawdaily").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>날짜</th><th>군</th><th>유저군</th>${COLS.map(c => `<th style="text-align:right">${c[1]}</th>`).join("")}</tr></thead>
-          <tbody>${DAILY.map(r => `<tr><td>${r.d}</td><td>${VL(r.ver)}</td><td>${r.seg}</td>${
-            COLS.map(c => `<td style="text-align:right">${nf(r[c[0]])}</td>`).join("")}</tr>`).join("")}</tbody>
-        </table></div>`;
-        document.getElementById("rawinf").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>날짜</th><th style="text-align:right">공유 유입</th><th style="text-align:right">초대 유입</th>
-            <th style="text-align:right">합</th><th style="text-align:right">초대 비중</th></tr></thead>
-          <tbody>${INFLOW.map(r => `<tr${POST.includes(r.d) ? ' style="font-weight:700"' : ""}>`
-            + `<td>${r.d}${POST.includes(r.d) ? ' <span class="tag">A·B 혼재</span>' : ""}</td>`
-            + `<td style="text-align:right">${nf(r.t)}</td><td style="text-align:right">${nf(r.ti)}</td>`
-            + `<td style="text-align:right">${nf(r.t + r.ti)}</td>`
-            + `<td style="text-align:right">${(r.ti / (r.t + r.ti) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
-        </table></div>`;
-
-        // 빌드 점유 — 이 표가 '실험이 아직 성립하는가'의 근거다. 487 이상이 뜨면 그 뒤 날짜는 A/B가 아니다.
-        document.getElementById("rawver").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>날짜</th><th style="text-align:right">기타 빌드</th><th style="text-align:right">A (485)</th>
-            <th style="text-align:right">B (486)</th><th style="text-align:right">B 점유</th></tr></thead>
-          <tbody>${VERSION.map(r => `<tr><td>${r.d}</td>`
-            + `<td style="text-align:right">${r.vo ? nf(r.vo) : "—"}</td>`
-            + `<td style="text-align:right">${nf(r.a)}</td><td style="text-align:right">${nf(r.b)}</td>`
-            + `<td style="text-align:right">${(r.b / (r.a + r.b) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
-        </table></div><div class="kb-foot">DAU 10명 미만 빌드는 잘라 냈습니다 ·
-          기타 빌드: <b>${OTHER_VERS.length ? OTHER_VERS.join(" · ") : "없음"}</b>${OTHER_VERS.some(v => Number(v) > 486)
-            ? ' <b style="color:var(--bad)">— 487 이상이 떴습니다. 그 뒤 날짜는 A/B 대조가 아닙니다</b>' : ""}
-          · 롤아웃 첫날은 이전 빌드가 남아 A·B 표본이 작습니다</div>`;
-
-        // 클리어/실패 — 슬롯은 클리어에서만 뜨므로 발화 기회가 실제로 늘었는지 여기서 갈린다.
-        document.getElementById("rawres").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>군</th><th>유저군</th><th style="text-align:right">클리어</th>
-            <th style="text-align:right">실패</th><th style="text-align:right">클리어 비중</th></tr></thead>
-          <tbody>${RESULT.map(r => `<tr><td>${VL(r.ver)}</td><td>${r.seg}</td>`
-            + `<td style="text-align:right">${nf(r.clear)}</td><td style="text-align:right">${nf(r.fail)}</td>`
-            + `<td style="text-align:right">${(r.clear / (r.clear + r.fail) * 100).toFixed(1)}%</td></tr>`).join("")}</tbody>
-        </table></div><div class="kb-foot">완료 판수의 96~98%가 클리어입니다 —
-          <b>완료 판수 증가는 사실상 그대로 발화 기회 증가</b>입니다 ·
-          ⚠ 이 표와 위 일자별 표의 <b>NRU/RU 구분은 로그의 <code>is_new_device</code> 기준</b>이라,
-          서버 가입일 기준인 stat 대비 NRU를 <b>14~28% 많이 잡습니다</b> — 세그먼트 경계는 근사치로 보세요.
-          전체 합산 지표(보드 막대)는 이 구분을 쓰지 않아 영향이 없습니다</div>`;
-
-        // 배정 균형 — FB가 지역·기기로 갈랐다면 여기서 구성이 어긋난다.
-        document.getElementById("rawbal").innerHTML = `<div class="table-scroll"><table>
-          <thead><tr><th>OS</th><th style="text-align:right">A</th><th style="text-align:right">B</th>
-            <th style="text-align:right">B / A</th></tr></thead>
-          <tbody>${BALANCE_US.map(r => `<tr><td>${r.os}</td>`
-            + `<td style="text-align:right">${nf(r.a)}</td><td style="text-align:right">${nf(r.b)}</td>`
-            + `<td style="text-align:right">${(r.b / r.a).toFixed(2)}</td></tr>`).join("")}</tbody>
-        </table></div><div class="kb-foot">${(() => {
-            // '3~6%' 같은 손으로 쓴 범위는 데이터가 바뀌면 거짓이 된다 — 매번 계산한다.
-            const rs = BALANCE_US.filter(r => r.a > 0);
-            const pct = rs.map(r => (r.b / r.a - 1) * 100);
-            const lo = Math.min(...pct), hi = Math.max(...pct);
-            const worst = rs[pct.indexOf(Math.max(...pct.map(Math.abs)))];
-            const skew = Math.abs(worst.b / worst.a - 1) * 100;
-            const fmt = v => (v >= 0 ? "+" : "") + v.toFixed(0) + "%";
-            return `US · <b>어제 하루 기준</b>입니다(stat 사전집계는 날짜별 유니크만 있어 여러 날을 더하면
-              유저가 중복됩니다) · OS별 B/A 편차 <b>${fmt(lo)} ~ ${fmt(hi)}</b> ·
-              가장 치우친 OS는 <b>${worst.os}</b>(${skew.toFixed(0)}%)입니다 — `
-              + (skew < 15
-                  ? `<b>한쪽으로 쏠린 OS가 없습니다.</b> 기기로 가른 흔적은 보이지 않습니다`
-                  : `<b style="color:var(--bad)">편차가 큽니다 — 기기로 갈렸을 가능성을 확인해야 합니다</b>`);
-          })()}</div>`;
-
-      })();
 
       // ── 광고 토글 ─────────────────────────────────────────────────────────
       // innerHTML 로 다시 그리므로 버튼에 직접 걸지 않고 문서 위임으로 받는다.
@@ -1002,37 +603,6 @@ ORDER BY blk</pre></div>
         });
       })();
 
-      // ── 쿼리 복사 ─────────────────────────────────────────────────────────
-      (function () {
-        document.querySelectorAll("#sql .fold-body .table-scroll").forEach(function (box) {
-          if (!box.querySelector("pre")) return;
-          var bar = document.createElement("div");
-          bar.className = "qcopy";
-          bar.innerHTML = '<button class="mfx-btn" type="button" style="--smg: #b45309">쿼리 복사</button>';
-          box.parentNode.insertBefore(bar, box);
-        });
-        document.addEventListener("click", function (ev) {
-          var btn = ev.target.closest ? ev.target.closest("#sql .qcopy button") : null;
-          if (!btn) return;
-          var pre = btn.parentNode.nextElementSibling.querySelector("pre");
-          if (pre) copyText(pre.textContent, btn);
-        });
-        function copyText(text, btn) {
-          function done() {
-            btn.textContent = "복사됨"; btn.classList.add("is-done");
-            setTimeout(function () { btn.textContent = "쿼리 복사"; btn.classList.remove("is-done"); }, 1200);
-          }
-          function fallback() {
-            var ta = document.createElement("textarea");
-            ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
-            document.body.appendChild(ta); ta.select();
-            try { document.execCommand("copy"); done(); } catch (e) {}
-            document.body.removeChild(ta);
-          }
-          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
-          else fallback();
-        }
-      })();
     </script>
     <script src="../app.js?v=timer2"></script>
   </body>

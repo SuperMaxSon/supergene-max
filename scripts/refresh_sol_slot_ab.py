@@ -129,7 +129,14 @@ retn AS (
         ROUND(SUM(nru_count * d4)) AS d4,
         ROUND(SUM(nru_count * d5)) AS d5,
         ROUND(SUM(nru_count * d6)) AS d6,
-        ROUND(SUM(nru_count * d7)) AS d7
+        ROUND(SUM(nru_count * d7)) AS d7,
+        ROUND(SUM(nru_count * d8)) AS d8,
+        ROUND(SUM(nru_count * d9)) AS d9,
+        ROUND(SUM(nru_count * d10)) AS d10,
+        ROUND(SUM(nru_count * d11)) AS d11,
+        ROUND(SUM(nru_count * d12)) AS d12,
+        ROUND(SUM(nru_count * d13)) AS d13,
+        ROUND(SUM(nru_count * d14)) AS d14
     FROM `game-log-359704.stat.solitaire_city_journey_nru_retention3`
     WHERE join_date >= DATE '2026-09-03'
         AND client_version IN (485, 486)
@@ -334,8 +341,8 @@ def build_js(state):
         tot = sum(int(r["coh"]) for r in rs)
         adr = [r for r in rs if r["social"] == "AD"]
         adc = sum(int(r["coh"]) for r in adr)
-        d   = [sum(int(r["d%d" % n] or 0) for r in rs)  for n in range(1, min(obs, 7) + 1)]
-        ad  = [sum(int(r["d%d" % n] or 0) for r in adr) for n in range(1, min(obs, 7) + 1)]
+        d   = [sum(int(r["d%d" % n] or 0) for r in rs)  for n in range(1, min(obs, 14) + 1)]
+        ad  = [sum(int(r["d%d" % n] or 0) for r in adr) for n in range(1, min(obs, 14) + 1)]
         L.append('        { c:%s, ver:%s, seg:"NRU", obs:%d, coh:%d, d:[%s], adc:%d, add:[%s] },' % (
             j(coh), j(v), obs, tot, ", ".join(map(str, d)), adc, ", ".join(map(str, ad))))
     L.append("      ];")
@@ -401,12 +408,15 @@ def splice(block):
     b = s.index("      /* DATA:END */") + len("      /* DATA:END */")
     new = s[:a] + block + s[b:]
 
-    esc = SQL.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    a = new.index("            <!-- SQL:START -->")
-    b = new.index("            <!-- SQL:END -->") + len("            <!-- SQL:END -->")
-    new = (new[:a] + "            <!-- SQL:START -->\n"
-           + '            <div class="table-scroll"><pre>' + esc + "</pre></div>\n"
-           + "            <!-- SQL:END -->" + new[b:])
+    # SQL 폴드를 문서에서 걷어낸 뒤에는 심을 자리가 없다. 마커가 없으면 건너뛴다 —
+    # 여기서 ValueError 를 내면 값 갱신까지 통째로 실패한다(자리 하나 없다고 그럴 일이 아니다).
+    if "            <!-- SQL:START -->" in new and "            <!-- SQL:END -->" in new:
+        esc = SQL.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        a = new.index("            <!-- SQL:START -->")
+        b = new.index("            <!-- SQL:END -->") + len("            <!-- SQL:END -->")
+        new = (new[:a] + "            <!-- SQL:START -->\n"
+               + '            <div class="table-scroll"><pre>' + esc + "</pre></div>\n"
+               + "            <!-- SQL:END -->" + new[b:])
     return s, new
 
 
