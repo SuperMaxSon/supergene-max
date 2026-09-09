@@ -108,7 +108,7 @@
   <body>
     <!-- AUTO:START --><script>
       /* scripts/refresh_common.py 가 매 실행마다 덮어쓴다. 손으로 고치면 다음 갱신에 사라진다. */
-      window.AUTORUN = { hours: [9], pulled: "2026-09-08 09:19", enabled: true };
+      window.AUTORUN = { hours: [9], pulled: "2026-09-09 09:01", enabled: true };
     </script><!-- AUTO:END -->
     <div id="tip"></div>
 
@@ -127,8 +127,8 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">판 클리어 초대 제거 A/B <span class="tag" id="nextrun"></span></h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-08 09:19</b> KST</span>
-          <span>데이터 <b>9/3~9/7</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
+          <span><i></i>문서 갱신 <b>2026-09-09 09:01</b> KST</span>
+          <span>데이터 <b>9/3~9/8</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
           <span id="fresh"></span>
         </div>
         <p class="doc-lede">
@@ -427,8 +427,8 @@ ORDER BY blk</pre></div>
       // 손으로 고치면 다음 갱신에서 사라진다. 출처는 SQL 폴드에 실린 그 쿼리 하나다.
       /* DATA:START */
       // 이 블록은 scripts/refresh_sol_slot_ab.py 가 생성한다. 손으로 고치면 사라진다.
-      const PULLED = "2026-09-08 09:19";
-      const RANGE  = "9/3~9/7";
+      const PULLED = "2026-09-09 09:01";
+      const RANGE  = "9/3~9/8";
 
       // 1_DAILY — 일자 × 빌드 × 유저군. 보드는 전부 여기서 합산해 만든다.
       const DAILY = [
@@ -452,13 +452,17 @@ ORDER BY blk</pre></div>
         { d:"09-07", ver:"485", seg:"RU", ud:456, fin:6765, sh_try:1131, sh_ok:68, inv_try:1110, inv_ok:1031, sup:430, cr_try:1275, cr_ok:98, it:4494, rv:2678 },
         { d:"09-07", ver:"486", seg:"NRU", ud:767, fin:3851, sh_try:572, sh_ok:43, inv_try:0, inv_ok:0, sup:401, cr_try:1012, cr_ok:194, it:1472, rv:738 },
         { d:"09-07", ver:"486", seg:"RU", ud:488, fin:7346, sh_try:2509, sh_ok:88, inv_try:0, inv_ok:0, sup:292, cr_try:1343, cr_ok:87, it:5414, rv:2518 },
+        { d:"09-08", ver:"485", seg:"NRU", ud:684, fin:3333, sh_try:280, sh_ok:31, inv_try:227, inv_ok:223, sup:416, cr_try:885, cr_ok:176, it:1405, rv:622 },
+        { d:"09-08", ver:"485", seg:"RU", ud:454, fin:6543, sh_try:1210, sh_ok:64, inv_try:1184, inv_ok:1103, sup:381, cr_try:1433, cr_ok:121, it:4548, rv:2671 },
+        { d:"09-08", ver:"486", seg:"NRU", ud:647, fin:3476, sh_try:592, sh_ok:55, inv_try:0, inv_ok:0, sup:450, cr_try:822, cr_ok:126, it:1335, rv:879 },
+        { d:"09-08", ver:"486", seg:"RU", ud:476, fin:7004, sh_try:2859, sh_ok:109, inv_try:0, inv_ok:0, sup:274, cr_try:1372, cr_ok:72, it:5175, rv:2507 },
       ];
 
       // 2_EXTRA — 판수 분포. 날짜축이 없어 갱신마다 통째로 바뀐다(최근 3일 롤링).
       // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
       const EXTRA = {
-        "485": { NRU:{ uday:2199, avg:4.42, p50:0, p75:4, p90:12, play:44.3, p50p:5 }, RU:{ uday:1698, avg:11.35, p50:2, p75:10, p90:30, play:64, p50p:7 } },
-        "486": { NRU:{ uday:2266, avg:4.85, p50:0, p75:5, p90:12, play:45.4, p50p:6 }, RU:{ uday:1796, avg:11.79, p50:2, p75:11, p90:32, play:63.6, p50p:8 } },
+        "485": { NRU:{ uday:2250, avg:4.37, p50:0, p75:4, p90:12, play:42.4, p50p:5 }, RU:{ uday:1783, avg:11.28, p50:2, p75:11, p90:30, play:62.6, p50p:8 } },
+        "486": { NRU:{ uday:2235, avg:5.06, p50:0, p75:5, p90:13, play:44.9, p50p:6 }, RU:{ uday:1851, avg:11.62, p50:2, p75:11, p90:34, play:63.3, p50p:8 } },
       };
 
       // 3_RET — stat.solitaire_city_journey_nru_retention3 (사전집계, raw 스캔 없음).
@@ -466,16 +470,18 @@ ORDER BY blk</pre></div>
       // 쪼개져 있어 nru_count 가중합으로 합쳤고, 광고분(adc/add)은 social='AD' 행이다.
       // obs = 그 코호트를 며칠까지 관측했는지. D+n 도래 판정의 유일한 기준이다.
       const RET = [
-        { c:"09-03", ver:"485", seg:"NRU", obs:4, coh:81, d:[8, 10, 9, 7], adc:69, add:[8, 8, 8, 7] },
-        { c:"09-03", ver:"486", seg:"NRU", obs:4, coh:108, d:[15, 8, 8, 2], adc:91, add:[11, 7, 4, 1] },
-        { c:"09-04", ver:"485", seg:"NRU", obs:3, coh:533, d:[53, 34, 30], adc:465, add:[37, 21, 16] },
-        { c:"09-04", ver:"486", seg:"NRU", obs:3, coh:557, d:[50, 32, 27], adc:470, add:[36, 25, 18] },
-        { c:"09-05", ver:"485", seg:"NRU", obs:2, coh:546, d:[54, 44], adc:453, add:[40, 32] },
-        { c:"09-05", ver:"486", seg:"NRU", obs:2, coh:582, d:[59, 39], adc:480, add:[44, 24] },
-        { c:"09-06", ver:"485", seg:"NRU", obs:1, coh:707, d:[69], adc:619, add:[61] },
-        { c:"09-06", ver:"486", seg:"NRU", obs:1, coh:693, d:[82], adc:592, add:[60] },
-        { c:"09-07", ver:"485", seg:"NRU", obs:0, coh:677, d:[], adc:576, add:[] },
-        { c:"09-07", ver:"486", seg:"NRU", obs:0, coh:666, d:[], adc:587, add:[] },
+        { c:"09-03", ver:"485", seg:"NRU", obs:5, coh:81, d:[8, 10, 9, 7, 6], adc:69, add:[8, 8, 8, 7, 6] },
+        { c:"09-03", ver:"486", seg:"NRU", obs:5, coh:108, d:[15, 8, 8, 2, 4], adc:91, add:[11, 7, 4, 1, 3] },
+        { c:"09-04", ver:"485", seg:"NRU", obs:4, coh:533, d:[53, 34, 30, 28], adc:465, add:[37, 21, 16, 15] },
+        { c:"09-04", ver:"486", seg:"NRU", obs:4, coh:557, d:[50, 32, 27, 29], adc:470, add:[36, 25, 18, 21] },
+        { c:"09-05", ver:"485", seg:"NRU", obs:3, coh:546, d:[54, 44, 45], adc:453, add:[40, 32, 29] },
+        { c:"09-05", ver:"486", seg:"NRU", obs:3, coh:582, d:[59, 39, 36], adc:480, add:[44, 24, 24] },
+        { c:"09-06", ver:"485", seg:"NRU", obs:2, coh:707, d:[69, 52], adc:619, add:[61, 45] },
+        { c:"09-06", ver:"486", seg:"NRU", obs:2, coh:693, d:[82, 44], adc:592, add:[60, 37] },
+        { c:"09-07", ver:"485", seg:"NRU", obs:1, coh:677, d:[60], adc:576, add:[42] },
+        { c:"09-07", ver:"486", seg:"NRU", obs:1, coh:666, d:[53], adc:587, add:[44] },
+        { c:"09-08", ver:"485", seg:"NRU", obs:0, coh:585, d:[], adc:509, add:[] },
+        { c:"09-08", ver:"486", seg:"NRU", obs:0, coh:552, d:[], adc:482, add:[] },
       ];
 
       // 4_INFLOW — 유입 세션. 발신자 버전으로도 유저군으로도 못 가른다. 날짜축만 있다.
@@ -491,22 +497,23 @@ ORDER BY blk</pre></div>
         { d:"09-05", t:142, ti:21 },
         { d:"09-06", t:137, ti:18 },
         { d:"09-07", t:145, ti:25 },
+        { d:"09-08", t:160, ti:23 },
       ];
-      const POST = ["09-03", "09-04", "09-05", "09-06", "09-07"];
+      const POST = ["09-03", "09-04", "09-05", "09-06", "09-07", "09-08"];
 
       // 5_RESULT · 6_BALANCE · 7_VERSION — 원본 폴드와 판정 전제에서 쓴다.
       const RESULT = [
-        { ver:"485", seg:"NRU", clear:9469, fail:245 },
-        { ver:"486", seg:"NRU", clear:10633, fail:355 },
-        { ver:"485", seg:"RU", clear:18558, fail:709 },
-        { ver:"486", seg:"RU", clear:20548, fail:626 },
+        { ver:"485", seg:"NRU", clear:9618, fail:214 },
+        { ver:"486", seg:"NRU", clear:10954, fail:345 },
+        { ver:"485", seg:"RU", clear:19395, fail:724 },
+        { ver:"486", seg:"RU", clear:20892, fail:610 },
       ];
       const BALANCE_US = [
-        { os:"Android", a:725, b:711 },
-        { os:"Windows", a:318, b:329 },
-        { os:"iOS", a:134, b:171 },
-        { os:"(null)", a:44, b:32 },
-        { os:"OS X", a:12, b:18 },
+        { os:"Android", a:656, b:617 },
+        { os:"Windows", a:304, b:316 },
+        { os:"iOS", a:127, b:147 },
+        { os:"(null)", a:38, b:29 },
+        { os:"OS X", a:14, b:19 },
       ];
       // vo = 485·486 이 아닌 다른 빌드의 DAU 합. OTHER_VERS 가 비어 있지 않으면 그 빌드가
       // 실제로 떴다는 뜻이고, 487 이상이 섞이면 그 뒤 날짜는 A/B 대조가 아니다.
@@ -516,6 +523,7 @@ ORDER BY blk</pre></div>
         { d:"09-05", vo:0, a:1032, b:1101 },
         { d:"09-06", vo:0, a:1232, b:1288 },
         { d:"09-07", vo:0, a:1235, b:1262 },
+        { d:"09-08", vo:0, a:1143, b:1130 },
       ];
       const OTHER_VERS = ["483"];
       /* DATA:END */
