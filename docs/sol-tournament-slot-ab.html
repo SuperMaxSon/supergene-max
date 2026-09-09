@@ -499,36 +499,47 @@
         GROUPS.forEach(g => (g.rows || []).forEach(([, f, , grp]) => {
           [f(A), f(B)].forEach(v => { if (v != null && isFinite(v)) GMX[grp] = Math.max(GMX[grp] || 0, v); });
         }));
-        const bars = (vp, vc, fmt, mx, nA, nB) => {
+        // 한쪽만 값이 없는 행(초대 성공률의 B 처럼)에서도 있는 쪽은 그린다.
+        // 예전에는 한쪽이 null 이면 행 전체를 "미수신"으로 접어 A 의 값까지 같이 사라졌다.
+        const bars = (vp, vc, fmt, mx, nA, nB, naText) => {
           const w = v => (mx > 0 ? Math.max(v / (mx * 1.35) * 100, v > 0 ? 1.5 : 0) : 0).toFixed(1);
           const den = np => !np || np[1] == null ? ""
             : `${nf(Math.round(np[0]))} / ${nf(Math.round(np[1]))}`;
-          const one = (lab, v, cls, np) => `<div class="br"><span class="bl">${lab}</span>`
-            + `<div class="bt"><i class="${cls}" style="width:${w(v)}%"></i></div>`
-            + `<span class="bv ${cls}">${fmt(v)}</span>`
-            + `<span class="bn">${den(np)}</span></div>`;
+          const one = (lab, v, cls, np) => {
+            const miss = v == null || !isFinite(v);
+            return `<div class="br"><span class="bl">${lab}</span>`
+              + `<div class="bt"><i class="${cls}" style="width:${miss ? "0.0" : w(v)}%"></i></div>`
+              + `<span class="bv ${cls}"${miss ? ' style="color:var(--text-dim);font-weight:700"' : ""}>`
+              + `${miss ? (naText || "—") : fmt(v)}</span>`
+              + `<span class="bn">${den(np)}</span></div>`;
+          };
           return one("A", vp, "a", nA) + one("B", vc, "b", nB);
         };
 
         const row = (lab, vp, vc, fmt, grp, neutral, note, key, pv, dim, nA, nB) => {
-          if (vp == null || vc == null || !isFinite(vp) || !isFinite(vc))
+          const has = v => v != null && isFinite(v);
+          // 양쪽 다 없을 때만 행을 접는다. 한쪽만 없으면 있는 쪽 값을 그대로 보여준다 —
+          // A 가 멀쩡한데 B 가 설계상 0 이라는 이유로 A 까지 감추면 지표를 못 읽는다.
+          if (!has(vp) && !has(vc))
             return `<div class="mr dim"><div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>`
                  + `<div class="na">${dim || "미수신"}</div><div class="bd"></div></div>`;
-          const pct = vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
+          const both = has(vp) && has(vc);
+          const pct = !both ? null : vp ? (vc / vp - 1) * 100 : (vc ? 100 : 0);
           // 색은 "검정을 통과한 것"에만 준다. 유의성 미달이나 검정 불가인 행에 초록·빨강을 칠하면
           // 확정된 개선·악화로 읽힌다 — 이 문서에서 그게 성립하는 지표는 공유 성공률 하나뿐이다.
-          const cls = neutral ? "spec"
+          const cls = neutral || !both ? "spec"
             : (pv == null || pv >= 0.05 || Math.abs(pct) < 5) ? "mute"
             : pct > 0 ? "good" : "bad";
           const nTip = (l, np) => !np || np[1] == null ? ""
             : `\n${l} 모수 ${nf(Math.round(np[0]))} / ${nf(Math.round(np[1]))}`;
-          const tip = `${lab}\nA ${fmt(vp)} → B ${fmt(vc)}` + nTip("A", nA) + nTip("B", nB)
+          const tip = `${lab}\nA ${has(vp) ? fmt(vp) : (dim || "—")} → B ${has(vc) ? fmt(vc) : (dim || "—")}`
+            + nTip("A", nA) + nTip("B", nB)
             + (neutral ? "\n(설계대로 바뀌는 값이라 좋고 나쁨을 판정하지 않습니다)" : "")
             + (pv != null ? `\n두 비율 검정 p=${pv < 0.001 ? "<0.001" : pv.toFixed(3)}` : "");
           return `<div class="mr${key ? " key" : ""}" data-tip="${tip}">
             <div class="ml">${lab}${note ? `<span class="q" data-tip="${note}">ⓘ</span>` : ""}</div>
-            <div class="bs">${bars(vp, vc, fmt, GMX[grp], nA, nB)}</div>
-            <div class="bd ${cls}">${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%${sigTag(pv)}</div>
+            <div class="bs">${bars(vp, vc, fmt, GMX[grp], nA, nB, dim)}</div>
+            <div class="bd ${cls}">${both ? `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%${sigTag(pv)}` : (dim || "—")}</div>
           </div>`;
         };
 
