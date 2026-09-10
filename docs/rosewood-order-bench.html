@@ -54,6 +54,18 @@
       .rw-pb { padding: 12px; }
 
       /* ── 보드 7×9 ── */
+      /* 연출 무대 — 비행·병합 칩은 격자 밖 fx 레이어에서 논다.
+         타이밍·이징은 허브 「머지 피드백 애니메이션」 문서(A1·A2·A4·C1·C3·C4)의 값 그대로. */
+      .rw-stage { position: relative; }
+      .rw-fx { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+      .rw-fly { position: absolute; border-radius: 5px; display: flex; align-items: center;
+                justify-content: center; font-family: ui-monospace, Menlo, monospace;
+                font-weight: 700; will-change: transform; }
+      .rw-ring { position: absolute; border-radius: 50%; border: 2px solid hsl(var(--h) 58% 46%);
+                 transform: translate(-50%, -50%); will-change: transform, opacity; }
+      .rw-spark { position: absolute; width: 5px; height: 5px; border-radius: 50%;
+                  background: hsl(var(--h) 62% 48%); transform: translate(-50%, -50%);
+                  will-change: transform, opacity; }
       .rw-board { display: grid; grid-template-columns: repeat(7, var(--cw));
                   grid-auto-rows: var(--cw); gap: 4px; --cw: clamp(36px, 9.6vw, 50px);
                   padding: 8px; background: var(--surface-2); border: 1px solid var(--border);
@@ -66,8 +78,8 @@
                  background: hsl(var(--h) 44% 87%); color: hsl(var(--h) 58% 26%);
                  border: 1px solid hsl(var(--h) 40% 72%);
                  font-family: ui-monospace, Menlo, monospace; font-weight: 700;
-                 font-size: calc(var(--cw) * 0.33); transition: transform 0.09s ease; }
-      .rw-cell.sel .rw-chip { transform: scale(0.88); box-shadow: 0 0 0 2px var(--tool); }
+                 font-size: calc(var(--cw) * 0.33); will-change: transform; }
+      .rw-cell.sel .rw-chip { box-shadow: 0 0 0 2px var(--tool); }
       .rw-cell.hint .rw-chip { box-shadow: 0 0 0 2px var(--balance); }
       .rw-cell.gen .rw-chip { border-width: 2px; border-style: double; }
       .rw-bg { position: absolute; font-size: calc(var(--cw) * 0.26); line-height: 1; }
@@ -87,7 +99,12 @@
 
       /* ── 오더 레일 ── */
       .rw-rail { display: flex; flex-direction: column; gap: 8px; }
-      .rw-card { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+      .rw-card { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;
+                 cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s; }
+      .rw-card:hover { border-color: var(--tool); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tool) 18%, transparent); }
+      .rw-card.flash { animation: rwFlash 0.42s ease-out; }
+      @keyframes rwFlash { 0% { background: color-mix(in srgb, var(--balance) 30%, transparent); } 100% { background: transparent; } }
+      .rw-hintline { font-size: 11.5px; color: var(--text-faint); padding: 2px 2px 0; }
       .rw-ch { display: flex; align-items: center; gap: 8px; padding: 5px 10px;
                background: var(--surface-2); border-bottom: 1px solid var(--border-soft); }
       .rw-slotno { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--text-faint); }
@@ -175,7 +192,7 @@
                   pointer-events: none; transition: opacity 0.18s; }
       .rw-toast.on { opacity: 1; }
       .rw-hide { display: none !important; }
-      @media (prefers-reduced-motion: reduce) { .rw-chip, .rw-toast { transition: none; } }
+      @media (prefers-reduced-motion: reduce) { .rw-toast, .rw-card { transition: none; } }
     </style>
   </head>
 
@@ -222,6 +239,8 @@
           나선의 첫 빈 칸에 놓습니다). 배지는 문서의 셀 배지 슬롯을 따릅니다 &mdash;
           <b>A</b> 좌상 재고 · <b>B</b> 우상 ⚡생성기 또는 ✓오더 요구 · <b>C</b> 우하 ♦최고 단계.
           경험치 공급원은 심부름 하나뿐이라, 랜덤 오더를 보려면 <b>심부름 완료</b>로 Lv3 을 넘겨야 합니다.
+          생산·병합·거부·납품 연출은 허브 <a href="merge-feedback-anim.html">머지 피드백 애니메이션</a> 문서의
+          타이밍·이징을 그대로 씁니다 &mdash; A1 클릭 · A2 베지어 비행 · A4 흡수→임팩트→팝 · C1 거부 · C3 충전 완료 · C4 납품.
         </div>
 
         <div class="rw-bar" style="margin-bottom: 14px">
@@ -237,14 +256,23 @@
           <div style="display: flex; flex-direction: column; gap: 12px">
             <div class="rw-panel">
               <div class="rw-ph"><h3>보드 7×9</h3><span class="sub" id="rwBoardSub"></span></div>
-              <div class="rw-pb"><div class="rw-board" id="rwBoard"></div></div>
+              <div class="rw-pb">
+                <div class="rw-stage" id="rwStage">
+                  <div class="rw-board" id="rwBoard"></div>
+                  <div class="rw-fx" id="rwFx"></div>
+                </div>
+              </div>
             </div>
             <div class="rw-info" id="rwInfo"></div>
           </div>
 
           <div class="rw-panel">
             <div class="rw-ph"><h3>오더 레일</h3><span class="sub" id="rwRailSub"></span></div>
-            <div class="rw-pb"><div class="rw-rail" id="rwRail"></div></div>
+            <div class="rw-pb">
+              <div class="rw-rail" id="rwRail"></div>
+              <p class="rw-hintline">카드를 누르면 보드 보유와 상관없이 <b>강제 완료</b>됩니다 &mdash; 다음 카드가 어떻게 뽑히는지 빨리 보려고 둔 테스트용 길입니다.
+                보드에서 실제로 소모하는 정상 경로는 <b>Serve</b> 버튼이고, 로그에 서로 다르게 남습니다.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -414,6 +442,181 @@
       };
 
       /* ======================================================================
+         1b. 연출 엔진
+         허브 「머지 피드백 애니메이션」 문서의 값을 그대로 옮겼다.
+         이징은 Cocos cc.easing 과 같은 수식이라 문서에서 본 곡선과 같다.
+         ====================================================================== */
+      const REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const EASE = {
+        linear: (t) => t,
+        quadIn: (t) => t * t,
+        quadOut: (t) => t * (2 - t),
+        quadInOut: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+        sineInOut: (t) => -(Math.cos(Math.PI * t) - 1) / 2,
+        backOut: (t) => { const s = 1.70158, u = t - 1; return u * u * ((s + 1) * u + s) + 1; },
+      };
+      // 문서 A1/A2/A4/C1/C3/C4 의 시간값(초)
+      const FX = {
+        PRESS: 0.12, RELEASE_A: 0.08, POP_IN: 0.18, MERGE_POP: 0.2, IDLE_BOB: 0.8,
+        FLIGHT: 0.42, FLIGHT_SCALE_UP: 0.15, FLIGHT_SCALE_DOWN: 0.27,
+        SQUASH_IN: 0.09, SQUASH_OUT: 0.18,
+        ABSORB: 0.14, IMPACT: 0.07,
+        SNAP_BACK: 0.22, SHAKE: 0.24, SHAKE_PX: 5,
+        CHARGE_IN: 0.08, CHARGE_OUT: 0.22,
+        DELIVERY_STAGGER: 0.06, DELIVERY_UP: 0.14, DELIVERY_AWAY: 0.3,
+        LIFT_MIN: 26, LIFT_RATIO: 0.45,
+      };
+
+      const TW = { list: [], raf: 0, bobT0: 0 };
+      function rafLoop(now) {
+        TW.raf = 0;
+        for (let i = TW.list.length - 1; i >= 0; i--) {
+          const a = TW.list[i];
+          const k = a.dur <= 0 ? 1 : Math.min(1, (now - a.t0) / a.dur);
+          const e = a.ease(k);
+          for (const key in a.to) a.state[key] = a.from[key] + (a.to[key] - a.from[key]) * e;
+          a.onUpdate(a.state);
+          if (k >= 1) { TW.list.splice(i, 1); a.res(); }
+        }
+        driveIdleBob(now);
+        if (TW.list.length || (!REDUCED && BOBS.length)) TW.raf = requestAnimationFrame(rafLoop);
+      }
+      function kick() { if (!TW.raf) TW.raf = requestAnimationFrame(rafLoop); }
+      function tw(state, to, durSec, ease, onUpdate) {
+        if (REDUCED || durSec <= 0) {
+          Object.assign(state, to); onUpdate(state); return Promise.resolve();
+        }
+        const from = {};
+        for (const k in to) from[k] = state[k];
+        return new Promise((res) => {
+          TW.list.push({ state, from, to, dur: durSec * 1000, ease: EASE[ease] || EASE.linear, t0: performance.now(), onUpdate, res });
+          kick();
+        });
+      }
+      const wait = (sec) => (REDUCED ? Promise.resolve() : new Promise((r) => setTimeout(r, sec * 1000)));
+
+      /* ── 생성기 아이들 bob — y ±3px · 0.8s · sineInOut · scale 1.05 (현재 코드 실측값) ── */
+      let BOBS = [];
+      function driveIdleBob(now) {
+        if (REDUCED || !BOBS.length) return;
+        const ph = ((now % (FX.IDLE_BOB * 2000)) / (FX.IDLE_BOB * 2000)) * Math.PI * 2;
+        for (const el of BOBS) {
+          if (!el.isConnected) { BOBS = BOBS.filter((x) => x.isConnected); break; }
+          if (el.dataset.busy) continue;
+          el.style.transform = `translateY(${(Math.sin(ph) * 3).toFixed(2)}px) scale(1.05)`;
+        }
+      }
+
+      /* ── 좌표 ── */
+      function cellBox(i) {
+        const el = $("#rwBoard").children[i];
+        const r = el.getBoundingClientRect(), s = $("#rwStage").getBoundingClientRect();
+        return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2, w: r.width, h: r.height };
+      }
+      function chipAt(i) { const c = $("#rwBoard").children[i]; return c && c.querySelector(".rw-chip"); }
+
+      function makeFly(code, box) {
+        const d = document.createElement("div");
+        d.className = "rw-fly";
+        d.style.cssText =
+          `--h:${hueOf(chainOf(code))}deg;width:${box.w}px;height:${box.h}px;left:0;top:0;` +
+          `font-size:${box.w * 0.33}px;background:hsl(var(--h) 44% 87%);color:hsl(var(--h) 58% 26%);` +
+          `border:1px solid hsl(var(--h) 40% 72%)`;
+        d.textContent = labelOf(code);
+        $("#rwFx").appendChild(d);
+        return d;
+      }
+      const place = (el, s) =>
+        (el.style.transform = `translate(${s.x - parseFloat(el.style.width) / 2}px, ${s.y - parseFloat(el.style.height) / 2}px) scale(${s.sx ?? s.s ?? 1}, ${s.sy ?? s.s ?? 1})`);
+
+      function bezier3(p0, c1, c2, p3, k) {
+        const u = 1 - k, a = u * u * u, b = 3 * u * u * k, c = 3 * u * k * k, d = k * k * k;
+        return { x: a * p0.x + b * c1.x + c * c2.x + d * p3.x, y: a * p0.y + b * c1.y + c * c2.y + d * p3.y };
+      }
+
+      /* ── A2 · C4 : 베지어 비행 ── */
+      async function flyBezier(code, from, to, opt = {}) {
+        const el = makeFly(code, from);
+        const dist = Math.hypot(to.x - from.x, to.y - from.y);
+        const lift = Math.max(FX.LIFT_MIN, dist * FX.LIFT_RATIO);
+        const c1 = { x: from.x, y: from.y - lift };
+        const c2 = { x: to.x, y: to.y - lift * 0.6 };
+        const st = { k: 0, s: opt.s0 ?? 0.5, x: from.x, y: from.y };
+        const draw = () => { const p = bezier3(from, c1, c2, to, st.k); st.x = p.x; st.y = p.y; place(el, st); };
+        draw();
+        // 스케일은 위치와 따로 돈다 — 0.5 →(backOut) 1.14 →(quadIn) 1
+        (async () => {
+          await tw(st, { s: opt.sPeak ?? 1.14 }, FX.FLIGHT_SCALE_UP, "backOut", draw);
+          await tw(st, { s: opt.s1 ?? 1 }, opt.downSec ?? FX.FLIGHT_SCALE_DOWN, "quadIn", draw);
+        })();
+        await tw(st, { k: 1 }, opt.dur ?? FX.FLIGHT, "quadInOut", draw);
+        el.remove();
+      }
+
+      /* ── 임팩트 링 + 스파크 ── */
+      function burst(box, code) {
+        const h = hueOf(chainOf(code));
+        const ring = document.createElement("div");
+        ring.className = "rw-ring";
+        ring.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px;width:${box.w * 0.7}px;height:${box.w * 0.7}px`;
+        $("#rwFx").appendChild(ring);
+        const rs = { s: 0.6, o: 0.9 };
+        tw(rs, { s: 2.3, o: 0 }, 0.34, "quadOut", () => {
+          ring.style.transform = `translate(-50%,-50%) scale(${rs.s})`;
+          ring.style.opacity = rs.o;
+        }).then(() => ring.remove());
+        for (let i = 0; i < 6; i++) {
+          const sp = document.createElement("div");
+          sp.className = "rw-spark";
+          sp.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px`;
+          $("#rwFx").appendChild(sp);
+          const ang = (Math.PI * 2 * i) / 6 + 0.4, dist = box.w * 0.62;
+          const ss = { p: 0, o: 1 };
+          tw(ss, { p: 1, o: 0 }, 0.3, "quadOut", () => {
+            sp.style.transform = `translate(calc(-50% + ${Math.cos(ang) * dist * ss.p}px), calc(-50% + ${Math.sin(ang) * dist * ss.p}px)) scale(${1 - ss.p * 0.4})`;
+            sp.style.opacity = ss.o;
+          }).then(() => sp.remove());
+        }
+      }
+
+      /* ── A1 : 누름 / 뗌 오버슛 ── */
+      async function pressPop(el) {
+        if (!el) return;
+        el.dataset.busy = "1";
+        const s = { sx: 1, sy: 1 };
+        const dr = () => (el.style.transform = `scale(${s.sx},${s.sy})`);
+        await tw(s, { sx: 1.06, sy: 0.94 }, FX.PRESS, "quadOut", dr);
+        await tw(s, { sx: 0.95, sy: 1.07 }, FX.RELEASE_A, "quadOut", dr);
+        await tw(s, { sx: 1, sy: 1 }, FX.POP_IN, "backOut", dr);
+        delete el.dataset.busy;
+        el.style.transform = "";
+      }
+
+      /* ── A2 착지 스쿼시 / A4 임팩트 팝 ── */
+      async function squash(el, inX, inY, inSec, outSec) {
+        if (!el) return;
+        el.dataset.busy = "1";
+        const s = { sx: inX, sy: inY };
+        const dr = () => (el.style.transform = `scale(${s.sx},${s.sy})`);
+        dr();
+        await tw(s, { sx: 1, sy: 1 }, outSec, "backOut", dr);
+        delete el.dataset.busy;
+        el.style.transform = "";
+      }
+
+      /* ── C1 : 거부 — 되돌아오고 흔든다 ── */
+      async function shake(el) {
+        if (!el) return;
+        el.dataset.busy = "1";
+        const s = { p: 0 };
+        await tw(s, { p: 1 }, FX.SHAKE, "linear", () => {
+          el.style.transform = `translateX(${Math.sin(s.p * Math.PI * 6) * FX.SHAKE_PX * (1 - s.p)}px)`;
+        });
+        delete el.dataset.busy;
+        el.style.transform = "";
+      }
+
+      /* ======================================================================
          2. 데이터 — 확인값 + 시드값(근거 섹션 참조)
          ====================================================================== */
       const CHAINS = [
@@ -541,11 +744,11 @@
         const seed = [[1,1],[1,5],[3,3],[5,1],[5,5],[7,3]];
         CHAINS.slice(0, 6).forEach((ch, i) => {
           const [r, c] = seed[i];
-          cells[r * COLS + c] = { code: codeOf(ch.id, 1), stock: 30 };
+          cells[r * COLS + c] = { code: codeOf(ch.id, 1), stock: 30, lastAt: Date.now() / 1000 };
         });
         return {
           cells, level: 1, exp: 0, coin: DATA.const.nru_start_coin,
-          energy: DATA.const.default_max_energy, day: 1, choreSeq: 0, sel: null,
+          energy: DATA.const.default_max_energy, day: 1, choreSeq: 0, sel: null, busy: false,
           orderGen: { rng_state: RNG.save(), fixed_next_seq: 1, chain_repeat: {}, type_timers: {} },
           slots: {}, prevOfSlot: {}, log: [],
         };
@@ -797,28 +1000,64 @@
         return -1;
       }
 
-      function tapGenerator(i) {
+      async function tapGenerator(i) {
+        if (S.busy) return;
         const cell = S.cells[i], sp = specOf(cell.code);
-        if (cell.stock <= 0) { toast("재고 없음"); return; }
+        // 재고 → 빈칸 → 에너지 → 산출 추첨. 실패면 아무것도 차감하지 않고 거부 연출만.
+        const deny = (msg) => { toast(msg); shake(chipAt(i)); };
+        if (cell.stock <= 0) return deny("재고 없음 — 충전 중입니다");
         const dest = spiralEmpty(i);
-        if (dest < 0) { toast("Board Full — 보드가 가득 찼습니다"); return; }
-        if (S.energy < sp.spread_cost_energy) { toast("에너지 부족"); return; }
+        if (dest < 0) return deny("Board Full — 보드가 가득 찼습니다");
+        if (S.energy < sp.spread_cost_energy) return deny("에너지 부족");
         const bag = [[sp.p1, sp.w1], [sp.p2, sp.w2], [sp.p3, sp.w3]].filter((b) => b[0] && b[1] > 0);
-        if (!bag.length) { toast("주머니가 비어 있습니다"); return; }
+        if (!bag.length) return deny("주머니가 비어 있습니다");
+
         const k = RNG.pick(bag.map((b) => b[1]));
-        cell.stock--; S.energy -= sp.spread_cost_energy;
-        S.cells[dest] = { code: bag[k][0] };
-        S.sel = dest; render();
+        const code = bag[k][0];
+        S.busy = true;
+        const from = cellBox(i), to = cellBox(dest);
+        cell.stock--; if (cell.stock === 0) cell.lastAt = Date.now() / 1000;
+        S.energy -= sp.spread_cost_energy;
+        renderStats(); renderBoard();
+        await pressPop(chipAt(i));
+        await flyBezier(code, from, to);            // A2
+        S.cells[dest] = { code };
+        S.sel = dest;
+        render();
+        squash(chipAt(dest), 1.18, 0.84, FX.SQUASH_IN, FX.SQUASH_OUT);
+        S.busy = false;
       }
 
-      function tryMerge(a, b) {
+      async function tryMerge(a, b) {
         const A = S.cells[a], B = S.cells[b];
         if (!A || !B || A.code !== B.code) return false;
         const sa = specOf(A.code);
         if (sa.is_generator) return false;
-        if (!sa.merged_item_code) { toast("최고 단계 — 더 합칠 수 없습니다"); return false; }
+        if (!sa.merged_item_code) { toast("최고 단계 — 더 합칠 수 없습니다"); shake(chipAt(b)); return true; }
+
+        S.busy = true;
+        const from = cellBox(a), to = cellBox(b);
+        const el = makeFly(A.code, from);
+        const st = { x: from.x, y: from.y, s: 1, o: 1 };
+        const dr = () => { place(el, st); el.style.opacity = st.o; };
+        dr();
+        S.cells[a] = null; renderBoard();
+        await tw(st, { x: to.x, y: to.y, s: 0.55, o: 0 }, FX.ABSORB, "quadIn", dr);   // 흡수
+        el.remove();
+        burst(to, sa.merged_item_code);                                               // 임팩트
         S.cells[b] = { code: sa.merged_item_code };
-        S.cells[a] = null; S.sel = b;
+        S.sel = b; render();
+        const chip = chipAt(b);
+        if (chip && !REDUCED) {
+          chip.dataset.busy = "1";
+          const s2 = { sx: 0.78, sy: 0.78 };
+          const d2 = () => (chip.style.transform = `scale(${s2.sx},${s2.sy})`);
+          d2();
+          await tw(s2, { sx: 1.24, sy: 0.82 }, FX.IMPACT, "quadOut", d2);
+          await tw(s2, { sx: 1, sy: 1 }, FX.MERGE_POP, "backOut", d2);
+          delete chip.dataset.busy; chip.style.transform = "";
+        }
+        S.busy = false;
         return true;
       }
 
@@ -830,17 +1069,8 @@
         render(); toast(`판매 +${sp.selling_price} 코인`);
       }
 
-      function serve(n) {
-        const card = S.slots[n]; if (!card) return;
-        const need = new Map();
-        card.reqs.forEach((q) => need.set(q.code, (need.get(q.code) || 0) + q.count));
-        const counts = boardCounts();
-        for (const [code, cnt] of need) if ((counts.get(code) || 0) < cnt) { toast("보유 부족"); return; }
-        for (const [code, cnt] of need) {
-          let left = cnt;
-          for (let i = 0; i < CELLS && left > 0; i++)
-            if (S.cells[i] && S.cells[i].code === code && !specOf(code).is_generator) { S.cells[i] = null; left--; }
-        }
+      // 납품 확정 — 코인·직전 요구품·반복 카운터를 한 번에 처리하고 다음 카드를 발급한다
+      function commitServe(n, card, reason) {
         S.coin += card.coin;
         S.prevOfSlot[n] = card.reqs.map((q) => q.code);
         card.reqs.forEach((q) => {
@@ -848,9 +1078,50 @@
           if (oi && oi.repeat_weight_decrease > 0) S.orderGen.chain_repeat[chainOf(q.code)] = DATA.const.order_repeat_reset_count;
         });
         S.slots[n] = null;
-        toast(`납품 +${card.coin} 코인 · 경험치 0`);
-        fillEmptySlots(`슬롯 ${n} 납품 완료`);
+        fillEmptySlots(reason);
         render();
+        const el = $("#rwRail").children[openSlots().indexOf(n)];
+        if (el && el.classList) el.classList.add("flash");
+      }
+
+      async function serve(n) {
+        if (S.busy) return;
+        const card = S.slots[n]; if (!card) return;
+        const need = new Map();
+        card.reqs.forEach((q) => need.set(q.code, (need.get(q.code) || 0) + q.count));
+        const counts = boardCounts();
+        for (const [code, cnt] of need) if ((counts.get(code) || 0) < cnt) { toast("보유 부족"); return; }
+
+        // 소모할 셀을 먼저 정하고, 그 셀들이 보드 밖(레일)으로 날아간다 — C4
+        const taken = [];
+        for (const [code, cnt] of need) {
+          let left = cnt;
+          for (let i = 0; i < CELLS && left > 0; i++)
+            if (S.cells[i] && S.cells[i].code === code && !specOf(code).is_generator) { taken.push({ i, code }); left--; }
+        }
+        S.busy = true;
+        const stage = $("#rwStage").getBoundingClientRect();
+        const slotEl = $("#rwRail").children[openSlots().indexOf(n)];
+        const sr = slotEl ? slotEl.getBoundingClientRect() : stage;
+        const to = { x: sr.left - stage.left + sr.width / 2, y: sr.top - stage.top + sr.height / 2 };
+        const boxes = taken.map((q) => cellBox(q.i));
+        taken.forEach((q) => (S.cells[q.i] = null));
+        renderBoard();
+        await Promise.all(taken.map(async (q, idx) => {
+          await wait(idx * FX.DELIVERY_STAGGER);
+          await flyBezier(q.code, boxes[idx], to, { s0: 1, sPeak: 1.12, s1: 0.72, downSec: FX.DELIVERY_AWAY, dur: FX.DELIVERY_UP + FX.DELIVERY_AWAY });
+        }));
+        toast(`납품 +${card.coin} 코인 · 경험치 0`);
+        commitServe(n, card, `슬롯 ${n} 납품 완료`);
+        S.busy = false;
+      }
+
+      // 테스트용 — 보드 보유와 상관없이 그 카드를 완료 처리한다. 로그에 정상 납품과 다르게 남는다.
+      function forceClear(n) {
+        if (S.busy) return;
+        const card = S.slots[n]; if (!card) return;
+        toast(`강제 완료 +${card.coin} 코인 (보드 미소모)`);
+        commitServe(n, card, `슬롯 ${n} 강제 완료 · 보드 미소모`);
       }
 
       function doChore() {
@@ -911,12 +1182,19 @@
           b.appendChild(el);
         });
         $("#rwBoardSub").textContent = `${filled}/63 · cell = row×7+col`;
+        BOBS = [...b.querySelectorAll(".rw-cell.gen .rw-chip")];
+        kick();
       }
 
-      function onCell(i) {
+      async function onCell(i) {
+        if (S.busy) return;
         const c = S.cells[i]; if (!c) return;
         if (specOf(c.code).is_generator) { tapGenerator(i); return; }
-        if (S.sel != null && S.sel !== i && tryMerge(S.sel, i)) { render(); return; }
+        if (S.sel != null && S.sel !== i) {
+          const other = S.cells[S.sel];
+          if (other && other.code === c.code) { await tryMerge(S.sel, i); return; }
+          shake(chipAt(i));                                   // C1 — 합칠 수 없는 대상
+        }
         S.sel = S.sel === i ? null : i; render();
       }
 
@@ -955,7 +1233,7 @@
             return `<div class="rw-empty">슬롯 ${n} · ${slotType(n)} — ${wait ? `대기 ${wait}s` : "발급 대기"}</div>`;
           }
           const ok = card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
-          return `<div class="rw-card">
+          return `<div class="rw-card" onclick="forceClear(${n})" title="누르면 강제 완료 — 보드에서 소모하지 않습니다">
             <div class="rw-ch"><span class="rw-slotno">SLOT ${n}</span>
               <span class="rw-type ${card.type === "fixed" ? "fixed" : ""}">${card.type}</span>
               <span class="rw-who">${card.avatar}</span></div>
@@ -965,7 +1243,7 @@
                 return `<span class="rw-req ${have ? "" : "miss"}" style="--h:${hueOf(chainOf(q.code))}deg">${labelOf(q.code)}${have ? '<span class="ck">✓</span>' : ""}</span>`;
               }).join("")}
               <span class="rw-rw"><b>${card.coin} 코인</b><span>난이도 ${card.diff}${card.band ? ` · band ${card.band}` : ""}</span></span>
-              ${ok ? `<span style="margin-left:auto"><button class="rw-btn pri" onclick="serve(${n})">Serve</button></span>` : ""}
+              ${ok ? `<span style="margin-left:auto"><button class="rw-btn pri" onclick="event.stopPropagation();serve(${n})">Serve</button></span>` : ""}
             </div></div>`;
         }).join("");
       }
@@ -1090,8 +1368,34 @@
       window.sellCell = sellCell;
       window.serve = serve;
 
+      window.forceClear = forceClear;
+
+      /* 생성기 재고 회복 — 개체별. 0 에서 1 로 올라오는 순간이 C3 충전 완료다.
+         spread_item_recovery_sec 를 줄이면(데이터 탭) 연출을 바로 볼 수 있다. */
+      function recoverStock() {
+        if (S.busy) return;
+        const now = Date.now() / 1000;
+        let changed = false, completed = [];
+        S.cells.forEach((c, i) => {
+          if (!c) return;
+          const sp = specOf(c.code);
+          if (!sp || !sp.is_generator || !sp.spread_item_recovery_sec) return;
+          if (c.stock >= sp.spread_item_max) { c.lastAt = now; return; }
+          const add = Math.floor((now - (c.lastAt || now)) / sp.spread_item_recovery_sec);
+          if (add <= 0) return;
+          const was = c.stock;
+          c.stock = Math.min(sp.spread_item_max, c.stock + add);
+          c.lastAt += add * sp.spread_item_recovery_sec;
+          changed = true;
+          if (was === 0) completed.push(i);
+        });
+        if (!changed) return;
+        renderBoard();
+        completed.forEach((i) => { burst(cellBox(i), S.cells[i].code); squash(chipAt(i), 1.18, 0.84, FX.CHARGE_IN, FX.CHARGE_OUT); });
+      }
+
       boot();
-      setInterval(renderRail, 1000);
+      setInterval(() => { renderRail(); recoverStock(); }, 1000);
     </script>
   </body>
 </html>
