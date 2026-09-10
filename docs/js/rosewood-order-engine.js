@@ -134,7 +134,7 @@ const CHAIN_DB = [
   [30,"X_BOXE","불씨 상자",9,3,"res"],
   [31,"X_BOXEV","이벤트 상자",9,4,"res"],
 ];
-/* [코드, 다음, 판매가, rare, 생성기, 이름, name_en, chain_key,
+/* [코드, 다음, 판매가, show_sell_confirm, 생성기, 이름, name_en, chain_key,
     재고상한, 에너지, 회복초, [[산출코드, 가중치], …]] */
 const ITEM_DB = [
   [101,102,0,0,0,"녹슨 못","Rusty Nail","M_TOOL",0,0,0,[]],
@@ -684,10 +684,10 @@ const chainName = (id) => CHAIN_BY_ID.get(id)?.name || `#${id}`;
    자기 체인이 아니라 다른 체인을 낳는다(공구함 → 공구·페인트). 그래서 produce 는
    「어느 코드를 얼마의 가중치로」 짝지은 배열이지, 자기 체인 s2~s4 가 아니다. */
 function buildItemSpec() {
-  return ITEM_DB.map(([item_code, merged_item_code, selling_price, rare, is_generator,
+  return ITEM_DB.map(([item_code, merged_item_code, selling_price, show_sell_confirm, is_generator,
                        name, name_en, chain_key, spread_item_max, spread_cost_energy,
                        spread_item_recovery_sec, produce]) => ({
-    item_code, merged_item_code, selling_price, rare, is_generator, name, name_en, chain_key,
+    item_code, merged_item_code, selling_price, show_sell_confirm, is_generator, name, name_en, chain_key,
     spread_item_max, spread_cost_energy, spread_item_recovery_sec, produce,
   }));
 }
@@ -766,7 +766,7 @@ const lvOf = (level) => idx().lv.get(level);
 /* ======================================================================
    2b. 저장 — 읽기만. 쓰기(saveNow/save)는 벤치에 남는다.
    ====================================================================== */
-const BUILD = "v4.6 · 2026-09-10";   // 아이템 아트 158장 · 결과 자동 선택 제거
+const BUILD = "v4.7 · 2026-09-10";   // rare → show_sell_confirm 개명 반영
 const SAVE_KEY = "rw.orderBench";
 const SAVE_VER = 4;
 
