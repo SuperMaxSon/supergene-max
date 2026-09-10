@@ -1313,7 +1313,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.5 · 2026-09-10";
+      const BUILD = "v2.6 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1479,11 +1479,14 @@
         // ---- [1] 예산·대기
         const rule = ruleOf(type);
         if (!rule) { push(`<span class="w">order_rule 에 ${type} 활성 행 없음</span>`); return { card: null, log: L }; }
+        /* 해금 검사는 상태를 바꾸지 않는 순수 판정이라 dry 에서도 돈다.
+           예산·대기만 dry 에서 건너뛴다 — 이걸 한 블록에 묶어 두면 분포 시뮬이
+           미해금 타입도 발급해 버려서, 실제로는 한 장도 안 나올 오더가 통계에 섞인다. */
+        if (level < rule.unlock_level) {
+          push(`<span class="w">[1] ${type} 미해금</span> (unlock_level ${rule.unlock_level} > Lv${level}) → 랜덤 발급 없음. 고정 오더만 이 슬롯을 채운다`);
+          return { card: null, log: L, locked: true };
+        }
         if (!dry) {
-          if (level < rule.unlock_level) {
-            push(`<span class="w">[1] ${type} 미해금</span> (unlock_level ${rule.unlock_level} > Lv${level}) → 랜덤 발급 없음. 고정 오더만 이 슬롯을 채운다`);
-            return { card: null, log: L };
-          }
           const t = (S.orderGen.type_timers[type] ||= { remaining_count: rule.refill_max, next_refill_at: 0 });
           const now = Date.now() / 1000;
           if (t.next_refill_at > 0 && now >= t.next_refill_at) {
@@ -2736,7 +2739,7 @@
         const type = $("#rwSimType").value;
         const counts = $("#rwSimBoard").value === "cur" ? boardCounts() : new Map();
         const othersReq = new Set();
-        const tally = new Map(), combo = new Map(); let coin = 0, diff = 0, fail = 0;
+        const tally = new Map(), combo = new Map(); let coin = 0, diff = 0, fail = 0, locked = false;
         const cnt = { 1: 0, 2: 0 }; const samples = [];
         // 게임 진행용 난수 열은 건드리지 않는다. 대신 분포 전용 열을 따로 두고,
         // 돌릴 때마다 이어 간다 — 매번 같은 결과가 나오면 고장으로 보인다.
@@ -2744,7 +2747,7 @@
         RNG.load($("#rwSimFix").checked ? String(SIM_SEED0) : String(SIM_SEED));
         for (let i = 0; i < N; i++) {
           const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev: null, skipFixed: true });
-          if (!r.card) { fail++; continue; }
+          if (!r.card) { fail++; if (r.locked) locked = true; continue; }
           coin += r.card.coin; diff += r.card.diff;
           cnt[r.card.reqs.length] = (cnt[r.card.reqs.length] || 0) + 1;
           r.card.reqs.forEach((q) => tally.set(q.code, (tally.get(q.code) || 0) + 1));
@@ -2762,7 +2765,9 @@
         const bucket = {};
         poolNow.forEach((o) => { const w = situationMult(o.item_code, othersReq, counts, DATA.const).why; bucket[w] = (bucket[w] || 0) + 1; });
         const held = [...counts.keys()].length;
+        const rule = ruleOf(type);
         $("#rwSimWhy").innerHTML =
+          (locked ? `<b style="color:var(--deploy)">${type} 은 Lv${rule ? rule.unlock_level : "?"} 부터 발급됩니다 — 이 레벨에서는 한 장도 나오지 않습니다.</b> · ` : "") +
           `후보 ${poolNow.length}종 · 배수 ${Object.entries(bucket).map(([k, v]) => `${k} ${v}종`).join(" / ") || "—"}` +
           ` · 보드에서 세는 아이템 ${held}종${held ? ` (${[...counts.keys()].map(labelOf).slice(0, 8).join(", ")}${held > 8 ? " …" : ""})` : " — 생성기는 세지 않습니다"}` +
           ` · 시드 ${$("#rwSimFix").checked ? SIM_SEED0 + " (고정)" : "이어서"}`;
