@@ -509,7 +509,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v2.5 · 2026-09-10";   // 아트 판본 경고 + 아트 토글 · 「프로토타입」 개명 반영
+      const PAGE_BUILD = "v2.6 · 2026-09-11";   // T12 요구 종수 상한 ↔ 화면 기획서 (첫 FAIL)
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -646,9 +646,9 @@
           ["아이템 아트 ↔ 시트 이름 대응",
            "아트 224장은 시트 신판 기준인데 여기 넣은 시트는 구판(2026-09-08)이라 <b>체인 단위로 어긋난다</b> — <code>101</code>「녹슨 못」이 커피 원두다. 아트 경로는 시트 JSON 에 없어서(<code>sprite_key</code> 열 폐기) 자동 대조가 불가능하다",
            "신판 시트로 JSON 을 다시 뽑으면 이름·체인이 아트와 맞는다. <code>scripts/xlsx2balance.py</code> 를 신판 xlsx 로 재실행"],
-          ["요구 종수 3종의 빈도",
-           "<code>order_item_count</code> 는 3종에 20~40% 를 주는데, 손으로 쓴 <code>order_fixed</code> 16장에서는 3종이 1장(6%)뿐이다 — 두 표가 다른 빈도를 말한다. 어느 쪽이 원작인지 이 페이지로는 못 가른다",
-           "원작 오더 카드 표본을 세어 3종 비율을 실측. <code>order_item_count.count_weight</code> 근거가 「원작 확인」이라 그 확인 대상을 다시 봐야 한다"],
+          ["요구 종수 상한 &mdash; 문서 대조",
+           "T12 가 정본 값(2칸)을 <b>상수로 박아</b> 대조한다 &mdash; 화면 기획서는 시트 JSON 에 없어 자동 대조가 불가능하다. 기획서가 개정되면 이 상수도 손으로 고쳐야 한다. <br><code>order_item_count</code> 20~40% 와 <code>order_fixed</code> 6% 는 <b>서로 안 싸운다</b> &mdash; 앞은 랜덤 오더, 뒤는 랜덤을 거치지 않는 초반 대본이라 모집단이 다르다",
+           "기획서 정본을 기계가 읽을 형태로 뽑아 상수 대신 대조. 지금은 문서 개정 시 T12 의 <code>SPEC_MAX</code> 를 따라 고치는 수밖에 없다"],
           ["실제 보드 분포",
            "무작위 보드는 <b>체인 편중(Zipf) + 단계 1/2<sup>step-1</sup></b> 가정이다 — 시트에 보드 등장 분포가 없다. 상자·재화 체인(동전·유리알·불씨)은 등장률을 모르고 배수에도 영향이 없어 아예 뺐다",
            "실제 플레이 로그의 보드 스냅샷으로 단계 분포를 대체. <code>item_spec</code> 에 보드 해금·등장 칸이 생기면 그걸 입력으로"],
@@ -1963,6 +1963,49 @@
                     + `<b>이제 T2 의 기대값도 엔진을 안 부르고 독립 계산한다</b> — 보드 항이 처음으로 실제 판정 대상이 됐다`,
                 diff.length ? "logic" : null);
           }
+        }
+
+        /* ── T12 요구 종수 상한 ↔ 화면 기획서 ────────────────────────────────
+           시트만 보면 이 축은 자기모순이 없다. 문제는 <b>시트 밖 정본</b>과 어긋나는 것이다.
+           화면 기획서(rosewood_screen_spec · Figma 동기화 2026-09-08)는 세 군데에서
+           같은 말을 「확정」으로 못박는다:
+             · 오더 카드 슬롯 구성 — 「요구 아이템 = 2개 고정 → 접시 슬롯 2칸(확정).
+               데이터·UI 모두 두 칸만 사용」
+             · §13-7 클라 구현 체크포인트 — 「가변 개수로 설계하지 않는다」
+             · 미결 목록 — 「오더 1건의 요구 아이템 2개/슬롯 2칸은 확정」(카드 동시 노출 수
+               표기 차이와는 무관하다고 명시)
+           그런데 시트 order_rule.item_slot_max 는 전 타입 3 이고, 그 셀 메모의 근거가
+           <code>uiux_ingame §5-3</code> ― <b>기획서를 근거로 들면서 기획서와 반대다.</b>
+           이건 표 두 개가 싸우는 게 아니라 <b>시트가 정본을 잘못 인용한 것</b>이라, 자동
+           대조가 불가능하다(기획서는 시트 JSON 에 없다). 그래서 정본 값을 상수로 박고 대조한다. */
+        {
+          const SPEC_MAX = 2;
+          const SPEC_SRC = "화면 기획서 · 오더 카드 슬롯 구성 + §13-7 (Figma 동기화 2026-09-08)";
+          const bad = DATA.order_rule.filter((r) => r.in_use && Number(r.item_slot_max) > SPEC_MAX);
+          const over = ecNom ? [...ecNom.map.entries()].filter(([k]) => k > SPEC_MAX) : [];
+          const overObs = over.reduce((a, [k]) => a + pct(L.cnt.get(k) || 0, ok), 0);
+          const fixed3 = (DATA.order_fixed || []).filter((r) =>
+            r.in_use && [1, 2, 3].filter((i) => {
+              const v = r[`requirement_${i}`]; return v != null && v !== "none" && v !== 0 && v !== "";
+            }).length > SPEC_MAX);
+          add(bad.length ? "no" : "ok", "T12 요구 종수 상한 ↔ 화면 기획서",
+              `<b>${SPEC_MAX}칸 고정</b> <span style="opacity:.65">(${SPEC_SRC} · 「가변 개수로 설계하지 않는다」)</span>`,
+              bad.length
+                ? `<code>order_rule.item_slot_max</code> = <b>${[...new Set(bad.map((r) => r.item_slot_max))].join("/")}</b>`
+                  + ` (${bad.map((r) => r.order_type).join(" · ")}) · 이 표본에서 ${SPEC_MAX}종 초과가 <b>${overObs.toFixed(2)}%</b>`
+                : `<code>item_slot_max</code> 전 행 ≤ ${SPEC_MAX}`,
+              bad.length
+                ? `시트가 정본보다 한 칸 넓다. <b>시트 셀 메모의 근거가 <code>uiux_ingame §5-3</code> 인데 그 문서가 「2칸 고정(확정)」이다</b> — `
+                  + `근거 인용이 뒤집혀 있다. 정본을 따르려면 시트 네 곳이 같이 움직인다:<br>`
+                  + `· <code>order_rule.item_slot_max</code> 3 → 2 (${DATA.order_rule.length}행 전부)<br>`
+                  + `· <code>order_item_count</code> 의 ${over.map(([k]) => `${k}종`).join("·")} 행 제거 후 남은 행 합 10000 재정규화`
+                  + (over.length ? ` (지금 명목 ${over.map(([k, q]) => `${k}종 ${q.toFixed(0)}%`).join(" · ")})` : "") + `<br>`
+                  + `· <code>order_fixed.requirement_3</code> 사용 ${fixed3.length}행 정리`
+                  + (fixed3.length ? ` (seq ${fixed3.map((r) => r.fixed_seq).join(",")})` : "") + `<br>`
+                  + `· <code>order_slot_band.third_min/third_max</code> 는 미사용 열이 된다<br>`
+                  + `<b>반대로 3칸이 맞다면 화면 기획서 세 군데의 「확정」을 고쳐야 한다.</b> 어느 쪽이든 문서 결정이라 이 페이지가 못 정한다`
+                : `정본과 일치한다`,
+              bad.length ? "data" : null);
         }
 
         summarize(rows, "#rwRulesSum");
