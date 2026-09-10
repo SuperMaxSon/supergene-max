@@ -33,6 +33,9 @@
       .rw-save { font-size: 11.5px; color: var(--text-faint); font-family: ui-monospace, Menlo, monospace;
                  margin-right: 4px; white-space: nowrap; }
 
+      .rw-btn:focus-visible, .rw-sq:focus-visible, .rw-cell:focus-visible,
+      .rw-card:focus-visible, .plus:focus-visible, .rw-fxr input:focus-visible,
+      .rw-fxr select:focus-visible { outline: 2px solid var(--tool); outline-offset: 2px; }
       .rw-btn { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm);
                 padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
                 color: var(--text-dim); white-space: nowrap; }
@@ -57,13 +60,13 @@
 
       /* ── 보드 7×9 ── */
       /* ==== 게임 프레임 — 세로 인게임 화면을 그대로 옮긴다 ==================== */
-      .rw-frame { width: 100%; max-width: 432px; margin: 0 auto; border: 1px solid var(--border);
+      .rw-frame { position: relative; width: 100%; max-width: 432px; margin: 0 auto; border: 1px solid var(--border);
                   border-radius: 14px; background: var(--surface); box-shadow: var(--shadow);
                   padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 
       /* HUD 1줄 — LV · refill · 코인 · 에너지 · shop */
       .rw-hud { display: flex; align-items: center; gap: 6px; }
-      .rw-lv { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
+      .rw-lv { width: 48px; height: 48px; border-radius: 50%; will-change: transform; border: 1px solid var(--border);
                background: var(--surface-2); display: flex; flex-direction: column;
                align-items: center; justify-content: center; line-height: 1; flex: none; }
       .rw-lv u { text-decoration: none; font-size: 8px; letter-spacing: 0.06em; color: var(--text-faint); }
@@ -73,12 +76,16 @@
                  font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700;
                  font-variant-numeric: tabular-nums; flex: 1 1 0; min-width: 0; justify-content: center; }
       .rw-pill i { font-style: normal; font-size: 12px; opacity: 0.75; }
-      .rw-pill .plus { width: 19px; height: 19px; border-radius: 50%; border: 1px solid var(--border);
-                       background: var(--surface); display: grid; place-items: center; font-size: 12px;
-                       cursor: pointer; flex: none; color: var(--text-dim); }
+      .rw-pill .plus { position: relative; width: 22px; height: 22px; border-radius: 50%;
+                       border: 1px solid var(--border); background: var(--surface); display: grid;
+                       place-items: center; font-size: 13px; cursor: pointer; flex: none;
+                       color: var(--text-dim); padding: 0; font-family: inherit; }
+      /* 히트 영역은 48×48 로 넓힌다 — 보이는 원은 그대로 두고 의사요소로만 키운다 */
+      .rw-pill .plus::after { content: ""; position: absolute; left: 50%; top: 50%;
+                              width: 48px; height: 48px; transform: translate(-50%, -50%); }
       .rw-pill .plus:hover { border-color: var(--tool); color: var(--tool); }
       .rw-pill.coin { color: var(--validate); } .rw-pill.energy { color: var(--deploy); }
-      .rw-sq { width: 40px; height: 40px; border-radius: 9px; border: 1px solid var(--border);
+      .rw-sq { width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--border);
                background: var(--surface-2); display: flex; flex-direction: column; align-items: center;
                justify-content: center; gap: 1px; font-size: 9px; color: var(--text-faint);
                flex: none; position: relative; cursor: pointer; }
@@ -100,7 +107,8 @@
       .rw-buff.off { opacity: 0.4; }
       .rw-boost { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 800;
                   padding: 3px 9px; border: 1px solid var(--border); border-radius: 7px;
-                  background: var(--surface-2); opacity: 0.4; }
+                  background: var(--surface-2); }
+      .rw-boost.off, .rw-buff.off { opacity: 0.38; }
 
       /* 레일 — 좌측 고정 + 가로 스크롤 */
       .rw-railrow { display: flex; gap: 7px; align-items: stretch; }
@@ -109,7 +117,7 @@
                    padding-top: 13px; scrollbar-width: thin; }
       .rw-track { display: flex; gap: 7px; align-items: stretch; min-height: 84px; }
 
-      .rw-gauge { flex: none; width: 104px; border: 1px solid var(--border); border-radius: 10px;
+      .rw-gauge { position: sticky; left: 0; z-index: 3; flex: none; width: 104px; border: 1px solid var(--border); border-radius: 10px;
                   background: var(--surface-2); padding: 7px 8px; display: flex; flex-direction: column; gap: 3px; }
       .rw-gauge .n { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 800;
                      font-variant-numeric: tabular-nums; }
@@ -141,9 +149,10 @@
                     font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700;
                     font-variant-numeric: tabular-nums; color: var(--validate); }
       .rw-dish { display: flex; gap: 5px; }
-      .rw-serve { position: absolute; right: 7px; top: 24px; }
       .rw-btn.serve { background: var(--balance); border-color: var(--balance); color: #fff;
-                      padding: 3px 11px; font-size: 11.5px; border-radius: 12px; }
+                      padding: 7px 14px; font-size: 12px; border-radius: 14px; min-height: 32px; }
+      .rw-btn.serve::after { content: ""; position: absolute; inset: -9px -6px; }
+      .rw-serve { position: absolute; right: 7px; bottom: 30px; }
       .rw-bot { display: flex; align-items: center; gap: 4px; margin-top: auto; }
       .rw-rb, .rw-rc { display: flex; align-items: center; gap: 3px; height: 16px; padding: 0 6px;
                        border: 1px solid var(--border); border-radius: 9px; background: var(--surface);
@@ -168,6 +177,21 @@
                 font-weight: 700; will-change: transform; }
       .rw-ring { position: absolute; border-radius: 50%; border: 2px solid hsl(var(--h) 58% 46%);
                  transform: translate(-50%, -50%); will-change: transform, opacity; }
+      .rw-float { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+                  font-size: 12px; font-weight: 800; color: var(--text); pointer-events: none;
+                  text-shadow: 0 1px 0 var(--surface), 0 0 4px var(--surface); will-change: transform, opacity; }
+      .rw-float i { font-style: normal; display: inline-block; }
+      .rw-float.warn { color: var(--deploy); }
+      .rw-float.good { color: var(--balance); }
+      .rw-hl { position: absolute; border-radius: 9px; border: 2px solid var(--balance);
+               transform: translate(-50%, -50%); pointer-events: none; will-change: transform, opacity; }
+      .rw-coin { position: absolute; width: 13px; height: 13px; border-radius: 50%;
+                 background: var(--validate); border: 1px solid var(--surface);
+                 transform: translate(-50%, -50%); will-change: transform, opacity; }
+      .rw-badge { position: absolute; width: 16px; height: 16px; border-radius: 50%;
+                  background: var(--deploy); color: #fff; font-size: 11px; font-weight: 800;
+                  display: grid; place-items: center; transform: translate(-50%, -50%);
+                  pointer-events: none; will-change: transform; }
       .rw-spark { position: absolute; width: 5px; height: 5px; border-radius: 50%;
                   background: hsl(var(--h) 62% 48%); transform: translate(-50%, -50%);
                   will-change: transform, opacity; }
@@ -196,6 +220,8 @@
                  font-size: 9px; font-weight: 800; }
       .rw-bg.c { bottom: 1px; right: 3px; color: var(--validate); }
       .rw-cell.gen .rw-bg.b { background: var(--warn); }
+      .rw-cell.ready .rw-bg.b { background: var(--warn); color: var(--text);
+                                box-shadow: 0 0 0 2px var(--surface); border-radius: 4px; }
       .rw-cap { font-size: 10px; color: var(--text-faint); text-align: center; line-height: 1.5; }
 
       /* 하단 정보바 */
@@ -209,6 +235,30 @@
                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
       .rw-info .d { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
       .rw-info .act { margin-left: auto; flex: none; }
+
+      /* 연출 값 편집 */
+      .rw-demo { position: relative; padding: 10px; border: 1px solid var(--border);
+                 border-radius: 10px; background: var(--surface-2); width: max-content; }
+      .rw-demo-grid { display: grid; grid-template-columns: repeat(5, 48px); gap: 5px; }
+      .rw-demo .rw-cell { aspect-ratio: 1; }
+      .rw-fxbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+      .rw-fxgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+      .rw-fxg { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; }
+      .rw-fxg > h4 { margin: 0; padding: 7px 11px; background: var(--surface-2); font-size: 12.5px;
+                     border-bottom: 1px solid var(--border-soft); display: flex; align-items: baseline; gap: 8px; }
+      .rw-fxg > h4 em { font-style: normal; font-weight: 400; font-size: 11px; color: var(--text-faint); }
+      .rw-fxg > p { margin: 0; padding: 6px 11px; font-size: 11px; color: var(--text-dim);
+                    border-bottom: 1px solid var(--border-soft); }
+      .rw-fxr { display: grid; grid-template-columns: 1fr 78px 26px; gap: 6px; align-items: center;
+                padding: 3px 11px; font-size: 12px; }
+      .rw-fxr:hover { background: var(--surface-3); }
+      .rw-fxr input, .rw-fxr select { font: inherit; font-family: ui-monospace, Menlo, monospace;
+                font-size: 11.5px; text-align: right; padding: 2px 5px; width: 100%;
+                border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); }
+      .rw-fxr input.dirty, .rw-fxr select.dirty { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+      .rw-fxr u { text-decoration: none; font-size: 10px; color: var(--text-faint); }
+      .rw-fxr code { font-size: 10px; color: var(--text-faint); }
+      .rw-dirty { font-size: 12px; color: var(--warn); font-weight: 700; }
 
       .rw-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
                   background: var(--text); color: var(--surface); padding: 8px 16px;
@@ -226,6 +276,7 @@
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#bench">보드·오더</a>
         <a class="nav-back" href="#log">추첨 로그</a>
+        <a class="nav-back" href="#fx">연출 값</a>
         <a class="nav-back" href="#data">데이터</a>
         <a class="nav-back" href="#sim">분포</a>
         <a class="nav-back" href="#basis">근거</a>
@@ -279,15 +330,16 @@
 
         <div class="rw-cols">
           <!-- ─────────── 인게임 화면 ─────────── -->
-          <div class="rw-frame">
+          <div class="rw-frame" id="rwFrame">
+            <div class="rw-fx" id="rwFrameFx"></div>
             <div class="rw-hud">
               <div class="rw-lv"><u>LV</u><b id="rwLv">1</b></div>
               <div class="rw-pill" title="오더 발급 기회 — normal 두 자리가 공유합니다">
-                <i>↻</i><span id="rwRefill">5</span><span class="plus" id="rwAdRefill" title="광고 즉시 채움 — 예산 +1, 대기 종료 시각은 유지">+</span>
+                <i>↻</i><span id="rwRefill">5</span><button type="button" class="plus" id="rwAdRefill" title="광고 즉시 채움 — 예산 +1, 대기 종료 시각은 유지">+</button>
               </div>
               <div class="rw-pill coin"><i>◎</i><span id="rwCoin">100</span></div>
-              <div class="rw-pill energy"><i>♥</i><span id="rwEnergy">100</span><span class="plus" id="rwAddEnergy" title="에너지 +50">+</span></div>
-              <div class="rw-sq" id="rwShop"><b>◫</b>shop</div>
+              <div class="rw-pill energy"><i>♥</i><span id="rwEnergy">100</span><button type="button" class="plus" id="rwAddEnergy" title="에너지 +50">+</button></div>
+              <button type="button" class="rw-sq" id="rwShop"><b>◫</b>shop</button>
             </div>
 
             <div class="rw-hud2">
@@ -295,13 +347,13 @@
               <span class="rw-buff"><s></s><span id="rwBuff1">—</span></span>
               <span class="rw-buff"><s></s><span id="rwBuff2">—</span></span>
               <span class="rw-buff"><s></s><span id="rwBuff3">—</span></span>
-              <span class="rw-boost" title="생성기 배수 부스터는 런칭 범위 밖입니다 — 자리만 표시">x4</span>
+              <span class="rw-boost off" title="생성기 배수 부스터는 런칭 범위 밖입니다 — 자리만 표시">x4</span>
             </div>
 
             <div class="rw-railrow">
               <div class="rw-fixed">
-                <div class="rw-sq" id="rwChoreBtn" title="심부름 — 경험치 공급원은 이것 하나뿐입니다"><b>▤</b>chore<span class="rw-dot">!</span></div>
-                <div class="rw-sq" id="rwBox" title="보상 인벤토리"><b>▣</b>보상함<span class="rw-dot">↓</span></div>
+                <button type="button" class="rw-sq" id="rwChoreBtn" title="심부름 — 경험치 공급원은 이것 하나뿐입니다"><b>▤</b>chore<span class="rw-dot" id="rwChoreDot">!</span></button>
+                <button type="button" class="rw-sq" id="rwBox" title="보상 인벤토리"><b>▣</b>보상함<span class="rw-dot rw-hide" id="rwBoxDot">↓</span></button>
               </div>
               <div class="rw-scroll">
                 <div class="rw-track" id="rwRail"></div>
@@ -354,6 +406,49 @@
           </div>
           <div class="rw-log" id="rwLog"></div>
         </div>
+      </section>
+
+      <!-- ================= 연출 값 ================= -->
+      <section class="doc-section" id="fx">
+        <h2 class="doc-h2">연출 값</h2>
+        <div class="doc-h2-sub">
+          시간·이징·진폭을 여기서 고치고 <b>적용</b>을 누르면 그 다음 연출부터 바로 먹습니다.
+          기본값은 허브 <a href="merge-feedback-anim.html">머지 피드백 애니메이션</a> 문서의 값이고,
+          이징은 Cocos <code>cc.easing</code> 과 같은 수식이라 여기서 보는 곡선이 엔진에서 나오는 곡선과 같습니다.
+          아래 무대에서 <b>보드를 건드리지 않고</b> 바로 확인할 수 있습니다.
+        </div>
+
+        <div class="rw-demo" id="rwDemoStage">
+          <div class="rw-demo-grid" id="rwDemoGrid">
+            <div class="rw-cell has gen" id="dc0"><span class="rw-chip" style="--h:12deg">A1</span><span class="rw-bg b">⚡</span></div>
+            <div class="rw-cell" id="dc1"></div>
+            <div class="rw-cell has" id="dc2"><span class="rw-chip" style="--h:150deg">B3</span></div>
+            <div class="rw-cell has" id="dc3"><span class="rw-chip" style="--h:150deg">B3</span></div>
+            <div class="rw-cell" id="dc4"></div>
+          </div>
+          <div class="rw-fx" id="rwDemoFx"></div>
+        </div>
+
+        <div class="rw-fxbar">
+          <button class="rw-btn" data-demo="a1">A1 클릭</button>
+          <button class="rw-btn" data-demo="a2">A2 생산 비행</button>
+          <button class="rw-btn" data-demo="a4">A4 병합</button>
+          <button class="rw-btn" data-demo="c1">C1 거부</button>
+          <button class="rw-btn" data-demo="c3">C3 충전 완료</button>
+          <button class="rw-btn" data-demo="c4">C4 납품</button>
+          <button class="rw-btn" data-demo="c5">C5 최대 단계</button>
+          <button class="rw-btn" data-demo="c2">C2 하이라이트</button>
+          <button class="rw-btn" data-demo="a6">A6 재화</button>
+          <button class="rw-btn" data-demo="b1">B1 꽉참</button>
+          <button class="rw-btn" data-demo="b2">B2 충전중</button>
+          <button class="rw-btn" data-demo="b3">B3 해금</button>
+          <span style="margin-left:auto"></span>
+          <span class="rw-dirty rw-hide" id="rwFxDirty">미적용 0개</span>
+          <button class="rw-btn pri" id="rwFxApply">적용</button>
+          <button class="rw-btn" id="rwFxReset">기본값</button>
+        </div>
+
+        <div class="rw-fxgrid" id="rwFxGrid"></div>
       </section>
 
       <!-- ================= 데이터 ================= -->
@@ -509,6 +604,7 @@
          이징은 Cocos cc.easing 과 같은 수식이라 문서에서 본 곡선과 같다.
          ====================================================================== */
       const REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const EASINGS = ["linear", "quadIn", "quadOut", "quadInOut", "sineInOut", "backOut"];
       const EASE = {
         linear: (t) => t,
         quadIn: (t) => t * t,
@@ -517,19 +613,146 @@
         sineInOut: (t) => -(Math.cos(Math.PI * t) - 1) / 2,
         backOut: (t) => { const s = 1.70158, u = t - 1; return u * u * ((s + 1) * u + s) + 1; },
       };
-      // 문서 A1/A2/A4/C1/C3/C4 의 시간값(초)
-      const FX = {
-        PRESS: 0.12, RELEASE_A: 0.08, POP_IN: 0.18, MERGE_POP: 0.2, IDLE_BOB: 0.8,
-        FLIGHT: 0.42, FLIGHT_SCALE_UP: 0.15, FLIGHT_SCALE_DOWN: 0.27,
-        SQUASH_IN: 0.09, SQUASH_OUT: 0.18,
-        ABSORB: 0.14, IMPACT: 0.07,
-        SNAP_BACK: 0.22, SHAKE: 0.24, SHAKE_PX: 5,
-        CHARGE_IN: 0.08, CHARGE_OUT: 0.22,
-        DELIVERY_STAGGER: 0.06, DELIVERY_UP: 0.14, DELIVERY_AWAY: 0.3,
-        LIFT_MIN: 26, LIFT_RATIO: 0.45,
-      };
 
-      const TW = { list: [], raf: 0, bobT0: 0 };
+      /* ── 연출 파라미터 ──────────────────────────────────────────────
+         값의 출처는 허브 「머지 피드백 애니메이션」 문서다. 화면(연출 값 섹션)에서
+         고치고 [적용]을 누르면 여기 들어와 바로 다음 연출부터 먹는다. */
+      const FX_META = [
+        { g: "A1 클릭", note: "통통 튀는 감각은 누를 때가 아니라 뗄 때의 오버슛에서 나온다", rows: [
+          { k: "PRESS", n: "누름", u: "초", d: 0.12, c: "MERGE_BOARD_PRESS_DURATION_SEC" },
+          { k: "PRESS_SX", n: "누름 가로", u: "배", d: 1.06 }, { k: "PRESS_SY", n: "누름 세로", u: "배", d: 0.94 },
+          { k: "RELEASE_A", n: "뗌 오버슛", u: "초", d: 0.08, c: "MERGE_OVERSHOOT_IN_SEC" },
+          { k: "REL_SX", n: "오버슛 가로", u: "배", d: 0.95 }, { k: "REL_SY", n: "오버슛 세로", u: "배", d: 1.07 },
+          { k: "POP_IN", n: "복귀", u: "초", d: 0.18, c: "POP_IN_SEC" },
+          { k: "E_PRESS", n: "누름 이징", u: "", d: "quadOut", e: 1 },
+          { k: "E_POP", n: "복귀 이징", u: "", d: "backOut", e: 1 },
+        ]},
+        { g: "A2 생산 비행", note: "생산자와 결과물 사이의 인과를 화면에 붙인다 — 3차 베지어", rows: [
+          { k: "FLIGHT_S0", n: "출발 배율", u: "배", d: 0.5, c: "MERGE_SPAWN_START_SCALE" },
+          { k: "FLIGHT_SCALE_UP", n: "정점까지", u: "초", d: 0.15, c: "MERGE_SPAWN_POP_SEC" },
+          { k: "FLIGHT_PEAK", n: "정점 배율", u: "배", d: 1.14, c: "MERGE_SPAWN_POP_SCALE" },
+          { k: "FLIGHT_SCALE_DOWN", n: "정점 이후", u: "초", d: 0.27, c: "MERGE_SPAWN_SHRINK_SEC" },
+          { k: "FLIGHT", n: "비행", u: "초", d: 0.42, c: "MERGE_FLIGHT_DURATION_SEC" },
+          { k: "LIFT_RATIO", n: "거리 대비 치솟음", u: "배", d: 0.38, c: "MERGE_FLIGHT_LIFT_RATIO" },
+          { k: "LIFT_MIN", n: "최소 치솟음", u: "px", d: 70, c: "MERGE_FLIGHT_MIN_LIFT" },
+          { k: "SQUASH_IN", n: "착지 눌림", u: "초", d: 0.06, c: "MERGE_SQUASH_IN_SEC" },
+          { k: "SQUASH_SX", n: "착지 가로", u: "배", d: 1.18 }, { k: "SQUASH_SY", n: "착지 세로", u: "배", d: 0.84 },
+          { k: "SQUASH_OUT", n: "착지 복귀", u: "초", d: 0.16, c: "MERGE_SQUASH_OUT_SEC" },
+          { k: "E_FLIGHT", n: "경로 이징", u: "", d: "quadInOut", e: 1 },
+          { k: "E_FLIGHT_UP", n: "정점 이징", u: "", d: "backOut", e: 1 },
+          { k: "E_FLIGHT_DOWN", n: "하강 이징", u: "", d: "quadIn", e: 1 },
+        ]},
+        { g: "A4 병합", note: "흡수 → 임팩트 → 팝. 세 박자로 끊어야 합쳐진 게 보인다", rows: [
+          { k: "ABSORB", n: "흡수", u: "초", d: 0.14, c: "MERGE_ABSORB_SEC" },
+          { k: "ABSORB_S", n: "흡수 배율", u: "배", d: 0.55, c: "MERGE_ABSORB_END_SCALE" },
+          { k: "RING_SEC", n: "링", u: "초", d: 0.3, c: "MERGE_RING_SEC" },
+          { k: "RING_SCALE", n: "링 최대", u: "배", d: 1.9, c: "MERGE_RING_MAX_SCALE" },
+          { k: "SPARKS", n: "스파크 수", u: "개", d: 7, c: "MERGE_SPARK_COUNT" },
+          { k: "SPARK_SEC", n: "스파크", u: "초", d: 0.34, c: "MERGE_SPARK_SEC" },
+          { k: "SPARK_R", n: "스파크 반경", u: "px", d: 40, c: "MERGE_SPARK_RADIUS" },
+          { k: "MERGE_START_S", n: "결과 시작 배율", u: "배", d: 0.78 },
+          { k: "IMPACT", n: "임팩트", u: "초", d: 0.07, c: "MERGE_RESULT_HIT_SEC" },
+          { k: "IMPACT_SX", n: "임팩트 가로", u: "배", d: 1.24 }, { k: "IMPACT_SY", n: "임팩트 세로", u: "배", d: 0.82 },
+          { k: "MERGE_POP", n: "팝", u: "초", d: 0.2, c: "MERGE_POP_DURATION_SEC" },
+          { k: "E_ABSORB", n: "흡수 이징", u: "", d: "quadIn", e: 1 },
+          { k: "E_MERGE_POP", n: "팝 이징", u: "", d: "backOut", e: 1 },
+        ]},
+        { g: "A6 재화 획득", note: "코인이 흩어졌다 HUD 로 빨려 들어가고 카운터가 굴러간다", rows: [
+          { k: "COIN_N", n: "코인 수", u: "개", d: 6, c: "COIN_SPRITE_LIMIT" },
+          { k: "COIN_STAGGER", n: "간격", u: "초", d: 0.04, c: "MERGE_STAGGER_SEC" },
+          { k: "SPREAD_SEC", n: "산개", u: "초", d: 0.26, c: "MERGE_COIN_SPREAD_SEC" },
+          { k: "SPREAD_R", n: "산개 반경", u: "px", d: 52, c: "MERGE_COIN_SPREAD_RADIUS" },
+          { k: "SPREAD_RISE", n: "산개 상승", u: "px", d: 48, c: "MERGE_COIN_SPREAD_RISE" },
+          { k: "SPREAD_S", n: "산개 배율", u: "배", d: 1.25 },
+          { k: "TRACE_SEC", n: "추적", u: "초", d: 0.34, c: "MERGE_COIN_TRACE_SEC" },
+          { k: "ROLL_SEC", n: "카운터 굴림", u: "초", d: 0.5, c: "COIN_ROLL_DURATION_SEC" },
+          { k: "HUD_PUNCH", n: "HUD 펀치", u: "배", d: 1.09, c: "MERGE_HUD_PUNCH_SCALE" },
+          { k: "HUD_PUNCH_SEC", n: "펀치", u: "초", d: 0.12, c: "MERGE_HUD_PUNCH_SEC" },
+        ]},
+        { g: "C1 거부", note: "감쇠 흔들림이어야 거부로 읽힌다. 등폭 왕복은 진동이다", rows: [
+          { k: "SNAP_BACK", n: "복귀", u: "초", d: 0.26, c: "MERGE_SNAP_BACK_SEC" },
+          { k: "SHAKE", n: "흔들기", u: "초", d: 0.24, c: "MERGE_REJECT_SHAKE_SEC" },
+          { k: "SHAKE_PX", n: "진폭", u: "px", d: 5, c: "MERGE_REJECT_SHAKE_AMPLITUDE" },
+        ]},
+        { g: "C2 대상 하이라이트", note: "합쳐질 짝에만 링. 같은 체인이라도 단계가 다르면 안 켠다", rows: [
+          { k: "RING_IN", n: "링 등장", u: "초", d: 0.14, c: "MERGE_RING_IN_SEC" },
+          { k: "RING_IN_S", n: "링 등장 배율", u: "배", d: 1.02 },
+          { k: "PULSE_SEC", n: "맥동 반주기", u: "초", d: 0.45, c: "MERGE_RING_PULSE_SEC" },
+          { k: "PULSE_MAX", n: "맥동 최대", u: "배", d: 1.14 }, { k: "PULSE_MIN", n: "맥동 최소", u: "배", d: 0.98 },
+          { k: "PULSE_ALPHA", n: "맥동 투명", u: "0~1", d: 0.45 },
+          { k: "RING_OUT", n: "링 퇴장", u: "초", d: 0.16, c: "MERGE_RING_OUT_SEC" },
+          { k: "E_PULSE", n: "맥동 이징", u: "", d: "sineInOut", e: 1 },
+        ]},
+        { g: "C3 충전 완료", note: "유저를 다시 부르는 건 충전중이 아니라 완료되는 순간이다", rows: [
+          { k: "CHARGE_IN", n: "눌림", u: "초", d: 0.08, c: "MERGE_READY_POP_IN_SEC" },
+          { k: "CHARGE_SX", n: "눌림 가로", u: "배", d: 1.18 }, { k: "CHARGE_SY", n: "눌림 세로", u: "배", d: 0.84 },
+          { k: "CHARGE_OUT", n: "복귀", u: "초", d: 0.22, c: "MERGE_READY_POP_OUT_SEC" },
+          { k: "READY_SPARKS", n: "스파크 수", u: "개", d: 8, c: "MERGE_READY_SPARK_COUNT" },
+          { k: "BADGE_SEC", n: "뱃지 등장", u: "초", d: 0.2, c: "MERGE_READY_BADGE_SEC" },
+          { k: "BADGE_BOB", n: "뱃지 까딱", u: "초", d: 0.42, c: "MERGE_READY_BADGE_BOB_SEC" },
+          { k: "BADGE_BOB_PX", n: "뱃지 진폭", u: "px", d: 6, c: "MERGE_READY_BADGE_BOB_PX" },
+        ]},
+        { g: "C4 납품", note: "목적지가 보드 밖이다. 코인(0.04)보다 무거워서 조금 느리다", rows: [
+          { k: "DELIVERY_STAGGER", n: "간격", u: "초", d: 0.06, c: "DELIVERY_STAGGER_SEC" },
+          { k: "DELIVERY_UP", n: "솟음", u: "초", d: 0.14, c: "MERGE_DELIVERY_RAISE_SEC" },
+          { k: "DELIVERY_PEAK", n: "솟음 배율", u: "배", d: 1.12 },
+          { k: "DELIVERY_AWAY", n: "축소", u: "초", d: 0.3, c: "MERGE_DELIVERY_SHRINK_SEC" },
+          { k: "DELIVERY_END", n: "도착 배율", u: "배", d: 0.72 },
+          { k: "DELIVERY_FLIGHT", n: "비행", u: "초", d: 0.44, c: "MERGE_DELIVERY_FLIGHT_SEC" },
+          { k: "DELIVERY_LIFT_RATIO", n: "치솟음 비", u: "배", d: 0.3 },
+          { k: "DELIVERY_LIFT_MIN", n: "최소 치솟음", u: "px", d: 60 },
+          { k: "SLOT_HIT_IN", n: "슬롯 임팩트", u: "초", d: 0.06 },
+          { k: "SLOT_HIT_S", n: "슬롯 배율", u: "배", d: 1.14 },
+          { k: "SLOT_HIT_OUT", n: "슬롯 복귀", u: "초", d: 0.16 },
+        ]},
+        { g: "C5 최대 단계", note: "부정이 아니라 상태 고지 — 거부(5px)보다 약하게 흔든다", rows: [
+          { k: "MAX_HIT_IN", n: "임팩트", u: "초", d: 0.06 },
+          { k: "MAX_HIT_X", n: "임팩트 가로", u: "배", d: 1.1 }, { k: "MAX_HIT_Y", n: "임팩트 세로", u: "배", d: 0.9 },
+          { k: "MAX_HIT_OUT", n: "복귀", u: "초", d: 0.18 },
+          { k: "MAX_SHAKE", n: "흔들기", u: "초", d: 0.22, c: "MERGE_MAX_SHAKE_SEC" },
+          { k: "MAX_SHAKE_PX", n: "진폭", u: "px", d: 4, c: "MERGE_MAX_SHAKE_AMPLITUDE" },
+        ]},
+        { g: "떠오르는 문구 · F3 punch", note: "보드 꽉참 · 최대 단계 — 임팩트 스탬프", rows: [
+          { k: "F3_GAP", n: "칩 위 간격", u: "px", d: 38 },
+          { k: "F3_S0", n: "시작 배율", u: "배", d: 1.9 },
+          { k: "F3_IN", n: "등장", u: "초", d: 0.12 },
+          { k: "F3_RISE", n: "상승", u: "px", d: 10 },
+          { k: "F3_DIP", n: "가라앉음", u: "배", d: 0.92 },
+          { k: "F3_SETTLE", n: "안정", u: "초", d: 0.14 },
+          { k: "F3_HOLD", n: "유지", u: "초", d: 0.6 },
+          { k: "F3_OUT", n: "퇴장", u: "초", d: 0.24 },
+          { k: "F3_DRIFT", n: "퇴장 상승", u: "px", d: 26 },
+        ]},
+        { g: "떠오르는 문구 · F4 slide", note: "충전중 — back 계열 이징을 쓰지 않는다", rows: [
+          { k: "F4_GAP", n: "칩 위 간격", u: "px", d: 34 },
+          { k: "F4_FROM", n: "시작 오프셋", u: "px", d: 20 },
+          { k: "F4_IN", n: "등장", u: "초", d: 0.24 },
+          { k: "F4_HOLD", n: "유지", u: "초", d: 0.7 },
+          { k: "F4_OUT", n: "퇴장", u: "초", d: 0.36 },
+          { k: "F4_DRIFT", n: "퇴장 상승", u: "px", d: 14 },
+        ]},
+        { g: "떠오르는 문구 · F5 wave", note: "해금 안내 · 납품 완료 — 글자 웨이브", rows: [
+          { k: "F5_GAP", n: "칩 위 간격", u: "px", d: 34 },
+          { k: "F5_STAGGER", n: "글자 간격", u: "초", d: 0.045 },
+          { k: "F5_UP", n: "글자 상승", u: "초", d: 0.16 },
+          { k: "F5_RISE", n: "상승 폭", u: "px", d: 14 },
+          { k: "F5_BACK", n: "복귀", u: "초", d: 0.18 },
+          { k: "F5_HOLD", n: "유지", u: "초", d: 0.5 },
+          { k: "F5_OUT", n: "퇴장", u: "초", d: 0.4 },
+          { k: "F5_DRIFT", n: "퇴장 상승", u: "px", d: 30 },
+        ]},
+        { g: "생성기 idle", note: "현재 코드 실측값 — playGeneratorIdle()", rows: [
+          { k: "IDLE_BOB", n: "주기", u: "초", d: 0.8 },
+          { k: "IDLE_PX", n: "진폭", u: "px", d: 3 },
+          { k: "IDLE_SCALE", n: "배율", u: "배", d: 1.05 },
+          { k: "E_IDLE", n: "이징", u: "", d: "sineInOut", e: 1 },
+        ]},
+      ];
+      const FX_DEFAULTS = () => { const o = {}; FX_META.forEach((g) => g.rows.forEach((r) => (o[r.k] = r.d))); return o; };
+      let FX = FX_DEFAULTS();
+
+      /* ── 트윈 엔진 ── */
+      const TW = { list: [], raf: 0 };
       function rafLoop(now) {
         TW.raf = 0;
         for (let i = TW.list.length - 1; i >= 0; i--) {
@@ -545,9 +768,7 @@
       }
       function kick() { if (!TW.raf) TW.raf = requestAnimationFrame(rafLoop); }
       function tw(state, to, durSec, ease, onUpdate) {
-        if (REDUCED || durSec <= 0) {
-          Object.assign(state, to); onUpdate(state); return Promise.resolve();
-        }
+        if (REDUCED || durSec <= 0) { Object.assign(state, to); onUpdate(state); return Promise.resolve(); }
         const from = {};
         for (const k in to) from[k] = state[k];
         return new Promise((res) => {
@@ -557,24 +778,28 @@
       }
       const wait = (sec) => (REDUCED ? Promise.resolve() : new Promise((r) => setTimeout(r, sec * 1000)));
 
-      /* ── 생성기 아이들 bob — y ±3px · 0.8s · sineInOut · scale 1.05 (현재 코드 실측값) ── */
+      /* ── 생성기 아이들 bob ── */
       let BOBS = [];
       function driveIdleBob(now) {
         if (REDUCED || !BOBS.length) return;
-        const ph = ((now % (FX.IDLE_BOB * 2000)) / (FX.IDLE_BOB * 2000)) * Math.PI * 2;
+        const period = Math.max(0.05, FX.IDLE_BOB) * 2000;
+        const k = (now % period) / period;
+        const y = Math.sin(k * Math.PI * 2) * FX.IDLE_PX;
         for (const el of BOBS) {
           if (!el.isConnected) { BOBS = BOBS.filter((x) => x.isConnected); break; }
           if (el.dataset.busy) continue;
-          el.style.transform = `translateY(${(Math.sin(ph) * 3).toFixed(2)}px) scale(1.05)`;
+          el.style.transform = `translateY(${y.toFixed(2)}px) scale(${FX.IDLE_SCALE})`;
         }
       }
 
-      /* ── 좌표 ── */
-      function cellBox(i) {
-        const el = $("#rwBoard").children[i];
-        const r = el.getBoundingClientRect(), s = $("#rwStage").getBoundingClientRect();
+      /* ── 무대 — 보드와 미리보기가 같은 원시 함수를 쓴다 ── */
+      let FXROOT = { stage: null, fx: null };
+      function useHost(stageId, fxId) { FXROOT = { stage: $(stageId), fx: $(fxId) }; }
+      function boxOf(el) {
+        const r = el.getBoundingClientRect(), s = FXROOT.stage.getBoundingClientRect();
         return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2, w: r.width, h: r.height };
       }
+      function cellBox(i) { useHost("#rwStage", "#rwFx"); return boxOf($("#rwBoard").children[i]); }
       function chipAt(i) { const c = $("#rwBoard").children[i]; return c && c.querySelector(".rw-chip"); }
 
       function makeFly(code, box) {
@@ -582,10 +807,10 @@
         d.className = "rw-fly";
         d.style.cssText =
           `--h:${hueOf(chainOf(code))}deg;width:${box.w}px;height:${box.h}px;left:0;top:0;` +
-          `font-size:${box.w * 0.33}px;background:hsl(var(--h) 44% 87%);color:hsl(var(--h) 58% 26%);` +
+          `font-size:${box.w * 0.34}px;background:hsl(var(--h) 44% 87%);color:hsl(var(--h) 58% 26%);` +
           `border:1px solid hsl(var(--h) 40% 72%)`;
         d.textContent = labelOf(code);
-        $("#rwFx").appendChild(d);
+        FXROOT.fx.appendChild(d);
         return d;
       }
       const place = (el, s) =>
@@ -596,86 +821,214 @@
         return { x: a * p0.x + b * c1.x + c * c2.x + d * p3.x, y: a * p0.y + b * c1.y + c * c2.y + d * p3.y };
       }
 
-      /* ── A2 · C4 : 베지어 비행 ── */
+      /* A2 · C4 — 베지어 비행 */
       async function flyBezier(code, from, to, opt = {}) {
         const el = makeFly(code, from);
         const dist = Math.hypot(to.x - from.x, to.y - from.y);
-        const lift = Math.max(FX.LIFT_MIN, dist * FX.LIFT_RATIO);
+        const lift = Math.max(opt.liftMin ?? FX.LIFT_MIN, dist * (opt.liftRatio ?? FX.LIFT_RATIO));
         const c1 = { x: from.x, y: from.y - lift };
         const c2 = { x: to.x, y: to.y - lift * 0.6 };
-        const st = { k: 0, s: opt.s0 ?? 0.5, x: from.x, y: from.y };
+        const st = { k: 0, s: opt.s0 ?? FX.FLIGHT_S0, x: from.x, y: from.y };
         const draw = () => { const p = bezier3(from, c1, c2, to, st.k); st.x = p.x; st.y = p.y; place(el, st); };
         draw();
-        // 스케일은 위치와 따로 돈다 — 0.5 →(backOut) 1.14 →(quadIn) 1
         (async () => {
-          await tw(st, { s: opt.sPeak ?? 1.14 }, FX.FLIGHT_SCALE_UP, "backOut", draw);
-          await tw(st, { s: opt.s1 ?? 1 }, opt.downSec ?? FX.FLIGHT_SCALE_DOWN, "quadIn", draw);
+          await tw(st, { s: opt.sPeak ?? FX.FLIGHT_PEAK }, opt.upSec ?? FX.FLIGHT_SCALE_UP, FX.E_FLIGHT_UP, draw);
+          await tw(st, { s: opt.s1 ?? 1 }, opt.downSec ?? FX.FLIGHT_SCALE_DOWN, FX.E_FLIGHT_DOWN, draw);
         })();
-        await tw(st, { k: 1 }, opt.dur ?? FX.FLIGHT, "quadInOut", draw);
+        await tw(st, { k: 1 }, opt.dur ?? FX.FLIGHT, FX.E_FLIGHT, draw);
         el.remove();
       }
 
-      /* ── 임팩트 링 + 스파크 ── */
+      /* 임팩트 링 + 스파크 */
       function burst(box, code) {
         const h = hueOf(chainOf(code));
         const ring = document.createElement("div");
         ring.className = "rw-ring";
         ring.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px;width:${box.w * 0.7}px;height:${box.w * 0.7}px`;
-        $("#rwFx").appendChild(ring);
+        FXROOT.fx.appendChild(ring);
         const rs = { s: 0.6, o: 0.9 };
-        tw(rs, { s: 2.3, o: 0 }, 0.34, "quadOut", () => {
+        tw(rs, { s: FX.RING_SCALE, o: 0 }, FX.RING_SEC, "quadOut", () => {
           ring.style.transform = `translate(-50%,-50%) scale(${rs.s})`;
           ring.style.opacity = rs.o;
         }).then(() => ring.remove());
-        for (let i = 0; i < 6; i++) {
+        const n = Math.max(0, Math.round(FX.SPARKS));
+        for (let i = 0; i < n; i++) {
           const sp = document.createElement("div");
           sp.className = "rw-spark";
           sp.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px`;
-          $("#rwFx").appendChild(sp);
-          const ang = (Math.PI * 2 * i) / 6 + 0.4, dist = box.w * 0.62;
+          FXROOT.fx.appendChild(sp);
+          const ang = (Math.PI * 2 * i) / n + 0.4, dist = FX.SPARK_R;
           const ss = { p: 0, o: 1 };
-          tw(ss, { p: 1, o: 0 }, 0.3, "quadOut", () => {
+          tw(ss, { p: 1, o: 0 }, FX.SPARK_SEC, "quadOut", () => {
             sp.style.transform = `translate(calc(-50% + ${Math.cos(ang) * dist * ss.p}px), calc(-50% + ${Math.sin(ang) * dist * ss.p}px)) scale(${1 - ss.p * 0.4})`;
             sp.style.opacity = ss.o;
           }).then(() => sp.remove());
         }
       }
 
-      /* ── A1 : 누름 / 뗌 오버슛 ── */
+      /* A1 — 누름 / 뗌 오버슛 */
       async function pressPop(el) {
         if (!el) return;
         el.dataset.busy = "1";
         const s = { sx: 1, sy: 1 };
         const dr = () => (el.style.transform = `scale(${s.sx},${s.sy})`);
-        await tw(s, { sx: 1.06, sy: 0.94 }, FX.PRESS, "quadOut", dr);
-        await tw(s, { sx: 0.95, sy: 1.07 }, FX.RELEASE_A, "quadOut", dr);
-        await tw(s, { sx: 1, sy: 1 }, FX.POP_IN, "backOut", dr);
+        await tw(s, { sx: FX.PRESS_SX, sy: FX.PRESS_SY }, FX.PRESS, FX.E_PRESS, dr);
+        await tw(s, { sx: FX.REL_SX, sy: FX.REL_SY }, FX.RELEASE_A, FX.E_PRESS, dr);
+        await tw(s, { sx: 1, sy: 1 }, FX.POP_IN, FX.E_POP, dr);
         delete el.dataset.busy;
         el.style.transform = "";
       }
 
-      /* ── A2 착지 스쿼시 / A4 임팩트 팝 ── */
+      /* 착지 스쿼시 / 충전 완료 팝 */
       async function squash(el, inX, inY, inSec, outSec) {
         if (!el) return;
         el.dataset.busy = "1";
-        const s = { sx: inX, sy: inY };
+        const s = { sx: 1, sy: 1 };
         const dr = () => (el.style.transform = `scale(${s.sx},${s.sy})`);
-        dr();
-        await tw(s, { sx: 1, sy: 1 }, outSec, "backOut", dr);
+        if (inSec > 0) await tw(s, { sx: inX, sy: inY }, inSec, "quadOut", dr);
+        else { s.sx = inX; s.sy = inY; dr(); }
+        await tw(s, { sx: 1, sy: 1 }, outSec, FX.E_POP, dr);
         delete el.dataset.busy;
         el.style.transform = "";
       }
 
-      /* ── C1 : 거부 — 되돌아오고 흔든다 ── */
-      async function shake(el) {
+      /* C1 · C5 — 감쇠 흔들림. 등폭 왕복은 진동이지 거부가 아니다.
+         문서 봉투: [1, -0.7, 0.45, -0.25, 0] · 앞 네 구간 dur/6 · 마지막 dur/3 */
+      const SHAKE_ENV = [1, -0.7, 0.45, -0.25, 0];
+      async function shake(el, amp, dur) {
         if (!el) return;
+        amp = amp ?? FX.SHAKE_PX; dur = dur ?? FX.SHAKE;
         el.dataset.busy = "1";
-        const s = { p: 0 };
-        await tw(s, { p: 1 }, FX.SHAKE, "linear", () => {
-          el.style.transform = `translateX(${Math.sin(s.p * Math.PI * 6) * FX.SHAKE_PX * (1 - s.p)}px)`;
-        });
+        const s = { x: 0 };
+        const dr = () => (el.style.transform = `translateX(${s.x}px)`);
+        for (let i = 0; i < SHAKE_ENV.length; i++) {
+          const last = i === SHAKE_ENV.length - 1;
+          await tw(s, { x: SHAKE_ENV[i] * amp }, last ? dur / 3 : dur / 6, last ? "backOut" : "quadOut", dr);
+        }
         delete el.dataset.busy;
         el.style.transform = "";
+      }
+
+      /* 떠오르는 문구 — 패널이 아니라 누른 칩 위로 뜬다. F3 punch / F4 slide / F5 wave */
+      async function floatText(box, text, style, tone) {
+        if (REDUCED) { toast(text); return; }
+        const el = document.createElement("div");
+        el.className = "rw-float" + (tone ? " " + tone : "");
+        FXROOT.fx.appendChild(el);
+        const gap = style === "punch" ? FX.F3_GAP : style === "slide" ? FX.F4_GAP : FX.F5_GAP;
+        const baseY = box.y - box.h / 2 - gap;
+        const st = { y: baseY, s: 1, o: 1 };
+        const dr = () => { el.style.left = box.x + "px"; el.style.top = st.y + "px";
+                           el.style.transform = `translate(-50%,-50%) scale(${st.s})`; el.style.opacity = st.o; };
+        if (style === "punch") {
+          el.textContent = text;
+          st.s = FX.F3_S0; st.o = 0; dr();
+          await tw(st, { s: 1, o: 1, y: baseY - FX.F3_RISE }, FX.F3_IN, "quadOut", dr);
+          await tw(st, { s: FX.F3_DIP }, FX.F3_SETTLE / 2, "quadOut", dr);
+          await tw(st, { s: 1 }, FX.F3_SETTLE / 2, "backOut", dr);
+          await wait(FX.F3_HOLD);
+          await tw(st, { o: 0, y: st.y - FX.F3_DRIFT, s: 1.18 }, FX.F3_OUT, "quadIn", dr);
+        } else if (style === "slide") {
+          el.textContent = text;
+          st.y = baseY + FX.F4_FROM; st.o = 0; dr();
+          await tw(st, { y: baseY, o: 1 }, FX.F4_IN, "quadOut", dr);
+          await wait(FX.F4_HOLD);
+          await tw(st, { o: 0, y: baseY - FX.F4_DRIFT }, FX.F4_OUT, "quadOut", dr);
+        } else {
+          [...text].forEach((ch) => { const i = document.createElement("i"); i.textContent = ch === " " ? "\u00a0" : ch; el.appendChild(i); });
+          st.o = 1; dr();
+          const gl = [...el.children];
+          await Promise.all(gl.map(async (g, i) => {
+            await wait(i * FX.F5_STAGGER);
+            const gs = { y: 0 };
+            const gd = () => (g.style.transform = `translateY(${gs.y}px)`);
+            await tw(gs, { y: -FX.F5_RISE }, FX.F5_UP, "quadOut", gd);
+            await tw(gs, { y: 0 }, FX.F5_BACK, "backOut", gd);
+          }));
+          await wait(FX.F5_HOLD);
+          await tw(st, { o: 0, y: baseY - FX.F5_DRIFT }, FX.F5_OUT, "quadOut", dr);
+        }
+        el.remove();
+      }
+
+      /* C2 — 합쳐질 짝에만 링을 켠다. 대상이 바뀔 때만 갱신 */
+      let HL = [];
+      function clearHighlights() { HL.forEach((h) => h.remove()); HL = []; }
+      function highlightMergeTargets() {
+        clearHighlights();
+        if (REDUCED || S.sel == null || !S.cells[S.sel]) return;
+        const code = S.cells[S.sel].code;
+        if (specOf(code).is_generator) return;
+        useHost("#rwStage", "#rwFx");
+        S.cells.forEach((c, i) => {
+          if (i === S.sel || !c || c.code !== code) return;
+          const b = boxOf($("#rwBoard").children[i]);
+          const el = document.createElement("div");
+          el.className = "rw-hl";
+          el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w - 4}px;height:${b.h - 4}px`;
+          FXROOT.fx.appendChild(el); HL.push(el);
+          const st = { s: 0.9, o: 0 };
+          const dr = () => { el.style.transform = `translate(-50%,-50%) scale(${st.s})`; el.style.opacity = st.o; };
+          dr();
+          tw(st, { s: FX.RING_IN_S, o: 1 }, FX.RING_IN, "backOut", dr).then(async () => {
+            while (el.isConnected) {
+              await tw(st, { s: FX.PULSE_MAX, o: FX.PULSE_ALPHA }, FX.PULSE_SEC, FX.E_PULSE, dr);
+              if (!el.isConnected) break;
+              await tw(st, { s: FX.PULSE_MIN, o: 1 }, FX.PULSE_SEC, FX.E_PULSE, dr);
+            }
+          });
+        });
+      }
+
+      /* A6 — 코인이 흩어졌다 HUD 로 빨려 들어가고 카운터가 굴러간다 */
+      async function coinGather(from) {
+        if (REDUCED) return;
+        useHost("#rwFrame", "#rwFrameFx");
+        const pill = document.querySelector(".rw-pill.coin");
+        const to = boxOf(pill);
+        const n = Math.max(1, Math.round(FX.COIN_N));
+        await Promise.all(Array.from({ length: n }, async (_, i) => {
+          await wait(i * FX.COIN_STAGGER);
+          const el = document.createElement("div");
+          el.className = "rw-coin";
+          FXROOT.fx.appendChild(el);
+          const ang = -Math.PI / 2 + (i - (n - 1) / 2) * 0.42;
+          const mid = { x: from.x + Math.cos(ang) * FX.SPREAD_R, y: from.y + Math.sin(ang) * FX.SPREAD_R - FX.SPREAD_RISE * 0.2 };
+          const st = { x: from.x, y: from.y, s: 1, o: 1 };
+          const dr = () => { el.style.left = st.x + "px"; el.style.top = st.y + "px";
+                             el.style.transform = `translate(-50%,-50%) scale(${st.s})`; el.style.opacity = st.o; };
+          dr();
+          await tw(st, { x: mid.x, y: mid.y, s: FX.SPREAD_S }, FX.SPREAD_SEC, "quadOut", dr);
+          await tw(st, { x: to.x, y: to.y, s: 0.8 }, FX.TRACE_SEC, "quadIn", dr);
+          el.remove();
+        }));
+        const ps = { s: 1 };
+        const pd = () => (pill.style.transform = `scale(${ps.s})`);
+        await tw(ps, { s: FX.HUD_PUNCH }, 0.05, "quadOut", pd);
+        await tw(ps, { s: 1 }, FX.HUD_PUNCH_SEC, "backOut", pd);
+        pill.style.transform = "";
+      }
+
+      /* C3 — 수확 가능 뱃지. 까딱임이 B2 의 조용한 숨쉬기와 상태를 가른다 */
+      function readyBadge(i) {
+        if (REDUCED) return;
+        useHost("#rwStage", "#rwFx");
+        const b = boxOf($("#rwBoard").children[i]);
+        const el = document.createElement("div");
+        el.className = "rw-badge"; el.textContent = "!";
+        el.style.cssText = `left:${b.x + b.w * 0.34}px;top:${b.y - b.h * 0.34}px`;
+        FXROOT.fx.appendChild(el);
+        const st = { s: 0, y: 0 };
+        const dr = () => (el.style.transform = `translate(-50%,-50%) translateY(${st.y}px) scale(${st.s})`);
+        dr();
+        tw(st, { s: 1 }, FX.BADGE_SEC, "backOut", dr).then(async () => {
+          const t0 = performance.now();
+          while (el.isConnected && performance.now() - t0 < 6000) {
+            await tw(st, { y: -FX.BADGE_BOB_PX }, FX.BADGE_BOB, "sineInOut", dr);
+            await tw(st, { y: 0 }, FX.BADGE_BOB, "sineInOut", dr);
+          }
+          el.remove();
+        });
       }
 
       /* ======================================================================
@@ -802,9 +1155,9 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v1.2 · 2026-09-10";
+      const BUILD = "v1.4 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
-      const SAVE_VER = 2;
+      const SAVE_VER = 3;
       let saveTimer = 0;
 
       function saveNow() {
@@ -815,7 +1168,7 @@
             slots: S.slots, prevOfSlot: S.prevOfSlot,
             log: S.log.slice(0, 20).map((e) => ({ ...e, t: e.t.toISOString() })),
           };
-          localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VER, at: Date.now(), data: DATA, state: st }));
+          localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VER, at: Date.now(), data: DATA, fx: FX, state: st }));
           const d = new Date();
           const hh = (x) => String(x).padStart(2, "0");
           $("#rwSaved").textContent = `저장 ${hh(d.getHours())}:${hh(d.getMinutes())}:${hh(d.getSeconds())}`;
@@ -1108,13 +1461,19 @@
         if (S.busy) return;
         const cell = S.cells[i], sp = specOf(cell.code);
         // 재고 → 빈칸 → 에너지 → 산출 추첨. 실패면 아무것도 차감하지 않고 거부 연출만.
-        const deny = (msg) => { toast(msg); shake(chipAt(i)); };
-        if (cell.stock <= 0) return deny("재고 없음 — 충전 중입니다");
+        // 문서 B1·B2 — 잘못이 아니라 상태 고지라 흔들지 않는다. 눌림 + 떠오르는 문구로만 알린다
+        const deny = async (msg, style, tone) => {
+          useHost("#rwStage", "#rwFx");
+          const chip = chipAt(i), box = cellBox(i);
+          if (chip) await squash(chip, 1.05, 0.95, 0.12, FX.POP_IN);
+          floatText(box, msg, style, tone);
+        };
+        if (cell.stock <= 0) return deny(`충전중 ${fmtSec(Math.max(0, sp.spread_item_recovery_sec - (Date.now() / 1000 - (cell.lastAt || 0))))}`, "slide");
         const dest = spiralEmpty(i);
-        if (dest < 0) return deny("Board Full — 보드가 가득 찼습니다");
-        if (S.energy < sp.spread_cost_energy) return deny("에너지 부족");
+        if (dest < 0) return deny("보드가 꽉 찼어요", "punch", "warn");
+        if (S.energy < sp.spread_cost_energy) return deny("에너지가 없어요", "punch", "warn");
         const bag = [[sp.p1, sp.w1], [sp.p2, sp.w2], [sp.p3, sp.w3]].filter((b) => b[0] && b[1] > 0);
-        if (!bag.length) return deny("주머니가 비어 있습니다");
+        if (!bag.length) return deny("주머니가 비었어요", "punch", "warn");
 
         const k = RNG.pick(bag.map((b) => b[1]));
         const code = bag[k][0];
@@ -1128,7 +1487,7 @@
         S.cells[dest] = { code };
         S.sel = dest;
         render();
-        squash(chipAt(dest), 1.18, 0.84, FX.SQUASH_IN, FX.SQUASH_OUT);
+        squash(chipAt(dest), FX.SQUASH_SX, FX.SQUASH_SY, FX.SQUASH_IN, FX.SQUASH_OUT);
         S.busy = false;
       }
 
@@ -1137,7 +1496,16 @@
         if (!A || !B || A.code !== B.code) return false;
         const sa = specOf(A.code);
         if (sa.is_generator) return false;
-        if (!sa.merged_item_code) { toast("최고 단계 — 더 합칠 수 없습니다"); shake(chipAt(b)); return true; }
+        if (!sa.merged_item_code) {                       // C5 — 부정이 아니라 상태 고지
+          S.busy = true;
+          useHost("#rwStage", "#rwFx");
+          const box = cellBox(b), chip = chipAt(b);
+          await squash(chip, FX.MAX_HIT_X, FX.MAX_HIT_Y, FX.MAX_HIT_IN, FX.MAX_HIT_OUT);
+          shake(chip, FX.MAX_SHAKE_PX, FX.MAX_SHAKE);
+          floatText(box, "최고 레벨이에요", "punch");
+          S.busy = false;
+          return true;
+        }
 
         S.busy = true;
         const from = cellBox(a), to = cellBox(b);
@@ -1145,8 +1513,8 @@
         const st = { x: from.x, y: from.y, s: 1, o: 1 };
         const dr = () => { place(el, st); el.style.opacity = st.o; };
         dr();
-        S.cells[a] = null; renderBoard();
-        await tw(st, { x: to.x, y: to.y, s: 0.55, o: 0 }, FX.ABSORB, "quadIn", dr);   // 흡수
+        S.cells[a] = null; clearHighlights(); renderBoard();
+        await tw(st, { x: to.x, y: to.y, s: FX.ABSORB_S, o: 0 }, FX.ABSORB, FX.E_ABSORB, dr);  // 흡수
         el.remove();
         burst(to, sa.merged_item_code);                                               // 임팩트
         S.cells[b] = { code: sa.merged_item_code };
@@ -1154,11 +1522,11 @@
         const chip = chipAt(b);
         if (chip && !REDUCED) {
           chip.dataset.busy = "1";
-          const s2 = { sx: 0.78, sy: 0.78 };
+          const s2 = { sx: FX.MERGE_START_S, sy: FX.MERGE_START_S };
           const d2 = () => (chip.style.transform = `scale(${s2.sx},${s2.sy})`);
           d2();
-          await tw(s2, { sx: 1.24, sy: 0.82 }, FX.IMPACT, "quadOut", d2);
-          await tw(s2, { sx: 1, sy: 1 }, FX.MERGE_POP, "backOut", d2);
+          await tw(s2, { sx: FX.IMPACT_SX, sy: FX.IMPACT_SY }, FX.IMPACT, "quadOut", d2);
+          await tw(s2, { sx: 1, sy: 1 }, FX.MERGE_POP, FX.E_MERGE_POP, d2);
           delete chip.dataset.busy; chip.style.transform = "";
         }
         S.busy = false;
@@ -1213,11 +1581,28 @@
         renderBoard();
         await Promise.all(taken.map(async (q, idx) => {
           await wait(idx * FX.DELIVERY_STAGGER);
-          await flyBezier(q.code, boxes[idx], to, { s0: 1, sPeak: 1.12, s1: 0.72, downSec: FX.DELIVERY_AWAY, dur: FX.DELIVERY_UP + FX.DELIVERY_AWAY });
+          await flyBezier(q.code, boxes[idx], to, { s0: 1, sPeak: FX.DELIVERY_PEAK, s1: FX.DELIVERY_END,
+            upSec: FX.DELIVERY_UP, downSec: FX.DELIVERY_AWAY, dur: FX.DELIVERY_FLIGHT,
+            liftRatio: FX.DELIVERY_LIFT_RATIO, liftMin: FX.DELIVERY_LIFT_MIN });
         }));
-        toast(`납품 +${card.coin} 코인 · 경험치 0`);
+        useHost("#rwFrame", "#rwFrameFx");
+        floatText({ x: to.x + stage.left - $("#rwFrame").getBoundingClientRect().left,
+                    y: to.y + stage.top - $("#rwFrame").getBoundingClientRect().top, h: 0 }, "납품 완료!", "wave", "good");
         commitServe(n, card, `슬롯 ${n} 납품 완료`);
+        coinGather(boxes.length ? { x: boxes[0].x + stage.left - $("#rwFrame").getBoundingClientRect().left,
+                                    y: boxes[0].y + stage.top - $("#rwFrame").getBoundingClientRect().top } : { x: 200, y: 300 });
         S.busy = false;
+      }
+
+      // 카드 클릭 — 먼저 눌림을 주고 완료 처리한다
+      function cardTap(el, n) {
+        if (S.busy) return;
+        if (!REDUCED && el) {
+          el.style.transition = "transform .09s ease";
+          el.style.transform = "scale(.96)";
+          setTimeout(() => { el.style.transform = ""; }, 110);
+        }
+        forceClear(n);
       }
 
       // 테스트용 — 보드 보유와 상관없이 그 카드를 완료 처리한다. 로그에 정상 납품과 다르게 남는다.
@@ -1226,6 +1611,10 @@
         const card = S.slots[n]; if (!card) return;
         toast(`강제 완료 +${card.coin} 코인 (보드 미소모)`);
         commitServe(n, card, `슬롯 ${n} 강제 완료 · 보드 미소모`);
+        const fr = $("#rwFrame").getBoundingClientRect();
+        const railEl = $("#rwRail").children[openSlots().indexOf(n) + 1];
+        if (railEl) { const r = railEl.getBoundingClientRect();
+          coinGather({ x: r.left - fr.left + r.width / 2, y: r.top - fr.top + r.height / 2 }); }
       }
 
       function doChore() {
@@ -1243,12 +1632,29 @@
         toast(up ? `레벨 업 → Lv${S.level}` : `심부름 완료 +${exp} exp / +${coin} 코인`);
         fillEmptySlots(up ? `레벨 업 Lv${S.level}` : "심부름 완료");
         render();
+        if (up) playLevelUp();
       }
 
       /* ======================================================================
          7. 렌더
          ====================================================================== */
       function render() { renderStats(); renderBoard(); renderInfo(); renderRail(); renderLog(); save(); }
+
+      /* HUD 숫자는 바로 바꾸지 않고 굴린다 — 값이 변한 걸 눈이 잡게 */
+      const SHOWN = {};
+      function setNum(id, val, fmt) {
+        const el = $(id); if (!el) return;
+        const prev = SHOWN[id];
+        SHOWN[id] = val;
+        if (prev == null || prev === val || REDUCED) { el.textContent = fmt ? fmt(val) : val; return; }
+        const s = { v: prev };
+        tw(s, { v: val }, 0.34, "quadOut", () => {
+          const n = Math.round(s.v);
+          el.textContent = fmt ? fmt(n) : n;
+        });
+      }
+      /* 눌림 피드백 — 문서 A1 을 HUD·카드에도 그대로 쓴다 */
+      function tapFeel(el) { if (el) pressPop(el); }
 
       const clock = (d) => { const p = (x) => String(x).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
       const fmtSec = (s) => {
@@ -1260,8 +1666,8 @@
       function renderStats() {
         const need = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 0;
         $("#rwLv").textContent = S.level;
-        $("#rwCoin").textContent = S.coin.toLocaleString();
-        $("#rwEnergy").textContent = S.energy;
+        setNum("#rwCoin", S.coin, (v) => v.toLocaleString());
+        setNum("#rwEnergy", S.energy);
         const nt = S.orderGen.type_timers.normal;
         const nr = ruleOf("normal");
         $("#rwRefill").textContent = nt ? nt.remaining_count : nr ? nr.refill_max : 0;
@@ -1269,9 +1675,14 @@
         // 버프 칩 — 런칭 레인 3개 자리. 남은 시간은 화면 확인용 표시값이다.
         const now = Date.now() / 1000;
         const t1 = S.orderGen.type_timers.high, t2 = S.orderGen.type_timers.random_3, t3 = S.orderGen.type_timers.random_4;
-        $("#rwBuff1").textContent = t1 && t1.next_refill_at ? fmtSec(t1.next_refill_at - now) : "대기 없음";
-        $("#rwBuff2").textContent = t2 && t2.next_refill_at ? fmtSec(t2.next_refill_at - now) : "대기 없음";
+        const buff = (id, tm) => {
+          const on = !!(tm && tm.next_refill_at);
+          $(id).textContent = on ? fmtSec(tm.next_refill_at - now) : "대기 없음";
+          $(id).parentElement.classList.toggle("off", !on);
+        };
+        buff("#rwBuff1", t1); buff("#rwBuff2", t2);
         $("#rwBuff3").textContent = `${S.exp}/${need}`;
+        $("#rwBuff3").parentElement.classList.toggle("off", S.exp === 0);
 
         $("#rwStats").innerHTML = [
           ["LV", S.level], ["EXP", `${S.exp}/${need}`], ["에너지", S.energy],
@@ -1330,16 +1741,17 @@
         if (specOf(c.code).is_generator) { tapGenerator(i); return; }
         if (S.sel != null && S.sel !== i) {
           const other = S.cells[S.sel];
-          if (other && other.code === c.code) { await tryMerge(S.sel, i); return; }
+          if (other && other.code === c.code) { clearHighlights(); await tryMerge(S.sel, i); return; }
           shake(chipAt(i));                                   // C1 — 합칠 수 없는 대상
         }
         S.sel = S.sel === i ? null : i; render();
+        highlightMergeTargets();                              // C2
       }
 
       /* 하단 정보바 — 문서 1.5 「선택한 셀이 지금 할 수 있는 일」 */
       function renderInfo() {
         const el = $("#rwInfo");
-        const side = (id, gl) => `<div class="rw-sq" title="${id}"><b>${gl}</b></div>`;
+        const side = (id, gl) => `<div class="rw-sq" role="img" aria-label="${id}" title="${id}"><b>${gl}</b></div>`;
         if (S.sel == null || !S.cells[S.sel]) {
           el.innerHTML = side("인벤토리", "▤") +
             `<div class="body"><div class="txt"><span class="name">셀을 고르세요</span>
@@ -1396,7 +1808,7 @@
           }
           const ok = card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
           const evt = Math.floor(card.coin / 4);
-          html += `<div class="rw-card" onclick="forceClear(${n})" title="누르면 강제 완료 — 보드에서 소모하지 않습니다">
+          html += `<div class="rw-card" role="button" tabindex="0" onclick="cardTap(this,${n})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cardTap(this,${n})}" title="누르면 강제 완료 — 보드에서 소모하지 않습니다">
               <span class="rw-npc">${card.avatar.slice(0, 3)}</span>
               <div class="rw-top">
                 <span class="rw-ra">
@@ -1428,6 +1840,19 @@
             <div class="rw-steps">${e.lines.join("\n")}</div></div>`).join("");
       }
 
+      /* 레벨 업 — 코어루프에서 가장 큰 사건이라 배지가 한 번 크게 튄다 */
+      async function playLevelUp() {
+        const el = $("#rwLv");
+        if (!el || REDUCED) return;
+        el.dataset.busy = "1";
+        const s = { sc: 1 };
+        const dr = () => (el.style.transform = `scale(${s.sc})`);
+        await tw(s, { sc: 1.35 }, FX.CHARGE_IN, "quadOut", dr);
+        await tw(s, { sc: 1 }, FX.CHARGE_OUT, FX.E_POP, dr);
+        delete el.dataset.busy;
+        el.style.transform = "";
+      }
+
       /* ======================================================================
          8. 데이터 표
          ====================================================================== */
@@ -1457,22 +1882,148 @@
           const rows = DATA[d.key];
           const w = document.createElement("div");
           w.innerHTML = `<div class="rw-tt"><h3>${d.key}</h3><span>${rows.length}행</span></div><p class="rw-tnote">${d.note}</p>`;
-          const tw = document.createElement("div"); tw.className = "rw-tw scroll";
-          tw.innerHTML = `<table><thead><tr>${d.cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${
+          const twEl = document.createElement("div"); twEl.className = "rw-tw scroll";
+          twEl.innerHTML = `<table><thead><tr>${d.cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${
             rows.map((r, ri) => `<tr>${d.cols.map((c) => {
               const v = r[c], isTxt = typeof v === "string";
               const tail = c === "item_code" && !isTxt && d.key !== "item_spec" ? ` <span style="color:var(--text-faint)">${labelOf(v)}</span>` : "";
               return `<td><input class="${isTxt ? "txt" : ""}" type="${isTxt ? "text" : "number"}" value="${v}" data-k="${d.key}" data-r="${ri}" data-c="${c}" />${tail}</td>`;
             }).join("")}</tr>`).join("")
           }</tbody></table>`;
-          tw.querySelectorAll("input").forEach((inp) => {
+          twEl.querySelectorAll("input").forEach((inp) => {
             inp.oninput = () => {
               const t = DATA[inp.dataset.k][Number(inp.dataset.r)];
               t[inp.dataset.c] = inp.type === "number" ? Number(inp.value) || 0 : inp.value;
             };
           });
-          w.appendChild(tw); host.appendChild(w);
+          w.appendChild(twEl); host.appendChild(w);
         }
+      }
+
+      /* ======================================================================
+         8b. 연출 값 편집 + 미리보기
+         ====================================================================== */
+      function renderFxEditor() {
+        $("#rwFxGrid").innerHTML = FX_META.map((g) => `<div class="rw-fxg">
+            <h4>${g.g}</h4>
+            <p>${g.note}</p>
+            ${g.rows.map((r) => `<label class="rw-fxr">
+                <span>${r.n} <code>${r.k}</code></span>
+                ${r.e
+                  ? `<select data-fx="${r.k}">${EASINGS.map((e) => `<option value="${e}"${FX[r.k] === e ? " selected" : ""}>${e}</option>`).join("")}</select>`
+                  : `<input type="number" step="${String(r.d).includes(".") ? "0.01" : "1"}" data-fx="${r.k}" value="${FX[r.k]}" />`}
+                <u>${r.u}</u>
+              </label>`).join("")}
+          </div>`).join("");
+        $("#rwFxGrid").querySelectorAll("[data-fx]").forEach((el) => (el.oninput = markDirty));
+        markDirty();
+      }
+      function markDirty() {
+        let n = 0;
+        $("#rwFxGrid").querySelectorAll("[data-fx]").forEach((el) => {
+          const cur = FX[el.dataset.fx];
+          const val = el.tagName === "SELECT" ? el.value : Number(el.value);
+          const dirty = String(val) !== String(cur);
+          el.classList.toggle("dirty", dirty);
+          if (dirty) n++;
+        });
+        const b = $("#rwFxDirty");
+        b.textContent = `미적용 ${n}개`;
+        b.classList.toggle("rw-hide", n === 0);
+      }
+      function applyFx() {
+        $("#rwFxGrid").querySelectorAll("[data-fx]").forEach((el) => {
+          const k = el.dataset.fx;
+          FX[k] = el.tagName === "SELECT" ? el.value : (Number(el.value) || 0);
+        });
+        markDirty(); save();
+        toast("연출 값을 적용했습니다");
+      }
+
+      /* 미리보기 — 보드를 건드리지 않고 같은 원시 함수를 무대에서 돌린다 */
+      const dcBox = (id) => { useHost("#rwDemoStage", "#rwDemoFx"); return boxOf(document.getElementById(id)); };
+      const dcChip = (id) => document.getElementById(id).querySelector(".rw-chip");
+      let demoBusy = false;
+      async function playDemo(kind) {
+        if (demoBusy) return;
+        demoBusy = true;
+        useHost("#rwDemoStage", "#rwDemoFx");
+        try {
+          if (kind === "a1") await pressPop(dcChip("dc0"));
+          else if (kind === "a2") {
+            await pressPop(dcChip("dc0"));
+            await flyBezier(202, dcBox("dc0"), dcBox("dc1"));
+            const tmp = document.createElement("span");
+            tmp.className = "rw-chip"; tmp.style.setProperty("--h", "12deg"); tmp.textContent = "A2";
+            document.getElementById("dc1").appendChild(tmp);
+            document.getElementById("dc1").classList.add("has");
+            await squash(tmp, FX.SQUASH_SX, FX.SQUASH_SY, 0, FX.SQUASH_OUT);
+            await wait(0.45);
+            tmp.remove(); document.getElementById("dc1").classList.remove("has");
+          } else if (kind === "a4") {
+            const from = dcBox("dc2"), to = dcBox("dc3");
+            const src = dcChip("dc2"); src.style.visibility = "hidden";
+            const el = makeFly(303, from);
+            const st = { x: from.x, y: from.y, s: 1, o: 1 };
+            const dr = () => { place(el, st); el.style.opacity = st.o; };
+            dr();
+            await tw(st, { x: to.x, y: to.y, s: FX.ABSORB_S, o: 0 }, FX.ABSORB, FX.E_ABSORB, dr);
+            el.remove();
+            burst(to, 304);
+            const chip = dcChip("dc3");
+            chip.textContent = "B4"; chip.dataset.busy = "1";
+            const s2 = { sx: FX.MERGE_START_S, sy: FX.MERGE_START_S };
+            const d2 = () => (chip.style.transform = `scale(${s2.sx},${s2.sy})`);
+            d2();
+            await tw(s2, { sx: FX.IMPACT_SX, sy: FX.IMPACT_SY }, FX.IMPACT, "quadOut", d2);
+            await tw(s2, { sx: 1, sy: 1 }, FX.MERGE_POP, FX.E_MERGE_POP, d2);
+            delete chip.dataset.busy; chip.style.transform = "";
+            await wait(0.5);
+            chip.textContent = "B3"; src.style.visibility = "";
+          } else if (kind === "c1") {
+            await squash(dcChip("dc2"), 1.08, 0.92, FX.SQUASH_IN, FX.SNAP_BACK);
+            await shake(dcChip("dc2"));
+          } else if (kind === "c5") {
+            await squash(dcChip("dc2"), FX.MAX_HIT_X, FX.MAX_HIT_Y, FX.MAX_HIT_IN, FX.MAX_HIT_OUT);
+            shake(dcChip("dc2"), FX.MAX_SHAKE_PX, FX.MAX_SHAKE);
+            await floatText(dcBox("dc2"), "최고 레벨이에요", "punch");
+          } else if (kind === "c2") {
+            const b = dcBox("dc3");
+            const el = document.createElement("div");
+            el.className = "rw-hl";
+            el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w - 4}px;height:${b.h - 4}px`;
+            FXROOT.fx.appendChild(el);
+            const st = { s: 0.9, o: 0 };
+            const dr = () => { el.style.transform = `translate(-50%,-50%) scale(${st.s})`; el.style.opacity = st.o; };
+            dr();
+            await tw(st, { s: FX.RING_IN_S, o: 1 }, FX.RING_IN, "backOut", dr);
+            for (let i = 0; i < 2; i++) {
+              await tw(st, { s: FX.PULSE_MAX, o: FX.PULSE_ALPHA }, FX.PULSE_SEC, FX.E_PULSE, dr);
+              await tw(st, { s: FX.PULSE_MIN, o: 1 }, FX.PULSE_SEC, FX.E_PULSE, dr);
+            }
+            await tw(st, { o: 0 }, FX.RING_OUT, "quadOut", dr);
+            el.remove();
+          } else if (kind === "a6") {
+            await squash(dcChip("dc2"), 1.14, 0.88, 0.07, 0.16);
+            await coinGather({ x: 90, y: 40 });
+          } else if (kind === "b1") await floatText(dcBox("dc0"), "보드가 꽉 찼어요", "punch", "warn");
+          else if (kind === "b2") await floatText(dcBox("dc0"), "충전중 12:00", "slide");
+          else if (kind === "b3") await floatText(dcBox("dc2"), "레벨 12에 열려요", "wave");
+          else if (kind === "c3") { burst(dcBox("dc0"), 202); await squash(dcChip("dc0"), FX.CHARGE_SX, FX.CHARGE_SY, FX.CHARGE_IN, FX.CHARGE_OUT); }
+          else if (kind === "c4") {
+            const to = dcBox("dc4");
+            const src = [dcChip("dc2"), dcChip("dc3")];
+            src.forEach((c) => (c.style.visibility = "hidden"));
+            await Promise.all(["dc2", "dc3"].map(async (id, i) => {
+              await wait(i * FX.DELIVERY_STAGGER);
+              await flyBezier(303, dcBox(id), to, { s0: 1, sPeak: FX.DELIVERY_PEAK, s1: FX.DELIVERY_END,
+                upSec: FX.DELIVERY_UP, downSec: FX.DELIVERY_AWAY, dur: FX.DELIVERY_FLIGHT,
+                liftRatio: FX.DELIVERY_LIFT_RATIO, liftMin: FX.DELIVERY_LIFT_MIN });
+            }));
+            await wait(0.25);
+            src.forEach((c) => (c.style.visibility = ""));
+          }
+        } finally { useHost("#rwStage", "#rwFx"); demoBusy = false; }
       }
 
       /* ======================================================================
@@ -1517,13 +2068,17 @@
          ====================================================================== */
       function boot(fresh) {
         const saved = fresh ? null : loadSaved();
-        if (saved) { DATA = saved.data; S = Object.assign(freshState(), saved.state); S.busy = false; }
-        else { DATA = DEFAULTS(); S = freshState(); }
+        if (saved) {
+          DATA = saved.data;
+          FX = Object.assign(FX_DEFAULTS(), saved.fx || {});
+          S = Object.assign(freshState(), saved.state); S.busy = false;
+        } else { DATA = DEFAULTS(); FX = FX_DEFAULTS(); S = freshState(); }
         RNG.load(S.orderGen.rng_state);
         $("#rwSimType").innerHTML = DATA.order_rule.filter((r) => r.order_type !== "special")
           .map((r) => `<option value="${r.order_type}">${r.order_type}</option>`).join("");
         $("#rwBuild").textContent = `build ${BUILD}`;
         renderData();
+        renderFxEditor();
         fillEmptySlots(saved ? "저장 상태 복원" : "첫 진입");
         render();
         if (saved) toast("저장된 진행을 이어서 엽니다");
@@ -1538,9 +2093,10 @@
       }
 
       $("#rwChore").onclick = doChore;
-      $("#rwChoreBtn").onclick = doChore;
-      $("#rwAddEnergy").onclick = () => { S.energy += 50; renderStats(); save(); toast("에너지 +50"); };
-      $("#rwAdRefill").onclick = () => {
+      $("#rwChoreBtn").onclick = (e) => { tapFeel(e.currentTarget); doChore(); };
+      $("#rwAddEnergy").onclick = (e) => { tapFeel(e.currentTarget); S.energy += 50; renderStats(); save(); toast("에너지 +50"); };
+      $("#rwAdRefill").onclick = (e) => {
+        tapFeel(e.currentTarget);
         // 광고 즉시 채움 — 예산 +1, 원래 대기 종료 시각은 유지한다(문서 규칙)
         const t = (S.orderGen.type_timers.normal ||= { remaining_count: 0, next_refill_at: 0 });
         t.remaining_count += 1;
@@ -1548,11 +2104,14 @@
         fillEmptySlots("광고 즉시 채움");
         render();
       };
-      $("#rwShop").onclick = () => toast("상점은 이 벤치의 범위 밖입니다");
-      $("#rwBox").onclick = () => toast("보상 인벤토리는 이 벤치의 범위 밖입니다");
+      $("#rwShop").onclick = (e) => { tapFeel(e.currentTarget); toast("상점은 이 벤치의 범위 밖입니다"); };
+      $("#rwBox").onclick = (e) => { tapFeel(e.currentTarget); toast("보상 인벤토리는 이 벤치의 범위 밖입니다"); };
       $("#rwReset").onclick = resetAll;
       $("#rwClearLog").onclick = () => { S.log = []; renderLog(); save(); };
       $("#rwSimGo").onclick = runSim;
+      $("#rwFxApply").onclick = applyFx;
+      $("#rwFxReset").onclick = () => { FX = FX_DEFAULTS(); renderFxEditor(); save(); toast("연출 값을 문서 기본값으로 되돌렸습니다"); };
+      document.querySelectorAll("[data-demo]").forEach((b) => (b.onclick = () => playDemo(b.dataset.demo)));
       $("#rwRestore").onclick = () => { DATA = DEFAULTS(); renderData(); render(); toast("표만 기본값으로 되돌렸습니다"); };
       $("#rwExport").onclick = () => {
         const b = $("#rwJson"); b.classList.toggle("rw-hide");
@@ -1562,6 +2121,7 @@
       window.sellCell = sellCell;
       window.serve = serve;
       window.forceClear = forceClear;
+      window.cardTap = cardTap;
 
       /* 생성기 재고 회복 — 개체별. 0 에서 1 로 올라오는 순간이 C3 충전 완료다.
          spread_item_recovery_sec 를 줄이면(데이터 탭) 연출을 바로 볼 수 있다. */
@@ -1584,7 +2144,11 @@
         });
         if (!changed) return;
         renderBoard(); save();
-        completed.forEach((i) => { burst(cellBox(i), S.cells[i].code); squash(chipAt(i), 1.18, 0.84, FX.CHARGE_IN, FX.CHARGE_OUT); });
+        completed.forEach((i) => {
+          burst(cellBox(i), S.cells[i].code);
+          squash(chipAt(i), FX.CHARGE_SX, FX.CHARGE_SY, FX.CHARGE_IN, FX.CHARGE_OUT);
+          readyBadge(i);
+        });
       }
 
       boot();

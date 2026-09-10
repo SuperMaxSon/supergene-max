@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-10 12:05",
+  updated: "2026-09-10 12:17",
 };
 
 /* --------------------------------------------------------------------------
@@ -298,7 +298,7 @@ const SECTIONS = [
         url: "docs/boot-log-flow.html",
         project: "sol",
         status: "완료",
-        version: "v1.2",
+        version: "v1.1",
         updated: "2026-09-02 12:11",
         pinned: false,
         tags: ["코드 실측", "로그"],
@@ -462,8 +462,8 @@ const SECTIONS = [
         url: "docs/rosewood-order-bench.html",
         project: "smg",
         status: "초안",
-        version: "v1.1",
-        updated: "2026-09-10 11:55",
+        version: "v1.4",
+        updated: "2026-09-10 12:17",
         pinned: false,
         tags: ["머지", "인터랙티브"],
       },
