@@ -205,7 +205,10 @@
       .rw-track .rw-dish { display: grid; grid-auto-flow: column; justify-content: center;
                            grid-auto-columns: minmax(0, 32px); gap: 3px; }
       .rw-track .rw-req { width: 100%; height: auto; aspect-ratio: 1;
-                          font-size: clamp(8px, 21cqi, 12px); border-radius: clamp(4px, 6cqi, 7px); }
+                          font-size: clamp(7px, 15cqi, 10px); border-radius: clamp(4px, 6cqi, 7px); }
+      .rw-track .rw-req.l5 { font-size: clamp(6.5px, 12.5cqi, 9px); }
+      .rw-track .rw-req.l7 { font-size: clamp(6px, 11cqi, 8px); }
+      .rw-track .rw-req.l9 { font-size: clamp(5.5px, 9.5cqi, 7px); }
       /* 체크는 칩 안으로 — 밖으로 나가면 마지막 카드가 프레임을 넘긴다 */
       .rw-track .rw-req .ck { font-size: clamp(8px, 11cqi, 10px); top: 0; right: 1px;
                               text-shadow: 0 0 2px var(--surface); }
@@ -268,9 +271,12 @@
 
       /* 요구 접시 */
       .rw-req { position: relative; width: 34px; height: 34px; border-radius: 7px; display: flex;
-                align-items: center; justify-content: center; font-family: ui-monospace, Menlo, monospace;
-                font-size: 12px; font-weight: 700; background: hsl(var(--h) 44% 87%);
+                align-items: center; justify-content: center;
+                font-size: 9px; font-weight: 700; background: hsl(var(--h) 44% 87%);
                 color: hsl(var(--h) 58% 26%); border: 1px solid hsl(var(--h) 40% 72%); flex: none; }
+      .rw-req.l5 { font-size: 8px; }
+      .rw-req.l7 { font-size: 7px; }
+      .rw-req.l9 { font-size: 6.5px; }
       .rw-req.miss { opacity: 0.35; }
       .rw-req .ck { position: absolute; top: -5px; right: -5px; font-size: 11px; color: var(--balance); font-weight: 800; }
 
@@ -279,8 +285,10 @@
       .rw-stage { position: relative; }
       .rw-fx { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
       .rw-fly { position: absolute; border-radius: 7px; display: flex; align-items: center;
-                justify-content: center; font-family: ui-monospace, Menlo, monospace;
-                font-weight: 700; will-change: transform; }
+                justify-content: center; font-size: 12px; font-weight: 700; will-change: transform; }
+      .rw-fly.l5 { font-size: 10px; }
+      .rw-fly.l7 { font-size: 9px; }
+      .rw-fly.l9 { font-size: 8px; }
       .rw-ring { position: absolute; border-radius: 50%; border: 2px solid hsl(var(--h) 58% 46%);
                  transform: translate(-50%, -50%); will-change: transform, opacity; }
       .rw-float { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
@@ -321,7 +329,18 @@
                  align-items: center; justify-content: center; line-height: 1;
                  background: hsl(var(--h) 44% 87%); color: hsl(var(--h) 58% 26%);
                  border: 1px solid hsl(var(--h) 40% 72%);
-                 font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 15px; }
+                 font-weight: 700; font-size: 12px; }
+      .rw-chip.l5 { font-size: 10px; }
+      .rw-chip.l7 { font-size: 9px; }
+      .rw-chip.l9 { font-size: 8px; }
+
+      /* 이름 표기 — 실물 이름은 1~9자다(「못」부터 「작은 이벤트 상자」까지).
+         한 줄로는 못 넣으니 단어 단위로 접어 가운데 쌓는다. 넘치면 잘리고,
+         전체 이름은 title 로 뜬다. keep-all 이라 한국어 단어가 안 쪼개진다. */
+      .rw-chip .t, .rw-req .t, .rw-fly .t {
+        display: block; width: 100%; text-align: center; white-space: normal;
+        word-break: keep-all; overflow-wrap: anywhere; line-height: 1.08;
+        padding: 0 1px; max-height: 100%; overflow: hidden; }
       /* will-change 는 실제로 움직이는 동안에만 — 상시로 걸면 칩 63개가 전부 합성 레이어가 된다 */
       .rw-chip[data-busy], .rw-lv[data-busy] { will-change: transform; }
       /* 생성기 까딱임은 메인 스레드에서 매 프레임 계산하지 않고 컴포지터에 맡긴다.
@@ -390,7 +409,12 @@
                                   inset -4px 0 0 -1px var(--ring); }
       .sh10::before { box-shadow: inset 0 0 0 5px hsl(var(--h) 46% 94%), inset 0 0 0 6.5px var(--ring); }
       .sh11::before { box-shadow: inset 0 0 0 1.5px var(--ring), inset 0 0 0 8px hsl(var(--h) 50% 91%); }
-      /* 생성기는 테두리를 겹쳐 그려 한눈에 갈린다 */
+      /* 생성기 체인(main·sub·quest)은 안쪽에 얇은 링을 하나 더 두른다 —
+         같은 클러스터 색 안에서 「합치면 생성기가 되는 줄」과 「생성기가 낳는 줄」이 갈린다.
+         .sh* 뒤에 와야 이긴다(같은 명시도라 순서가 승부를 가른다). */
+      .rw-shape.gline::before { box-shadow: inset 0 0 0 1.5px var(--ring), inset 0 0 0 3px hsl(var(--h) 46% 94%),
+                                            inset 0 0 0 4px var(--ring); }
+      /* 생성기 그 자체는 테두리를 더 굵게 겹쳐 그려 한눈에 갈린다 */
       .rw-cell.gen .rw-shape::before, .rw-fly.gen::before {
         border: 0; box-shadow: inset 0 0 0 2px var(--ring), inset 0 0 0 4.5px hsl(var(--h) 40% 93%); }
       .rw-cap { font-size: 10px; color: var(--text-faint); text-align: center; line-height: 1.5; }
@@ -504,8 +528,10 @@
           핵심은 오른쪽 <a href="#log">추첨 로그</a>예요 &mdash; 개발 기획서
           <b>1.2.1 오더 생성</b>의 8단계를 그대로 구현해서, <b>어떤 오더가 왜 나왔는지</b>를
           발급마다 판정 근거로 남깁니다. 밸런스 값은 <a href="#data">데이터</a> 섹션에서 고칠 수 있고
-          다음 발급부터 바로 먹습니다. 아트가 없으니 아이템은 칩으로 그립니다 &mdash;
-          <b>알파벳이 체인(타입), 숫자가 단계(레벨)</b>입니다.
+          다음 발급부터 바로 먹습니다. 아이템·체인·규칙 테이블은 <b>밸런스 시트 실물</b>입니다 &mdash;
+          236종 30체인이 시트에 적힌 이름 그대로 나옵니다. 아트가 없어 칩으로 그리는데,
+          <b>색은 클러스터(공방·부엌·정원…), 테두리 무늬는 그 안의 체인</b>이고
+          생성기 체인은 링이 하나 더 있습니다. 이름이 잘리면 칩에 커서를 올려 보세요.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--tool)">스토리 머지 · Rosewood</span>
@@ -521,10 +547,13 @@
       <section class="doc-section" id="bench">
         <h2 class="doc-h2">보드와 오더 레일</h2>
         <div class="doc-h2-sub">
-          칩을 두 번 눌러 합치고, ⚡생성기를 눌러 생산합니다(재고 → 빈칸 → 에너지 → 산출 추첨 순서로 판정하고
-          나선의 첫 빈 칸에 놓습니다). 배지는 문서의 셀 배지 슬롯을 따릅니다 &mdash;
+          칩을 <b>끌어서</b> 합치고, ⚡생성기를 눌러 생산합니다(재고 → 빈칸 → 에너지 → 산출 추첨 순서로 판정하고
+          나선의 첫 빈 칸에 놓습니다). 생성기는 체인의 1단계가 아니라 <b>중간 단계부터 여럿</b>이고,
+          자기 체인이 아니라 <b>다른 체인</b>을 낳습니다 &mdash; 공구함은 공구·페인트를, 벌통은 꿀·밀랍을 냅니다.
+          배지는 문서의 셀 배지 슬롯을 따릅니다 &mdash;
           <b>A</b> 좌상 재고 · <b>B</b> 우상 ⚡생성기 또는 ✓오더 요구 · <b>C</b> 우하 ♦최고 단계.
-          경험치 공급원은 심부름 하나뿐이라, 랜덤 오더를 보려면 <b>심부름 완료</b>로 Lv3 을 넘겨야 합니다.
+          경험치 공급원은 심부름 하나뿐이라, 랜덤 오더를 보려면 <b>심부름 완료</b>로 레벨을 올려야 합니다 &mdash;
+          Lv1 에 열리는 칸은 <b>고정 오더 한 칸</b>뿐이고 일반·손님은 Lv3, 스페셜 Lv4, 이벤트는 Lv6 부터입니다.
           생산·병합·거부·납품 연출은 허브 <a href="merge-feedback-anim.html">머지 피드백 애니메이션</a> 문서의
           타이밍·이징을 그대로 씁니다 &mdash; A1 클릭 · A2 베지어 비행 · A4 흡수→임팩트→팝 · C1 거부 · C3 충전 완료 · C4 납품.
         </div>
@@ -727,41 +756,46 @@
       <section class="doc-section" id="basis">
         <h2 class="doc-h2">근거</h2>
         <div class="doc-h2-sub">
-          이 페이지의 숫자가 어디서 왔는지 갈라 둡니다. <b>문서 확인값</b>은 개발 기획서 1.2.1 과
-          밸런스 시트 기획서(2026-09-10 판본)에서 그대로 옮긴 것이고, <b>시드값</b>은 문서가 준 값역 안에서
-          제가 채운 임시값입니다. 시트에서 실물을 받으면 시드값은 덮으면 됩니다.
+          이 페이지의 숫자가 어디서 왔는지 갈라 둡니다. 이제 <b>아이템·체인·주문 후보와 규칙 테이블은
+          밸런스 시트 실물</b>입니다 &mdash; <code>[PMM] 밸런스시트.xlsx</code>(2026-09-08 판) 에서
+          <code>_ignore/tools/extract-items.py</code> 로 뽑아 그대로 박았습니다. 시트가 갱신되면
+          그 스크립트를 다시 돌려 데이터 블록만 통째로 갈아끼웁니다.
+          아래 <b>남은 시드값</b>은 시트에 아직 칸이 없거나 [작성중] 인 것들입니다.
         </div>
 
-        <div class="rw-tt"><h3>문서 확인값</h3><span>그대로 옮김</span></div>
+        <div class="rw-tt"><h3>시트 실물값</h3><span>xlsx 에서 추출 · 손대지 않음</span></div>
         <div class="rw-tw">
           <table>
-            <thead><tr><th>항목</th><th>값</th><th>출처</th></tr></thead>
+            <thead><tr><th>테이블</th><th>들어온 것</th><th>벤치가 전에 뭐라고 했었나</th></tr></thead>
             <tbody>
-              <tr><td>order_rule 5행</td><td>normal 2자리·Lv3·5회·3600s / high Lv3·1·1800 / random_3 Lv4·1·900 / random_4 Lv5·1·300 / special Lv4</td><td>밸런스 기획서 §5</td></tr>
-              <tr><td>item_slot_max</td><td>전 행 2 — 카드당 요구 2종 상한</td><td>밸런스 기획서 §5</td></tr>
-              <tr><td>order_item_count 4구간</td><td>Lv1 75/25 · Lv4 57.14/42.86 · Lv8 50/50 · Lv11 50/50</td><td>밸런스 기획서 §10</td></tr>
-              <tr><td>보드 상황 배수 3종</td><td>100 / 1000 / 10000 — 하나만 적용, 중복 곱 금지</td><td>const · 개발 기획서 1.2.1</td></tr>
-              <tr><td>order_repeat_reset_count</td><td>3</td><td>const</td></tr>
-              <tr><td>단가 예시</td><td>205 → 코인 8 / 난이도 10 · 206 → 12 / 19</td><td>개발 기획서 1.2.1 계산 예</td></tr>
-              <tr><td>level_curve 30행</td><td>15 / 30 / 45 / 60 / 60 / 75×5 / 90×3 / 105×3 / 120×8 / 135×4 / 150×2</td><td>밸런스시트 실측</td></tr>
-              <tr><td>order_fixed.slot_3</td><td>세 번째 발급 가능 슬롯 번호 · 현재 전 행 0</td><td>밸런스 기획서 §6</td></tr>
-              <tr><td>하루 누적 난이도</td><td><b>사용하지 않는다</b> — order_slot_band 는 종류 + 유저 레벨 두 축뿐</td><td>개발 기획서 A8</td></tr>
-              <tr><td>에너지</td><td>최대 100 · 1점 120초 · 생산 차감은 클라</td><td>const · A8-1</td></tr>
+              <tr><td>item_spec</td><td><b>236종 / 30체인</b> · 이름 · 판매가 · rare · 다음 단계 · 생성기 재고·에너지·회복 · 산출 슬롯</td><td>8체인 60여 종을 손으로 지어냈다</td></tr>
+              <tr><td>생성기 배치</td><td>체인의 <b>중간~끝 여러 단계</b>가 생성기다 (M_TOOL 공구함은 11단계 중 s4~s11 여덟 개)</td><td>「1단계 하나가 생성기」로 잘못 잡았다</td></tr>
+              <tr><td>생성기 산출</td><td><b>다른 체인</b>을 낳는다 &mdash; 공구함 → 공구·페인트, 벌통 → 꿀·밀랍. 슬롯은 20칸까지, 실제 1~5칸</td><td>자기 체인의 2·3·4단계를 낳게 해 뒀다 (「A1이 A4를 낳는다」)</td></tr>
+              <tr><td>order_item</td><td><b>107종 / 14체인</b>. 생성기·상자·재화는 애초에 이 표에 없다. 각 체인 <b>s3부터</b></td><td>전 체인의 3단계 이상을 후보로 넣었다</td></tr>
+              <tr><td>unlock_level</td><td><b>체인 단위</b> &mdash; Lv3 이 되면 망치부터 공구 세트까지 8종이 한꺼번에 열린다</td><td>단계마다 오르는 계단식으로 만들었다</td></tr>
+              <tr><td>repeat_weight_decrease</td><td>체인 <b>끝 3단계</b>에만 <code>10 / 50 / 100</code>, 나머지 0</td><td><code>s &gt;= 6 ? 50 : 0</code> 이라는 임의 임계값</td></tr>
+              <tr><td>order_rule</td><td><b>4타입</b> &mdash; normal 2칸 Lv3 · avatar Lv3 · special Lv4 · event Lv6. <code>item_slot_max</code> 전 행 <b>3</b></td><td>normal / high / random_3 / random_4 / special 5타입 · slot_max 2</td></tr>
+              <tr><td>order_slot_band</td><td>13행 · <code>third_min/max</code> 와 <code>diff_sum_min/max</code> 포함</td><td>12행을 값역 안에서 채웠고 셋째 자리 칸이 없었다</td></tr>
+              <tr><td>order_item_count</td><td>4구간 × <b>3종까지</b> (Lv1 60/20/20 · Lv11 30/30/40)</td><td>2종까지만 · 75/25 등</td></tr>
+              <tr><td>order_fixed</td><td>16행 실물 요구품 (1번 = 803 도넛). <code>requirement_3</code> 쓰는 행이 1개 있다</td><td>구조만 맞추고 요구 아이템은 임의였다</td></tr>
+              <tr><td>const</td><td><b>48행 통째로</b>. 보드 상황 배수 100 / 1000 / 10000 포함</td><td>10개만 골라 적었다</td></tr>
+              <tr><td>level_curve · inventory_unlock · order_avatar</td><td>30행 / 27행 / 13명 &mdash; 전부 실물</td><td>등비수열·이름을 코드로 만들어 냈다</td></tr>
             </tbody>
           </table>
         </div>
 
-        <div class="rw-tt"><h3>시드값</h3><span>문서가 준 값역 안에서 채움 · 편집 대상</span></div>
+        <div class="rw-tt"><h3>남은 시드값</h3><span>시트에 칸이 없거나 [작성중] · 편집 대상</span></div>
         <div class="rw-tw">
           <table>
-            <thead><tr><th>항목</th><th>왜 시드인가</th></tr></thead>
+            <thead><tr><th>항목</th><th>왜 아직 시드인가</th></tr></thead>
             <tbody>
-              <tr><td>item_spec 체인 8종 구성</td><td>실물은 238행 30체인. 여기선 8체인 60여 종으로 줄여 손으로 만질 수 있게 했다</td></tr>
-              <tr><td>order_item 단가 곡선</td><td>205·206 두 점만 확인값이라 나머지는 그 곡선을 이어 붙였다 (값역 2~406 / 2~2500)</td></tr>
-              <tr><td>order_slot_band 2·3밴드</td><td>1밴드(Lv0~15 · 첫째 0~6 · 둘째 ≤4)만 확인값. 나머지는 값역 안에서 채웠다</td></tr>
-              <tr><td>order_fixed 16행 요구품</td><td>구조(순번·슬롯·요구 2종)는 확인값, 어떤 아이템인지는 임시</td></tr>
-              <tr><td>손님 13명</td><td>이름과 open_day 는 임시. 끝 3명이 open_day 999 라 일반 풀에 안 드는 것만 실제 규칙</td></tr>
-              <tr><td>생성기 주머니</td><td>실물 produce_weight 를 못 봐서 60/28/12 로 뒀다. <b>가중치는 확률이 아니라 남은 개수</b>라는 규칙만 지켰다</td></tr>
+              <tr><td><code>order_repeat_reset_count</code> = 3</td><td>const 48행에 이 칸이 <b>없다</b>. 개발 기획서 1.2.1 의 값을 얹었다 &mdash; 시트에 칸이 생기면 지운다</td></tr>
+              <tr><td><code>event_order_score</code> 5행</td><td>시트 탭이 <b>[작성중]</b>. 기준값이 무엇인지도 안 적혀 있어 난이도로 가정했다</td></tr>
+              <tr><td><code>level_curve.reward_coin</code></td><td>시트의 레벨 보상은 <code>reward_item_key_1~3</code>(아이템 지급)이라 코인 칸이 없다. 레벨업 체감용 임시값</td></tr>
+              <tr><td>판매 확인창 임계</td><td><code>rare</code> 칸과 문구 스펙 <code>Rw_Board_Sell_Confirm_Popup</code> 이 서로 어긋난 채 열려 있다 (시트 이슈)</td></tr>
+              <tr><td>하루 누적 난이도</td><td><code>order_daily_diff_band_1/2</code> 가 const 에 있는데 개발 기획서 A8 은 「쓰지 않는다」고 한다. 벤치는 미구현</td></tr>
+              <tr><td>시트 판본</td><td>로컬 xlsx 는 <b>구판(2026-09-08)</b>. <code>item_spec</code> 신판은 텍스트로만 받았고 실물 미수령이다</td></tr>
+              <tr><td><code>produce_weight</code> 해석</td><td>시트 헤더는 「산출 <b>상대 가중치</b>」, 기존 정리 노트는 「<b>남은 개수</b>」. 합이 100이 아니고 단계마다 총합이 달라 가중치로 읽었다 &mdash; 확인 필요</td></tr>
             </tbody>
           </table>
         </div>
@@ -771,8 +805,10 @@
           <table>
             <thead><tr><th>항목</th><th>선택</th><th>이유</th></tr></thead>
             <tbody>
+              <tr><td>칩 색과 무늬</td><td>색 = <b>클러스터 10종</b> · 무늬 = 클러스터 안 체인 순번 · 생성기 체인은 겹링</td><td>체인이 30개라 체인마다 색을 주면 인접색이 안 갈린다. 한 클러스터의 체인이 최대 5개라 무늬가 남는다</td></tr>
+              <tr><td>칩 이름 표기</td><td>이름을 단어 단위로 접어 칸에 쌓고, 전체 이름은 <code>title</code> 로</td><td>실물 이름이 1~9자라(「못」 ~ 「작은 이벤트 상자」) 58px 칸에 한 줄로 안 들어간다. 아이콘이 없는 벤치라 글자로 버틴다</td></tr>
               <tr><td>난수 생성기</td><td>xorshift32 (<code>x^=x&lt;&lt;13; x^=x&gt;&gt;&gt;17; x^=x&lt;&lt;5</code>)</td><td>오더 절은 <code>rng_state</code> 직렬화만 규정하고 알고리즘을 안 건다. 봇 레이스(6.3)에 있는 규격을 가져왔다. <code>Math.random()</code> 은 직렬화가 안 돼 애초에 선택지가 아니다</td></tr>
-              <tr><td>초기 보드 배치</td><td>생성기 6개를 임시 배치</td><td>PD-01(신규 유저 63칸 초기표)이 아직 미결이다</td></tr>
+              <tr><td>초기 보드 배치</td><td>생성기 체인마다 <b>가장 낮은 생성기</b> 6개 (공구함 104 · 2인 티팟 405 · 반죽 그릇 704 · 화단 1006 · 리넨 바구니 1205 · 벌통 1505)</td><td>PD-01(신규 유저 63칸 초기표)이 아직 미결이다. quest 체인은 퀘스트로 열리는 것이라 뺐다</td></tr>
               <tr><td>심부름 버튼</td><td>경험치·코인만 지급하는 더미</td><td>경험치 공급원이 <code>/chore/claim</code> 하나뿐이라, 마을·꾸미기를 빼면 레벨이 안 올라 랜덤 오더 경로를 한 번도 못 밟는다</td></tr>
             </tbody>
           </table>
@@ -792,14 +828,30 @@
       let syncRaf = 0, syncLast = -1;
       const $ = (s) => document.querySelector(s);
       const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-      const letterOf = (c) => String.fromCharCode(65 + (c - 2)); // chain_id 2 → A
-      const hueOf = (c) => [12, 150, 262, 38, 196, 320, 92, 228, 352, 176, 58, 282][(c - 2) % 12];
       const codeOf = (chain, step) => chain * 100 + step;
       const chainOf = (code) => Math.floor(code / 100);
       const stepOf = (code) => code % 100;
-      const labelOf = (code) => letterOf(chainOf(code)) + stepOf(code);
-      // 체인마다 다른 실루엣 — 색이 비슷해도 모양으로 갈린다
-      const shapeOf = (code) => `rw-shape sh${(chainOf(code) - 2 + 12) % 12}`;
+      /* 색은 클러스터가, 무늬는 클러스터 안 순번이 정한다.
+         체인이 30개라 체인마다 색을 주면 인접색이 안 갈린다 — 같은 공방 것끼리 같은 색으로
+         묶고 그 안에서 테두리 처리로 가른다. 한 클러스터의 체인은 최대 5개라 무늬 12종이 남는다. */
+      const CLUSTER_HUE = [22, 168, 34, 96, 200, 45, 322, 268, 178, 216];
+      const hueOfChain = (id) => CLUSTER_HUE[(CHAIN_BY_ID.get(id)?.cluster ?? 0) % CLUSTER_HUE.length];
+      const hueOf = (code) => hueOfChain(chainOf(code));
+      const labelOf = (code) => specOf(code)?.name || `#${code}`;
+      /* 기획서 표기 규칙 「이름 (Lvl N)」 — 칸이 좁아 이름만 그리고 나머지는 title 로 뺀다 */
+      const titleOf = (code) => {
+        const sp = specOf(code); if (!sp) return `#${code}`;
+        return `${sp.name} (${chainInfo(code).name} Lv${stepOf(code)})${sp.is_generator ? " · 생성기" : ""}`;
+      };
+      /* 생성기 체인(main·sub·quest)은 겹링 — 산출 체인(res)과 한눈에 갈린다 */
+      const shapeOf = (code) => `rw-shape sh${chainInfo(code).seq % 12}${chainInfo(code).line === "res" ? "" : " gline"}`;
+      /* 이름이 1~9자로 들쭉날쭉하다. 길수록 글자를 줄인다 */
+      const lenOf = (code) => { const n = labelOf(code).length; return n <= 3 ? "" : n <= 5 ? " l5" : n <= 7 ? " l7" : " l9"; };
+      /* 요구·보관 칩 마크업 — 레일·정보바·인벤토리·분포에 같은 조각이 네 번 나온다. 한 군데서 만든다 */
+      function chipTag(code, cls = "", extra = "") {
+        return `<span class="rw-req ${shapeOf(code)}${lenOf(code)}${cls ? " " + cls : ""}" style="--h:${hueOf(code)}deg"`
+             + ` title="${titleOf(code)}"><span class="t">${labelOf(code)}</span>${extra}</span>`;
+      }
 
       function toast(m) {
         const t = $("#rwToast");
@@ -1050,11 +1102,12 @@
         const gen = !!sp.is_generator;
         const mult = S && S.boost ? S.boost : 1;
         const d = document.createElement("div");
-        d.className = `rw-fly ${shapeOf(code)}${gen ? " gen m" + mult : ""}`;
+        d.className = `rw-fly ${shapeOf(code)}${lenOf(code)}${gen ? " gen m" + mult : ""}`;
         d.style.cssText =
-          `--h:${hueOf(chainOf(code))}deg;width:${box.w}px;height:${box.h}px;left:0;top:0;` +
-          `font-size:${box.w * 0.34}px;color:hsl(var(--h) 58% 26%)`;
-        d.textContent = labelOf(code);
+          `--h:${hueOf(code)}deg;width:${box.w}px;height:${box.h}px;left:0;top:0;` +
+          `color:hsl(var(--h) 58% 26%)`;
+        const ft = document.createElement("span");
+        ft.className = "t"; ft.textContent = labelOf(code); d.appendChild(ft);
         /* 구석 배지도 그대로 태운다 — 보드에서 보던 배치 그대로다.
            A 우상단 시계(은=충전중 / 금=수확 대기) · B 우하단 번개 또는 오더 체크 · C 좌하단 왕관.
            문서 규칙대로 번개와 체크는 절대 같이 뜨지 않는다. */
@@ -1104,7 +1157,7 @@
 
       /* 임팩트 링 + 스파크 */
       function burst(box, code) {
-        const h = hueOf(chainOf(code));
+        const h = hueOf(code);
         const ring = document.createElement("div");
         ring.className = "rw-ring";
         ring.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px;width:${box.w * 0.7}px;height:${box.w * 0.7}px`;
@@ -1298,97 +1351,631 @@
       /* ======================================================================
          2. 데이터 — 확인값 + 시드값(근거 섹션 참조)
          ====================================================================== */
-      const CHAINS = [
-        { id: 2, name: "반죽·빵", len: 9 },
-        { id: 3, name: "목재", len: 8 },
-        { id: 4, name: "천·직물", len: 7 },
-        { id: 5, name: "화분·식물", len: 8 },
-        { id: 6, name: "공구", len: 7 },
-        { id: 7, name: "유리·병", len: 6 },
-        { id: 8, name: "종이·편지", len: 7 },
-        { id: 9, name: "금속·못", len: 8 },
+      /* ── 실물 시트 데이터 ─────────────────────────────────────────
+         출처  [PMM] 밸런스시트.xlsx · 구판 2026-09-08
+         생성  _ignore/tools/extract-items.py — 시트가 바뀌면 다시 돌려 통째로 교체한다
+         주의  name 은 시트의 에디터 전용 사이드카 칸이다. 실물 런타임은
+               item_display.name_key → string_code 를 거친다. 벤치는 문구
+               테이블을 안 쓰므로 이름을 직접 박는다.
+         ──────────────────────────────────────────────────────────── */
+      const CLUSTERS = ["C1 공방","C2 티하우스","C3 부엌","C4 정원","C5 리넨","C6 양봉","Q1 클로버","Q2 자수","Q3 웰니스","C0 재화"];
+      /* [chain_id, chain_key, 이름, 클러스터 index, 클러스터 내 순번, line_type] */
+      const CHAIN_DB = [
+        [1,"M_TOOL","공구함",0,0,"main"],
+        [2,"R_TOOL","공구",0,1,"res"],
+        [3,"R_PAINT","페인트",0,2,"res"],
+        [4,"M_TEA","찻주전자",1,0,"main"],
+        [5,"R_TEA","차",1,1,"res"],
+        [6,"R_CUP","찻잔",1,2,"res"],
+        [7,"M_OVEN","오븐",2,0,"main"],
+        [8,"R_BAKE","빵·디저트",2,1,"res"],
+        [9,"R_JAM","잼",2,2,"res"],
+        [10,"S_SEED","씨앗 상자",3,0,"sub"],
+        [11,"R_FLOWER","꽃",3,1,"res"],
+        [12,"M_LINEN","리넨 바구니",4,0,"main"],
+        [13,"R_LINEN","수건·천",4,1,"res"],
+        [15,"M_HIVE","벌통",5,0,"main"],
+        [16,"R_HONEY","꿀",5,1,"res"],
+        [17,"R_WAX","밀랍",5,2,"res"],
+        [18,"Q_CAT","고양이 바구니",6,0,"quest"],
+        [19,"R_CAT","고양이",6,1,"res"],
+        [20,"Q_SEW","재봉 바구니",7,0,"quest"],
+        [21,"R_EMB","자수 소품",7,1,"res"],
+        [22,"Q_WAX","밀랍 냄비",8,0,"quest"],
+        [23,"R_CANDLE","향초",8,1,"res"],
+        [24,"R_SOAP","비누",8,2,"res"],
+        [25,"X_BOXR","붉은 상자",0,3,"res"],
+        [26,"X_BOXG","초록 상자",0,4,"res"],
+        [27,"V_COIN","동전",9,0,"res"],
+        [28,"V_GEM","유리알",9,1,"res"],
+        [29,"V_SPARK","불씨",9,2,"res"],
+        [30,"X_BOXE","불씨 상자",9,3,"res"],
+        [31,"X_BOXEV","이벤트 상자",9,4,"res"],
       ];
+      /* [코드, 다음, 판매가, rare, 생성기, 이름, name_en, chain_key,
+          재고상한, 에너지, 회복초, [[산출코드, 가중치], …]] */
+      const ITEM_DB = [
+        [101,102,0,0,0,"녹슨 못","Rusty Nail","M_TOOL",0,0,0,[]],
+        [102,103,0,0,0,"못 상자","Box of Nails","M_TOOL",0,0,0,[]],
+        [103,104,1,0,0,"연장 주머니","Tool Pouch","M_TOOL",0,0,0,[]],
+        [104,105,2,0,1,"공구함","Toolbox","M_TOOL",80,1,6,[[203,100]]],
+        [105,106,3,0,1,"작업대","Workbench","M_TOOL",80,1,180,[[203,37],[303,5]]],
+        [106,107,4,0,1,"이동 작업대","Rolling Bench","M_TOOL",80,1,180,[[203,34],[204,2],[205,1],[303,5]]],
+        [107,108,5,0,1,"공구 벽","Tool Wall","M_TOOL",80,1,180,[[203,33],[204,3],[205,1],[303,5]]],
+        [108,109,6,0,1,"전동 공구대","Power Bench","M_TOOL",80,1,180,[[203,32],[204,4],[205,1],[303,5]]],
+        [109,110,7,0,1,"수리 작업장","Repair Bay","M_TOOL",80,1,180,[[203,31],[204,5],[205,1],[303,5]]],
+        [110,111,8,0,1,"복원 공방","Restoration Shop","M_TOOL",80,1,180,[[203,31],[204,4],[205,2],[303,5]]],
+        [111,0,9,0,1,"마스터 공방","Master Workshop","M_TOOL",80,1,180,[[203,31],[204,4],[205,2],[303,4],[304,1]]],
+        [201,202,0,0,0,"나사","Screw","R_TOOL",0,0,0,[]],
+        [202,203,0,0,0,"못","Nail","R_TOOL",0,0,0,[]],
+        [203,204,1,0,0,"망치","Hammer","R_TOOL",0,0,0,[]],
+        [204,205,2,0,0,"드라이버","Screwdriver","R_TOOL",0,0,0,[]],
+        [205,206,3,0,0,"펜치","Pliers","R_TOOL",0,0,0,[]],
+        [206,207,4,0,0,"렌치","Wrench","R_TOOL",0,0,0,[]],
+        [207,208,5,0,0,"톱","Saw","R_TOOL",0,0,0,[]],
+        [208,209,6,0,0,"줄자","Tape Measure","R_TOOL",0,0,0,[]],
+        [209,210,7,0,0,"전동 드릴","Power Drill","R_TOOL",0,0,0,[]],
+        [210,0,8,0,0,"공구 세트","Tool Set","R_TOOL",0,0,0,[]],
+        [301,302,0,0,0,"페인트 붓","Paintbrush","R_PAINT",0,0,0,[]],
+        [302,303,0,0,0,"붓 세트","Brush Set","R_PAINT",0,0,0,[]],
+        [303,304,1,0,0,"롤러","Paint Roller","R_PAINT",0,0,0,[]],
+        [304,305,2,0,0,"페인트 통","Paint Can","R_PAINT",0,0,0,[]],
+        [305,306,3,0,0,"색 팔레트","Paint Palette","R_PAINT",0,0,0,[]],
+        [306,307,4,0,0,"페인트 세트","Paint Kit","R_PAINT",0,0,0,[]],
+        [307,0,5,0,0,"도색 장비","Painting Rig","R_PAINT",0,0,0,[]],
+        [401,402,0,0,0,"마른 찻잎","Dried Tea Leaf","M_TEA",0,0,0,[]],
+        [402,403,0,0,0,"찻잎 봉지","Tea Pouch","M_TEA",0,0,0,[]],
+        [403,404,1,0,0,"찻잎 단지","Tea Caddy","M_TEA",0,0,0,[]],
+        [404,405,2,0,0,"찻주전자","Teapot","M_TEA",0,0,0,[]],
+        [405,406,3,0,1,"2인 티팟","Two-Cup Pot","M_TEA",26,1,180,[[503,100]]],
+        [406,407,4,0,1,"티 카트","Tea Cart","M_TEA",26,1,180,[[503,90],[504,10]]],
+        [407,408,5,0,1,"티 트롤리","Tea Trolley","M_TEA",26,1,180,[[503,85],[504,15]]],
+        [408,409,6,0,1,"티 스탠드","Tea Stand","M_TEA",26,1,180,[[503,85],[504,10],[505,5]]],
+        [409,410,7,0,1,"은주전자","Silver Urn","M_TEA",26,1,180,[[503,82],[504,13],[505,5]]],
+        [410,411,8,0,1,"티 바","Tea Bar","M_TEA",26,1,180,[[503,80],[504,15],[505,5]]],
+        [411,0,9,0,1,"티 살롱","Tea Salon","M_TEA",26,1,180,[[503,80],[504,15],[505,5],[603,20]]],
+        [501,502,0,0,0,"따뜻한 물","Hot Water","R_TEA",0,0,0,[]],
+        [502,503,0,0,0,"찻물","Steeped Tea","R_TEA",0,0,0,[]],
+        [503,504,1,0,0,"홍차","Black Tea","R_TEA",0,0,0,[]],
+        [504,505,2,0,0,"밀크티","Milk Tea","R_TEA",0,0,0,[]],
+        [505,506,3,0,0,"레몬티","Lemon Tea","R_TEA",0,0,0,[]],
+        [506,507,4,0,0,"허브티","Herbal Tea","R_TEA",0,0,0,[]],
+        [507,508,5,0,0,"로즈티","Rose Tea","R_TEA",0,0,0,[]],
+        [508,509,6,0,0,"아이스티","Iced Tea","R_TEA",0,0,0,[]],
+        [509,510,7,0,0,"버블티","Bubble Tea","R_TEA",0,0,0,[]],
+        [510,511,8,0,0,"티포트","Pot of Tea","R_TEA",0,0,0,[]],
+        [511,512,9,0,0,"2인 티세트","Tea for Two","R_TEA",0,0,0,[]],
+        [512,513,10,0,0,"애프터눈 티","Afternoon Tea","R_TEA",0,0,0,[]],
+        [513,514,11,0,0,"3단 티 스탠드","Tiered Tea Set","R_TEA",0,0,0,[]],
+        [514,0,12,0,0,"티 파티","Tea Party","R_TEA",0,0,0,[]],
+        [601,602,0,0,0,"머그","Mug","R_CUP",0,0,0,[]],
+        [602,603,0,0,0,"찻잔","Teacup","R_CUP",0,0,0,[]],
+        [603,604,1,0,0,"받침 찻잔","Cup and Saucer","R_CUP",0,0,0,[]],
+        [604,605,2,0,0,"꽃무늬 찻잔","Floral Teacup","R_CUP",0,0,0,[]],
+        [605,606,3,0,0,"설탕 그릇","Sugar Bowl","R_CUP",0,0,0,[]],
+        [606,607,4,0,0,"찻잔 세트","Tea Set","R_CUP",0,0,0,[]],
+        [607,0,5,0,0,"식기 세트","Dinner Service","R_CUP",0,0,0,[]],
+        [701,702,0,0,0,"장작","Firewood","M_OVEN",0,0,0,[]],
+        [702,703,0,0,0,"장작더미","Wood Stack","M_OVEN",0,0,0,[]],
+        [703,704,1,0,0,"무쇠 팬","Cast Iron Pan","M_OVEN",0,0,0,[]],
+        [704,705,2,0,1,"반죽 그릇","Mixing Bowl","M_OVEN",80,1,2,[[803,100]]],
+        [705,706,3,0,1,"화덕","Hearth Oven","M_OVEN",80,1,30,[[803,35],[804,2],[903,5]]],
+        [706,707,4,0,1,"벽돌 오븐","Brick Oven","M_OVEN",80,1,180,[[803,34],[804,2],[805,1],[903,5]]],
+        [707,708,5,0,1,"제빵 오븐","Baker's Oven","M_OVEN",80,1,180,[[803,33],[804,3],[805,1],[903,5]]],
+        [708,709,6,0,1,"2단 오븐","Double Oven","M_OVEN",80,1,180,[[803,32],[804,4],[805,1],[903,5]]],
+        [709,710,7,0,1,"제과 오븐","Pastry Oven","M_OVEN",80,1,180,[[803,31],[804,5],[805,1],[903,5]]],
+        [710,711,8,0,1,"마을 빵집","Village Bakery","M_OVEN",80,1,180,[[803,31],[804,4],[805,2],[903,5]]],
+        [711,0,9,0,1,"베이커리","Bakery Counter","M_OVEN",80,1,180,[[803,31],[804,4],[805,2],[903,4],[904,1]]],
+        [801,802,0,0,0,"밀알","Grain","R_BAKE",0,0,0,[]],
+        [802,803,0,0,0,"밀가루","Flour","R_BAKE",0,0,0,[]],
+        [803,804,1,0,0,"반죽","Dough","R_BAKE",0,0,0,[]],
+        [804,805,2,0,0,"롤빵","Bread Roll","R_BAKE",0,0,0,[]],
+        [805,806,3,0,0,"스콘","Scone","R_BAKE",0,0,0,[]],
+        [806,807,4,0,0,"머핀","Muffin","R_BAKE",0,0,0,[]],
+        [807,808,5,0,0,"크루아상","Croissant","R_BAKE",0,0,0,[]],
+        [808,809,6,0,0,"도넛","Doughnut","R_BAKE",0,0,0,[]],
+        [809,810,7,0,0,"과일 타르트","Fruit Tart","R_BAKE",0,0,0,[]],
+        [810,811,8,0,0,"레몬 파이","Lemon Pie","R_BAKE",0,0,0,[]],
+        [811,812,9,0,0,"쇼트케이크","Shortcake","R_BAKE",0,0,0,[]],
+        [812,0,10,0,0,"3단 케이크","Tiered Cake","R_BAKE",0,0,0,[]],
+        [901,902,0,0,0,"산딸기","Berry","R_JAM",0,0,0,[]],
+        [902,903,0,0,0,"설탕 단지","Sugar Jar","R_JAM",0,0,0,[]],
+        [903,904,1,0,0,"딸기잼","Strawberry Jam","R_JAM",0,0,0,[]],
+        [904,905,2,0,0,"마멀레이드","Marmalade","R_JAM",0,0,0,[]],
+        [905,906,3,0,0,"잼 선물함","Jam Gift Box","R_JAM",0,0,0,[]],
+        [906,907,4,0,0,"잼 진열대","Jam Display","R_JAM",0,0,0,[]],
+        [907,0,5,0,0,"잼 수레","Jam Cart","R_JAM",0,0,0,[]],
+        [1001,1002,0,0,0,"마른 씨앗","Dried Seed","S_SEED",0,0,0,[]],
+        [1002,1003,0,0,0,"씨앗 봉지","Seed Packet","S_SEED",0,0,0,[]],
+        [1003,1004,1,0,0,"모종판","Seed Tray","S_SEED",0,0,0,[]],
+        [1004,1005,2,0,0,"작은 화분","Small Pot","S_SEED",0,0,0,[]],
+        [1005,1006,3,0,0,"화분 선반","Pot Shelf","S_SEED",0,0,0,[]],
+        [1006,1007,4,0,1,"화단","Flower Bed","S_SEED",6,0,3600,[[1103,10]]],
+        [1007,1008,5,0,1,"온상","Cold Frame","S_SEED",8,0,4800,[[1103,90],[1104,10]]],
+        [1008,1009,6,0,1,"유리 온실","Glasshouse","S_SEED",10,0,6600,[[1103,80],[1104,20]]],
+        [1009,1010,7,0,1,"장미 아치","Rose Arch","S_SEED",12,0,9600,[[1103,75],[1104,25]]],
+        [1010,0,8,0,1,"정원 온실","Conservatory","S_SEED",12,0,9600,[[1103,80],[1104,15],[1105,5]]],
+        [1101,1102,0,0,0,"새싹","Sprout","R_FLOWER",0,0,0,[]],
+        [1102,1103,0,0,0,"모종","Seedling","R_FLOWER",0,0,0,[]],
+        [1103,1104,1,0,0,"들꽃","Wildflower","R_FLOWER",0,0,0,[]],
+        [1104,1105,2,0,0,"데이지","Daisy","R_FLOWER",0,0,0,[]],
+        [1105,1106,3,0,0,"튤립","Tulip","R_FLOWER",0,0,0,[]],
+        [1106,1107,4,0,0,"수국","Hydrangea","R_FLOWER",0,0,0,[]],
+        [1107,1108,5,0,0,"장미","Rose","R_FLOWER",0,0,0,[]],
+        [1108,1109,6,0,0,"꽃다발","Bouquet","R_FLOWER",0,0,0,[]],
+        [1109,1110,7,0,0,"리본 꽃다발","Ribboned Bouquet","R_FLOWER",0,0,0,[]],
+        [1110,1111,8,0,0,"꽃바구니","Flower Basket","R_FLOWER",0,0,0,[]],
+        [1111,1112,9,0,0,"화환","Wreath","R_FLOWER",0,0,0,[]],
+        [1112,0,10,0,0,"대형 화환","Grand Wreath","R_FLOWER",0,0,0,[]],
+        [1201,1202,0,0,0,"실 한 타래","Thread Skein","M_LINEN",0,0,0,[]],
+        [1202,1203,0,0,0,"천 조각","Fabric Scrap","M_LINEN",0,0,0,[]],
+        [1203,1204,1,0,0,"마른 수건","Dry Towel","M_LINEN",0,0,0,[]],
+        [1204,1205,2,0,0,"빨래 바구니","Laundry Basket","M_LINEN",0,0,0,[]],
+        [1205,1206,3,0,1,"리넨 바구니","Linen Basket","M_LINEN",42,1,180,[[1303,100]]],
+        [1206,1207,4,0,1,"리넨 선반","Linen Shelf","M_LINEN",42,1,180,[[1303,95],[1304,5]]],
+        [1207,1208,5,0,1,"리넨 장","Linen Cabinet","M_LINEN",42,1,180,[[1303,90],[1304,10]]],
+        [1208,1209,6,0,1,"세탁 카트","Laundry Cart","M_LINEN",42,1,180,[[1303,90],[1304,8],[1305,2]]],
+        [1209,1210,7,0,1,"다림질대","Ironing Station","M_LINEN",42,1,180,[[1303,89],[1304,8],[1305,3]]],
+        [1210,1211,8,0,1,"리넨 창고","Linen Store","M_LINEN",42,1,180,[[1303,88],[1304,9],[1305,3]]],
+        [1211,0,9,0,1,"공방 리넨실","Linen Room","M_LINEN",42,1,180,[[1303,87],[1304,9],[1305,4]]],
+        [1301,1302,0,0,0,"행주","Dishcloth","R_LINEN",0,0,0,[]],
+        [1302,1303,0,0,0,"손수건","Handkerchief","R_LINEN",0,0,0,[]],
+        [1303,1304,1,0,0,"냅킨","Napkin","R_LINEN",0,0,0,[]],
+        [1304,1305,2,0,0,"수건","Towel","R_LINEN",0,0,0,[]],
+        [1305,1306,3,0,0,"자수 냅킨","Embroidered Napkin","R_LINEN",0,0,0,[]],
+        [1306,1307,4,0,0,"테이블보","Tablecloth","R_LINEN",0,0,0,[]],
+        [1307,1308,5,0,0,"레이스 테이블보","Lace Tablecloth","R_LINEN",0,0,0,[]],
+        [1308,1309,6,0,0,"침구 세트","Bedding Set","R_LINEN",0,0,0,[]],
+        [1309,1310,7,0,0,"커튼","Curtain","R_LINEN",0,0,0,[]],
+        [1310,1311,8,0,0,"자수 커튼","Embroidered Curtain","R_LINEN",0,0,0,[]],
+        [1311,0,9,0,0,"창가 커튼 세트","Window Set","R_LINEN",0,0,0,[]],
+        [1501,1502,0,0,0,"마른 풀","Dry Grass","M_HIVE",0,0,0,[]],
+        [1502,1503,0,0,0,"나뭇조각","Wood Chip","M_HIVE",0,0,0,[]],
+        [1503,1504,1,0,0,"벌집 조각","Comb Piece","M_HIVE",0,0,0,[]],
+        [1504,1505,2,0,0,"작은 벌집","Small Comb","M_HIVE",0,0,0,[]],
+        [1505,1506,3,0,1,"벌통","Beehive","M_HIVE",36,1,180,[[1603,100]]],
+        [1506,1507,4,0,1,"이단 벌통","Two-Tier Hive","M_HIVE",36,1,180,[[1603,34],[1703,3]]],
+        [1507,1508,5,0,1,"삼단 벌통","Three-Tier Hive","M_HIVE",36,1,180,[[1603,33],[1604,1],[1703,5]]],
+        [1508,1509,6,0,1,"양봉장","Apiary","M_HIVE",36,1,180,[[1603,34],[1604,1],[1605,1],[1703,6]]],
+        [1509,1510,7,0,1,"대형 양봉장","Grand Apiary","M_HIVE",36,1,180,[[1603,33],[1604,2],[1605,1],[1703,6]]],
+        [1510,1511,8,0,1,"유리 벌통","Glass Hive","M_HIVE",36,1,180,[[1603,32],[1604,3],[1605,1],[1703,6]]],
+        [1511,0,9,0,1,"마을 양봉원","Village Apiary","M_HIVE",36,1,180,[[1603,32],[1604,3],[1605,1],[1703,5],[1704,1]]],
+        [1601,1602,0,0,0,"꽃가루","Pollen","R_HONEY",0,0,0,[]],
+        [1602,1603,0,0,0,"꿀방울","Honey Drop","R_HONEY",0,0,0,[]],
+        [1603,1604,1,0,0,"벌집 꿀","Comb Honey","R_HONEY",0,0,0,[]],
+        [1604,1605,2,0,0,"꿀단지","Honey Jar","R_HONEY",0,0,0,[]],
+        [1605,1606,3,0,0,"아카시아 꿀","Acacia Honey","R_HONEY",0,0,0,[]],
+        [1606,1607,4,0,0,"야생화 꿀","Wildflower Honey","R_HONEY",0,0,0,[]],
+        [1607,1608,5,0,0,"밤꿀","Chestnut Honey","R_HONEY",0,0,0,[]],
+        [1608,1609,6,0,0,"벌집채 꿀","Honeycomb Jar","R_HONEY",0,0,0,[]],
+        [1609,1610,7,0,0,"허니 디퍼","Honey Dipper","R_HONEY",0,0,0,[]],
+        [1610,1611,8,0,0,"꿀 선물함","Honey Gift Box","R_HONEY",0,0,0,[]],
+        [1611,1612,9,0,0,"꿀 진열대","Honey Display","R_HONEY",0,0,0,[]],
+        [1612,0,10,0,0,"마을 꿀 세트","Village Honey Set","R_HONEY",0,0,0,[]],
+        [1701,1702,0,0,0,"밀랍 부스러기","Wax Crumb","R_WAX",0,0,0,[]],
+        [1702,1703,0,0,0,"밀랍 조각","Wax Chip","R_WAX",0,0,0,[]],
+        [1703,1704,1,0,0,"밀랍 덩이","Wax Block","R_WAX",0,0,0,[]],
+        [1704,1705,2,0,0,"정제 밀랍","Refined Wax","R_WAX",0,0,0,[]],
+        [1705,1706,3,0,0,"밀랍 시트","Wax Sheet","R_WAX",0,0,0,[]],
+        [1706,1707,4,0,0,"밀랍 블록","Wax Bar","R_WAX",0,0,0,[]],
+        [1707,0,5,0,0,"밀랍 상자","Wax Box","R_WAX",0,0,0,[]],
+        [1801,1802,0,0,0,"방석","Cushion","Q_CAT",0,0,0,[]],
+        [1802,1803,0,0,0,"담요","Blanket","Q_CAT",0,0,0,[]],
+        [1803,1804,1,0,0,"바구니","Basket","Q_CAT",0,0,0,[]],
+        [1804,1805,2,0,1,"고양이 바구니","Cat Basket","Q_CAT",6,1,9000,[[1903,100]]],
+        [1805,1806,3,0,1,"캣 하우스","Cat House","Q_CAT",8,1,14400,[[1903,90],[1904,10]]],
+        [1806,1807,4,0,1,"캣 타워","Cat Tower","Q_CAT",10,1,19800,[[1903,80],[1904,15],[1905,5]]],
+        [1807,0,5,0,1,"대형 캣 타워","Grand Cat Tower","Q_CAT",12,1,21600,[[1903,70],[1904,20],[1905,10]]],
+        [1901,1902,0,0,0,"아기 고양이","Kitten","R_CAT",0,0,0,[]],
+        [1902,1903,0,0,0,"턱시도","Tuxedo","R_CAT",0,0,0,[]],
+        [1903,1904,1,0,0,"치즈태비","Ginger Tabby","R_CAT",0,0,0,[]],
+        [1904,1905,2,0,0,"삼색이","Calico","R_CAT",0,0,0,[]],
+        [1905,1906,3,0,0,"러시안 블루","Russian Blue","R_CAT",0,0,0,[]],
+        [1906,1907,4,0,0,"브리티시 숏헤어","British Shorthair","R_CAT",0,0,0,[]],
+        [1907,1908,5,0,0,"페르시안","Persian","R_CAT",0,0,0,[]],
+        [1908,1909,6,0,0,"메인쿤","Maine Coon","R_CAT",0,0,0,[]],
+        [1909,1910,7,0,0,"노르웨이숲","Norwegian Forest","R_CAT",0,0,0,[]],
+        [1910,0,8,0,0,"스핑크스","Sphynx","R_CAT",0,0,0,[]],
+        [2001,2002,0,0,0,"실 감개","Bobbin","Q_SEW",0,0,0,[]],
+        [2002,2003,0,0,0,"바늘쌈","Needle Book","Q_SEW",0,0,0,[]],
+        [2003,2004,1,0,1,"재봉 바구니","Sewing Basket","Q_SEW",4,1,3600,[[2103,10]]],
+        [2004,2005,2,0,1,"반짇고리","Sewing Box","Q_SEW",6,1,7200,[[2103,90],[2104,10]]],
+        [2005,2006,3,0,1,"재봉 상자","Sewing Chest","Q_SEW",8,1,10800,[[2103,80],[2104,15],[2105,5]]],
+        [2006,0,4,0,1,"재봉 장","Sewing Cabinet","Q_SEW",10,1,14400,[[2103,75],[2104,15],[2105,10]]],
+        [2101,2102,0,0,0,"단추","Button","R_EMB",0,0,0,[]],
+        [2102,2103,0,0,0,"리본","Ribbon","R_EMB",0,0,0,[]],
+        [2103,2104,1,0,0,"레이스","Lace","R_EMB",0,0,0,[]],
+        [2104,2105,2,0,0,"자수 천","Embroidery Cloth","R_EMB",0,0,0,[]],
+        [2105,2106,3,0,0,"자수 손수건","Embroidered Hanky","R_EMB",0,0,0,[]],
+        [2106,2107,4,0,0,"자수 쿠션","Embroidered Cushion","R_EMB",0,0,0,[]],
+        [2107,2108,5,0,0,"자수 액자","Embroidery Frame","R_EMB",0,0,0,[]],
+        [2108,2109,6,0,0,"자수 벽걸이","Wall Hanging","R_EMB",0,0,0,[]],
+        [2109,2110,7,0,0,"자수 커버","Embroidered Cover","R_EMB",0,0,0,[]],
+        [2110,0,8,0,0,"자수 액자 세트","Frame Set","R_EMB",0,0,0,[]],
+        [2201,0,0,0,1,"밀랍 냄비","Wax Pot","Q_WAX",6,1,7200,[[2303,12],[2403,1]]],
+        [2301,2302,0,0,0,"초 토막","Candle Stub","R_CANDLE",0,0,0,[]],
+        [2302,2303,0,0,0,"양초","Candle","R_CANDLE",0,0,0,[]],
+        [2303,2304,1,0,0,"유리 캔들","Glass Candle","R_CANDLE",0,0,0,[]],
+        [2304,2305,2,0,0,"향초","Scented Candle","R_CANDLE",0,0,0,[]],
+        [2305,2306,3,0,0,"라벤더 캔들","Lavender Candle","R_CANDLE",0,0,0,[]],
+        [2306,2307,4,0,0,"3심 캔들","Three-Wick Candle","R_CANDLE",0,0,0,[]],
+        [2307,2308,5,0,0,"캔들 홀더","Candle Holder","R_CANDLE",0,0,0,[]],
+        [2308,2309,6,0,0,"랜턴","Lantern","R_CANDLE",0,0,0,[]],
+        [2309,2310,7,0,0,"캔들 세트","Candle Set","R_CANDLE",0,0,0,[]],
+        [2310,0,8,0,0,"캔들 선물함","Candle Gift Box","R_CANDLE",0,0,0,[]],
+        [2401,2402,0,0,0,"비누 조각","Soap Sliver","R_SOAP",0,0,0,[]],
+        [2402,2403,0,0,0,"비누","Soap Bar","R_SOAP",0,0,0,[]],
+        [2403,2404,1,0,0,"꽃비누","Flower Soap","R_SOAP",0,0,0,[]],
+        [2404,2405,2,0,0,"허브 비누","Herbal Soap","R_SOAP",0,0,0,[]],
+        [2405,2406,3,0,0,"배스밤","Bath Bomb","R_SOAP",0,0,0,[]],
+        [2406,0,4,0,0,"비누 선물함","Soap Gift Box","R_SOAP",0,0,0,[]],
+        [2501,2502,0,0,0,"붉은 상자","Red Chest","X_BOXR",8,0,0,[[701,2],[101,1],[401,1],[2701,2],[2801,2]]],
+        [2502,0,0,0,0,"붉은 장식 상자","Fancy Red Chest","X_BOXR",12,0,0,[[702,2],[102,1],[402,1],[2701,1],[2801,1],[2702,3],[2802,3]]],
+        [2601,2602,0,0,0,"초록 상자","Green Chest","X_BOXG",8,0,0,[[1501,2],[1001,1],[1201,1],[2701,2],[2801,2]]],
+        [2602,0,0,0,0,"초록 장식 상자","Fancy Green Chest","X_BOXG",12,0,0,[[1502,2],[1002,1],[1202,1],[2701,1],[2801,1],[2702,3],[2802,3]]],
+        [2701,2702,0,0,0,"동전 한 닢","A Coin","V_COIN",0,0,0,[]],
+        [2702,2703,0,0,0,"동전 두 닢","A Couple of Coins","V_COIN",0,0,0,[]],
+        [2703,2704,1,0,0,"잔돈","Spare Coins","V_COIN",0,0,0,[]],
+        [2704,2705,2,0,0,"동전 더미","Stack of Coins","V_COIN",0,0,0,[]],
+        [2705,0,3,0,0,"돈주머니","Coin Purse","V_COIN",0,0,0,[]],
+        [2801,2802,0,0,0,"유리알 하나","A Single Gem","V_GEM",0,0,0,[]],
+        [2802,2803,0,0,0,"유리알 둘","Couple of Gems","V_GEM",0,0,0,[]],
+        [2803,2804,1,0,0,"유리알 몇 개","A Few Gems","V_GEM",0,0,0,[]],
+        [2804,0,2,0,0,"유리알 한 줌","Handful of Gems","V_GEM",0,0,0,[]],
+        [2901,2902,0,0,0,"불씨","Zap of Energy","V_SPARK",0,0,0,[]],
+        [2902,2903,0,0,0,"잉걸불","Blast of Energy","V_SPARK",0,0,0,[]],
+        [2903,2904,1,0,0,"화로 불꽃","Punch of Energy","V_SPARK",0,0,0,[]],
+        [2904,2905,2,0,0,"타오르는 화로","Shock of Energy","V_SPARK",0,0,0,[]],
+        [2905,0,3,0,0,"큰 화덕불","Big Bolt of Energy","V_SPARK",0,0,0,[]],
+        [3001,0,0,0,0,"불씨 상자","Energy Chest","X_BOXE",5,0,0,[[2901,40],[2902,30],[2903,20],[2904,10]]],
+        [3101,3102,0,0,0,"작은 이벤트 상자","Small Event Chest","X_BOXEV",6,0,0,[[807,4],[808,1],[905,2],[2803,1]]],
+        [3102,3103,0,0,0,"이벤트 상자","Event Chest","X_BOXEV",8,0,0,[[808,3],[809,2],[905,1],[906,2],[2803,1],[2804,1]]],
+        [3103,0,1,0,0,"큰 이벤트 상자","Grand Event Chest","X_BOXEV",10,0,0,[[808,2],[809,2],[906,4],[2804,1]]],
+      ];
+      /* [코드, unlock_level, order_price, diff_score, weight, weight_multiple, repeat_weight_decrease] */
+      const ORDER_DB = [
+        [203,3,2,2,100,1,0],
+        [204,3,4,5,100,1,0],
+        [205,3,8,10,100,1,0],
+        [206,3,12,19,100,1,0],
+        [207,3,20,39,100,1,0],
+        [208,3,32,78,100,1,10],
+        [209,3,50,146,100,1,50],
+        [210,3,78,293,100,1,100],
+        [303,4,2,2,100,1,0],
+        [304,4,4,5,100,1,0],
+        [305,4,8,10,100,1,10],
+        [306,4,12,19,100,1,50],
+        [307,4,20,39,100,1,100],
+        [503,6,2,2,100,1,0],
+        [504,6,4,5,100,1,0],
+        [505,6,8,10,100,1,0],
+        [506,6,12,19,100,1,0],
+        [507,6,20,39,100,1,0],
+        [508,6,32,78,100,1,0],
+        [509,6,50,146,100,1,10],
+        [510,6,78,293,100,1,50],
+        [511,6,118,585,100,1,100],
+        [512,6,178,1170,100,1,0],
+        [513,6,270,2000,100,1,0],
+        [514,6,406,2500,100,1,0],
+        [603,7,2,2,100,1,0],
+        [604,7,4,5,100,1,0],
+        [605,7,8,10,100,1,10],
+        [606,7,12,19,100,1,50],
+        [607,7,20,39,100,1,100],
+        [803,1,2,2,100,1,0],
+        [804,1,4,5,100,1,0],
+        [805,1,8,10,100,1,0],
+        [806,1,12,19,100,1,0],
+        [807,1,20,39,100,1,0],
+        [808,1,32,78,100,1,0],
+        [809,1,50,146,100,1,10],
+        [810,1,78,293,100,1,50],
+        [811,1,118,585,100,1,100],
+        [812,1,178,1170,100,1,0],
+        [903,2,2,2,100,1,0],
+        [904,2,4,5,100,1,0],
+        [905,2,8,10,100,1,10],
+        [906,2,12,19,100,1,50],
+        [907,2,20,39,100,1,100],
+        [1103,9,2,2,100,1,0],
+        [1104,9,4,5,100,1,0],
+        [1105,9,8,10,100,1,0],
+        [1106,9,12,19,100,1,0],
+        [1107,9,20,39,100,1,0],
+        [1108,9,32,78,100,1,0],
+        [1109,9,50,146,100,1,10],
+        [1110,9,78,293,100,1,50],
+        [1111,9,118,585,100,1,100],
+        [1112,9,178,1170,100,1,0],
+        [1303,10,2,2,100,1,0],
+        [1304,10,4,5,100,1,0],
+        [1305,10,8,10,100,1,0],
+        [1306,10,12,19,100,1,0],
+        [1307,10,20,39,100,1,0],
+        [1308,10,32,78,100,1,0],
+        [1309,10,50,146,100,1,10],
+        [1310,10,78,293,100,1,50],
+        [1311,10,118,585,100,1,100],
+        [1603,9,2,2,100,1,0],
+        [1604,9,4,5,100,1,0],
+        [1605,9,8,10,100,1,0],
+        [1606,9,12,19,100,1,0],
+        [1607,9,20,39,100,1,0],
+        [1608,9,32,78,100,1,0],
+        [1609,9,50,146,100,1,10],
+        [1610,9,78,293,100,1,50],
+        [1611,9,118,585,100,1,100],
+        [1612,9,178,1170,100,1,0],
+        [1703,9,2,2,100,1,0],
+        [1704,9,4,5,100,1,0],
+        [1705,9,8,10,100,1,10],
+        [1706,9,12,19,100,1,50],
+        [1707,9,20,39,100,1,100],
+        [1903,4,2,2,100,1,0],
+        [1904,4,4,5,100,1,0],
+        [1905,4,8,10,100,1,0],
+        [1906,4,12,19,100,1,0],
+        [1907,4,20,39,100,1,0],
+        [1908,4,32,78,100,1,10],
+        [1909,4,50,146,100,1,50],
+        [1910,4,78,293,100,1,100],
+        [2103,10,2,2,100,1,0],
+        [2104,10,4,5,100,1,0],
+        [2105,10,8,10,100,1,0],
+        [2106,10,12,19,100,1,0],
+        [2107,10,20,39,100,1,0],
+        [2108,10,32,78,100,1,10],
+        [2109,10,50,146,100,1,50],
+        [2110,10,78,293,100,1,100],
+        [2303,24,2,2,100,1,0],
+        [2304,24,4,5,100,1,0],
+        [2305,24,8,10,100,1,0],
+        [2306,24,12,19,100,1,0],
+        [2307,24,20,39,100,1,0],
+        [2308,24,32,78,100,1,10],
+        [2309,24,50,146,100,1,50],
+        [2310,24,78,293,100,1,100],
+        [2403,24,2,2,100,1,0],
+        [2404,24,4,5,100,1,10],
+        [2405,24,8,10,100,1,50],
+        [2406,24,12,19,100,1,100],
+      ];
+      /* [order_type, slot_count, item_slot_max, refresh_sec, unlock_level, refill_max] */
+      const RULE_DB = [
+        ["normal",2,3,3600,3,5],
+        ["avatar",1,3,1800,3,0],
+        ["special",1,3,900,4,0],
+        ["event",1,3,300,6,0],
+      ];
+      /* [order_type, band_seq, level_min, level_max, diff_sum_min, diff_sum_max, first_min, first_max, second_min, second_max, third_min, third_max] */
+      const BAND_DB = [
+        ["normal",1,0,15,0,9999,0,6,0,4,0,3],
+        ["normal",2,16,30,0,9999,0,6,0,5,0,3],
+        ["avatar",1,0,15,0,9999,7,7,0,5,0,4],
+        ["avatar",2,16,30,0,9999,7,7,0,6,0,5],
+        ["special",1,0,7,0,9999,6,7,0,4,0,3],
+        ["special",2,8,15,0,9999,7,8,0,4,0,3],
+        ["special",3,16,29,0,9999,7,9,0,6,0,5],
+        ["special",4,30,30,0,9999,7,10,0,6,0,5],
+        ["event",1,0,7,0,9999,7,8,0,4,0,3],
+        ["event",2,8,15,0,9999,7,9,0,5,0,4],
+        ["event",3,16,29,0,9999,7,10,0,6,0,5],
+        ["event",4,30,30,0,2000,8,11,0,7,0,6],
+        ["event",5,30,30,2001,9999,9,11,0,7,0,6],
+      ];
+      /* [level, item_count, count_weight] */
+      const COUNT_DB = [
+        [1,1,6000],
+        [1,2,2000],
+        [1,3,2000],
+        [4,1,4000],
+        [4,2,3000],
+        [4,3,3000],
+        [8,1,3300],
+        [8,2,3300],
+        [8,3,3400],
+        [11,1,3000],
+        [11,2,3000],
+        [11,3,4000],
+      ];
+      /* [fixed_seq, unlock_level, slot_1, slot_2, slot_3, requirement_1, requirement_2, requirement_3] */
+      const FIXED_DB = [
+        [1,1,1,0,0,803,0,0],
+        [2,1,1,0,0,808,0,0],
+        [3,1,1,0,0,804,0,0],
+        [4,1,1,0,0,806,0,0],
+        [5,2,1,2,0,904,0,0],
+        [6,2,1,2,0,903,0,0],
+        [7,2,1,2,0,903,806,0],
+        [8,2,1,2,0,905,0,0],
+        [9,2,1,2,0,808,0,0],
+        [10,2,1,2,0,805,903,0],
+        [11,3,1,2,0,204,204,0],
+        [12,3,1,2,0,805,205,0],
+        [13,3,1,2,0,205,203,0],
+        [14,4,1,2,0,303,0,0],
+        [15,4,3,0,0,207,804,903],
+        [16,4,1,2,0,806,304,0],
+      ];
+      /* [avatar_key, open_day, unlock_level] */
+      const AVATAR_DB = [
+        ["Poppy",999,999],
+        ["Hazel",999,999],
+        ["Tess",999,999],
+        ["Ada",1,1],
+        ["Milo",1,1],
+        ["June",1,1],
+        ["Otis",1,2],
+        ["Pip",1,3],
+        ["Loren",1,4],
+        ["Izzy",2,5],
+        ["Barnett",3,7],
+        ["Della",16,25],
+        ["Nora",19,29],
+      ];
+      /* [level, exp_cost] */
+      const LEVEL_DB = [
+        [1,15],
+        [2,30],
+        [3,45],
+        [4,60],
+        [5,60],
+        [6,75],
+        [7,75],
+        [8,75],
+        [9,75],
+        [10,75],
+        [11,90],
+        [12,90],
+        [13,90],
+        [14,105],
+        [15,105],
+        [16,105],
+        [17,120],
+        [18,120],
+        [19,120],
+        [20,120],
+        [21,120],
+        [22,120],
+        [23,120],
+        [24,120],
+        [25,135],
+        [26,135],
+        [27,135],
+        [28,135],
+        [29,150],
+        [30,150],
+      ];
+      /* [slot_index, cost_type, unlock_cost] */
+      const INV_DB = [
+        [6,"gem",50],
+        [7,"gem",55],
+        [8,"gem",65],
+        [9,"gem",80],
+        [10,"gem",100],
+        [11,"gem",130],
+        [12,"gem",165],
+        [13,"gem",225],
+        [14,"gem",305],
+        [15,"gem",420],
+        [16,"gem",580],
+        [17,"gem",805],
+        [18,"gem",1125],
+        [19,"gem",1580],
+        [20,"gem",2215],
+        [21,"gem",3125],
+        [22,"gem",4400],
+        [23,"gem",6210],
+        [24,"gem",8770],
+        [25,"gem",12390],
+        [26,"gem",17510],
+        [27,"gem",24750],
+        [28,"gem",34990],
+        [29,"gem",49470],
+        [30,"gem",69950],
+        [31,"gem",69950],
+        [32,"gem",69950],
+      ];
+      /* const 탭 전 행 */
+      const CONST_DB = {
+        "default_max_energy": 100,
+        "default_recovery_duration_sec": 120,
+        "board_row": 9,
+        "board_column": 7,
+        "order_daily_diff_band_1": 2000,
+        "order_daily_diff_band_2": 2500,
+        "order_weight_mult_required_enough": 100,
+        "order_weight_mult_not_required": 1000,
+        "order_weight_mult_higher_level": 10000,
+        "order_daily_diff_reset_utc_sec": 0,
+        "nru_start_coin": 100,
+        "nru_start_gem": 0,
+        "nru_start_energy": 100,
+        "coin_max_limit": 999999999,
+        "gem_max_limit": 999999999,
+        "inventory_slot_default": 5,
+        "inventory_slot_max": 32,
+        "item_sell_refund_rate": 10000,
+        "daily_reset_utc_sec": 0,
+        "weekly_reset_cycle_day": 7,
+        "weekly_reset_weekday": 1,
+        "event_ranking_display_max": 10,
+        "auto_save_max_sec": 259200,
+        "chore_extra_trigger_limit": 100,
+        "chore_extra_cold_day": 2,
+        "chore_extra_duration_hour": 24,
+        "chore_extra_reward_energy": 30,
+        "score_race_group_size": 50,
+        "score_race_merge_score_rate": 10000,
+        "shop_refresh_cycle_sec": 28800,
+        "shop_special_stock_per_slot": 1,
+        "shop_hot_sale_stock_per_slot": 5,
+        "shop_gem_only_max_level": 2,
+        "offer_popup_min_interval_sec": 120,
+        "starter_offer_popup_cooldown_sec": 14400,
+        "rail_visible_max": 6,
+        "daily_ad_total_cap": 15,
+        "energy_gem_reset_utc_sec": 0,
+        "rv_fail_toast_sec": 3,
+        "net_retry_max": 2,
+        "net_retry_backoff_sec": 2,
+        "net_timeout_sec": 8,
+        "iap_wait_threshold_sec": 5,
+        "undo_valid_sec": 5,
+        "rv_coin_rescue_pct": 50,
+        "rv_token_boost_orders": 3,
+        "rv_inventory_temp_slot_sec": 86400,
+        "toast_show_sec": 1
+      };
 
+      /* 체인 사전 — 색(클러스터)·무늬(클러스터 안 순번)·이름을 전부 여기서 판다 */
+      const CHAINS = CHAIN_DB.map(([id, key, name, cluster, seq, line]) => ({ id, key, name, cluster, seq, line }));
+      const CHAIN_BY_ID = new Map(CHAINS.map((c) => [c.id, c]));
+      const NO_CHAIN = { id: 0, key: "?", name: "?", cluster: 0, seq: 0, line: "res" };
+      const chainInfo = (code) => CHAIN_BY_ID.get(chainOf(code)) || NO_CHAIN;
+      const chainName = (id) => CHAIN_BY_ID.get(id)?.name || `#${id}`;
+
+      /* item_spec — 시트 행을 그대로 편다. 파생식을 쓰지 않는다.
+         생성기는 체인의 1단계가 아니라 중간~끝 여러 단계에 있고(M_TOOL 은 11단계 중 s4~s11),
+         자기 체인이 아니라 다른 체인을 낳는다(공구함 → 공구·페인트). 그래서 produce 는
+         「어느 코드를 얼마의 가중치로」 짝지은 배열이지, 자기 체인 s2~s4 가 아니다. */
       function buildItemSpec() {
-        const rows = [];
-        for (const ch of CHAINS) {
-          rows.push({
-            item_code: codeOf(ch.id, 1), merged_item_code: 0, selling_price: 0,
-            is_generator: 1, spread_cost_energy: 1, spread_item_max: 30, spread_item_recovery_sec: 120,
-            p1: codeOf(ch.id, 2), w1: 60, p2: codeOf(ch.id, 3), w2: 28, p3: codeOf(ch.id, 4), w3: 12,
-          });
-          for (let s = 2; s <= ch.len; s++) {
-            rows.push({
-              item_code: codeOf(ch.id, s),
-              merged_item_code: s < ch.len ? codeOf(ch.id, s + 1) : 0,
-              // 시트 계약: selling_price 는 0~12, 0 이면 판매 불가(치우기만). 값은 시트가 정본이다.
-              selling_price: s === 2 ? 0 : Math.min(12, s - 1),
-              is_generator: 0, spread_cost_energy: 0, spread_item_max: 0, spread_item_recovery_sec: 0,
-              p1: 0, w1: 0, p2: 0, w2: 0, p3: 0, w3: 0,
-            });
-          }
-        }
-        return rows;
+        return ITEM_DB.map(([item_code, merged_item_code, selling_price, rare, is_generator,
+                             name, name_en, chain_key, spread_item_max, spread_cost_energy,
+                             spread_item_recovery_sec, produce]) => ({
+          item_code, merged_item_code, selling_price, rare, is_generator, name, name_en, chain_key,
+          spread_item_max, spread_cost_energy, spread_item_recovery_sec, produce,
+        }));
       }
-      const priceAt = (s) => [0, 0, 0, 3, 5, 8, 12, 20, 34, 58, 96, 160, 260, 406][s] ?? 406;
-      const diffAt = (s) => [0, 0, 0, 3, 6, 10, 19, 35, 68, 132, 250, 470, 900, 1700][s] ?? 2500;
-
+      /* order_item — 주문 후보 107종. 생성기·상자·재화는 애초에 이 표에 없다.
+         unlock_level 은 단계가 아니라 체인 단위다 — Lv3 이 되면 망치부터 공구 세트까지
+         8종이 한꺼번에 후보가 된다. weight/weight_multiple 은 전 행 100/1 이라
+         지금 가중식(상황 배수)에 곱해도 결과가 같아 곱하지 않는다 — 값이 갈리면 넣는다. */
       function buildOrderItem() {
-        const rows = [];
-        for (const ch of CHAINS)
-          for (let s = 3; s <= ch.len; s++)
-            rows.push({
-              item_code: codeOf(ch.id, s),
-              unlock_level: clamp(1 + (s - 3) * 2 + Math.floor((ch.id - 2) / 3), 1, 24),
-              order_price: priceAt(s), diff_score: diffAt(s),
-              repeat_weight_decrease: s >= 6 ? 50 : 0, in_use: 1,
-            });
-        return rows;
+        return ORDER_DB.map(([item_code, unlock_level, order_price, diff_score,
+                              weight, weight_multiple, repeat_weight_decrease]) => ({
+          item_code, unlock_level, order_price, diff_score,
+          weight, weight_multiple, repeat_weight_decrease, in_use: 1,
+        }));
       }
 
       const DEFAULTS = () => ({
-        const: {
-          order_weight_mult_required_enough: 100,
-          order_weight_mult_not_required: 1000,
-          order_weight_mult_higher_level: 10000,
-          order_repeat_reset_count: 3,
-          default_max_energy: 100,
-          default_recovery_duration_sec: 120,
-          nru_start_coin: 100,
-          undo_valid_sec: 5,
-          inventory_slot_default: 5,
-          inventory_slot_max: 32,
-        },
-        /* 인벤토리 확장 27행 (6칸 → 32칸). 컬럼은 시트 계약대로 slot_index · cost_type · unlock_cost.
-           값은 시트가 정본이고 여기 숫자는 문서에 남은 양끝(6칸 50젬 · 마지막 3칸 69950 고정)에
-           맞춘 임시값이다 — 실물 시트로 갈아끼운다. 코드에서 등비수열을 다시 만들지 않는다. */
-        inventory_unlock: (() => {
-          const cost = [50, 55, 78, 110, 156, 220, 312, 441, 624, 882, 1247, 1764, 2494, 3527,
-                        4988, 7054, 9975, 14108, 19950, 28216, 39900, 49470, 56000, 63000,
-                        69950, 69950, 69950];
-          return cost.map((c, i) => ({ slot_index: i + 6, cost_type: "gem", unlock_cost: c, in_use: 1 }));
-        })(),
-        order_rule: [
-          { order_type: "normal", slot_count: 2, unlock_level: 3, item_slot_max: 2, refill_max: 5, refresh_sec: 3600, in_use: 1 },
-          { order_type: "high", slot_count: 1, unlock_level: 3, item_slot_max: 2, refill_max: 1, refresh_sec: 1800, in_use: 1 },
-          { order_type: "random_3", slot_count: 1, unlock_level: 4, item_slot_max: 2, refill_max: 1, refresh_sec: 900, in_use: 1 },
-          { order_type: "random_4", slot_count: 1, unlock_level: 5, item_slot_max: 2, refill_max: 1, refresh_sec: 300, in_use: 1 },
-          { order_type: "special", slot_count: 1, unlock_level: 4, item_slot_max: 2, refill_max: 0, refresh_sec: 0, in_use: 1 },
-        ],
-        order_slot_band: [
-          { order_type: "normal", band_seq: 1, level_min: 0, level_max: 15, first_min: 0, first_max: 6, second_max: 4, in_use: 1 },
-          { order_type: "normal", band_seq: 2, level_min: 16, level_max: 24, first_min: 2, first_max: 8, second_max: 5, in_use: 1 },
-          { order_type: "normal", band_seq: 3, level_min: 25, level_max: 30, first_min: 3, first_max: 9, second_max: 6, in_use: 1 },
-          { order_type: "high", band_seq: 1, level_min: 0, level_max: 15, first_min: 2, first_max: 7, second_max: 5, in_use: 1 },
-          { order_type: "high", band_seq: 2, level_min: 16, level_max: 24, first_min: 4, first_max: 9, second_max: 6, in_use: 1 },
-          { order_type: "high", band_seq: 3, level_min: 25, level_max: 30, first_min: 5, first_max: 11, second_max: 7, in_use: 1 },
-          { order_type: "random_3", band_seq: 1, level_min: 0, level_max: 15, first_min: 0, first_max: 6, second_max: 4, in_use: 1 },
-          { order_type: "random_3", band_seq: 2, level_min: 16, level_max: 24, first_min: 2, first_max: 8, second_max: 5, in_use: 1 },
-          { order_type: "random_3", band_seq: 3, level_min: 25, level_max: 30, first_min: 3, first_max: 9, second_max: 6, in_use: 1 },
-          { order_type: "random_4", band_seq: 1, level_min: 0, level_max: 15, first_min: 1, first_max: 7, second_max: 4, in_use: 1 },
-          { order_type: "random_4", band_seq: 2, level_min: 16, level_max: 24, first_min: 3, first_max: 8, second_max: 5, in_use: 1 },
-          { order_type: "random_4", band_seq: 3, level_min: 25, level_max: 30, first_min: 4, first_max: 10, second_max: 6, in_use: 1 },
-        ],
+        /* const 48행 통째로 실물이다. 딱 하나 order_repeat_reset_count 만 시트에 없어
+           기획서 1.2.1 의 값(3)을 덧붙인다 — 시트에 칸이 생기면 지운다. 확인 필요.
+           안 쓰는 칸도 그대로 둔다: 벤치가 뭘 아직 안 만졌는지가 여기서 드러난다
+           (order_daily_diff_band_1/2 · order_daily_diff_reset_utc_sec = 일일 난이도 밴드, 미구현). */
+        const: { ...CONST_DB, order_repeat_reset_count: 3 },
+        /* 인벤토리 확장 27행 (6칸 → 32칸) — 실물 시트값. 등비 √2 곡선이라 코드로 다시 만들지 않는다 */
+        inventory_unlock: INV_DB.map(([slot_index, cost_type, unlock_cost]) =>
+          ({ slot_index, cost_type, unlock_cost, in_use: 1 })),
+        order_rule: RULE_DB.map(([order_type, slot_count, item_slot_max, refresh_sec, unlock_level, refill_max]) =>
+          ({ order_type, slot_count, item_slot_max, refresh_sec, unlock_level, refill_max, in_use: 1 })),
+        order_slot_band: BAND_DB.map(([order_type, band_seq, level_min, level_max, diff_sum_min, diff_sum_max,
+                                       first_min, first_max, second_min, second_max, third_min, third_max]) =>
+          ({ order_type, band_seq, level_min, level_max, diff_sum_min, diff_sum_max,
+             first_min, first_max, second_min, second_max, third_min, third_max, in_use: 1 })),
         /* 이벤트 점수 — 규칙은 기획서 1.2.1 [5] 그대로. 값은 시트가 정본이라
            여기 5행은 자리를 채우는 임시값이다(실물 시트로 갈아끼워야 한다).
            기준값이 무엇인지 기획서에 안 적혀 있어 난이도(diff)로 두었다 — 확인 필요. */
@@ -1399,36 +1986,19 @@
           { score_min: 30, score_max: 59, token_pct: 2500, token_fix: 0, in_use: 1 },
           { score_min: 60, score_max: 9999, token_pct: 3000, token_fix: 0, in_use: 1 },
         ],
-        order_item_count: [
-          { level: 1, item_count: 1, count_weight: 7500, in_use: 1 },
-          { level: 1, item_count: 2, count_weight: 2500, in_use: 1 },
-          { level: 4, item_count: 1, count_weight: 5714, in_use: 1 },
-          { level: 4, item_count: 2, count_weight: 4286, in_use: 1 },
-          { level: 8, item_count: 1, count_weight: 5000, in_use: 1 },
-          { level: 8, item_count: 2, count_weight: 5000, in_use: 1 },
-          { level: 11, item_count: 1, count_weight: 5000, in_use: 1 },
-          { level: 11, item_count: 2, count_weight: 5000, in_use: 1 },
-        ],
-        order_fixed: (() => {
-          const seq = [[204,0],[204,0],[205,0],[303,0],[205,304],[206,0],[404,0],[305,405],
-                       [207,0],[306,0],[505,0],[406,506],[208,0],[307,0],[605,0],[407,607]];
-          return seq.map((q, i) => ({
-            fixed_seq: i + 1, unlock_level: i < 4 ? 1 : i < 8 ? 2 : i < 12 ? 3 : 4,
-            slot_1: (i % 3) + 1, slot_2: i % 2 ? 0 : 2, slot_3: 0,
-            requirement_1: q[0], requirement_2: q[1], in_use: 1,
-          }));
-        })(),
-        order_avatar: [
-          { avatar_key: "Maggie", open_day: 1, in_use: 1 }, { avatar_key: "Ida", open_day: 1, in_use: 1 },
-          { avatar_key: "Rosa", open_day: 1, in_use: 1 }, { avatar_key: "Bram", open_day: 2, in_use: 1 },
-          { avatar_key: "Nell", open_day: 3, in_use: 1 }, { avatar_key: "Otto", open_day: 4, in_use: 1 },
-          { avatar_key: "Clara", open_day: 6, in_use: 1 }, { avatar_key: "Wren", open_day: 8, in_use: 1 },
-          { avatar_key: "Silas", open_day: 11, in_use: 1 }, { avatar_key: "June", open_day: 14, in_use: 1 },
-          { avatar_key: "Poppy", open_day: 999, in_use: 1 }, { avatar_key: "Hazel", open_day: 999, in_use: 1 },
-          { avatar_key: "Tess", open_day: 999, in_use: 1 },
-        ],
-        level_curve: [15,30,45,60,60,75,75,75,75,75,90,90,90,105,105,105,120,120,120,120,120,120,120,120,135,135,135,135,150,150]
-          .map((e, i) => ({ level: i + 1, exp_cost: e, reward_coin: 40 + i * 12 })),
+        order_item_count: COUNT_DB.map(([level, item_count, count_weight]) =>
+          ({ level, item_count, count_weight, in_use: 1 })),
+        order_fixed: FIXED_DB.map(([fixed_seq, unlock_level, slot_1, slot_2, slot_3,
+                                    requirement_1, requirement_2, requirement_3]) =>
+          ({ fixed_seq, unlock_level, slot_1, slot_2, slot_3,
+             requirement_1, requirement_2, requirement_3, in_use: 1 })),
+        /* 손님 13명 — open_day 와 unlock_level 둘 다 걸린다(실물 칸) */
+        order_avatar: AVATAR_DB.map(([avatar_key, open_day, unlock_level]) =>
+          ({ avatar_key, open_day, unlock_level, in_use: 1 })),
+        /* 레벨 30단계 실물 exp_cost. reward_coin 은 시트에 없다 —
+           실물은 reward_item_key_1~3(아이템 지급)이고 코인 보상 칸이 아니다.
+           벤치는 레벨업 체감만 필요해 임시 코인을 얹는다. 확인 필요. */
+        level_curve: LEVEL_DB.map(([level, exp_cost]) => ({ level, exp_cost, reward_coin: 40 + (level - 1) * 12 })),
         item_spec: buildItemSpec(),
         order_item: buildOrderItem(),
       });
@@ -1456,9 +2026,13 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v3.3 · 2026-09-11";
+      const BUILD = "v4.0 · 2026-09-11";
       const SAVE_KEY = "rw.orderBench";
-      const SAVE_VER = 3;
+      const SAVE_VER = 4;
+      /* 시트 실물이 들어오면서 DATA 가 120KB 를 넘는다. 한 글자도 안 고쳤는데 매 저장마다
+         그걸 통째로 localStorage 에 밀어 넣을 이유가 없다 — 「데이터 섹션에서 갈아끼웠을 때」만
+         싣고, 아니면 null 로 두고 불러올 때 DEFAULTS() 로 다시 만든다. */
+      let DATA_EDITED = false;
       let saveTimer = 0;
       let DATA_CACHE = { ref: null, json: "" };
 
@@ -1475,7 +2049,8 @@
           // DATA 는 밸런스 JSON 을 갈아끼울 때 말고는 안 바뀐다 — 직렬화 결과를 재사용한다
           if (DATA !== DATA_CACHE.ref) DATA_CACHE = { ref: DATA, json: JSON.stringify(DATA) };
           localStorage.setItem(SAVE_KEY,
-            `{"v":${SAVE_VER},"at":${Date.now()},"data":${DATA_CACHE.json},"fx":${JSON.stringify(FX)},"state":${JSON.stringify(st)}}`);
+            `{"v":${SAVE_VER},"at":${Date.now()},"data":${DATA_EDITED ? DATA_CACHE.json : "null"},`
+            + `"fx":${JSON.stringify(FX)},"state":${JSON.stringify(st)}}`);
           const d = new Date();
           const hh = (x) => String(x).padStart(2, "0");
           $("#rwSaved").textContent = `저장 ${hh(d.getHours())}:${hh(d.getMinutes())}:${hh(d.getSeconds())}`;
@@ -1497,9 +2072,9 @@
           const raw = localStorage.getItem(SAVE_KEY);
           if (!raw) return null;
           const o = JSON.parse(raw);
-          if (!o || o.v !== SAVE_VER || !o.data || !o.state) return null;
+          if (!o || o.v !== SAVE_VER || !o.state) return null;              // data 는 null 이 정상이다
           if (!Array.isArray(o.state.cells) || o.state.cells.length !== CELLS) return null;
-          if (!Array.isArray(o.data.order_rule) || !Array.isArray(o.data.item_spec)) return null;
+          if (o.data && (!Array.isArray(o.data.order_rule) || !Array.isArray(o.data.item_spec))) return null;
           o.state.log = (o.state.log || []).map((e) => ({ ...e, t: new Date(e.t) }));
           return o;
         } catch (e) { return null; }
@@ -1512,11 +2087,18 @@
       let S;
       function freshState() {
         const cells = new Array(CELLS).fill(null);
+        /* 생성기는 체인의 1단계가 아니다. 생성기 체인(main·sub)마다 「가장 낮은 생성기」를
+           찾아 앉힌다 — 공구함 104 · 2인 티팟 405 · 반죽 그릇 704 · 화단 1006 …
+           quest 체인은 퀘스트로 열리는 것이라 초기 보드에서 뺀다. */
         const seed = [[1,1],[1,5],[3,3],[5,1],[5,5],[7,3]];
-        CHAINS.slice(0, 6).forEach((ch, i) => {
-          const [r, c] = seed[i];
-          cells[r * COLS + c] = { code: codeOf(ch.id, 1), stock: 30, lastAt: Date.now() / 1000 };
-        });
+        DATA.item_spec
+          .filter((r) => r.is_generator && chainInfo(r.item_code).line !== "quest")
+          .filter((r, i, all) => all.findIndex((x) => chainOf(x.item_code) === chainOf(r.item_code)) === i)
+          .slice(0, seed.length)
+          .forEach((r, i) => {
+            const [row, col] = seed[i];
+            cells[row * COLS + col] = { code: r.item_code, stock: 30, lastAt: Date.now() / 1000 };
+          });
         return {
           cells, level: 1, exp: 0, coin: DATA.const.nru_start_coin, gem: 0, debug: false,
           inv: { store: [], box: [], bought: 0, tab: "store" },
@@ -1527,28 +2109,29 @@
         };
       }
 
-      const slotType = (n) => (n === 1 || n === 2 ? "normal" : n === 3 ? "high" : n === 4 ? "random_3" : n === 5 ? "random_4" : "special");
+      /* order_rule 실물 4타입 — normal 이 2칸(슬롯 1·2 예산 공유) · avatar · special · event */
+      const TYPE_KO = { normal: "일반", avatar: "손님", special: "스페셜", event: "이벤트", fixed: "고정" };
+      const slotType = (n) => (n === 1 || n === 2 ? "normal" : n === 3 ? "avatar" : n === 4 ? "special" : "event");
       const ruleOf = (type) => idx().rule.get(type);
 
-      /* 레일에 그릴 다섯 칸 전부 — 열림/잠김과 필요한 레벨까지 함께 준다.
-         openSlots() 와 같은 기준을 쓴다(슬롯 1~3 은 Lv1 부터, 4·5 는 order_rule.unlock_level). */
+      /* 칸이 언제 열리나 — 고정 오더는 order_fixed.unlock_level 로만 걸리고 order_rule 을 안 본다.
+         그래서 고정 오더가 들어오는 칸(실물 1·2·3)은 그 최저 레벨부터 열어 두고,
+         랜덤 발급 차단은 generateOrder [1] 이 따로 맡는다. 나머지 칸은 타입의 unlock_level 그대로. */
+      function slotNeed(n) {
+        const r = ruleOf(slotType(n));
+        const ruleLv = r ? r.unlock_level : 1;
+        const fx = DATA.order_fixed.filter((f) => f.in_use && [f.slot_1, f.slot_2, f.slot_3].includes(n));
+        return fx.length ? Math.min(ruleLv, ...fx.map((f) => f.unlock_level)) : ruleLv;
+      }
       function allSlots() {
         return [1, 2, 3, 4, 5].map((n) => {
-          const type = slotType(n);
-          const r = ruleOf(type);
-          const need = n >= 4 && r ? r.unlock_level : 1;
-          return { n, type, need, open: S.level >= need };
+          const need = slotNeed(n);
+          return { n, type: slotType(n), need, open: S.level >= need };
         });
       }
 
       function openSlots() {
-        // 슬롯 1~3 은 Lv1 부터 존재한다 — Lv1~2 구간은 order_fixed 16장이 채운다.
-        // 랜덤 발급 자체는 order_rule.unlock_level 로 따로 막는다.
-        const out = [1, 2, 3];
-        const r4 = ruleOf("random_3"), r5 = ruleOf("random_4");
-        if (r4 && S.level >= r4.unlock_level) out.push(4);
-        if (r5 && S.level >= r5.unlock_level) out.push(5);
-        return out;
+        return allSlots().filter((s) => s.open).map((s) => s.n);
       }
 
       /* ======================================================================
@@ -1635,8 +2218,8 @@
             const slotOk = [fx.slot_1, fx.slot_2, fx.slot_3].includes(slotNo);
             const lvOk = level >= fx.unlock_level;
             if (slotOk && lvOk) {
-              const reqs = [{ code: fx.requirement_1, count: 1 }];
-              if (fx.requirement_2) reqs.push({ code: fx.requirement_2, count: 1 });
+              const reqs = [fx.requirement_1, fx.requirement_2, fx.requirement_3]
+                .filter(Boolean).map((code) => ({ code, count: 1 }));
               const coin = reqs.reduce((a, q) => a + (oiOf(q.code)?.order_price || 0), 0);
               const diff = reqs.reduce((a, q) => a + (oiOf(q.code)?.diff_score || 0), 0);
               push(`<span class="k">[0] 고정 오더 채택</span> fixed_seq=${fx.fixed_seq} (unlock_level ${fx.unlock_level} ≤ Lv${level} · 슬롯 ${fx.slot_1}/${fx.slot_2}/${fx.slot_3} 에 ${slotNo} 포함)`);
@@ -1680,7 +2263,7 @@
         // ---- [2] 자리별 단계 범위
         const band = pickBand(type, level);
         if (!band) { push(`<span class="w">[2] order_slot_band 에 Lv${level} 구간 없음 → 데이터 오류</span>`); return { card: null, log: L }; }
-        push(`<span class="k">[2] 밴드</span> band_seq=${band.band_seq} (Lv ${band.level_min}~${band.level_max}) · 첫째 ${band.first_min}~${band.first_max}단계 · 둘째 ≤${band.second_max}단계`);
+        push(`<span class="k">[2] 밴드</span> band_seq=${band.band_seq} (Lv ${band.level_min}~${band.level_max}) · 첫째 ${band.first_min}~${band.first_max} · 둘째 ${band.second_min}~${band.second_max} · 셋째 ${band.third_min}~${band.third_max} 단계`);
 
         // ---- [3] 후보 집합
         const counts = opts.counts ?? boardCounts();
@@ -1700,8 +2283,8 @@
         const divided = new Set();
 
         for (let seat = 1; seat <= slotMax; seat++) {
-          const lo = seat === 1 ? band.first_min : 0;
-          const hi = seat === 1 ? band.first_max : band.second_max;
+          const lo = seat === 1 ? band.first_min : seat === 2 ? band.second_min : band.third_min;
+          const hi = seat === 1 ? band.first_max : seat === 2 ? band.second_max : band.third_max;
           const cand = pool.filter((o) => {
             const st = stepOf(o.item_code);
             return st >= lo && st <= hi && !banned.has(o.item_code) && !chosen.has(o.item_code);
@@ -1753,11 +2336,11 @@
           const won = new Set(picked.map((o) => chainOf(o.item_code)));
           const upd = [];
           applied.forEach((ch) => {
-            if (won.has(ch)) { CR[ch] = C.order_repeat_reset_count; upd.push(`${letterOf(ch)}→${C.order_repeat_reset_count}`); }
+            if (won.has(ch)) { CR[ch] = C.order_repeat_reset_count; upd.push(`${chainName(ch)}→${C.order_repeat_reset_count}`); }
             else {
               CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
               if (!CR[ch]) delete CR[ch];
-              upd.push(`${letterOf(ch)}−1`);
+              upd.push(`${chainName(ch)}−1`);
             }
           });
           if (upd.length) push(`    반복 카운터 ${upd.join(", ")}`);
@@ -1830,7 +2413,7 @@
         if (dest < 0) return deny("보드가 꽉 찼어요", "punch", "warn");
         const cost = sp.spread_cost_energy * mult;
         if (S.energy < cost) return deny(`에너지가 ${cost} 필요해요`, "punch", "warn");
-        const bag = [[sp.p1, sp.w1], [sp.p2, sp.w2], [sp.p3, sp.w3]].filter((b) => b[0] && b[1] > 0);
+        const bag = (sp.produce || []).filter((b) => b[0] && b[1] > 0);   // 실물은 20칸까지 · 다른 체인이 나온다
         if (!bag.length) return deny("주머니가 비었어요", "punch", "warn");
 
         const k = RNG.pick(bag.map((b) => b[1]));
@@ -2179,10 +2762,14 @@
 
           // 칩 — 라벨과 색만 바꾼다. 노드는 그대로 둬서 트윈이 안 끊긴다
           const lbl = labelOf(c.code);
-          if (chip.textContent !== lbl) chip.textContent = lbl;
-          const shp = "rw-chip " + shapeOf(c.code);
+          let txt = chip.firstElementChild;
+          if (!txt) { txt = document.createElement("span"); txt.className = "t"; chip.appendChild(txt); }
+          if (txt.textContent !== lbl) txt.textContent = lbl;
+          const shp = "rw-chip " + shapeOf(c.code) + lenOf(c.code);
           if (chip.className !== shp) chip.className = shp;
-          const h = hueOf(chainOf(c.code)) + "deg";
+          const ttl = titleOf(c.code);
+          if (el.title !== ttl) el.title = ttl;
+          const h = hueOf(c.code) + "deg";
           if (chip.style.getPropertyValue("--h") !== h) chip.style.setProperty("--h", h);
           chip.style.display = "";
 
@@ -2486,7 +3073,7 @@
           return;
         }
         const c = S.cells[S.sel], sp = specOf(c.code), ch = chainOf(c.code);
-        const chName = CHAINS.find((x) => x.id === ch)?.name || "";
+        const chName = chainName(ch);
         const oi = oiOf(c.code);
         const line = sp.is_generator
           ? `TAP to produce. 재고 ${c.stock}/${sp.spread_item_max} · 탭 ${sp.spread_cost_energy} 에너지`
@@ -2504,7 +3091,7 @@
         el.innerHTML =
           side() +
           `<div class="body">
-             <span class="rw-req ${shapeOf(c.code)}" style="--h:${hueOf(ch)}deg">${labelOf(c.code)}</span>
+             ${chipTag(c.code)}
              <div class="txt">
                <span class="name">${chName} (Lvl ${stepOf(c.code)})</span>
                <div class="d">${line}</div>
@@ -2598,14 +3185,14 @@
             const locked = i >= openN;
             cells.push(`<button class="s ${code != null && !locked ? "has" : ""}"
               ${code != null && !locked ? `onclick="takeOut('store',${i})" title="꺼내기 — 보드 나선 첫 빈 칸"` : "disabled"}>
-              ${code != null ? `<span class="rw-req ${shapeOf(code)}" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span>` : ""}
+              ${code != null ? chipTag(code) : ""}
               ${locked ? '<span class="lk">🔒</span>' : ""}</button>`);
           }
         } else {
           // 보상함은 창고 칸 수를 쓰지 않는다 — 있는 만큼만 그린다
           if (!bag.length) cells.push('<div style="grid-column:1/-1;font-size:11.5px;color:var(--text-faint);padding:10px 2px">받을 보상이 없습니다.</div>');
           bag.forEach((code, i) => cells.push(`<button class="s has" onclick="takeOut('box',${i})" title="꺼내기">
-              <span class="rw-req ${shapeOf(code)}" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span></button>`));
+              ${chipTag(code)}</button>`));
         }
         el.innerHTML = `<div class="rw-sheet">
             <h4>인벤토리<button class="x" onclick="closeInv()" aria-label="닫기">✕</button></h4>
@@ -2636,11 +3223,11 @@
             </div>
             <div class="rw-dish">${card.reqs.map((q) => {
               const have = counts ? (counts.get(q.code) || 0) >= q.count : false;
-              return `<span class="rw-req ${shapeOf(q.code)} ${counts && !have ? "miss" : ""}" style="--h:${hueOf(chainOf(q.code))}deg">${labelOf(q.code)}${have ? '<span class="ck">✓</span>' : ""}</span>`;
+              return chipTag(q.code, counts && !have ? "miss" : "", have ? '<span class="ck">✓</span>' : "");
             }).join("")}</div>
             <div class="rw-bot">
               <span class="rw-rb" title="B — 이벤트 재화">◆ ${evt}</span>
-              ${(S.debug || o.debug) && card.type ? `<span class="rw-lbl">${card.type}${card.band ? ` b${card.band}` : ""}</span>` : ""}
+              ${(S.debug || o.debug) && card.type ? `<span class="rw-lbl">${TYPE_KO[card.type] || card.type}${card.band ? ` b${card.band}` : ""}</span>` : ""}
               <span class="rw-rc" title="C — 팩·카드">★ 팩</span>
             </div>
             ${o.serve ? `<span class="rw-serve"><button class="rw-btn serve" onclick="event.stopPropagation();serve(${o.slot})">Serve</button></span>` : ""}
@@ -3253,15 +3840,15 @@
         const top = [...combo.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10);
         $("#rwCombo").innerHTML = top.map(([k, v]) => {
           const items = k.split("+").map(Number);
-          return `<div class="rw-b" style="--h:${hueOf(chainOf(items[0]))}deg">
-            <span style="display:flex;gap:3px">${items.map((c) => `<em style="font-style:normal;padding:1px 5px;border-radius:5px;background:hsl(${hueOf(chainOf(c))}deg 44% 87%);color:hsl(${hueOf(chainOf(c))}deg 58% 26%)">${labelOf(c)}</em>`).join("")}</span>
+          return `<div class="rw-b" style="--h:${hueOf(items[0])}deg">
+            <span style="display:flex;gap:3px">${items.map((c) => `<em style="font-style:normal;padding:1px 5px;border-radius:5px;background:hsl(${hueOf(c)}deg 44% 87%);color:hsl(${hueOf(c)}deg 58% 26%)">${labelOf(c)}</em>`).join("")}</span>
             <span class="track"><span class="fill" style="width:${(v.n / top[0][1].n) * 100}%"></span></span>
             <span class="n">${v.n} · ${((v.n / Math.max(1, ok)) * 100).toFixed(1)}%</span></div>`;
         }).join("") || '<div class="rw-empty">조합 없음</div>';
 
         const arr = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
         const max = arr.length ? arr[0][1] : 1;
-        $("#rwBars").innerHTML = arr.map(([code, n]) => `<div class="rw-b" style="--h:${hueOf(chainOf(code))}deg">
+        $("#rwBars").innerHTML = arr.map(([code, n]) => `<div class="rw-b" style="--h:${hueOf(code)}deg">
             <span>${labelOf(code)}</span>
             <span class="track"><span class="fill" style="width:${(n / max) * 100}%"></span></span>
             <span class="n">${n} · ${((n / Math.max(1, ok)) * 100).toFixed(1)}%</span></div>`).join("")
@@ -3274,15 +3861,16 @@
       function boot(fresh) {
         const saved = fresh ? null : loadSaved();
         if (saved) {
-          DATA = saved.data; reindex();
+          DATA = saved.data || DEFAULTS(); DATA_EDITED = !!saved.data; reindex();
           FX = Object.assign(FX_DEFAULTS(), saved.fx || {});
           S = Object.assign(freshState(), saved.state); S.busy = false;
           if (!S.inv || !Array.isArray(S.inv.store)) S.inv = { store: [], box: [], bought: 0, tab: "store" };
           if (!Array.isArray(S.inv.box)) S.inv.box = [];
         } else { DATA = DEFAULTS(); reindex(); FX = FX_DEFAULTS(); S = freshState(); }
         RNG.load(S.orderGen.rng_state);
-        $("#rwSimType").innerHTML = DATA.order_rule.filter((r) => r.order_type !== "special")
-          .map((r) => `<option value="${r.order_type}">${r.order_type}</option>`).join("");
+        /* dry 실행은 예산을 소비하지 않으니 refill_max 0 인 타입(avatar·special·event)도 돌릴 수 있다 */
+        $("#rwSimType").innerHTML = DATA.order_rule.filter((r) => r.in_use)
+          .map((r) => `<option value="${r.order_type}">${r.order_type} · ${TYPE_KO[r.order_type] || ""} (Lv${r.unlock_level})</option>`).join("");
         $("#rwBuild").textContent = `build ${BUILD}`;
         renderFxJson();
         applyBobVars();
@@ -3329,7 +3917,7 @@
          비는 칸이 정상이라, 그냥 비면 고장으로 읽힌다 */
       function rerollNote(r) {
         if (r.got === r.open) return `오더 ${r.got}칸을 다시 뽑았습니다`;
-        const rule = ruleOf("random_1") || DATA.order_rule.find((x) => x.order_type.startsWith("random"));
+        const rule = [...DATA.order_rule].filter((x) => x.in_use).sort((a, b) => b.unlock_level - a.unlock_level)[0];
         const lv = rule && S.level < rule.unlock_level ? ` — 랜덤 오더는 Lv${rule.unlock_level} 부터입니다` : "";
         return `${r.open}칸 중 ${r.got}칸 발급${lv}. 판정 근거는 아래 발급 로그에 남습니다`;
       }
@@ -3396,7 +3984,11 @@
         const open = ta.classList.contains("rw-hide");
         ta.classList.toggle("rw-hide", !open);
         bar.classList.toggle("rw-hide", !open);
-        if (open) ta.value = JSON.stringify(DATA, null, 2);
+        if (open) {
+          ta.value = JSON.stringify(DATA, null, 2);
+          $("#rwJsonNote") && ($("#rwJsonNote").textContent =
+            `${(ta.value.length / 1024).toFixed(0)}KB · item_spec ${DATA.item_spec.length}행 · order_item ${DATA.order_item.length}행`);
+        }
       };
       $("#rwJsonApply").onclick = () => {
         let obj;
@@ -3405,7 +3997,7 @@
         const need = ["const", "order_rule", "item_spec", "order_item", "level_curve"];
         const miss = need.filter((k) => !obj || obj[k] == null);
         if (miss.length) { toast(`필수 키가 없습니다 — ${miss.join(", ")}`); return; }
-        DATA = obj; reindex();
+        DATA = obj; DATA_EDITED = true; reindex();
         fillEmptySlots("밸런스 교체"); render(); runSim();
         toast("밸런스 데이터를 갈아끼웠습니다");
       };
