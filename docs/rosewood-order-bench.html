@@ -209,6 +209,12 @@
       /* 이미 카드 폭을 다 쓰므로 히트 확장 의사요소는 끈다 — 켜 두면 스크롤 박스를 넓힌다 */
       .rw-track .rw-btn.serve::after { inset: 0; }
       .rw-track .rw-card.wait { font-size: clamp(8.5px, 10cqi, 11px); line-height: 1.4; }
+      /* 아직 안 열린 칸 — 자리만 잡고 실제 카드의 폭을 뺏지 않는다 */
+      .rw-card.lock { border-style: dashed; align-items: center; justify-content: center; gap: 3px;
+                      color: var(--text-faint); font-size: 15px; cursor: default; }
+      .rw-card.lock span { font-family: ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 700; }
+      .rw-card.lock:hover { border-color: var(--border); box-shadow: none; }
+      .rw-track > .rw-card.lock { flex: 0 0 60px; min-width: 60px; }
 
       .rw-lane { flex: none; width: 58px; border: 1px solid var(--border); border-radius: 10px;
                  background: var(--surface-2); padding: 6px 5px; display: flex; flex-direction: column;
@@ -342,6 +348,41 @@
       .rw-cell.sel .rw-chip::before { bottom: -3px; left: -3px; border-right: 0; border-top: 0; }
       .rw-cell.sel .rw-chip::after { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
       .rw-cap { font-size: 10px; color: var(--text-faint); text-align: center; line-height: 1.5; }
+
+      /* 인벤토리 모달 — 프레임 안에서만 덮는다(기기 화면 안의 팝업) */
+      .rw-modal { position: absolute; inset: 0; z-index: 20; border-radius: 14px;
+                  background: color-mix(in srgb, var(--text) 42%, transparent);
+                  display: flex; align-items: center; justify-content: center; padding: 14px; }
+      .rw-sheet { width: 100%; max-height: 100%; display: flex; flex-direction: column; gap: 8px;
+                  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+                  box-shadow: var(--shadow); padding: 10px; }
+      .rw-sheet h4 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+      .rw-sheet h4 .x { margin-left: auto; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+                        background: var(--surface-2); cursor: pointer; font: inherit; font-size: 14px; line-height: 1; }
+      .rw-tabs { display: flex; gap: 5px; }
+      .rw-tabs button { flex: 1 1 0; min-height: 30px; border: 1px solid var(--border); background: var(--surface-2);
+                        border-radius: 8px; font: inherit; font-size: 11.5px; cursor: pointer; color: var(--text-dim); }
+      .rw-tabs button[aria-selected="true"] { border-color: var(--tool); color: var(--tool);
+                        background: color-mix(in srgb, var(--tool) 10%, var(--surface-2)); }
+      .rw-bag { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; overflow-y: auto;
+                padding: 2px; align-content: start; }
+      .rw-bag .s { position: relative; aspect-ratio: 1; border-radius: 8px; border: 1px dashed var(--border);
+                   background: var(--surface-2); display: grid; place-items: center; padding: 0; font: inherit; }
+      .rw-bag .s.has { border-style: solid; cursor: pointer; }
+      .rw-bag .s .rw-req { width: 82%; height: 82%; font-size: 12px; }
+      /* 잠긴 칸은 회색 처리하지 않고 배지만 얹는다(문서 규칙) */
+      .rw-bag .s .lk { position: absolute; top: -3px; right: -3px; width: 16px; height: 16px; border-radius: 50%;
+                       background: var(--analysis); color: #fff; font-size: 9px; display: grid; place-items: center; }
+      .rw-sheet .foot { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-faint); }
+      .rw-sheet .foot .rw-btn { margin-left: auto; }
+      /* 되돌리기 스낵바 — 판매·치우기 뒤 undo_valid_sec 동안만 */
+      .rw-undo { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 18;
+                 display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12px;
+                 border-radius: 10px; border: 1px solid var(--border);
+                 background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
+      .rw-undo b { font-weight: 700; }
+      .rw-undo .rw-btn { margin-left: auto; padding: 4px 12px; font-size: 12px; }
+      .rw-btn.trash { background: var(--deploy); border-color: var(--deploy); color: #fff; }
 
       /* 하단 정보바 */
       .rw-info { display: flex; align-items: stretch; gap: 6px; }
@@ -500,14 +541,6 @@
                 <div class="rw-railhead">
                   <span>⑩ 통합 레일</span>
                   <span class="rw-meta" id="rwRailMeta"></span>
-                  <label for="rwSort">정렬</label>
-                  <select id="rwSort" title="벤치 전용 — 실제 게임은 슬롯 번호 순서로 고정입니다">
-                    <option value="slot">슬롯 번호 (게임 기본)</option>
-                    <option value="ready">납품 가능 우선</option>
-                    <option value="coin">보상 높은 순</option>
-                    <option value="diff">난이도 낮은 순</option>
-                    <option value="step">요구 단계 낮은 순</option>
-                  </select>
                 </div>
                 <div class="rw-scroll">
                   <div class="rw-track" id="rwRail"></div>
@@ -519,13 +552,9 @@
               <div class="rw-board" id="rwBoard"></div>
               <div class="rw-fx" id="rwFx"></div>
             </div>
-            <p class="rw-cap">
-              드래그로 합치고 옮깁니다 · 탭은 선택 · 못 놓는 자리에 놓으면 원래 칸으로 되돌아갑니다<br />
-              셀 표시: 체크만 = 주문 일치(다른 재료 미완) · 체크 + 노란 테두리 = 지금 납품 가능<br />
-              7 × 9 merge grid · 선택 셀 점선 · <span id="rwBoardSub"></span>
-            </p>
 
             <div class="rw-info" id="rwInfo"></div>
+            <div class="rw-modal rw-hide" id="rwInv"></div>
           </div>
         </div>
 
@@ -1221,7 +1250,8 @@
             rows.push({
               item_code: codeOf(ch.id, s),
               merged_item_code: s < ch.len ? codeOf(ch.id, s + 1) : 0,
-              selling_price: Math.round(Math.pow(1.8, s - 2)) + 1,
+              // 시트 계약: selling_price 는 0~12, 0 이면 판매 불가(치우기만). 값은 시트가 정본이다.
+              selling_price: s === 2 ? 0 : Math.min(12, s - 1),
               is_generator: 0, spread_cost_energy: 0, spread_item_max: 0, spread_item_recovery_sec: 0,
               p1: 0, w1: 0, p2: 0, w2: 0, p3: 0, w3: 0,
             });
@@ -1254,7 +1284,19 @@
           default_max_energy: 100,
           default_recovery_duration_sec: 120,
           nru_start_coin: 100,
+          undo_valid_sec: 5,
+          inventory_slot_default: 5,
+          inventory_slot_max: 32,
         },
+        /* 인벤토리 확장 27행 (6칸 → 32칸). 컬럼은 시트 계약대로 slot_index · cost_type · unlock_cost.
+           값은 시트가 정본이고 여기 숫자는 문서에 남은 양끝(6칸 50젬 · 마지막 3칸 69950 고정)에
+           맞춘 임시값이다 — 실물 시트로 갈아끼운다. 코드에서 등비수열을 다시 만들지 않는다. */
+        inventory_unlock: (() => {
+          const cost = [50, 55, 78, 110, 156, 220, 312, 441, 624, 882, 1247, 1764, 2494, 3527,
+                        4988, 7054, 9975, 14108, 19950, 28216, 39900, 49470, 56000, 63000,
+                        69950, 69950, 69950];
+          return cost.map((c, i) => ({ slot_index: i + 6, cost_type: "gem", unlock_cost: c, in_use: 1 }));
+        })(),
         order_rule: [
           { order_type: "normal", slot_count: 2, unlock_level: 3, item_slot_max: 2, refill_max: 5, refresh_sec: 3600, in_use: 1 },
           { order_type: "high", slot_count: 1, unlock_level: 3, item_slot_max: 2, refill_max: 1, refresh_sec: 1800, in_use: 1 },
@@ -1343,7 +1385,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.9 · 2026-09-10";
+      const BUILD = "v3.0 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1355,7 +1397,7 @@
             cells: S.cells, level: S.level, exp: S.exp, coin: S.coin, energy: S.energy,
             day: S.day, choreSeq: S.choreSeq, sel: S.sel, orderGen: S.orderGen, orderFree: S.orderFree,
             gem: S.gem, debug: S.debug, serveCount: S.serveCount, energyLastAt: S.energyLastAt,
-            sortMode: S.sortMode, boost: S.boost, out: S.out,
+            boost: S.boost, out: S.out, inv: S.inv,
             slots: S.slots, prevOfSlot: S.prevOfSlot,
             log: S.log.slice(0, 20).map((e) => ({ ...e, t: e.t.toISOString() })),
           };
@@ -1406,6 +1448,7 @@
         });
         return {
           cells, level: 1, exp: 0, coin: DATA.const.nru_start_coin, gem: 0, debug: false,
+          inv: { store: [], box: [], bought: 0, tab: "store" },
           energy: DATA.const.default_max_energy, energyLastAt: Date.now() / 1000, serveCount: 0, boost: 1,
           day: 1, choreSeq: 0, sel: null, busy: false, orderFree: false, out: null,
           orderGen: { rng_state: RNG.save(), fixed_next_seq: 1, chain_repeat: {}, type_timers: {} },
@@ -1415,6 +1458,17 @@
 
       const slotType = (n) => (n === 1 || n === 2 ? "normal" : n === 3 ? "high" : n === 4 ? "random_3" : n === 5 ? "random_4" : "special");
       const ruleOf = (type) => idx().rule.get(type);
+
+      /* 레일에 그릴 다섯 칸 전부 — 열림/잠김과 필요한 레벨까지 함께 준다.
+         openSlots() 와 같은 기준을 쓴다(슬롯 1~3 은 Lv1 부터, 4·5 는 order_rule.unlock_level). */
+      function allSlots() {
+        return [1, 2, 3, 4, 5].map((n) => {
+          const type = slotType(n);
+          const r = ruleOf(type);
+          const need = n >= 4 && r ? r.unlock_level : 1;
+          return { n, type, need, open: S.level >= need };
+        });
+      }
 
       function openSlots() {
         // 슬롯 1~3 은 Lv1 부터 존재한다 — Lv1~2 구간은 order_fixed 16장이 채운다.
@@ -1762,12 +1816,74 @@
         return true;
       }
 
+      /* ────────────────────────────────────────────────────────────────
+         판매 / 치우기 / 되돌리기 — 기획서 「판매 / 치우기 / 되돌리기」
+           selling_price > 0  → Sell + 코인 +n
+           selling_price ≤ 0  → 빨간 휴지통만(라벨·금액 숨김)
+           되돌리기는 클라 로컬 const.undo_valid_sec 초. 그 창 안에는 서버로 보내지 않는다.
+           생성기·고가는 확인 팝업을 타고, 그 경로에는 되돌리기를 붙이지 않는다.
+         ──────────────────────────────────────────────────────────────── */
+      /* 확인 팝업의 「고가」 기준은 시트·기획서 어디에도 확정값이 없다(string_code 문면과
+         item_spec.rare 값이 서로 어긋난 채 열려 있는 이슈). selling_price 가 0~12 범위이므로
+         그 안의 임시값을 쓴다 — 확정되면 const 로 옮긴다. */
+      const HIGH_VALUE_COIN = 10;
+      let UNDO = null, undoTimer = 0;
+
+      function clearUndo(send) {
+        clearTimeout(undoTimer); undoTimer = 0;
+        if (UNDO && send) UNDO.commit();          // 창이 지나야 서버로 보낸다
+        UNDO = null;
+        const el = $("#rwUndo"); if (el) el.remove();
+      }
+
+      function offerUndo(label, restore, commit) {
+        clearUndo(true);
+        UNDO = { restore, commit };
+        const sec = DATA.const.undo_valid_sec || 5;
+        const el = document.createElement("div");
+        el.className = "rw-undo"; el.id = "rwUndo";
+        el.innerHTML = `<b>${label}</b><span id="rwUndoSec">${sec}s</span>
+          <button class="rw-btn" onclick="undoLast()">되돌리기</button>`;
+        $("#rwFrame").appendChild(el);
+        let left = sec;
+        undoTimer = setInterval(() => {
+          left--;
+          const t = $("#rwUndoSec");
+          if (t) t.textContent = `${left}s`;
+          if (left <= 0) clearUndo(true);
+        }, 1000);
+      }
+
+      function undoLast() {
+        if (!UNDO) return;
+        const back = UNDO.restore;
+        clearTimeout(undoTimer); undoTimer = 0; UNDO = null;
+        const el = $("#rwUndo"); if (el) el.remove();
+        back();
+        render();
+        toast("되돌렸습니다 — 서버로는 보내지 않았습니다");
+      }
+
       function sellCell(i) {
         const c = S.cells[i]; if (!c) return;
         const sp = specOf(c.code);
         if (sp.is_generator) { toast("생성기는 팔지 않습니다"); return; }
-        S.coin += sp.selling_price; S.cells[i] = null; S.sel = null;
-        render(); toast(`판매 +${sp.selling_price} 코인`);
+        const price = sp.selling_price || 0;
+        const trash = price <= 0;                 // 판매 불가 → 치우기
+        const confirmNeeded = price >= HIGH_VALUE_COIN;
+        if (confirmNeeded && !confirm(`${labelOf(c.code)} 을(를) 팝니다. 되돌릴 수 없습니다. 계속할까요?`)) return;
+
+        const snapshot = { i, cell: c };
+        S.cells[i] = null; S.sel = null;
+        if (!trash) S.coin += price;
+        render();
+        const name = labelOf(c.code);
+        if (confirmNeeded) { toast(`${name} is sold. +${price}`); return; }   // 확인 팝업 경로엔 되돌리기 없음
+        offerUndo(
+          trash ? `${name} is removed.` : `${name} is sold. +${price}`,
+          () => { S.cells[snapshot.i] = snapshot.cell; if (!trash) S.coin -= price; },
+          () => {},                                // 창이 지나면 여기서 /board/sell 을 보낸다
+        );
       }
 
       // 납품 확정 — 코인·직전 요구품·반복 카운터를 한 번에 처리하고 다음 카드를 발급한다
@@ -1997,7 +2113,7 @@
         if (board.children.length !== CELLS) buildBoard();
         const kids = board.children;
         const now = Date.now() / 1000;
-        let filled = 0;
+
         for (let i = 0; i < CELLS; i++) {
           const el = kids[i];
           const chip = el.children[0], ba = el.children[1], bb = el.children[2], bc = el.children[3];
@@ -2007,7 +2123,6 @@
             chip.style.display = "none"; ba.style.display = bb.style.display = bc.style.display = "none";
             continue;
           }
-          filled++;
           const sp = specOf(c.code), m = mark.get(c.code);
           const gen = !!sp.is_generator;
           const maxed = !sp.merged_item_code && !gen;
@@ -2053,8 +2168,6 @@
           if (maxed) { bc.textContent = "♛"; bc.title = "최고 단계"; }
 
         }
-        const sub = $("#rwBoardSub"), txt = `${filled}/63 채움 · cell = row×7+col`;
-        if (sub.textContent !== txt) sub.textContent = txt;
       }
 
       /* ────────────────────────────────────────────────────────────────
@@ -2316,12 +2429,15 @@
       /* 하단 정보바 — 문서 1.5 「선택한 셀이 지금 할 수 있는 일」 */
       function renderInfo() {
         const el = $("#rwInfo");
-        const side = (id, gl) => `<div class="rw-sq" role="img" aria-label="${id}" title="${id}"><b>${gl}</b></div>`;
+        /* 좌하단 = 인벤토리 진입. Lv2 전에는 자물쇠를 그리지 않고 자리를 비워 둔다(문서 규칙). */
+        const side = () => S.level >= 2
+          ? `<button type="button" class="rw-sq" title="인벤토리" onclick="openInv('store')"><b>▤</b>
+               ${S.inv.store.length ? `<span class="rw-dot">${S.inv.store.length}</span>` : ""}</button>`
+          : `<div class="rw-sq" style="visibility:hidden"></div>`;
         if (S.sel == null || !S.cells[S.sel]) {
-          el.innerHTML = side("인벤토리", "▤") +
+          el.innerHTML = side() +
             `<div class="body"><div class="txt"><span class="name">셀을 고르세요</span>
-              <div class="d">칩을 <b>끌어다</b> 같은 칩에 놓으면 합쳐지고, 빈 칸에 놓으면 옮겨집니다. ⚡생성기는 눌러서 생산합니다.</div></div></div>` +
-            side("도구", "✂");
+              <div class="d">칩을 <b>끌어다</b> 같은 칩에 놓으면 합쳐지고, 빈 칸에 놓으면 옮겨집니다. ⚡생성기는 눌러서 생산합니다.</div></div></div>`;
           return;
         }
         const c = S.cells[S.sel], sp = specOf(c.code), ch = chainOf(c.code);
@@ -2332,20 +2448,136 @@
           : sp.merged_item_code
             ? `MERGE to reach its next level. → ${labelOf(sp.merged_item_code)}${oi ? ` · 오더가 ${oi.order_price} / 난이도 ${oi.diff_score}` : ""}`
             : `최고 단계입니다. 더 합칠 수 없습니다.${oi ? ` · 오더가 ${oi.order_price}` : ""}`;
+        // selling_price 로 갈린다 — 0 이하면 금액을 숨기고 빨간 휴지통만 낸다
+        const price = sp.selling_price || 0;
+        const act = sp.is_generator
+          ? `<button class="rw-btn" onclick="tapGenerator(${S.sel})">produce</button>`
+          : `<button class="rw-btn" onclick="stashCell(${S.sel})" title="보관 창고에 넣습니다">보관</button>
+             ${price > 0
+               ? `<button class="rw-btn" onclick="sellCell(${S.sel})">sell +${price}</button>`
+               : `<button class="rw-btn trash" onclick="sellCell(${S.sel})" title="판매할 수 없는 아이템입니다 — 치웁니다">🗑</button>`}`;
         el.innerHTML =
-          side("인벤토리", "▤") +
+          side() +
           `<div class="body">
              <span class="rw-req" style="--h:${hueOf(ch)}deg">${labelOf(c.code)}</span>
              <div class="txt">
                <span class="name">${chName} (Lvl ${stepOf(c.code)})</span>
                <div class="d">${line}</div>
              </div>
-             <span class="act">${sp.is_generator
-               ? `<button class="rw-btn" onclick="tapGenerator(${S.sel})">produce</button>`
-               : `<button class="rw-btn" onclick="sellCell(${S.sel})">sell ${sp.selling_price}</button>`}</span>
-           </div>` +
-          side("도구", "✂");
+             <span class="act">${act}</span>
+           </div>`;
       }
+
+      /* ────────────────────────────────────────────────────────────────
+         인벤토리 (기획서 2.6)
+           보관 창고와 보상함은 다른 칸 — 보상함은 창고 칸 수를 쓰지 않는다.
+           꺼내기 = 보드 나선 첫 빈 칸. 보드 가득이면 토스트만.
+           창고 가득이면 넣기를 거절하고 아이템은 보드에 남는다 + [슬롯 사기].
+           잠긴 칸은 회색 처리하지 않고 배지만 얹는다.
+         ──────────────────────────────────────────────────────────────── */
+      const invSlots = () => (DATA.const.inventory_slot_default || 5) + (S.inv.bought || 0);
+      const invMax = () => DATA.const.inventory_slot_max || 32;
+
+      /* 보드 나선 순서 — 가운데에서 바깥으로. 꺼낸 아이템이 손 가까이 놓인다 */
+      const SPIRAL = (() => {
+        const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2), out = [];
+        let x = cx, y = cy, dx = 1, dy = 0, len = 1;
+        out.push(y * COLS + x);
+        while (out.length < CELLS * 2) {
+          for (let rep = 0; rep < 2; rep++) {
+            for (let k = 0; k < len; k++) {
+              x += dx; y += dy;
+              if (x >= 0 && x < COLS && y >= 0 && y < ROWS) out.push(y * COLS + x);
+            }
+            [dx, dy] = [-dy, dx];
+          }
+          len++;
+          if (len > COLS + ROWS) break;
+        }
+        return [...new Set(out)];
+      })();
+      const firstSpiralEmpty = () => SPIRAL.find((i) => !S.cells[i]) ?? -1;
+
+      function stashCell(i) {
+        const c = S.cells[i]; if (!c) return;
+        if (specOf(c.code).is_generator) { toast("생성기는 창고에 넣지 않습니다"); return; }
+        if (S.inv.store.length >= invSlots()) {
+          toast("Inventory is full. — [슬롯 사기] 로 늘리세요");   // 넣기 거절, 아이템은 보드에 남는다
+          openInv("store");
+          return;
+        }
+        S.inv.store.push(c.code);
+        S.cells[i] = null; S.sel = null;
+        render(); toast(`${labelOf(c.code)} 을(를) 보관했습니다`);
+      }
+
+      function takeOut(kind, idx) {
+        const bag = S.inv[kind];
+        const code = bag[idx]; if (code == null) return;
+        const dest = firstSpiralEmpty();
+        if (dest < 0) { toast("No space on the board"); return; }
+        bag.splice(idx, 1);
+        S.cells[dest] = { code };
+        S.sel = dest;
+        render(); renderInv();
+        squash(chipAt(dest), FX.SQUASH_SX, FX.SQUASH_SY, FX.SQUASH_IN, FX.SQUASH_OUT);
+      }
+
+      function buyInvSlot() {
+        const rows = (DATA.inventory_unlock || []).filter((r) => r.in_use);
+        const next = rows[S.inv.bought || 0];
+        if (!next) { toast("더 늘릴 칸이 없습니다"); return; }
+        if (S.gem < next.unlock_cost) { toast(`젬이 ${next.unlock_cost - S.gem} 개 모자랍니다`); return; }
+        // 확장은 서버 소유라 낙관적 처리를 하지 않는다(문서 오너십 표) — 벤치는 즉시 반영하고 표시만 남긴다
+        S.gem -= next.unlock_cost;
+        S.inv.bought = (S.inv.bought || 0) + 1;
+        render(); renderInv();
+        toast(`칸을 늘렸습니다 — 젬 ${next.unlock_cost} 소모 (실제로는 서버 확정 후 반영)`);
+      }
+
+      function openInv(tab) { S.inv.tab = tab || S.inv.tab || "store"; $("#rwInv").classList.remove("rw-hide"); renderInv(); }
+      function closeInv() { $("#rwInv").classList.add("rw-hide"); save(); }
+
+      function renderInv() {
+        const el = $("#rwInv");
+        if (el.classList.contains("rw-hide")) return;
+        const tab = S.inv.tab || "store";
+        const rows = (DATA.inventory_unlock || []).filter((r) => r.in_use);
+        const next = rows[S.inv.bought || 0];
+        const bag = S.inv[tab] || [];
+        const cells = [];
+        if (tab === "store") {
+          const openN = invSlots(), all = invMax();
+          for (let i = 0; i < all; i++) {
+            const code = bag[i];
+            const locked = i >= openN;
+            cells.push(`<button class="s ${code != null && !locked ? "has" : ""}"
+              ${code != null && !locked ? `onclick="takeOut('store',${i})" title="꺼내기 — 보드 나선 첫 빈 칸"` : "disabled"}>
+              ${code != null ? `<span class="rw-req" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span>` : ""}
+              ${locked ? '<span class="lk">🔒</span>' : ""}</button>`);
+          }
+        } else {
+          // 보상함은 창고 칸 수를 쓰지 않는다 — 있는 만큼만 그린다
+          if (!bag.length) cells.push('<div style="grid-column:1/-1;font-size:11.5px;color:var(--text-faint);padding:10px 2px">받을 보상이 없습니다.</div>');
+          bag.forEach((code, i) => cells.push(`<button class="s has" onclick="takeOut('box',${i})" title="꺼내기">
+              <span class="rw-req" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span></button>`));
+        }
+        el.innerHTML = `<div class="rw-sheet">
+            <h4>인벤토리<button class="x" onclick="closeInv()" aria-label="닫기">✕</button></h4>
+            <div class="rw-tabs">
+              <button aria-selected="${tab === "store"}" onclick="S.inv.tab='store';renderInv()">보관 창고 ${bagCount("store")}/${invSlots()}</button>
+              <button aria-selected="${tab === "box"}" onclick="S.inv.tab='box';renderInv()">보상함 ${bagCount("box")}</button>
+            </div>
+            <div class="rw-bag">${cells.join("")}</div>
+            <div class="foot">
+              ${tab === "store"
+                ? `칸 ${invSlots()}/${invMax()} · 잠긴 칸은 순서대로만 열립니다
+                   ${next ? `<button class="rw-btn" onclick="buyInvSlot()">슬롯 사기 ◆${next.unlock_cost.toLocaleString()}</button>` : ""}`
+                : "보상함은 창고 칸 수를 쓰지 않습니다."}
+            </div>
+          </div>`;
+      }
+      const bagCount = (k) => (S.inv[k] || []).length;
 
       /* 오더 카드 마크업 — 레일과 뽑기 표본이 같은 그림을 쓴다.
          문서 「오더 카드 해부」: NPC 초상 · 접시 · A 상단 우측 · B 하단 좌 · C 하단 우 · Serve */
@@ -2371,7 +2603,6 @@
       }
 
       function renderRail() {
-        const r = $("#rwRail"); const open = openSlots();
         const counts = boardCounts();
         const now = Date.now() / 1000;
 
@@ -2379,27 +2610,21 @@
         $("#rwRailMeta").innerHTML =
           `<b title="주간 태스크 — 마을 게시판에서 엽니다">주간 ${S.choreSeq % 7}/7</b>` +
           `<b title="시즌 패스">패스 Lv${Math.min(30, S.level)}</b>`;
+        /* 순서는 슬롯 번호로 고정한다 — 실제 게임이 그렇다.
+           아직 안 열린 슬롯도 자리만 비워서 보여 준다. 몇 칸짜리 레일인지가 보여야
+           「3개뿐인가」 하고 헷갈리지 않는다. 칸 수는 1~5 로 변하고, 매번 다시 배치된다. */
         let html = "";
-
-        // 벤치 전용 정렬 — 실제 게임은 슬롯 번호로 고정이다
-        const mode = ($("#rwSort") && $("#rwSort").value) || "slot";
-        const isReady = (n) => { const c = S.slots[n]; return c && (S.orderFree || c.reqs.every((q) => (counts.get(q.code) || 0) >= q.count)); };
-        const sorted = [...open];
-        if (mode === "ready") sorted.sort((a, b) => (isReady(b) ? 1 : 0) - (isReady(a) ? 1 : 0) || a - b);
-        else if (mode === "coin") sorted.sort((a, b) => ((S.slots[b] || {}).coin || -1) - ((S.slots[a] || {}).coin || -1) || a - b);
-        else if (mode === "diff") sorted.sort((a, b) => ((S.slots[a] || {}).diff ?? 1e9) - ((S.slots[b] || {}).diff ?? 1e9) || a - b);
-        else if (mode === "step") {
-          const mx = (n) => { const c = S.slots[n]; return c ? Math.max(...c.reqs.map((q) => stepOf(q.code))) : 1e9; };
-          sorted.sort((a, b) => mx(a) - mx(b) || a - b);
-        }
-
-        if (!open.length) html += '<div class="rw-card wait">열린 슬롯이 없습니다</div>';
-        for (const n of sorted) {
+        for (const sl of allSlots()) {
+          const n = sl.n;
+          if (!sl.open) {
+            html += `<div class="rw-card lock" data-slot="${n}" title="${sl.type} — Lv${sl.need} 에 열립니다">🔒<span>Lv${sl.need}</span></div>`;
+            continue;
+          }
           const card = S.slots[n];
           if (!card) {
-            const t = S.orderGen.type_timers[slotType(n)];
+            const t = S.orderGen.type_timers[sl.type];
             const wait = t && t.next_refill_at > 0 ? fmtSec(t.next_refill_at - now) : "";
-            html += `<div class="rw-card wait" data-slot="${n}">슬롯 ${n}<br />${slotType(n)}<br /><span data-wait="${slotType(n)}">${wait ? `대기 ${wait}` : "발급 대기"}</span></div>`;
+            html += `<div class="rw-card wait" data-slot="${n}"><span data-wait="${sl.type}">${wait ? `대기 ${wait}` : "발급 대기"}</span></div>`;
             continue;
           }
           const ok = S.orderFree || card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
@@ -2908,6 +3133,9 @@
       window.talkSkip = talkSkip; window.talkNext = talkNext; window.checkinClaim = checkinClaim;
       window.shopBuy = shopBuy; window.mailOpen = mailOpen; window.mailClaim = mailClaim;
       window.setToggle = setToggle; window.pickAvatarOut = pickAvatarOut;
+      window.openInv = openInv; window.closeInv = closeInv; window.renderInv = renderInv;
+      window.takeOut = takeOut; window.buyInvSlot = buyInvSlot; window.stashCell = stashCell;
+      window.undoLast = undoLast;
 
       /* ======================================================================
          9. 분포
@@ -3004,6 +3232,8 @@
           DATA = saved.data; reindex();
           FX = Object.assign(FX_DEFAULTS(), saved.fx || {});
           S = Object.assign(freshState(), saved.state); S.busy = false;
+          if (!S.inv || !Array.isArray(S.inv.store)) S.inv = { store: [], box: [], bought: 0, tab: "store" };
+          if (!Array.isArray(S.inv.box)) S.inv.box = [];
         } else { DATA = DEFAULTS(); reindex(); FX = FX_DEFAULTS(); S = freshState(); }
         RNG.load(S.orderGen.rng_state);
         $("#rwSimType").innerHTML = DATA.order_rule.filter((r) => r.order_type !== "special")
@@ -3014,7 +3244,6 @@
         $("#rwDebug").checked = !!S.debug;
         $("#rwOrderFree").checked = !!S.orderFree;
         $("#rwOrderFreeS").textContent = S.orderFree ? "on" : "off";
-        if (S.sortMode) $("#rwSort").value = S.sortMode;
         $("#rwSimLv").value = Math.max(S.level, 3);   // 미해금 레벨로 열리면 0 장이라 고장으로 보인다
         fillEmptySlots(saved ? "저장 상태 복원" : "첫 진입");
         render();
@@ -3106,10 +3335,9 @@
         render();
       };
       $("#rwShop").onclick = (e) => { tapFeel(e.currentTarget); toast("상점은 이 벤치의 범위 밖입니다"); };
-      $("#rwBox").onclick = (e) => { tapFeel(e.currentTarget); toast("보상 인벤토리는 이 벤치의 범위 밖입니다"); };
+      $("#rwBox").onclick = (e) => { tapFeel(e.currentTarget); openInv("box"); };
       $("#rwReset").onclick = resetAll;
       $("#rwClearLog").onclick = () => { S.log = []; renderLog(); save(); };
-      $("#rwSort").onchange = (e) => { S.sortMode = e.currentTarget.value; renderRail(); save(); };
       $("#rwSimGo").onclick = runSim;
       $("#rwFxApply").onclick = applyFx;
       $("#rwFxReset").onclick = () => {
@@ -3205,6 +3433,8 @@
         });
       }
       if (window.ResizeObserver) new ResizeObserver(syncFrameHeight).observe($("#rwFrame"));
+      $("#rwInv").addEventListener("pointerdown", (e) => { if (e.target === $("#rwInv")) closeInv(); });
+      window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeInv(); });
       window.addEventListener("resize", () => { GEO = null; syncFrameHeight(); });
       window.addEventListener("scroll", () => { if (!DRAG) GEO = null; }, { passive: true });
       syncFrameHeight();
