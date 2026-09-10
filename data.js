@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-10 09:40",
+  updated: "2026-09-10 11:46",
 };
 
 /* --------------------------------------------------------------------------
@@ -455,6 +455,17 @@ const SECTIONS = [
         pinned: false,
         tags: ["머지", "리소스 실측", "도구"],
         share: false,
+      },
+      {
+        title: "오더 생성 벤치",
+        desc: "오더가 왜 그 오더로 나왔는지 발급마다 판정 근거를 남기는 페이지. 밸런스 값을 화면에서 고쳐 바로 다시 뽑아 봅니다.",
+        url: "docs/rosewood-order-bench.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-10 11:46",
+        pinned: false,
+        tags: ["머지", "인터랙티브"],
       },
     ],
   },

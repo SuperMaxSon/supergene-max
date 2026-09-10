@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>오더 생성 벤치</title>
+    <meta
+      name="description"
+      content="Rosewood 코어루프를 그대로 돌려 보는 페이지. 개발 기획서 1.2.1 오더 생성 8단계를 구현하고, 어떤 오더가 왜 나왔는지를 발급마다 로그로 남긴다. 밸런스 값은 화면에서 고칠 수 있다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+    <style>
+      /* ==========================================================================
+         오더 생성 벤치 — 페이지 전용 스타일
+         허브 토큰(--surface / --border / --text / --tool …)만 쓰고 새 토큰은 만들지 않는다.
+         클래스는 전부 rw- 접두 — style.css(141KB) 와 이름이 겹치지 않게.
+         칩 색만 hsl 로 직접 만든다. 체인이 8종이라 토큰으로 두면 style.css 를 건드려야 한다.
+         ========================================================================== */
+      .rw-bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+                border: 1px solid var(--border); border-radius: var(--radius);
+                background: var(--surface); padding: 10px 14px; box-shadow: var(--shadow); }
+      .rw-stat { display: flex; flex-direction: column; padding: 0 12px 0 0; margin-right: 2px;
+                 border-right: 1px solid var(--border-soft); min-width: 62px; }
+      .rw-stat:last-of-type { border-right: 0; }
+      .rw-stat u { text-decoration: none; font-size: 10px; letter-spacing: 0.1em;
+                   text-transform: uppercase; color: var(--text-faint); }
+      .rw-stat b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                   font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 700; line-height: 1.25; }
+      .rw-stat.e b { color: var(--warn); }
+      .rw-stat.c b { color: var(--validate); }
+      .rw-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+
+      .rw-btn { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm);
+                padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+                color: var(--text-dim); white-space: nowrap; }
+      .rw-btn:hover { border-color: var(--tool); color: var(--tool); }
+      .rw-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .rw-btn.pri { background: var(--tool); border-color: var(--tool); color: #fff; }
+      .rw-btn.pri:hover { filter: brightness(1.08); color: #fff; }
+      .rw-btn.sm { padding: 3px 9px; font-size: 12px; font-weight: 500; }
+
+      .rw-cols { display: grid; grid-template-columns: minmax(0, auto) minmax(320px, 1fr);
+                 gap: 16px; align-items: start; }
+      @media (max-width: 900px) { .rw-cols { grid-template-columns: 1fr; } }
+
+      .rw-panel { border: 1px solid var(--border); border-radius: var(--radius);
+                  background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+      .rw-ph { display: flex; align-items: center; gap: 8px; padding: 8px 13px;
+               border-bottom: 1px solid var(--border-soft); background: var(--surface-2); }
+      .rw-ph h3 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -0.005em; }
+      .rw-ph .sub { margin-left: auto; font-size: 11.5px; color: var(--text-faint);
+                    font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+      .rw-pb { padding: 12px; }
+
+      /* ── 보드 7×9 ── */
+      .rw-board { display: grid; grid-template-columns: repeat(7, var(--cw));
+                  grid-auto-rows: var(--cw); gap: 4px; --cw: clamp(36px, 9.6vw, 50px);
+                  padding: 8px; background: var(--surface-2); border: 1px solid var(--border);
+                  border-radius: var(--radius-sm); }
+      .rw-cell { position: relative; padding: 0; border-radius: 5px; background: transparent;
+                 border: 1px dashed var(--border); cursor: default; }
+      .rw-cell.has { border-style: solid; border-color: transparent; cursor: pointer; }
+      .rw-chip { position: absolute; inset: 0; border-radius: 5px; display: flex;
+                 align-items: center; justify-content: center; line-height: 1;
+                 background: hsl(var(--h) 44% 87%); color: hsl(var(--h) 58% 26%);
+                 border: 1px solid hsl(var(--h) 40% 72%);
+                 font-family: ui-monospace, Menlo, monospace; font-weight: 700;
+                 font-size: calc(var(--cw) * 0.33); transition: transform 0.09s ease; }
+      .rw-cell.sel .rw-chip { transform: scale(0.88); box-shadow: 0 0 0 2px var(--tool); }
+      .rw-cell.hint .rw-chip { box-shadow: 0 0 0 2px var(--balance); }
+      .rw-cell.gen .rw-chip { border-width: 2px; border-style: double; }
+      .rw-bg { position: absolute; font-size: calc(var(--cw) * 0.26); line-height: 1; }
+      .rw-bg.a { top: 2px; left: 3px; font-family: ui-monospace, Menlo, monospace;
+                 font-size: calc(var(--cw) * 0.2); color: var(--text-dim); }
+      .rw-bg.b { top: 1px; right: 3px; }
+      .rw-bg.c { bottom: 1px; right: 3px; color: var(--validate); }
+      .rw-cell.req .rw-bg.b { color: var(--balance); font-weight: 800; }
+      .rw-cell.gen .rw-bg.b { color: var(--warn); }
+
+      .rw-info { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; min-height: 54px;
+                 border: 1px solid var(--border); border-radius: var(--radius);
+                 background: var(--surface); padding: 9px 13px; }
+      .rw-info .t { font-weight: 700; font-size: 13.5px; }
+      .rw-info .d { font-size: 12px; color: var(--text-dim); }
+      .rw-info .sp { margin-left: auto; }
+
+      /* ── 오더 레일 ── */
+      .rw-rail { display: flex; flex-direction: column; gap: 8px; }
+      .rw-card { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+      .rw-ch { display: flex; align-items: center; gap: 8px; padding: 5px 10px;
+               background: var(--surface-2); border-bottom: 1px solid var(--border-soft); }
+      .rw-slotno { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--text-faint); }
+      .rw-type { font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 800;
+                 padding: 1px 6px; border-radius: 3px; color: var(--tool);
+                 background: color-mix(in srgb, var(--tool) 12%, transparent); }
+      .rw-type.fixed { color: var(--validate); background: color-mix(in srgb, var(--validate) 14%, transparent); }
+      .rw-who { margin-left: auto; font-size: 11.5px; color: var(--text-dim); }
+      .rw-cb { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 10px; }
+      .rw-req { position: relative; width: 38px; height: 38px; border-radius: 5px; display: flex;
+                align-items: center; justify-content: center; font-family: ui-monospace, Menlo, monospace;
+                font-size: 13px; font-weight: 700; background: hsl(var(--h) 44% 87%);
+                color: hsl(var(--h) 58% 26%); border: 1px solid hsl(var(--h) 40% 72%); }
+      .rw-req.miss { opacity: 0.34; }
+      .rw-req .ck { position: absolute; top: -5px; right: -5px; font-size: 11px;
+                    color: var(--balance); font-weight: 800; }
+      .rw-rw { display: flex; flex-direction: column; font-size: 11.5px; color: var(--text-dim); }
+      .rw-rw b { color: var(--validate); font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+      .rw-empty { padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm);
+                  font-size: 12px; color: var(--text-faint); text-align: center; }
+
+      /* ── 추첨 로그 ── */
+      .rw-log { max-height: 460px; overflow: auto; background: var(--surface-2); }
+      .rw-e { border-bottom: 1px solid var(--border); padding: 8px 12px; }
+      .rw-e:last-child { border-bottom: 0; }
+      .rw-e h4 { margin: 0 0 4px; font-size: 12px; font-weight: 800; display: flex; gap: 7px; align-items: baseline; }
+      .rw-e h4 .tag { font-weight: 400; font-size: 10.5px; color: var(--text-faint);
+                      font-family: ui-monospace, Menlo, monospace; }
+      .rw-steps { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+                  line-height: 1.75; color: var(--text-dim); white-space: pre-wrap; word-break: break-word; }
+      .rw-steps .k { color: var(--tool); font-weight: 700; }
+      .rw-steps .w { color: var(--deploy); font-weight: 700; }
+      .rw-steps .p { color: var(--text); font-weight: 700; }
+
+      /* ── 데이터 표 ── */
+      .rw-tw { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);
+               background: var(--surface); }
+      .rw-tw.scroll { max-height: 420px; overflow-y: auto; }
+      .rw-tw table { border-collapse: collapse; width: 100%;
+                     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                     font-size: 11.5px; font-variant-numeric: tabular-nums; }
+      .rw-tw th, .rw-tw td { padding: 4px 8px; text-align: right; white-space: nowrap;
+                             border-bottom: 1px solid var(--border-soft); }
+      .rw-tw th { position: sticky; top: 0; z-index: 1; background: var(--surface-2);
+                  color: var(--text-dim); font-size: 10.5px; letter-spacing: 0.04em; font-weight: 700; }
+      .rw-tw th:first-child, .rw-tw td:first-child { text-align: left; }
+      .rw-tw tbody tr:hover { background: var(--surface-3); }
+      .rw-tw input { width: 70px; font: inherit; text-align: right; background: transparent;
+                     border: 1px solid transparent; border-radius: 3px; padding: 1px 4px; color: inherit; }
+      .rw-tw input:hover { border-color: var(--border); }
+      .rw-tw input:focus { border-color: var(--tool); background: var(--surface); outline: 0; }
+      .rw-tw input.txt { width: 96px; text-align: left; }
+      .rw-tt { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 4px; }
+      .rw-tt h3 { margin: 0; font-size: 14px; font-weight: 800; }
+      .rw-tt span { font-size: 11.5px; color: var(--text-faint);
+                    font-family: ui-monospace, Menlo, monospace; }
+      .rw-tnote { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
+
+      /* ── 분포 ── */
+      .rw-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+      .rw-f { display: flex; flex-direction: column; gap: 3px; }
+      .rw-f label { font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
+      .rw-f input, .rw-f select { font: inherit; font-size: 13px;
+        font-family: ui-monospace, Menlo, monospace; padding: 5px 8px; width: 118px;
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        background: var(--surface); color: var(--text); }
+      .rw-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); gap: 1px;
+                 background: var(--border); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 14px; }
+      .rw-kpi { background: var(--surface); padding: 9px 12px; }
+      .rw-kpi u { text-decoration: none; display: block; font-size: 10px; letter-spacing: 0.09em;
+                  text-transform: uppercase; color: var(--text-faint); }
+      .rw-kpi b { font-family: ui-monospace, Menlo, monospace; font-size: 18px; font-variant-numeric: tabular-nums; }
+      .rw-bars { display: flex; flex-direction: column; gap: 3px; }
+      .rw-b { display: grid; grid-template-columns: 46px 1fr 92px; gap: 9px; align-items: center;
+              font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+      .rw-b .track { height: 14px; background: var(--surface-2); border: 1px solid var(--border);
+                     border-radius: 3px; overflow: hidden; }
+      .rw-b .fill { height: 100%; background: hsl(var(--h) 52% 48%); }
+      .rw-b .n { text-align: right; color: var(--text-dim); }
+
+      .rw-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+                  background: var(--text); color: var(--surface); padding: 8px 16px;
+                  border-radius: 20px; font-size: 12.5px; z-index: 90; opacity: 0;
+                  pointer-events: none; transition: opacity 0.18s; }
+      .rw-toast.on { opacity: 1; }
+      .rw-hide { display: none !important; }
+      @media (prefers-reduced-motion: reduce) { .rw-chip, .rw-toast { transition: none; } }
+    </style>
+  </head>
+
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#bench">보드·오더</a>
+        <a class="nav-back" href="#log">추첨 로그</a>
+        <a class="nav-back" href="#data">데이터</a>
+        <a class="nav-back" href="#sim">분포</a>
+        <a class="nav-back" href="#basis">근거</a>
+        <span class="nav-spacer"></span>
+        <a class="nav-back" href="https://atomking0.github.io/supergene-esther/rosewood_dev_spec.html" target="_blank" rel="noopener">개발 기획서 ↗</a>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">기획 · 오더 생성</div>
+        <h1 class="doc-title">오더 생성 벤치</h1>
+        <p class="doc-lede">
+          Rosewood 코어루프를 <b>직접 눌러 보는 페이지</b>입니다. 생성기로 뽑고, 합치고, 오더에 납품합니다.
+          핵심은 오른쪽 <a href="#log">추첨 로그</a>예요 &mdash; 개발 기획서
+          <b>1.2.1 오더 생성</b>의 8단계를 그대로 구현해서, <b>어떤 오더가 왜 나왔는지</b>를
+          발급마다 판정 근거로 남깁니다. 밸런스 값은 <a href="#data">데이터</a> 섹션에서 고칠 수 있고
+          다음 발급부터 바로 먹습니다. 아트가 없으니 아이템은 칩으로 그립니다 &mdash;
+          <b>알파벳이 체인(타입), 숫자가 단계(레벨)</b>입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--tool)">스토리 머지 · Rosewood</span>
+          <span class="tag">개발 기획서 1.2.1 · 2026-09-10 판본</span>
+          <span class="tag">값 일부는 시드 &mdash; 아래 근거 참조</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 벤치 ================= -->
+      <section class="doc-section" id="bench">
+        <h2 class="doc-h2">보드와 오더 레일</h2>
+        <div class="doc-h2-sub">
+          칩을 두 번 눌러 합치고, ⚡생성기를 눌러 생산합니다(재고 → 빈칸 → 에너지 → 산출 추첨 순서로 판정하고
+          나선의 첫 빈 칸에 놓습니다). 배지는 문서의 셀 배지 슬롯을 따릅니다 &mdash;
+          <b>A</b> 좌상 재고 · <b>B</b> 우상 ⚡생성기 또는 ✓오더 요구 · <b>C</b> 우하 ♦최고 단계.
+          경험치 공급원은 심부름 하나뿐이라, 랜덤 오더를 보려면 <b>심부름 완료</b>로 Lv3 을 넘겨야 합니다.
+        </div>
+
+        <div class="rw-bar" style="margin-bottom: 14px">
+          <div id="rwStats" style="display: flex"></div>
+          <div class="rw-actions">
+            <button class="rw-btn" id="rwChore">심부름 완료</button>
+            <button class="rw-btn" id="rwEnergy">에너지 +50</button>
+            <button class="rw-btn" id="rwReset">처음부터</button>
+          </div>
+        </div>
+
+        <div class="rw-cols">
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <div class="rw-panel">
+              <div class="rw-ph"><h3>보드 7×9</h3><span class="sub" id="rwBoardSub"></span></div>
+              <div class="rw-pb"><div class="rw-board" id="rwBoard"></div></div>
+            </div>
+            <div class="rw-info" id="rwInfo"></div>
+          </div>
+
+          <div class="rw-panel">
+            <div class="rw-ph"><h3>오더 레일</h3><span class="sub" id="rwRailSub"></span></div>
+            <div class="rw-pb"><div class="rw-rail" id="rwRail"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 로그 ================= -->
+      <section class="doc-section" id="log">
+        <h2 class="doc-h2">추첨 로그</h2>
+        <div class="doc-h2-sub">
+          발급 한 건마다 <b>[0] 고정 검사 → [1] 예산·대기 → [2] 밴드 → [3] 제외 → [4] 자리별 가중 추첨 →
+          [5] 종수 → [6] 손님 → [7] 보상</b> 순서로 판정 근거를 남깁니다. 자리를 먼저 뽑고 종수를 나중에 정하기
+          때문에 버려지는 후보가 생기는데, 그것도 반복 카운터 갱신에는 들어갑니다.
+        </div>
+        <div class="rw-panel">
+          <div class="rw-ph">
+            <h3>발급 기록</h3>
+            <span class="sub" id="rwRng"></span>
+            <button class="rw-btn sm" id="rwClearLog" style="margin-left: 8px">비우기</button>
+          </div>
+          <div class="rw-log" id="rwLog"></div>
+        </div>
+      </section>
+
+      <!-- ================= 데이터 ================= -->
+      <section class="doc-section" id="data">
+        <h2 class="doc-h2">데이터</h2>
+        <div class="doc-h2-sub">
+          값을 고치면 <b>다음 발급부터 바로 적용</b>됩니다. 되돌리기는 없고 「기본값 복원」만 있습니다.
+          이 페이지는 브라우저 안에서만 돌아가고 아무 데도 저장하지 않으니, 새로고침하면 원래대로 돌아옵니다.
+        </div>
+        <div class="rw-row">
+          <button class="rw-btn" id="rwRestore">기본값 복원</button>
+          <button class="rw-btn" id="rwExport">JSON 보기</button>
+        </div>
+        <textarea id="rwJson" class="rw-hide" spellcheck="false"
+          style="width:100%;height:220px;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+                 border:1px solid var(--border);border-radius:var(--radius-sm);
+                 background:var(--surface-2);color:var(--text);padding:10px"></textarea>
+        <div id="rwTables"></div>
+      </section>
+
+      <!-- ================= 분포 ================= -->
+      <section class="doc-section" id="sim">
+        <h2 class="doc-h2">뽑기 분포</h2>
+        <div class="doc-h2-sub">
+          같은 조건으로 여러 장을 연속 발급해서 <b>실제로 어떤 오더가 나오는지</b>를 봅니다.
+          고정 오더는 빼고 랜덤 경로만 돌립니다. 보드가 비어 있으면 모든 후보가 「미요구」 배수 1000 을 받아
+          평평하게 나오고, 보드에 물건이 쌓이면 「동급·하급 보유」 배수 10000 이 걸려 쏠립니다.
+        </div>
+        <div class="rw-panel">
+          <div class="rw-pb">
+            <div class="rw-row">
+              <div class="rw-f"><label>발급 수</label><input id="rwSimN" type="number" value="1000" min="10" max="20000" /></div>
+              <div class="rw-f"><label>유저 레벨</label><input id="rwSimLv" type="number" value="1" min="1" max="30" /></div>
+              <div class="rw-f"><label>오더 타입</label><select id="rwSimType"></select></div>
+              <div class="rw-f"><label>보드 상황</label>
+                <select id="rwSimBoard">
+                  <option value="cur">현재 보드 그대로</option>
+                  <option value="empty">빈 보드</option>
+                </select>
+              </div>
+              <button class="rw-btn pri" id="rwSimGo">돌리기</button>
+            </div>
+            <div class="rw-kpis" id="rwKpi"></div>
+            <p class="rw-tnote">요구 아이템 출현 분포 — 상위 30종</p>
+            <div class="rw-bars" id="rwBars"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 근거 ================= -->
+      <section class="doc-section" id="basis">
+        <h2 class="doc-h2">근거</h2>
+        <div class="doc-h2-sub">
+          이 페이지의 숫자가 어디서 왔는지 갈라 둡니다. <b>문서 확인값</b>은 개발 기획서 1.2.1 과
+          밸런스 시트 기획서(2026-09-10 판본)에서 그대로 옮긴 것이고, <b>시드값</b>은 문서가 준 값역 안에서
+          제가 채운 임시값입니다. 시트에서 실물을 받으면 시드값은 덮으면 됩니다.
+        </div>
+
+        <div class="rw-tt"><h3>문서 확인값</h3><span>그대로 옮김</span></div>
+        <div class="rw-tw">
+          <table>
+            <thead><tr><th>항목</th><th>값</th><th>출처</th></tr></thead>
+            <tbody>
+              <tr><td>order_rule 5행</td><td>normal 2자리·Lv3·5회·3600s / high Lv3·1·1800 / random_3 Lv4·1·900 / random_4 Lv5·1·300 / special Lv4</td><td>밸런스 기획서 §5</td></tr>
+              <tr><td>item_slot_max</td><td>전 행 2 — 카드당 요구 2종 상한</td><td>밸런스 기획서 §5</td></tr>
+              <tr><td>order_item_count 4구간</td><td>Lv1 75/25 · Lv4 57.14/42.86 · Lv8 50/50 · Lv11 50/50</td><td>밸런스 기획서 §10</td></tr>
+              <tr><td>보드 상황 배수 3종</td><td>100 / 1000 / 10000 — 하나만 적용, 중복 곱 금지</td><td>const · 개발 기획서 1.2.1</td></tr>
+              <tr><td>order_repeat_reset_count</td><td>3</td><td>const</td></tr>
+              <tr><td>단가 예시</td><td>205 → 코인 8 / 난이도 10 · 206 → 12 / 19</td><td>개발 기획서 1.2.1 계산 예</td></tr>
+              <tr><td>level_curve 30행</td><td>15 / 30 / 45 / 60 / 60 / 75×5 / 90×3 / 105×3 / 120×8 / 135×4 / 150×2</td><td>밸런스시트 실측</td></tr>
+              <tr><td>order_fixed.slot_3</td><td>세 번째 발급 가능 슬롯 번호 · 현재 전 행 0</td><td>밸런스 기획서 §6</td></tr>
+              <tr><td>하루 누적 난이도</td><td><b>사용하지 않는다</b> — order_slot_band 는 종류 + 유저 레벨 두 축뿐</td><td>개발 기획서 A8</td></tr>
+              <tr><td>에너지</td><td>최대 100 · 1점 120초 · 생산 차감은 클라</td><td>const · A8-1</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rw-tt"><h3>시드값</h3><span>문서가 준 값역 안에서 채움 · 편집 대상</span></div>
+        <div class="rw-tw">
+          <table>
+            <thead><tr><th>항목</th><th>왜 시드인가</th></tr></thead>
+            <tbody>
+              <tr><td>item_spec 체인 8종 구성</td><td>실물은 238행 30체인. 여기선 8체인 60여 종으로 줄여 손으로 만질 수 있게 했다</td></tr>
+              <tr><td>order_item 단가 곡선</td><td>205·206 두 점만 확인값이라 나머지는 그 곡선을 이어 붙였다 (값역 2~406 / 2~2500)</td></tr>
+              <tr><td>order_slot_band 2·3밴드</td><td>1밴드(Lv0~15 · 첫째 0~6 · 둘째 ≤4)만 확인값. 나머지는 값역 안에서 채웠다</td></tr>
+              <tr><td>order_fixed 16행 요구품</td><td>구조(순번·슬롯·요구 2종)는 확인값, 어떤 아이템인지는 임시</td></tr>
+              <tr><td>손님 13명</td><td>이름과 open_day 는 임시. 끝 3명이 open_day 999 라 일반 풀에 안 드는 것만 실제 규칙</td></tr>
+              <tr><td>생성기 주머니</td><td>실물 produce_weight 를 못 봐서 60/28/12 로 뒀다. <b>가중치는 확률이 아니라 남은 개수</b>라는 규칙만 지켰다</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rw-tt"><h3>이 페이지가 정하고 들어간 것</h3><span>문서에 없어서 우리가 골랐다</span></div>
+        <div class="rw-tw">
+          <table>
+            <thead><tr><th>항목</th><th>선택</th><th>이유</th></tr></thead>
+            <tbody>
+              <tr><td>난수 생성기</td><td>xorshift32 (<code>x^=x&lt;&lt;13; x^=x&gt;&gt;&gt;17; x^=x&lt;&lt;5</code>)</td><td>오더 절은 <code>rng_state</code> 직렬화만 규정하고 알고리즘을 안 건다. 봇 레이스(6.3)에 있는 규격을 가져왔다. <code>Math.random()</code> 은 직렬화가 안 돼 애초에 선택지가 아니다</td></tr>
+              <tr><td>초기 보드 배치</td><td>생성기 6개를 임시 배치</td><td>PD-01(신규 유저 63칸 초기표)이 아직 미결이다</td></tr>
+              <tr><td>심부름 버튼</td><td>경험치·코인만 지급하는 더미</td><td>경험치 공급원이 <code>/chore/claim</code> 하나뿐이라, 마을·꾸미기를 빼면 레벨이 안 올라 랜덤 오더 경로를 한 번도 못 밟는다</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div class="rw-toast" id="rwToast"></div>
+
+    <script>
+      "use strict";
+      /* ======================================================================
+         0. 상수 · 유틸
+         ====================================================================== */
+      const COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
+      const $ = (s) => document.querySelector(s);
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const letterOf = (c) => String.fromCharCode(65 + (c - 2)); // chain_id 2 → A
+      const hueOf = (c) => [12, 150, 262, 38, 196, 320, 92, 228, 352, 176, 58, 282][(c - 2) % 12];
+      const codeOf = (chain, step) => chain * 100 + step;
+      const chainOf = (code) => Math.floor(code / 100);
+      const stepOf = (code) => code % 100;
+      const labelOf = (code) => letterOf(chainOf(code)) + stepOf(code);
+
+      function toast(m) {
+        const t = $("#rwToast");
+        t.textContent = m; t.classList.add("on");
+        clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1600);
+      }
+
+      /* ======================================================================
+         1. 난수 — xorshift32. 상태를 문자열로 직렬화해 카드와 함께 저장한다.
+         ====================================================================== */
+      const RNG = {
+        s: 20260910 >>> 0,
+        next() { let x = this.s; x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; this.s = x || 1; return this.s; },
+        int(n) { if (n <= 1) return 0; const lim = Math.floor(4294967296 / n) * n; let r; do { r = this.next(); } while (r >= lim); return r % n; },
+        pick(weights) {
+          const sum = weights.reduce((a, b) => a + b, 0);
+          if (!(sum > 0)) return 0;
+          const r = (this.next() / 4294967296) * sum;
+          let acc = 0;
+          for (let i = 0; i < weights.length; i++) { acc += weights[i]; if (r < acc) return i; }
+          return weights.length - 1;
+        },
+        save() { return String(this.s); },
+        load(v) { this.s = Number(v) >>> 0 || 1; },
+      };
+
+      /* ======================================================================
+         2. 데이터 — 확인값 + 시드값(근거 섹션 참조)
+         ====================================================================== */
+      const CHAINS = [
+        { id: 2, name: "반죽·빵", len: 9 },
+        { id: 3, name: "목재", len: 8 },
+        { id: 4, name: "천·직물", len: 7 },
+        { id: 5, name: "화분·식물", len: 8 },
+        { id: 6, name: "공구", len: 7 },
+        { id: 7, name: "유리·병", len: 6 },
+        { id: 8, name: "종이·편지", len: 7 },
+        { id: 9, name: "금속·못", len: 8 },
+      ];
+
+      function buildItemSpec() {
+        const rows = [];
+        for (const ch of CHAINS) {
+          rows.push({
+            item_code: codeOf(ch.id, 1), merged_item_code: 0, selling_price: 0,
+            is_generator: 1, spread_cost_energy: 1, spread_item_max: 30, spread_item_recovery_sec: 120,
+            p1: codeOf(ch.id, 2), w1: 60, p2: codeOf(ch.id, 3), w2: 28, p3: codeOf(ch.id, 4), w3: 12,
+          });
+          for (let s = 2; s <= ch.len; s++) {
+            rows.push({
+              item_code: codeOf(ch.id, s),
+              merged_item_code: s < ch.len ? codeOf(ch.id, s + 1) : 0,
+              selling_price: Math.round(Math.pow(1.8, s - 2)) + 1,
+              is_generator: 0, spread_cost_energy: 0, spread_item_max: 0, spread_item_recovery_sec: 0,
+              p1: 0, w1: 0, p2: 0, w2: 0, p3: 0, w3: 0,
+            });
+          }
+        }
+        return rows;
+      }
+      const priceAt = (s) => [0, 0, 0, 3, 5, 8, 12, 20, 34, 58, 96, 160, 260, 406][s] ?? 406;
+      const diffAt = (s) => [0, 0, 0, 3, 6, 10, 19, 35, 68, 132, 250, 470, 900, 1700][s] ?? 2500;
+
+      function buildOrderItem() {
+        const rows = [];
+        for (const ch of CHAINS)
+          for (let s = 3; s <= ch.len; s++)
+            rows.push({
+              item_code: codeOf(ch.id, s),
+              unlock_level: clamp(1 + (s - 3) * 2 + Math.floor((ch.id - 2) / 3), 1, 24),
+              order_price: priceAt(s), diff_score: diffAt(s),
+              repeat_weight_decrease: s >= 6 ? 50 : 0, in_use: 1,
+            });
+        return rows;
+      }
+
+      const DEFAULTS = () => ({
+        const: {
+          order_weight_mult_required_enough: 100,
+          order_weight_mult_not_required: 1000,
+          order_weight_mult_higher_level: 10000,
+          order_repeat_reset_count: 3,
+          default_max_energy: 100,
+          default_recovery_duration_sec: 120,
+          nru_start_coin: 100,
+        },
+        order_rule: [
+          { order_type: "normal", slot_count: 2, unlock_level: 3, item_slot_max: 2, refill_max: 5, refresh_sec: 3600, in_use: 1 },
+          { order_type: "high", slot_count: 1, unlock_level: 3, item_slot_max: 2, refill_max: 1, refresh_sec: 1800, in_use: 1 },
+          { order_type: "random_3", slot_count: 1, unlock_level: 4, item_slot_max: 2, refill_max: 1, refresh_sec: 900, in_use: 1 },
+          { order_type: "random_4", slot_count: 1, unlock_level: 5, item_slot_max: 2, refill_max: 1, refresh_sec: 300, in_use: 1 },
+          { order_type: "special", slot_count: 1, unlock_level: 4, item_slot_max: 2, refill_max: 0, refresh_sec: 0, in_use: 1 },
+        ],
+        order_slot_band: [
+          { order_type: "normal", band_seq: 1, level_min: 0, level_max: 15, first_min: 0, first_max: 6, second_max: 4, in_use: 1 },
+          { order_type: "normal", band_seq: 2, level_min: 16, level_max: 24, first_min: 2, first_max: 8, second_max: 5, in_use: 1 },
+          { order_type: "normal", band_seq: 3, level_min: 25, level_max: 30, first_min: 3, first_max: 9, second_max: 6, in_use: 1 },
+          { order_type: "high", band_seq: 1, level_min: 0, level_max: 15, first_min: 2, first_max: 7, second_max: 5, in_use: 1 },
+          { order_type: "high", band_seq: 2, level_min: 16, level_max: 24, first_min: 4, first_max: 9, second_max: 6, in_use: 1 },
+          { order_type: "high", band_seq: 3, level_min: 25, level_max: 30, first_min: 5, first_max: 11, second_max: 7, in_use: 1 },
+          { order_type: "random_3", band_seq: 1, level_min: 0, level_max: 15, first_min: 0, first_max: 6, second_max: 4, in_use: 1 },
+          { order_type: "random_3", band_seq: 2, level_min: 16, level_max: 24, first_min: 2, first_max: 8, second_max: 5, in_use: 1 },
+          { order_type: "random_3", band_seq: 3, level_min: 25, level_max: 30, first_min: 3, first_max: 9, second_max: 6, in_use: 1 },
+          { order_type: "random_4", band_seq: 1, level_min: 0, level_max: 15, first_min: 1, first_max: 7, second_max: 4, in_use: 1 },
+          { order_type: "random_4", band_seq: 2, level_min: 16, level_max: 24, first_min: 3, first_max: 8, second_max: 5, in_use: 1 },
+          { order_type: "random_4", band_seq: 3, level_min: 25, level_max: 30, first_min: 4, first_max: 10, second_max: 6, in_use: 1 },
+        ],
+        order_item_count: [
+          { level: 1, item_count: 1, count_weight: 7500, in_use: 1 },
+          { level: 1, item_count: 2, count_weight: 2500, in_use: 1 },
+          { level: 4, item_count: 1, count_weight: 5714, in_use: 1 },
+          { level: 4, item_count: 2, count_weight: 4286, in_use: 1 },
+          { level: 8, item_count: 1, count_weight: 5000, in_use: 1 },
+          { level: 8, item_count: 2, count_weight: 5000, in_use: 1 },
+          { level: 11, item_count: 1, count_weight: 5000, in_use: 1 },
+          { level: 11, item_count: 2, count_weight: 5000, in_use: 1 },
+        ],
+        order_fixed: (() => {
+          const seq = [[204,0],[204,0],[205,0],[303,0],[205,304],[206,0],[404,0],[305,405],
+                       [207,0],[306,0],[505,0],[406,506],[208,0],[307,0],[605,0],[407,607]];
+          return seq.map((q, i) => ({
+            fixed_seq: i + 1, unlock_level: i < 4 ? 1 : i < 8 ? 2 : i < 12 ? 3 : 4,
+            slot_1: (i % 3) + 1, slot_2: i % 2 ? 0 : 2, slot_3: 0,
+            requirement_1: q[0], requirement_2: q[1], in_use: 1,
+          }));
+        })(),
+        order_avatar: [
+          { avatar_key: "Maggie", open_day: 1, in_use: 1 }, { avatar_key: "Ida", open_day: 1, in_use: 1 },
+          { avatar_key: "Rosa", open_day: 1, in_use: 1 }, { avatar_key: "Bram", open_day: 2, in_use: 1 },
+          { avatar_key: "Nell", open_day: 3, in_use: 1 }, { avatar_key: "Otto", open_day: 4, in_use: 1 },
+          { avatar_key: "Clara", open_day: 6, in_use: 1 }, { avatar_key: "Wren", open_day: 8, in_use: 1 },
+          { avatar_key: "Silas", open_day: 11, in_use: 1 }, { avatar_key: "June", open_day: 14, in_use: 1 },
+          { avatar_key: "Poppy", open_day: 999, in_use: 1 }, { avatar_key: "Hazel", open_day: 999, in_use: 1 },
+          { avatar_key: "Tess", open_day: 999, in_use: 1 },
+        ],
+        level_curve: [15,30,45,60,60,75,75,75,75,75,90,90,90,105,105,105,120,120,120,120,120,120,120,120,135,135,135,135,150,150]
+          .map((e, i) => ({ level: i + 1, exp_cost: e, reward_coin: 40 + i * 12 })),
+        item_spec: buildItemSpec(),
+        order_item: buildOrderItem(),
+      });
+
+      let DATA = DEFAULTS();
+      const specOf = (code) => DATA.item_spec.find((r) => r.item_code === code);
+      const oiOf = (code) => DATA.order_item.find((o) => o.item_code === code);
+
+      /* ======================================================================
+         3. 유저 상태
+         ====================================================================== */
+      let S;
+      function freshState() {
+        const cells = new Array(CELLS).fill(null);
+        const seed = [[1,1],[1,5],[3,3],[5,1],[5,5],[7,3]];
+        CHAINS.slice(0, 6).forEach((ch, i) => {
+          const [r, c] = seed[i];
+          cells[r * COLS + c] = { code: codeOf(ch.id, 1), stock: 30 };
+        });
+        return {
+          cells, level: 1, exp: 0, coin: DATA.const.nru_start_coin,
+          energy: DATA.const.default_max_energy, day: 1, choreSeq: 0, sel: null,
+          orderGen: { rng_state: RNG.save(), fixed_next_seq: 1, chain_repeat: {}, type_timers: {} },
+          slots: {}, prevOfSlot: {}, log: [],
+        };
+      }
+
+      const slotType = (n) => (n === 1 || n === 2 ? "normal" : n === 3 ? "high" : n === 4 ? "random_3" : n === 5 ? "random_4" : "special");
+      const ruleOf = (type) => DATA.order_rule.find((r) => r.order_type === type && r.in_use);
+
+      function openSlots() {
+        // 슬롯 1~3 은 Lv1 부터 존재한다 — Lv1~2 구간은 order_fixed 16장이 채운다.
+        // 랜덤 발급 자체는 order_rule.unlock_level 로 따로 막는다.
+        const out = [1, 2, 3];
+        const r4 = ruleOf("random_3"), r5 = ruleOf("random_4");
+        if (r4 && S.level >= r4.unlock_level) out.push(4);
+        if (r5 && S.level >= r5.unlock_level) out.push(5);
+        return out;
+      }
+
+      /* ======================================================================
+         4. 오더 생성 — 개발 기획서 1.2.1 의 8단계
+         ====================================================================== */
+      function boardCounts() {
+        const m = new Map();
+        for (const c of S.cells) {
+          if (!c) continue;
+          const sp = specOf(c.code);
+          if (sp && sp.is_generator) continue;
+          m.set(c.code, (m.get(c.code) || 0) + 1);
+        }
+        return m;
+      }
+      function requiredElsewhere(slotNo) {
+        const set = new Set();
+        for (const [n, card] of Object.entries(S.slots)) {
+          if (Number(n) === slotNo || !card) continue;
+          card.reqs.forEach((q) => set.add(q.code));
+        }
+        return set;
+      }
+
+      // [4] 보드 상황 배수 — 하나만 적용, 중복 곱 금지
+      function situationMult(code, othersReq, counts, C) {
+        const wanted = othersReq.has(code);
+        const canServe = (counts.get(code) || 0) > 0;
+        if (wanted && canServe) return { v: C.order_weight_mult_required_enough, why: "타오더 요구+납품가능" };
+        if (!wanted) {
+          const ch = chainOf(code), st = stepOf(code);
+          for (const [c, n] of counts)
+            if (n > 0 && chainOf(c) === ch && stepOf(c) <= st)
+              return { v: C.order_weight_mult_higher_level, why: "미요구+보드에 동급·하급 有" };
+          return { v: C.order_weight_mult_not_required, why: "미요구" };
+        }
+        return { v: 1, why: "타오더 요구+납품불가(기본)" };
+      }
+
+      const pickBand = (type, level) =>
+        DATA.order_slot_band.filter((b) => b.order_type === type && b.in_use)
+          .sort((a, b) => a.band_seq - b.band_seq)
+          .find((b) => level >= b.level_min && level <= b.level_max) || null;
+
+      function pickAvatar() {
+        const pool = DATA.order_avatar.filter((a) => a.in_use && a.open_day <= S.day);
+        const used = new Set(Object.values(S.slots).filter(Boolean).map((c) => c.avatar));
+        const free = pool.filter((a) => !used.has(a.avatar_key));
+        if (free.length) return free[RNG.int(free.length)].avatar_key;
+        if (pool.length) return pool[RNG.int(pool.length)].avatar_key;
+        const fb = DATA.order_avatar.filter((a) => a.open_day < 999);
+        return fb.length ? fb[0].avatar_key : "—";
+      }
+
+      function generateOrder(slotNo, opts = {}) {
+        const dry = !!opts.dry;
+        const level = opts.level ?? S.level;
+        const type = opts.type ?? slotType(slotNo);
+        const C = DATA.const;
+        const L = [];
+        const push = (t) => L.push(t);
+
+        // ---- [0] 고정 오더 먼저 (랜덤 예산·대기 미변경)
+        if (!opts.skipFixed) {
+          const fx = DATA.order_fixed.find((f) => f.in_use && f.fixed_seq === S.orderGen.fixed_next_seq);
+          if (fx) {
+            const slotOk = [fx.slot_1, fx.slot_2, fx.slot_3].includes(slotNo);
+            const lvOk = level >= fx.unlock_level;
+            if (slotOk && lvOk) {
+              const reqs = [{ code: fx.requirement_1, count: 1 }];
+              if (fx.requirement_2) reqs.push({ code: fx.requirement_2, count: 1 });
+              const coin = reqs.reduce((a, q) => a + (oiOf(q.code)?.order_price || 0), 0);
+              const diff = reqs.reduce((a, q) => a + (oiOf(q.code)?.diff_score || 0), 0);
+              push(`<span class="k">[0] 고정 오더 채택</span> fixed_seq=${fx.fixed_seq} (unlock_level ${fx.unlock_level} ≤ Lv${level} · 슬롯 ${fx.slot_1}/${fx.slot_2}/${fx.slot_3} 에 ${slotNo} 포함)`);
+              push(`    요구 ${reqs.map((q) => labelOf(q.code)).join(" + ")} · 랜덤 예산·대기 변경 없음`);
+              if (!dry) S.orderGen.fixed_next_seq++;
+              return { card: { slot: slotNo, type: "fixed", reqs, avatar: pickAvatar(), coin, diff, band: null }, log: L };
+            }
+            push(`[0] 고정 오더 fixed_seq=${fx.fixed_seq} 미적용 (${!lvOk ? `unlock_level ${fx.unlock_level} > Lv${level}` : `슬롯 ${fx.slot_1}/${fx.slot_2}/${fx.slot_3} 에 ${slotNo} 없음`}) → 순번 유지, 랜덤 검사로`);
+          }
+        }
+
+        // ---- [1] 예산·대기
+        const rule = ruleOf(type);
+        if (!rule) { push(`<span class="w">order_rule 에 ${type} 활성 행 없음</span>`); return { card: null, log: L }; }
+        if (!dry) {
+          if (level < rule.unlock_level) {
+            push(`<span class="w">[1] ${type} 미해금</span> (unlock_level ${rule.unlock_level} > Lv${level}) → 랜덤 발급 없음. 고정 오더만 이 슬롯을 채운다`);
+            return { card: null, log: L };
+          }
+          const t = (S.orderGen.type_timers[type] ||= { remaining_count: rule.refill_max, next_refill_at: 0 });
+          const now = Date.now() / 1000;
+          if (t.next_refill_at > 0 && now >= t.next_refill_at) {
+            t.remaining_count = rule.refill_max; t.next_refill_at = 0;
+            push(`[1] 대기 종료 → 예산 ${rule.refill_max} 로 <span class="k">한 번</span> 채움 (누적 없음)`);
+          }
+          if (t.remaining_count <= 0) {
+            if (t.next_refill_at <= 0) {
+              t.next_refill_at = now + rule.refresh_sec;
+              push(`<span class="w">[1] 예산 0 → 대기 시작</span> now+${rule.refresh_sec}s · 카드 만들지 않음`);
+            } else {
+              push(`<span class="w">[1] 예산 0 · 대기 중</span> 남은 ${Math.ceil(t.next_refill_at - now)}s · 종료 시각 안 미룸`);
+            }
+            return { card: null, log: L };
+          }
+          push(`[1] 예산 ${t.remaining_count}/${rule.refill_max} (${type}${type === "normal" ? " · 슬롯 1·2 공유" : ""})`);
+        }
+
+        // ---- [2] 자리별 단계 범위
+        const band = pickBand(type, level);
+        if (!band) { push(`<span class="w">[2] order_slot_band 에 Lv${level} 구간 없음 → 데이터 오류</span>`); return { card: null, log: L }; }
+        push(`<span class="k">[2] 밴드</span> band_seq=${band.band_seq} (Lv ${band.level_min}~${band.level_max}) · 첫째 ${band.first_min}~${band.first_max}단계 · 둘째 ≤${band.second_max}단계`);
+
+        // ---- [3] 후보 집합
+        const counts = opts.counts ?? boardCounts();
+        const othersReq = opts.othersReq ?? requiredElsewhere(slotNo);
+        const prev = opts.prev !== undefined ? opts.prev : S.prevOfSlot[slotNo];
+        const banned = new Set([...othersReq]);
+        if (prev) prev.forEach((c) => banned.add(c));
+        push(`[3] 제외 item_code: ${banned.size ? [...banned].map(labelOf).join(", ") : "없음"} <span style="opacity:.65">(체인 전체 아님)</span>`);
+
+        const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level);
+        const slotMax = rule.item_slot_max;
+        const picked = [];
+        const chosen = new Set();
+
+        for (let seat = 1; seat <= slotMax; seat++) {
+          const lo = seat === 1 ? band.first_min : 0;
+          const hi = seat === 1 ? band.first_max : band.second_max;
+          const cand = pool.filter((o) => {
+            const st = stepOf(o.item_code);
+            return st >= lo && st <= hi && !banned.has(o.item_code) && !chosen.has(o.item_code);
+          });
+          if (!cand.length) {
+            push(`<span class="w">[4] 자리${seat} 후보 0</span> (${lo}~${hi}단계) → 이 자리 이후는 추첨하지 않는다`);
+            break;
+          }
+          const rows = cand.map((o) => {
+            const m = situationMult(o.item_code, othersReq, counts, C);
+            const rem = S.orderGen.chain_repeat[chainOf(o.item_code)] || 0;
+            const div = rem > 0 && o.repeat_weight_decrease > 0 ? o.repeat_weight_decrease : 0;
+            return { o, mult: m.v, why: m.why, div, w: div ? m.v / div : m.v };
+          });
+          const total = rows.reduce((a, r) => a + r.w, 0);
+          const win = rows[RNG.pick(rows.map((r) => r.w))];
+          picked.push(win.o); chosen.add(win.o.item_code);
+
+          const byWhy = {};
+          rows.forEach((r) => { byWhy[r.why] = (byWhy[r.why] || 0) + 1; });
+          push(`<span class="k">[4] 자리${seat}</span> 범위 ${lo}~${hi} · 후보 ${cand.length}종 [${Object.entries(byWhy).map(([k, v]) => `${k} ${v}`).join(" / ")}]`);
+          push(`    → <span class="p">${labelOf(win.o.item_code)}</span> 배수 ${win.mult}${win.div ? ` ÷제수 ${win.div}` : ""} = 가중 ${win.w.toFixed(1)} / 합 ${total.toFixed(1)} = <span class="p">${((win.w / total) * 100).toFixed(2)}%</span>`);
+        }
+
+        if (!picked.length) {
+          push(`<span class="w">[4] 첫 자리부터 후보 없음 → 생성 실패.</span> 기회·카운터·난수 상태 전부 보존 (기회 소비 안 함)`);
+          return { card: null, log: L, failed: true };
+        }
+
+        // ---- [5] 요구 종수 — 자리를 먼저 뽑고 그 수 안에서 정한다
+        const grp = Math.max(...DATA.order_item_count.filter((r) => r.in_use && r.level <= level).map((r) => r.level));
+        const rowsC = DATA.order_item_count.filter((r) => r.in_use && r.level === grp && r.item_count <= picked.length && r.item_count <= slotMax);
+        let n = picked.length;
+        if (rowsC.length) {
+          const sum = rowsC.reduce((a, r) => a + r.count_weight, 0);
+          n = rowsC[RNG.pick(rowsC.map((r) => r.count_weight))].item_count;
+          push(`<span class="k">[5] 종수</span> level 묶음 ${grp} · 후보 자리 ${picked.length} · ${rowsC.map((r) => `${r.item_count}종 ${((r.count_weight / sum) * 100).toFixed(2)}%`).join(" / ")} → <span class="p">${n}종</span>`);
+        }
+        const finalReqs = picked.slice(0, n).map((o) => ({ code: o.item_code, count: 1 }));
+        if (n < picked.length)
+          push(`    버린 후보 ${picked.slice(n).map((o) => labelOf(o.item_code)).join(", ")} — <span class="k">반복 카운터 갱신에는 포함</span>`);
+
+        // ---- 반복 카운터 — 제한을 적용한 체인만, 뽑은 후보 전부 기준
+        if (!dry) {
+          const applied = new Set();
+          picked.forEach((o) => {
+            const rem = S.orderGen.chain_repeat[chainOf(o.item_code)] || 0;
+            if (rem > 0 && o.repeat_weight_decrease > 0) applied.add(chainOf(o.item_code));
+          });
+          const won = new Set(picked.map((o) => chainOf(o.item_code)));
+          const upd = [];
+          applied.forEach((ch) => {
+            if (won.has(ch)) { S.orderGen.chain_repeat[ch] = C.order_repeat_reset_count; upd.push(`${letterOf(ch)}→${C.order_repeat_reset_count}`); }
+            else {
+              S.orderGen.chain_repeat[ch] = Math.max(0, (S.orderGen.chain_repeat[ch] || 0) - 1);
+              if (!S.orderGen.chain_repeat[ch]) delete S.orderGen.chain_repeat[ch];
+              upd.push(`${letterOf(ch)}−1`);
+            }
+          });
+          if (upd.length) push(`    반복 카운터 ${upd.join(", ")}`);
+        }
+
+        // ---- [6][7]
+        const avatar = pickAvatar();
+        const coin = finalReqs.reduce((a, q) => a + (oiOf(q.code)?.order_price || 0) * q.count, 0);
+        const diff = finalReqs.reduce((a, q) => a + (oiOf(q.code)?.diff_score || 0) * q.count, 0);
+        push(`<span class="k">[6] 손님</span> ${avatar} (day ${S.day} 해금 명단에서 균등)`);
+        push(`<span class="k">[7] 보상</span> 코인 ${coin} = ${finalReqs.map((q) => oiOf(q.code)?.order_price).join(" + ")} · 난이도 ${diff} · <span style="opacity:.65">경험치 0</span>`);
+
+        if (!dry) {
+          const t = S.orderGen.type_timers[type];
+          if (t) { t.remaining_count--; push(`[8] 예산 −1 → ${t.remaining_count} · 카드+난수+카운터 원자 저장 → 표시 → /order/refresh`); }
+          S.orderGen.rng_state = RNG.save();
+        }
+        return { card: { slot: slotNo, type, reqs: finalReqs, avatar, coin, diff, band: band.band_seq }, log: L };
+      }
+
+      /* ======================================================================
+         5. 슬롯 채우기 — 번호순, 앞 카드 확정 후 뒤 후보 재계산
+         ====================================================================== */
+      function fillEmptySlots(reason) {
+        for (const n of openSlots()) {
+          if (S.slots[n]) continue;
+          const r = generateOrder(n);
+          S.log.unshift({ slot: n, type: r.card ? r.card.type : slotType(n), ok: !!r.card, reason, lines: r.log, t: new Date() });
+          if (r.card) S.slots[n] = r.card;
+        }
+        S.log = S.log.slice(0, 40);
+      }
+
+      /* ======================================================================
+         6. 보드 조작
+         ====================================================================== */
+      function spiralEmpty(from) {
+        const r0 = Math.floor(from / COLS), c0 = from % COLS;
+        for (let ring = 0; ring <= Math.max(ROWS, COLS); ring++)
+          for (let dr = -ring; dr <= ring; dr++)
+            for (let dc = -ring; dc <= ring; dc++) {
+              if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue;
+              const r = r0 + dr, c = c0 + dc;
+              if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+              if (!S.cells[r * COLS + c]) return r * COLS + c;
+            }
+        return -1;
+      }
+
+      function tapGenerator(i) {
+        const cell = S.cells[i], sp = specOf(cell.code);
+        if (cell.stock <= 0) { toast("재고 없음"); return; }
+        const dest = spiralEmpty(i);
+        if (dest < 0) { toast("Board Full — 보드가 가득 찼습니다"); return; }
+        if (S.energy < sp.spread_cost_energy) { toast("에너지 부족"); return; }
+        const bag = [[sp.p1, sp.w1], [sp.p2, sp.w2], [sp.p3, sp.w3]].filter((b) => b[0] && b[1] > 0);
+        if (!bag.length) { toast("주머니가 비어 있습니다"); return; }
+        const k = RNG.pick(bag.map((b) => b[1]));
+        cell.stock--; S.energy -= sp.spread_cost_energy;
+        S.cells[dest] = { code: bag[k][0] };
+        S.sel = dest; render();
+      }
+
+      function tryMerge(a, b) {
+        const A = S.cells[a], B = S.cells[b];
+        if (!A || !B || A.code !== B.code) return false;
+        const sa = specOf(A.code);
+        if (sa.is_generator) return false;
+        if (!sa.merged_item_code) { toast("최고 단계 — 더 합칠 수 없습니다"); return false; }
+        S.cells[b] = { code: sa.merged_item_code };
+        S.cells[a] = null; S.sel = b;
+        return true;
+      }
+
+      function sellCell(i) {
+        const c = S.cells[i]; if (!c) return;
+        const sp = specOf(c.code);
+        if (sp.is_generator) { toast("생성기는 팔지 않습니다"); return; }
+        S.coin += sp.selling_price; S.cells[i] = null; S.sel = null;
+        render(); toast(`판매 +${sp.selling_price} 코인`);
+      }
+
+      function serve(n) {
+        const card = S.slots[n]; if (!card) return;
+        const need = new Map();
+        card.reqs.forEach((q) => need.set(q.code, (need.get(q.code) || 0) + q.count));
+        const counts = boardCounts();
+        for (const [code, cnt] of need) if ((counts.get(code) || 0) < cnt) { toast("보유 부족"); return; }
+        for (const [code, cnt] of need) {
+          let left = cnt;
+          for (let i = 0; i < CELLS && left > 0; i++)
+            if (S.cells[i] && S.cells[i].code === code && !specOf(code).is_generator) { S.cells[i] = null; left--; }
+        }
+        S.coin += card.coin;
+        S.prevOfSlot[n] = card.reqs.map((q) => q.code);
+        card.reqs.forEach((q) => {
+          const oi = oiOf(q.code);
+          if (oi && oi.repeat_weight_decrease > 0) S.orderGen.chain_repeat[chainOf(q.code)] = DATA.const.order_repeat_reset_count;
+        });
+        S.slots[n] = null;
+        toast(`납품 +${card.coin} 코인 · 경험치 0`);
+        fillEmptySlots(`슬롯 ${n} 납품 완료`);
+        render();
+      }
+
+      function doChore() {
+        const need = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 999;
+        S.choreSeq++;
+        const exp = Math.max(5, Math.round(need / 3)), coin = 16 + S.day * 4;
+        S.exp += exp; S.coin += coin;
+        if (S.choreSeq % 3 === 0) S.day++;
+        let up = false;
+        while (S.level < 30) {
+          const c = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? Infinity;
+          if (S.exp >= c) { S.exp -= c; S.level++; S.coin += DATA.level_curve.find((l) => l.level === S.level - 1)?.reward_coin || 0; up = true; }
+          else break;
+        }
+        toast(up ? `레벨 업 → Lv${S.level}` : `심부름 완료 +${exp} exp / +${coin} 코인`);
+        fillEmptySlots(up ? `레벨 업 Lv${S.level}` : "심부름 완료");
+        render();
+      }
+
+      /* ======================================================================
+         7. 렌더
+         ====================================================================== */
+      function render() { renderStats(); renderBoard(); renderInfo(); renderRail(); renderLog(); }
+
+      function renderStats() {
+        const need = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 0;
+        $("#rwStats").innerHTML = [
+          ["LV", S.level, ""], ["EXP", `${S.exp}/${need}`, ""],
+          ["에너지", S.energy, "e"], ["코인", S.coin.toLocaleString(), "c"], ["DAY", S.day, ""],
+        ].map(([k, v, c]) => `<div class="rw-stat ${c}"><u>${k}</u><b>${v}</b></div>`).join("");
+        $("#rwRng").textContent = `rng_state ${S.orderGen.rng_state} · fixed_next ${S.orderGen.fixed_next_seq}`;
+      }
+
+      function renderBoard() {
+        const reqSet = new Set();
+        Object.values(S.slots).forEach((c) => c && c.reqs.forEach((q) => reqSet.add(q.code)));
+        const b = $("#rwBoard"); b.innerHTML = "";
+        let filled = 0;
+        S.cells.forEach((c, i) => {
+          const el = document.createElement("button");
+          el.className = "rw-cell"; el.type = "button";
+          el.setAttribute("aria-label", `셀 ${i}`);
+          if (c) {
+            filled++;
+            const sp = specOf(c.code), ch = chainOf(c.code);
+            el.classList.add("has");
+            if (sp.is_generator) el.classList.add("gen");
+            if (reqSet.has(c.code) && !sp.is_generator) el.classList.add("req");
+            if (S.sel === i) el.classList.add("sel");
+            if (S.sel != null && S.sel !== i && S.cells[S.sel] && S.cells[S.sel].code === c.code && !sp.is_generator) el.classList.add("hint");
+            el.innerHTML =
+              `<span class="rw-chip" style="--h:${hueOf(ch)}deg">${labelOf(c.code)}</span>` +
+              (sp.is_generator ? `<span class="rw-bg b">⚡</span><span class="rw-bg a">${c.stock}</span>` : "") +
+              (reqSet.has(c.code) && !sp.is_generator ? '<span class="rw-bg b">✓</span>' : "") +
+              (!sp.merged_item_code && !sp.is_generator ? '<span class="rw-bg c">♦</span>' : "");
+            el.onclick = () => onCell(i);
+          } else el.disabled = true;
+          b.appendChild(el);
+        });
+        $("#rwBoardSub").textContent = `${filled}/63 · cell = row×7+col`;
+      }
+
+      function onCell(i) {
+        const c = S.cells[i]; if (!c) return;
+        if (specOf(c.code).is_generator) { tapGenerator(i); return; }
+        if (S.sel != null && S.sel !== i && tryMerge(S.sel, i)) { render(); return; }
+        S.sel = S.sel === i ? null : i; render();
+      }
+
+      function renderInfo() {
+        const el = $("#rwInfo");
+        if (S.sel == null || !S.cells[S.sel]) {
+          el.innerHTML = '<span class="d">셀을 고르면 여기에 상태가 뜹니다. 같은 칩을 두 번 눌러 합치고, ⚡생성기를 눌러 생산합니다.</span>';
+          return;
+        }
+        const c = S.cells[S.sel], sp = specOf(c.code), ch = chainOf(c.code);
+        const chName = CHAINS.find((x) => x.id === ch)?.name || "";
+        const oi = oiOf(c.code);
+        el.innerHTML =
+          `<span class="rw-req" style="--h:${hueOf(ch)}deg">${labelOf(c.code)}</span>
+           <span style="display:flex;flex-direction:column">
+             <span class="t">${chName} ${stepOf(c.code)}단계 <span style="color:var(--text-faint);font-family:ui-monospace,Menlo,monospace;font-size:11px">#${c.code}</span></span>
+             <span class="d">${sp.is_generator
+               ? `생성기 · 재고 ${c.stock}/${sp.spread_item_max} · 탭 ${sp.spread_cost_energy} 에너지`
+               : `${sp.merged_item_code ? `합치면 → ${labelOf(sp.merged_item_code)}` : "최고 단계"} · 판매가 ${sp.selling_price}${oi ? ` · 오더가 ${oi.order_price} / 난이도 ${oi.diff_score}` : " · 오더 후보 아님"}`}</span>
+           </span>
+           <span class="sp">${sp.is_generator
+             ? `<button class="rw-btn pri" onclick="tapGenerator(${S.sel})">생산</button>`
+             : `<button class="rw-btn" onclick="sellCell(${S.sel})">판매 +${sp.selling_price}</button>`}</span>`;
+      }
+
+      function renderRail() {
+        const r = $("#rwRail"); const open = openSlots();
+        $("#rwRailSub").textContent = `열린 슬롯 ${open.length}/5`;
+        if (!open.length) { r.innerHTML = '<div class="rw-empty">열린 슬롯이 없습니다.</div>'; return; }
+        const counts = boardCounts();
+        r.innerHTML = open.map((n) => {
+          const card = S.slots[n];
+          if (!card) {
+            const t = S.orderGen.type_timers[slotType(n)];
+            const wait = t && t.next_refill_at > 0 ? Math.max(0, Math.ceil(t.next_refill_at - Date.now() / 1000)) : 0;
+            return `<div class="rw-empty">슬롯 ${n} · ${slotType(n)} — ${wait ? `대기 ${wait}s` : "발급 대기"}</div>`;
+          }
+          const ok = card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
+          return `<div class="rw-card">
+            <div class="rw-ch"><span class="rw-slotno">SLOT ${n}</span>
+              <span class="rw-type ${card.type === "fixed" ? "fixed" : ""}">${card.type}</span>
+              <span class="rw-who">${card.avatar}</span></div>
+            <div class="rw-cb">
+              ${card.reqs.map((q) => {
+                const have = (counts.get(q.code) || 0) >= q.count;
+                return `<span class="rw-req ${have ? "" : "miss"}" style="--h:${hueOf(chainOf(q.code))}deg">${labelOf(q.code)}${have ? '<span class="ck">✓</span>' : ""}</span>`;
+              }).join("")}
+              <span class="rw-rw"><b>${card.coin} 코인</b><span>난이도 ${card.diff}${card.band ? ` · band ${card.band}` : ""}</span></span>
+              ${ok ? `<span style="margin-left:auto"><button class="rw-btn pri" onclick="serve(${n})">Serve</button></span>` : ""}
+            </div></div>`;
+        }).join("");
+      }
+
+      function renderLog() {
+        const l = $("#rwLog");
+        if (!S.log.length) { l.innerHTML = '<div class="rw-e"><div class="rw-steps" style="opacity:.6">아직 발급 기록이 없습니다.</div></div>'; return; }
+        l.innerHTML = S.log.map((e) => `<div class="rw-e">
+            <h4>슬롯 ${e.slot} · ${e.type} ${e.ok ? "" : '<span style="color:var(--deploy)">발급 실패</span>'}
+              <span class="tag">${e.reason} · ${e.t.toLocaleTimeString("ko-KR", { hour12: false })}</span></h4>
+            <div class="rw-steps">${e.lines.join("\n")}</div></div>`).join("");
+      }
+
+      /* ======================================================================
+         8. 데이터 표
+         ====================================================================== */
+      const TABLE_DEFS = [
+        { key: "order_rule", note: "슬롯 편성·해금·예산·대기. CRIT", cols: ["order_type","slot_count","unlock_level","item_slot_max","refill_max","refresh_sec","in_use"] },
+        { key: "order_slot_band", note: "오더 종류 × 유저 레벨 → 자리별 단계 범위. 하루 누적 난이도는 쓰지 않는다", cols: ["order_type","band_seq","level_min","level_max","first_min","first_max","second_max","in_use"] },
+        { key: "order_item_count", note: "레벨 묶음별 요구 종수 가중. 그룹 합 10000", cols: ["level","item_count","count_weight","in_use"] },
+        { key: "order_fixed", note: "초반 순차 고정 오더. slot_3 은 세 번째 슬롯 번호이지 세 번째 요구품이 아니다. CRIT", cols: ["fixed_seq","unlock_level","slot_1","slot_2","slot_3","requirement_1","requirement_2","in_use"] },
+        { key: "order_item", note: "랜덤 오더 후보 · 단가 · 난이도 · 반복 감쇠 제수", cols: ["item_code","unlock_level","order_price","diff_score","repeat_weight_decrease","in_use"] },
+        { key: "order_avatar", note: "손님. open_day 999 는 특수 오더 전용이라 일반 풀에 안 든다", cols: ["avatar_key","open_day","in_use"] },
+        { key: "item_spec", note: "머지 체인 · 생성기 주머니. 가중치는 확률이 아니라 남은 개수다. CRIT", cols: ["item_code","merged_item_code","selling_price","is_generator","spread_cost_energy","spread_item_max","p1","w1","p2","w2","p3","w3"] },
+        { key: "level_curve", note: "레벨업 필요 경험치. 공급원은 심부름 하나뿐. CRIT", cols: ["level","exp_cost","reward_coin"] },
+      ];
+
+      function renderData() {
+        const host = $("#rwTables"); host.innerHTML = "";
+        const cw = document.createElement("div");
+        cw.innerHTML = '<div class="rw-tt"><h3>const</h3><span>7행</span></div><p class="rw-tnote">보드 상황 배수 3종과 반복 제한 횟수. 비율은 분모 10000.</p>';
+        const ct = document.createElement("div"); ct.className = "rw-tw";
+        ct.innerHTML = `<table><thead><tr><th>const_name</th><th>const_value</th></tr></thead><tbody>${
+          Object.entries(DATA.const).map(([k, v]) => `<tr><td>${k}</td><td><input type="number" value="${v}" data-c="${k}" /></td></tr>`).join("")
+        }</tbody></table>`;
+        ct.querySelectorAll("input").forEach((inp) => { inp.oninput = () => { DATA.const[inp.dataset.c] = Number(inp.value) || 0; }; });
+        cw.appendChild(ct); host.appendChild(cw);
+
+        for (const d of TABLE_DEFS) {
+          const rows = DATA[d.key];
+          const w = document.createElement("div");
+          w.innerHTML = `<div class="rw-tt"><h3>${d.key}</h3><span>${rows.length}행</span></div><p class="rw-tnote">${d.note}</p>`;
+          const tw = document.createElement("div"); tw.className = "rw-tw scroll";
+          tw.innerHTML = `<table><thead><tr>${d.cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${
+            rows.map((r, ri) => `<tr>${d.cols.map((c) => {
+              const v = r[c], isTxt = typeof v === "string";
+              const tail = c === "item_code" && !isTxt && d.key !== "item_spec" ? ` <span style="color:var(--text-faint)">${labelOf(v)}</span>` : "";
+              return `<td><input class="${isTxt ? "txt" : ""}" type="${isTxt ? "text" : "number"}" value="${v}" data-k="${d.key}" data-r="${ri}" data-c="${c}" />${tail}</td>`;
+            }).join("")}</tr>`).join("")
+          }</tbody></table>`;
+          tw.querySelectorAll("input").forEach((inp) => {
+            inp.oninput = () => {
+              const t = DATA[inp.dataset.k][Number(inp.dataset.r)];
+              t[inp.dataset.c] = inp.type === "number" ? Number(inp.value) || 0 : inp.value;
+            };
+          });
+          w.appendChild(tw); host.appendChild(w);
+        }
+      }
+
+      /* ======================================================================
+         9. 분포
+         ====================================================================== */
+      function runSim() {
+        const N = clamp(Number($("#rwSimN").value) || 1000, 10, 20000);
+        const lv = clamp(Number($("#rwSimLv").value) || 1, 1, 30);
+        const type = $("#rwSimType").value;
+        const counts = $("#rwSimBoard").value === "cur" ? boardCounts() : new Map();
+        const othersReq = new Set();
+        const tally = new Map(); let coin = 0, diff = 0, fail = 0; const cnt = { 1: 0, 2: 0 };
+        const saved = RNG.save();
+        for (let i = 0; i < N; i++) {
+          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev: null, skipFixed: true });
+          if (!r.card) { fail++; continue; }
+          coin += r.card.coin; diff += r.card.diff;
+          cnt[r.card.reqs.length] = (cnt[r.card.reqs.length] || 0) + 1;
+          r.card.reqs.forEach((q) => tally.set(q.code, (tally.get(q.code) || 0) + 1));
+        }
+        RNG.load(saved);
+        const ok = N - fail;
+        $("#rwKpi").innerHTML = [
+          ["발급 성공", `${ok}/${N}`], ["평균 코인", ok ? (coin / ok).toFixed(1) : "—"],
+          ["평균 난이도", ok ? (diff / ok).toFixed(1) : "—"],
+          ["1종 비율", ok ? `${((cnt[1] / ok) * 100).toFixed(1)}%` : "—"],
+          ["2종 비율", ok ? `${(((cnt[2] || 0) / ok) * 100).toFixed(1)}%` : "—"],
+          ["등장 종수", `${tally.size}종`],
+        ].map(([k, v]) => `<div class="rw-kpi"><u>${k}</u><b>${v}</b></div>`).join("");
+
+        const arr = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+        const max = arr.length ? arr[0][1] : 1;
+        $("#rwBars").innerHTML = arr.map(([code, n]) => `<div class="rw-b" style="--h:${hueOf(chainOf(code))}deg">
+            <span>${labelOf(code)}</span>
+            <span class="track"><span class="fill" style="width:${(n / max) * 100}%"></span></span>
+            <span class="n">${n} · ${((n / Math.max(1, ok)) * 100).toFixed(1)}%</span></div>`).join("")
+          || '<div class="rw-empty">해당 조건에서 뽑힌 아이템이 없습니다.</div>';
+      }
+
+      /* ======================================================================
+         10. 부팅
+         ====================================================================== */
+      function boot() {
+        S = freshState();
+        RNG.load(S.orderGen.rng_state);
+        $("#rwSimType").innerHTML = DATA.order_rule.filter((r) => r.order_type !== "special")
+          .map((r) => `<option value="${r.order_type}">${r.order_type}</option>`).join("");
+        renderData();
+        fillEmptySlots("첫 진입");
+        render();
+      }
+
+      $("#rwChore").onclick = doChore;
+      $("#rwEnergy").onclick = () => { S.energy += 50; renderStats(); toast("에너지 +50"); };
+      $("#rwReset").onclick = () => { boot(); toast("처음부터 다시"); };
+      $("#rwClearLog").onclick = () => { S.log = []; renderLog(); };
+      $("#rwSimGo").onclick = runSim;
+      $("#rwRestore").onclick = () => { DATA = DEFAULTS(); renderData(); render(); toast("기본값 복원"); };
+      $("#rwExport").onclick = () => {
+        const b = $("#rwJson"); b.classList.toggle("rw-hide");
+        if (!b.classList.contains("rw-hide")) b.value = JSON.stringify(DATA, null, 1);
+      };
+      window.tapGenerator = tapGenerator;
+      window.sellCell = sellCell;
+      window.serve = serve;
+
+      boot();
+      setInterval(renderRail, 1000);
+    </script>
+  </body>
+</html>
