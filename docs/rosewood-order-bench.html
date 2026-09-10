@@ -705,7 +705,7 @@
           <table>
             <thead><tr><th>항목</th><th>왜 아직 시드인가</th></tr></thead>
             <tbody>
-              <tr><td><code>order_repeat_reset_count</code> = 3</td><td>const 48행에 이 칸이 <b>없다</b>. 개발 기획서 1.2.1 의 값을 얹었다 &mdash; 시트에 칸이 생기면 지운다</td></tr>
+              <tr><td><code>order_repeat_reset_count</code> 를 얹었던 것</td><td><b>지웠다.</b> 시트 <code>order_item.repeat_weight_decrease</code> 셀 메모가 「직전에 같은 체인이 오더로 나갔으면 가중치를 이 값으로 나눈다」라고 규정한다 &mdash; 카운터를 쓰지 않는 규칙이라 const 에 그 칸이 없는 게 정상이었다</td></tr>
               <tr><td><code>event_order_score</code> 5행</td><td>시트 탭이 <b>[작성중]</b>. 기준값이 무엇인지도 안 적혀 있어 난이도로 가정했다</td></tr>
               <tr><td><code>level_curve.reward_coin</code></td><td>시트의 레벨 보상은 <code>reward_item_key_1~3</code>(아이템 지급)이라 코인 칸이 없다. 레벨업 체감용 임시값</td></tr>
               <tr><td><code>undo_valid_sec</code> = 5</td><td><b>쓰지 않기로 했다.</b> 되돌리기가 들고 있는 건 {칸·코드·코인} 한 건이라 보관 비용이 없고, 창을 닫아야 하는 진짜 이유는 「서버에 아직 안 보낸 변경을 언제 확정하나」였다. 그 확정 시점을 초 시계 대신 <b>다음 행동</b>에 붙였다 &mdash; 보드·코인을 건드리는 행동이 들어오는 순간 앞의 판매를 커밋한다. 시트에 칸은 남아 있으니 삭제 여부는 기획 판단</td></tr>
@@ -1429,7 +1429,8 @@
         S.prevOfSlot[n] = card.reqs.map((q) => q.code);
         card.reqs.forEach((q) => {
           const oi = oiOf(q.code);
-          if (oi && oi.repeat_weight_decrease > 0) S.orderGen.chain_repeat[chainOf(q.code)] = DATA.const.order_repeat_reset_count;
+          /* 반복 감쇠 카운터를 여기서 세우던 자리 — 시트 메모대로 「직전 오더의 체인」
+             한 장 기준으로 바뀌어 카운터가 없어졌다. 감쇠 대상은 prevOfSlot 에서 나온다. */
         });
         S.slots[n] = null;
         fillEmptySlots(reason);
@@ -2213,7 +2214,7 @@
         if (!openSlots().some((n) => !S.slots[n])) { retryMark = ""; return false; }
         const now = Date.now() / 1000;
         const mark = Object.entries(S.orderGen.type_timers)
-          .map(([t, x]) => `${t}:${x.next_refill_at > now ? "w" : "r"}:${x.remaining_count}`).join("|");
+          .map(([t, x]) => `${t}:${x.next_refill_at > now ? "w" : "r"}:${x.refill_left}`).join("|");
         if (mark === retryMark) return false;
         retryMark = mark;
         fillEmptySlots("예산 회복 재시도");
@@ -2731,8 +2732,9 @@
          카운터만 되돌려서 [1] 예산·대기 단계가 막지 않게 한다. */
       function rerollOrders(reason) {
         DATA.order_rule.forEach((r) => {
-          const t = (S.orderGen.type_timers[r.order_type] ||= { remaining_count: 0, next_refill_at: 0 });
-          t.remaining_count = r.refill_max; t.next_refill_at = 0;
+          const t = (S.orderGen.type_timers[r.order_type] ||= { refill_left: 0, next_refill_at: 0 });
+          /* 비축 천장이 0 인 타입도 다시 뽑아 볼 수 있어야 한다 — 최소 한 장은 준다 */
+          t.refill_left = Math.max(1, r.refill_max); t.next_refill_at = 0;
         });
         const open = openSlots();
         open.forEach((n) => (S.slots[n] = null));
@@ -2790,8 +2792,8 @@
       };
       $("#rwAdRefill").onclick = () => {
         // 광고 즉시 채움 — 예산 +1, 원래 대기 종료 시각은 유지한다(문서 규칙)
-        const t = (S.orderGen.type_timers.normal ||= { remaining_count: 0, next_refill_at: 0 });
-        t.remaining_count += 1;
+        const t = (S.orderGen.type_timers.normal ||= { refill_left: 0, next_refill_at: 0 });
+        t.refill_left += 1;
         toast("광고 즉시 채움 — normal 예산 +1 (대기 종료 시각 유지)");
         fillEmptySlots("광고 즉시 채움");
         render();

@@ -16,10 +16,17 @@
    여기 없는 것 — 벤치에 남는다.
      연출 엔진 · 보드 조작 · 렌더 · 아웃게임 · toast · 세이브 쓰기(saveNow/save)
 
-   벤치 v4.2 원본과 다른 곳은 갭 패치 3건뿐 — 각 자리에 [GAP] 주석.
+   벤치 v4.2 원본과 다른 곳 — 각 자리에 [GAP] 주석.
      GAP-1  [4] 가중치에 시트의 weight × weight_multiple 반영 (전 행 100·1 → 오늘은 동일)
      GAP-2  eventScore 가 score_base(coin)·event_id 를 읽는다 (칸 없으면 종전대로 난이도)
      GAP-3  pickBand 에 하루 누적 난이도 축 — 입력(dailyDiff)으로만 (기본 0 = 종전 동작)
+
+   v4.5 — 시트 <b>셀 메모</b>(컬럼마다 규칙·근거가 달려 있다)를 뒤늦게 읽고 두 곳을
+   정정했다. 둘 다 데이터가 아니라 우리 쪽 오독이었다.
+     refill_max   「비축 천장」이지 발급 차단이 아니다. 0 을 「발급 경로 없음」으로 읽어
+                  avatar·special·event 가 영구히 안 나오던 것을 고쳤다
+     반복 감쇠     카운터가 아니라 「직전 오더의 체인」 한 장 기준. 시트에
+                  order_repeat_reset_count 가 없는 게 정상이었다 — 규칙이 카운터를 안 쓴다
 
    로드 순서: 이 파일이 페이지 스크립트보다 먼저 와야 한다(DATA · S 를 여기서 선언).
    ========================================================================== */
@@ -686,11 +693,11 @@ function buildOrderItem() {
 }
 
 const DEFAULTS = () => ({
-  /* const 48행 통째로 실물이다. 딱 하나 order_repeat_reset_count 만 시트에 없어
-     기획서 1.2.1 의 값(3)을 덧붙인다 — 시트에 칸이 생기면 지운다. 확인 필요.
-     안 쓰는 칸도 그대로 둔다: 벤치가 뭘 아직 안 만졌는지가 여기서 드러난다
-     (order_daily_diff_band_1/2 · order_daily_diff_reset_utc_sec = 일일 난이도 밴드, 미구현). */
-  const: { ...CONST_DB, order_repeat_reset_count: 3 },
+  /* const 48행 통째로 실물이다. order_repeat_reset_count 를 얹어 두었었는데 지웠다 —
+     반복 감쇠가 카운터를 쓰지 않으므로(시트 셀 메모) 애초에 없는 게 맞는 값이었다.
+     안 쓰는 칸은 그대로 둔다: 무엇을 아직 안 만졌는지가 여기서 드러난다
+     (order_daily_diff_band_1/2 · order_daily_diff_reset_utc_sec = 하루 누적 난이도 축, 입력으로만). */
+  const: { ...CONST_DB },
   /* 인벤토리 확장 27행 (6칸 → 32칸) — 실물 시트값. 등비 √2 곡선이라 코드로 다시 만들지 않는다 */
   inventory_unlock: INV_DB.map(([slot_index, cost_type, unlock_cost]) =>
     ({ slot_index, cost_type, unlock_cost, in_use: 1 })),
@@ -748,7 +755,7 @@ const lvOf = (level) => idx().lv.get(level);
 /* ======================================================================
    2b. 저장 — 읽기만. 쓰기(saveNow/save)는 벤치에 남는다.
    ====================================================================== */
-const BUILD = "v4.4 · 2026-09-10";   // 되돌리기 시간 창 제거(undo_valid_sec 미사용)
+const BUILD = "v4.5 · 2026-09-10";   // 시트 셀 메모 대조 — refill_max · 반복 감쇠 정정
 const SAVE_KEY = "rw.orderBench";
 const SAVE_VER = 4;
 
@@ -938,33 +945,33 @@ function generateOrder(slotNo, opts = {}) {
     push(`<span class="w">[1] ${type} 미해금</span> (unlock_level ${rule.unlock_level} > Lv${level}) → 랜덤 발급 없음. 고정 오더만 이 슬롯을 채운다`);
     return { card: null, log: L, locked: true };
   }
-  /* 실물 시트에서 avatar·special·event 는 refill_max 가 0 이다. 예산이 0 이면 이 경로로는
-     카드가 한 장도 안 나온다 — 대기만 돌다 다시 0 으로 채워진다. 손님·이벤트 오더가
-     다른 경로(캐릭터 호감도·이벤트 편성)로 들어오는 자리로 보이는데 기획서에 그 경로가
-     없다. 고장처럼 보이지 않도록 여기서 따로 말해 준다. 확인 필요. */
-  if (rule.refill_max <= 0) {
-    push(`<span class="w">[1] ${type} 은 refill_max=0</span> — 랜덤 발급 경로가 없는 타입입니다. `
-       + `<span class="k">시트 실물값</span>이라 벤치가 막은 게 아닙니다. `
-       + `손님·이벤트 오더가 다른 경로로 들어오는 자리로 보입니다 &mdash; 확인 필요`);
-    if (!dry) return { card: null, log: L, noBudget: true };
-  }
+  /* [1] 즉시 채움 권한 — 시트 order_rule.refill_max 셀 메모 그대로다.
+       「슬롯이 빈 채로 refresh_sec 가 한 번 지날 때마다 그 슬롯에 권한이 한 장 쌓이고
+        이 값을 넘겨 쌓이지 않는다 — A8-2 order_slot_timer.refill_left 의 천장이다.
+        0 = 쌓이지 않는다(주기가 지나면 그 한 장으로 채우고 끝).」  근거: 원작 확인
+     즉 refill_max 는 「비축 천장」이고 발급 자체를 막지 않는다. 전에는 0 을 「발급 경로
+     없음」으로 읽어 avatar·special·event 가 영구히 안 나왔다 — 그게 오독이었다. */
   if (!dry) {
-    const t = (S.orderGen.type_timers[type] ||= { remaining_count: rule.refill_max, next_refill_at: 0 });
-    const now = Date.now() / 1000;
-    if (t.next_refill_at > 0 && now >= t.next_refill_at) {
-      t.remaining_count = rule.refill_max; t.next_refill_at = 0;
-      push(`[1] 대기 종료 → 예산 ${rule.refill_max} 로 <span class="k">한 번</span> 채움 (누적 없음)`);
+    const t = (S.orderGen.type_timers[type] ||= { refill_left: rule.refill_max, next_refill_at: 0 });
+    if (t.remaining_count !== undefined) {                  // 구 세이브 이관
+      t.refill_left = t.remaining_count; delete t.remaining_count;
     }
-    if (t.remaining_count <= 0) {
+    const now = Date.now() / 1000;
+    if (t.refill_left > 0) {
+      t.refill_left--;
+      push(`[1] 즉시 채움 권한 −1 → ${t.refill_left}/${rule.refill_max} (${type}${type === "normal" ? " · 슬롯 1·2 공유" : ""})`);
+    } else if (t.next_refill_at > 0 && now >= t.next_refill_at) {
+      t.next_refill_at = 0;                                 // 주기 도달 — 그 한 장으로 바로 채운다
+      push(`[1] 갱신 주기 도달 → <span class="k">이번 한 장</span>으로 채움 (비축 천장 ${rule.refill_max})`);
+    } else {
       if (t.next_refill_at <= 0) {
         t.next_refill_at = now + rule.refresh_sec;
-        push(`<span class="w">[1] 예산 0 → 대기 시작</span> now+${rule.refresh_sec}s · 카드 만들지 않음`);
+        push(`<span class="w">[1] 권한 0 → 대기 시작</span> now+${rule.refresh_sec}s · 카드 만들지 않음`);
       } else {
-        push(`<span class="w">[1] 예산 0 · 대기 중</span> 남은 ${Math.ceil(t.next_refill_at - now)}s · 종료 시각 안 미룸`);
+        push(`<span class="w">[1] 권한 0 · 대기 중</span> 남은 ${Math.ceil(t.next_refill_at - now)}s · 종료 시각 안 미룸`);
       }
       return { card: null, log: L };
     }
-    push(`[1] 예산 ${t.remaining_count}/${rule.refill_max} (${type}${type === "normal" ? " · 슬롯 1·2 공유" : ""})`);
   }
 
   // ---- [2] 자리별 단계 범위
@@ -977,7 +984,13 @@ function generateOrder(slotNo, opts = {}) {
   const counts = opts.counts ?? boardCounts();
   const othersReq = opts.othersReq ?? requiredElsewhere(slotNo);
   const prev = opts.prev !== undefined ? opts.prev : S.prevOfSlot[slotNo];
-  const CR = opts.repeat || S.orderGen.chain_repeat;   // 시뮬은 사본을 넘겨 게임 상태를 오염시키지 않는다
+  /* 반복 감쇠 대상 — 시트 order_item.repeat_weight_decrease 셀 메모 그대로다.
+       「직전에 같은 체인이 오더로 나갔으면 그 아이템의 오더 등장 가중치를 이 값으로
+        나눈다 — Weight / RepeatWeightDecrease. 생성기 산출과 무관하다.」  근거: GH 승계 · D-L4
+     조건은 「직전 오더 한 장」이고 카운터가 아니다. 전에는 const.order_repeat_reset_count
+     로 3회 감쇠를 유지했는데, 시트에 그 상수가 없는 게 정상이었다 — 규칙이 카운터를 안 쓴다.
+     직전 요구 코드는 아예 제외되고(banned), 같은 체인의 다른 단계가 이 제수로 나뉜다. */
+  const prevChains = new Set((prev || []).map(chainOf));
   const othersChains = new Set([...othersReq].map(chainOf));
   const banned = new Set([...othersReq]);
   if (prev) prev.forEach((c) => banned.add(c));
@@ -1003,8 +1016,8 @@ function generateOrder(slotNo, opts = {}) {
     }
     const rows = cand.map((o) => {
       const m = situationMult(o.item_code, othersReq, counts, C, othersChains);
-      const rem = CR[chainOf(o.item_code)] || 0;
-      const div = rem > 0 && o.repeat_weight_decrease > 0 ? o.repeat_weight_decrease : 0;
+      const div = prevChains.has(chainOf(o.item_code)) && o.repeat_weight_decrease > 0
+        ? o.repeat_weight_decrease : 0;
       if (div) divided.add(chainOf(o.item_code));
       /* [GAP-1] 시트 기본 가중 = weight × weight_multiple. 전 행 100·1 이라 base=1 로
          오늘은 수치까지 종전과 같다(÷100 이 그 보정). 칸 머리의 「주머니 잔량 · 정규화 금지」가
@@ -1040,23 +1053,10 @@ function generateOrder(slotNo, opts = {}) {
   if (n < picked.length)
     push(`    버린 후보 ${picked.slice(n).map((o) => labelOf(o.item_code)).join(", ")} — <span class="k">반복 카운터 갱신에는 포함</span>`);
 
-  /* ---- 반복 카운터 — 「가중치를 나눈 모든 후보의 체인」이 대상이다.
-     뽑힌 후보로만 대상을 만들면 won ⊇ applied 가 되어 감소 분기에 절대 닿지 않고,
-     한 번 눌린 체인이 영원히 눌린 채로 남는다. divided 는 [4] 에서 실제로 나눈 체인이다. */
-  if (!dry || opts.repeat) {                            // 사본을 받았으면 dry 여도 갱신한다
-    const applied = divided;
-    const won = new Set(picked.map((o) => chainOf(o.item_code)));
-    const upd = [];
-    applied.forEach((ch) => {
-      if (won.has(ch)) { CR[ch] = C.order_repeat_reset_count; upd.push(`${chainName(ch)}→${C.order_repeat_reset_count}`); }
-      else {
-        CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
-        if (!CR[ch]) delete CR[ch];
-        upd.push(`${chainName(ch)}−1`);
-      }
-    });
-    if (upd.length) push(`    반복 카운터 ${upd.join(", ")}`);
-  }
+  /* 감쇠가 걸린 체인만 로그에 남긴다 — 카운터를 유지하지 않으므로 상태 갱신이 없다.
+     다음 발급의 감쇠 대상은 이 카드의 요구 체인(= prevOfSlot)에서 다시 계산된다. */
+  if (divided.size)
+    push(`    반복 감쇠 ${[...divided].map(chainName).join(", ")} <span style="opacity:.65">(직전 오더와 같은 체인 → 가중치 ÷제수)</span>`);
 
   // ---- [6][7]
   const avatar = pickAvatar();
@@ -1068,8 +1068,7 @@ function generateOrder(slotNo, opts = {}) {
   push(`<span class="k">[5] 이벤트 점수</span> coin ${coin} · diff ${diff} → <span class="p">${evt}</span> <span style="opacity:.65">(event_order_score · score_base 칸이 있으면 그 기준, 없으면 난이도)</span>`);
 
   if (!dry) {
-    const t = S.orderGen.type_timers[type];
-    if (t) { t.remaining_count--; push(`[8] 예산 −1 → ${t.remaining_count} · 카드+난수+카운터 원자 저장 → 표시 → /order/refresh`); }
+    push(`[8] 카드+난수 원자 저장 → 표시 → /order/refresh`);
     S.orderGen.rng_state = RNG.save();
   }
   return { card: { slot: slotNo, type, reqs: finalReqs, avatar, coin, diff, evt, band: band.band_seq }, log: L };
