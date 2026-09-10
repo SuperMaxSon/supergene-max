@@ -905,18 +905,19 @@ function renderRail() {
     }
     const card = S.slots[n];
     if (!card) {
-      /* refill_max 가 0 인 타입(시트 실물의 avatar·special·event)은 이 경로로
-         영영 안 채워진다. 대기 시계를 돌리면 곧 뜰 것처럼 보여 거짓말이 된다. */
-      const rule = ruleOf(sl.type);
-      if (rule && rule.refill_max <= 0) {
-        html += `<div class="rw-card wait none" data-slot="${n}"`
-              + ` title="${sl.type} — order_rule.refill_max 가 0 입니다. 랜덤 발급 경로가 없는 타입이라 다른 경로로 채워지는 자리로 보입니다 (확인 필요)">`
-              + `<span>${TYPE_KO[sl.type] || sl.type}<br><i>랜덤 발급 없음</i><br><u>refill_max 0</u></span></div>`;
-        continue;
-      }
+      /* 빈 슬롯은 「대기 중」이 전부다. 전에는 refill_max 가 0 인 타입
+         (avatar·special·event)을 「랜덤 발급 없음」으로 그렸는데, 그게 시트 셀 메모로
+         정정된 오독이다 — refill_max 는 **비축 천장**이지 발급 차단이 아니다.
+         0 이면 즉시 채움 권한이 없을 뿐, refresh_sec 마다 한 장은 나온다.
+         엔진은 v4.5 에서 고쳤는데 이 화면만 옛 판정을 들고 있었다. */
       const t = S.orderGen.type_timers[sl.type];
+      const rule = ruleOf(sl.type);
       const wait = t && t.next_refill_at > 0 ? fmtSec(t.next_refill_at - now) : "";
-      html += `<div class="rw-card wait" data-slot="${n}"><span data-wait="${sl.type}">${wait ? `대기 ${wait}` : "발급 대기"}</span></div>`;
+      const tip = rule
+        ? `${TYPE_KO[sl.type] || sl.type} — ${rule.refresh_sec}초마다 한 장. 즉시 채움 비축 천장 ${rule.refill_max}`
+        : sl.type;
+      html += `<div class="rw-card wait" data-slot="${n}" title="${tip}">`
+            + `<span data-wait="${sl.type}">${wait ? `대기 ${wait}` : "발급 대기"}</span></div>`;
       continue;
     }
     const ok = S.orderFree || card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
