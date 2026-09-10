@@ -43,6 +43,28 @@
       .rw-tnote { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
       .rw-hide { display: none !important; }
 
+      /* 해금 칩 — 「그 레벨에 무엇이 열렸나」를 보드 구성과 같이 보여 준다.
+         체인 해금 래더는 order_item.unlock_level 이 체인 단위로 균일한 데서 읽는다.
+         item_spec 에는 보드 해금 칸이 없다 — 그 사실도 칩 줄 옆에 적는다. */
+      .rw-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 12px; }
+      .rw-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 9px;
+                 border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+                 font-size: 11.5px; line-height: 1.5; white-space: nowrap; }
+      .rw-chip b { font-size: 12px; font-weight: 700; color: var(--text); }
+      .rw-chip s { text-decoration: none; color: var(--text-faint);
+                   font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; }
+      .rw-chip i { font-style: normal; font-weight: 700; color: var(--tool);
+                   font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; }
+      .rw-chip.lock { border-style: dashed; opacity: 0.55; }
+      .rw-chip.lock b { color: var(--text-dim); font-weight: 500; }
+      .rw-chip.gen { border-color: hsl(258 40% 82%); background: hsl(258 45% 97%); }
+      /* 칩 앞머리 아트 — 그 체인의 대표 아이템(오더 대상 최저 단계) */
+      .rw-chip .a { width: 20px; height: 20px; align-self: center; margin-left: -2px; }
+      .rw-chip.lock .a { filter: grayscale(1) opacity(0.6); }
+      /* 막대 라벨 — 이름 앞에 아트를 붙여 어떤 물건인지 바로 보이게 한다 */
+      .rw-blabel { display: inline-flex; align-items: center; gap: 5px; }
+      .rw-blabel .a { width: 18px; height: 18px; flex: none; }
+
       /* 입력 — 판본 표시와 드롭존 */
       .rw-drop { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 18px 14px;
                  text-align: center; font-size: 12.5px; color: var(--text-dim); background: var(--surface-2);
@@ -168,6 +190,13 @@
                 background: hsl(var(--h) 46% 86%);
                 color: hsl(var(--h) 58% 26%); box-shadow: inset 0 0 0 1.5px hsl(var(--h) 45% 66%); }
       .rw-req.bad { box-shadow: inset 0 0 0 2.5px var(--deploy); }
+      /* 아이템 아트 — docs/img/items/<item_code>.png. 엔진 spriteOf() 가 경로를 판다.
+         비율이 제각각이라 contain 으로 원 안에 앉히고, 체인 색 링은 밖에 남는다.
+         아트가 없는 코드는 이름 텍스트로 떨어진다(SPRITE_CODES 밖). */
+      .rw-req .a, .rw-chip .a, .rw-blabel .a {
+        display: block; object-fit: contain; pointer-events: none; -webkit-user-drag: none;
+        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.22)); }
+      .rw-req .a { width: 88%; height: 88%; }
       /* 이름 라벨은 1~9자 — 길수록 줄인다(엔진 lenOf 가 붙이는 클래스) */
       .rw-req.l5 { font-size: 9.5px; letter-spacing: -0.03em; }
       .rw-req.l7 { font-size: 8px; letter-spacing: -0.04em; }
@@ -343,15 +372,22 @@
       <section class="doc-section" id="sim">
         <h2 class="doc-h2">뽑기 분포</h2>
         <div class="doc-h2-sub">
-          고정 오더는 빼고 랜덤 경로만 연속 발급합니다. 빈 보드면 전 후보가 「미요구」 배수
-          <code id="rwMultNR">1000</code> 으로 평평하고, 물건이 쌓이면 「동급·하급 보유」
-          <code id="rwMultHL">10000</code> 이 걸려 쏠립니다. <b>보드는 프리셋</b>입니다 &mdash;
-          시트에 없는 값을 시트 JSON 에 끼우지 않으려고 벤치 보드를 읽지 않습니다.
+          고정 오더는 빼고 랜덤 경로만 연속 발급합니다.
+          <b>보드가 추첨의 지배항입니다</b> &mdash; <code>[4]</code> 의 상황 배수는
+          <code>1</code>(요구+납품불가) : <code id="rwMultRE">100</code>(요구+납품가능) :
+          <code id="rwMultNR">1000</code>(미요구) : <code id="rwMultHL">10000</code>(미요구+동급·하급 보유)
+          로 네 자릿수 차이입니다.
+          <b>보드는 시트에 없습니다</b> &mdash; <code>item_spec</code> 에 보드 해금·등장 칸이 없어
+          「그 레벨에 보드에 무엇이 있나」를 시트에서 읽을 수 없습니다. 그래서
+          <b>해금 체인 기준 무작위 보드</b>를 만들어 씁니다 &mdash; 체인 편중(Zipf) + 단계 기하 감쇠
+          두 가정이고, 셀 수는 <code>const.board_row × board_column</code> 입니다.
+          프리셋 3종은 배수 4 축 중 <b>둘을 구조적으로 죽입니다</b>(빈 보드 → ×100·×10000 /
+          전종 보유 → ×1000·×1). 어느 축이 살아 있는지는 검사 <b>T10</b> 에 적힙니다.
           <b>레일 맥락</b> &mdash; 실제 레일이 없으니 후보 목록에서 <b>표본 3종</b>을 골라
-          「다른 오더가 요구 중(2종) + 직전 요구(1종)」으로 가정합니다. 그 3종은 후보에서 빠지고,
-          같은 체인의 다른 단계는 배수 100·1 을 받습니다 &mdash; <b>끄면 배수 4 개 중 이 축 둘이
-          아예 안 나옵니다.</b> 무엇이 빠졌는지는 아래 줄과 판정 로그 [3] 에 적힙니다.
-          매 발급 같은 3종이라 결과가 재현됩니다.
+          「다른 오더가 요구 중(2종) + 직전 요구(1종)」으로 가정합니다. 그 3종은 후보에서 빠집니다.
+          <b>축이 살아 있게 고릅니다</b> &mdash; 요구 2종은 「체인의 다른 단계가 보드에 있는 것」과
+          「그 체인이 보드에 없는 것」으로, 직전 요구는 「자리1 범위 안에 감쇠 대상 형제가 가장 많은 체인」으로.
+          결정적이라 결과는 재현됩니다.
         </div>
         <div class="rw-panel">
           <div class="rw-pb">
@@ -361,12 +397,17 @@
               <div class="rw-f"><label>오더 타입</label><select id="rwType"></select></div>
               <div class="rw-f"><label>누적 난이도</label><input id="rwDaily" type="number" value="0" min="0" max="9999" title="하루 누적 난이도 — order_slot_band.diff_sum_* 축. 누적의 정의는 기획 미확인이라 값만 넣어 본다" /></div>
               <div class="rw-f"><label>보드 상황</label>
-                <select id="rwBoard">
+                <select id="rwBoard" title="보드는 [4] 의 상황 배수 한 곳에서만 쓰입니다. 배수는 1 : 100 : 1000 : 10000 이라 보드 상태가 추첨을 지배합니다 — 프리셋은 넷 중 둘을 죽이므로 무작위를 쓰세요.">
+                  <option value="rand">무작위 (해금 기준)</option>
                   <option value="empty">빈 보드</option>
                   <option value="all">후보 전종 1개씩 보유</option>
                   <option value="half">홀수 체인만 보유</option>
                 </select>
               </div>
+              <div class="rw-f"><label>보드 채움</label>
+                <input id="rwFill" type="number" value="40" min="0" max="100" step="5"
+                       title="63셀(const board_row×board_column) 중 아이템이 놓인 비율. 0% 는 빈 보드, 100% 는 꽉 찬 보드와 같습니다." /></div>
+              <button class="rw-btn" id="rwShuffle" title="보드만 다시 뽑습니다 — 같은 시드면 같은 보드가 나옵니다">🎲 다시 섞기</button>
               <div class="rw-f"><label>레일 맥락</label>
                 <select id="rwCtx" title="실제 레일이 없으므로 후보 목록에서 표본 3종을 골라 「다른 오더가 요구 중(2종) + 직전 요구(1종)」으로 가정합니다. 매 발급 같은 3종이라 결과가 재현됩니다.">
                   <option value="rail">표본 3종 제외 (타 오더 2 + 직전 1)</option>
@@ -376,6 +417,8 @@
               <label class="rw-chk" title="켜면 매번 같은 난수 열로 돌려 결과를 그대로 재현합니다 — 끄면 돌릴 때마다 열을 이어 갑니다"><input type="checkbox" id="rwFix" /> 시드 고정</label>
               <button class="rw-btn pri" id="rwGo">돌리기</button>
             </div>
+            <p class="rw-tnote" id="rwChipNote"></p>
+            <div class="rw-chips" id="rwChips"></div>
             <div class="rw-kpis" id="rwKpi"></div>
             <p class="rw-tnote" id="rwWhy"></p>
             <p class="rw-tnote">방금 뽑힌 오더 8장 &mdash; 붉은 테두리는 규칙 위반</p>
@@ -418,11 +461,13 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v2.2 · 2026-09-10";   // 판정에 「귀속」 축 추가 · T1/T1b 분리 · T9 신설 · 다중비교 보정
+      const PAGE_BUILD = "v2.3 · 2026-09-10";   // 무작위 보드 + 해금 칩(아이템 아트) · T10 보드 배수 축 커버리지 · T8 표본 가드
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
       let SEED = SEED0;
+      /* 보드용 시드는 따로 둔다 — 「다시 섞기」로 보드만 바꾸고 시뮬 난수열은 건드리지 않는다 */
+      let BSEED = 77003217;
       let SRC = { kind: "…", meta: null, warn: [] };
       let LAST = null;                          // 마지막 시뮬 결과 — 규칙 검사가 읽는다
 
@@ -468,6 +513,7 @@
           .map((r) => `<option value="${r.order_type}">${r.order_type} · ${TYPE_KO[r.order_type] || ""} (Lv${r.unlock_level})</option>`).join("")
           || '<option value="">order_rule 없음</option>';
         const C = DATA.const || {};
+        $("#rwMultRE").textContent = C.order_weight_mult_required_enough ?? "?";
         $("#rwMultNR").textContent = C.order_weight_mult_not_required ?? "?";
         $("#rwMultHL").textContent = C.order_weight_mult_higher_level ?? "?";
 
@@ -498,6 +544,9 @@
          codeTag 는 로그·막대에서 이름 옆에 붙이는 「체인-단계」 표기다. */
       const nameOf = (code) => labelOf(code);
       const codeTag = (c) => `${chainOf(c)}-${stepOf(c)}`;
+      /* 막대 라벨 — 아트 + 「체인-단계」 + 이름. 아트가 없으면 표기만 남는다 */
+      const artLabel = (c) => `<span class="rw-blabel">${chipArt(c)}`
+        + `<span><s style="text-decoration:none;opacity:.55">${codeTag(c)}</s> ${labelOf(c)}</span></span>`;
 
       function renderSource() {
         const m = SRC.meta || {};
@@ -546,6 +595,9 @@
           ["[7] 보상 단가 곡선",
            "합산·이벤트 재화 일치만 보고, 단가 자체가 옳은지는 안 본다",
            "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
+          ["실제 보드 분포",
+           "무작위 보드는 <b>체인 편중(Zipf) + 단계 1/2<sup>step-1</sup></b> 가정이다 — 시트에 보드 등장 분포가 없다. 상자·재화 체인(동전·유리알·불씨)은 등장률을 모르고 배수에도 영향이 없어 아예 뺐다",
+           "실제 플레이 로그의 보드 스냅샷으로 단계 분포를 대체. <code>item_spec</code> 에 보드 해금·등장 칸이 생기면 그걸 입력으로"],
           ["반복 감쇠 — 둘째·셋째 자리",
            "T8 은 자리1 만 본다. 기대값을 자리별로 따로 세워야 하는데 앞 자리 결과에 따라 후보가 바뀐다",
            "자리별 조건부 기대값 계산 추가. <code>avatar</code> 처럼 자리1 이 한 단계뿐인 타입은 자리1 로는 아예 못 잰다"],
@@ -793,6 +845,108 @@
       /* ======================================================================
          2. 보드 프리셋 — 벤치 보드를 읽지 않는다
          ====================================================================== */
+      /* ── 체인 해금 래더 ────────────────────────────────────────────────────
+         「Lv N 에 보드에 무엇이 있을 수 있나」는 시트에 없다 — item_spec 에 unlock_level
+         칸이 없고, unlock 탭은 기능 해금 6행(창고 Lv2 · 상점 Lv3 · 레일 Lv1 · 스타터팩 Lv3
+         · 이벤트 레일 Lv6 · 데일리 Lv8)뿐이다. 대신 order_item.unlock_level 이 체인 단위로
+         균일해서 체인 해금 래더로 그대로 읽힌다 — 그걸 보드 해금의 대리로 쓴다. 가정이다. */
+      function chainLadder() {
+        const m = new Map();
+        for (const o of DATA.order_item) {
+          if (!o.in_use) continue;
+          const ch = chainOf(o.item_code);
+          const e = m.get(ch) || { lv: Infinity, steps: [], items: [] };
+          e.lv = Math.min(e.lv, Number(o.unlock_level) || 1);
+          e.steps.push(stepOf(o.item_code));
+          e.items.push(o.item_code);
+          m.set(ch, e);
+        }
+        for (const [ch, e] of m) {
+          const sp = DATA.item_spec.find((r) => chainOf(r.item_code) === ch);
+          e.name = (sp && (sp.chain_name_ko || sp.name)) || chainName(ch);
+          e.steps.sort((a, b) => a - b);
+        }
+        return m;
+      }
+
+      /* 생성기 체인 → 산출 체인. 생성기는 자기 체인의 1단계가 아니라 다른 체인을 낳는다
+         (공구함 → 공구·페인트). 산출 체인이 하나라도 열렸으면 그 생성기도 보드에 있다고 본다. */
+      function generatorMap() {
+        const m = new Map();
+        for (const r of DATA.item_spec) {
+          if (!r.is_generator) continue;
+          const gc = chainOf(r.item_code);
+          const set = m.get(gc) || new Set();
+          for (let i = 1; i <= 20; i++) { const v = r[`produce_item_${i}`]; if (v) set.add(chainOf(Number(v))); }
+          m.set(gc, set);
+        }
+        return m;
+      }
+
+      /* ── 무작위 보드 ──────────────────────────────────────────────────────
+         프리셋 셋(빈/전종/홀수)은 [4] 보드 상황 배수 4 축 중 둘을 각각 죽인다 —
+         빈 보드는 「요구+납품가능(×100)」과 「미요구+동급하급(×10000)」을 아예 못 내고,
+         전종 보유는 반대로 「미요구(×1000)」와 「요구+납품불가(×1)」을 못 낸다.
+         배수가 1 : 100 : 1000 : 10000 이라 그 축이 죽으면 추첨의 지배항이 사라진다.
+         넷을 다 살리려면 <b>부분적으로 찬</b> 보드여야 한다 — 그게 이 함수다.
+
+         가정 두 개뿐이고 둘 다 화면에 적는다:
+           ① 체인은 <b>편중</b>된다 — 시드로 섞은 뒤 k 번째 체인 가중 1/(k+1)(Zipf).
+              플레이어는 한두 체인을 집중해 굴리고 나머지는 보드에 아예 없다. 균등으로
+              뿌리면 <b>모든 체인에 하급이 깔려 「미요구+보드에 없다」(×1000) 축이 죽는다</b> —
+              실측으로 Lv8·Lv30 에서 2/4 축만 살았다. 편중이 현실에도 더 가깝고 축도 살린다.
+           ② 단계는 기하 감쇠 1/decay^(step-1) — 머지 보드는 하급이 쌓이고 상급이 드물다
+         상자·재화 체인(동전·유리알·불씨…)은 넣지 않는다 — 등장률 데이터가 없고
+         배수에도 영향이 없어서, 숫자를 발명하지 않으려고 뺀다. 밀도는 채움률로 조절한다. */
+      const BOARD_DECAY = 2;
+      function boardRandom(level, fillPct, seed) {
+        const C = DATA.const || {};
+        const budget = (Number(C.board_row) || 9) * (Number(C.board_column) || 7);
+        const ladder = chainLadder();
+        const openCh = new Set([...ladder.entries()].filter(([, e]) => e.lv <= level).map(([ch]) => ch));
+        const genOf = generatorMap();
+        const openGen = [...genOf.entries()]
+          .filter(([, prod]) => [...prod].some((c) => openCh.has(c))).map(([gc]) => gc).sort((a, b) => a - b);
+
+        /* 생성기는 셀을 차지하지만 배수에는 안 들어간다 — boardCounts() 가 is_generator 를
+           건너뛰므로 여기서도 counts 에서 뺀다. 체인마다 최저 단계 1개만 앉힌다. */
+        const gens = [];
+        for (const gc of openGen) {
+          const rows = DATA.item_spec.filter((r) => r.is_generator && chainOf(r.item_code) === gc);
+          if (rows.length) gens.push(rows.reduce((a, r) => (stepOf(r.item_code) < stepOf(a.item_code) ? r : a)).item_code);
+        }
+
+        // 보드에 놓일 수 있는 아이템 = 해금 산출 체인 + 열린 생성기 체인의 비생성기 단계
+        const holders = [...openCh, ...openGen].sort((a, b) => a - b);
+        const byChain = holders.map((ch) => ({
+          ch,
+          rows: DATA.item_spec.filter((r) => !r.is_generator && chainOf(r.item_code) === ch)
+                              .sort((a, b) => stepOf(a.item_code) - stepOf(b.item_code)),
+        })).filter((g) => g.rows.length);
+
+        const counts = new Map();
+        const free = Math.max(0, budget - gens.length);
+        const want = Math.round((free * clamp(Number(fillPct), 0, 100)) / 100);
+        if (!byChain.length || !want) return { counts, gens, budget, want: 0, openCh, openGen, ladder, seed, active: [] };
+
+        const saved = RNG.save();
+        RNG.load(String(seed));
+        // ① 체인 편중 — 시드로 섞고 Zipf 가중. 앞쪽이 「지금 굴리는 체인」이 된다
+        const order = byChain.slice();
+        for (let i = order.length - 1; i > 0; i--) { const j = RNG.int(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+        const chainW = order.map((_, k) => 1 / (k + 1));
+        for (let i = 0; i < want; i++) {
+          const g = order[RNG.pick(chainW)];
+          const w = g.rows.map((r) => 1 / Math.pow(BOARD_DECAY, stepOf(r.item_code) - 1));  // ② 기하 감쇠
+          const code = g.rows[RNG.pick(w)].item_code;
+          counts.set(code, (counts.get(code) || 0) + 1);
+        }
+        const next = RNG.save();
+        RNG.load(saved);
+        const active = order.slice(0, 3).map((g) => g.ch);
+        return { counts, gens, budget, want, openCh, openGen, ladder, seed, next, active };
+      }
+
       function boardPreset(kind, level) {
         const m = new Map();
         if (kind === "empty") return m;
@@ -804,6 +958,62 @@
         return m;
       }
 
+      /* 해금 칩 — 그 레벨에 어느 체인이 열렸고, 지금 보드에 몇 종·몇 개가 놓였는지.
+         잠긴 체인은 흐리게 뒤에 붙여 몇 레벨에 열리는지 보이게 한다. */
+      function renderChips(level, board, counts) {
+        const ladder = chainLadder();
+        const rows = [...ladder.entries()].sort((a, b) => (a[1].lv - b[1].lv) || (a[0] - b[0]));
+        const open = rows.filter(([, e]) => e.lv <= level);
+        const lock = rows.filter(([, e]) => e.lv > level);
+        const held = (ch) => {
+          let kinds = 0, n = 0;
+          for (const [code, c] of counts) if (chainOf(code) === ch) { kinds++; n += c; }
+          return { kinds, n };
+        };
+        /* 칩 앞머리는 그 체인의 대표 아이템 아트 — 오더 대상 최저 단계를 쓴다.
+           체인 이름만 적어 두면 어떤 물건인지가 안 보인다. 아트는 docs/img/items 에 224종. */
+        const chip = (ch, e, locked) => {
+          const h = held(ch);
+          const rep = e.items.slice().sort((a, b) => stepOf(a) - stepOf(b))[0];
+          return `<span class="rw-chip${locked ? " lock" : ""}" title="체인 ${ch} · 오더 대상 ${e.items.length}종">`
+            + chipArt(rep)
+            + `<b>${e.name}</b><s>Lv${e.lv}</s>`
+            + `<s>${e.steps[0]}~${e.steps[e.steps.length - 1]}단계</s>`
+            + (locked ? "" : `<i>보드 ${h.kinds ? `${h.kinds}종 ${h.n}개` : "0"}</i>`) + `</span>`;
+        };
+        const gens = (board && board.gens) || [];
+        /* 아트가 없는 후보 — docs/img/items 에 224종이 있고 시트 후보는 107종이지만
+           고단계 12종(차 s11~14 · 찻잔 s6~7 · 꽃 s8~12 · 꿀 s12)이 비어 있다. 발주 누락이라
+           페이지 결함이 아니지만, 그 칩만 텍스트로 보이는 이유는 적어 둔다. */
+        const noArt = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && !spriteOf(o.item_code))
+                                     .map((o) => o.item_code);
+        $("#rwChips").innerHTML =
+          open.map(([ch, e]) => chip(ch, e, false)).join("")
+          + (gens.length
+            ? `<span class="rw-chip gen" title="생성기는 셀을 차지하지만 boardCounts() 가 건너뛰므로 배수에는 안 들어갑니다: ${gens.map(labelOf).join(" · ")}">`
+              + gens.slice(0, 3).map(chipArt).join("")
+              + `<b>생성기</b><s>${gens.length}종</s><i>셀만 차지</i></span>` : "")
+          + lock.map(([ch, e]) => chip(ch, e, true)).join("");
+        const cellTxt = board
+          ? `${gens.length + (board.want || 0)} / ${board.budget}셀 (생성기 ${gens.length} + 아이템 ${board.want || 0})`
+          : "프리셋 — 셀 수 개념 없음";
+        $("#rwChipNote").innerHTML =
+          `<b>Lv${level} 해금 체인 ${open.length} / ${rows.length}</b> · 보드 ${cellTxt}`
+          + (noArt.length
+            ? ` · <b>아트 없는 후보 ${noArt.length}종</b>은 이름으로 표시합니다`
+              + ` <span style="opacity:.7">(${noArt.slice(0, 6).map(labelOf).join(" · ")}${noArt.length > 6 ? " …" : ""})</span>`
+            : "")
+          + ` <span style="opacity:.7">&mdash; 체인 해금은 <code>order_item.unlock_level</code> 에서 읽습니다.`
+          + ` <code>item_spec</code> 에는 보드 해금 칸이 없어 「그 레벨에 보드에 무엇이 있나」는 시트에 없습니다`
+          + (board
+            ? ` · 무작위 보드는 <b>체인 편중(Zipf) + 단계 1/${BOARD_DECAY}<sup>step-1</sup></b> 가정입니다`
+              + ((board.active || []).length
+                ? ` &mdash; 이 보드가 굴리는 주 체인은 <b>${board.active.map((ch) => (ladder.get(ch) && ladder.get(ch).name) || chainName(ch)).join(" · ")}</b> 입니다`
+                : "")
+            : "")
+          + `</span>`;
+      }
+
       /* ======================================================================
          3. 시뮬 — 엔진의 generateOrder 를 dry 로 N 번 돌린다
          ====================================================================== */
@@ -812,7 +1022,12 @@
         const N = clamp(Number($("#rwN").value) || 2000, 10, 50000);
         const lv = clamp(Number($("#rwLv").value) || 1, 1, 30);
         const type = $("#rwType").value;
-        const counts = boardPreset($("#rwBoard").value, lv);
+        const kind = $("#rwBoard").value;
+        /* 보드 난수는 시뮬 난수열과 섞이면 안 된다 — boardRandom 이 상태를 저장·복원하고
+           자기 시드만 굴린다. 「다시 섞기」가 BSEED 를 올린다. */
+        const board = kind === "rand" ? boardRandom(lv, $("#rwFill").value, BSEED) : null;
+        const counts = board ? board.counts : boardPreset(kind, lv);
+        renderChips(lv, board, counts);
         const useCtx = $("#rwCtx").value === "rail";
         const fixed = $("#rwFix").checked;
 
@@ -824,8 +1039,40 @@
            둘(100 · 1)이 아예 발생하지 않아 실제 분포와 달라진다. 실제 레일이 없으므로
            후보 두 종을 다른 오더의 요구로 가정해 넣는다. */
         const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= lv);
+        /* 「타 오더가 요구 중」 2종도 아무거나 고르면 안 된다. 보드 상황 배수 축 넷 중
+           둘이 이 집합에 달려 있고, 둘을 가르는 조건은 <b>후보 자신</b>이 보드에 있나다:
+
+             situationMult: wanted = 요구 <b>체인</b>에 속하나 (체인 단위)
+                            canServe = <b>그 후보 코드</b>가 보드에 있나 (코드 단위)
+             wanted && canServe  → ×100 (축1)
+             wanted && !canServe → ×1   (축4)
+
+           요구된 코드 자신은 banned 로 후보에서 빠지므로, ×100 이 걸릴 자리는
+           <b>요구 체인의 다른 단계 중 보드에 있는 것</b>이다. 그래서
+             · 축1 용: 보드에 있는 후보 X 를 찾아, <b>X 는 남기고 같은 체인의 다른 코드</b>를 요구로 둔다
+             · 축4 용: 그 체인에 보드 후보가 하나도 없는 체인에서 하나
+           로 고른다. 앞에서 앞 2종을 그냥 집었을 때 ×100 이 Lv8·Lv30 에서 0.00% 였다.
+           둘 다 만들어 낸 표본인 점은 그대로고, 축이 살아 있게만 고른다. 못 찾으면 앞 2종. */
         const othersReq = new Set();
-        if (useCtx) pool.slice(0, 2).forEach((o) => othersReq.add(o.item_code));
+        if (useCtx) {
+          const onB = (c) => (counts.get(c) || 0) > 0;
+          const inSeat = (c) => {
+            if (!band) return true;
+            const st = stepOf(c);
+            return (st >= band.first_min && st <= band.first_max)
+                || (band.second_max != null && st >= (band.second_min || 0) && st <= band.second_max)
+                || (band.third_max != null && st >= (band.third_min || 0) && st <= band.third_max);
+          };
+          const x = pool.find((o) => onB(o.item_code) && inSeat(o.item_code));
+          const hit = x && pool.find((o) => chainOf(o.item_code) === chainOf(x.item_code)
+                                         && o.item_code !== x.item_code);
+          const dry = (ch) => !pool.some((q) => chainOf(q.item_code) === ch && onB(q.item_code));
+          const miss = pool.find((o) => (!hit || chainOf(o.item_code) !== chainOf(hit.item_code))
+                                     && dry(chainOf(o.item_code)) && inSeat(o.item_code))
+                    || pool.find((o) => (!hit || chainOf(o.item_code) !== chainOf(hit.item_code)) && dry(chainOf(o.item_code)));
+          if (hit && miss) { othersReq.add(hit.item_code); othersReq.add(miss.item_code); }
+          else pool.slice(0, 2).forEach((o) => othersReq.add(o.item_code));
+        }
 
         /* 직전 요구는 아무거나 고르면 안 된다 — 반복 감쇠(T8)는 「직전 체인의 다른 단계」에
            걸리는데, 그 형제가 자리1 범위 밖이면 기대도 0 실측도 0 이 되어 판정이 서지 않는다.
@@ -858,6 +1105,9 @@
            계산 근거다. 그 줄이 없는 경우(자리 0)는 애초에 카드가 안 나온다.
            엔진을 안 건드리기로 했으므로 파싱 경로를 쓰되, 정규식이 깨지면
            fillNA 가 올라가서 T1 이 「판정」으로 내려가게 해 뒀다. */
+        /* [4] 보드 상황 배수 축 발생률 — 로그가 자리마다 「후보 N종 [축이름 n / …]」 을
+           찍어 두므로 거기서 센다. 축이 0% 면 그 축은 아예 재지 않은 것이다(T10). */
+        const axis = new Map();
         const seatFill = new Map();          // 채운 자리 수 → 발급 수
         const cntBy = new Map();             // `자리수|종수` → 발급 수
         const zeroSeat = [0, 0, 0];          // 자리별 「후보 0」 발생 수
@@ -880,6 +1130,11 @@
             if (z) { const i = +z[1] - 1; if (i < 3) zeroSeat[i]++; continue; }
             const f = /후보 자리 (\d+)/.exec(line);
             if (f) filled = +f[1];
+            const ax = /후보 \d+종 \[([^\]]+)\]/.exec(line);
+            if (ax) for (const part of ax[1].split(" / ")) {
+              const mm = /^(.*) (\d+)$/.exec(part.trim());
+              if (mm) axis.set(mm[1], (axis.get(mm[1]) || 0) + Number(mm[2]));
+            }
           }
           if (!filled) { fillNA++; filled = c.reqs.length; }
           seatFill.set(filled, (seatFill.get(filled) || 0) + 1);
@@ -903,7 +1158,7 @@
         LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, daily,
                  banned: [...othersReq, ...(prev || [])],
                  tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed,
-                 seatFill, cntBy, zeroSeat, fillNA };
+                 seatFill, cntBy, zeroSeat, fillNA, axis, board, kind };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
       }
@@ -993,8 +1248,17 @@
         $("#rwRng").textContent = `seed ${L.fixed ? SEED0 : SEED} · ${L.type} · Lv${L.lv} · ${L.N}발급`;
       }
 
+      /* 요구 칩 — 프로젝트에 아이템 아트가 224종 들어 있다(docs/img/items). 이름 텍스트만
+         쓰면 「받침 찻잔」처럼 긴 이름이 원 안에서 줄어들어 읽히지도 않는다. 아트가 있으면
+         아트를, 없으면 이름으로 떨어진다. 경로는 엔진 spriteOf() 한 곳에서만 판다. */
+      function chipArt(code) {
+        const src = spriteOf(code);
+        return src ? `<img class="a" src="${src}" alt="${labelOf(code)}" loading="lazy" decoding="async">` : "";
+      }
       function chipHTML(code, bad) {
-        return `<span class="rw-req${lenOf(code)}${bad ? " bad" : ""}" style="--h:${hueOf(code)}deg" title="${titleOf(code)}">${labelOf(code)}</span>`;
+        const art = chipArt(code);
+        return `<span class="rw-req${art ? "" : lenOf(code)}${bad ? " bad" : ""}"`
+          + ` style="--h:${hueOf(code)}deg" title="${titleOf(code)}">${art || labelOf(code)}</span>`;
       }
       function cardHTML(card, bad) {
         const badSet = bad || new Set();
@@ -1085,7 +1349,8 @@
         $("#rwCombo").innerHTML = top.length
           ? top.map(([k, n]) => {
               const items = k.split("+").map(Number);
-              return barHTML(items.map(labelOf).join(" + "), n, ok, null, hueOf(items[0]),
+              return barHTML(`<span class="rw-blabel">${items.map(chipArt).join("")}`
+                             + `${items.map(labelOf).join(" + ")}</span>`, n, ok, null, hueOf(items[0]),
                              items.map((c) => `${codeTag(c)} ${labelOf(c)}`).join(" + "), comboScale);
             }).join("")
           : '<div class="rw-empty">조합 없음</div>';
@@ -1096,7 +1361,7 @@
         const s1Scale = Math.max(...seat1.map(([c, n]) => (n / s1) * 100),
                                  ...(es ? seat1.map(([c]) => es.map.get(c) || 0) : [0]));
         $("#rwBars").innerHTML = seat1.length
-          ? seat1.map(([code, n]) => barHTML(`${codeTag(code)} ${labelOf(code)}`, n, s1,
+          ? seat1.map(([code, n]) => barHTML(artLabel(code), n, s1,
               es ? es.map.get(code) : null, hueOf(code), titleOf(code), s1Scale)).join("")
           : '<div class="rw-empty">해당 조건에서 뽑힌 아이템이 없습니다.</div>';
       }
@@ -1367,13 +1632,25 @@
           const exp = sum(es), expNo = sum(esNo);
           const tol = sigma3(exp / 100, s1n);
           const divUsed = [...new Set(sib.map((o) => Number(o.repeat_weight_decrease)))].join("/");
-          add(Math.abs(obs - exp) > tol ? "no" : "ok", "T8 반복 감쇠 작동",
+          /* 기대빈도가 5 미만이면 정규근사가 안 먹는다 — 감쇠가 세게 걸리면(제수 50·100 에
+             보드 배수까지 겹치면) 기대가 0.00% 로 내려가고 허용 폭도 0 이 되어, 한 번 뽑히기만
+             해도 FAIL 이 뜬다. 그건 엔진이 아니라 판정이 안 서는 조건이다. T1·T2 에는 이 가드가
+             있는데 T8 에만 없었다 — special Lv20·event Lv11 에서 실제로 가짜 FAIL 이 났다. */
+          if (!testable(exp / 100, s1n))
+            add("na", "T8 반복 감쇠 작동",
+                `감쇠 걸린 기대 ${exp.toFixed(3)}% · 감쇠 없었다면 ${expNo.toFixed(2)}%`,
+                `기대빈도 ${((exp / 100) * s1n).toFixed(2)}건 &lt; ${MIN_EXPECT} — 표본 부족`,
+                `감쇠가 제수 ${divUsed} 에 보드 배수까지 겹쳐 기대가 0 에 붙었다 &mdash; `
+                  + `이 표본 수로는 판정이 서지 않는다. 발급 수를 늘리거나 보드 채움률을 낮춰 보세요`,
+                "judge");
+          else add(Math.abs(obs - exp) > tol ? "no" : "ok", "T8 반복 감쇠 작동",
               `감쇠 걸린 기대 <b>${exp.toFixed(2)}%</b> · 감쇠 없었다면 ${expNo.toFixed(2)}%`,
               `실측 <b>${obs.toFixed(2)}%</b> (허용 ±${tol.toFixed(2)}%p)`,
               Math.abs(obs - exp) > tol
                 ? `기대와 어긋난다 &mdash; 감쇠가 안 걸렸거나 제수가 잘못 적용됐다. 직전 체인 ${[...prevCh].map(chainName).join(",")} 의 다른 단계 ${sib.length}종을 봤다`
                 : `직전 체인 <b>${[...prevCh].map(chainName).join(",")}</b> 의 다른 단계 ${sib.length}종이 제수 ${divUsed} 로 눌려 `
-                  + `<b>${expNo.toFixed(2)}% → ${exp.toFixed(2)}%</b> 로 줄었다(약 ${(expNo / Math.max(exp, 0.001)).toFixed(0)}배). 실측이 그 안에 든다`);
+                  + `<b>${expNo.toFixed(2)}% → ${exp.toFixed(2)}%</b> 로 줄었다(약 ${(expNo / Math.max(exp, 0.001)).toFixed(0)}배). 실측이 그 안에 든다`,
+              Math.abs(obs - exp) > tol ? "logic" : null);
         }
 
         /* ── T9 자리 후보 고갈 ───────────────────────────────────────────────
@@ -1413,6 +1690,73 @@
                       + `<code>order_slot_band</code> 셀 메모에는 <b>「자리 후보가 비지 않아야 한다」 제약이 없다</b> &mdash; 검증 규칙에 빠진 축이다`
                     : `<br>모든 자리가 제외·중복을 겪고도 후보를 남긴다 &mdash; 절단이 일어나지 않는다`),
                 hit.length ? "data" : null);
+          }
+        }
+
+        /* ── T10 보드 배수 축 커버리지 ────────────────────────────────────────
+           보드는 [4] 의 상황 배수 한 곳에서만 쓰이고, 배수가 1 : 100 : 1000 : 10000 이라
+           <b>보드 상태가 추첨을 지배한다.</b> 그런데 프리셋 셋은 넷 중 둘을 각각 죽인다 —
+           기본값이던 빈 보드는 가장 센 ×10000 항을 한 번도 발생시키지 않았다. 즉 지금까지
+           이 페이지의 분포는 그 항이 죽은 상태의 값이었고, 그게 어디에도 안 적혀 있었다.
+           그래서 축 발생률 자체를 검사로 낸다 — 0% 인 축은 「안 재고 있다」는 뜻이다.
+           엔진 결함이 아니라 조건 미달이라 귀속은 「판정」이다. */
+        {
+          const C = DATA.const || {};
+          /* 죽은 축마다 처방이 다르다 — 「넷이 안 산다」만 적으면 무엇을 돌려야 하는지 모른다.
+             그리고 처방이 아예 없는 경우도 있다: 해금 체인이 셋뿐인 Lv3 은 레일 맥락이
+             두 체인을 요구로 가져가서 「미요구」 체인이 하나 남고, 그 하나가 보드에 있으면
+             ×1000 이, 없으면 ×10000 이 죽는다 — 채움률을 어떻게 돌려도 넷이 동시에 못 산다.
+             구조적인 것과 설정 탓인 것을 갈라 적는다. */
+          const reqChains = new Set([...L.othersReq].map(chainOf));
+          const openN = L.board ? L.board.openCh.size : new Set(L.pool.map((o) => chainOf(o.item_code))).size;
+          const freeChains = [...new Set(L.pool.map((o) => chainOf(o.item_code)))].filter((ch) => !reqChains.has(ch));
+          const dryFree = freeChains.filter((ch) =>
+            !L.pool.some((q) => chainOf(q.item_code) === ch && (L.counts.get(q.item_code) || 0) > 0));
+          const structural = freeChains.length <= 1;
+          const ladderTxt = `해금 체인 ${openN} · 요구가 ${reqChains.size}체인 · 미요구 ${freeChains.length}체인`
+            + `(그중 보드가 빈 체인 ${dryFree.length})`;
+          const AX = [
+            ["타오더 요구+납품가능", "요구 체인 + 그 코드가 보드에 있다", C.order_weight_mult_required_enough,
+             "요구 체인의 <b>다른 단계</b>가 보드에 없다(요구된 코드 자신은 후보에서 빠진다) — 채움률을 올리세요"],
+            ["미요구+보드에 동급·하급 有", "미요구 + 같은 체인 동급·하급이 보드에 있다", C.order_weight_mult_higher_level,
+             "미요구 체인이 보드에 전혀 없다 — 채움률을 올리세요"],
+            ["미요구", "미요구 + 보드에 없다", C.order_weight_mult_not_required,
+             structural
+               ? `구조적이다 &mdash; ${ladderTxt}. 남은 미요구 체인이 보드에 있으면 ×10000 이 먹고, 비우면 ×10000 이 죽는다. `
+                 + `이 레벨에서는 채움률을 어떻게 돌려도 넷이 동시에 살지 않는다`
+               : `미요구 체인 ${freeChains.length}개가 모두 보드에 깔려 있다 &mdash; 채움률을 낮춰 하나를 비우세요 (${ladderTxt})`],
+            ["타오더 요구+납품불가(기본)", "요구 체인 + 납품 불가", 1,
+             "요구 2종의 체인이 다 보드에 깔려 있다 — 채움률을 낮추세요"],
+          ];
+          const tot = [...(L.axis || new Map()).values()].reduce((a, b) => a + b, 0);
+          if (!tot) add("na", "T10 보드 배수 축 커버리지", "—", "—", "후보 슬롯 집계가 없다 — 발급이 0 이다");
+          else {
+            const dead = [];
+            const detail = AX.map(([k, desc, mult, fix]) => {
+              const v = L.axis.get(k) || 0, r = (v / tot) * 100;
+              if (!v) dead.push({ k, fix });
+              return `<b>×${mult ?? "?"}</b> ${desc} &mdash; <b>${r.toFixed(2)}%</b>`
+                + (v ? ` <span style="opacity:.6">(후보 슬롯 ${v})</span>`
+                     : ` <span class="w">← 안 걸림. ${fix}</span>`);
+            });
+            const other = [...L.axis.keys()].filter((k) => !AX.some(([n]) => n === k));
+            const boardTxt = L.kind === "rand"
+              ? `무작위 · 생성기 ${L.board.gens.length} + 아이템 ${L.board.want}개(${L.board.counts.size}종) / ${L.board.budget}셀`
+              : `프리셋 「${L.kind}」 · 보드 ${L.counts.size}종`;
+            add(dead.length ? "warn" : "ok", "T10 보드 배수 축 커버리지",
+                `4 축 모두 발생 <span style="opacity:.65">(배수 1 : 100 : 1000 : 10000 — 보드가 추첨의 지배항이다)</span>`,
+                `${boardTxt} · 발생 ${4 - dead.length}/4`,
+                detail.join("<br>")
+                  + (other.length ? `<br><span class="w">모르는 축 ${other.join(", ")}</span>` : "")
+                  + (dead.length
+                    ? `<br>${dead.length}개 축이 안 걸린다 &mdash; 이 설정에서는 그 축을 <b>재고 있지 않다</b>. `
+                      + `프리셋은 구조적으로 둘을 죽인다(빈 보드 → ×100·×10000 / 전종 보유 → ×1000·×1). `
+                      + `무작위 보드는 <b>해금 체인이 많을수록 높은 채움률</b>에서 넷이 산다 &mdash; `
+                      + `실측으로 Lv8 이상은 40~90% 전 구간, Lv5 는 15~40%, Lv3 은 구조적으로 불가다. ${ladderTxt}`
+                    : `<br>넷이 다 걸린다 &mdash; 보드 축이 실제로 재지고 있다. `
+                      + `무작위 보드는 <b>체인 편중(Zipf) + 단계 1/${BOARD_DECAY}<sup>step-1</sup></b> 가정이다 &mdash; `
+                      + `실제 보드 분포는 시트에 없다(미검증 참조)`),
+                dead.length ? "judge" : null);
           }
         }
 
@@ -1458,7 +1802,14 @@
       };
       $("#rwRerun").onclick = () => { renderGap(); run(); };
       $("#rwGo").onclick = run;
-      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix", "#rwDaily"].forEach((s) => {
+      /* 보드만 다시 뽑는다. xorshift 를 한 번 굴려 다음 보드 시드로 쓴다 — 결정적이라
+         같은 시드에서는 같은 보드가 나온다(재현성 검사가 이걸 본다). */
+      $("#rwShuffle").onclick = () => {
+        if ($("#rwBoard").value !== "rand") { $("#rwBoard").value = "rand"; }
+        const keep = RNG.save(); RNG.load(String(BSEED)); RNG.next(); BSEED = Number(RNG.save()); RNG.load(keep);
+        run();
+      };
+      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix", "#rwDaily", "#rwFill"].forEach((s) => {
         $(s).addEventListener("change", run);
       });
 

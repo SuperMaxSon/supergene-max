@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-10 17:35",
+  updated: "2026-09-10 18:50",
 };
 
 /* --------------------------------------------------------------------------
@@ -470,23 +470,23 @@ const SECTIONS = [
       },
       {
         title: "오더 추첨 분석",
-        desc: "밸런스시트 JSON 을 넣으면 벤치와 같은 엔진으로 8단계를 돌려서, 어긋난 항목이 엔진·시트·판정 중 어디 탓인지까지 답합니다.",
+        desc: "밸런스시트 JSON 을 넣으면 벤치와 같은 엔진으로 8단계를 돌려서, 어긋난 항목이 엔진·시트·판정 중 어디 탓인지까지 답합니다. 보드는 해금 체인 기준 무작위로 만들어 씁니다.",
         url: "docs/rosewood-order-draw.html",
         project: "smg",
         status: "초안",
-        version: "v2.2",
-        updated: "2026-09-10 21:40",
+        version: "v2.3",
+        updated: "2026-09-10 23:10",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스"],
       },
       {
-        title: "오더 생성 벤치",
-        desc: "밸런스 시트 실물 236종 30체인을 그대로 굴려 보는 시뮬레이터. 판정 근거·뽑기 분포는 「오더 추첨 분석」으로 분리했습니다.",
+        title: "프로토타입",
+        desc: "Rosewood 코어루프를 직접 눌러 보는 인게임 시뮬레이터. 밸런스 시트 실물 236종 30체인이 그대로 돌아갑니다.",
         url: "docs/rosewood-order-bench.html",
         project: "smg",
         status: "초안",
-        version: "v4.7",
-        updated: "2026-09-10 18:40",
+        version: "v5.0",
+        updated: "2026-09-10 18:50",
         pinned: false,
         tags: ["머지", "인터랙티브"],
       },
