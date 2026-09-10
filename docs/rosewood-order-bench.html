@@ -598,6 +598,8 @@
           <b>보드 상황을 바꿔도 결과가 그대로면 보드에 셀 것이 없다는 뜻입니다</b> &mdash;
           생성기는 세지 않으므로, 생성기만 놓인 보드는 빈 보드와 같습니다. 아래 줄에 실제로 무엇이 걸렸는지 적힙니다.
           난수는 게임 진행과 분리된 별도 열을 쓰고 돌릴 때마다 이어집니다. 같은 그림을 다시 보려면 <b>시드 고정</b>을 켭니다.
+          <b>레일 맥락</b>을 켜면 지금 레일에 선 다른 오더의 요구와 슬롯 1 의 직전 요구가 그대로 들어가고,
+          반복 억제 카운터도 시뮬 안에서 감쇠·리셋하며 돌아갑니다 &mdash; 끄면 배수 4 개 중 「타 오더 요구」 축 둘이 나오지 않습니다.
         </div>
         <div class="rw-panel">
           <div class="rw-pb">
@@ -609,6 +611,12 @@
                 <select id="rwSimBoard">
                   <option value="cur">현재 보드 그대로</option>
                   <option value="empty">빈 보드</option>
+                </select>
+              </div>
+              <div class="rw-f"><label>레일 맥락</label>
+                <select id="rwSimCtx" title="타 오더 요구와 직전 요구 제외를 반영합니다 — 끄면 배수 100·1 경로가 아예 나오지 않습니다">
+                  <option value="rail">타 오더·직전 반영</option>
+                  <option value="none">반영 안 함</option>
                 </select>
               </div>
               <label class="rw-chk" title="켜면 매번 같은 난수 열로 돌려 결과를 그대로 재현합니다">
@@ -1256,6 +1264,16 @@
           { order_type: "random_4", band_seq: 2, level_min: 16, level_max: 24, first_min: 3, first_max: 8, second_max: 5, in_use: 1 },
           { order_type: "random_4", band_seq: 3, level_min: 25, level_max: 30, first_min: 4, first_max: 10, second_max: 6, in_use: 1 },
         ],
+        /* 이벤트 점수 — 규칙은 기획서 1.2.1 [5] 그대로. 값은 시트가 정본이라
+           여기 5행은 자리를 채우는 임시값이다(실물 시트로 갈아끼워야 한다).
+           기준값이 무엇인지 기획서에 안 적혀 있어 난이도(diff)로 두었다 — 확인 필요. */
+        event_order_score: [
+          { score_min: 0, score_max: 4, token_pct: 0, token_fix: 1, in_use: 1 },
+          { score_min: 5, score_max: 14, token_pct: 0, token_fix: 2, in_use: 1 },
+          { score_min: 15, score_max: 29, token_pct: 2000, token_fix: 0, in_use: 1 },
+          { score_min: 30, score_max: 59, token_pct: 2500, token_fix: 0, in_use: 1 },
+          { score_min: 60, score_max: 9999, token_pct: 3000, token_fix: 0, in_use: 1 },
+        ],
         order_item_count: [
           { level: 1, item_count: 1, count_weight: 7500, in_use: 1 },
           { level: 1, item_count: 2, count_weight: 2500, in_use: 1 },
@@ -1313,7 +1331,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.6 · 2026-09-10";
+      const BUILD = "v2.7 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1409,6 +1427,19 @@
         }
         return m;
       }
+      /* [5] 이벤트 점수 — score_min 오름차순으로 「기준값 >= score_min 인 마지막 행」.
+         score_max 는 검사용이라 런타임 선택에 쓰지 않는다. 행이 없거나 기준값 0 이면 0. */
+      function eventScore(base) {
+        if (!base || base <= 0) return 0;
+        const rows = (DATA.event_order_score || []).filter((r) => r.in_use)
+          .sort((a, b) => a.score_min - b.score_min);
+        let hit = null;
+        for (const r of rows) if (base >= r.score_min) hit = r;
+        if (!hit) return 0;
+        if (hit.token_pct > 0) return Math.floor((base * hit.token_pct) / 10000);
+        return hit.token_fix || 0;
+      }
+
       function requiredElsewhere(slotNo) {
         const set = new Set();
         for (const [n, card] of Object.entries(S.slots)) {
@@ -1419,8 +1450,12 @@
       }
 
       // [4] 보드 상황 배수 — 하나만 적용, 중복 곱 금지
-      function situationMult(code, othersReq, counts, C) {
-        const wanted = othersReq.has(code);
+      /* 기획서 [2] 는 「다른 오더가 **이 체인을** 요구」라고 체인 단위로 쓴다.
+         후보 제외(banned)만 명시적으로 코드 단위다 — 둘을 섞지 않는다.
+         납품 가능 여부는 그 코드가 보드에 있어야 하므로 코드 단위 그대로. */
+      function situationMult(code, othersReq, counts, C, othersChains) {
+        const chains = othersChains || new Set([...othersReq].map(chainOf));
+        const wanted = chains.has(chainOf(code));
         const canServe = (counts.get(code) || 0) > 0;
         if (wanted && canServe) return { v: C.order_weight_mult_required_enough, why: "타오더 요구+납품가능" };
         if (!wanted) {
@@ -1470,7 +1505,7 @@
               push(`<span class="k">[0] 고정 오더 채택</span> fixed_seq=${fx.fixed_seq} (unlock_level ${fx.unlock_level} ≤ Lv${level} · 슬롯 ${fx.slot_1}/${fx.slot_2}/${fx.slot_3} 에 ${slotNo} 포함)`);
               push(`    요구 ${reqs.map((q) => labelOf(q.code)).join(" + ")} · 랜덤 예산·대기 변경 없음`);
               if (!dry) S.orderGen.fixed_next_seq++;
-              return { card: { slot: slotNo, type: "fixed", reqs, avatar: pickAvatar(), coin, diff, band: null }, log: L };
+              return { card: { slot: slotNo, type: "fixed", reqs, avatar: pickAvatar(), coin, diff, evt: eventScore(diff), band: null }, log: L };
             }
             push(`[0] 고정 오더 fixed_seq=${fx.fixed_seq} 미적용 (${!lvOk ? `unlock_level ${fx.unlock_level} > Lv${level}` : `슬롯 ${fx.slot_1}/${fx.slot_2}/${fx.slot_3} 에 ${slotNo} 없음`}) → 순번 유지, 랜덤 검사로`);
           }
@@ -1514,6 +1549,8 @@
         const counts = opts.counts ?? boardCounts();
         const othersReq = opts.othersReq ?? requiredElsewhere(slotNo);
         const prev = opts.prev !== undefined ? opts.prev : S.prevOfSlot[slotNo];
+        const CR = opts.repeat || S.orderGen.chain_repeat;   // 시뮬은 사본을 넘겨 게임 상태를 오염시키지 않는다
+        const othersChains = new Set([...othersReq].map(chainOf));
         const banned = new Set([...othersReq]);
         if (prev) prev.forEach((c) => banned.add(c));
         push(`[3] 제외 item_code: ${banned.size ? [...banned].map(labelOf).join(", ") : "없음"} <span style="opacity:.65">(체인 전체 아님)</span>`);
@@ -1537,8 +1574,8 @@
             break;
           }
           const rows = cand.map((o) => {
-            const m = situationMult(o.item_code, othersReq, counts, C);
-            const rem = S.orderGen.chain_repeat[chainOf(o.item_code)] || 0;
+            const m = situationMult(o.item_code, othersReq, counts, C, othersChains);
+            const rem = CR[chainOf(o.item_code)] || 0;
             const div = rem > 0 && o.repeat_weight_decrease > 0 ? o.repeat_weight_decrease : 0;
             if (div) divided.add(chainOf(o.item_code));
             return { o, mult: m.v, why: m.why, div, w: div ? m.v / div : m.v };
@@ -1574,15 +1611,15 @@
         /* ---- 반복 카운터 — 「가중치를 나눈 모든 후보의 체인」이 대상이다.
            뽑힌 후보로만 대상을 만들면 won ⊇ applied 가 되어 감소 분기에 절대 닿지 않고,
            한 번 눌린 체인이 영원히 눌린 채로 남는다. divided 는 [4] 에서 실제로 나눈 체인이다. */
-        if (!dry) {
+        if (!dry || opts.repeat) {                            // 사본을 받았으면 dry 여도 갱신한다
           const applied = divided;
           const won = new Set(picked.map((o) => chainOf(o.item_code)));
           const upd = [];
           applied.forEach((ch) => {
-            if (won.has(ch)) { S.orderGen.chain_repeat[ch] = C.order_repeat_reset_count; upd.push(`${letterOf(ch)}→${C.order_repeat_reset_count}`); }
+            if (won.has(ch)) { CR[ch] = C.order_repeat_reset_count; upd.push(`${letterOf(ch)}→${C.order_repeat_reset_count}`); }
             else {
-              S.orderGen.chain_repeat[ch] = Math.max(0, (S.orderGen.chain_repeat[ch] || 0) - 1);
-              if (!S.orderGen.chain_repeat[ch]) delete S.orderGen.chain_repeat[ch];
+              CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
+              if (!CR[ch]) delete CR[ch];
               upd.push(`${letterOf(ch)}−1`);
             }
           });
@@ -1594,14 +1631,16 @@
         const coin = finalReqs.reduce((a, q) => a + (oiOf(q.code)?.order_price || 0) * q.count, 0);
         const diff = finalReqs.reduce((a, q) => a + (oiOf(q.code)?.diff_score || 0) * q.count, 0);
         push(`<span class="k">[6] 손님</span> ${avatar} (day ${S.day} 해금 명단에서 균등)`);
+        const evt = eventScore(diff);
         push(`<span class="k">[7] 보상</span> 코인 ${coin} = ${finalReqs.map((q) => oiOf(q.code)?.order_price).join(" + ")} · 난이도 ${diff} · <span style="opacity:.65">경험치 0</span>`);
+        push(`<span class="k">[5] 이벤트 점수</span> 기준값 ${diff} → ${evt} <span style="opacity:.65">(event_order_score · 기준값=난이도로 가정)</span>`);
 
         if (!dry) {
           const t = S.orderGen.type_timers[type];
           if (t) { t.remaining_count--; push(`[8] 예산 −1 → ${t.remaining_count} · 카드+난수+카운터 원자 저장 → 표시 → /order/refresh`); }
           S.orderGen.rng_state = RNG.save();
         }
-        return { card: { slot: slotNo, type, reqs: finalReqs, avatar, coin, diff, band: band.band_seq }, log: L };
+        return { card: { slot: slotNo, type, reqs: finalReqs, avatar, coin, diff, evt, band: band.band_seq }, log: L };
       }
 
       /* ======================================================================
@@ -2249,7 +2288,7 @@
          문서 「오더 카드 해부」: NPC 초상 · 접시 · A 상단 우측 · B 하단 좌 · C 하단 우 · Serve */
       function orderCardHTML(card, o = {}) {
         const counts = o.counts;
-        const evt = Math.floor(card.coin / 4);
+        const evt = card.evt ?? eventScore(card.diff || 0);
         return `<div class="rw-card"${o.slot ? ` data-slot="${o.slot}"` : ""}>
             <span class="rw-npc">${card.avatar.slice(0, 3)}</span>
             <div class="rw-top">
@@ -2738,7 +2777,16 @@
         const lv = clamp(Number($("#rwSimLv").value) || 1, 1, 30);
         const type = $("#rwSimType").value;
         const counts = $("#rwSimBoard").value === "cur" ? boardCounts() : new Map();
-        const othersReq = new Set();
+        /* 레일 맥락 — 이걸 빈 집합으로 두면 기획서 [2] 의 배수 4 개 중
+           「타 오더 요구」 축 둘(100 · 1)이 아예 발생하지 않아 실제 분포와 달라진다.
+           직전 요구 제외도 같은 이유로 함께 반영한다. */
+        const useCtx = $("#rwSimCtx").value === "rail";
+        const othersReq = useCtx ? requiredElsewhere(1) : new Set();
+        const prev = useCtx ? (S.prevOfSlot[1] || null) : null;
+        /* 반복 억제는 카운터가 갱신돼야 작동한다. 게임 상태를 건드리지 않도록
+           사본을 만들어 넘기고, 시뮬 안에서만 감쇠·리셋이 돌게 한다. */
+        const repeat = Object.assign({}, S.orderGen.chain_repeat);
+        const suppStart = Object.keys(repeat).length;
         const tally = new Map(), combo = new Map(); let coin = 0, diff = 0, fail = 0, locked = false;
         const cnt = { 1: 0, 2: 0 }; const samples = [];
         // 게임 진행용 난수 열은 건드리지 않는다. 대신 분포 전용 열을 따로 두고,
@@ -2746,7 +2794,7 @@
         const saved = RNG.save();
         RNG.load($("#rwSimFix").checked ? String(SIM_SEED0) : String(SIM_SEED));
         for (let i = 0; i < N; i++) {
-          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev: null, skipFixed: true });
+          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev, repeat, skipFixed: true });
           if (!r.card) { fail++; if (r.locked) locked = true; continue; }
           coin += r.card.coin; diff += r.card.diff;
           cnt[r.card.reqs.length] = (cnt[r.card.reqs.length] || 0) + 1;
@@ -2764,12 +2812,16 @@
         const poolNow = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= lv);
         const bucket = {};
         poolNow.forEach((o) => { const w = situationMult(o.item_code, othersReq, counts, DATA.const).why; bucket[w] = (bucket[w] || 0) + 1; });
+        const supp = Object.keys(repeat).length;
         const held = [...counts.keys()].length;
         const rule = ruleOf(type);
         $("#rwSimWhy").innerHTML =
           (locked ? `<b style="color:var(--deploy)">${type} 은 Lv${rule ? rule.unlock_level : "?"} 부터 발급됩니다 — 이 레벨에서는 한 장도 나오지 않습니다.</b> · ` : "") +
           `후보 ${poolNow.length}종 · 배수 ${Object.entries(bucket).map(([k, v]) => `${k} ${v}종`).join(" / ") || "—"}` +
           ` · 보드에서 세는 아이템 ${held}종${held ? ` (${[...counts.keys()].map(labelOf).slice(0, 8).join(", ")}${held > 8 ? " …" : ""})` : " — 생성기는 세지 않습니다"}` +
+          ` · 타 오더 요구 ${othersReq.size}종${prev ? ` · 직전 제외 ${prev.map(labelOf).join(",")}` : ""}` +
+          ` · 눌린 체인 ${suppStart}개 → ${supp}개` +
+          (suppStart === 0 ? ` <span style="opacity:.7">(반복 억제는 납품에서 시작합니다 — 한 장 납품하고 돌려야 보입니다)</span>` : "") +
           ` · 시드 ${$("#rwSimFix").checked ? SIM_SEED0 + " (고정)" : "이어서"}`;
         $("#rwKpi").innerHTML = [
           ["발급 성공", `${ok}/${N}`], ["평균 코인", ok ? (coin / ok).toFixed(1) : "—"],
