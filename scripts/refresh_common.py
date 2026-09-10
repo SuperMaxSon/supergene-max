@@ -212,8 +212,11 @@ def push_pending(a):
     return 0
 
 
-def stamp(now, bust, rng):
+def stamp(now, bust, rng, bump_version=True):
     """문서 머리의 갱신 시각·기간, 허브 카드(data.js), 캐시 버스터(index.html).
+
+    bump_version=False 는 조회 시각만 갱신하는 실행(stamp_only)이 쓴다. 내용이 같은데
+    카드 버전이 오르면 버전 숫자가 '무엇이 바뀌었나' 를 더 이상 가리키지 못한다.
 
     **실제로 쓴 공유 파일 목록을 돌려준다.** 사람이 편집 중인 파일은 쓰지도, 담지도 않는다.
     카드가 한 번 낡은 채로 남지만 다음 실행이 따라잡는다 — 남의 작업을 실어 보내는 쪽이
@@ -242,10 +245,11 @@ def stamp(now, bust, rng):
     d = open(DATA_JS, encoding="utf-8").read()
     # 사이트 전체 갱신 시각(SITE.updated). 들여쓰기 2칸이 이 한 곳뿐이라 그걸로 찍는다.
     d = re.sub(r'(\n  updated: ")[^"]*(")', r"\g<1>%s\g<2>" % now, d, count=1)
-    m = re.search(r'(url: "%s".*?)version: "v(\d+)\.(\d+)"' % url, d, re.S)
-    if m:
-        ver = 'version: "v%s.%d"' % (m.group(2), int(m.group(3)) + 1)
-        d = d[:m.start()] + m.group(1) + ver + d[m.end():]
+    if bump_version:
+        m = re.search(r'(url: "%s".*?)version: "v(\d+)\.(\d+)"' % url, d, re.S)
+        if m:
+            ver = 'version: "v%s.%d"' % (m.group(2), int(m.group(3)) + 1)
+            d = d[:m.start()] + m.group(1) + ver + d[m.end():]
     # 카드의 updated (url 뒤쪽 블록 안) 갱신
     d = re.sub(r'(url: "%s".*?updated: ")[^"]*(")' % url,
                r"\g<1>%s\g<2>" % now, d, count=1, flags=re.S)
@@ -269,18 +273,74 @@ def stamp(now, bust, rng):
     return touched
 
 
+def commit_push(a, msg, paths, ok_log):
+    """스테이징 -> 커밋 -> 푸시. finish() 와 stamp_only() 가 같이 쓴다.
+
+    저장소 전체(-A)가 아니라 넘겨받은 경로만 담는다 — 작업 중인 미커밋 파일이
+    자동화 커밋에 휩쓸리지 않게. paths 에는 stamp() 가 정말로 고친 공유 파일만
+    들어온다(더러운 것은 stamp() 가 이미 뺐다).
+    """
+    git("add", "--", *paths)
+    r = git("commit", "-q", "-m", msg)
+    if r.returncode != 0:
+        # 스테이징된 게 정말 없으면(같은 분에 두 번 실행 등) 실패가 아니다.
+        if git("diff", "--cached", "--quiet").returncode == 0:
+            log("커밋할 변경이 없다 — 넘어간다")
+            return push_pending(a)
+        log("커밋 실패: %s" % (r.stderr or r.stdout).strip()[:300])
+        notify("커밋 실패")
+        return 1
+    if a.no_push:
+        log("커밋 완료(푸시 생략): %s" % msg)
+        return 0
+    r = git("push", "-q", "origin", "HEAD")
+    if r.returncode != 0:
+        log("푸시 실패: %s" % (r.stderr or r.stdout).strip()[:300])
+        notify("푸시 실패 — 인증이 만료됐을 수 있습니다")
+        return 1
+    log("%s: %s" % (ok_log, msg))
+    return 0
+
+
+def stamp_only(a, state, rng, new):
+    """데이터는 그대로지만 '언제 확인했는지' 는 남긴다.
+
+    PULLED / AUTORUN.pulled 는 문서와 허브가 자동화 생존 신호로 쓴다
+    (문서 freshness() 30h·72h, app.js liveTimer STALE_H=30). 변화가 없다는 이유로
+    이 값을 묶어 두면, 며칠간 새 데이터가 없을 때 멀쩡히 도는 자동화를 두고
+    페이지가 스스로 "자동 갱신이 멈춘 것 같습니다" 라고 거짓 경고한다.
+    실행했다는 사실 자체가 정보이므로 시간값만이라도 커밋한다.
+
+    커밋 메시지에 꼬리표를 붙여 내용 커밋과 구분한다 — git 로그에서 실제 수치가
+    바뀐 날을 찾을 때 이게 없으면 둘을 가릴 수 없다.
+    """
+    if a.dry_run:
+        log("dry-run: 변화 없음 — 조회 시각도 쓰지 않는다 (last_day=%s)" % state["last_day"])
+        return push_pending(a)
+
+    os.makedirs(os.path.dirname(_C["state"]), exist_ok=True)
+    json.dump(state, open(_C["state"], "w", encoding="utf-8"),
+              ensure_ascii=False, indent=1, sort_keys=True)
+    open(_C["html"], "w", encoding="utf-8").write(new)
+    now    = datetime.datetime.now()
+    shared = stamp(now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y%m%d%H%M"), rng,
+                   bump_version=False)
+    msg = (_C["commit_msg"] % (state["last_day"], rng)) + " · 조회 시각만(변화 없음)"
+    return commit_push(a, msg, [_C["html"], _C["state"]] + list(shared), "조회 시각 갱신")
+
+
 def finish(a, state, rng, old, new, dry_dump=None):
     """멱등 검사부터 커밋·푸시까지. 두 스크립트에서 완전히 같던 꼬리다."""
-    # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면 데이터는 그대로라는 뜻이므로
-    # 커밋하지 않는다 — 안 그러면 같은 값을 매일 새 커밋으로 쌓는다.
-    # AUTORUN.pulled 도 같은 이유로 뺀다 — 매 실행마다 바뀌므로 남겨두면 매일 빈 커밋이 쌓인다.
+    # PULLED(조회 시각)와 AUTORUN.pulled 는 매 실행마다 바뀐다. 그것만 다르면
+    # '데이터는 그대로' 라는 뜻이므로 비교에서 뺀다 — 여기서 갈라지는 것은
+    # 커밋 여부가 아니라 커밋의 성격이다(내용 갱신이냐, 조회 시각만이냐).
     # hours 는 빼지 않는다(스케줄이 바뀌면 커밋되어야 한다). 다만 old·new 둘 다 stamp() 이전
     # 상태라 스케줄 변경 자체가 여기서 보이지는 않는다 — 다음 내용 변경 때 문서에 반영된다.
     strip = lambda t: re.sub(r'pulled: "[^"]*"', "",
                              re.sub(r'\n *const PULLED = "[^"]*";', "", t))
     if strip(old) == strip(new):
-        log("변화 없음 — 커밋하지 않는다 (last_day=%s)" % state["last_day"])
-        return push_pending(a)
+        log("변화 없음 — 조회 시각만 갱신한다 (last_day=%s)" % state["last_day"])
+        return stamp_only(a, state, rng, new)
     if a.dry_run:
         log("dry-run: 변화 있음 (last_day=%s, 기간=%s) — 파일은 건드리지 않았다"
             % (state["last_day"], rng))
@@ -295,23 +355,5 @@ def finish(a, state, rng, old, new, dry_dump=None):
     now = datetime.datetime.now()
     shared = stamp(now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y%m%d%H%M"), rng)
 
-    # 저장소 전체(-A)가 아니라 이 작업이 실제로 쓴 파일만 담는다 —
-    # 09시에 작업 중인 미커밋 파일이 자동화 커밋에 휩쓸리지 않게.
-    # shared 는 stamp() 가 정말로 고친 공유 파일만 들어 있다(더러운 것은 빠진다).
-    git("add", "--", _C["html"], _C["state"], *shared)
     msg = _C["commit_msg"] % (state["last_day"], rng)
-    r = git("commit", "-q", "-m", msg)
-    if r.returncode != 0:
-        log("커밋 실패: %s" % (r.stderr or r.stdout).strip()[:300])
-        notify("커밋 실패")
-        return 1
-    if a.no_push:
-        log("커밋 완료(푸시 생략): %s" % msg)
-        return 0
-    r = git("push", "-q", "origin", "HEAD")
-    if r.returncode != 0:
-        log("푸시 실패: %s" % (r.stderr or r.stdout).strip()[:300])
-        notify("푸시 실패 — 인증이 만료됐을 수 있습니다")
-        return 1
-    log("갱신 완료: %s" % msg)
-    return 0
+    return commit_push(a, msg, [_C["html"], _C["state"]] + list(shared), "갱신 완료")
