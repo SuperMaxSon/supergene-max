@@ -492,6 +492,12 @@
       .rw-b .fill { display: block; height: 100%; min-width: 2px;
                     background: hsl(var(--h) 52% 48%); }
       .rw-b .n { text-align: right; color: var(--text-dim); }
+      /* 조합 행은 이름이 최대 3개 붙는다 — 「마멀레이드 + 전동 드릴 + 레이스 테이블보」.
+         62px 한 줄로는 못 담아 라벨 칸을 넓히고 줄바꿈을 허용한다. */
+      .rw-b.combo { grid-template-columns: 136px 1fr 88px; }
+      .rw-b.combo .cmb { display: flex; flex-wrap: wrap; gap: 3px; }
+      .rw-b.combo em { font-style: normal; padding: 1px 4px; border-radius: 5px;
+                       font-size: 10px; line-height: 1.35; word-break: keep-all; }
       .rw-tnote { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
       .rw-empty { padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm);
                   font-size: 12px; color: var(--text-faint); text-align: center; }
@@ -2026,7 +2032,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v4.0 · 2026-09-11";
+      const BUILD = "v4.1 · 2026-09-11";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 4;
       /* 시트 실물이 들어오면서 DATA 가 120KB 를 넘는다. 한 글자도 안 고쳤는데 매 저장마다
@@ -3790,7 +3796,7 @@
         const repeat = Object.assign({}, S.orderGen.chain_repeat);
         const suppStart = Object.keys(repeat).length;
         const tally = new Map(), combo = new Map(); let coin = 0, diff = 0, fail = 0, locked = false;
-        const cnt = { 1: 0, 2: 0 }; const samples = [];
+        const cnt = {}; const samples = [];   // 요구 종수는 item_slot_max 까지 열려 있다
         // 게임 진행용 난수 열은 건드리지 않는다. 대신 분포 전용 열을 따로 두고,
         // 돌릴 때마다 이어 간다 — 매번 같은 결과가 나오면 고장으로 보인다.
         const saved = RNG.save();
@@ -3828,8 +3834,10 @@
         $("#rwKpi").innerHTML = [
           ["발급 성공", `${ok}/${N}`], ["평균 코인", ok ? (coin / ok).toFixed(1) : "—"],
           ["평균 난이도", ok ? (diff / ok).toFixed(1) : "—"],
-          ["1종 비율", ok ? `${((cnt[1] / ok) * 100).toFixed(1)}%` : "—"],
-          ["2종 비율", ok ? `${(((cnt[2] || 0) / ok) * 100).toFixed(1)}%` : "—"],
+          ["종수 비율", ok
+            ? Array.from({ length: ruleOf(type)?.item_slot_max || 3 }, (_, i) =>
+                `${i + 1}종 ${(((cnt[i + 1] || 0) / ok) * 100).toFixed(0)}%`).join(" · ")
+            : "—"],
           ["등장 종수", `${tally.size}종`],
         ].map(([k, v]) => `<div class="rw-kpi"><u>${k}</u><b>${v}</b></div>`).join("");
 
@@ -3840,8 +3848,8 @@
         const top = [...combo.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10);
         $("#rwCombo").innerHTML = top.map(([k, v]) => {
           const items = k.split("+").map(Number);
-          return `<div class="rw-b" style="--h:${hueOf(items[0])}deg">
-            <span style="display:flex;gap:3px">${items.map((c) => `<em style="font-style:normal;padding:1px 5px;border-radius:5px;background:hsl(${hueOf(c)}deg 44% 87%);color:hsl(${hueOf(c)}deg 58% 26%)">${labelOf(c)}</em>`).join("")}</span>
+          return `<div class="rw-b combo" style="--h:${hueOf(items[0])}deg">
+            <span class="cmb">${items.map((c) => `<em title="${titleOf(c)}" style="background:hsl(${hueOf(c)}deg 44% 87%);color:hsl(${hueOf(c)}deg 58% 26%)">${labelOf(c)}</em>`).join("")}</span>
             <span class="track"><span class="fill" style="width:${(v.n / top[0][1].n) * 100}%"></span></span>
             <span class="n">${v.n} · ${((v.n / Math.max(1, ok)) * 100).toFixed(1)}%</span></div>`;
         }).join("") || '<div class="rw-empty">조합 없음</div>';
