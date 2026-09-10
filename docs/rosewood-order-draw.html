@@ -61,6 +61,32 @@
       /* 칩 앞머리 아트 — 그 체인의 대표 아이템(오더 대상 최저 단계) */
       .rw-chip .a { width: 20px; height: 20px; align-self: center; margin-left: -2px; }
       .rw-chip.lock .a { filter: grayscale(1) opacity(0.6); }
+      /* 보드 격자 — const.board_column × board_row 그대로. 어떤 칩이 어디에 얼마나
+         놓였는지 눈으로 봐야 배수 축이 왜 그렇게 나오는지 납득이 된다. */
+      .rw-boardwrap { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; margin: 0 0 12px; }
+      .rw-grid { display: grid; gap: 2px; padding: 5px; border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); background: var(--surface-2); flex: none; }
+      .rw-cell { width: 30px; height: 30px; border-radius: 6px; background: var(--surface);
+                 border: 1px dashed var(--border); display: flex; align-items: center;
+                 justify-content: center; overflow: hidden; }
+      .rw-cell.on { border-style: solid; border-color: hsl(var(--h) 45% 68%);
+                    background: hsl(var(--h) 46% 92%); }
+      .rw-cell.gen { border-width: 2px; box-shadow: inset 0 0 0 1.5px var(--surface); }
+      .rw-cell .a { display: block; width: 88%; height: 88%; object-fit: contain; pointer-events: none; }
+      .rw-cell .t { font-size: 7px; line-height: 1.05; text-align: center; word-break: keep-all;
+                    color: hsl(var(--h) 58% 28%); padding: 0 1px; }
+      .rw-hold { flex: 1 1 260px; min-width: 240px; }
+      .rw-hold h5 { margin: 0 0 6px; font-size: 11.5px; font-weight: 800; color: var(--text-dim); }
+      .rw-holdrow { display: flex; flex-wrap: wrap; gap: 4px; }
+      .rw-hi { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 3px;
+               border: 1px solid hsl(var(--h) 45% 78%); border-radius: 11px;
+               background: hsl(var(--h) 46% 96%); font-size: 11px; white-space: nowrap; }
+      .rw-hi .a { display: block; width: 18px; height: 18px; object-fit: contain; }
+      .rw-hi b { font-weight: 700; }
+      .rw-hi s { text-decoration: none; font-family: ui-monospace, Menlo, monospace;
+                 font-size: 10px; color: var(--text-faint); }
+      .rw-hi.g { border-style: dashed; }
+
       /* 막대 라벨 — 이름 앞에 아트를 붙여 어떤 물건인지 바로 보이게 한다 */
       .rw-blabel { display: inline-flex; align-items: center; gap: 5px; }
       .rw-blabel .a { width: 18px; height: 18px; flex: none; }
@@ -204,11 +230,10 @@
       .rw-req.l7, .rw-req.l9 { word-break: keep-all; text-align: center; line-height: 1.15;
                                white-space: normal; padding: 0 2px; }
       .rw-bot { display: flex; align-items: center; gap: 5px; margin-top: auto; }
-      .rw-rb, .rw-rc { display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px;
+      .rw-rb { display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px;
                        border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
                        font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 700;
                        white-space: nowrap; }
-      .rw-rc { margin-left: auto; }
       .rw-lbl { display: block; text-align: center; font-size: 10px; color: var(--text-faint);
                 font-family: ui-monospace, Menlo, monospace; white-space: nowrap;
                 overflow: hidden; text-overflow: ellipsis; }
@@ -418,6 +443,13 @@
               <button class="rw-btn pri" id="rwGo">돌리기</button>
             </div>
             <p class="rw-tnote" id="rwChipNote"></p>
+            <div class="rw-boardwrap">
+              <div class="rw-grid" id="rwGrid"></div>
+              <div class="rw-hold">
+                <h5 id="rwHoldTitle">보드에 놓인 칩</h5>
+                <div class="rw-holdrow" id="rwHold"></div>
+              </div>
+            </div>
             <div class="rw-chips" id="rwChips"></div>
             <div class="rw-kpis" id="rwKpi"></div>
             <p class="rw-tnote" id="rwWhy"></p>
@@ -461,7 +493,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v2.3 · 2026-09-10";   // 무작위 보드 + 해금 칩(아이템 아트) · T10 보드 배수 축 커버리지 · T8 표본 가드
+      const PAGE_BUILD = "v2.4 · 2026-09-10";   // 보드 격자 UI · T11 보드 배수 독립 판정 · 가짜 「★ 팩」 제거
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -595,6 +627,9 @@
           ["[7] 보상 단가 곡선",
            "합산·이벤트 재화 일치만 보고, 단가 자체가 옳은지는 안 본다",
            "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
+          ["요구 종수 3종의 빈도",
+           "<code>order_item_count</code> 는 3종에 20~40% 를 주는데, 손으로 쓴 <code>order_fixed</code> 16장에서는 3종이 1장(6%)뿐이다 — 두 표가 다른 빈도를 말한다. 어느 쪽이 원작인지 이 페이지로는 못 가른다",
+           "원작 오더 카드 표본을 세어 3종 비율을 실측. <code>order_item_count.count_weight</code> 근거가 「원작 확인」이라 그 확인 대상을 다시 봐야 한다"],
           ["실제 보드 분포",
            "무작위 보드는 <b>체인 편중(Zipf) + 단계 1/2<sup>step-1</sup></b> 가정이다 — 시트에 보드 등장 분포가 없다. 상자·재화 체인(동전·유리알·불씨)은 등장률을 모르고 배수에도 영향이 없어 아예 뺐다",
            "실제 플레이 로그의 보드 스냅샷으로 단계 분포를 대체. <code>item_spec</code> 에 보드 해금·등장 칸이 생기면 그걸 입력으로"],
@@ -927,7 +962,12 @@
         const counts = new Map();
         const free = Math.max(0, budget - gens.length);
         const want = Math.round((free * clamp(Number(fillPct), 0, 100)) / 100);
-        if (!byChain.length || !want) return { counts, gens, budget, want: 0, openCh, openGen, ladder, seed, active: [] };
+        if (!byChain.length || !want) {
+          const cells = new Array(budget).fill(null);
+          gens.forEach((c, i) => { cells[i] = { code: c, gen: true }; });
+          return { counts, gens, budget, want: 0, openCh, openGen, ladder, seed, active: [], cells,
+                   cols: Number(C.board_column) || 7, rows: Number(C.board_row) || 9 };
+        }
 
         const saved = RNG.save();
         RNG.load(String(seed));
@@ -941,10 +981,20 @@
           const code = g.rows[RNG.pick(w)].item_code;
           counts.set(code, (counts.get(code) || 0) + 1);
         }
+        /* 격자로 보여 주려면 좌표가 필요하다 — 생성기 먼저 넣고 아이템을 붙인 뒤
+           보드 시드로 섞는다. counts 는 이미 확정됐으니 표시용 배열만 만드는 것이다. */
+        const cells = new Array(budget).fill(null);
+        const bag = gens.map((c) => ({ code: c, gen: true }));
+        for (const [code, n] of counts) for (let i = 0; i < n; i++) bag.push({ code, gen: false });
+        for (let i = bag.length - 1; i > 0; i--) { const j = RNG.int(i + 1); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+        bag.slice(0, budget).forEach((v, i) => { cells[i] = v; });
+        for (let i = cells.length - 1; i > 0; i--) { const j = RNG.int(i + 1); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+
         const next = RNG.save();
         RNG.load(saved);
         const active = order.slice(0, 3).map((g) => g.ch);
-        return { counts, gens, budget, want, openCh, openGen, ladder, seed, next, active };
+        return { counts, gens, budget, want, openCh, openGen, ladder, seed, next, active, cells,
+                 cols: Number(C.board_column) || 7, rows: Number(C.board_row) || 9 };
       }
 
       function boardPreset(kind, level) {
@@ -956,6 +1006,48 @@
           m.set(o.item_code, 1);
         }
         return m;
+      }
+
+      /* ── 보드 격자 ────────────────────────────────────────────────────────
+         숫자만 적어 두면 「미요구+동급·하급 有 88%」 가 왜 나왔는지 안 보인다.
+         const.board_column × board_row 격자에 실제로 놓인 칩을 그린다.
+         생성기는 테두리를 두껍게 — 셀은 차지하지만 boardCounts() 가 건너뛰어
+         배수에 안 들어가는 게 이 페이지에서 계속 걸리는 지점이라 눈에 띄게 둔다.
+         프리셋은 좌표가 없다(counts 만 있다) — 격자를 감추고 보유 목록만 낸다. */
+      function renderBoard(board, counts) {
+        const grid = $("#rwGrid"), hold = $("#rwHold");
+        if (board && board.cells) {
+          grid.style.display = "grid";
+          grid.style.gridTemplateColumns = `repeat(${board.cols}, 30px)`;
+          grid.innerHTML = board.cells.map((c) => {
+            if (!c) return `<span class="rw-cell"></span>`;
+            const art = chipArt(c.code);
+            return `<span class="rw-cell on${c.gen ? " gen" : ""}" style="--h:${hueOf(c.code)}deg"`
+              + ` title="${titleOf(c.code)}${c.gen ? " — 셀만 차지하고 보드 배수 계산에서는 빠진다" : ""}">`
+              + (art || `<span class="t">${labelOf(c.code)}</span>`) + `</span>`;
+          }).join("");
+        } else {
+          grid.style.display = "none";
+          grid.innerHTML = "";
+        }
+
+        const items = [...counts.entries()].sort((a, b) =>
+          chainOf(a[0]) - chainOf(b[0]) || stepOf(a[0]) - stepOf(b[0]));
+        const gens = (board && board.gens) || [];
+        $("#rwHoldTitle").innerHTML = board
+          ? `보드에 놓인 칩 <span style="opacity:.6;font-weight:400">아이템 ${items.length}종 `
+            + `${[...counts.values()].reduce((a, b) => a + b, 0)}개 · 생성기 ${gens.length}종 `
+            + `· 빈 셀 ${board.cells.filter((c) => !c).length}</span>`
+          : `보드에 놓인 칩 <span style="opacity:.6;font-weight:400">프리셋 「${$("#rwBoard").value}」 · `
+            + `${items.length}종 (좌표 없음)</span>`;
+        hold.innerHTML = (gens.length
+            ? gens.map((c) => `<span class="rw-hi g" style="--h:${hueOf(c)}deg" title="${titleOf(c)} — 셀만 차지하고 보드 배수 계산에서는 빠진다">`
+                + `${chipArt(c) || ""}<b>${labelOf(c)}</b><s>생성기</s></span>`).join("")
+            : "")
+          + (items.length
+            ? items.map(([code, n]) => `<span class="rw-hi" style="--h:${hueOf(code)}deg" title="${titleOf(code)}">`
+                + `${chipArt(code) || ""}<b>${labelOf(code)}</b><s>s${stepOf(code)}${n > 1 ? ` ×${n}` : ""}</s></span>`).join("")
+            : `<span style="font-size:12px;color:var(--text-faint)">빈 보드 — 배수 축 ×100·×10000 이 발생하지 않습니다</span>`);
       }
 
       /* 해금 칩 — 그 레벨에 어느 체인이 열렸고, 지금 보드에 몇 종·몇 개가 놓였는지.
@@ -1027,6 +1119,7 @@
            자기 시드만 굴린다. 「다시 섞기」가 BSEED 를 올린다. */
         const board = kind === "rand" ? boardRandom(lv, $("#rwFill").value, BSEED) : null;
         const counts = board ? board.counts : boardPreset(kind, lv);
+        renderBoard(board, counts);
         renderChips(lv, board, counts);
         const useCtx = $("#rwCtx").value === "rail";
         const fixed = $("#rwFix").checked;
@@ -1108,6 +1201,7 @@
         /* [4] 보드 상황 배수 축 발생률 — 로그가 자리마다 「후보 N종 [축이름 n / …]」 을
            찍어 두므로 거기서 센다. 축이 0% 면 그 축은 아예 재지 않은 것이다(T10). */
         const axis = new Map();
+        const axisSeat = [new Map(), new Map(), new Map()];   // 자리별 — T11 이 자리1 을 정확히 대조한다
         const seatFill = new Map();          // 채운 자리 수 → 발급 수
         const cntBy = new Map();             // `자리수|종수` → 발급 수
         const zeroSeat = [0, 0, 0];          // 자리별 「후보 0」 발생 수
@@ -1130,10 +1224,15 @@
             if (z) { const i = +z[1] - 1; if (i < 3) zeroSeat[i]++; continue; }
             const f = /후보 자리 (\d+)/.exec(line);
             if (f) filled = +f[1];
-            const ax = /후보 \d+종 \[([^\]]+)\]/.exec(line);
-            if (ax) for (const part of ax[1].split(" / ")) {
-              const mm = /^(.*) (\d+)$/.exec(part.trim());
-              if (mm) axis.set(mm[1], (axis.get(mm[1]) || 0) + Number(mm[2]));
+            const ax = /\[4\] 자리(\d)<\/span> 범위 [^·]*· 후보 \d+종 \[([^\]]+)\]/.exec(line);
+            if (ax) {
+              const seat = +ax[1] - 1;
+              for (const part of ax[2].split(" / ")) {
+                const mm = /^(.*) (\d+)$/.exec(part.trim());
+                if (!mm) continue;
+                axis.set(mm[1], (axis.get(mm[1]) || 0) + Number(mm[2]));
+                if (seat < 3) axisSeat[seat].set(mm[1], (axisSeat[seat].get(mm[1]) || 0) + Number(mm[2]));
+              }
             }
           }
           if (!filled) { fillNA++; filled = c.reqs.length; }
@@ -1158,7 +1257,7 @@
         LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, daily,
                  banned: [...othersReq, ...(prev || [])],
                  tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed,
-                 seatFill, cntBy, zeroSeat, fillNA, axis, board, kind };
+                 seatFill, cntBy, zeroSeat, fillNA, axis, axisSeat, board, kind };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
       }
@@ -1264,11 +1363,11 @@
         const badSet = bad || new Set();
         return `<div class="rw-card">
             <span class="rw-npc">${String(card.avatar || "—").slice(0, 3)}</span>
-            <div class="rw-top"><span class="rw-ra"><span>◎ ${card.coin}</span>${card.diff ? `<span>◈ ${card.diff}</span>` : ""}</span></div>
+            <div class="rw-top"><span class="rw-ra"><span title="A 보상 — 코인. order_item.order_price 합">◎ ${card.coin}</span>${
+              card.diff ? `<span title="난이도 — order_item.diff_score 합. 하루 누적되어 다음 오더의 밴드를 고른다(order_slot_band.diff_sum_*)">◈ ${card.diff}</span>` : ""}</span></div>
             <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(q.code))).join("")}</div>
             <div class="rw-bot">
-              <span class="rw-rb" title="B — 이벤트 재화">◆ ${card.evt ?? 0}</span>
-              <span class="rw-rc" title="C — 팩·카드">★ 팩</span>
+              <span class="rw-rb" title="B 보상 — 이벤트 재화. event_order_score 로 코인/난이도에서 환산">◆ ${card.evt ?? 0}</span>
             </div>
             <span class="rw-lbl">${card.type}${card.band ? ` · b${card.band}` : ""}</span></div>`;
       }
@@ -1296,6 +1395,43 @@
            p ∝ (weight × weight_multiple ÷ 100) × 보드 상황 배수 ÷ 반복 감쇠 제수
          감쇠 제수는 「직전 오더가 같은 체인이었으면 나눈다」다(order_item 셀 메모).
          noDecay 를 주면 감쇠를 빼고 계산한다 — T8 이 「감쇠가 없었다면」과 대조하는 데 쓴다. */
+      /* ── 보드 상황 배수 — 독립 재구현 ────────────────────────────────────
+         기획서 [4] 「보드 상황 배수」를 시트 상수만으로 다시 짠다. 엔진의
+         situationMult 을 부르지 않는 게 요점이다 — 부르면 축을 잘못 고르거나 상수를
+         잘못 읽어도 기대값이 똑같이 틀려서 판정이 통과한다(v2.3 까지 T2 가 그랬다).
+
+         규칙 원문:
+           · 하나만 적용한다. 중복 곱 금지
+           · wanted   = 다른 오더가 <b>이 체인을</b> 요구한다 (체인 단위)
+           · canServe = <b>그 후보 코드</b>가 보드에 있다 (코드 단위)
+           wanted && canServe   → order_weight_mult_required_enough
+           !wanted && 같은 체인의 동급·하급이 보드에 있다 → order_weight_mult_higher_level
+           !wanted && 없다      → order_weight_mult_not_required
+           wanted && !canServe  → 1 (상수 없음 · 기본)
+
+         「동급·하급」은 stepOf(보드코드) <= stepOf(후보) 다 — 같은 체인 안에서만 본다.
+         생성기는 boardCounts() 가 건너뛰므로 counts 에 애초에 없다. */
+      const AXIS_KEY = {
+        req_serve: "타오더 요구+납품가능",
+        higher: "미요구+보드에 동급·하급 有",
+        not_req: "미요구",
+        req_noserve: "타오더 요구+납품불가(기본)",
+      };
+      function boardMultLocal(code, othersReq, counts, C) {
+        const reqChains = new Set([...othersReq].map(chainOf));
+        const wanted = reqChains.has(chainOf(code));
+        const canServe = (counts.get(code) || 0) > 0;
+        if (wanted && canServe) return { v: C.order_weight_mult_required_enough, why: AXIS_KEY.req_serve };
+        if (!wanted) {
+          const ch = chainOf(code), st = stepOf(code);
+          for (const [c, n] of counts)
+            if (n > 0 && chainOf(c) === ch && stepOf(c) <= st)
+              return { v: C.order_weight_mult_higher_level, why: AXIS_KEY.higher };
+          return { v: C.order_weight_mult_not_required, why: AXIS_KEY.not_req };
+        }
+        return { v: 1, why: AXIS_KEY.req_noserve };
+      }
+
       function expectSeat1(noDecay) {
         const L = LAST, C = DATA.const || {}, b = L.band;
         if (!b) return null;
@@ -1307,7 +1443,7 @@
           return st >= lo && st <= hi && !banned.has(o.item_code);
         });
         const rows = cand.map((o) => {
-          const m = situationMult(o.item_code, L.othersReq, L.counts, C).v;
+          const m = boardMultLocal(o.item_code, L.othersReq, L.counts, C).v;   // 엔진 호출 아님
           const base = ((Number(o.weight) || 100) * (Number(o.weight_multiple) || 1)) / 100;
           const div = !noDecay && prevCh.has(chainOf(o.item_code)) && Number(o.repeat_weight_decrease) > 0
             ? Number(o.repeat_weight_decrease) : 1;
@@ -1757,6 +1893,51 @@
                       + `무작위 보드는 <b>체인 편중(Zipf) + 단계 1/${BOARD_DECAY}<sup>step-1</sup></b> 가정이다 &mdash; `
                       + `실제 보드 분포는 시트에 없다(미검증 참조)`),
                 dead.length ? "judge" : null);
+          }
+        }
+
+        /* ── T11 보드 배수 판정 일치 ──────────────────────────────────────────
+           T10 은 「축이 발생하나」(커버리지)만 본다. 「엔진이 고른 축이 맞나」는 다른 문제다.
+           v2.3 까지 expectSeat1() 이 엔진의 situationMult 을 그대로 불러서, 축을 잘못
+           고르거나 상수를 잘못 읽어도 기대값이 똑같이 틀려 T2 가 통과했다 — 보드 항만
+           「엔진 계산을 다시 쓰지 않는다」는 이 페이지 원칙을 어기고 있었다.
+
+           이제 boardMultLocal() 이 기획서 규칙으로 축을 독립 판정한다. 자리1 의 후보
+           집합은 (밴드 · 제외 · 보드)가 고정이라 <b>매 발급 같다</b> — 그래서 통계가 아니라
+           <b>정수 일치</b>로 볼 수 있다: 독립 히스토그램 × 발급 수 = 엔진 누적 집계.
+           한 건이라도 어긋나면 축 선택이 다른 것이고, 그건 엔진 결함이다. */
+        {
+          const C = DATA.const || {}, b = L.band;
+          const seat1 = L.axisSeat && L.axisSeat[0];
+          if (!b || !seat1 || !seat1.size) add("na", "T11 보드 배수 판정 일치", "—", "—", "자리1 집계가 없다");
+          else {
+            const banned = new Set(L.banned);
+            const cand = L.pool.filter((o) => {
+              const st = stepOf(o.item_code);
+              return st >= (b.first_min ?? 0) && st <= (b.first_max ?? 99) && !banned.has(o.item_code);
+            });
+            const mine = new Map();
+            for (const o of cand) {
+              const w = boardMultLocal(o.item_code, L.othersReq, L.counts, C).why;
+              mine.set(w, (mine.get(w) || 0) + 1);
+            }
+            const keys = [...new Set([...mine.keys(), ...seat1.keys()])].sort();
+            const diff = keys.map((k) => ({ k, mine: (mine.get(k) || 0) * ok, eng: seat1.get(k) || 0 }))
+                             .filter((r) => r.mine !== r.eng);
+            add(diff.length ? "no" : "ok", "T11 보드 배수 판정 일치",
+                keys.map((k) => `${k} <b>${(mine.get(k) || 0)}종</b>`).join("<br>")
+                  + ` <span style="opacity:.65">(자리1 후보 ${cand.length}종 · 시트 규칙으로 독립 판정)</span>`,
+                keys.map((k) => `${k} ${((seat1.get(k) || 0) / Math.max(1, ok)).toFixed(0)}종`).join("<br>")
+                  + ` <span style="opacity:.65">(엔진 누적 ÷ 발급 ${ok})</span>`,
+                diff.length
+                  ? diff.map((r) => `<span class="w">${r.k} — 독립 ${r.mine}건 ≠ 엔진 ${r.eng}건</span>`).join("<br>")
+                    + `<br>엔진이 고른 축이 기획서 규칙과 다르다. <code>situationMult</code> 의 조건 순서나 `
+                    + `상수 배정을 보세요 — 배수가 1:100:1000:10000 이라 한 축만 어긋나도 분포가 크게 틀어진다`
+                  : `자리1 후보 ${cand.length}종의 축을 <code>boardMultLocal</code> 로 다시 판정해 `
+                    + `엔진 누적 집계와 <b>정수까지 일치</b>했다(발급 ${ok}회 × ${cand.length}종 = ${ok * cand.length}건). `
+                    + `조건 넷의 순서·상수 배정이 같다는 뜻이다. `
+                    + `<b>이제 T2 의 기대값도 엔진을 안 부르고 독립 계산한다</b> — 보드 항이 처음으로 실제 판정 대상이 됐다`,
+                diff.length ? "logic" : null);
           }
         }
 
