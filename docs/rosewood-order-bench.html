@@ -1331,7 +1331,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.7 · 2026-09-10";
+      const BUILD = "v2.8 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1854,7 +1854,58 @@
         return true;
       }
 
-      function render() { renderStats(); renderBoard(); renderInfo(); renderRail(); renderLog(); renderOut(); syncFrameHeight(); save(); }
+      /* ────────────────────────────────────────────────────────────────
+         보드가 바뀌는 순간에만 다시 그린다. 시계로 돌리지 않는다.
+         머지 규칙상 보드 구성을 바꾸는 동작 — 이게 전부다.
+           구현됨   병합 · 드래그 이동 · 생성기 생산 · 판매 · 납품(오더 클리어)
+                    · 재고 회복 · 예산 회복 재발급 · 레벨업 슬롯 개방 · 리롤
+           미구현   치우기(selling_price ≤ 0 휴지통) · 되돌리기(undo_valid_sec 5초)
+                    · 인벤토리 넣기/꺼내기(나선 첫 빈 칸) · 보상함 꺼내기
+                    · 상자 개봉 배출 · 오더 만료(order_expire)
+         새 동작을 붙일 때는 반드시 render() 를 거치게 한다.
+         ──────────────────────────────────────────────────────────────── */
+      function render() {
+        renderStats(); renderBoard(); renderInfo(); renderRail(); renderLog(); renderOut();
+        syncFrameHeight(); scheduleWake(); save();
+      }
+
+      /* 시계 텍스트만 만지는 초당 작업 — 텍스트 노드 몇 개가 전부다 */
+      function tickClocks() {
+        const C = DATA.const, now = Date.now() / 1000;
+        const el = $("#rwEnergyTm");
+        if (el) {
+          const txt = S.energy >= C.default_max_energy
+            ? "" : fmtSec(C.default_recovery_duration_sec - ((now - S.energyLastAt) % C.default_recovery_duration_sec));
+          if (el.textContent !== txt) el.textContent = txt;
+        }
+        tickRail();
+      }
+
+      /* 회복은 「다음에 무언가 일어나는 시각」을 잡아 두고 그때만 깨운다.
+         에너지·생성기 재고·오더 예산 셋 중 가장 이른 시각이다. */
+      let WAKE_AT = 0;
+      function scheduleWake() {
+        const C = DATA.const, now = Date.now() / 1000;
+        let at = Infinity;
+        if (S.energy < C.default_max_energy) at = Math.min(at, S.energyLastAt + C.default_recovery_duration_sec);
+        for (const c of S.cells) {
+          if (!c) continue;
+          const sp = specOf(c.code);
+          if (!sp || !sp.is_generator || !sp.spread_item_recovery_sec) continue;
+          if (c.stock >= sp.spread_item_max) continue;
+          at = Math.min(at, (c.lastAt || now) + sp.spread_item_recovery_sec);
+        }
+        for (const t of Object.values(S.orderGen.type_timers))
+          if (t && t.next_refill_at > 0) at = Math.min(at, t.next_refill_at);
+        WAKE_AT = Number.isFinite(at) ? at : 0;
+      }
+
+      function doWake() {
+        const e = recoverEnergy();
+        recoverStock();                                   // 바뀌었을 때만 안에서 보드를 다시 그린다
+        if (retryEmptySlots()) render();
+        else { if (e) { renderStats(); save(); } scheduleWake(); }
+      }
 
       /* HUD 숫자는 바로 바꾸지 않고 굴린다 — 값이 변한 걸 눈이 잡게 */
       const SHOWN = {};
@@ -2336,13 +2387,38 @@
           if (!card) {
             const t = S.orderGen.type_timers[slotType(n)];
             const wait = t && t.next_refill_at > 0 ? fmtSec(t.next_refill_at - now) : "";
-            html += `<div class="rw-card wait" data-slot="${n}">슬롯 ${n}<br />${slotType(n)}<br />${wait ? `대기 ${wait}` : "발급 대기"}</div>`;
+            html += `<div class="rw-card wait" data-slot="${n}">슬롯 ${n}<br />${slotType(n)}<br /><span data-wait="${slotType(n)}">${wait ? `대기 ${wait}` : "발급 대기"}</span></div>`;
             continue;
           }
           const ok = S.orderFree || card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
           html += orderCardHTML(card, { slot: n, counts, serve: ok });
         }
         setHTML("#rwRail", html);
+      }
+
+      /* 레일은 보드·슬롯이 바뀔 때만 다시 만든다(render 경유).
+         초당 바뀌는 건 빈 슬롯의 대기 시계뿐이라 그 텍스트만 갈아 끼운다. */
+      function tickRail() {
+        const now = Date.now() / 1000;
+        $("#rwRail").querySelectorAll("[data-wait]").forEach((el) => {
+          const t = S.orderGen.type_timers[el.dataset.wait];
+          const txt = t && t.next_refill_at > 0 ? `대기 ${fmtSec(t.next_refill_at - now)}` : "발급 대기";
+          if (el.textContent !== txt) el.textContent = txt;
+        });
+      }
+
+      /* 예산이 회복됐는데 빈 슬롯이 남아 있으면 그때 한 번 다시 발급한다.
+         타이머 상태가 바뀐 순간에만 두드려서 실패 로그가 초당 쌓이지 않게 한다. */
+      let retryMark = "";
+      function retryEmptySlots() {
+        if (!openSlots().some((n) => !S.slots[n])) { retryMark = ""; return false; }
+        const now = Date.now() / 1000;
+        const mark = Object.entries(S.orderGen.type_timers)
+          .map(([t, x]) => `${t}:${x.next_refill_at > now ? "w" : "r"}:${x.remaining_count}`).join("|");
+        if (mark === retryMark) return false;
+        retryMark = mark;
+        fillEmptySlots("예산 회복 재시도");
+        return true;
       }
 
       function renderLog() {
@@ -3066,11 +3142,12 @@
       window.addEventListener("scroll", () => { if (!DRAG) GEO = null; }, { passive: true });
       syncFrameHeight();
 
+      /* 초당 하는 일은 시계 텍스트뿐이고, 나머지는 예약된 시각에만 깨어난다.
+         레일·HUD·보드를 매초 다시 만들지 않는다 — 갱신은 전부 동작에서 온다. */
       setInterval(() => {
-        const e = recoverEnergy();
-        if (!S.busy) { renderRail(); renderStats(); }
-        recoverStock();
-        if (e) save();
+        if (S.busy) return;
+        tickClocks();
+        if (WAKE_AT && Date.now() / 1000 >= WAKE_AT) doWake();
       }, 1000);
       window.addEventListener("beforeunload", saveNow);
     </script>
