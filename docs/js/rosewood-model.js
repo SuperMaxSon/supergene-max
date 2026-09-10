@@ -39,7 +39,7 @@ const Model = (() => {
         cells: S.cells, level: S.level, exp: S.exp, coin: S.coin, energy: S.energy,
         day: S.day, choreSeq: S.choreSeq, sel: S.sel, orderGen: S.orderGen, orderFree: S.orderFree,
         gem: S.gem, debug: S.debug, serveCount: S.serveCount, energyLastAt: S.energyLastAt,
-        boost: S.boost, out: S.out, inv: S.inv, diff: S.diff,
+        boost: S.boost, out: S.out, inv: S.inv, diff: S.diff, specSlotMax: S.specSlotMax,
         slots: S.slots, prevOfSlot: S.prevOfSlot,
         log: S.log.slice(0, 20).map((e) => ({ ...e, t: e.t.toISOString() })),
       };
@@ -163,7 +163,7 @@ const Model = (() => {
   function fillEmptySlots(reason) {
     for (const n of openSlots()) {
       if (S.slots[n]) continue;
-      const r = generateOrder(n, { dailyDiff: diffScore() });
+      const r = generateOrder(n, { dailyDiff: diffScore(), itemSlotMax: S.specSlotMax || undefined });
       S.log.unshift({ slot: n, type: r.card ? r.card.type : slotType(n), ok: !!r.card, reason, lines: r.log, t: new Date() });
       if (r.card) S.slots[n] = r.card;
     }

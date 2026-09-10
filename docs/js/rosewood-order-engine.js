@@ -810,6 +810,10 @@ function freshState() {
     cells, level: 1, exp: 0, coin: DATA.const.nru_start_coin, gem: 0, debug: false,
     inv: { store: [], box: [], bought: 0, tab: "store" },
     energy: DATA.const.default_max_energy, energyLastAt: Date.now() / 1000, serveCount: 0, boost: 1,
+    /* specSlotMax — 요구 종수 상한을 화면 기획서 정본(2)으로 누른다. 0 이면 시트 값(3).
+       [GAP-3] 참조. 기본을 2 로 둔 건 기획서가 세 군데서 「확정」이라 못 박고, 시트 메모의
+       근거가 바로 그 문서라서다. 개발자 조작에서 한 번 눌러 시트 값으로 되돌릴 수 있다. */
+    specSlotMax: 2,
     day: 1, choreSeq: 0, sel: null, busy: false, orderFree: false, out: null,
     /* chain_repeat 은 죽은 필드라 뺐다 — 반복 감쇠가 「누적 카운터」에서 「직전 오더의
        체인 한 장」으로 정정되면서(시트 셀 메모) 셀 자리가 없어졌다. 감쇠 대상은 prevOfSlot 이다. */
@@ -1014,7 +1018,16 @@ function generateOrder(slotNo, opts = {}) {
   push(`[3] 제외 item_code: ${banned.size ? [...banned].map(labelOf).join(", ") : "없음"} <span style="opacity:.65">(체인 전체 아님)</span>`);
 
   const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level);
-  const slotMax = rule.item_slot_max;
+  /* [GAP-3] 요구 종수 상한 — 정본이 어긋난 자리다.
+     시트 `order_rule.item_slot_max` 는 3(네 타입 전부)이고, 그 셀 메모의 근거가
+     `uiux_ingame §5-3` 이라고 적혀 있다. 그런데 그 문서는 세 군데서 「요구 아이템
+     2개 · 접시 슬롯 2칸(확정) · 가변 개수로 설계하지 않는다」라고 못 박는다 —
+     **시트가 정본을 인용하면서 정본과 반대로 적었다.** 표 둘의 싸움이 아니다.
+     어느 쪽으로 갈지는 문서 결정이라 여기서 못 정한다. 호출자가 고를 수 있게 열어 둔다:
+     안 넘기면 시트 값 그대로라 「오더 추첨 분석」 페이지의 판정은 변하지 않는다.
+     2 를 넘기면 후보 필터(아래 [5] 종수)에서 3종 행이 빠지고 남은 가중치로만 뽑는다
+     — 시트를 정본대로 고쳤을 때와 같은 결과다(가중치는 상대값이라 재정규화가 필요 없다). */
+  const slotMax = Math.min(rule.item_slot_max, opts.itemSlotMax ?? Infinity);
   const picked = [];
   const chosen = new Set();
   // 가중치를 실제로 나눈 체인 — 반복 카운터는 「뽑힌 것」이 아니라 「제한이 걸린 것」 기준이다

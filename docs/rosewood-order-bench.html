@@ -577,6 +577,9 @@
             <label class="rw-chk" title="켜면 모든 오더가 보유와 상관없이 납품 가능해집니다 — 보드는 소모하지 않습니다">
               <input type="checkbox" id="rwOrderFree" /> 오더 프리 <b id="rwOrderFreeS">off</b>
             </label>
+            <label class="rw-chk" id="rwSpecMaxL" title="화면 기획서(uiux_ingame)는 「요구 아이템 2개 · 접시 슬롯 2칸(확정) · 가변 개수로 설계하지 않는다」를 세 군데서 못 박습니다. 그런데 시트 order_rule.item_slot_max 는 3 이고, 그 셀 메모의 근거가 바로 그 §5-3 입니다 — 시트가 정본을 인용하면서 정본과 반대로 적었습니다. 어느 쪽이 맞는지는 문서 결정이라 여기서 정하지 않고, 양쪽을 다 눌러 볼 수 있게 뒀습니다. 끄면 시트 값(3칸)으로 발급합니다.">
+              <input type="checkbox" id="rwSpecMax" /> 요구 2칸 고정 <b id="rwSpecMaxS">on</b>
+            </label>
           </div>
         </div>
 
@@ -687,11 +690,11 @@
     <div class="rw-toast" id="rwToast"></div>
 
     <!-- 엔진은 「오더 추첨 분석」 페이지와 공유 — 인라인 스크립트보다 먼저 와야 한다 -->
-    <script src="js/rosewood-order-engine.js?v=8"></script>
+    <script src="js/rosewood-order-engine.js?v=12"></script>
     <script src="js/rosewood-rules.js?v=8"></script>
-    <script src="js/rosewood-model.js?v=8"></script>
+    <script src="js/rosewood-model.js?v=12"></script>
     <script src="js/rosewood-fx.js?v=8"></script>
-    <script src="js/rosewood-ingame.js?v=11"></script>
+    <script src="js/rosewood-ingame.js?v=12"></script>
     <script>
       "use strict";
       /* ======================================================================
@@ -1152,6 +1155,9 @@
         $("#rwDebug").checked = !!S.debug;
         $("#rwOrderFree").checked = !!S.orderFree;
         $("#rwOrderFreeS").textContent = S.orderFree ? "on" : "off";
+        if (S.specSlotMax == null) S.specSlotMax = 2;      // 옛 세이브 — 기획서 정본으로 연다
+        $("#rwSpecMax").checked = S.specSlotMax === 2;
+        $("#rwSpecMaxS").textContent = S.specSlotMax === 2 ? "on" : "off";
         Model.fillEmptySlots(saved ? "저장 상태 복원" : "첫 진입");
         render();
         if (saved) toast("저장된 진행을 이어서 엽니다");
@@ -1219,6 +1225,16 @@
         $("#rwOrderFreeS").textContent = S.orderFree ? "on" : "off";
         renderRail(); save();
         toast(S.orderFree ? "오더 프리 on — 모든 오더를 보유 없이 납품합니다" : "오더 프리 off");
+      };
+      /* 요구 종수 상한 — 기획서 정본(2칸) ↔ 시트 값(3칸). [GAP-3] 참조.
+         이미 발급된 카드는 그대로 두고 다음 발급부터 먹는다 — 발급 시점 규칙이라 그게 맞다. */
+      $("#rwSpecMax").onclick = (e) => {
+        S.specSlotMax = e.currentTarget.checked ? 2 : 0;
+        $("#rwSpecMaxS").textContent = e.currentTarget.checked ? "on" : "off";
+        save();
+        toast(e.currentTarget.checked
+          ? "요구 2칸 고정 on — 화면 기획서 정본. 다음 발급부터 3종이 안 나옵니다"
+          : "요구 2칸 고정 off — 시트 order_rule.item_slot_max 3 그대로 (3종이 나옵니다)");
       };
       $("#rwoShop").onclick = () => { outHome(); outGo("shop"); };
       $("#rwBoost").onclick = (e) => {
