@@ -811,7 +811,9 @@ function freshState() {
     inv: { store: [], box: [], bought: 0, tab: "store" },
     energy: DATA.const.default_max_energy, energyLastAt: Date.now() / 1000, serveCount: 0, boost: 1,
     day: 1, choreSeq: 0, sel: null, busy: false, orderFree: false, out: null,
-    orderGen: { rng_state: RNG.save(), fixed_next_seq: 1, chain_repeat: {}, type_timers: {} },
+    /* chain_repeat 은 죽은 필드라 뺐다 — 반복 감쇠가 「누적 카운터」에서 「직전 오더의
+       체인 한 장」으로 정정되면서(시트 셀 메모) 셀 자리가 없어졌다. 감쇠 대상은 prevOfSlot 이다. */
+    orderGen: { rng_state: RNG.save(), fixed_next_seq: 1, type_timers: {} },
     slots: {}, prevOfSlot: {}, log: [],
   };
 }
