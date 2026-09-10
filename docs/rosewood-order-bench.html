@@ -1311,7 +1311,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.3 · 2026-09-10";
+      const BUILD = "v2.4 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1517,6 +1517,8 @@
         const slotMax = rule.item_slot_max;
         const picked = [];
         const chosen = new Set();
+        // 가중치를 실제로 나눈 체인 — 반복 카운터는 「뽑힌 것」이 아니라 「제한이 걸린 것」 기준이다
+        const divided = new Set();
 
         for (let seat = 1; seat <= slotMax; seat++) {
           const lo = seat === 1 ? band.first_min : 0;
@@ -1533,6 +1535,7 @@
             const m = situationMult(o.item_code, othersReq, counts, C);
             const rem = S.orderGen.chain_repeat[chainOf(o.item_code)] || 0;
             const div = rem > 0 && o.repeat_weight_decrease > 0 ? o.repeat_weight_decrease : 0;
+            if (div) divided.add(chainOf(o.item_code));
             return { o, mult: m.v, why: m.why, div, w: div ? m.v / div : m.v };
           });
           const total = rows.reduce((a, r) => a + r.w, 0);
@@ -1563,13 +1566,11 @@
         if (n < picked.length)
           push(`    버린 후보 ${picked.slice(n).map((o) => labelOf(o.item_code)).join(", ")} — <span class="k">반복 카운터 갱신에는 포함</span>`);
 
-        // ---- 반복 카운터 — 제한을 적용한 체인만, 뽑은 후보 전부 기준
+        /* ---- 반복 카운터 — 「가중치를 나눈 모든 후보의 체인」이 대상이다.
+           뽑힌 후보로만 대상을 만들면 won ⊇ applied 가 되어 감소 분기에 절대 닿지 않고,
+           한 번 눌린 체인이 영원히 눌린 채로 남는다. divided 는 [4] 에서 실제로 나눈 체인이다. */
         if (!dry) {
-          const applied = new Set();
-          picked.forEach((o) => {
-            const rem = S.orderGen.chain_repeat[chainOf(o.item_code)] || 0;
-            if (rem > 0 && o.repeat_weight_decrease > 0) applied.add(chainOf(o.item_code));
-          });
+          const applied = divided;
           const won = new Set(picked.map((o) => chainOf(o.item_code)));
           const upd = [];
           applied.forEach((ch) => {
