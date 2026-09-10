@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>오더 추첨 분석</title>
+    <meta
+      name="description"
+      content="PMM 밸런스시트 JSON 을 넣으면 오더 생성 8단계를 그 값으로 돌려서, 판정 근거·뽑기 분포·규칙 위반을 보여 주는 테스트 페이지. 오더 생성 벤치와 같은 엔진 파일을 읽는다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+    <style>
+      /* ==========================================================================
+         오더 추첨 분석 — 페이지 전용 스타일
+         허브 토큰(--surface / --border / --text / --tool …)만 쓴다. 새 토큰은 만들지 않는다.
+         클래스는 전부 rw- 접두 — style.css(141KB) 와 이름이 겹치지 않게.
+         칩 색만 hsl 로 직접 만든다. 체인이 31 종이라 토큰으로 두면 style.css 를 건드려야 한다.
+         오더 벤치와 겹치는 규칙이 있지만 파일을 공유하지 않는다 — 벤치는 칩 실루엣을
+         계속 고치는 중이고, 테스트 페이지는 카드를 더 작게 쓴다.
+         ========================================================================== */
+      .rw-panel { border: 1px solid var(--border); border-radius: var(--radius);
+                  background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+      .rw-pb { padding: 12px; }
+      .rw-ph { display: flex; align-items: center; gap: 8px; padding: 8px 13px;
+               border-bottom: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; }
+      .rw-ph h3 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -0.005em; }
+      .rw-ph .sub { margin-left: auto; font-size: 11.5px; color: var(--text-faint);
+                    font-family: ui-monospace, Menlo, monospace; }
+
+      .rw-btn { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm);
+                padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+                color: var(--text); transition: border-color 0.14s, color 0.14s; }
+      .rw-btn:hover { border-color: var(--tool); color: var(--tool); }
+      .rw-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .rw-btn.pri { background: var(--tool); border-color: var(--tool); color: #fff; }
+      .rw-btn.pri:hover { filter: brightness(1.08); color: #fff; }
+      .rw-btn.sm { padding: 3px 9px; font-size: 12px; font-weight: 500; }
+      .rw-btn:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible
+        { outline: 2px solid var(--tool); outline-offset: 2px; }
+      .rw-chk { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+      .rw-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; margin: 12px 0; }
+      .rw-tnote { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
+      .rw-hide { display: none !important; }
+
+      /* 입력 — 판본 표시와 드롭존 */
+      .rw-drop { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 18px 14px;
+                 text-align: center; font-size: 12.5px; color: var(--text-dim); background: var(--surface-2);
+                 transition: border-color 0.14s, background 0.14s; }
+      .rw-drop.on { border-color: var(--tool); background: hsl(210 60% 97%); color: var(--tool); }
+      .rw-drop b { display: block; font-size: 13px; color: var(--text); margin-bottom: 3px; }
+      .rw-src { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+                background: var(--border); border: 1px solid var(--border);
+                border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; }
+      .rw-src div { background: var(--surface); padding: 8px 11px; }
+      .rw-src u { text-decoration: none; display: block; font-size: 10px; letter-spacing: 0.09em;
+                  text-transform: uppercase; color: var(--text-faint); }
+      .rw-src b { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700;
+                  overflow-wrap: anywhere; }
+
+      /* 판정 배지 */
+      .rw-v { display: inline-flex; align-items: center; justify-content: center; min-width: 46px;
+              padding: 1px 7px; border-radius: 10px; font-size: 10.5px; font-weight: 800;
+              letter-spacing: 0.03em; font-family: ui-monospace, Menlo, monospace; }
+      .rw-v.ok { background: hsl(145 45% 90%); color: hsl(145 60% 24%); }
+      .rw-v.no { background: hsl(4 60% 92%); color: hsl(4 62% 34%); }
+      .rw-v.warn { background: hsl(38 70% 90%); color: hsl(30 70% 28%); }
+      .rw-v.na { background: var(--surface-2); color: var(--text-faint); }
+
+      /* 표 */
+      .rw-tt { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 6px; font-size: 12px;
+               text-transform: uppercase; letter-spacing: 0.09em; }
+      .rw-tt h3 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -0.005em; text-transform: none; }
+      .rw-tt span { font-size: 11px; color: var(--text-faint); letter-spacing: 0; text-transform: none; }
+      .rw-tw { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);
+               background: var(--surface); }
+      .rw-tw table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      .rw-tw th, .rw-tw td { text-align: left; padding: 7px 11px; border-bottom: 1px solid var(--border-soft);
+                             vertical-align: top; }
+      .rw-tw th { font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+                  color: var(--text-faint); background: var(--surface-2); white-space: nowrap; }
+      .rw-tw tr:last-child td { border-bottom: 0; }
+      .rw-tw code { font-size: 11.5px; }
+      .rw-tw .num { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums;
+                    text-align: right; white-space: nowrap; }
+
+      /* 분포 컨트롤 · 게이지 */
+      .rw-f { display: flex; flex-direction: column; gap: 3px; }
+      .rw-f label { font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
+      .rw-f input, .rw-f select { font: inherit; font-size: 13px; font-family: ui-monospace, Menlo, monospace;
+        padding: 5px 8px; width: 132px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        background: var(--surface); color: var(--text); }
+      .rw-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); gap: 1px;
+                 background: var(--border); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 14px; }
+      .rw-kpi { background: var(--surface); padding: 9px 12px; }
+      .rw-kpi u { text-decoration: none; display: block; font-size: 10px; letter-spacing: 0.09em;
+                  text-transform: uppercase; color: var(--text-faint); }
+      .rw-kpi b { font-family: ui-monospace, Menlo, monospace; font-size: 18px; font-variant-numeric: tabular-nums; }
+      .rw-bars { display: flex; flex-direction: column; gap: 3px; }
+      .rw-b { display: grid; grid-template-columns: 132px 1fr 136px; gap: 9px; align-items: center;
+              font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+      /* span 은 기본이 inline 이라 width·height 가 먹지 않는다 — 게이지가 0px 로 그려지던 자리 */
+      .rw-b .track { display: block; height: 14px; background: var(--surface-2);
+                     border: 1px solid var(--border); border-radius: 3px; overflow: hidden; position: relative; }
+      .rw-b .fill { display: block; height: 100%; min-width: 2px; background: hsl(var(--h) 52% 48%); }
+      /* 기대값 표식 — 실측 게이지 위에 세로선 하나로 얹는다. 막대를 둘로 나누면
+         상위 30 종이 60 줄이 되어 눈으로 못 따라간다. */
+      .rw-b .exp { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text);
+                   opacity: 0.55; }
+      .rw-b .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rw-b .n { text-align: right; color: var(--text-dim); }
+      .rw-empty { padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm);
+                  font-size: 12px; color: var(--text-faint); text-align: center; }
+
+      /* 오더 카드 — 벤치 레일과 같은 해부 구조(초상·접시·A·B·C)를 쓰되 폭만 줄인다 */
+      .rw-samples { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 14px; margin-bottom: 16px; }
+      .rw-card { position: relative; flex: none; width: 122px; border: 1px solid var(--border);
+                 border-radius: 10px; background: var(--surface); padding: 9px 7px 7px;
+                 display: flex; flex-direction: column; gap: 5px; }
+      .rw-npc { position: absolute; top: -13px; left: 7px; width: 28px; height: 28px; border-radius: 50%;
+                background: var(--surface-2); border: 1px solid var(--border); display: grid;
+                place-items: center; font-size: 9px; font-weight: 800; color: var(--text-dim); }
+      .rw-top { display: flex; gap: 5px; align-items: flex-start; padding-left: 31px; min-height: 22px; }
+      .rw-ra { display: flex; flex-direction: column; gap: 2px; margin-left: auto; align-items: flex-end; }
+      .rw-ra span { display: flex; align-items: center; gap: 3px; height: 14px; padding: 0 6px;
+                    border-radius: 7px; background: var(--surface-2); border: 1px solid var(--border);
+                    font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700;
+                    white-space: nowrap; }
+      .rw-dish { display: flex; gap: 4px; justify-content: center; }
+      .rw-req { position: relative; width: 32px; height: 32px; border-radius: 50%; display: flex;
+                align-items: center; justify-content: center; font-family: ui-monospace, Menlo, monospace;
+                font-size: 10.5px; font-weight: 700; background: hsl(var(--h) 46% 86%);
+                color: hsl(var(--h) 58% 26%); box-shadow: inset 0 0 0 1.5px hsl(var(--h) 45% 66%); }
+      .rw-req.bad { box-shadow: inset 0 0 0 2px var(--deploy); }
+      .rw-bot { display: flex; align-items: center; gap: 4px; margin-top: auto; }
+      .rw-rb, .rw-rc { display: flex; align-items: center; gap: 3px; height: 16px; padding: 0 6px;
+                       border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border);
+                       font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700; }
+      .rw-rc { margin-left: auto; }
+      .rw-lbl { font-size: 9px; color: var(--text-faint); font-family: ui-monospace, Menlo, monospace; }
+
+      /* 판정 로그 — 8단계가 줄바꿈되어 읽히게. 벤치에서는 이 규칙이 없어서
+         lines.join("\n") 이 한 덩어리로 뭉쳐 있었다. */
+      .rw-log { max-height: 560px; overflow-y: auto; }
+      .rw-e { padding: 10px 13px; border-bottom: 1px solid var(--border-soft); }
+      .rw-e:last-child { border-bottom: 0; }
+      .rw-e h4 { margin: 0 0 5px; font-size: 12px; font-weight: 800; display: flex; gap: 7px;
+                 align-items: baseline; flex-wrap: wrap; }
+      .rw-steps { white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace;
+                  font-size: 11.5px; line-height: 1.65; color: var(--text-dim); overflow-wrap: anywhere; }
+      .rw-steps .k { color: var(--tool); font-weight: 700; }
+      .rw-steps .w { color: var(--deploy); font-weight: 700; }
+      .rw-steps .p { color: var(--balance); font-weight: 700; }
+
+      .rw-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+                  background: var(--text); color: var(--surface); padding: 8px 16px;
+                  border-radius: 20px; font-size: 12.5px; z-index: 90; opacity: 0;
+                  pointer-events: none; transition: opacity 0.18s; }
+      .rw-toast.on { opacity: 1; }
+      @media (prefers-reduced-motion: reduce) { .rw-toast { transition: none; } }
+      @media (max-width: 620px) { .rw-b { grid-template-columns: 96px 1fr 104px; } }
+    </style>
+  </head>
+
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#input">입력</a>
+        <a class="nav-back" href="#gap">스키마 검사</a>
+        <a class="nav-back" href="#rules">규칙 검사</a>
+        <a class="nav-back" href="#sim">뽑기 분포</a>
+        <a class="nav-back" href="#log">판정 로그</a>
+        <span class="nav-spacer"></span>
+        <a class="nav-back" href="rosewood-order-bench.html">오더 생성 벤치 ↗</a>
+        <a class="nav-back" href="https://atomking0.github.io/supergene-esther/rosewood_dev_spec.html" target="_blank" rel="noopener">개발 기획서 ↗</a>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">기획 · 오더 생성</div>
+        <h1 class="doc-title">오더 추첨 분석</h1>
+        <p class="doc-lede">
+          <b>밸런스시트 JSON 을 넣으면 그 값으로 오더 생성 8단계를 돌리는 테스트 페이지</b>입니다.
+          <a href="rosewood-order-bench.html">오더 생성 벤치</a>와 <b>같은 엔진 파일</b>
+          (<code>js/rosewood-order-engine.js</code>)을 읽습니다 &mdash; 사본을 돌리면 벤치가 쓰는 코드와
+          다른 코드를 검증하게 되어 검증이 성립하지 않기 때문입니다.
+          입력이 화면 안에 다 있으므로 <b>같은 JSON + 같은 시드면 항상 같은 결과</b>가 나옵니다.
+          이 페이지는 <b>읽기 전용</b>입니다 &mdash; 벤치의 진행 상태를 건드리지 않습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--tool)">스토리 머지 · Rosewood</span>
+          <span class="tag">개발 기획서 1.2.1 오더 생성</span>
+          <span class="tag" id="rwSrcTag">입력 …</span>
+          <span class="tag" id="rwBuild">build …</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <!-- ================= 입력 ================= -->
+      <section class="doc-section" id="input">
+        <h2 class="doc-h2">입력</h2>
+        <div class="doc-h2-sub">
+          기본값은 <code>docs/data/rosewood-balance.json</code> 입니다 &mdash;
+          <code>scripts/xlsx2balance.py</code> 로 PMM 밸런스시트에서 <b>추첨이 실제로 읽는 10탭</b>만
+          뽑아 둔 것입니다. 다른 판본을 보려면 같은 형태의 JSON 을 아래에 떨어뜨리세요.
+          브라우저에 남으니 다음에 열어도 그 판본으로 시작합니다.
+          <b>xlsx 를 직접 넣지는 못합니다</b> &mdash; 브라우저에서 xlsx 를 읽으려면 400KB 짜리
+          파서를 문서에 실어야 해서, 변환은 스크립트에 맡기고 이 페이지는 JSON 만 받습니다.
+        </div>
+        <div class="rw-src" id="rwSrc"></div>
+        <div class="rw-drop" id="rwDrop">
+          <b>밸런스 JSON 을 여기에 떨어뜨리세요</b>
+          클릭해서 파일을 고를 수도 있습니다 · <code>scripts/xlsx2balance.py</code> 산출물
+          <input type="file" id="rwFile" accept=".json,application/json" class="rw-hide" />
+        </div>
+        <div class="rw-bar">
+          <button class="rw-btn" id="rwReset">기본값으로 되돌리기</button>
+          <button class="rw-btn" id="rwRerun">다시 검사</button>
+        </div>
+        <div id="rwSrcWarn"></div>
+      </section>
+
+      <!-- ================= 스키마 검사 ================= -->
+      <section class="doc-section" id="gap">
+        <h2 class="doc-h2">스키마 검사</h2>
+        <div class="doc-h2-sub">
+          엔진이 읽는 키와 JSON 이 들고 있는 컬럼을 맞춰 봅니다.
+          <b>여기서 FAIL 이 뜨면 분포 숫자를 믿으면 안 됩니다</b> &mdash; 엔진이 그 컬럼을 아예
+          안 읽고 돌았다는 뜻이라, 결과는 조용히 다른 규칙의 결과입니다.
+          엔진은 2026-08 판본 기준으로 만들어졌고, 시트는 그 뒤로 움직였습니다.
+          <b>이번 판에서는 갭을 고치지 않고 보고만 합니다</b> &mdash;
+          <code>order_repeat_reset_count</code> 의 행방과 하루 누적 난이도 축을 기획에 먼저
+          확인해야 해서, 지금 고치면 또 추측값이 들어갑니다.
+        </div>
+        <div class="rw-tt"><h3>엔진 ↔ 시트 대조</h3><span id="rwGapSum">…</span></div>
+        <div class="rw-tw">
+          <table>
+            <thead><tr><th>판정</th><th>항목</th><th>엔진이 읽는 것</th><th>JSON 이 든 것</th><th>결과</th></tr></thead>
+            <tbody id="rwGap"></tbody>
+          </table>
+        </div>
+
+        <div class="rw-tt"><h3>탭 판본</h3><span>data_manifest 가 정본 · 추출 행 수와 대조</span></div>
+        <div class="rw-tw">
+          <table>
+            <thead><tr><th>탭</th><th class="num">행</th><th class="num">manifest 행</th><th class="num">컬럼</th><th>schema_hash</th><th>critical</th></tr></thead>
+            <tbody id="rwTabs"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= 규칙 검사 ================= -->
+      <section class="doc-section" id="rules">
+        <h2 class="doc-h2">규칙 검사</h2>
+        <div class="doc-h2-sub">
+          아래 <a href="#sim">뽑기 분포</a>에서 돌린 표본 전량을 놓고, 기획서가 정한 규칙을
+          실제로 지켰는지 봅니다. 기대값은 <b>엔진 코드가 아니라 시트 값에서</b> 따로 계산합니다
+          &mdash; 엔진 계산을 그대로 다시 쓰면 같은 착오를 두 번 하게 되어 아무것도 못 잡습니다.
+          비율 판정은 이항분포 3σ 로 봅니다(1000 발급이면 ±1.5%p 안팎).
+        </div>
+        <div class="rw-tw">
+          <table>
+            <thead><tr><th>판정</th><th>검사</th><th>기대</th><th>실측</th><th>근거</th></tr></thead>
+            <tbody id="rwRules"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= 분포 ================= -->
+      <section class="doc-section" id="sim">
+        <h2 class="doc-h2">뽑기 분포</h2>
+        <div class="doc-h2-sub">
+          같은 조건으로 여러 장을 연속 발급해서 <b>실제로 어떤 오더가 나오는지</b> 봅니다.
+          고정 오더는 빼고 랜덤 경로만 돌립니다. 보드가 비어 있으면 모든 후보가 「미요구」 배수
+          <code id="rwMultNR">1000</code> 을 받아 평평하게 나오고, 보드에 물건이 쌓이면
+          「동급·하급 보유」 배수 <code id="rwMultHL">10000</code> 이 걸려 쏠립니다.
+          <b>보드는 프리셋으로 줍니다</b> &mdash; 시트에 없는 값을 시트 JSON 에 끼워 넣지 않으려고
+          벤치의 실제 보드를 읽지 않습니다. 아래 줄에 무엇이 걸렸는지 적힙니다.
+          <b>레일 맥락</b>을 켜면 다른 오더의 요구와 직전 요구 제외가 들어가고, 반복 억제 카운터도
+          시뮬 안에서 감쇠·리셋하며 돌아갑니다 &mdash; 끄면 배수 4 개 중 「타 오더 요구」 축 둘이 나오지 않습니다.
+        </div>
+        <div class="rw-panel">
+          <div class="rw-pb">
+            <div class="rw-bar">
+              <div class="rw-f"><label>발급 수</label><input id="rwN" type="number" value="2000" min="10" max="50000" /></div>
+              <div class="rw-f"><label>유저 레벨</label><input id="rwLv" type="number" value="5" min="1" max="30" /></div>
+              <div class="rw-f"><label>오더 타입</label><select id="rwType"></select></div>
+              <div class="rw-f"><label>보드 상황</label>
+                <select id="rwBoard">
+                  <option value="empty">빈 보드</option>
+                  <option value="all">후보 전종 1개씩 보유</option>
+                  <option value="half">홀수 체인만 보유</option>
+                </select>
+              </div>
+              <div class="rw-f"><label>레일 맥락</label>
+                <select id="rwCtx">
+                  <option value="rail">타 오더·직전 반영</option>
+                  <option value="none">반영 안 함</option>
+                </select>
+              </div>
+              <label class="rw-chk" title="끄면 돌릴 때마다 난수 열을 이어 갑니다"><input type="checkbox" id="rwFix" checked /> 시드 고정</label>
+              <button class="rw-btn pri" id="rwGo">돌리기</button>
+            </div>
+            <div class="rw-kpis" id="rwKpi"></div>
+            <p class="rw-tnote" id="rwWhy"></p>
+            <p class="rw-tnote">방금 뽑힌 오더 8장 &mdash; 붉은 테두리는 규칙 위반</p>
+            <div class="rw-samples" id="rwSamples"></div>
+            <p class="rw-tnote">요구 종수 &mdash; 세로선이 <code>order_item_count</code> 기대값</p>
+            <div class="rw-bars" id="rwCount" style="margin-bottom:18px"></div>
+            <p class="rw-tnote">가장 많이 나온 요구 조합 &mdash; 상위 10</p>
+            <div class="rw-bars" id="rwCombo" style="margin-bottom:18px"></div>
+            <p class="rw-tnote">첫 자리 아이템 분포 &mdash; 상위 30종 · 세로선이 가중치 기대값</p>
+            <div class="rw-bars" id="rwBars"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 로그 ================= -->
+      <section class="doc-section" id="log">
+        <h2 class="doc-h2">판정 로그</h2>
+        <div class="doc-h2-sub">
+          위에서 돌린 표본 8장의 판정 근거입니다. 발급 한 건마다
+          <b>[0] 고정 검사 → [1] 예산·대기 → [2] 밴드 → [3] 제외 → [4] 자리별 가중 추첨 →
+          [5] 종수 → [6] 손님 → [7] 보상</b> 순서로 남습니다. 자리를 먼저 뽑고 종수를 나중에
+          정하기 때문에 버려지는 후보가 생기는데, 그것도 반복 카운터 갱신에는 들어갑니다.
+        </div>
+        <div class="rw-panel">
+          <div class="rw-ph">
+            <h3>표본 판정 근거</h3>
+            <span class="sub" id="rwRng"></span>
+          </div>
+          <div class="rw-log" id="rwLog"></div>
+        </div>
+      </section>
+    </main>
+
+    <div class="rw-toast" id="rwToast"></div>
+
+    <!-- 엔진은 벤치와 공유한다. 페이지 스크립트보다 먼저 와야 한다(DATA · S 를 여기서 선언). -->
+    <script src="js/rosewood-order-engine.js?v=1"></script>
+    <script>
+      "use strict";
+      /* ======================================================================
+         0. 입력 — 기본 JSON · 드롭 · 캐시
+         ====================================================================== */
+      const PAGE_BUILD = "v1.0 · 2026-09-10";
+      const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
+      const BAL_URL = "data/rosewood-balance.json";
+      const SEED0 = 20260910;
+      let SEED = SEED0;
+      let SRC = { kind: "…", meta: null, warn: [] };
+      let LAST = null;                          // 마지막 시뮬 결과 — 규칙 검사가 읽는다
+
+      function toast(m) {
+        const t = $("#rwToast");
+        t.textContent = m; t.classList.add("on");
+        clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1800);
+      }
+
+      /* 엔진이 기대하는 최소 형태로 맞춘다. 없는 탭은 빈 배열로 둔다 —
+         여기서 죽으면 무엇이 없어서 죽었는지 화면에 못 적는다. */
+      const NEED = ["const", "order_rule", "order_slot_band", "order_item", "order_item_count",
+                    "order_avatar", "order_fixed", "event_order_score", "item_spec", "level_curve"];
+      function normalize(json) {
+        const out = { _meta: json._meta || null };
+        const warn = [];
+        for (const k of NEED) {
+          const v = json[k];
+          if (k === "const") { out[k] = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+          else out[k] = Array.isArray(v) ? v : [];
+          if (v == null) warn.push(`${k} 없음 — 빈 값으로 둡니다`);
+        }
+        return { data: out, warn };
+      }
+
+      function applyBalance(json, kind) {
+        const n = normalize(json);
+        DATA = n.data; IDX = null; reindex();
+        SRC = { kind, meta: DATA._meta, warn: n.warn.concat((DATA._meta && DATA._meta.warnings) || []) };
+
+        S = freshState();
+        // 보드는 프리셋으로 준다 — 시드 보드(CHAINS 기준)는 시트 코드와 맞지 않는다
+        S.cells = new Array(CELLS).fill(null);
+        S.day = 999;        // 손님 해금 전원 — [6] 은 분포에 영향이 없다
+        S.slots = {}; S.prevOfSlot = {};
+
+        /* 표시용 라벨을 갈아끼운다. 엔진 기본값은 알파벳 한 글자(chain 2 → A)라
+           시트 실물(chain_id 1~31)에서는 '@' 나 '^' 가 나온다. */
+        labelOf = (code) => `${chainOf(code)}-${stepOf(code)}`;
+
+        $("#rwBuild").textContent = `build ${PAGE_BUILD} · engine ${BUILD}`;
+        $("#rwType").innerHTML = DATA.order_rule
+          .map((r) => `<option value="${r.order_type}">${r.order_type}</option>`).join("")
+          || '<option value="">order_rule 없음</option>';
+        const C = DATA.const || {};
+        $("#rwMultNR").textContent = C.order_weight_mult_not_required ?? "?";
+        $("#rwMultHL").textContent = C.order_weight_mult_higher_level ?? "?";
+
+        renderSource(); renderTabs(); renderGap(); run();
+      }
+
+      async function loadDefault() {
+        const r = await fetch(BAL_URL, { cache: "no-store" });
+        if (!r.ok) throw new Error(`${BAL_URL} — HTTP ${r.status}`);
+        return r.json();
+      }
+
+      async function boot() {
+        try {
+          const raw = localStorage.getItem(BAL_KEY);
+          if (raw) { applyBalance(JSON.parse(raw), "cache"); toast("직전에 넣은 JSON 으로 엽니다"); return; }
+        } catch (e) { /* 시크릿 창 · 사이트 데이터 차단 — 조용히 기본값으로 */ }
+        try { applyBalance(await loadDefault(), "default"); }
+        catch (e) {
+          $("#rwSrcWarn").innerHTML =
+            `<div class="rw-empty">기본 JSON 을 읽지 못했습니다 — ${e.message}<br>` +
+            `<code>file://</code> 로 열면 fetch 가 막힙니다. ` +
+            `<code>python3 -m http.server</code> 로 띄우거나 JSON 을 직접 떨어뜨리세요.</div>`;
+        }
+      }
+
+      function nameOf(code) {
+        const s = specOf(code);
+        return s && s.name_ko ? s.name_ko : labelOf(code);
+      }
+
+      function renderSource() {
+        const m = SRC.meta || {};
+        const kind = { default: "기본값 (커밋된 JSON)", cache: "브라우저에 넣어 둔 JSON", drop: "방금 떨어뜨린 JSON" }[SRC.kind] || SRC.kind;
+        $("#rwSrcTag").textContent = `입력 ${kind}`;
+        $("#rwSrc").innerHTML = [
+          ["입력", kind],
+          ["원본", m.source || "—"],
+          ["시트 수정", (m.source_mtime || "—").replace("T", " ").slice(0, 16)],
+          ["변환", (m.converted_at || "—").replace("T", " ").slice(0, 16)],
+          ["탭", Object.keys(m.tabs || {}).length || NEED.filter((k) => (DATA[k] || []).length).length],
+        ].map(([k, v]) => `<div><u>${k}</u><b>${v}</b></div>`).join("");
+        $("#rwSrcWarn").innerHTML = SRC.warn.length
+          ? `<div class="rw-empty" style="text-align:left">변환·입력 경고<br>${SRC.warn.map((w) => `· ${w}`).join("<br>")}</div>`
+          : "";
+      }
+
+      function renderTabs() {
+        const tabs = (SRC.meta && SRC.meta.tabs) || {};
+        const rows = NEED.map((k) => {
+          const got = k === "const" ? Object.keys(DATA.const || {}).length : (DATA[k] || []).length;
+          const m = tabs[k];
+          const same = !m || m.records == null || m.records === got;
+          return `<tr>
+            <td><code>${k}</code></td>
+            <td class="num">${got}</td>
+            <td class="num">${m && m.records != null ? m.records : "—"} ${same ? "" : '<span class="rw-v no">불일치</span>'}</td>
+            <td class="num">${m && m.columns != null ? m.columns : "—"}</td>
+            <td><code>${m && m.schema_hash ? m.schema_hash : "—"}</code></td>
+            <td>${m && m.is_critical ? '<span class="rw-v warn">critical</span>' : "—"}</td></tr>`;
+        });
+        $("#rwTabs").innerHTML = rows.join("");
+      }
+
+      /* ======================================================================
+         1. 스키마 검사 — 엔진이 읽는 키 ↔ JSON 컬럼
+         ====================================================================== */
+      const has = (rows, col) => rows.length > 0 && rows.some((r) => r[col] !== undefined);
+      const uniq = (rows, col) => [...new Set(rows.map((r) => r[col]))];
+
+      function checks() {
+        const C = DATA.const || {};
+        const rule = DATA.order_rule, band = DATA.order_slot_band, oi = DATA.order_item;
+        const cnt = DATA.order_item_count, fx = DATA.order_fixed, ev = DATA.event_order_score;
+        const spec = DATA.item_spec;
+        const out = [];
+        const add = (v, item, engine, json, note) => out.push({ v, item, engine, json, note });
+
+        // 슬롯 → 타입 매핑. 엔진은 5종을 기대한다(slotType)
+        const want = ["normal", "high", "random_3", "random_4", "special"];
+        const got = uniq(rule, "order_type");
+        const miss = want.filter((t) => !got.includes(t));
+        add(miss.length ? "no" : "ok", "order_rule 타입 집합",
+            `slotType() 이 <code>${want.join(" / ")}</code> 를 기대`,
+            `<code>${got.join(" / ") || "없음"}</code>`,
+            miss.length
+              ? `벤치의 슬롯 → 타입 매핑이 <code>${miss.join(", ")}</code> 를 찾다 실패한다. 이 페이지는 타입을 직접 골라 돌리므로 영향받지 않는다`
+              : "일치");
+
+        // item_slot_max — 엔진은 자리 2개까지만 범위를 안다
+        const maxSlot = Math.max(0, ...rule.map((r) => Number(r.item_slot_max) || 0));
+        add(maxSlot > 2 ? "no" : "ok", "item_slot_max",
+            "자리 1·2 만 범위를 읽는다 (first_*, second_max)",
+            `최대 <b>${maxSlot}</b>`,
+            maxSlot > 2
+              ? `셋째 자리를 <code>second_max</code> 로 뽑는다 — <code>third_min/third_max</code> 를 안 읽는다`
+              : "자리 2 이하 — 문제 없음");
+
+        // 밴드 컬럼
+        const bandUnused = ["second_min", "third_min", "third_max", "diff_sum_min", "diff_sum_max"]
+          .filter((c) => has(band, c));
+        add(bandUnused.length ? "no" : "ok", "order_slot_band 컬럼",
+            "<code>level_min/max · first_min/max · second_max</code>",
+            `<code>${Object.keys(band[0] || {}).join(", ") || "없음"}</code>`,
+            bandUnused.length ? `엔진이 안 읽는 컬럼: <code>${bandUnused.join(", ")}</code>` : "전 컬럼 사용");
+
+        // order_item 가중치
+        const wCols = ["weight", "weight_multiple"].filter((c) => has(oi, c));
+        add(wCols.length ? "no" : "ok", "order_item 기본 가중치",
+            "보드 배수 ÷ <code>repeat_weight_decrease</code> 만",
+            `<code>${wCols.join(", ") || "없음"}</code>`,
+            wCols.length
+              ? `<code>${wCols.join(" · ")}</code> 를 곱하지 않는다. 현재 전 행이 ${uniq(oi, "weight").join("/")} · ${uniq(oi, "weight_multiple").join("/")} 라 분포 차이는 없지만, 시트가 값을 흔들면 그 순간부터 틀린다`
+              : "컬럼 없음 — 문제 없음");
+
+        // order_item_count 종수 상한
+        const maxCount = Math.max(0, ...cnt.map((r) => Number(r.item_count) || 0));
+        add(maxCount > 2 && maxSlot > 2 ? "warn" : "ok", "order_item_count 종수",
+            "<code>item_count ≤ 자리 수</code> 인 행만 후보",
+            `최대 <b>${maxCount}</b>종`,
+            maxCount > 2 ? "3종 행은 자리 3개가 뽑혀야 후보가 된다 — 셋째 자리 범위가 틀리면 종수 분포도 함께 틀린다" : "—");
+
+        // order_fixed 요구 3
+        add(has(fx, "requirement_3") ? "no" : "ok", "order_fixed 요구품",
+            "<code>requirement_1 · requirement_2</code>",
+            `<code>${Object.keys(fx[0] || {}).filter((k) => k.startsWith("requirement")).join(", ") || "없음"}</code>`,
+            has(fx, "requirement_3") ? "3종 고정 오더를 만들지 못한다" : "2종 이하");
+
+        // event_order_score 기준값
+        const base = uniq(ev, "score_base").filter(Boolean);
+        add(base.length && !base.includes("diff") ? "no" : "ok", "event_order_score 기준값",
+            "난이도(<code>diff_score</code>) 합을 넘긴다",
+            `<code>score_base = ${base.join(" / ") || "없음"}</code>`,
+            base.length && !base.includes("diff")
+              ? `기준값이 <b>${base.join("/")}</b> 인데 난이도를 넘기고 있다. 이벤트 재화 수치가 틀린다`
+              : "일치");
+        const evIds = uniq(ev, "event_id").filter((v) => v != null);
+        add(evIds.length > 1 ? "no" : "ok", "event_order_score 이벤트 구분",
+            "<code>event_id</code> 를 보지 않고 전 행에서 고른다",
+            `<code>event_id</code> ${evIds.length}종`,
+            evIds.length > 1 ? "여러 이벤트 행이 섞여 마지막 행이 뽑힌다 — 이벤트별로 갈라야 한다" : "—");
+
+        // const
+        add("order_repeat_reset_count" in C ? "ok" : "no", "const.order_repeat_reset_count",
+            "반복 억제 리셋값으로 읽는다",
+            "order_repeat_reset_count" in C ? `<b>${C.order_repeat_reset_count}</b>` : "<b>없음</b>",
+            "order_repeat_reset_count" in C ? "—"
+              : "리셋값이 <code>undefined</code> 가 되어 <b>반복 억제가 사실상 꺼진다</b>. 시트에서 이 키가 어디로 갔는지 확인 필요");
+        const dailyKeys = Object.keys(C).filter((k) => k.startsWith("order_daily_diff"));
+        add(dailyKeys.length ? "no" : "ok", "하루 누적 난이도 축",
+            "쓰지 않는다 (밴드는 종류 + 레벨 두 축)",
+            `<code>${dailyKeys.join(", ") || "없음"}</code>`,
+            dailyKeys.length
+              ? "시트에 축이 실재한다(<code>order_slot_band.diff_sum_*</code> 와 짝). 엔진은 이 축 없이 밴드를 고른다"
+              : "—");
+
+        // chain_id 기준
+        const chains = uniq(spec, "chain_id").filter((v) => v != null).map(Number);
+        const minCh = chains.length ? Math.min(...chains) : null;
+        add(minCh != null && minCh < 2 ? "warn" : "ok", "item_spec.chain_id 기준",
+            "<code>letterOf</code> 가 chain 2 → A 로 본다",
+            `${chains.length}종 · 최소 <b>${minCh ?? "—"}</b> · 최대 <b>${chains.length ? Math.max(...chains) : "—"}</b>`,
+            minCh != null && minCh < 2
+              ? "알파벳 한 글자로 라벨이 안 된다 — 이 페이지는 <code>체인-단계</code> 표기로 갈아끼워 돈다"
+              : "—");
+
+        // 참조 정합 — 여기가 깨지면 분포가 아니라 데이터가 문제다
+        const specCodes = new Set(spec.map((r) => r.item_code));
+        const dangling = oi.filter((o) => !specCodes.has(o.item_code)).map((o) => o.item_code);
+        add(dangling.length ? "no" : "ok", "order_item → item_spec 참조",
+            "<code>oiOf</code> · <code>specOf</code> 로 양쪽을 인덱스",
+            dangling.length ? `없는 코드 ${dangling.length}개` : "전 행 해소",
+            dangling.length ? `<code>${dangling.slice(0, 8).join(", ")}</code>` : "—");
+        const fxBad = fx.flatMap((r) => [r.requirement_1, r.requirement_2, r.requirement_3])
+          .filter((c) => c && !specCodes.has(c));
+        add(fxBad.length ? "no" : "ok", "order_fixed → item_spec 참조", "고정 오더 요구품 조회",
+            fxBad.length ? `없는 코드 ${fxBad.length}개` : "전 행 해소",
+            fxBad.length ? `<code>${[...new Set(fxBad)].slice(0, 8).join(", ")}</code>` : "—");
+
+        return out;
+      }
+
+      const VERDICT = { ok: "PASS", no: "FAIL", warn: "주의", na: "—" };
+      function renderGap() {
+        const rows = checks();
+        const bad = rows.filter((r) => r.v === "no").length;
+        const warn = rows.filter((r) => r.v === "warn").length;
+        $("#rwGapSum").innerHTML = bad
+          ? `<span class="rw-v no">FAIL ${bad}</span> ${warn ? `<span class="rw-v warn">주의 ${warn}</span>` : ""} / ${rows.length}개 검사`
+          : `<span class="rw-v ok">전 항목 PASS</span> / ${rows.length}개 검사`;
+        $("#rwGap").innerHTML = rows.map((r) => `<tr>
+            <td><span class="rw-v ${r.v}">${VERDICT[r.v]}</span></td>
+            <td><b>${r.item}</b></td><td>${r.engine}</td><td>${r.json}</td><td>${r.note}</td></tr>`).join("");
+      }
+
+      /* ======================================================================
+         2. 보드 프리셋 — 벤치 보드를 읽지 않는다
+         ====================================================================== */
+      function boardPreset(kind, level) {
+        const m = new Map();
+        if (kind === "empty") return m;
+        const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level);
+        for (const o of pool) {
+          if (kind === "half" && chainOf(o.item_code) % 2 === 0) continue;
+          m.set(o.item_code, 1);
+        }
+        return m;
+      }
+
+      /* ======================================================================
+         3. 시뮬 — 엔진의 generateOrder 를 dry 로 N 번 돌린다
+         ====================================================================== */
+      function run() {
+        if (!DATA.order_rule.length) { toast("order_rule 이 비어 있어 돌릴 수 없습니다"); return; }
+        const N = clamp(Number($("#rwN").value) || 2000, 10, 50000);
+        const lv = clamp(Number($("#rwLv").value) || 1, 1, 30);
+        const type = $("#rwType").value;
+        const counts = boardPreset($("#rwBoard").value, lv);
+        const useCtx = $("#rwCtx").value === "rail";
+        const fixed = $("#rwFix").checked;
+
+        /* 레일 맥락 — 빈 집합으로 두면 기획서 [2] 의 배수 4 개 중 「타 오더 요구」 축
+           둘(100 · 1)이 아예 발생하지 않아 실제 분포와 달라진다. 실제 레일이 없으므로
+           후보 두 종을 다른 오더의 요구로 가정해 넣는다. */
+        const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= lv);
+        const othersReq = new Set();
+        const prev = useCtx && pool.length ? [pool[Math.floor(pool.length / 2)].item_code] : null;
+        if (useCtx) pool.slice(0, 2).forEach((o) => othersReq.add(o.item_code));
+
+        const repeat = {};
+        const band = pickBand(type, lv);
+        const rule = ruleOf(type);
+
+        const seatTally = [new Map(), new Map(), new Map()];
+        const tally = new Map(), combo = new Map(), cnt = new Map();
+        const samples = [], viol = [];
+        let coin = 0, diff = 0, evt = 0, fail = 0, locked = false, ok = 0;
+
+        const saved = RNG.save();
+        RNG.load(String(fixed ? SEED0 : SEED));
+        for (let i = 0; i < N; i++) {
+          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev, repeat, skipFixed: true });
+          if (!r.card) { fail++; if (r.locked) locked = true; continue; }
+          ok++;
+          const c = r.card;
+          coin += c.coin; diff += c.diff; evt += c.evt || 0;
+          cnt.set(c.reqs.length, (cnt.get(c.reqs.length) || 0) + 1);
+          c.reqs.forEach((q, seat) => {
+            tally.set(q.code, (tally.get(q.code) || 0) + 1);
+            if (seat < 3) seatTally[seat].set(q.code, (seatTally[seat].get(q.code) || 0) + 1);
+          });
+          const key = c.reqs.map((q) => q.code).join("+");
+          combo.set(key, (combo.get(key) || 0) + 1);
+          const v = violations(c, { band, lv, othersReq, prev });
+          if (v.length) viol.push({ card: c, why: v });
+          if (samples.length < 8) samples.push({ card: c, log: r.log, why: v });
+        }
+        if (!fixed) SEED = RNG.save();
+        RNG.load(saved);
+
+        LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool,
+                 tally, seatTally, combo, cnt, viol, coin, diff, evt, locked, fixed,
+                 repeatEnd: Object.keys(repeat).length };
+
+        renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
+      }
+
+      /* 규칙 위반 — 기대는 시트 값에서 따로 계산한다(엔진 계산을 다시 쓰지 않는다) */
+      function violations(card, ctx) {
+        const out = [];
+        const codes = card.reqs.map((q) => q.code);
+        if (new Set(codes).size !== codes.length) out.push("같은 코드를 두 번 요구");
+        for (const q of card.reqs) {
+          const o = oiOf(q.code);
+          if (!o) { out.push(`${labelOf(q.code)} order_item 에 없음`); continue; }
+          if (o.unlock_level > ctx.lv) out.push(`${labelOf(q.code)} unlock_level ${o.unlock_level} > Lv${ctx.lv}`);
+          if (ctx.othersReq.has(q.code)) out.push(`${labelOf(q.code)} 타 오더 요구인데 뽑힘`);
+          if (ctx.prev && ctx.prev.includes(q.code)) out.push(`${labelOf(q.code)} 직전 요구인데 뽑힘`);
+        }
+        const b = ctx.band;
+        if (b) {
+          const lim = [
+            [b.first_min ?? 0, b.first_max ?? 99],
+            [b.second_min ?? 0, b.second_max ?? 99],
+            [b.third_min ?? 0, b.third_max ?? 99],
+          ];
+          card.reqs.forEach((q, i) => {
+            if (i >= lim.length) return;
+            const st = stepOf(q.code);
+            const [lo, hi] = lim[i];
+            if (st < lo || st > hi) out.push(`자리${i + 1} ${labelOf(q.code)} 단계 ${st} 가 밴드 ${lo}~${hi} 밖`);
+          });
+        }
+        return out;
+      }
+
+      /* ======================================================================
+         4. 렌더
+         ====================================================================== */
+      function renderKpi() {
+        const L = LAST, ok = L.ok || 1;
+        $("#rwKpi").innerHTML = [
+          ["발급 성공", `${L.ok}/${L.N}`],
+          ["평균 코인", (L.coin / ok).toFixed(1)],
+          ["평균 난이도", (L.diff / ok).toFixed(1)],
+          ["평균 이벤트", (L.evt / ok).toFixed(1)],
+          ["등장 종수", `${L.tally.size}종`],
+          ["규칙 위반", L.viol.length ? `${L.viol.length}건` : "0"],
+        ].map(([k, v]) => `<div class="rw-kpi"><u>${k}</u><b>${v}</b></div>`).join("");
+      }
+
+      function renderWhy() {
+        const L = LAST, C = DATA.const || {};
+        const bucket = {};
+        L.pool.forEach((o) => {
+          const w = situationMult(o.item_code, L.othersReq, L.counts, C).why;
+          bucket[w] = (bucket[w] || 0) + 1;
+        });
+        const held = L.counts.size;
+        $("#rwWhy").innerHTML =
+          (L.locked ? `<b style="color:var(--deploy)">${L.type} 은 Lv${L.rule ? L.rule.unlock_level : "?"} 부터 발급됩니다 — 이 레벨에서는 한 장도 나오지 않습니다.</b> · ` : "") +
+          `후보 ${L.pool.length}종 · 배수 ${Object.entries(bucket).map(([k, v]) => `${k} ${v}종`).join(" / ") || "—"}` +
+          ` · 보드 보유 ${held}종` +
+          ` · 타 오더 요구 ${L.othersReq.size}종${L.prev ? ` · 직전 제외 ${L.prev.map(labelOf).join(",")}` : ""}` +
+          ` · 밴드 ${L.band ? `band_seq=${L.band.band_seq} (${L.band.first_min}~${L.band.first_max} / ≤${L.band.second_max}${L.band.third_max != null ? ` / ≤${L.band.third_max}` : ""})` : "없음"}` +
+          ` · 눌린 체인 ${L.repeatEnd}개` +
+          ` · 시드 ${L.fixed ? `${SEED0} (고정)` : "이어서"}`;
+        $("#rwRng").textContent = `seed ${L.fixed ? SEED0 : SEED} · ${L.type} · Lv${L.lv} · ${L.N}발급`;
+      }
+
+      function chipHTML(code, bad) {
+        return `<span class="rw-req${bad ? " bad" : ""}" style="--h:${hueOf(chainOf(code))}deg" title="${nameOf(code)}">${labelOf(code)}</span>`;
+      }
+      function cardHTML(card, why) {
+        const badSet = new Set((why || []).join(" ").match(/\d+-\d+/g) || []);
+        return `<div class="rw-card">
+            <span class="rw-npc">${String(card.avatar || "—").slice(0, 3)}</span>
+            <div class="rw-top"><span class="rw-ra"><span>◎ ${card.coin}</span>${card.diff ? `<span>◈ ${card.diff}</span>` : ""}</span></div>
+            <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(labelOf(q.code)))).join("")}</div>
+            <div class="rw-bot">
+              <span class="rw-rb" title="B — 이벤트 재화">◆ ${card.evt ?? 0}</span>
+              <span class="rw-lbl">${card.type}${card.band ? ` b${card.band}` : ""}</span>
+              <span class="rw-rc" title="C — 팩·카드">★ 팩</span>
+            </div></div>`;
+      }
+      function renderSamples(samples) {
+        $("#rwSamples").innerHTML = samples.length
+          ? samples.map((s) => cardHTML(s.card, s.why)).join("")
+          : '<div class="rw-empty">이 조건에서는 카드가 만들어지지 않았습니다.</div>';
+      }
+
+      /* scale 은 그 묶음에서 가장 큰 비율이다 — 100% 기준으로 그리면 30 종 막대가
+         전부 3% 짜리 실선이 되어 차이가 안 보인다. 기대값 표식도 같은 축에 얹는다. */
+      function barHTML(name, n, total, expPct, hue, title, scale) {
+        const pct = total ? (n / total) * 100 : 0;
+        const sc = scale && scale > 0 ? scale : 100;
+        const w = (v) => `${clamp((v / sc) * 100, 0, 100)}%`;
+        return `<div class="rw-b" style="--h:${hue}deg">
+            <span class="nm" title="${title || name}">${name}</span>
+            <span class="track"><span class="fill" style="width:${w(pct)}"></span>${
+              expPct != null ? `<span class="exp" style="left:${w(expPct)}" title="기대 ${expPct.toFixed(2)}%"></span>` : ""
+            }</span>
+            <span class="n">${pct.toFixed(2)}%${expPct != null ? ` / ${expPct.toFixed(2)}%` : ""} · ${n}</span></div>`;
+      }
+
+      /* 자리 1 의 기대 확률 — 시트 규칙으로 따로 계산한다.
+         p ∝ weight × weight_multiple × 보드배수 ÷ repeat 제수.
+         엔진은 weight 를 곱하지 않으므로, 시트가 weight 를 흔들면 이 두 값이 갈린다. */
+      function expectSeat1() {
+        const L = LAST, C = DATA.const || {}, b = L.band;
+        if (!b) return null;
+        const lo = b.first_min ?? 0, hi = b.first_max ?? 99;
+        const banned = new Set([...L.othersReq, ...(L.prev || [])]);
+        const cand = L.pool.filter((o) => {
+          const st = stepOf(o.item_code);
+          return st >= lo && st <= hi && !banned.has(o.item_code);
+        });
+        const rows = cand.map((o) => {
+          const m = situationMult(o.item_code, L.othersReq, L.counts, C).v;
+          const w = (Number(o.weight) || 1) * (Number(o.weight_multiple) || 1) * m;
+          return { code: o.item_code, w };
+        });
+        const sum = rows.reduce((a, r) => a + r.w, 0);
+        return { map: new Map(rows.map((r) => [r.code, sum ? (r.w / sum) * 100 : 0])), n: cand.length };
+      }
+
+      function expectCount() {
+        const L = LAST;
+        const rows = DATA.order_item_count.filter((r) => r.in_use && r.level <= L.lv);
+        if (!rows.length) return null;
+        const grp = Math.max(...rows.map((r) => r.level));
+        const slotMax = L.rule ? L.rule.item_slot_max : 2;
+        const use = DATA.order_item_count.filter((r) => r.in_use && r.level === grp && r.item_count <= slotMax);
+        const sum = use.reduce((a, r) => a + r.count_weight, 0);
+        return { map: new Map(use.map((r) => [r.item_count, sum ? (r.count_weight / sum) * 100 : 0])), grp, slotMax };
+      }
+
+      function renderBars() {
+        const L = LAST, ok = L.ok || 1;
+        const ec = expectCount();
+        const cntRows = [...L.cnt.entries()].sort((a, b) => a[0] - b[0]);
+        const cntScale = Math.max(...cntRows.map(([k, n]) => n / ok * 100),
+                                  ...(ec ? [...ec.map.values()] : [0]));
+        $("#rwCount").innerHTML = cntRows.length
+          ? cntRows.map(([k, n]) => barHTML(`${k}종`, n, ok, ec ? ec.map.get(k) : null, 210, null, cntScale)).join("")
+          : '<div class="rw-empty">종수 집계 없음</div>';
+
+        const top = [...L.combo.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const comboScale = top.length ? (top[0][1] / ok) * 100 : 100;
+        $("#rwCombo").innerHTML = top.length
+          ? top.map(([k, n]) => {
+              const items = k.split("+").map(Number);
+              return barHTML(items.map(labelOf).join(" + "), n, ok, null, hueOf(chainOf(items[0])),
+                             items.map(nameOf).join(" + "), comboScale);
+            }).join("")
+          : '<div class="rw-empty">조합 없음</div>';
+
+        const es = expectSeat1();
+        const seat1 = [...L.seatTally[0].entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+        const s1 = [...L.seatTally[0].values()].reduce((a, b) => a + b, 0) || 1;
+        const s1Scale = Math.max(...seat1.map(([c, n]) => (n / s1) * 100),
+                                 ...(es ? seat1.map(([c]) => es.map.get(c) || 0) : [0]));
+        $("#rwBars").innerHTML = seat1.length
+          ? seat1.map(([code, n]) => barHTML(`${labelOf(code)} ${nameOf(code)}`, n, s1,
+              es ? es.map.get(code) : null, hueOf(chainOf(code)), nameOf(code), s1Scale)).join("")
+          : '<div class="rw-empty">해당 조건에서 뽑힌 아이템이 없습니다.</div>';
+      }
+
+      function renderLog(samples) {
+        if (!samples.length) {
+          $("#rwLog").innerHTML = '<div class="rw-e"><div class="rw-steps" style="opacity:.6">표본이 없습니다 — 조건을 바꿔 다시 돌려 보세요.</div></div>';
+          return;
+        }
+        $("#rwLog").innerHTML = samples.map((s, i) => `<div class="rw-e">
+            <h4>표본 ${i + 1} · ${s.card.type}${s.card.band ? ` b${s.card.band}` : ""}
+              ${s.why.length ? `<span class="rw-v no">위반 ${s.why.length}</span>` : '<span class="rw-v ok">PASS</span>'}
+              <span class="tag">${s.card.reqs.map((q) => nameOf(q.code)).join(" + ")}</span></h4>
+            ${s.why.length ? `<div class="rw-steps"><span class="w">${s.why.join("\n")}</span></div>` : ""}
+            <div class="rw-steps">${s.log.join("\n")}</div></div>`).join("");
+      }
+
+      /* ======================================================================
+         5. 규칙 검사 — 표본 전량 대상
+         ====================================================================== */
+      /* 이항분포 3σ. 1000 발급에 기대 50% 면 ±4.7%p 가 아니라 ±1.5%p 다 — 눈대중으로 보면 틀린다.
+         단 기대빈도(np)가 5 미만이면 정규근사가 안 먹는다. 기대 0.004% 짜리 후보가 한 번
+         뽑히기만 해도 3σ 를 넘어 FAIL 이 뜨는데, 그건 엔진이 아니라 판정이 틀린 것이다.
+         그런 후보는 「표본 부족」으로 빼고, 판정은 np >= 5 인 것만 본다. */
+      const MIN_EXPECT = 5;
+      const sigma3 = (p, n) => 3 * Math.sqrt((p * (1 - p)) / Math.max(1, n)) * 100;
+      const testable = (p, n) => p * n >= MIN_EXPECT;
+
+      function renderRules() {
+        const L = LAST, ok = L.ok || 1;
+        const rows = [];
+        const add = (v, name, exp, act, note) => rows.push({ v, name, exp, act, note });
+
+        // T1 종수 분포
+        const ec = expectCount();
+        if (!ec) add("na", "T1 요구 종수 분포", "—", "—", "order_item_count 활성 행이 없다");
+        else {
+          const bad = [], thin = [];
+          for (const [k, p] of ec.map) {
+            const obs = ((L.cnt.get(k) || 0) / ok) * 100;
+            if (!testable(p / 100, ok)) { thin.push(`${k}종`); continue; }
+            const tol = sigma3(p / 100, ok);
+            if (Math.abs(obs - p) > tol) bad.push(`${k}종 실측 ${obs.toFixed(2)}% · 기대 ${p.toFixed(2)}% (허용 ±${tol.toFixed(2)}%p)`);
+          }
+          add(bad.length ? "no" : "ok", "T1 요구 종수 분포",
+              [...ec.map.entries()].map(([k, p]) => `${k}종 ${p.toFixed(2)}%`).join(" / "),
+              [...ec.map.keys()].map((k) => `${k}종 ${(((L.cnt.get(k) || 0) / ok) * 100).toFixed(2)}%`).join(" / "),
+              bad.length ? bad.join("<br>")
+                : `order_item_count level 묶음 ${ec.grp} · 자리 상한 ${ec.slotMax} · 3σ 안`
+                  + (thin.length ? ` · 표본 부족으로 제외 ${thin.join(", ")}` : ""));
+        }
+
+        // T2 자리1 가중치 분포
+        const es = expectSeat1();
+        const s1n = [...L.seatTally[0].values()].reduce((a, b) => a + b, 0);
+        if (!es) add("na", "T2 자리1 가중치 분포", "—", "—", "밴드를 못 골랐다");
+        else {
+          let worst = null, judged = 0, thin = 0;
+          for (const [code, p] of es.map) {
+            if (!testable(p / 100, s1n)) { thin++; continue; }
+            judged++;
+            const obs = ((L.seatTally[0].get(code) || 0) / Math.max(1, s1n)) * 100;
+            const d = Math.abs(obs - p) - sigma3(p / 100, s1n);
+            if (!worst || d > worst.d) worst = { code, p, obs, d };
+          }
+          const need = judged ? "" : `기대빈도 ${MIN_EXPECT} 이상인 후보가 없다 — 발급 수를 늘리세요`;
+          add(!judged ? "na" : worst.d > 0 ? "no" : "ok", "T2 자리1 가중치 분포",
+              `후보 ${es.n}종 · <code>weight × weight_multiple × 보드배수 ÷ 제수</code>`,
+              `표본 ${s1n} · 판정 ${judged}종${thin ? ` · 표본 부족 ${thin}종 제외` : ""}`,
+              need || `최대 편차 <code>${labelOf(worst.code)}</code> ${nameOf(worst.code)} — `
+                + `실측 ${worst.obs.toFixed(2)}% · 기대 ${worst.p.toFixed(2)}% · 허용 ±${sigma3(worst.p / 100, s1n).toFixed(2)}%p`
+                + (worst.d > 0 ? ` <b>(${worst.d.toFixed(2)}%p 초과)</b>` : " (3σ 안)"));
+        }
+
+        // T3 밴드 범위
+        const bandViol = L.viol.filter((v) => v.why.some((w) => w.includes("밴드")));
+        add(bandViol.length ? "no" : "ok", "T3 자리별 단계 범위",
+            L.band ? `자리1 ${L.band.first_min}~${L.band.first_max} · 자리2 ${L.band.second_min ?? 0}~${L.band.second_max} · 자리3 ${L.band.third_min ?? 0}~${L.band.third_max ?? "—"}` : "—",
+            bandViol.length ? `위반 ${bandViol.length}건` : "위반 0",
+            bandViol.length ? bandViol[0].why.filter((w) => w.includes("밴드"))[0] : "전 표본이 밴드 안");
+
+        // T4 제외 규칙
+        const banViol = L.viol.filter((v) => v.why.some((w) => w.includes("요구인데")));
+        add(banViol.length ? "no" : "ok", "T4 제외 규칙",
+            "타 오더 요구 · 직전 요구는 후보에서 빠진다",
+            banViol.length ? `위반 ${banViol.length}건` : "위반 0",
+            banViol.length ? banViol[0].why[0] : `제외 대상 ${L.othersReq.size + (L.prev ? L.prev.length : 0)}종`);
+
+        // T5 해금 레벨
+        const lvViol = L.viol.filter((v) => v.why.some((w) => w.includes("unlock_level")));
+        add(lvViol.length ? "no" : "ok", "T5 해금 레벨",
+            `<code>unlock_level ≤ ${L.lv}</code>`,
+            lvViol.length ? `위반 ${lvViol.length}건` : "위반 0",
+            lvViol.length ? lvViol[0].why[0] : "—");
+
+        // T6 중복 요구
+        const dupViol = L.viol.filter((v) => v.why.some((w) => w.includes("두 번")));
+        add(dupViol.length ? "no" : "ok", "T6 같은 코드 중복",
+            "한 카드에 같은 item_code 는 한 번",
+            dupViol.length ? `위반 ${dupViol.length}건` : "위반 0", "—");
+
+        // T7 시드 재현성 — 같은 시드로 두 번 돌려 결과가 같아야 한다
+        const h = (m) => [...m.entries()].sort().map(([k, v]) => `${k}:${v}`).join("|");
+        const before = h(L.tally);
+        const savedRng = RNG.save();
+        RNG.load(String(SEED0));
+        const rep2 = {}, t2 = new Map();
+        for (let i = 0; i < Math.min(300, L.N); i++) {
+          const r = generateOrder(1, { dry: true, level: L.lv, type: L.type, counts: L.counts,
+                                       othersReq: L.othersReq, prev: L.prev, repeat: rep2, skipFixed: true });
+          if (r.card) r.card.reqs.forEach((q) => t2.set(q.code, (t2.get(q.code) || 0) + 1));
+        }
+        RNG.load(String(SEED0));
+        const rep3 = {}, t3 = new Map();
+        for (let i = 0; i < Math.min(300, L.N); i++) {
+          const r = generateOrder(1, { dry: true, level: L.lv, type: L.type, counts: L.counts,
+                                       othersReq: L.othersReq, prev: L.prev, repeat: rep3, skipFixed: true });
+          if (r.card) r.card.reqs.forEach((q) => t3.set(q.code, (t3.get(q.code) || 0) + 1));
+        }
+        RNG.load(savedRng);
+        add(h(t2) === h(t3) ? "ok" : "no", "T7 시드 재현성",
+            "같은 시드 · 같은 입력이면 같은 결과",
+            h(t2) === h(t3) ? "300발급 두 번 일치" : "불일치",
+            "xorshift32 는 상태가 전부라 결과가 재현돼야 한다. 어긋나면 엔진 어딘가가 시뮬 밖 상태를 읽는다");
+
+        // T8 반복 억제가 실제로 걸리는지
+        const divisors = [...new Set(DATA.order_item.map((o) => Number(o.repeat_weight_decrease) || 0))].filter((v) => v > 0);
+        const resetOk = "order_repeat_reset_count" in (DATA.const || {});
+        add(!divisors.length ? "na" : resetOk && L.repeatEnd > 0 ? "ok" : "no", "T8 반복 억제 작동",
+            divisors.length ? `제수 ${divisors.join(" / ")} 인 행 존재` : "제수 없음",
+            `눌린 체인 ${L.repeatEnd}개`,
+            !divisors.length ? "order_item 에 제수가 전부 0 이다"
+              : !resetOk ? "<code>const.order_repeat_reset_count</code> 가 없어 리셋값이 undefined 다 — 억제가 걸려도 유지되지 않는다"
+              : L.repeatEnd > 0 ? "카운터가 시뮬 중 갱신됐다" : "제수가 있는데 카운터가 한 번도 안 걸렸다");
+
+        const bad = rows.filter((r) => r.v === "no").length;
+        $("#rwRules").innerHTML = rows.map((r) => `<tr>
+            <td><span class="rw-v ${r.v}">${VERDICT[r.v]}</span></td>
+            <td><b>${r.name}</b></td><td>${r.exp}</td><td>${r.act}</td><td>${r.note}</td></tr>`).join("");
+        if (bad) toast(`규칙 검사 ${bad}건 FAIL — 규칙 검사 표를 보세요`);
+      }
+
+      /* ======================================================================
+         6. 배선
+         ====================================================================== */
+      const drop = $("#rwDrop"), file = $("#rwFile");
+      drop.onclick = () => file.click();
+      ["dragenter", "dragover"].forEach((e) => drop.addEventListener(e, (ev) => {
+        ev.preventDefault(); drop.classList.add("on");
+      }));
+      ["dragleave", "drop"].forEach((e) => drop.addEventListener(e, () => drop.classList.remove("on")));
+      drop.addEventListener("drop", (ev) => { ev.preventDefault(); take(ev.dataTransfer.files[0]); });
+      file.onchange = () => take(file.files[0]);
+
+      function take(f) {
+        if (!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          let obj;
+          try { obj = JSON.parse(rd.result); }
+          catch (e) { toast(`JSON 을 읽지 못했습니다 — ${e.message}`); return; }
+          const miss = NEED.filter((k) => obj[k] == null);
+          if (miss.length === NEED.length) { toast("밸런스 JSON 이 아닙니다 — 탭 키가 하나도 없습니다"); return; }
+          try { localStorage.setItem(BAL_KEY, JSON.stringify(obj)); } catch (e) { /* 용량·차단 */ }
+          applyBalance(obj, "drop");
+          toast(miss.length ? `넣었습니다 — 없는 탭 ${miss.join(", ")}` : `${f.name} 을 넣었습니다`);
+        };
+        rd.readAsText(f);
+      }
+
+      $("#rwReset").onclick = async () => {
+        try { localStorage.removeItem(BAL_KEY); } catch (e) {}
+        try { applyBalance(await loadDefault(), "default"); toast("기본값으로 되돌렸습니다"); }
+        catch (e) { toast(`기본 JSON 을 읽지 못했습니다 — ${e.message}`); }
+      };
+      $("#rwRerun").onclick = () => { renderGap(); run(); };
+      $("#rwGo").onclick = run;
+      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix"].forEach((s) => {
+        $(s).addEventListener("change", run);
+      });
+
+      boot();
+    </script>
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>

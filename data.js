@@ -457,6 +457,17 @@ const SECTIONS = [
         share: false,
       },
       {
+        title: "오더 추첨 분석",
+        desc: "밸런스시트 JSON 을 넣으면 그 값으로 오더 생성 8단계를 돌려서, 판정 근거·뽑기 분포·규칙 위반을 보여 줍니다.",
+        url: "docs/rosewood-order-draw.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-10 15:40",
+        pinned: false,
+        tags: ["머지", "인터랙티브", "밸런스"],
+      },
+      {
         title: "오더 생성 벤치",
         desc: "칩을 끌어 합치고, 오더를 계속 다시 뽑아 가며 왜 그 오더가 나왔는지 판정 근거까지 확인합니다.",
         url: "docs/rosewood-order-bench.html",
