@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-10 09:07",
+  updated: "2026-09-10 09:20",
 };
 
 /* --------------------------------------------------------------------------
@@ -314,6 +314,7 @@ const SECTIONS = [
         updated: "2026-08-28 10:24",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
       },
       {
         title: "코인매치 지면 플로우 맵",
@@ -325,6 +326,7 @@ const SECTIONS = [
         updated: "2026-08-28 15:00",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
       },
       {
         title: "코지 지면 플로우 맵",
@@ -372,6 +374,7 @@ const SECTIONS = [
         updated: "2026-08-28 09:11",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
       },
     ],
   },
