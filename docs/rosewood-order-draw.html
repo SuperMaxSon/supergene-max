@@ -269,7 +269,7 @@
           <br><span class="rw-v no">FAIL</span> 엔진과 시트가 어긋남 ·
           <span class="rw-v warn">주의</span> 지금은 결과가 같지만 조건이 바뀌면 틀어짐 ·
           <span class="rw-v ok">PASS</span> 일치 ·
-          <span class="rw-v na">부팅 필수</span> 판정이 아니라 <code>data_manifest.is_critical</code> 컬럼값
+          <span class="rw-v na">필수</span> 우리 판정이 아니라 시트가 매긴 <code>data_manifest.is_critical</code> 값
         </div>
 
         <details class="rw-fold">
@@ -304,9 +304,17 @@
 
         <details class="rw-fold">
           <summary>탭 판본<span class="fx" id="rwTabsSum">…</span></summary>
+          <p class="rw-tnote" style="padding:10px 13px 0;margin:0">
+            <b>행·컬럼·schema_hash 는 시트의 <code>data_manifest</code> 탭이 정본입니다</b> &mdash;
+            변환이 흘린 행이 있으면 「행」과 「manifest」가 어긋납니다.
+            <b>「필수」</b>는 <code>is_critical=1</code>, 즉 <b>없으면 게임이 성립하지 않는 표</b>라는 시트의 표시입니다
+            &mdash; 로딩 시점이 아닙니다(<code>load_path</code> 는 46탭 전부 <code>boot</code>).
+            시트 전체에서 필수는 7탭뿐이고, 그중 <code>const · item_spec · level_curve · order_rule · order_fixed</code> 가
+            오더 추첨에 걸립니다. 나머지는 없으면 그 기능만 빠지고 게임은 돕니다.
+          </p>
           <div class="rw-tw">
             <table>
-              <thead><tr><th>탭</th><th class="num">행</th><th class="num">manifest</th><th class="num">컬럼</th><th>schema_hash</th><th title="data_manifest.is_critical — 부팅에 반드시 필요한 탭. 판정이 아니다">구분</th></tr></thead>
+              <thead><tr><th>탭</th><th class="num">행</th><th class="num">manifest</th><th class="num">컬럼</th><th>schema_hash</th><th title="data_manifest.is_critical — 없으면 게임이 성립하지 않는 표. 우리 판정이 아니라 시트가 매긴 값이다">필수</th></tr></thead>
               <tbody id="rwTabs"></tbody>
             </table>
           </div>
@@ -321,7 +329,11 @@
           <code id="rwMultNR">1000</code> 으로 평평하고, 물건이 쌓이면 「동급·하급 보유」
           <code id="rwMultHL">10000</code> 이 걸려 쏠립니다. <b>보드는 프리셋</b>입니다 &mdash;
           시트에 없는 값을 시트 JSON 에 끼우지 않으려고 벤치 보드를 읽지 않습니다.
-          <b>레일 맥락</b>을 끄면 배수 4 개 중 「타 오더 요구」 축 둘이 나오지 않습니다.
+          <b>레일 맥락</b> &mdash; 실제 레일이 없으니 후보 목록에서 <b>표본 3종</b>을 골라
+          「다른 오더가 요구 중(2종) + 직전 요구(1종)」으로 가정합니다. 그 3종은 후보에서 빠지고,
+          같은 체인의 다른 단계는 배수 100·1 을 받습니다 &mdash; <b>끄면 배수 4 개 중 이 축 둘이
+          아예 안 나옵니다.</b> 무엇이 빠졌는지는 아래 줄과 판정 로그 [3] 에 적힙니다.
+          매 발급 같은 3종이라 결과가 재현됩니다.
         </div>
         <div class="rw-panel">
           <div class="rw-pb">
@@ -338,9 +350,9 @@
                 </select>
               </div>
               <div class="rw-f"><label>레일 맥락</label>
-                <select id="rwCtx">
-                  <option value="rail">타 오더·직전 반영</option>
-                  <option value="none">반영 안 함</option>
+                <select id="rwCtx" title="실제 레일이 없으므로 후보 목록에서 표본 3종을 골라 「다른 오더가 요구 중(2종) + 직전 요구(1종)」으로 가정합니다. 매 발급 같은 3종이라 결과가 재현됩니다.">
+                  <option value="rail">표본 3종 제외 (타 오더 2 + 직전 1)</option>
+                  <option value="none">제외 없음</option>
                 </select>
               </div>
               <label class="rw-chk" title="켜면 매번 같은 난수 열로 돌려 결과를 그대로 재현합니다 — 끄면 돌릴 때마다 열을 이어 갑니다"><input type="checkbox" id="rwFix" /> 시드 고정</label>
@@ -492,6 +504,9 @@
           ["[1] 예산·대기 (<code>refill_max · refresh_sec</code>)",
            "<code>dry:true</code> 가 이 단계를 건너뛴다 — 안 그러면 분포 표본이 예산 소진으로 끊긴다",
            "실시간 타이머를 돌리는 별도 하네스. 벤치에서 직접 눌러 보는 게 빠르다"],
+          ["레일이 회전하지 않는다",
+           "표본 3종을 고정으로 제외한다 — 재현성과 기대값 계산을 위해서다. 실제 레일은 납품마다 요구가 바뀐다",
+           "레일 4칸을 함께 발급하며 서로의 요구를 반영하는 하네스. 벤치가 그 동작을 한다"],
           ["[0] 고정 오더 16행",
            "<code>skipFixed:true</code> 로 빼고 돌린다 — 랜덤 경로 분포를 보는 게 목적이라",
            "순번·슬롯·레벨 조건을 순회하는 전용 검사 추가"],
@@ -533,7 +548,9 @@
             <td class="num">${m && m.records != null ? m.records : "—"} ${same ? "" : '<span class="rw-v no">불일치</span>'}</td>
             <td class="num">${m && m.columns != null ? m.columns : "—"}</td>
             <td><code>${m && m.schema_hash ? m.schema_hash : "—"}</code></td>
-            <td>${m && m.is_critical ? '<span class="rw-v na">부팅 필수</span>' : "—"}</td></tr>`;
+            <td>${m && m.is_critical
+              ? '<span class="rw-v na" title="data_manifest.is_critical=1 — 없으면 게임이 성립하지 않는 표. 로딩 시점과는 무관하다(46탭 전부 boot)">필수</span>'
+              : "—"}</td></tr>`;
         });
         $("#rwTabs").innerHTML = rows.join("");
         const off = NEED.filter((k) => {
@@ -811,6 +828,7 @@
         RNG.load(saved);
 
         LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, daily,
+                 banned: [...othersReq, ...(prev || [])],
                  tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed,
                  repeatEnd: Object.keys(repeat).length };
 
@@ -895,7 +913,8 @@
           `후보 ${L.pool.length}종` +
           ` · 밴드 ${L.band ? `b${L.band.band_seq} ${L.band.first_min}~${L.band.first_max} / ≤${L.band.second_max}${L.band.third_max != null ? ` / ≤${L.band.third_max}` : ""}${L.band.diff_sum_min != null ? ` (누적 ${L.daily} ∈ ${L.band.diff_sum_min}~${L.band.diff_sum_max})` : ""}` : "없음"}` +
           ` · 배수 ${Object.entries(bucket).map(([k, v]) => `${SHORT[k] || k} ${v}`).join(" / ") || "—"}` +
-          ` · 보유 ${held}종 · 제외 ${L.othersReq.size + (L.prev ? L.prev.length : 0)}종` +
+          ` · 보유 ${held}종` +
+          ` · 제외 ${L.banned.length}종${L.banned.length ? ` (${L.banned.map(labelOf).join(" · ")})` : ""}` +
           ` · 눌린 체인 ${L.repeatEnd}` +
           ` · 시드 ${L.fixed ? `${SEED0} 고정` : "이어서"}`;
         $("#rwRng").textContent = `seed ${L.fixed ? SEED0 : SEED} · ${L.type} · Lv${L.lv} · ${L.N}발급`;
