@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-10 11:55",
+  updated: "2026-09-10 12:05",
 };
 
 /* --------------------------------------------------------------------------
@@ -298,7 +298,7 @@ const SECTIONS = [
         url: "docs/boot-log-flow.html",
         project: "sol",
         status: "완료",
-        version: "v1.1",
+        version: "v1.2",
         updated: "2026-09-02 12:11",
         pinned: false,
         tags: ["코드 실측", "로그"],
@@ -458,7 +458,7 @@ const SECTIONS = [
       },
       {
         title: "오더 생성 벤치",
-        desc: "오더가 왜 그 오더로 나왔는지 발급마다 판정 근거를 남기는 페이지. 밸런스 값을 화면에서 고쳐 바로 다시 뽑아 봅니다.",
+        desc: "실제 인게임 화면으로 코어루프를 눌러 보고, 오더가 왜 그 오더로 뽑혔는지 발급마다 판정 근거를 확인합니다.",
         url: "docs/rosewood-order-bench.html",
         project: "smg",
         status: "초안",
