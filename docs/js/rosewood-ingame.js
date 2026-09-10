@@ -834,26 +834,52 @@ const bagCount = (k) => (S.inv[k] || []).length;
 
 /* 오더 카드 마크업 — 레일과 뽑기 표본이 같은 그림을 쓴다.
    문서 「오더 카드 해부」: NPC 초상 · 접시 · A 상단 우측 · B 하단 좌 · C 하단 우 · Serve */
-/* 오더 카드 — ◎ 코인(A 보상) · ◈ 난이도(하루 누적되어 다음 밴드를 고른다) ·
-   ◆ 이벤트 재화(B 보상).
-   C 보상(팩·카드) 자리는 비워 뒀다 — 시트에 오더별 팩 보상 칸이 없다. pack 은
-   주간 태스크의 count_target 으로만 나온다. 데이터 없이 「★ 팩」을 박아 두면
-   모든 오더가 팩을 준다고 읽혀서 뺐다. 값이 생기면 rw-bot 에 붙인다. */
+/* 오더 카드의 태그 아이콘 — 네 보상 축을 색과 그림으로 가른다.
+   숫자만 있으면 32·78·23 이 다 같은 것으로 읽힌다. 실제 클라에서는 스프라이트가
+   들어갈 자리라, 여기서는 인라인 SVG 로 자리와 크기만 잡아 둔다(요청 0 · 선명함). */
+const RW_ICON = {
+  coin: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5"/><circle cx="6" cy="6" r="2.2" fill="#fff" fill-opacity=".6"/></svg>',
+  diff: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="7" width="2.6" height="4" rx="1"/><rect x="4.7" y="4.4" width="2.6" height="6.6" rx="1"/><rect x="8.4" y="1.4" width="2.6" height="9.6" rx="1"/></svg>',
+  event: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .7 11.3 6 6 11.3.7 6z"/></svg>',
+  pack: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="3.6" y="1.1" width="7.2" height="8.4" rx="1.3" fill-opacity=".45"/><rect x="1.2" y="2.5" width="7.2" height="8.4" rx="1.3"/></svg>',
+};
+const rwTag = (kind, text, title, off) =>
+  `<span class="rw-tag t-${kind}${off ? " off" : ""}" title="${title}">${RW_ICON[kind]}<b>${text}</b></span>`;
+
+/* 오더 타입 — 「이 카드가 왜 이렇게 생겼나」를 한 글자로 말한다.
+   고정(order_fixed 대본) / 일반·손님·스페셜·이벤트(랜덤 8단계). 디버그와 무관하게 늘 보인다.
+   랜덤 카드는 밴드 번호까지 붙는다 — 밴드가 요구 개수·단계 폭을 정하는 축이라 같이 봐야 한다. */
+const ORDER_TYPE_TITLE = {
+  fixed: "고정 오더 — order_fixed 의 대본대로 나온다. 랜덤 추첨을 거치지 않는다",
+  normal: "일반 오더 — 랜덤 8단계로 뽑는다 (Lv3 부터)",
+  avatar: "손님 오더 — 랜덤 8단계 (Lv3 부터)",
+  special: "스페셜 오더 — 랜덤 8단계 (Lv4 부터)",
+  event: "이벤트 오더 — 랜덤 8단계 (Lv6 부터)",
+};
+
+/* 오더 카드 — 보상 축 넷을 색·그림으로 구분한다.
+     ● 코인(A 보상)  ▮ 난이도  ◆ 이벤트 재화(B 보상)  ▤ 팩·카드(C 보상)
+   C 는 값이 없다 — 시트에 오더별 팩 보상 칸이 없고 pack 은 주간 태스크의
+   count_target 으로만 나온다. 자리는 남기되 흐리게 「—」로 둬서 「아직 데이터가
+   없는 축」임이 보이게 한다. 칸이 생기면 여기에 숫자만 넣으면 된다. */
 function orderCardHTML(card, o = {}) {
   const counts = o.counts;
   const evt = card.evt ?? eventScore(card.diff || 0);
+  const type = card.type || "";
   return `<div class="rw-card"${o.slot ? ` data-slot="${o.slot}"` : ""}>
       <span class="rw-npc">${card.avatar.slice(0, 3)}</span>
       <div class="rw-top">
-        <span class="rw-ra"><span title="A — 코인 보상">◎ ${card.coin}</span>${card.diff ? `<span title="난이도 점수 — 하루 누적되어 다음 오더의 밴드를 고른다">◈ ${card.diff}</span>` : ""}</span>
+        <span class="rw-ra">${rwTag("coin", card.coin, "A 보상 — 코인")}${
+          card.diff ? rwTag("diff", card.diff, "난이도 점수 — 하루 누적되어 다음 오더의 밴드를 고른다") : ""}</span>
       </div>
       <div class="rw-dish">${card.reqs.map((q) => {
         const have = counts ? (counts.get(q.code) || 0) >= q.count : false;
         return chipTag(q.code, counts && !have ? "miss" : "", have ? '<span class="ck">✓</span>' : "");
       }).join("")}</div>
       <div class="rw-bot">
-        <span class="rw-rb" title="B — 이벤트 재화">◆ ${evt}</span>
-        ${(S.debug || o.debug) && card.type ? `<span class="rw-lbl">${TYPE_KO[card.type] || card.type}${card.band ? ` b${card.band}` : ""}</span>` : ""}
+        ${type ? `<span class="rw-type k-${type}" title="${ORDER_TYPE_TITLE[type] || type}">${TYPE_KO[type] || type}${card.band ? `<i>b${card.band}</i>` : ""}</span>` : ""}
+        <span class="rw-tags">${rwTag("event", evt, "B 보상 — 이벤트 재화")}${
+          rwTag("pack", "—", "C 보상 — 팩·카드. 시트에 오더별 팩 보상 칸이 아직 없다", true)}</span>
       </div>
       ${o.serve ? `<span class="rw-serve"><button class="rw-btn serve" onclick="event.stopPropagation();serve(${o.slot})">Serve</button></span>` : ""}
     </div>`;

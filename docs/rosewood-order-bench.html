@@ -200,7 +200,10 @@
       .rw-track .rw-npc { top: -11px; left: 4px; width: clamp(19px, 24cqi, 30px);
                           height: clamp(19px, 24cqi, 30px); font-size: clamp(7px, 8cqi, 9px); }
       .rw-track .rw-top { padding-left: clamp(21px, 27cqi, 33px); min-height: 18px; }
-      .rw-track .rw-ra span { height: 13px; padding: 0 clamp(3px, 5cqi, 6px); font-size: clamp(7.5px, 8.5cqi, 9.5px); }
+      .rw-track .rw-tag { height: 13px; padding: 0 clamp(3px, 4cqi, 5px) 0 clamp(2px, 3cqi, 4px);
+                          gap: 2px; font-size: clamp(7.5px, 8.5cqi, 9.5px); }
+      .rw-track .rw-tag svg { width: clamp(7px, 8cqi, 9px); height: clamp(7px, 8cqi, 9px); }
+      .rw-track .rw-type { height: 13px; padding: 0 clamp(3px, 5cqi, 6px); font-size: clamp(7px, 8cqi, 9px); }
       /* 접시 — 요구 수만큼 등분하되 한 칸이 32px 를 넘지 않는다(1개짜리가 커지는 걸 막는다) */
       .rw-track .rw-dish { display: grid; grid-auto-flow: column; justify-content: center;
                            grid-auto-columns: minmax(0, 32px); gap: 3px; }
@@ -212,10 +215,9 @@
       /* 체크는 칩 안으로 — 밖으로 나가면 마지막 카드가 프레임을 넘긴다 */
       .rw-track .rw-req .ck { font-size: clamp(8px, 11cqi, 10px); top: 0; right: 1px;
                               text-shadow: 0 0 2px var(--surface); }
-      .rw-track .rw-bot { gap: 3px; }
-      .rw-track .rw-rb { height: 15px; padding: 0 clamp(3px, 5cqi, 6px);
-                                           font-size: clamp(7.5px, 8.5cqi, 9.5px); }
-      .rw-track .rw-lbl { font-size: clamp(7px, 7cqi, 8.5px); }
+      /* 좁은 카드에서 태그가 넘치면 두 줄로 — 잘리는 것보다 낫다 */
+      .rw-track .rw-bot { gap: 3px; flex-wrap: wrap; row-gap: 3px; }
+      .rw-track .rw-tags { gap: 2px; }
       /* Serve 는 카드 밖으로 겹치지 않고 카드 바닥을 차지한다 — 좁아져도 안 잘린다 */
       .rw-track .rw-serve { position: static; margin-top: 3px; }
       .rw-track .rw-btn.serve { width: 100%; padding: 0; min-height: 30px;
@@ -253,20 +255,42 @@
       .rw-top { display: flex; gap: 5px; align-items: flex-start; padding-left: 33px; min-height: 22px; }
       /* 보상 A — 우측 상단, 최대 4줄 */
       .rw-ra { display: flex; flex-direction: column; gap: 2px; margin-left: auto; align-items: flex-end; }
-      .rw-ra span { display: flex; align-items: center; gap: 3px; height: 14px; padding: 0 6px;
-                    border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
-                    font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700;
-                    font-variant-numeric: tabular-nums; color: var(--validate); }
+      /* ── 보상 태그 — 축마다 색 + 그림. 숫자만 있으면 32·78·23 이 다 같아 보인다 ── */
+      .rw-tag { display: inline-flex; align-items: center; gap: 3px; height: 15px;
+                padding: 0 5px 0 4px; border-radius: 8px;
+                border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+                background: color-mix(in srgb, var(--tone) 13%, var(--surface));
+                color: color-mix(in srgb, var(--tone) 72%, var(--text));
+                font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700;
+                font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .rw-tag svg { width: 9px; height: 9px; flex: none; fill: var(--tone); }
+      .rw-tag.t-coin { --tone: #E09112; }   /* A 보상 — 코인 */
+      .rw-tag.t-diff { --tone: #7C6BD9; }   /* 난이도 — 하루 누적 축 */
+      .rw-tag.t-event { --tone: #0E9C97; }  /* B 보상 — 이벤트 재화 */
+      .rw-tag.t-pack { --tone: #D9583F; }   /* C 보상 — 팩·카드 */
+      /* 값이 없는 축은 회색으로 죽인다. 색 지정 뒤에 와야 이긴다 —
+         앞에 두면 같은 명시도라 t-pack 의 빨강이 덮어쓴다(칩 타원 사건과 같은 함정) */
+      .rw-tag.off { --tone: var(--text-faint); opacity: 0.55; }
+      .rw-tags { display: flex; gap: 3px; margin-left: auto; }
+
+      /* 오더 타입 — 고정/일반/손님/스페셜/이벤트. 디버그와 무관하게 늘 보인다 */
+      .rw-type { display: inline-flex; align-items: center; gap: 2px; height: 15px; padding: 0 6px;
+                 border-radius: 8px; border: 1px solid color-mix(in srgb, var(--tone) 42%, transparent);
+                 background: color-mix(in srgb, var(--tone) 15%, var(--surface));
+                 color: color-mix(in srgb, var(--tone) 78%, var(--text));
+                 font-size: 9px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
+      .rw-type i { font-style: normal; opacity: 0.62; font-family: ui-monospace, Menlo, monospace; }
+      .rw-type.k-fixed { --tone: #5B6B8C; }
+      .rw-type.k-normal { --tone: #2F7DD1; }
+      .rw-type.k-avatar { --tone: #8B5CF6; }
+      .rw-type.k-special { --tone: #E08A0B; }
+      .rw-type.k-event { --tone: #DB3A7B; }
       .rw-dish { display: flex; gap: 5px; }
       .rw-btn.serve { background: var(--balance); border-color: var(--balance); color: #fff;
                       padding: 7px 14px; font-size: 12px; border-radius: 14px; min-height: 32px; }
       .rw-btn.serve::after { content: ""; position: absolute; inset: -9px -6px; }
       .rw-serve { position: absolute; right: 7px; bottom: 30px; }
       .rw-bot { display: flex; align-items: center; gap: 4px; margin-top: auto; }
-      .rw-rb { display: flex; align-items: center; gap: 3px; height: 16px; padding: 0 6px;
-                       border: 1px solid var(--border); border-radius: 9px; background: var(--surface);
-                       font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700; }
-      .rw-lbl { font-size: 8.5px; color: var(--text-faint); letter-spacing: 0.04em; }
 
       /* 요구 접시 */
       .rw-req { position: relative; width: 34px; height: 34px; border-radius: 7px; display: flex;
@@ -671,7 +695,7 @@
     <script src="js/rosewood-rules.js?v=8"></script>
     <script src="js/rosewood-model.js?v=8"></script>
     <script src="js/rosewood-fx.js?v=8"></script>
-    <script src="js/rosewood-ingame.js?v=9"></script>
+    <script src="js/rosewood-ingame.js?v=10"></script>
     <script>
       "use strict";
       /* ======================================================================
