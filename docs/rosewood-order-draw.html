@@ -92,6 +92,16 @@
                   color: var(--text-faint); background: var(--surface-2); white-space: nowrap; }
       .rw-tw tr:last-child td { border-bottom: 0; }
       .rw-tw code { font-size: 11.5px; }
+      /* 다섯 칸이 전부 문장이라 좁히면 한 글자씩 끊긴다 — 최소폭을 주고 표를 스크롤시킨다 */
+      #rwGap ~ * , .rw-tw table.wide { min-width: 0; }
+      .rw-tw table { min-width: 720px; }
+      .rw-tw td .key { display: block; margin-top: 2px; font-family: ui-monospace, Menlo, monospace;
+                       font-size: 10.5px; color: var(--text-faint); overflow-wrap: anywhere; }
+      .rw-tw td.say { color: var(--text); }
+      /* 타입별 성격은 줄바꿈 목록이 표보다 읽기 쉽다 */
+      .rw-tw td .li { display: block; margin-top: 5px; padding-top: 5px; font-size: 11.5px;
+                      line-height: 1.7; color: var(--text-dim); border-top: 1px solid var(--border-soft); }
+      .rw-tw td:first-child { white-space: nowrap; }
       .rw-tw .num { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums;
                     text-align: right; white-space: nowrap; }
 
@@ -266,7 +276,7 @@
           <summary>스키마 &mdash; 엔진 ↔ 시트<span class="fx" id="rwGapSum">…</span></summary>
           <div class="rw-tw">
             <table>
-              <thead><tr><th>판정</th><th>항목</th><th>엔진</th><th>JSON</th><th>결과</th></tr></thead>
+              <thead><tr><th>판정</th><th>값</th><th>시트에 든 것</th><th>엔진이 하는 일</th><th>그래서 어떻게 되나</th></tr></thead>
               <tbody id="rwGap"></tbody>
             </table>
           </div>
@@ -422,8 +432,10 @@
         S.slots = {}; S.prevOfSlot = {};
 
         $("#rwBuild").textContent = `build ${PAGE_BUILD} · engine ${BUILD}`;
+        /* 타입 이름만 있으면 avatar·special·event 가 무엇인지 알 수 없다 — 한글 이름과
+           해금 레벨을 같이 적는다. dry 실행은 예산을 안 쓰므로 refill_max 0 도 돌려 볼 수 있다. */
         $("#rwType").innerHTML = DATA.order_rule
-          .map((r) => `<option value="${r.order_type}">${r.order_type}</option>`).join("")
+          .map((r) => `<option value="${r.order_type}">${r.order_type} · ${TYPE_KO[r.order_type] || ""} (Lv${r.unlock_level})</option>`).join("")
           || '<option value="">order_rule 없음</option>';
         const C = DATA.const || {};
         $("#rwMultNR").textContent = C.order_weight_mult_not_required ?? "?";
@@ -538,97 +550,173 @@
          1. 스키마 검사 — 엔진이 읽는 키 ↔ JSON 컬럼
          ====================================================================== */
       const has = (rows, col) => rows.length > 0 && rows.some((r) => r[col] !== undefined);
-      const uniq = (rows, col) => [...new Set(rows.map((r) => r[col]))];
+      const uniq = (rows, col) => [...new Set(rows.map((r) => r[col]))].filter((v) => v != null);
+      const pct = (w, sum) => (sum ? ((w / sum) * 100).toFixed(0) : "0");
 
+      /* 검사 한 줄은 네 칸으로 읽힌다 —
+           값        무엇을 정하는 칸인가 (한글 이름 + 시트 컬럼명)
+           시트      그 칸에 실제로 들어 있는 값
+           엔진      그 값을 어떻게 쓰는가 (평서문. 코드 조각을 그대로 쓰지 않는다)
+           그래서    이 조합에서 실제로 무슨 일이 벌어지는가
+         「그래서」 칸이 이 표의 본문이다 — 판정만 있고 결과가 없으면 볼 이유가 없다. */
       function checks() {
         const C = DATA.const || {};
         const rule = DATA.order_rule, band = DATA.order_slot_band, oi = DATA.order_item;
         const cnt = DATA.order_item_count, fx = DATA.order_fixed, ev = DATA.event_order_score;
         const spec = DATA.item_spec;
         const out = [];
-        const add = (v, item, engine, json, note) => out.push({ v, item, engine, json, note });
+        const add = (v, name, key, sheet, engine, result) => out.push({ v, name, key, sheet, engine, result });
 
-        // 슬롯 → 타입 매핑 (엔진 v2 = 벤치 v4.2: 슬롯 1·2 normal · 3 avatar · 4 special · 5 event)
+        // ── 1. 오더 타입 목록
         const want = ["normal", "avatar", "special", "event"];
         const got = uniq(rule, "order_type");
         const miss = want.filter((t) => !got.includes(t));
-        add(miss.length ? "no" : "ok", "order_rule 타입 집합",
-            `slotType() 이 <code>${want.join(" / ")}</code> 를 기대`,
-            `<code>${got.join(" / ") || "없음"}</code>`,
-            miss.length ? `<code>${miss.join(", ")}</code> 이 없어 해당 슬롯이 빈다` : "일치");
+        add(miss.length ? "no" : "ok", "오더 타입 목록", "order_rule.order_type",
+            `${rule.length}행 &mdash; ${got.join(" · ") || "없음"}`,
+            "레일 1·2번 칸을 <b>normal</b>, 3번을 <b>avatar</b>, 4번을 <b>special</b>, 5번을 <b>event</b> 로 배정한다",
+            (miss.length
+              ? `시트에 <b>${miss.join(", ")}</b> 이 없어서 그 칸은 영구히 빈다. `
+              : "네 타입이 다 있어 <b>레일 5칸이 전부 채워진다</b>. ")
+            + typeBrief());
 
-        const maxSlot = Math.max(0, ...rule.map((r) => Number(r.item_slot_max) || 0));
-        add(maxSlot > 3 ? "no" : "ok", "item_slot_max",
-            "자리 1~3 범위(first_* · second_* · third_*)를 읽는다",
-            `최대 <b>${maxSlot}</b>`,
-            maxSlot > 3 ? "자리 4 이상은 범위 정의가 없다" : "자리 3 이하 — 전부 커버");
+        // 타입마다 성격이 다르다 — 밴드 첫 자리와 refill_max 로 갈린다
+        function typeBrief() {
+          const li = want.filter((t) => got.includes(t)).map((t) => {
+            const r = rule.find((x) => x.order_type === t) || {};
+            const bs = band.filter((x) => x.order_type === t);
+            const f = bs.length ? (bs[0].first_min === bs[0].first_max
+              ? `${bs[0].first_min}단계 고정` : `${bs[0].first_min}~${bs[0].first_max}단계`) : "밴드 없음";
+            const budget = Number(r.refill_max) > 0
+              ? `${r.refresh_sec / 60}분마다 ${r.refill_max}장`
+              : `<b>시간 발급 없음</b>`;
+            return `<b>${TYPE_KO[t] || t}</b>(${t}) 첫 자리 ${f} · Lv${r.unlock_level} · ${budget}`;
+          });
+          return `<span class="li">${li.join("<br>")}</span>`;
+        }
 
-        const KNOWN = ["order_type", "band_seq", "level_min", "level_max", "diff_sum_min", "diff_sum_max",
-                       "first_min", "first_max", "second_min", "second_max", "third_min", "third_max", "in_use"];
-        const unknownBand = Object.keys(band[0] || {}).filter((c) => !KNOWN.includes(c));
-        add(unknownBand.length ? "warn" : "ok", "order_slot_band 컬럼",
-            "전 컬럼 사용 (diff_sum 은 입력 축)",
-            `${Object.keys(band[0] || {}).length}컬럼`,
-            unknownBand.length ? `모르는 컬럼 <code>${unknownBand.join(", ")}</code>` : "—");
+        // ── 2. 카드당 요구 종수 상한
+        const slotMaxes = uniq(rule, "item_slot_max").map(Number);
+        const maxSlot = Math.max(0, ...slotMaxes);
+        add(maxSlot > 3 ? "no" : "ok", "카드당 요구 종수 상한", "order_rule.item_slot_max",
+            slotMaxes.length === 1 ? `전 행 <b>${maxSlot}</b>` : `${slotMaxes.join(" / ")} (최대 ${maxSlot})`,
+            "이 수만큼 자리를 돌며 아이템을 하나씩 뽑는다. 자리마다 허용 단계 범위가 따로 있다",
+            maxSlot > 3
+              ? `자리 <b>${maxSlot}</b>개를 도는데 범위는 3자리까지만 정의돼 있다 &mdash; 4번째 이후는 범위 없이 뽑힌다`
+              : `한 카드가 최대 <b>${maxSlot}종</b>을 요구한다. 세 자리 모두 범위가 정의돼 있다`);
 
+        // ── 3. 자리별 단계 범위
+        const byType = want.map((t) => `${t} ${band.filter((b) => b.order_type === t).length}`).join(" · ");
+        const b0 = band[0];
+        add(band.length ? "ok" : "no", "자리별 단계 범위", "order_slot_band.first/second/third_min·max",
+            `${band.length}행 &mdash; ${byType}`,
+            "유저 레벨로 밴드 한 줄을 고르고, 자리 1·2·3 각각의 하한~상한 안에 드는 아이템만 후보로 남긴다",
+            band.length
+              ? `앞자리가 더 높은 단계를 받는다. 예: normal 1밴드는 자리1 <b>${b0.first_min}~${b0.first_max}단계</b> · 자리2 <b>${b0.second_min}~${b0.second_max}</b> · 자리3 <b>${b0.third_min}~${b0.third_max}</b>.`
+                + ` 하한과 상한이 같으면 <b>그 단계로 고정</b>이다 &mdash; avatar 는 첫 자리가 7단계 고정이라 체인을 끝까지 올려야 납품된다`
+              : "밴드가 없으면 카드를 한 장도 못 만든다");
+
+        // ── 4. 하루 누적 난이도 축
         const splits = band.filter((b) => b.in_use && ((b.diff_sum_min ?? 0) > 0 || (b.diff_sum_max ?? 9999) < 9999));
-        add(splits.length ? "warn" : "ok", "하루 누적 난이도 축",
-            "pickBand 가 diff_sum_* 를 읽는다 — 값은 위 「누적 난이도」 입력",
-            splits.length ? `분기 밴드 ${splits.length}행 (${[...new Set(splits.map((b) => b.order_type))].join(", ")})` : "분기 없음",
-            "누적이 무엇의 합인지(발급/납품)와 리셋 처리가 기획 미확인 — 값을 넣어 보는 것까지만 된다");
+        const dailyKeys = Object.keys(C).filter((k) => k.startsWith("order_daily_diff"));
+        add(splits.length || dailyKeys.length ? "warn" : "ok", "하루 누적 난이도", "order_slot_band.diff_sum_min·max",
+            splits.length
+              ? `${splits.length}행만 갈린다 &mdash; ${[...new Set(splits.map((b) => b.order_type))].join("·")} 가 <b>${splits[0].diff_sum_max}</b> 에서 밴드를 바꾼다. 나머지는 0~9999(상시)`
+              : "전 행 0~9999 &mdash; 갈리는 구간 없음",
+            "화면 위 「누적 난이도」 입력값으로 밴드를 고른다",
+            splits.length || dailyKeys.length
+              ? `축은 돈다. 다만 <b>이 누적값을 게임이 어떻게 쌓는지가 기획에 없다</b> &mdash; 오더 발급 난이도의 합인지 납품한 것의 합인지, 언제 0 으로 돌아가는지. 지금은 손으로 넣어 보는 것까지만 된다`
+              : "축이 안 쓰이므로 레벨만으로 밴드가 정해진다");
 
-        const wVals = uniq(oi, "weight").filter((v) => v != null);
-        const mVals = uniq(oi, "weight_multiple").filter((v) => v != null);
-        add(wVals.length ? "warn" : "ok", "order_item 기본 가중치",
-            "<code>weight × weight_multiple ÷ 100</code> 을 곱한다",
-            `weight ${wVals.join("/") || "없음"} · multiple ${mVals.join("/") || "없음"}`,
+        // ── 5. 아이템 기본 가중치
+        const wVals = uniq(oi, "weight"), mVals = uniq(oi, "weight_multiple");
+        const flat = wVals.length === 1 && mVals.length === 1;
+        add(wVals.length ? "warn" : "ok", "아이템 기본 가중치", "order_item.weight × weight_multiple",
             wVals.length
-              ? "칸 머리 「주머니 잔량 · 정규화 금지」가 잔량 차감 의미일 수 있다 — 상대 가중치 해석이 맞는지 확인 필요"
-              : "—");
+              ? `${oi.length}행 &mdash; weight ${wVals.join("/")} · multiple ${mVals.join("/")}${flat ? " <b>(전 행 동일)</b>" : ""}`
+              : "칸 없음",
+            "보드 상황 배수에 이 값을 곱해 아이템별 뽑힐 무게를 만든다",
+            !wVals.length ? "칸이 없어 보드 배수만으로 뽑는다"
+              : flat
+                ? `전 행이 같은 값이라 <b>곱해도 순위가 안 바뀐다</b> &mdash; 지금 분포는 이 칸과 무관하다. 값이 갈리기 전엔 이 계산이 맞는지 확인이 안 된다. 게다가 시트 칸 설명이 「주머니 잔량 · 정규화 금지」인데, <b>잔량이면 확률이 아니라 남은 개수</b>라는 뜻이라 해석 자체가 달라진다`
+                : "값이 갈려 있어 아래 T2 가 기대 비율과 실측을 대조한다");
 
+        // ── 6. 종수 가중치
+        const lvGroups = [...new Set(cnt.filter((r) => r.in_use).map((r) => r.level))].sort((a, b) => a - b);
+        const brief = lvGroups.map((lv) => {
+          const rows = cnt.filter((r) => r.in_use && r.level === lv).sort((a, b) => a.item_count - b.item_count);
+          const sum = rows.reduce((a, r) => a + r.count_weight, 0);
+          return `Lv${lv} ${rows.map((r) => pct(r.count_weight, sum)).join("/")}`;
+        }).join(" · ");
         const maxCount = Math.max(0, ...cnt.map((r) => Number(r.item_count) || 0));
-        add(maxCount > maxSlot ? "no" : "ok", "order_item_count 종수",
-            "<code>item_count ≤ item_slot_max</code> 행만 후보",
-            `최대 <b>${maxCount}</b>종`,
-            maxCount > maxSlot ? "자리 수보다 큰 종수 행은 절대 안 뽑힌다 — 데이터 확인" : "—");
+        add(maxCount > maxSlot ? "no" : "ok", "요구 종수 비율", "order_item_count.count_weight",
+            `${cnt.length}행 &mdash; ${brief}`,
+            "유저 레벨 이하 중 가장 높은 묶음을 골라, 그 가중치로 1종·2종·3종 중 하나를 뽑는다",
+            maxCount > maxSlot
+              ? `<b>${maxCount}종</b> 행이 있는데 자리는 ${maxSlot}개뿐이라 그 행은 절대 안 뽑힌다`
+              : `레벨이 오르면 3종 비율이 <b>${brief.split("·")[0].split(" ")[1].split("/")[2]}% → ${brief.split("·").pop().trim().split(" ")[1].split("/")[2]}%</b> 로 늘어난다`);
 
-        add("ok", "order_fixed 요구품", "<code>requirement_1~3</code> 을 읽는다",
-            `<code>requirement_1~${Object.keys(fx[0] || {}).filter((k) => k.startsWith("requirement")).length}</code>`,
-            "3종 고정 오더 지원");
+        // ── 7. 고정 오더 요구품
+        const fx3 = fx.filter((r) => r.requirement_3).length;
+        add("ok", "고정 오더 요구품", "order_fixed.requirement_1~3",
+            `${fx.length}행 &mdash; 3종 쓰는 행 ${fx3}개`,
+            "순번대로 한 장씩 꺼내 쓴다. 요구품 칸 세 개를 다 읽고 빈 칸은 버린다",
+            `${fx.length}장이 순서대로 나온다. 3종 요구도 ${fx3 ? "정상 처리된다" : "없다"}`);
 
-        const base = uniq(ev, "score_base").filter(Boolean);
-        add("ok", "event_order_score 기준값",
-            "행의 <code>score_base</code> 대로 (coin → 코인 · 칸 없으면 난이도)",
-            `<code>score_base=${base.join("/") || "없음(난이도)"}</code>`, "—");
-        const evIds = uniq(ev, "event_id").filter((v) => v != null);
-        add(evIds.length > 1 ? "warn" : "ok", "event_order_score 이벤트 구분",
-            "주어진 event_id 만 (기본: 데이터 첫 행)",
-            `<code>event_id</code> ${evIds.length}종`,
-            evIds.length > 1 ? `무엇이 활성인지는 편성 몫 — 여기서는 <code>${evIds[0]}</code> 로 계산한다` : "—");
+        // ── 8. 이벤트 재화 기준값
+        const base = uniq(ev, "score_base");
+        const coinRow = ev.find((r) => r.token_pct > 0);
+        add(ev.length ? "ok" : "warn", "이벤트 재화 기준값", "event_order_score.score_base",
+            ev.length ? `${ev.length}행 &mdash; ${base.length ? base.join("/") : "칸 없음"}` : "행 없음",
+            "행이 coin 이면 카드 <b>코인</b>을, 아니면 <b>난이도</b>를 기준값으로 삼아 비율·고정값을 적용한다",
+            !ev.length ? "행이 없어 이벤트 재화가 항상 0 이다"
+              : base.includes("coin")
+                ? `<b>코인 기준</b>으로 계산한다${coinRow ? ` &mdash; 비율 ${coinRow.token_pct / 100}% 이므로 코인 100 짜리 오더면 재화 ${Math.floor(100 * coinRow.token_pct / 10000)}` : ""}`
+                : "난이도 기준으로 계산한다");
 
-        add("order_repeat_reset_count" in C ? "ok" : "no", "const.order_repeat_reset_count",
-            "반복 억제 리셋값으로 읽는다",
-            "order_repeat_reset_count" in C ? `<b>${C.order_repeat_reset_count}</b>` : "<b>없음</b>",
-            "order_repeat_reset_count" in C ? "—"
-              : "시트에 칸이 없어 <b>반복 억제가 꺼진다</b>. 벤치는 기획서 값 3 을 얹어 돌지만 시트 JSON 은 그대로 검사한다 — 시트에 칸 필요");
+        // ── 9. 이벤트 구분
+        const evIds = uniq(ev, "event_id");
+        add(evIds.length > 1 ? "warn" : "ok", "이벤트 구분", "event_order_score.event_id",
+            evIds.length ? `${evIds.length}종 &mdash; ${evIds.join(" · ")}` : "칸 없음",
+            "지정된 이벤트 하나의 행만 본다. 지정이 없으면 첫 이벤트로 계산한다",
+            evIds.length > 1
+              ? `<b>어느 이벤트가 지금 열려 있는지는 시트가 아니라 편성이 정한다.</b> 이 페이지는 첫 이벤트 <b>${evIds[0]}</b> 로 계산한 값을 보여 준다`
+              : "갈릴 이벤트가 없어 그대로 적용된다");
 
+        // ── 10. 반복 억제 리셋값
+        const hasReset = "order_repeat_reset_count" in C;
+        const divs = uniq(oi, "repeat_weight_decrease").map(Number).filter((v) => v > 0).sort((a, b) => a - b);
+        const divRows = oi.filter((o) => Number(o.repeat_weight_decrease) > 0).length;
+        add(hasReset ? "ok" : "no", "반복 억제 리셋값", "const.order_repeat_reset_count",
+            hasReset ? `<b>${C.order_repeat_reset_count}</b>` : `<b>없음</b> &mdash; const ${Object.keys(C).length}행에 이 칸이 없다`,
+            `같은 체인이 뽑히면 이 값을 카운터에 넣고, 0 이 될 때까지 그 체인의 무게를 나눈다(제수 ${divs.join("/") || "없음"} · ${divRows}행)`,
+            hasReset
+              ? `같은 체인이 연달아 나오면 <b>${C.order_repeat_reset_count}번</b> 동안 억제된다`
+              : `넣을 값이 없어 카운터가 빈 값이 되고, <b>반복 억제가 아예 안 걸린다</b> &mdash; 같은 체인이 계속 나올 수 있다. 제수 ${divs.join("/")} 를 넣어 둔 ${divRows}행이 무용지물이다. 벤치는 기획서 값 3 을 임시로 얹어 돌지만, 이 검사는 시트를 그대로 본다`);
+
+        // ── 11. 아이템 이름
         const named = spec.filter((r) => r.name != null).length;
-        add(named === spec.length && spec.length ? "ok" : "warn", "item_spec 이름",
-            "<code>name</code> (없으면 name_ko 별칭)",
+        add(named === spec.length && spec.length ? "ok" : "warn", "아이템 이름", "item_spec.name",
             `${named}/${spec.length}행`,
-            named === spec.length ? "—" : "이름 없는 행은 #코드 로 표기된다");
+            "칩과 표에 이 이름을 그대로 쓴다",
+            named === spec.length ? "전 아이템이 시트 이름으로 나온다" : `${spec.length - named}개는 <b>#코드</b> 로 표기된다`);
 
+        // ── 12·13. 참조 정합
         const specCodes = new Set(spec.map((r) => r.item_code));
         const dangling = oi.filter((o) => !specCodes.has(o.item_code)).map((o) => o.item_code);
-        add(dangling.length ? "no" : "ok", "order_item → item_spec 참조",
-            "<code>oiOf · specOf</code> 인덱스",
-            dangling.length ? `없는 코드 ${dangling.length}개` : "전 행 해소",
-            dangling.length ? `<code>${dangling.slice(0, 8).join(", ")}</code>` : "—");
+        add(dangling.length ? "no" : "ok", "오더 후보 ↔ 아이템 대장", "order_item.item_code → item_spec",
+            `후보 ${oi.length}행 · 대장 ${spec.length}행`,
+            "후보 아이템의 이름·체인·단계를 대장에서 찾아 쓴다",
+            dangling.length
+              ? `대장에 없는 코드 <b>${dangling.length}개</b> (${dangling.slice(0, 6).join(", ")}) &mdash; 그 오더는 이름 없이 뽑힌다`
+              : "전 후보가 대장에서 찾아진다");
         const fxBad = fx.flatMap((r) => [r.requirement_1, r.requirement_2, r.requirement_3])
           .filter((c) => c && !specCodes.has(c));
-        add(fxBad.length ? "no" : "ok", "order_fixed → item_spec 참조", "고정 오더 요구품 조회",
-            fxBad.length ? `없는 코드 ${fxBad.length}개` : "전 행 해소",
-            fxBad.length ? `<code>${[...new Set(fxBad)].slice(0, 8).join(", ")}</code>` : "—");
+        add(fxBad.length ? "no" : "ok", "고정 오더 요구품 ↔ 아이템 대장", "order_fixed.requirement_* → item_spec",
+            `요구품 ${fx.flatMap((r) => [r.requirement_1, r.requirement_2, r.requirement_3]).filter(Boolean).length}건`,
+            "고정 오더 요구품도 같은 대장에서 찾는다",
+            fxBad.length
+              ? `없는 코드 <b>${[...new Set(fxBad)].length}개</b> (${[...new Set(fxBad)].slice(0, 6).join(", ")})`
+              : "전 요구품이 대장에서 찾아진다");
 
         return out;
       }
@@ -638,7 +726,7 @@
       function summarize(rows, sel) {
         const bad = rows.filter((r) => r.v === "no");
         const warn = rows.filter((r) => r.v === "warn").length;
-        const name = (r) => (r.item || r.name).replace(/^T\d+ /, "");
+        const name = (r) => String(r.name || "").replace(/^T\d+ /, "");
         $(sel).innerHTML = bad.length
           ? `<span class="rw-v no">FAIL ${bad.length}</span>${warn ? ` <span class="rw-v warn">주의 ${warn}</span>` : ""}`
             + ` <span style="opacity:.75">${bad.slice(0, 3).map(name).join(" · ")}${bad.length > 3 ? " …" : ""}</span>`
@@ -650,7 +738,8 @@
         summarize(rows, "#rwGapSum");
         $("#rwGap").innerHTML = rows.map((r) => `<tr>
             <td><span class="rw-v ${r.v}">${VERDICT[r.v]}</span></td>
-            <td><b>${r.item}</b></td><td>${r.engine}</td><td>${r.json}</td><td>${r.note}</td></tr>`).join("");
+            <td><b>${r.name}</b><span class="key">${r.key}</span></td>
+            <td>${r.sheet}</td><td>${r.engine}</td><td class="say">${r.result}</td></tr>`).join("");
       }
 
       /* ======================================================================
