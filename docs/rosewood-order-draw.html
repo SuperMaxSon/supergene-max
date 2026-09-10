@@ -247,6 +247,8 @@
           <b>규칙</b>은 표본 전량이 기획서 규칙을 지켰는지 봅니다 &mdash; 기대값은 엔진이 아니라
           시트에서 따로 계산합니다(엔진 계산을 다시 쓰면 같은 착오를 두 번 합니다).
           비율은 이항 3σ, 기대빈도 5 미만은 판정에서 뺍니다.
+          <b>PASS 는 「그 항목이 맞다」일 뿐 알고리즘이 정상이라는 뜻이 아닙니다</b> &mdash;
+          이 페이지가 아예 재지 않는 영역은 「미검증」 표에 적어 뒀습니다.
           엔진은 2026-08 판본 기준이고 <b>이번 판은 갭을 고치지 않고 보고만 합니다.</b>
           <br><span class="rw-v no">FAIL</span> 엔진과 시트가 어긋남 ·
           <span class="rw-v warn">주의</span> 지금은 결과가 같지만 조건이 바뀌면 틀어짐 ·
@@ -270,6 +272,16 @@
             <table>
               <thead><tr><th>판정</th><th>검사</th><th>기대</th><th>실측</th><th>근거</th></tr></thead>
               <tbody id="rwRules"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <details class="rw-fold">
+          <summary>미검증 &mdash; 이 페이지가 재지 않는 것<span class="fx" id="rwBlindSum">…</span></summary>
+          <div class="rw-tw">
+            <table>
+              <thead><tr><th>영역</th><th>왜 안 재나</th><th>재려면</th></tr></thead>
+              <tbody id="rwBlind"></tbody>
             </table>
           </div>
         </details>
@@ -412,7 +424,7 @@
         $("#rwMultNR").textContent = C.order_weight_mult_not_required ?? "?";
         $("#rwMultHL").textContent = C.order_weight_mult_higher_level ?? "?";
 
-        renderSource(); renderTabs(); renderGap(); run();
+        renderSource(); renderTabs(); renderBlind(); renderGap(); run();
       }
 
       async function loadDefault() {
@@ -454,6 +466,39 @@
         $("#rwSrcWarn").innerHTML = SRC.warn.length
           ? `<div class="rw-empty" style="text-align:left">변환·입력 경고<br>${SRC.warn.map((w) => `· ${w}`).join("<br>")}</div>`
           : "";
+      }
+
+      /* 사각지대를 적어 두지 않으면 「8개 PASS」가 「알고리즘 정상」으로 읽힌다.
+         재지 않는 이유와 재는 방법을 같이 적어 다음 판의 작업 목록이 되게 한다. */
+      function renderBlind() {
+        const rows = [
+          ["[1] 예산·대기 (<code>refill_max · refresh_sec</code>)",
+           "<code>dry:true</code> 가 이 단계를 건너뛴다 — 안 그러면 분포 표본이 예산 소진으로 끊긴다",
+           "실시간 타이머를 돌리는 별도 하네스. 이 페이지 범위 밖"],
+          ["[0] 고정 오더 16행",
+           "<code>skipFixed:true</code> 로 빼고 돌린다 — 랜덤 경로 분포를 보는 게 목적이라",
+           "순번·슬롯·레벨 조건을 순회하는 전용 검사 추가"],
+          ["하루 누적 난이도 축",
+           "엔진에 이 축이 아예 없다 — 비교 대상이 없어 판정 자체가 안 된다",
+           "<code>order_slot_band.diff_sum_*</code> 를 밴드 선택에 넣은 뒤에야 잴 수 있다"],
+          ["<code>order_special</code> 탭",
+           "추첨 경로에 안 들어온다고 보고 변환에서 뺐다 — 확인 필요",
+           "special 오더가 이 탭을 읽는지 기획 확인 후 탭 추가"],
+          ["[6] 손님 배정",
+           "분포에 영향이 없어 판정을 안 만들었다",
+           "<code>open_day · unlock_level</code> 조건과 중복 배정 금지 검사"],
+          ["[7] 보상 단가 곡선",
+           "합산이 맞는지만 보고, 단가 자체가 옳은지는 안 본다",
+           "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
+          ["생성기 주머니 (<code>produce_item_1~20</code>)",
+           "오더 추첨 밖이다 — 벤치의 생산 경로 소관",
+           "벤치에서 생산 표본을 뽑아 <code>produce_weight</code> 와 대조"],
+          ["<code>weight · weight_multiple</code> 실효",
+           "현재 전 행이 100 · 1 이라 값이 달라도 결과가 같다 — 못 잡는다",
+           "값이 흔들린 시트로 다시 돌리면 T2 가 바로 잡는다"],
+        ];
+        $("#rwBlind").innerHTML = rows.map((r) => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
+        $("#rwBlindSum").innerHTML = `<span class="rw-v na">${rows.length}개 영역</span> <span style="opacity:.75">PASS 는 정상 보증이 아니다</span>`;
       }
 
       function renderTabs() {
