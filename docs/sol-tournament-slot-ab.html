@@ -91,7 +91,7 @@
   <body>
     <!-- AUTO:START --><script>
       /* scripts/refresh_common.py 가 매 실행마다 덮어쓴다. 손으로 고치면 다음 갱신에 사라진다. */
-      window.AUTORUN = { hours: [9], pulled: "2026-09-09 09:01", enabled: true };
+      window.AUTORUN = { hours: [9, 17], pulled: "2026-09-10 09:07", enabled: true };
     </script><!-- AUTO:END -->
     <div id="tip"></div>
 
@@ -108,8 +108,8 @@
         <div class="doc-eyebrow">검증 · 라이브 데이터</div>
         <h1 class="doc-title">판 클리어 초대 제거 A/B <span class="tag" id="nextrun"></span></h1>
         <div class="doc-when">
-          <span><i></i>문서 갱신 <b>2026-09-09 09:01</b> KST</span>
-          <span>데이터 <b>9/3~9/8</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
+          <span><i></i>문서 갱신 <b>2026-09-10 09:07</b> KST</span>
+          <span>데이터 <b>9/3~9/9</b> · 리텐션은 <b>stat 사전집계</b>, 나머지는 raw</span>
           <span id="fresh"></span>
         </div>
         <p class="doc-lede">
@@ -163,8 +163,8 @@
       // 손으로 고치면 다음 갱신에서 사라진다. 출처는 SQL 폴드에 실린 그 쿼리 하나다.
       /* DATA:START */
       // 이 블록은 scripts/refresh_sol_slot_ab.py 가 생성한다. 손으로 고치면 사라진다.
-      const PULLED = "2026-09-09 09:01";
-      const RANGE  = "9/3~9/8";
+      const PULLED = "2026-09-10 09:06";
+      const RANGE  = "9/3~9/9";
 
       // 1_DAILY — 일자 × 빌드 × 유저군. 보드는 전부 여기서 합산해 만든다.
       const DAILY = [
@@ -192,13 +192,17 @@
         { d:"09-08", ver:"485", seg:"RU", ud:454, fin:6543, sh_try:1210, sh_ok:64, inv_try:1184, inv_ok:1103, sup:381, cr_try:1433, cr_ok:121, it:4548, rv:2671 },
         { d:"09-08", ver:"486", seg:"NRU", ud:647, fin:3476, sh_try:592, sh_ok:55, inv_try:0, inv_ok:0, sup:450, cr_try:822, cr_ok:126, it:1335, rv:879 },
         { d:"09-08", ver:"486", seg:"RU", ud:476, fin:7004, sh_try:2859, sh_ok:109, inv_try:0, inv_ok:0, sup:274, cr_try:1372, cr_ok:72, it:5175, rv:2507 },
+        { d:"09-09", ver:"485", seg:"NRU", ud:763, fin:3337, sh_try:333, sh_ok:23, inv_try:279, inv_ok:262, sup:446, cr_try:947, cr_ok:200, it:1473, rv:505 },
+        { d:"09-09", ver:"485", seg:"RU", ud:494, fin:7100, sh_try:1423, sh_ok:76, inv_try:1406, inv_ok:1342, sup:551, cr_try:1473, cr_ok:161, it:5203, rv:2773 },
+        { d:"09-09", ver:"486", seg:"NRU", ud:729, fin:3462, sh_try:572, sh_ok:36, inv_try:0, inv_ok:0, sup:411, cr_try:904, cr_ok:156, it:1457, rv:722 },
+        { d:"09-09", ver:"486", seg:"RU", ud:452, fin:7277, sh_try:2970, sh_ok:103, inv_try:0, inv_ok:0, sup:332, cr_try:1324, cr_ok:70, it:5063, rv:2780 },
       ];
 
       // 2_EXTRA — 판수 분포. 날짜축이 없어 갱신마다 통째로 바뀐다(최근 3일 롤링).
       // 분위수는 세그먼트 합산이 불가능하다(중앙값은 더할 수 없다) — 전체 탭에서는 비운다.
       const EXTRA = {
-        "485": { NRU:{ uday:2250, avg:4.37, p50:0, p75:4, p90:12, play:42.4, p50p:5 }, RU:{ uday:1783, avg:11.28, p50:2, p75:11, p90:30, play:62.6, p50p:8 } },
-        "486": { NRU:{ uday:2235, avg:5.06, p50:0, p75:5, p90:13, play:44.9, p50p:6 }, RU:{ uday:1851, avg:11.62, p50:2, p75:11, p90:34, play:63.3, p50p:8 } },
+        "485": { NRU:{ uday:2217, avg:4.4, p50:0, p75:4, p90:12, play:42.5, p50p:6 }, RU:{ uday:1818, avg:11.23, p50:2, p75:11, p90:33, play:63.7, p50p:8 } },
+        "486": { NRU:{ uday:2143, avg:5.03, p50:0, p75:4, p90:13, play:44.6, p50p:5 }, RU:{ uday:1834, avg:11.79, p50:2, p75:12, p90:35, play:64.1, p50p:9 } },
       };
 
       // 3_RET — stat.solitaire_city_journey_nru_retention3 (사전집계, raw 스캔 없음).
@@ -206,18 +210,20 @@
       // 쪼개져 있어 nru_count 가중합으로 합쳤고, 광고분(adc/add)은 social='AD' 행이다.
       // obs = 그 코호트를 며칠까지 관측했는지. D+n 도래 판정의 유일한 기준이다.
       const RET = [
-        { c:"09-03", ver:"485", seg:"NRU", obs:5, coh:81, d:[8, 10, 9, 7, 6], adc:69, add:[8, 8, 8, 7, 6] },
-        { c:"09-03", ver:"486", seg:"NRU", obs:5, coh:108, d:[15, 8, 8, 2, 4], adc:91, add:[11, 7, 4, 1, 3] },
-        { c:"09-04", ver:"485", seg:"NRU", obs:4, coh:533, d:[53, 34, 30, 28], adc:465, add:[37, 21, 16, 15] },
-        { c:"09-04", ver:"486", seg:"NRU", obs:4, coh:557, d:[50, 32, 27, 29], adc:470, add:[36, 25, 18, 21] },
-        { c:"09-05", ver:"485", seg:"NRU", obs:3, coh:546, d:[54, 44, 45], adc:453, add:[40, 32, 29] },
-        { c:"09-05", ver:"486", seg:"NRU", obs:3, coh:582, d:[59, 39, 36], adc:480, add:[44, 24, 24] },
-        { c:"09-06", ver:"485", seg:"NRU", obs:2, coh:707, d:[69, 52], adc:619, add:[61, 45] },
-        { c:"09-06", ver:"486", seg:"NRU", obs:2, coh:693, d:[82, 44], adc:592, add:[60, 37] },
-        { c:"09-07", ver:"485", seg:"NRU", obs:1, coh:677, d:[60], adc:576, add:[42] },
-        { c:"09-07", ver:"486", seg:"NRU", obs:1, coh:666, d:[53], adc:587, add:[44] },
-        { c:"09-08", ver:"485", seg:"NRU", obs:0, coh:585, d:[], adc:509, add:[] },
-        { c:"09-08", ver:"486", seg:"NRU", obs:0, coh:552, d:[], adc:482, add:[] },
+        { c:"09-03", ver:"485", seg:"NRU", obs:6, coh:81, d:[8, 10, 9, 7, 6, 10], adc:69, add:[8, 8, 8, 7, 6, 10] },
+        { c:"09-03", ver:"486", seg:"NRU", obs:6, coh:108, d:[15, 8, 8, 2, 4, 3], adc:91, add:[11, 7, 4, 1, 3, 2] },
+        { c:"09-04", ver:"485", seg:"NRU", obs:5, coh:533, d:[53, 34, 30, 28, 20], adc:465, add:[37, 21, 16, 15, 9] },
+        { c:"09-04", ver:"486", seg:"NRU", obs:5, coh:557, d:[50, 32, 27, 29, 14], adc:470, add:[36, 25, 18, 21, 7] },
+        { c:"09-05", ver:"485", seg:"NRU", obs:4, coh:546, d:[54, 44, 45, 34], adc:453, add:[40, 32, 29, 21] },
+        { c:"09-05", ver:"486", seg:"NRU", obs:4, coh:582, d:[59, 39, 36, 30], adc:480, add:[44, 24, 24, 24] },
+        { c:"09-06", ver:"485", seg:"NRU", obs:3, coh:707, d:[69, 52, 34], adc:619, add:[61, 45, 31] },
+        { c:"09-06", ver:"486", seg:"NRU", obs:3, coh:693, d:[82, 44, 46], adc:592, add:[60, 37, 35] },
+        { c:"09-07", ver:"485", seg:"NRU", obs:2, coh:677, d:[60, 38], adc:576, add:[42, 25] },
+        { c:"09-07", ver:"486", seg:"NRU", obs:2, coh:666, d:[53, 31], adc:587, add:[44, 25] },
+        { c:"09-08", ver:"485", seg:"NRU", obs:1, coh:585, d:[65], adc:509, add:[52] },
+        { c:"09-08", ver:"486", seg:"NRU", obs:1, coh:552, d:[50], adc:482, add:[40] },
+        { c:"09-09", ver:"485", seg:"NRU", obs:0, coh:650, d:[], adc:575, add:[] },
+        { c:"09-09", ver:"486", seg:"NRU", obs:0, coh:636, d:[], adc:561, add:[] },
       ];
 
       // 4_INFLOW — 유입 세션. 발신자 버전으로도 유저군으로도 못 가른다. 날짜축만 있다.
@@ -234,22 +240,23 @@
         { d:"09-06", t:137, ti:18 },
         { d:"09-07", t:145, ti:25 },
         { d:"09-08", t:160, ti:23 },
+        { d:"09-09", t:152, ti:19 },
       ];
-      const POST = ["09-03", "09-04", "09-05", "09-06", "09-07", "09-08"];
+      const POST = ["09-03", "09-04", "09-05", "09-06", "09-07", "09-08", "09-09"];
 
       // 5_RESULT · 6_BALANCE · 7_VERSION — 원본 폴드와 판정 전제에서 쓴다.
       const RESULT = [
-        { ver:"485", seg:"NRU", clear:9618, fail:214 },
-        { ver:"486", seg:"NRU", clear:10954, fail:345 },
-        { ver:"485", seg:"RU", clear:19395, fail:724 },
-        { ver:"486", seg:"RU", clear:20892, fail:610 },
+        { ver:"485", seg:"NRU", clear:9575, fail:172 },
+        { ver:"486", seg:"NRU", clear:10555, fail:234 },
+        { ver:"485", seg:"RU", clear:19733, fail:675 },
+        { ver:"486", seg:"RU", clear:21068, fail:559 },
       ];
       const BALANCE_US = [
-        { os:"Android", a:656, b:617 },
-        { os:"Windows", a:304, b:316 },
-        { os:"iOS", a:127, b:147 },
-        { os:"(null)", a:38, b:29 },
-        { os:"OS X", a:14, b:19 },
+        { os:"Android", a:646, b:619 },
+        { os:"Windows", a:387, b:378 },
+        { os:"iOS", a:164, b:132 },
+        { os:"(null)", a:46, b:39 },
+        { os:"OS X", a:20, b:20 },
       ];
       // vo = 485·486 이 아닌 다른 빌드의 DAU 합. OTHER_VERS 가 비어 있지 않으면 그 빌드가
       // 실제로 떴다는 뜻이고, 487 이상이 섞이면 그 뒤 날짜는 A/B 대조가 아니다.
@@ -260,6 +267,7 @@
         { d:"09-06", vo:0, a:1232, b:1288 },
         { d:"09-07", vo:0, a:1235, b:1262 },
         { d:"09-08", vo:0, a:1143, b:1130 },
+        { d:"09-09", vo:0, a:1265, b:1190 },
       ];
       const OTHER_VERS = ["483"];
       /* DATA:END */
