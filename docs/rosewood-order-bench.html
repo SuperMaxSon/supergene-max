@@ -409,6 +409,14 @@
                                   inset -4px 0 0 -1px var(--ring); }
       .sh10::before { box-shadow: inset 0 0 0 5px hsl(var(--h) 46% 94%), inset 0 0 0 6.5px var(--ring); }
       .sh11::before { box-shadow: inset 0 0 0 1.5px var(--ring), inset 0 0 0 8px hsl(var(--h) 50% 91%); }
+      /* 아이템 아트 — 원 안에 앉힌다. 비율이 제각각이라 contain 으로 맞추고,
+         체인을 가르는 테두리 링은 그대로 밖에 남는다. */
+      .rw-chip .a, .rw-req .a, .rw-fly .a {
+        display: block; width: 84%; height: 84%; object-fit: contain;
+        pointer-events: none; -webkit-user-drag: none;
+        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.22)); }
+      .rw-req .a { width: 88%; height: 88%; }
+
       /* 생성기 체인(main·sub·quest)은 안쪽에 얇은 링을 하나 더 두른다 —
          같은 클러스터 색 안에서 「합치면 생성기가 되는 줄」과 「생성기가 낳는 줄」이 갈린다.
          .sh* 뒤에 와야 이긴다(같은 명시도라 순서가 승부를 가른다). */
@@ -511,9 +519,10 @@
           같은 엔진 파일(<code>js/rosewood-order-engine.js</code>)을 읽어 여기와 똑같이 판정합니다.
           밸런스 데이터는 <a href="#fx">연출 값</a> 섹션의 <b>밸런스 JSON</b> 버튼으로 통째로 갈아끼울 수 있고
           다음 발급부터 바로 먹습니다. 아이템·체인·규칙 테이블은 <b>밸런스 시트 실물</b>입니다 &mdash;
-          236종 30체인이 시트에 적힌 이름 그대로 나옵니다. 아트가 없어 칩으로 그리는데,
-          <b>색은 클러스터(공방·부엌·정원…), 테두리 무늬는 그 안의 체인</b>이고
-          생성기 체인은 링이 하나 더 있습니다. 이름이 잘리면 칩에 커서를 올려 보세요.
+          236종 30체인이 시트에 적힌 이름 그대로 나옵니다. 아이템 아트 <b>158장</b>이 들어와 있어
+          칩에 실제 그림이 뜹니다 &mdash; 아직 안 온 일곱 체인(공구·차·찻잔·빵·꽃·수건·꿀)은
+          이름 글자로 그립니다. 그림을 감싼 <b>색은 클러스터(공방·부엌·정원…), 테두리 무늬는
+          그 안의 체인</b>이고 생성기 체인은 링이 하나 더 있습니다. 이름은 칩에 커서를 올리면 뜹니다.
         </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--tool)">스토리 머지 · Rosewood</span>
@@ -591,7 +600,6 @@
 
             <div class="rw-railrow">
               <div class="rw-fixed">
-                <button type="button" class="rw-sq" id="rwChoreBtn" title="심부름 — 경험치 공급원은 이것 하나뿐입니다"><b>▤</b>chore<span class="rw-dot" id="rwChoreDot">!</span></button>
                 <button type="button" class="rw-sq" id="rwBox" title="보상 인벤토리"><b>▣</b>보상함<span class="rw-dot rw-hide" id="rwBoxDot">↓</span></button>
               </div>
               <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px">
@@ -708,6 +716,9 @@
               <tr><td><code>order_repeat_reset_count</code> 를 얹었던 것</td><td><b>지웠다.</b> 시트 <code>order_item.repeat_weight_decrease</code> 셀 메모가 「직전에 같은 체인이 오더로 나갔으면 가중치를 이 값으로 나눈다」라고 규정한다 &mdash; 카운터를 쓰지 않는 규칙이라 const 에 그 칸이 없는 게 정상이었다</td></tr>
               <tr><td><code>event_order_score</code> 5행</td><td>시트 탭이 <b>[작성중]</b>. 기준값이 무엇인지도 안 적혀 있어 난이도로 가정했다</td></tr>
               <tr><td><code>level_curve.reward_coin</code></td><td>시트의 레벨 보상은 <code>reward_item_key_1~3</code>(아이템 지급)이라 코인 칸이 없다. 레벨업 체감용 임시값</td></tr>
+              <tr><td>아이템 아트 158/236</td><td>파일명이 곧 <code>item_code</code> 인 1:1 스프라이트를 <code>docs/img/items/</code> 에 넣었다(128px·pngquant, 3.8MB → 1.4MB). <b>일곱 체인이 통째로 없다</b> &mdash; 공구·차·찻잔·빵·꽃·수건·꿀. 없는 코드는 이름 글자로 그린다. <b>⚠ 아트와 이름이 어긋나는 코드가 있다</b>(104 는 이름이 「공구함」인데 그림은 커피머신) &mdash; 아트는 <code>item_spec</code> 신판, 이름은 로컬 구판 xlsx 기준이라 그런 것으로 보인다. 확인 필요</td></tr>
+              <tr><td>결과 자동 선택</td><td><b>없앴다.</b> 생산·병합·이동·꺼내기가 결과 칸을 선택 상태로 만들면 그 칸이 흰색(<code>--surface</code>)으로 남아 빈 흰 박스처럼 보였다. 유저가 고른 적 없는 표시라 머지게임 동작이 아니다 &mdash; 선택은 탭 전용이고, 결과는 팝·스쿼시 연출이 알린다</td></tr>
+              <tr><td>인게임 chore 버튼</td><td><b>뺐다.</b> 심부름 입구가 셋이었다 &mdash; 인게임 즉시지급 버튼 · 아웃게임 마을 플로우 · 개발자 조작 행. 가장 안 충실한 즉시지급 버튼을 없앴다</td></tr>
               <tr><td><code>undo_valid_sec</code> = 5</td><td><b>쓰지 않기로 했다.</b> 되돌리기가 들고 있는 건 {칸·코드·코인} 한 건이라 보관 비용이 없고, 창을 닫아야 하는 진짜 이유는 「서버에 아직 안 보낸 변경을 언제 확정하나」였다. 그 확정 시점을 초 시계 대신 <b>다음 행동</b>에 붙였다 &mdash; 보드·코인을 건드리는 행동이 들어오는 순간 앞의 판매를 커밋한다. 시트에 칸은 남아 있으니 삭제 여부는 기획 판단</td></tr>
               <tr><td>판매 확인창 임계</td><td><code>rare</code> 칸과 문구 스펙 <code>Rw_Board_Sell_Confirm_Popup</code> 이 서로 어긋난 채 열려 있다 (시트 이슈)</td></tr>
               <tr><td>하루 누적 난이도</td><td><code>order_daily_diff_band_1/2</code> 가 const 에 있는데 개발 기획서 A8 은 「쓰지 않는다」고 한다. 벤치는 미구현</td></tr>
@@ -737,7 +748,7 @@
     <div class="rw-toast" id="rwToast"></div>
 
     <!-- 엔진은 「오더 추첨 분석」 페이지와 공유 — 인라인 스크립트보다 먼저 와야 한다 -->
-    <script src="js/rosewood-order-engine.js?v=3"></script>
+    <script src="js/rosewood-order-engine.js?v=5"></script>
     <script>
       "use strict";
       /* ======================================================================
@@ -983,8 +994,15 @@
         d.style.cssText =
           `--h:${hueOf(code)}deg;width:${box.w}px;height:${box.h}px;left:0;top:0;` +
           `color:hsl(var(--h) 58% 26%)`;
-        const ft = document.createElement("span");
-        ft.className = "t"; ft.textContent = labelOf(code); d.appendChild(ft);
+        const spr = spriteOf(code);
+        if (spr) {
+          const im = document.createElement("img");
+          im.className = "a"; im.src = spr; im.alt = labelOf(code); im.decoding = "async";
+          d.appendChild(im);
+        } else {
+          const ft = document.createElement("span");
+          ft.className = "t"; ft.textContent = labelOf(code); d.appendChild(ft);
+        }
         /* 구석 배지도 그대로 태운다 — 보드에서 보던 배치 그대로다.
            A 우상단 시계(은=충전중 / 금=수확 대기) · B 우하단 번개 또는 오더 체크 · C 좌하단 왕관.
            문서 규칙대로 번개와 체크는 절대 같이 뜨지 않는다. */
@@ -1338,7 +1356,6 @@
         await pressPop(chipAt(i));
         await flyBezier(code, from, to);            // A2
         S.cells[dest] = { code };
-        S.sel = dest;
         render();
         squash(chipAt(dest), FX.SQUASH_SX, FX.SQUASH_SY, FX.SQUASH_IN, FX.SQUASH_OUT);
         S.busy = false;
@@ -1531,6 +1548,7 @@
          새 동작을 붙일 때는 반드시 render() 를 거치게 한다.
          ──────────────────────────────────────────────────────────────── */
       function render() {
+        syncSel();
         renderStats(); renderBoard(); renderInfo(); renderRail(); renderOut();
         syncFrameHeight(); scheduleWake(); save();
       }
@@ -1678,9 +1696,21 @@
 
           // 칩 — 라벨과 색만 바꾼다. 노드는 그대로 둬서 트윈이 안 끊긴다
           const lbl = labelOf(c.code);
-          let txt = chip.firstElementChild;
-          if (!txt) { txt = document.createElement("span"); txt.className = "t"; chip.appendChild(txt); }
-          if (txt.textContent !== lbl) txt.textContent = lbl;
+          const spr = spriteOf(c.code);
+          let art = chip.firstElementChild;
+          if (spr) {
+            if (!art || art.tagName !== "IMG") {
+              art = document.createElement("img");
+              art.className = "a"; art.loading = "lazy"; art.decoding = "async";
+              chip.replaceChildren(art);
+            }
+            if (art.getAttribute("src") !== spr) { art.setAttribute("src", spr); art.alt = lbl; }
+          } else {
+            if (!art || art.tagName !== "SPAN") {
+              art = document.createElement("span"); art.className = "t"; chip.replaceChildren(art);
+            }
+            if (art.textContent !== lbl) art.textContent = lbl;
+          }
           const shp = "rw-chip " + shapeOf(c.code) + lenOf(c.code);
           if (chip.className !== shp) chip.className = shp;
           const ttl = titleOf(c.code);
@@ -1906,7 +1936,7 @@
           useHost("#rwStage", "#rwFx");
           await settle(cellBox(b));
           cleanup();
-          S.cells[b] = A; S.cells[a] = null; S.sel = b;
+          S.cells[b] = A; S.cells[a] = null;
           render(); save();
           squash(chipAt(b), FX.DRAG_LAND_X, FX.DRAG_LAND_Y, FX.DRAG_LAND_IN, FX.DRAG_LAND_OUT);
           return;
@@ -1947,7 +1977,7 @@
         d.proxy.remove();
         burst(to, sp.merged_item_code);
         S.cells[b] = { code: sp.merged_item_code };
-        S.sel = b; render(); save();
+        render(); save();
         await resultPop(chipAt(b));
         S.busy = false;
       }
@@ -1968,6 +1998,12 @@
          탭 두 번으로 합치거나, 같은 칸을 다시 눌러 선택이 풀리거나,
          고르기만 했는데 짝에 링이 도는 건 머지게임의 동작이 아니다.
          문서도 짝 강조를 「드래그 중 3요소」로 못 박는다. */
+      /* 선택은 「탭」 하나로만 잡힌다. 생산·병합·이동·꺼내기의 결과로 칸이 선택되면
+         그 칸이 흰색(--surface)으로 남아 빈 흰 박스처럼 보인다 — 유저가 고른 적 없는
+         표시라 머지게임 동작이 아니다. 결과는 팝·스쿼시 연출이 알린다.
+         선택이 가리키던 칩이 사라졌으면(팔림·옮겨짐·납품됨) 선택도 같이 푼다. */
+      function syncSel() { if (S.sel != null && !S.cells[S.sel]) S.sel = null; }
+
       function onCell(i) {
         if (S.busy) return;
         const c = S.cells[i]; if (!c) return;
@@ -2071,7 +2107,6 @@
         sealUndo();
         bag.splice(idx, 1);
         S.cells[dest] = { code };
-        S.sel = dest;
         render(); renderInv();
         squash(chipAt(dest), FX.SQUASH_SX, FX.SQUASH_SY, FX.SQUASH_IN, FX.SQUASH_OUT);
       }
@@ -2724,7 +2759,6 @@
       }
 
       $("#rwChore").onclick = doChore;
-      $("#rwChoreBtn").onclick = (e) => { tapFeel(e.currentTarget); doChore(); };
       $("#rwBuyEnergy").onclick = (e) => { tapFeel(e.currentTarget); toast("에너지 구매(54)는 이 벤치의 범위 밖입니다"); };
       $("#rwBuyGem").onclick = (e) => { tapFeel(e.currentTarget); toast("젬 팩(98)은 이 벤치의 범위 밖입니다"); };
       /* 오더를 계속 돌려 보기 위한 길 — 예산·대기를 풀고 열린 슬롯을 통째로 다시 발급한다.
