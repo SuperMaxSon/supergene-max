@@ -145,14 +145,25 @@
       .rw-boost { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 800;
                   padding: 3px 9px; border: 1px solid var(--border); border-radius: 7px;
                   background: var(--surface-2); }
-      .rw-boost { cursor: pointer; min-width: 46px; }
-      .rw-boost.m1 { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
-      .rw-boost.m2 { color: var(--plan); border-color: color-mix(in srgb, var(--plan) 45%, var(--border));
-                     background: color-mix(in srgb, var(--plan) 10%, var(--surface-2)); }
-      .rw-boost.m4 { color: #c2185b; border-color: #e8a3bd; background: #fdeef4; }
+      /* 배속은 색 하나로 묶는다 — 버튼과 생성기 번개가 같은 색을 쓴다.
+         버튼만 보고도, 보드만 보고도 지금 몇 배인지 읽혀야 한다. */
+      .rw-boost { cursor: pointer; min-width: 52px; color: #fff;
+                  background: var(--x-c); border-color: var(--x-c);
+                  box-shadow: 0 1px 0 color-mix(in srgb, var(--x-c) 55%, #000); }
+      .rw-boost.m1 { --x-c: var(--warn); }
+      .rw-boost.m2 { --x-c: var(--plan); }
+      .rw-boost.m4 { --x-c: #c2185b; }
       .rw-buff.off { opacity: 0.38; }
-      .rw-cell.gen.m2 .rw-bg.b { background: var(--plan); }
-      .rw-cell.gen.m4 .rw-bg.b { background: #c2185b; }
+      /* 생성기 번개 — 배속 색을 그대로 받는다. 드래그·비행 중에도 따라간다 */
+      .rw-cell.gen.m1 .rw-bg.b, .rw-fly.gen.m1 .rw-bg.b { background: var(--warn); }
+      .rw-cell.gen.m2 .rw-bg.b, .rw-fly.gen.m2 .rw-bg.b { background: var(--plan); }
+      .rw-cell.gen.m4 .rw-bg.b, .rw-fly.gen.m4 .rw-bg.b { background: #c2185b; }
+      /* 배속이 걸린 생성기는 칩 둘레에도 그 색이 돈다 */
+      .rw-cell.gen.m2 .rw-shape::before, .rw-fly.gen.m2::before {
+        box-shadow: inset 0 0 0 2px var(--plan), inset 0 0 0 4px hsl(var(--h) 40% 92%); }
+      .rw-cell.gen.m4 .rw-shape::before, .rw-fly.gen.m4::before {
+        box-shadow: inset 0 0 0 2px #c2185b, inset 0 0 0 4px hsl(var(--h) 40% 92%); }
+      .rw-fly .rw-bg { pointer-events: none; }
 
       /* 레일 — 좌측 고정 + 가로 스크롤 */
       .rw-railrow { display: flex; gap: 7px; align-items: stretch; }
@@ -326,7 +337,7 @@
       .rw-chip[data-busy] { animation: none; }
       @media (prefers-reduced-motion: reduce) { .rw-cell.gen .rw-chip { animation: none; } }
       .rw-cell.hint .rw-chip { box-shadow: 0 0 0 2px var(--balance); }
-      .rw-cell.gen .rw-chip { border-width: 2px; border-style: double; }
+
       /* 셀 배지 슬롯 — 화면 기획서 도해: A 우상단 · B 우하단 · C 좌하단 · D 셀 전체 */
       .rw-bg { position: absolute; z-index: 2; width: 15px; height: 15px; border-radius: 50%;
                display: grid; place-items: center; font-size: 9px; font-weight: 800; line-height: 1; }
@@ -340,13 +351,38 @@
       /* D — 셀 전체 */
       .rw-cell.ready { background: color-mix(in srgb, var(--warn) 26%, var(--surface-3)); }
       .rw-cell.dim .rw-chip { opacity: 0.45; }
+      .rw-selb { position: absolute; inset: 3px; pointer-events: none; }
       .rw-cell.sel::before, .rw-cell.sel::after,
-      .rw-cell.sel .rw-chip::before, .rw-cell.sel .rw-chip::after {
+      .rw-cell.sel .rw-selb::before, .rw-cell.sel .rw-selb::after {
         content: ""; position: absolute; width: 9px; height: 9px; border: 2px solid var(--analysis); z-index: 3; }
       .rw-cell.sel::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
       .rw-cell.sel::after { top: -2px; right: -2px; border-left: 0; border-bottom: 0; }
-      .rw-cell.sel .rw-chip::before { bottom: -3px; left: -3px; border-right: 0; border-top: 0; }
-      .rw-cell.sel .rw-chip::after { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
+      .rw-cell.sel .rw-selb::before { bottom: -3px; left: -3px; border-right: 0; border-top: 0; }
+      .rw-cell.sel .rw-selb::after { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
+
+      /* ── 칩 실루엣 — 체인마다 모양이 다르다.
+         색만으로는 12체인이 구분이 안 된다. 모양은 ::before 가 그리고 글자·배지는
+         그 위에 그대로 남는다(클립에 안 잘린다). ── */
+      .rw-shape { position: relative; isolation: isolate;
+                  background: transparent !important; border: 0 !important; }
+      .rw-shape::before { content: ""; position: absolute; inset: 0; z-index: -1;
+                          background: hsl(var(--h) 46% 86%);
+                          box-shadow: inset 0 0 0 1.5px hsl(var(--h) 45% 66%); }
+      .sh0::before  { border-radius: 50%; }
+      .sh1::before  { border-radius: 6px; }
+      .sh2::before  { clip-path: polygon(24% 4%, 76% 4%, 100% 50%, 76% 96%, 24% 96%, 0 50%); }
+      .sh3::before  { clip-path: polygon(50% 0, 96% 26%, 96% 74%, 50% 100%, 4% 74%, 4% 26%); }
+      .sh4::before  { clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+      .sh5::before  { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+      .sh6::before  { clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%); }
+      .sh7::before  { clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%); }
+      .sh8::before  { border-radius: 50% 7px 50% 7px; }
+      .sh9::before  { border-radius: 50% 50% 50% 7px; }
+      .sh10::before { clip-path: polygon(32% 0, 68% 0, 68% 32%, 100% 32%, 100% 68%, 68% 68%, 68% 100%, 32% 100%, 32% 68%, 0 68%, 0 32%, 32% 32%); }
+      .sh11::before { border-radius: 40% / 22%; }
+      /* 생성기는 테두리를 겹쳐 그려 한눈에 갈린다 */
+      .rw-cell.gen .rw-shape::before, .rw-fly.gen::before {
+        box-shadow: inset 0 0 0 1.5px hsl(var(--h) 45% 60%), inset 0 0 0 4px hsl(var(--h) 40% 92%); }
       .rw-cap { font-size: 10px; color: var(--text-faint); text-align: center; line-height: 1.5; }
 
       /* 인벤토리 모달 — 프레임 안에서만 덮는다(기기 화면 안의 팝업) */
@@ -752,6 +788,8 @@
       const chainOf = (code) => Math.floor(code / 100);
       const stepOf = (code) => code % 100;
       const labelOf = (code) => letterOf(chainOf(code)) + stepOf(code);
+      // 체인마다 다른 실루엣 — 색이 비슷해도 모양으로 갈린다
+      const shapeOf = (code) => `rw-shape sh${(chainOf(code) - 2 + 12) % 12}`;
 
       function toast(m) {
         const t = $("#rwToast");
@@ -995,14 +1033,36 @@
       function cellBox(i) { useHost("#rwStage", "#rwFx"); return boxOf($("#rwBoard").children[i]); }
       function chipAt(i) { const c = $("#rwBoard").children[i]; return c && c.querySelector(".rw-chip"); }
 
-      function makeFly(code, box) {
+      /* 날아가는 칩도 보드에서 보던 그림 그대로여야 한다 — 실루엣, 그리고 생성기라면
+         구석 배지(시계·번개)와 배속 색까지 같이 들고 난다. */
+      function makeFly(code, box, cell) {
+        const sp = specOf(code) || {};
+        const gen = !!sp.is_generator;
+        const mult = S && S.boost ? S.boost : 1;
         const d = document.createElement("div");
-        d.className = "rw-fly";
+        d.className = `rw-fly ${shapeOf(code)}${gen ? " gen m" + mult : ""}`;
         d.style.cssText =
           `--h:${hueOf(chainOf(code))}deg;width:${box.w}px;height:${box.h}px;left:0;top:0;` +
-          `font-size:${box.w * 0.34}px;background:hsl(var(--h) 44% 87%);color:hsl(var(--h) 58% 26%);` +
-          `border:1px solid hsl(var(--h) 40% 72%)`;
+          `font-size:${box.w * 0.34}px;color:hsl(var(--h) 58% 26%)`;
         d.textContent = labelOf(code);
+        /* 구석 배지도 그대로 태운다 — 보드에서 보던 배치 그대로다.
+           A 우상단 시계(은=충전중 / 금=수확 대기) · B 우하단 번개 또는 오더 체크 · C 좌하단 왕관.
+           문서 규칙대로 번개와 체크는 절대 같이 뜨지 않는다. */
+        const badge = (cls, txt) => {
+          const b = document.createElement("span");
+          b.className = cls; b.textContent = txt; d.appendChild(b);
+        };
+        if (gen) {
+          if (cell) {
+            if (cell.stock <= 0) badge("rw-bg a", "◷");
+            else if (cell.stock >= sp.spread_item_max) badge("rw-bg a gold", "◷");
+          }
+          badge("rw-bg b", "⚡");
+        } else {
+          const m = MARKS_CACHE && MARKS_CACHE.get(code);
+          if (m) badge("rw-bg b check", "✓");
+          if (!sp.merged_item_code) badge("rw-bg c", "♛");
+        }
         FXROOT.fx.appendChild(d);
         return d;
       }
@@ -1385,7 +1445,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v3.0 · 2026-09-10";
+      const BUILD = "v3.1 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1801,7 +1861,7 @@
 
         S.busy = true;
         const from = cellBox(a), to = cellBox(b);
-        const el = makeFly(A.code, from);
+        const el = makeFly(A.code, from, A);
         const st = { x: from.x, y: from.y, s: 1, o: 1 };
         const dr = () => { place(el, st); el.style.opacity = st.o; };
         dr();
@@ -2081,6 +2141,7 @@
       /* 오더 충족 2단계 표시 (문서 확정 사항)
          체크만            = 이 아이템을 요구하는 카드가 있다 (다른 재료가 아직 미완)
          체크 + 노란 테두리 = 그 카드가 전부 채워져 지금 납품할 수 있다 */
+      let MARKS_CACHE = new Map();
       function orderMarks() {
         const counts = boardCounts();
         const mark = new Map();
@@ -2100,7 +2161,8 @@
           const el = document.createElement("button");
           el.className = "rw-cell"; el.type = "button";
           el.setAttribute("aria-label", `셀 ${i}`);
-          el.innerHTML = '<span class="rw-chip"></span><span class="rw-bg a"></span><span class="rw-bg b"></span><span class="rw-bg c"></span>';
+          el.innerHTML = '<span class="rw-chip"></span><span class="rw-bg a"></span><span class="rw-bg b"></span>'
+                       + '<span class="rw-bg c"></span><span class="rw-selb"></span>';
           el.onclick = () => { if (SUPPRESS_CLICK) return; onCell(i); };
           el.addEventListener("pointerdown", (e) => beginDrag(e, i));
           b.appendChild(el);
@@ -2109,6 +2171,7 @@
 
       function renderBoard() {
         const mark = orderMarks();
+        MARKS_CACHE = mark;
         const board = $("#rwBoard");
         if (board.children.length !== CELLS) buildBoard();
         const kids = board.children;
@@ -2120,7 +2183,8 @@
           const c = S.cells[i];
           if (!c) {
             el.className = "rw-cell"; el.disabled = true;
-            chip.style.display = "none"; ba.style.display = bb.style.display = bc.style.display = "none";
+            chip.style.display = "none"; chip.className = "rw-chip";
+            ba.style.display = bb.style.display = bc.style.display = "none";
             continue;
           }
           const sp = specOf(c.code), m = mark.get(c.code);
@@ -2139,6 +2203,8 @@
           // 칩 — 라벨과 색만 바꾼다. 노드는 그대로 둬서 트윈이 안 끊긴다
           const lbl = labelOf(c.code);
           if (chip.textContent !== lbl) chip.textContent = lbl;
+          const shp = "rw-chip " + shapeOf(c.code);
+          if (chip.className !== shp) chip.className = shp;
           const h = hueOf(chainOf(c.code)) + "deg";
           if (chip.style.getPropertyValue("--h") !== h) chip.style.setProperty("--h", h);
           chip.style.display = "";
@@ -2235,7 +2301,7 @@
         d.live = true; d.home = box;
 
         // 원래 자리 고스트 — 「여기서 들어 올렸다」
-        const ghost = makeFly(S.cells[i].code, box);
+        const ghost = makeFly(S.cells[i].code, box, S.cells[i]);
         ghost.style.opacity = FX.DRAG_GHOST_A;
         ghost.style.transform = `translate(${box.x - box.w / 2}px, ${box.y - box.h / 2}px)`;
         d.ghost = ghost;
@@ -2248,7 +2314,7 @@
         d.shadow = sh;
 
         // 드래그 프록시 — 실제 칩은 숨기고 fx 레이어에서 움직인다
-        const proxy = makeFly(S.cells[i].code, box);
+        const proxy = makeFly(S.cells[i].code, box, S.cells[i]);
         proxy.style.zIndex = 6;
         d.proxy = proxy;
         d.st = { x: box.x, y: box.y, sx: 1, sy: 1, rot: 0 };
@@ -2459,7 +2525,7 @@
         el.innerHTML =
           side() +
           `<div class="body">
-             <span class="rw-req" style="--h:${hueOf(ch)}deg">${labelOf(c.code)}</span>
+             <span class="rw-req ${shapeOf(c.code)}" style="--h:${hueOf(ch)}deg">${labelOf(c.code)}</span>
              <div class="txt">
                <span class="name">${chName} (Lvl ${stepOf(c.code)})</span>
                <div class="d">${line}</div>
@@ -2553,14 +2619,14 @@
             const locked = i >= openN;
             cells.push(`<button class="s ${code != null && !locked ? "has" : ""}"
               ${code != null && !locked ? `onclick="takeOut('store',${i})" title="꺼내기 — 보드 나선 첫 빈 칸"` : "disabled"}>
-              ${code != null ? `<span class="rw-req" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span>` : ""}
+              ${code != null ? `<span class="rw-req ${shapeOf(code)}" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span>` : ""}
               ${locked ? '<span class="lk">🔒</span>' : ""}</button>`);
           }
         } else {
           // 보상함은 창고 칸 수를 쓰지 않는다 — 있는 만큼만 그린다
           if (!bag.length) cells.push('<div style="grid-column:1/-1;font-size:11.5px;color:var(--text-faint);padding:10px 2px">받을 보상이 없습니다.</div>');
           bag.forEach((code, i) => cells.push(`<button class="s has" onclick="takeOut('box',${i})" title="꺼내기">
-              <span class="rw-req" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span></button>`));
+              <span class="rw-req ${shapeOf(code)}" style="--h:${hueOf(chainOf(code))}deg">${labelOf(code)}</span></button>`));
         }
         el.innerHTML = `<div class="rw-sheet">
             <h4>인벤토리<button class="x" onclick="closeInv()" aria-label="닫기">✕</button></h4>
@@ -2591,7 +2657,7 @@
             </div>
             <div class="rw-dish">${card.reqs.map((q) => {
               const have = counts ? (counts.get(q.code) || 0) >= q.count : false;
-              return `<span class="rw-req ${counts && !have ? "miss" : ""}" style="--h:${hueOf(chainOf(q.code))}deg">${labelOf(q.code)}${have ? '<span class="ck">✓</span>' : ""}</span>`;
+              return `<span class="rw-req ${shapeOf(q.code)} ${counts && !have ? "miss" : ""}" style="--h:${hueOf(chainOf(q.code))}deg">${labelOf(q.code)}${have ? '<span class="ck">✓</span>' : ""}</span>`;
             }).join("")}</div>
             <div class="rw-bot">
               <span class="rw-rb" title="B — 이벤트 재화">◆ ${evt}</span>
