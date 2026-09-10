@@ -834,13 +834,18 @@ const bagCount = (k) => (S.inv[k] || []).length;
 
 /* 오더 카드 마크업 — 레일과 뽑기 표본이 같은 그림을 쓴다.
    문서 「오더 카드 해부」: NPC 초상 · 접시 · A 상단 우측 · B 하단 좌 · C 하단 우 · Serve */
+/* 오더 카드 — ◎ 코인(A 보상) · ◈ 난이도(하루 누적되어 다음 밴드를 고른다) ·
+   ◆ 이벤트 재화(B 보상).
+   C 보상(팩·카드) 자리는 비워 뒀다 — 시트에 오더별 팩 보상 칸이 없다. pack 은
+   주간 태스크의 count_target 으로만 나온다. 데이터 없이 「★ 팩」을 박아 두면
+   모든 오더가 팩을 준다고 읽혀서 뺐다. 값이 생기면 rw-bot 에 붙인다. */
 function orderCardHTML(card, o = {}) {
   const counts = o.counts;
   const evt = card.evt ?? eventScore(card.diff || 0);
   return `<div class="rw-card"${o.slot ? ` data-slot="${o.slot}"` : ""}>
       <span class="rw-npc">${card.avatar.slice(0, 3)}</span>
       <div class="rw-top">
-        <span class="rw-ra"><span>◎ ${card.coin}</span>${card.diff ? `<span>◈ ${card.diff}</span>` : ""}</span>
+        <span class="rw-ra"><span title="A — 코인 보상">◎ ${card.coin}</span>${card.diff ? `<span title="난이도 점수 — 하루 누적되어 다음 오더의 밴드를 고른다">◈ ${card.diff}</span>` : ""}</span>
       </div>
       <div class="rw-dish">${card.reqs.map((q) => {
         const have = counts ? (counts.get(q.code) || 0) >= q.count : false;
@@ -849,7 +854,6 @@ function orderCardHTML(card, o = {}) {
       <div class="rw-bot">
         <span class="rw-rb" title="B — 이벤트 재화">◆ ${evt}</span>
         ${(S.debug || o.debug) && card.type ? `<span class="rw-lbl">${TYPE_KO[card.type] || card.type}${card.band ? ` b${card.band}` : ""}</span>` : ""}
-        <span class="rw-rc" title="C — 팩·카드">★ 팩</span>
       </div>
       ${o.serve ? `<span class="rw-serve"><button class="rw-btn serve" onclick="event.stopPropagation();serve(${o.slot})">Serve</button></span>` : ""}
     </div>`;
