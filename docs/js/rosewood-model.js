@@ -13,7 +13,7 @@
      · 규칙 판정은 여기서 하지 않는다 — `Rules` 가 판정하고, 모델은 **적용**만 한다.
      · 연출도 하지 않는다 — 뷰가 알림을 받아 연출을 얹는다.
 
-   의존: rosewood-order-engine.js (S · DATA · specOf · lvOf · fillEmptySlots)
+   의존: rosewood-order-engine.js (S · DATA · specOf · lvOf · generateOrder · openSlots)
         rosewood-rules.js (Rules)
    ========================================================================== */
 "use strict";
@@ -155,6 +155,22 @@ const Model = (() => {
   }
   function buySlot(cost) { S.gem -= cost; S.inv.bought = (S.inv.bought || 0) + 1; changed("inv"); changed("stats"); }
 
+
+  /* ── 슬롯 채우기 ──────────────────────────────────────────────────────
+     번호순으로 돈다. 앞 카드를 확정한 다음 뒤 슬롯의 후보를 다시 계산해야
+     「같은 요구가 두 슬롯에 겹치는」 일이 안 생긴다(기획서 1.2.1 [2]).
+     발급 로그는 40건까지만 들고 있는다 — 디버그 표가 읽는다. */
+  function fillEmptySlots(reason) {
+    for (const n of openSlots()) {
+      if (S.slots[n]) continue;
+      const r = generateOrder(n, { dailyDiff: diffScore() });
+      S.log.unshift({ slot: n, type: r.card ? r.card.type : slotType(n), ok: !!r.card, reason, lines: r.log, t: new Date() });
+      if (r.card) S.slots[n] = r.card;
+    }
+    S.log = S.log.slice(0, 40);
+    changed("rail");
+  }
+
   /* ── 오더 ────────────────────────────────────────────────────────────
      납품 확정 — 코인·직전 요구품·난이도 누적을 한 번에 처리하고 다음 카드를 발급한다.
      반복 감쇠는 카운터가 아니라 **직전 오더의 체인** 한 장으로 판정한다(시트 메모). */
@@ -181,6 +197,6 @@ const Model = (() => {
     diffScore, addDiff, rollDiffDay, dayStamp, spiralOrder,
     toBox, grantItem,
     stash, unstash, buySlot,
-    commitServe, dropOrder,
+    commitServe, dropOrder, fillEmptySlots,
   };
 })();

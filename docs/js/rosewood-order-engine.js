@@ -770,7 +770,7 @@ const lvOf = (level) => idx().lv.get(level);
 /* ======================================================================
    2b. 저장 — 읽기만. 쓰기(saveNow/save)는 벤치에 남는다.
    ====================================================================== */
-const BUILD = "v4.7 · 2026-09-10";   // rare → show_sell_confirm 개명 반영
+const BUILD = "v5.0 · 2026-09-10";   // 인게임 재구조화(Rules/Model/FX/ViewGame) · 아트 224장
 const SAVE_KEY = "rw.orderBench";
 const SAVE_VER = 4;
 
