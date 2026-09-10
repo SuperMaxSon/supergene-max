@@ -67,6 +67,16 @@
       .rw-v.warn { background: hsl(38 70% 90%); color: hsl(30 70% 28%); }
       .rw-v.na { background: var(--surface-2); color: var(--text-faint); }
 
+      /* 귀속 배지 — 판정(맞다/틀리다)과 원인(누구를 고쳐야 하나)은 다른 축이다.
+         판정만 있으면 FAIL 을 보고도 엔진·시트·테스트 중 어디를 열지 모른다. */
+      .rw-c { display: inline-flex; align-items: center; justify-content: center; min-width: 46px;
+              margin-top: 3px; padding: 0 7px; border-radius: 10px; font-size: 10px; font-weight: 700;
+              letter-spacing: 0.03em; font-family: ui-monospace, Menlo, monospace;
+              border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
+      .rw-c.logic { border-color: hsl(4 50% 78%); color: hsl(4 62% 38%); }
+      .rw-c.data  { border-color: hsl(258 40% 78%); color: hsl(258 45% 42%); }
+      .rw-c.judge { border-color: hsl(200 40% 74%); color: hsl(200 50% 34%); }
+
       /* 접기 — 검사 표는 기본 접힘. summary 한 줄에 판정 요약이 남는다 */
       .rw-fold { border: 1px solid var(--border); border-radius: var(--radius-sm);
                  background: var(--surface); margin-top: 10px; overflow: hidden; }
@@ -265,11 +275,19 @@
           비율은 이항 3σ, 기대빈도 5 미만은 판정에서 뺍니다.
           <b>PASS 는 「그 항목이 맞다」일 뿐 알고리즘이 정상이라는 뜻이 아닙니다</b> &mdash;
           이 페이지가 아예 재지 않는 영역은 「미검증」 표에 적어 뒀습니다.
-          엔진 v2 는 벤치 v4.2(시트 실물·3자리)에서 재추출하고 <b>갭 3건을 반영</b>했습니다 &mdash; 가중치 <code>weight×multiple</code> · <code>score_base(coin)</code>·event_id · 누적 난이도 축(입력).
+          공용 엔진은 벤치와 같은 파일을 읽습니다 &mdash; 갭 3건(가중치 <code>weight×multiple</code> ·
+          <code>score_base(coin)</code>·event_id · 누적 난이도 축) 반영, v4.5 에서 시트 셀 메모 대조로
+          <code>refill_max</code>·반복 감쇠 해석 2건을 정정했습니다.
+          비율 판정은 <b>동시 비교 개수만큼 임계값을 넓힙니다</b> &mdash; 후보 44종을 각각 3σ 로 재면
+          엔진이 정상이어도 11% 확률로 하나가 넘어 FAIL 이 뜹니다.
           <br><span class="rw-v no">FAIL</span> 엔진과 시트가 어긋남 ·
           <span class="rw-v warn">주의</span> 지금은 결과가 같지만 조건이 바뀌면 틀어짐 ·
           <span class="rw-v ok">PASS</span> 일치 ·
           <span class="rw-v na">필수</span> 우리 판정이 아니라 시트가 매긴 <code>data_manifest.is_critical</code> 값
+          <br>어긋난 행에는 <b>어디를 고쳐야 하나</b>를 같이 답니다 &mdash;
+          <span class="rw-c logic">로직</span> 엔진이 시트대로 계산하지 못한다 ·
+          <span class="rw-c data">데이터</span> 엔진은 시트대로 돌았고 시트 구성끼리 충돌한다 ·
+          <span class="rw-c judge">판정</span> 기대값이 실제 알고리즘 경로를 반영하지 못한다
         </div>
 
         <details class="rw-fold">
@@ -400,7 +418,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v2.0 · 2026-09-10";   // 엔진 v2(벤치 v4.2 재추출 + GAP 1~3) 대응
+      const PAGE_BUILD = "v2.2 · 2026-09-10";   // 판정에 「귀속」 축 추가 · T1/T1b 분리 · T9 신설 · 다중비교 보정
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -517,8 +535,8 @@
            "event_id 4종 중 무엇이 활성인지는 편성 몫 — 기본으로 데이터 첫 행으로 계산한다",
            "이벤트 편성 테이블이 생기면 그걸 입력으로"],
           ["<code>weight</code> 실효",
-           "전 행 100·1 이라 곱해도 결과가 같다 — 값이 흔들려야 T2 가 잡는다. 「주머니 잔량」 의미면 해석 자체가 다르다",
-           "값이 흔들린 시트로 재검 + 잔량 의미 기획 확인"],
+           "전 행 100·1 이라 곱해도 결과가 같다 — 값이 흔들려야 T2 가 이 칸을 실제로 잡는다. 해석 자체는 셀 메모(<code>weight_rel</code> · 정규화 금지)로 확정됐다",
+           "값이 갈린 시트로 재검"],
           ["<code>order_special</code> 탭",
            "추첨 경로에 안 들어온다고 보고 변환에서 뺐다 — 확인 필요",
            "special 오더가 이 탭을 읽는지 기획 확인 후 탭 추가"],
@@ -528,6 +546,9 @@
           ["[7] 보상 단가 곡선",
            "합산·이벤트 재화 일치만 보고, 단가 자체가 옳은지는 안 본다",
            "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
+          ["반복 감쇠 — 둘째·셋째 자리",
+           "T8 은 자리1 만 본다. 기대값을 자리별로 따로 세워야 하는데 앞 자리 결과에 따라 후보가 바뀐다",
+           "자리별 조건부 기대값 계산 추가. <code>avatar</code> 처럼 자리1 이 한 단계뿐인 타입은 자리1 로는 아예 못 잰다"],
           ["생성기 주머니 (<code>produce_item_1~20</code>)",
            "오더 추첨 밖이다 — 벤치의 생산 경로 소관",
            "벤치에서 생산 표본을 뽑아 <code>produce_weight</code> 와 대조"],
@@ -737,16 +758,28 @@
       }
 
       const VERDICT = { ok: "PASS", no: "FAIL", warn: "주의", na: "—" };
+      /* 판정과 원인은 다른 축이다 — FAIL 하나로는 엔진·시트·테스트 중 어디를 열지 모른다 */
+      const CAUSE = { logic: "로직", data: "데이터", judge: "판정" };
       /* 접힌 채로도 무엇이 깨졌는지는 보여야 한다 — summary 에 FAIL 항목명까지 싣는다 */
       function summarize(rows, sel) {
         const bad = rows.filter((r) => r.v === "no");
         const warn = rows.filter((r) => r.v === "warn").length;
         const name = (r) => String(r.name || "").replace(/^T\d+ /, "");
+        /* 주의는 FAIL 이 없을 때도 접힌 줄에 남겨야 한다 — 안 그러면 「PASS 10」만 보이고
+           데이터 충돌(T1b·T9)이 접힌 안에서 사라진다. 실제로 그렇게 놓쳤다. */
+        const warnRows = rows.filter((r) => r.v === "warn");
+        const chip = (v, k, list) => `<span class="rw-v ${v}">${k}</span>`
+          + ` <span style="opacity:.75">${list.slice(0, 3).map(name).join(" · ")}${list.length > 3 ? " …" : ""}</span>`;
+        /* na(판정 성립 안 함)를 PASS 로 세면 안 된다 — 안 잰 것을 통과로 읽게 된다 */
+        const pass = rows.filter((r) => r.v === "ok").length;
+        const na = rows.filter((r) => r.v === "na").length;
+        const tail = (na ? ` <span class="rw-v na">판정 밖 ${na}</span>` : "") + ` / ${rows.length}`;
         $(sel).innerHTML = bad.length
-          ? `<span class="rw-v no">FAIL ${bad.length}</span>${warn ? ` <span class="rw-v warn">주의 ${warn}</span>` : ""}`
-            + ` <span style="opacity:.75">${bad.slice(0, 3).map(name).join(" · ")}${bad.length > 3 ? " …" : ""}</span>`
-            + ` / ${rows.length}`
-          : `<span class="rw-v ok">PASS ${rows.length}</span>`;
+          ? chip("no", `FAIL ${bad.length}`, bad)
+            + (warn ? ` <span class="rw-v warn">주의 ${warn}</span>` : "") + tail
+          : warn
+            ? `<span class="rw-v ok">PASS ${pass}</span> ` + chip("warn", `주의 ${warn}`, warnRows) + tail
+            : `<span class="rw-v ok">PASS ${pass}</span>` + tail;
       }
       function renderGap() {
         const rows = checks();
@@ -783,20 +816,52 @@
         const useCtx = $("#rwCtx").value === "rail";
         const fixed = $("#rwFix").checked;
 
+        const daily = clamp(Number($("#rwDaily").value) || 0, 0, 9999);
+        const band = pickBand(type, lv, daily);
+        const rule = ruleOf(type);
+
         /* 레일 맥락 — 빈 집합으로 두면 기획서 [2] 의 배수 4 개 중 「타 오더 요구」 축
            둘(100 · 1)이 아예 발생하지 않아 실제 분포와 달라진다. 실제 레일이 없으므로
            후보 두 종을 다른 오더의 요구로 가정해 넣는다. */
         const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= lv);
         const othersReq = new Set();
-        const prev = useCtx && pool.length ? [pool[Math.floor(pool.length / 2)].item_code] : null;
         if (useCtx) pool.slice(0, 2).forEach((o) => othersReq.add(o.item_code));
 
-        const daily = clamp(Number($("#rwDaily").value) || 0, 0, 9999);
-        const band = pickBand(type, lv, daily);
-        const rule = ruleOf(type);
+        /* 직전 요구는 아무거나 고르면 안 된다 — 반복 감쇠(T8)는 「직전 체인의 다른 단계」에
+           걸리는데, 그 형제가 자리1 범위 밖이면 기대도 0 실측도 0 이 되어 판정이 서지 않는다.
+           예전엔 pool 중간 원소를 썼고, 그게 늘 8단계 아이템이라 형제가 9~11단계로 빠져
+           T8 이 항상 무의미했다. 그래서 <b>자리1 범위 안에 감쇠 대상 형제가 가장 많은 체인</b>을
+           골라, 그 체인의 최고 단계를 직전 요구로 쓴다(직전 코드 자체는 제외되므로
+           최고 단계를 써야 범위 안 형제가 안 깎인다). 결정적이라 재현성은 그대로다. */
+        let prev = null;
+        if (useCtx && pool.length) {
+          const inSeat1 = (o) => band && stepOf(o.item_code) >= band.first_min && stepOf(o.item_code) <= band.first_max;
+          const score = new Map();
+          for (const o of pool) {
+            if (!inSeat1(o) || !(Number(o.repeat_weight_decrease) > 0) || othersReq.has(o.item_code)) continue;
+            const ch = chainOf(o.item_code);
+            score.set(ch, (score.get(ch) || 0) + 1);
+          }
+          let best = null;
+          for (const [ch, n] of [...score.entries()].sort((a, b) => a[0] - b[0]))
+            if (!best || n > best[1]) best = [ch, n];
+          const fam = best ? pool.filter((o) => chainOf(o.item_code) === best[0] && !othersReq.has(o.item_code)) : [];
+          prev = fam.length
+            ? [fam.reduce((a, o) => (stepOf(o.item_code) > stepOf(a.item_code) ? o : a)).item_code]
+            : [pool[Math.floor(pool.length / 2)].item_code];
+        }
 
         const seatTally = [new Map(), new Map(), new Map()];
         const tally = new Map(), combo = new Map(), cnt = new Map();
+        /* [4] 가 몇 자리를 채웠는지 — 엔진이 카드에 안 싣는 값이라 로그에서 뽑는다.
+           「후보 자리 n」은 [5] 가 재정규화 판단에 쓰는 그 수라서, 표시 문구가 아니라
+           계산 근거다. 그 줄이 없는 경우(자리 0)는 애초에 카드가 안 나온다.
+           엔진을 안 건드리기로 했으므로 파싱 경로를 쓰되, 정규식이 깨지면
+           fillNA 가 올라가서 T1 이 「판정」으로 내려가게 해 뒀다. */
+        const seatFill = new Map();          // 채운 자리 수 → 발급 수
+        const cntBy = new Map();             // `자리수|종수` → 발급 수
+        const zeroSeat = [0, 0, 0];          // 자리별 「후보 0」 발생 수
+        let fillNA = 0;
         const samples = [], viol = [];
         let coin = 0, diff = 0, evt = 0, fail = 0, locked = false, ok = 0, evtBad = 0;
 
@@ -809,6 +874,17 @@
           const c = r.card;
           coin += c.coin; diff += c.diff; evt += c.evt || 0;
           cnt.set(c.reqs.length, (cnt.get(c.reqs.length) || 0) + 1);
+          let filled = 0;
+          for (const line of r.log) {
+            const z = /\[4\] 자리(\d) 후보 0/.exec(line);
+            if (z) { const i = +z[1] - 1; if (i < 3) zeroSeat[i]++; continue; }
+            const f = /후보 자리 (\d+)/.exec(line);
+            if (f) filled = +f[1];
+          }
+          if (!filled) { fillNA++; filled = c.reqs.length; }
+          seatFill.set(filled, (seatFill.get(filled) || 0) + 1);
+          const ck = `${filled}|${c.reqs.length}`;
+          cntBy.set(ck, (cntBy.get(ck) || 0) + 1);
           c.reqs.forEach((q, seat) => {
             tally.set(q.code, (tally.get(q.code) || 0) + 1);
             if (seat < 3) seatTally[seat].set(q.code, (seatTally[seat].get(q.code) || 0) + 1);
@@ -826,7 +902,8 @@
 
         LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, daily,
                  banned: [...othersReq, ...(prev || [])],
-                 tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed };
+                 tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed,
+                 seatFill, cntBy, zeroSeat, fillNA };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
       }
@@ -976,15 +1053,21 @@
         return { map: new Map(rows.map((r) => [r.code, sum ? (r.w / sum) * 100 : 0])), n: cand.length };
       }
 
-      function expectCount() {
+      /* 종수 기대 분포. 인자 없이 부르면 <b>명목</b>(시트가 선언한 값)이고,
+         자리 수를 주면 <b>그 조건에서 엔진이 실제로 쓰는</b> 재정규화 분포다.
+         엔진 [5] 는 `item_count <= picked.length` 로 행을 걸러 남은 행끼리 다시 정규화한다 —
+         자리가 둘이면 3종 행이 빠지고 1종:2종 이 6000:2000 → 75:25 가 된다.
+         두 값을 나란히 재야 「추첨기가 틀렸나」와 「명목을 못 지켰나」를 가릴 수 있다. */
+      function expectCount(seats) {
         const L = LAST;
         const rows = DATA.order_item_count.filter((r) => r.in_use && r.level <= L.lv);
         if (!rows.length) return null;
         const grp = Math.max(...rows.map((r) => r.level));
         const slotMax = L.rule ? L.rule.item_slot_max : 2;
-        const use = DATA.order_item_count.filter((r) => r.in_use && r.level === grp && r.item_count <= slotMax);
+        const cap = seats == null ? slotMax : Math.min(slotMax, seats);
+        const use = DATA.order_item_count.filter((r) => r.in_use && r.level === grp && r.item_count <= cap);
         const sum = use.reduce((a, r) => a + r.count_weight, 0);
-        return { map: new Map(use.map((r) => [r.item_count, sum ? (r.count_weight / sum) * 100 : 0])), grp, slotMax };
+        return { map: new Map(use.map((r) => [r.item_count, sum ? (r.count_weight / sum) * 100 : 0])), grp, slotMax, cap };
       }
 
       function renderBars() {
@@ -1042,28 +1125,132 @@
       const sigma3 = (p, n) => 3 * Math.sqrt((p * (1 - p)) / Math.max(1, n)) * 100;
       const testable = (p, n) => p * n >= MIN_EXPECT;
 
+      /* 다중 비교 보정. 후보 44종을 각각 3σ 로 재면 「하나라도 넘을」 확률이
+         1 − 0.9973^44 ≒ 11% 다 — 엔진이 정상이어도 열 번에 한 번 FAIL 이 뜬다.
+         실제로 그 FAIL 을 한 번 봤다. 그래서 비교 개수 m 을 받아 전체 오경보를
+         3σ(0.27%) 로 묶는 Bonferroni 임계값을 쓴다: 항목별 양쪽 꼬리 α = 0.0027/m.
+         정규분위는 Acklam 유리근사(오차 1e-9)로 구한다 — erf 가 JS 에 없다. */
+      function invNorm(p) {
+        const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+                    1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+        const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+                    6.680131188771972e+01, -1.328068155288572e+01];
+        const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+                   -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+        const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+                   3.754408661907416e+00];
+        const pl = 0.02425;
+        if (p < pl) {
+          const q = Math.sqrt(-2 * Math.log(p));
+          return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+               / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+        }
+        if (p > 1 - pl) return -invNorm(1 - p);
+        const q = p - 0.5, r = q * q;
+        return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q
+             / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+      }
+      const zFor = (m) => (m <= 1 ? 3 : invNorm(1 - 0.0027 / Math.max(1, m) / 2));
+      /* m 개를 동시에 볼 때 항목 하나의 허용 폭(%p) */
+      const tolN = (p, n, m) => zFor(m) * Math.sqrt((p * (1 - p)) / Math.max(1, n)) * 100;
+
       function renderRules() {
         const L = LAST, ok = L.ok || 1;
         const rows = [];
-        const add = (v, name, exp, act, note) => rows.push({ v, name, exp, act, note });
+        /* cause: "logic" 엔진 · "data" 시트 · "judge" 기대값 계산. 어긋난 행에만 준다 */
+        const add = (v, name, exp, act, note, cause) => rows.push({ v, name, exp, act, note, cause });
 
-        // T1 종수 분포
-        const ec = expectCount();
-        if (!ec) add("na", "T1 요구 종수 분포", "—", "—", "order_item_count 활성 행이 없다");
+        /* ── T1 / T1b — 종수 분포를 두 축으로 쪼갠다 ─────────────────────────
+           예전엔 「기대 20% / 실측 16.1% / FAIL」 한 줄이었다. 이 한 줄로는
+           ① 추첨기가 틀렸나 ② 시트 구성이 못 버티나 ③ 내 기대값이 순진한가
+           를 가릴 수 없다. 실제 원인은 ③+② 였다 — [4] 가 자리를 못 채우면
+           [5] 가 그 종수 행을 빼고 재정규화하므로 명목값은 애초에 달성 불가다.
+           그래서 T1 은 「자리 수별 조건부 분포」(추첨기 검사)로,
+           T1b 는 「명목 대비 실현」(시트 구성 검사)으로 분리한다. */
+        const ecNom = expectCount();
+        const fills = [...(L.seatFill || new Map()).entries()].sort((a, b) => b[1] - a[1]);
+        const pct = (n, d) => ((n / (d || 1)) * 100);
+
+        // T1 종수 추첨기 — 자리 수별로 묶어 그 조건의 재정규화 분포와 대조
+        if (!ecNom) add("na", "T1 종수 추첨기", "—", "—", "order_item_count 활성 행이 없다");
+        else if (!fills.length) add("na", "T1 종수 추첨기", "—", "—", "발급 표본이 없다");
         else {
-          const bad = [], thin = [];
-          for (const [k, p] of ec.map) {
-            const obs = ((L.cnt.get(k) || 0) / ok) * 100;
-            if (!testable(p / 100, ok)) { thin.push(`${k}종`); continue; }
-            const tol = sigma3(p / 100, ok);
-            if (Math.abs(obs - p) > tol) bad.push(`${k}종 실측 ${obs.toFixed(2)}% · 기대 ${p.toFixed(2)}% (허용 ±${tol.toFixed(2)}%p)`);
+          const bad = [], thin = [], expTxt = [], actTxt = [];
+          /* 묶음×종수 셀을 한꺼번에 보므로 셀 개수로 보정한다 */
+          const mCells = fills.reduce((a, [seats, gn]) =>
+            a + [...expectCount(seats).map.entries()].filter(([, q]) => testable(q / 100, gn)).length, 0);
+          for (const [seats, gn] of fills) {
+            const ecc = expectCount(seats);
+            const gShare = pct(gn, ok);
+            expTxt.push(`<b>자리 ${seats}</b>(${gShare.toFixed(1)}%) `
+              + [...ecc.map.entries()].map(([k, q]) => `${k}종 ${q.toFixed(2)}%`).join(" / "));
+            const got = [];
+            for (const [k, q] of ecc.map) {
+              const c = L.cntBy.get(`${seats}|${k}`) || 0;
+              const obs = pct(c, gn);
+              got.push(`${k}종 ${obs.toFixed(2)}%`);
+              if (!testable(q / 100, gn)) { thin.push(`자리${seats}·${k}종`); continue; }
+              const tol = tolN(q / 100, gn, mCells);
+              if (Math.abs(obs - q) > tol)
+                bad.push(`자리 ${seats} 묶음 ${k}종 실측 ${obs.toFixed(2)}% · 기대 ${q.toFixed(2)}% (허용 ±${tol.toFixed(2)}%p)`);
+            }
+            actTxt.push(`<b>자리 ${seats}</b> ${got.join(" / ")}`);
           }
-          add(bad.length ? "no" : "ok", "T1 요구 종수 분포",
-              [...ec.map.entries()].map(([k, p]) => `${k}종 ${p.toFixed(2)}%`).join(" / "),
-              [...ec.map.keys()].map((k) => `${k}종 ${(((L.cnt.get(k) || 0) / ok) * 100).toFixed(2)}%`).join(" / "),
-              bad.length ? bad.join("<br>")
-                : `order_item_count level 묶음 ${ec.grp} · 자리 상한 ${ec.slotMax} · 3σ 안`
-                  + (thin.length ? ` · 표본 부족으로 제외 ${thin.join(", ")}` : ""));
+          const na = L.fillNA || 0;
+          add(bad.length ? "no" : na ? "warn" : "ok", "T1 종수 추첨기",
+              expTxt.join("<br>"), actTxt.join("<br>"),
+              bad.length
+                ? bad.join("<br>") + "<br>자리 수가 같은 표본끼리 봤는데도 어긋난다 &mdash; 가중 추첨 자체나 <code>count_weight</code> 적용이 틀렸다"
+                : na
+                  ? `발급 ${na}건에서 자리 수를 로그에서 못 읽었다 &mdash; 판정 근거가 불완전하다`
+                  : `<code>order_item_count</code> level 묶음 ${ecNom.grp} · 자리 상한 ${ecNom.slotMax}. `
+                    + `자리 수가 같은 표본끼리 묶어 그 조건의 재정규화 분포와 대조했다 &mdash; 전 묶음 3σ 안. `
+                    + `<b>가중 추첨기와 시트 <code>count_weight</code> 는 정상이다</b>`
+                    + (thin.length ? ` · 표본 부족으로 제외 ${thin.join(", ")}` : ""),
+              bad.length ? "logic" : na ? "judge" : null);
+        }
+
+        // T1b 명목 분포 실현 — 시트가 선언한 값을 실제로 지키는가
+        if (!ecNom) add("na", "T1b 명목 분포 실현", "—", "—", "order_item_count 활성 행이 없다");
+        else {
+          /* 절단 예측 — 자리 수 묶음별 조건부 분포를 그 묶음 비중으로 가중 합산한다.
+             이게 실측과 맞으면 「명목에서 벗어난 양이 자리 부족으로 전부 설명된다」는
+             뜻이고, 곧 가중치 편향이 아니라 절단이라는 증명이다. */
+          const pred = new Map();
+          for (const [seats, gn] of fills) {
+            const ecc = expectCount(seats);
+            for (const [k, q] of ecc.map) pred.set(k, (pred.get(k) || 0) + (gn / ok) * q);
+          }
+          const short = fills.filter(([seats]) => seats < ecNom.slotMax);
+          const shortShare = short.reduce((a, [, gn]) => a + pct(gn, ok), 0);
+          const bad = [], thin = [], predOK = [];
+          const mRows = [...ecNom.map.values()].filter((q) => testable(q / 100, ok)).length;
+          for (const [k, q] of ecNom.map) {
+            const obs = pct(L.cnt.get(k) || 0, ok);
+            if (!testable(q / 100, ok)) { thin.push(`${k}종`); continue; }
+            const tol = tolN(q / 100, ok, mRows);
+            if (Math.abs(obs - q) > tol) bad.push(`${k}종 명목 ${q.toFixed(2)}% → 실현 ${obs.toFixed(2)}% (허용 ±${tol.toFixed(2)}%p)`);
+            const pq = pred.get(k) || 0;
+            if (Math.abs(obs - pq) <= tolN(pq / 100, ok, mRows)) predOK.push(k);
+          }
+          const explained = bad.length > 0 && shortShare > 0 && predOK.length === [...ecNom.map.keys()].length;
+          add(!bad.length ? "ok" : explained ? "warn" : "no", "T1b 명목 분포 실현",
+              [...ecNom.map.entries()].map(([k, q]) => `${k}종 ${q.toFixed(2)}%`).join(" / ")
+                + ` <span style="opacity:.65">(시트 명목)</span>`,
+              [...ecNom.map.keys()].map((k) => `${k}종 ${pct(L.cnt.get(k) || 0, ok).toFixed(2)}%`).join(" / "),
+              !bad.length
+                ? `<code>count_weight</code> 셀 메모가 「<code>weight_norm</code> &mdash; 레벨 밴드마다 합 10000」 이라 `
+                  + `이 표는 <b>명목이 아니라 실현 분포</b>다. 전 자리가 채워져 절단이 없고, 실현이 명목과 3σ 안`
+                  + (thin.length ? ` · 표본 부족으로 제외 ${thin.join(", ")}` : "")
+                : explained
+                  ? `${bad.join("<br>")}<br>`
+                    + `자리가 ${ecNom.slotMax}개 다 안 차는 발급이 <b>${shortShare.toFixed(2)}%</b> 있어 그 표본에서 큰 종수 행이 추첨에서 빠진다.<br>`
+                    + `절단을 반영한 예측 <b>${[...pred.entries()].sort((a, b) => a[0] - b[0]).map(([k, q]) => `${k}종 ${q.toFixed(2)}%`).join(" / ")}</b> `
+                    + `&mdash; 실측이 전부 이 안에 든다.<br>`
+                    + `즉 <b>가중치 편향이 아니라 자리 부족에 의한 절단</b>이다(추첨기는 T1 PASS). `
+                    + `깎인 몫이 작은 종수로 되돌아온 양까지 맞는다. <code>order_slot_band</code> 의 자리 범위를 넓히면 사라진다 &mdash; T9 참조`
+                  : `${bad.join("<br>")}<br>절단으로 설명되지 않는다 &mdash; 자리 부족 ${shortShare.toFixed(2)}% 를 반영한 예측과도 어긋난다`,
+              !bad.length ? null : explained ? "data" : "logic");
         }
 
         // T2 자리1 가중치 분포
@@ -1071,21 +1258,28 @@
         const s1n = [...L.seatTally[0].values()].reduce((a, b) => a + b, 0);
         if (!es) add("na", "T2 자리1 가중치 분포", "—", "—", "밴드를 못 골랐다");
         else {
-          let worst = null, judged = 0, thin = 0;
-          for (const [code, p] of es.map) {
-            if (!testable(p / 100, s1n)) { thin++; continue; }
-            judged++;
+          /* 판정 대상 종수만큼 동시에 비교하므로 항목별 3σ 를 쓰면 오경보가 쌓인다 —
+             m 을 세어 Bonferroni 로 묶는다. 그래서 먼저 m 을 확정하고 두 번 훑는다. */
+          const judgeable = [...es.map.entries()].filter(([, p]) => testable(p / 100, s1n));
+          const thin = es.map.size - judgeable.length;
+          const judged = judgeable.length, m = judged;
+          let worst = null;
+          for (const [code, p] of judgeable) {
             const obs = ((L.seatTally[0].get(code) || 0) / Math.max(1, s1n)) * 100;
-            const d = Math.abs(obs - p) - sigma3(p / 100, s1n);
-            if (!worst || d > worst.d) worst = { code, p, obs, d };
+            const tol = tolN(p / 100, s1n, m);
+            const d = Math.abs(obs - p) - tol;
+            if (!worst || d > worst.d) worst = { code, p, obs, d, tol };
           }
           const need = judged ? "" : `기대빈도 ${MIN_EXPECT} 이상인 후보가 없다 — 발급 수를 늘리세요`;
           add(!judged ? "na" : worst.d > 0 ? "no" : "ok", "T2 자리1 가중치 분포",
               `후보 ${es.n}종 · <code>weight × weight_multiple × 보드배수 ÷ 제수</code>`,
               `표본 ${s1n} · 판정 ${judged}종${thin ? ` · 표본 부족 ${thin}종 제외` : ""}`,
               need || `최대 편차 <code>${labelOf(worst.code)}</code> ${nameOf(worst.code)} — `
-                + `실측 ${worst.obs.toFixed(2)}% · 기대 ${worst.p.toFixed(2)}% · 허용 ±${sigma3(worst.p / 100, s1n).toFixed(2)}%p`
-                + (worst.d > 0 ? ` <b>(${worst.d.toFixed(2)}%p 초과)</b>` : " (3σ 안)"));
+                + `실측 ${worst.obs.toFixed(2)}% · 기대 ${worst.p.toFixed(2)}% · 허용 ±${worst.tol.toFixed(2)}%p`
+                + (worst.d > 0 ? ` <b>(${worst.d.toFixed(2)}%p 초과)</b>`
+                  : ` (${judged}종 동시 비교라 ${zFor(m).toFixed(2)}σ 로 묶었다 — 항목별 3σ 면 정상인데도 `
+                    + `${(100 * (1 - Math.pow(0.9973, m))).toFixed(0)}% 확률로 하나가 넘는다)`),
+              worst.d > 0 ? "logic" : null);
         }
 
         // T3 밴드 범위
@@ -1145,11 +1339,25 @@
         const prevCh = new Set((L.prev || []).map(chainOf));
         const sib = L.pool.filter((o) => prevCh.has(chainOf(o.item_code))
           && !L.banned.includes(o.item_code) && Number(o.repeat_weight_decrease) > 0);
-        if (!divisors.length || !prevCh.size || !sib.length) {
+        /* 자리1 범위 밖의 형제는 감쇠와 무관하게 애초에 안 뽑힌다 — 기대도 0, 실측도 0 이라
+           「0.00% → 0.00% · 약 0배 · PASS」 라는 무의미한 통과가 뜬다. 그건 규칙이 돈다는
+           증거가 아니라 판정이 성립하지 않는 조건이다. 범위 안 형제가 있어야 판정한다. */
+        const sibIn = L.band ? sib.filter((o) => {
+          const st = stepOf(o.item_code); return st >= L.band.first_min && st <= L.band.first_max;
+        }) : [];
+        if (!divisors.length || !prevCh.size || !sib.length || !sibIn.length) {
           add("na", "T8 반복 감쇠 작동",
               divisors.length ? `제수 ${divisors.join(" / ")} 인 행 존재` : "제수 전 행 0",
-              !prevCh.size ? "직전 요구가 없다(레일 맥락 끔)" : !sib.length ? "직전 체인의 다른 단계가 후보에 없다" : "제수 없음",
-              "이 조건에서는 감쇠가 걸릴 자리 자체가 없다 — 레일 맥락을 켜고 발급 수를 늘려 보세요");
+              !prevCh.size ? "직전 요구가 없다(레일 맥락 끔)"
+                : !sib.length ? "직전 체인의 다른 단계가 후보에 없다"
+                : !sibIn.length ? `직전 체인 ${[...prevCh].map(chainName).join(",")} 의 다른 단계가 자리1 범위(${L.band.first_min}~${L.band.first_max}단계) 밖이다`
+                : "제수 없음",
+              !sibIn.length && sib.length
+                ? `감쇠가 걸릴 형제 ${sib.length}종은 ${sib.map((o) => stepOf(o.item_code)).join("·")}단계라 자리1 에 애초에 안 온다 &mdash; `
+                  + `기대도 0 실측도 0 이 되어 <b>통과처럼 보이지만 아무것도 재지 않는다</b>. `
+                  + `레벨을 올려 범위 안 형제가 생기게 하거나, 표본 제외 3종을 범위 안 체인에서 고르게 바꿔야 판정이 선다`
+                : "이 조건에서는 감쇠가 걸릴 자리 자체가 없다 — 레일 맥락을 켜고 발급 수를 늘려 보세요",
+              !sibIn.length && sib.length ? "judge" : null);
         } else {
           const seat1 = L.seatTally[0];
           const s1n = [...seat1.values()].reduce((a, b) => a + b, 0) || 1;
@@ -1168,9 +1376,50 @@
                   + `<b>${expNo.toFixed(2)}% → ${exp.toFixed(2)}%</b> 로 줄었다(약 ${(expNo / Math.max(exp, 0.001)).toFixed(0)}배). 실측이 그 안에 든다`);
         }
 
+        /* ── T9 자리 후보 고갈 ───────────────────────────────────────────────
+           [4] 는 자리를 순서대로 채우다 후보가 0 이면 그 자리 이후를 포기한다.
+           그러면 [5] 의 종수 분포가 깎이고(T1b), 조합 다양성도 함께 준다.
+           원인은 셋이 겹칠 때만 터진다 — ① 밴드 범위가 좁다 ② 그 범위에 든
+           아이템이 적다 ③ 제외 규칙이 그중 몇을 빼앗는다. 세 수를 같이 적어
+           어느 쪽을 넓혀야 하는지 바로 보이게 한다. 엔진이 아니라 데이터 축이다. */
+        {
+          const b = L.band, rule = L.rule;
+          const zs = L.zeroSeat || [0, 0, 0];
+          const ranges = b && rule ? Array.from({ length: rule.item_slot_max }, (_, i) =>
+            i === 0 ? [b.first_min, b.first_max] : i === 1 ? [b.second_min, b.second_max] : [b.third_min, b.third_max]) : [];
+          if (!ranges.length) add("na", "T9 자리 후보 고갈", "—", "—", "밴드나 order_rule 이 없어 자리 범위를 모른다");
+          else {
+            const hit = [], detail = [];
+            ranges.forEach(([lo, hi], i) => {
+              const inRange = L.pool.filter((o) => { const st = stepOf(o.item_code); return st >= lo && st <= hi; });
+              const free = inRange.filter((o) => !L.banned.includes(o.item_code));
+              const chains = new Set(inRange.map((o) => chainOf(o.item_code))).size;
+              const rate = pct(zs[i] || 0, ok);
+              if (zs[i]) hit.push(`자리${i + 1} <b>${rate.toFixed(2)}%</b>`);
+              /* 앞 자리가 이미 먹은 종수까지 빼야 실제 여유가 나온다 — 최악은 i종 */
+              const slack = free.length - i;
+              detail.push(`<b>자리${i + 1}</b> 범위 ${lo}~${hi}단계 · 풀 안 ${inRange.length}종(체인 ${chains}) · `
+                + `제외 뒤 ${free.length}종 · 앞 자리가 최대 ${i}종 점유 → 최소 여유 <b>${slack}종</b>`
+                + (zs[i] ? ` · <span class="w">후보 0 이 ${rate.toFixed(2)}%</span>` : ""));
+            });
+            add(hit.length ? "warn" : "ok", "T9 자리 후보 고갈",
+                `전 자리 후보 0 이 <b>0%</b> <span style="opacity:.65">(자리가 항상 채워져야 종수 분포가 명목대로 나온다)</span>`,
+                hit.length ? hit.join(" · ") : "발생 없음",
+                detail.join("<br>")
+                  + (hit.length
+                    ? `<br>체인이 3단계에서 시작하므로 <b>낮은 자리 범위의 후보 수는 해금 체인 수와 같다</b> &mdash; `
+                      + `초반 레벨에서 제외 규칙과 겹치면 마른다. <code>order_slot_band</code> 의 그 자리 최대 단계를 `
+                      + `한 칸 넓히면 후보가 배로 늘어 사라진다(초반 난이도가 조금 오르므로 기획 확인 필요). `
+                      + `<code>order_slot_band</code> 셀 메모에는 <b>「자리 후보가 비지 않아야 한다」 제약이 없다</b> &mdash; 검증 규칙에 빠진 축이다`
+                    : `<br>모든 자리가 제외·중복을 겪고도 후보를 남긴다 &mdash; 절단이 일어나지 않는다`),
+                hit.length ? "data" : null);
+          }
+        }
+
         summarize(rows, "#rwRulesSum");
         $("#rwRules").innerHTML = rows.map((r) => `<tr>
-            <td><span class="rw-v ${r.v}">${VERDICT[r.v]}</span></td>
+            <td><span class="rw-v ${r.v}">${VERDICT[r.v]}</span>${r.cause
+              ? `<br><span class="rw-c ${r.cause}">${CAUSE[r.cause]}</span>` : ""}</td>
             <td><b>${r.name}</b></td><td>${r.exp}</td><td>${r.act}</td><td>${r.note}</td></tr>`).join("");
       }
 
