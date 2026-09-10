@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-11 04:05",
+  updated: "2026-09-11 04:35",
 };
 
 /* --------------------------------------------------------------------------
@@ -273,6 +273,18 @@ const SECTIONS = [
         share: false,
       },
       {
+        title: "UI 제작 TODO",
+        desc: "화면 기획서 97개 화면을 프리팹 단위로 다시 센 판. 만들 것은 뷰 15 · 팝업 49 = 64개, 33개는 기준 화면 재사용이라 만들지 않습니다. 티어는 중요도가 아니라 막히는 순서 — 착수는 T0 가 아니라 T1 골격 4개부터입니다.",
+        url: "docs/rosewood-ui-todo.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-10 16:20",
+        pinned: false,
+        tags: ["머지", "기획 범위"],
+        share: false,
+      },
+      {
         title: "리소스 예산",
         desc: "무엇이 무겁고 언제 불러오는가. 메모리는 파일이 아니라 해상도로 정해집니다 — 대화 애니 파일 7.3MB 가 메모리 90.8MB. 로딩 단위를 캐릭터가 아니라 감정(5.7MB)으로 잡아야 하는 이유를 솔리테어 실측으로 맞췄습니다.",
         url: "docs/story-merge-resource-budget.html",
@@ -473,8 +485,8 @@ const SECTIONS = [
         url: "docs/rosewood-order-bench.html",
         project: "smg",
         status: "초안",
-        version: "v4.1",
-        updated: "2026-09-11 04:05",
+        version: "v4.2",
+        updated: "2026-09-11 04:35",
         pinned: false,
         tags: ["머지", "인터랙티브"],
       },
