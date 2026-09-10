@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-10 09:20",
+  updated: "2026-09-10 09:40",
 };
 
 /* --------------------------------------------------------------------------
@@ -670,6 +670,16 @@ const SECTIONS = [
     desc: "작업 기록 · 이식 가이드 — 사내 툴은 「도구」 섹션",
     cards: [
       {
+        title: "Claude 작업 규칙",
+        desc: "승인 없이 구현부터 하는 걸 막는 게이트와, 작업을 모델별로 뿌리는 병렬 규칙. 붙여넣을 원문 포함.",
+        url: "docs/claude-work-rules.html",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-09-10 09:40",
+        pinned: false,
+        tags: ["Claude Code", "정본"],
+      },
+      {
         title: "데코 아트 리소스 트리",
         desc: "이전 네이티브 프로젝트에서 데코 영역 아트 리소스를 어떤 트리로 공유받았는지. 이유는 상태별 대응 — 망가짐→고쳐짐 · 5단 성장 · 완성 3종 택1이 같은 형태로 흡수된다.",
         url: "docs/deco-area-prefab-structure.html",
@@ -705,12 +715,12 @@ const SECTIONS = [
       },
       {
         title: "코인매치 커밋 히스토리",
-        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 06-02~08-28 커밋 47건 · 작성자 6명 · 영역·작성자 두 축 필터.",
+        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 06-02~09-09 커밋 50건 · 기본은 Max 작업 9건, 작성자 칩으로 전체 전환.",
         url: "docs/commit-history-coin-match.html",
         project: "cmt",
         status: "진행중",
-        version: "v2.0",
-        updated: "2026-08-28 21:10",
+        version: "v2.1",
+        updated: "2026-09-10 09:45",
         pinned: false,
         tags: ["커밋 히스토리", "상시"],
       },
