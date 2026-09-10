@@ -167,11 +167,23 @@
       .rw-railhead select { font: inherit; font-size: 10.5px; padding: 1px 4px; border: 1px solid var(--border);
                             border-radius: 5px; background: var(--surface); color: var(--text-dim); }
       .rw-fixed { display: flex; flex-direction: column; gap: 6px; flex: none; }
-      /* 스크롤 없이 프레임 폭 안에서 끝낸다 — 카드 폭을 남은 공간에 보간해 채운다 */
-      .rw-scroll { flex: 1 1 0; min-width: 0; padding-top: 13px; }
-      .rw-track { display: flex; gap: 5px; align-items: stretch; min-height: 124px; }
+      /* 카드가 몇 장이든 읽히는 폭을 지킨다. 남으면 늘려 채우고, 넘치면 가로로 민다.
+         스크롤바는 감추고 드래그로만 넘긴다 — 세로는 페이지에 넘긴다(pan-y). */
+      /* 스크롤 컨테이너가 되면 내용 높이가 행을 밀어 올리지 못한다.
+         카드 높이는 폭에 따라 달라지므로 renderRail 이 재서 넣는다(sizeRail). */
+      .rw-scroll { flex: 1 1 0; min-width: 0; padding-top: 13px; min-height: 137px;
+                   overflow-x: auto; overflow-y: hidden; touch-action: pan-y;
+                   scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
+      .rw-scroll::-webkit-scrollbar { height: 0; width: 0; }
+      .rw-scroll.pan { cursor: grab; }
+      .rw-scroll.grabbing { cursor: grabbing; user-select: none; }
+      /* 넘칠 때만 오른쪽 끝을 흐려 더 있다는 걸 알린다 */
+      .rw-scroll.pan { mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+                       -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); }
+      .rw-scroll.pan.end { mask-image: none; -webkit-mask-image: none; }
+      .rw-track { display: flex; gap: 5px; align-items: stretch; min-height: 124px; width: max-content; min-width: 100%; }
       .rw-track > .rw-card, .rw-track > .rw-lane {
-        flex: 1 1 0; width: auto; min-width: 0; container-type: inline-size; }
+        flex: 1 0 112px; width: auto; min-width: 112px; container-type: inline-size; }
       /* 카드 안쪽은 전부 카드 폭(cqi)에 비례한다 — 5장이 들어와도 글자가 살아 있게 */
       .rw-track .rw-card { padding: 7px 5px 5px; gap: 4px; }
       .rw-track .rw-npc { top: -11px; left: 4px; width: clamp(19px, 24cqi, 30px);
@@ -1331,7 +1343,7 @@
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.8 · 2026-09-10";
+      const BUILD = "v2.9 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
@@ -1775,7 +1787,7 @@
       }
 
       async function serve(n) {
-        if (S.busy) return;
+        if (S.busy || RAIL_PANNED) return;                 // 레일을 민 손끝이 Serve 를 누르지 않게
         const card = S.slots[n]; if (!card) return;
         const need = new Map();
         card.reqs.forEach((q) => need.set(q.code, (need.get(q.code) || 0) + q.count));
@@ -2394,6 +2406,7 @@
           html += orderCardHTML(card, { slot: n, counts, serve: ok });
         }
         setHTML("#rwRail", html);
+        sizeRail();
       }
 
       /* 레일은 보드·슬롯이 바뀔 때만 다시 만든다(render 경유).
@@ -2420,6 +2433,59 @@
         fillEmptySlots("예산 회복 재시도");
         return true;
       }
+
+      /* 레일 가로 드래그 — 스크롤바를 감췄으니 미는 것으로만 넘긴다.
+         6px 넘게 움직여야 드래그로 보고, 그때만 Serve 클릭을 막는다. */
+      let RAIL_PANNED = false;
+      /* 클래스만 만진다 — 스크롤 중에 불려도 레이아웃을 강제하지 않게 값은 안 잰다 */
+      function markRailPan() {
+        const sc = document.querySelector(".rw-scroll");
+        if (!sc) return;
+        const over = sc.scrollWidth > sc.clientWidth + 1;
+        sc.classList.toggle("pan", over);
+        sc.classList.toggle("end", over && sc.scrollLeft >= sc.scrollWidth - sc.clientWidth - 2);
+      }
+      /* 카드가 좁아지면 세로로 늘어난다 — 잘리지 않게 트랙 높이를 그대로 받는다 */
+      function sizeRail() {
+        const sc = document.querySelector(".rw-scroll"), tr = $("#rwRail");
+        if (!sc || !tr) return;
+        const h = tr.offsetHeight + 13;
+        const cur = parseFloat(sc.style.minHeight) || 0;
+        if (Math.abs(cur - h) > 0.5) sc.style.minHeight = h + "px";
+        markRailPan();
+      }
+      (function enableRailPan() {
+        const sc = document.querySelector(".rw-scroll");
+        if (!sc) return;
+        let p = null;
+        sc.addEventListener("pointerdown", (e) => {
+          if (sc.scrollWidth <= sc.clientWidth + 1 || e.button > 0) return;
+          p = { x: e.clientX, left: sc.scrollLeft, id: e.pointerId, moved: false };
+        });
+        const move = (e) => {
+          if (!p || e.pointerId !== p.id) return;
+          const dx = e.clientX - p.x;
+          if (!p.moved) {
+            if (Math.abs(dx) < 6) return;
+            p.moved = true;
+            sc.classList.add("grabbing");
+            try { sc.setPointerCapture(p.id); } catch (err) {}
+          }
+          sc.scrollLeft = p.left - dx;
+          markRailPan();
+          e.preventDefault();
+        };
+        const up = () => {
+          if (!p) return;
+          if (p.moved) { RAIL_PANNED = true; setTimeout(() => (RAIL_PANNED = false), 0); }
+          sc.classList.remove("grabbing");
+          p = null;
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        window.addEventListener("pointercancel", up);
+        sc.addEventListener("scroll", markRailPan, { passive: true });
+      })();
 
       function renderLog() {
         const l = $("#rwLog");
@@ -2949,6 +3015,7 @@
         $("#rwOrderFree").checked = !!S.orderFree;
         $("#rwOrderFreeS").textContent = S.orderFree ? "on" : "off";
         if (S.sortMode) $("#rwSort").value = S.sortMode;
+        $("#rwSimLv").value = Math.max(S.level, 3);   // 미해금 레벨로 열리면 0 장이라 고장으로 보인다
         fillEmptySlots(saved ? "저장 상태 복원" : "첫 진입");
         render();
         runSim();                       // 비어 있으면 안 도는 것처럼 보인다
