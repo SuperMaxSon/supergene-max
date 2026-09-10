@@ -148,6 +148,12 @@
                 background: hsl(var(--h) 46% 86%);
                 color: hsl(var(--h) 58% 26%); box-shadow: inset 0 0 0 1.5px hsl(var(--h) 45% 66%); }
       .rw-req.bad { box-shadow: inset 0 0 0 2.5px var(--deploy); }
+      /* 이름 라벨은 1~9자 — 길수록 줄인다(엔진 lenOf 가 붙이는 클래스) */
+      .rw-req.l5 { font-size: 9.5px; letter-spacing: -0.03em; }
+      .rw-req.l7 { font-size: 8px; letter-spacing: -0.04em; }
+      .rw-req.l9 { font-size: 7px; letter-spacing: -0.05em; }
+      .rw-req.l7, .rw-req.l9 { word-break: keep-all; text-align: center; line-height: 1.15;
+                               white-space: normal; padding: 0 2px; }
       .rw-bot { display: flex; align-items: center; gap: 5px; margin-top: auto; }
       .rw-rb, .rw-rc { display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px;
                        border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
@@ -249,7 +255,7 @@
           비율은 이항 3σ, 기대빈도 5 미만은 판정에서 뺍니다.
           <b>PASS 는 「그 항목이 맞다」일 뿐 알고리즘이 정상이라는 뜻이 아닙니다</b> &mdash;
           이 페이지가 아예 재지 않는 영역은 「미검증」 표에 적어 뒀습니다.
-          엔진은 2026-08 판본 기준이고 <b>이번 판은 갭을 고치지 않고 보고만 합니다.</b>
+          엔진 v2 는 벤치 v4.2(시트 실물·3자리)에서 재추출하고 <b>갭 3건을 반영</b>했습니다 &mdash; 가중치 <code>weight×multiple</code> · <code>score_base(coin)</code>·event_id · 누적 난이도 축(입력).
           <br><span class="rw-v no">FAIL</span> 엔진과 시트가 어긋남 ·
           <span class="rw-v warn">주의</span> 지금은 결과가 같지만 조건이 바뀌면 틀어짐 ·
           <span class="rw-v ok">PASS</span> 일치 ·
@@ -313,6 +319,7 @@
               <div class="rw-f"><label>발급 수</label><input id="rwN" type="number" value="2000" min="10" max="50000" /></div>
               <div class="rw-f"><label>유저 레벨</label><input id="rwLv" type="number" value="5" min="1" max="30" /></div>
               <div class="rw-f"><label>오더 타입</label><select id="rwType"></select></div>
+              <div class="rw-f"><label>누적 난이도</label><input id="rwDaily" type="number" value="0" min="0" max="9999" title="하루 누적 난이도 — order_slot_band.diff_sum_* 축. 누적의 정의는 기획 미확인이라 값만 넣어 본다" /></div>
               <div class="rw-f"><label>보드 상황</label>
                 <select id="rwBoard">
                   <option value="empty">빈 보드</option>
@@ -371,7 +378,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v1.0 · 2026-09-10";
+      const PAGE_BUILD = "v2.0 · 2026-09-10";   // 엔진 v2(벤치 v4.2 재추출 + GAP 1~3) 대응
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -398,6 +405,8 @@
           else out[k] = Array.isArray(v) ? v : [];
           if (v == null) warn.push(`${k} 없음 — 빈 값으로 둡니다`);
         }
+        // 시트 JSON 의 이름 칸은 name_ko — 엔진 labelOf 는 name 을 읽는다
+        for (const r of out.item_spec) if (r.name == null && r.name_ko != null) r.name = r.name_ko;
         return { data: out, warn };
       }
 
@@ -411,10 +420,6 @@
         S.cells = new Array(CELLS).fill(null);
         S.day = 999;        // 손님 해금 전원 — [6] 은 분포에 영향이 없다
         S.slots = {}; S.prevOfSlot = {};
-
-        /* 표시용 라벨을 갈아끼운다. 엔진 기본값은 알파벳 한 글자(chain 2 → A)라
-           시트 실물(chain_id 1~31)에서는 '@' 나 '^' 가 나온다. */
-        labelOf = (code) => `${chainOf(code)}-${stepOf(code)}`;
 
         $("#rwBuild").textContent = `build ${PAGE_BUILD} · engine ${BUILD}`;
         $("#rwType").innerHTML = DATA.order_rule
@@ -447,10 +452,10 @@
         }
       }
 
-      function nameOf(code) {
-        const s = specOf(code);
-        return s && s.name_ko ? s.name_ko : labelOf(code);
-      }
+      /* 엔진 v2 의 labelOf 가 시트 이름을 돌려준다(item_spec.name). nameOf 는 그 별칭이고,
+         codeTag 는 로그·막대에서 이름 옆에 붙이는 「체인-단계」 표기다. */
+      const nameOf = (code) => labelOf(code);
+      const codeTag = (c) => `${chainOf(c)}-${stepOf(c)}`;
 
       function renderSource() {
         const m = SRC.meta || {};
@@ -474,13 +479,19 @@
         const rows = [
           ["[1] 예산·대기 (<code>refill_max · refresh_sec</code>)",
            "<code>dry:true</code> 가 이 단계를 건너뛴다 — 안 그러면 분포 표본이 예산 소진으로 끊긴다",
-           "실시간 타이머를 돌리는 별도 하네스. 이 페이지 범위 밖"],
+           "실시간 타이머를 돌리는 별도 하네스. 벤치에서 직접 눌러 보는 게 빠르다"],
           ["[0] 고정 오더 16행",
            "<code>skipFixed:true</code> 로 빼고 돌린다 — 랜덤 경로 분포를 보는 게 목적이라",
            "순번·슬롯·레벨 조건을 순회하는 전용 검사 추가"],
-          ["하루 누적 난이도 축",
-           "엔진에 이 축이 아예 없다 — 비교 대상이 없어 판정 자체가 안 된다",
-           "<code>order_slot_band.diff_sum_*</code> 를 밴드 선택에 넣은 뒤에야 잴 수 있다"],
+          ["누적 난이도의 정의",
+           "축은 입력(위 「누적 난이도」)으로 뚫었지만, 무엇의 합인지(발급/납품)·리셋 처리가 미확인",
+           "기획 확인 후 누적 로직을 상태로 구현"],
+          ["활성 이벤트 선택",
+           "event_id 4종 중 무엇이 활성인지는 편성 몫 — 기본으로 데이터 첫 행으로 계산한다",
+           "이벤트 편성 테이블이 생기면 그걸 입력으로"],
+          ["<code>weight</code> 실효",
+           "전 행 100·1 이라 곱해도 결과가 같다 — 값이 흔들려야 T2 가 잡는다. 「주머니 잔량」 의미면 해석 자체가 다르다",
+           "값이 흔들린 시트로 재검 + 잔량 의미 기획 확인"],
           ["<code>order_special</code> 탭",
            "추첨 경로에 안 들어온다고 보고 변환에서 뺐다 — 확인 필요",
            "special 오더가 이 탭을 읽는지 기획 확인 후 탭 추가"],
@@ -488,14 +499,11 @@
            "분포에 영향이 없어 판정을 안 만들었다",
            "<code>open_day · unlock_level</code> 조건과 중복 배정 금지 검사"],
           ["[7] 보상 단가 곡선",
-           "합산이 맞는지만 보고, 단가 자체가 옳은지는 안 본다",
+           "합산·이벤트 재화 일치만 보고, 단가 자체가 옳은지는 안 본다",
            "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
           ["생성기 주머니 (<code>produce_item_1~20</code>)",
            "오더 추첨 밖이다 — 벤치의 생산 경로 소관",
            "벤치에서 생산 표본을 뽑아 <code>produce_weight</code> 와 대조"],
-          ["<code>weight · weight_multiple</code> 실효",
-           "현재 전 행이 100 · 1 이라 값이 달라도 결과가 같다 — 못 잡는다",
-           "값이 흔들린 시트로 다시 돌리면 T2 가 바로 잡는다"],
         ];
         $("#rwBlind").innerHTML = rows.map((r) => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
         $("#rwBlindSum").innerHTML = `<span class="rw-v na">${rows.length}개 영역</span> <span style="opacity:.75">PASS 는 정상 보증이 아니다</span>`;
@@ -540,85 +548,76 @@
         const out = [];
         const add = (v, item, engine, json, note) => out.push({ v, item, engine, json, note });
 
-        // 슬롯 → 타입 매핑. 엔진은 5종을 기대한다(slotType)
-        const want = ["normal", "high", "random_3", "random_4", "special"];
+        // 슬롯 → 타입 매핑 (엔진 v2 = 벤치 v4.2: 슬롯 1·2 normal · 3 avatar · 4 special · 5 event)
+        const want = ["normal", "avatar", "special", "event"];
         const got = uniq(rule, "order_type");
         const miss = want.filter((t) => !got.includes(t));
         add(miss.length ? "no" : "ok", "order_rule 타입 집합",
             `slotType() 이 <code>${want.join(" / ")}</code> 를 기대`,
             `<code>${got.join(" / ") || "없음"}</code>`,
-            miss.length ? `벤치 <code>slotType</code> 이 <code>${miss.join(", ")}</code> 를 못 찾는다. 이 페이지는 타입을 직접 골라 무영향` : "일치");
+            miss.length ? `<code>${miss.join(", ")}</code> 이 없어 해당 슬롯이 빈다` : "일치");
 
-        // item_slot_max — 엔진은 자리 2개까지만 범위를 안다
         const maxSlot = Math.max(0, ...rule.map((r) => Number(r.item_slot_max) || 0));
-        add(maxSlot > 2 ? "no" : "ok", "item_slot_max",
-            "자리 1·2 만 범위를 읽는다 (first_*, second_max)",
+        add(maxSlot > 3 ? "no" : "ok", "item_slot_max",
+            "자리 1~3 범위(first_* · second_* · third_*)를 읽는다",
             `최대 <b>${maxSlot}</b>`,
-            maxSlot > 2 ? "셋째 자리를 <code>second_max</code> 로 뽑는다" : "—");
+            maxSlot > 3 ? "자리 4 이상은 범위 정의가 없다" : "자리 3 이하 — 전부 커버");
 
-        // 밴드 컬럼
-        const bandUnused = ["second_min", "third_min", "third_max", "diff_sum_min", "diff_sum_max"]
-          .filter((c) => has(band, c));
-        add(bandUnused.length ? "no" : "ok", "order_slot_band 컬럼",
-            "<code>level_min/max · first_* · second_max</code>",
+        const KNOWN = ["order_type", "band_seq", "level_min", "level_max", "diff_sum_min", "diff_sum_max",
+                       "first_min", "first_max", "second_min", "second_max", "third_min", "third_max", "in_use"];
+        const unknownBand = Object.keys(band[0] || {}).filter((c) => !KNOWN.includes(c));
+        add(unknownBand.length ? "warn" : "ok", "order_slot_band 컬럼",
+            "전 컬럼 사용 (diff_sum 은 입력 축)",
             `${Object.keys(band[0] || {}).length}컬럼`,
-            bandUnused.length ? `미사용 <code>${bandUnused.join(", ")}</code>` : "전 컬럼 사용");
+            unknownBand.length ? `모르는 컬럼 <code>${unknownBand.join(", ")}</code>` : "—");
 
-        // order_item 가중치
-        const wCols = ["weight", "weight_multiple"].filter((c) => has(oi, c));
-        add(wCols.length ? "no" : "ok", "order_item 기본 가중치",
-            "보드 배수 ÷ <code>repeat_weight_decrease</code> 만",
-            `<code>${wCols.join(", ") || "없음"}</code>`,
-            wCols.length
-              ? `곱하지 않는다. 현재 전 행 ${uniq(oi, "weight").join("/")}·${uniq(oi, "weight_multiple").join("/")} 라 차이 없음 — 값이 흔들리면 그때부터 틀린다`
+        const splits = band.filter((b) => b.in_use && ((b.diff_sum_min ?? 0) > 0 || (b.diff_sum_max ?? 9999) < 9999));
+        add(splits.length ? "warn" : "ok", "하루 누적 난이도 축",
+            "pickBand 가 diff_sum_* 를 읽는다 — 값은 위 「누적 난이도」 입력",
+            splits.length ? `분기 밴드 ${splits.length}행 (${[...new Set(splits.map((b) => b.order_type))].join(", ")})` : "분기 없음",
+            "누적이 무엇의 합인지(발급/납품)와 리셋 처리가 기획 미확인 — 값을 넣어 보는 것까지만 된다");
+
+        const wVals = uniq(oi, "weight").filter((v) => v != null);
+        const mVals = uniq(oi, "weight_multiple").filter((v) => v != null);
+        add(wVals.length ? "warn" : "ok", "order_item 기본 가중치",
+            "<code>weight × weight_multiple ÷ 100</code> 을 곱한다",
+            `weight ${wVals.join("/") || "없음"} · multiple ${mVals.join("/") || "없음"}`,
+            wVals.length
+              ? "칸 머리 「주머니 잔량 · 정규화 금지」가 잔량 차감 의미일 수 있다 — 상대 가중치 해석이 맞는지 확인 필요"
               : "—");
 
-        // order_item_count 종수 상한
         const maxCount = Math.max(0, ...cnt.map((r) => Number(r.item_count) || 0));
-        add(maxCount > 2 && maxSlot > 2 ? "warn" : "ok", "order_item_count 종수",
-            "<code>item_count ≤ 자리 수</code> 인 행만 후보",
+        add(maxCount > maxSlot ? "no" : "ok", "order_item_count 종수",
+            "<code>item_count ≤ item_slot_max</code> 행만 후보",
             `최대 <b>${maxCount}</b>종`,
-            maxCount > 2 ? "3종은 자리 3개가 뽑혀야 후보 — 셋째 자리 범위와 연동" : "—");
+            maxCount > maxSlot ? "자리 수보다 큰 종수 행은 절대 안 뽑힌다 — 데이터 확인" : "—");
 
-        // order_fixed 요구 3
-        add(has(fx, "requirement_3") ? "no" : "ok", "order_fixed 요구품",
-            "<code>requirement_1 · requirement_2</code>",
+        add("ok", "order_fixed 요구품", "<code>requirement_1~3</code> 을 읽는다",
             `<code>requirement_1~${Object.keys(fx[0] || {}).filter((k) => k.startsWith("requirement")).length}</code>`,
-            has(fx, "requirement_3") ? "3종 고정 오더 불가" : "2종 이하");
+            "3종 고정 오더 지원");
 
-        // event_order_score 기준값
         const base = uniq(ev, "score_base").filter(Boolean);
-        add(base.length && !base.includes("diff") ? "no" : "ok", "event_order_score 기준값",
-            "난이도 합을 넘긴다",
-            `<code>score_base=${base.join("/") || "없음"}</code>`,
-            base.length && !base.includes("diff") ? `<b>${base.join("/")}</b> 인데 난이도를 넘긴다 — 재화 수치가 틀린다` : "일치");
+        add("ok", "event_order_score 기준값",
+            "행의 <code>score_base</code> 대로 (coin → 코인 · 칸 없으면 난이도)",
+            `<code>score_base=${base.join("/") || "없음(난이도)"}</code>`, "—");
         const evIds = uniq(ev, "event_id").filter((v) => v != null);
-        add(evIds.length > 1 ? "no" : "ok", "event_order_score 이벤트 구분",
-            "<code>event_id</code> 를 안 본다",
-            `${evIds.length}종`,
-            evIds.length > 1 ? "행이 섞여 마지막 행이 뽑힌다" : "—");
+        add(evIds.length > 1 ? "warn" : "ok", "event_order_score 이벤트 구분",
+            "주어진 event_id 만 (기본: 데이터 첫 행)",
+            `<code>event_id</code> ${evIds.length}종`,
+            evIds.length > 1 ? `무엇이 활성인지는 편성 몫 — 여기서는 <code>${evIds[0]}</code> 로 계산한다` : "—");
 
-        // const
         add("order_repeat_reset_count" in C ? "ok" : "no", "const.order_repeat_reset_count",
             "반복 억제 리셋값으로 읽는다",
             "order_repeat_reset_count" in C ? `<b>${C.order_repeat_reset_count}</b>` : "<b>없음</b>",
             "order_repeat_reset_count" in C ? "—"
-              : "리셋값 <code>undefined</code> → <b>반복 억제가 꺼진다.</b> 시트에서 이 키의 행방 확인 필요");
-        const dailyKeys = Object.keys(C).filter((k) => k.startsWith("order_daily_diff"));
-        add(dailyKeys.length ? "no" : "ok", "하루 누적 난이도 축",
-            "쓰지 않는다 (밴드는 종류 + 레벨 두 축)",
-            `<code>${dailyKeys.join(", ") || "없음"}</code>`,
-            dailyKeys.length ? "축이 실재한다(<code>diff_sum_*</code> 와 짝). 엔진은 안 쓴다" : "—");
+              : "시트에 칸이 없어 <b>반복 억제가 꺼진다</b>. 벤치는 기획서 값 3 을 얹어 돌지만 시트 JSON 은 그대로 검사한다 — 시트에 칸 필요");
 
-        // chain_id 기준
-        const chains = uniq(spec, "chain_id").filter((v) => v != null).map(Number);
-        const minCh = chains.length ? Math.min(...chains) : null;
-        add(minCh != null && minCh < 2 ? "warn" : "ok", "item_spec.chain_id 기준",
-            "chain 2 → A",
-            `${chains.length}종 · ${minCh ?? "—"}~${chains.length ? Math.max(...chains) : "—"}`,
-            minCh != null && minCh < 2 ? "한 글자로 안 된다 — <code>체인-단계</code> 표기로 대체" : "—");
+        const named = spec.filter((r) => r.name != null).length;
+        add(named === spec.length && spec.length ? "ok" : "warn", "item_spec 이름",
+            "<code>name</code> (없으면 name_ko 별칭)",
+            `${named}/${spec.length}행`,
+            named === spec.length ? "—" : "이름 없는 행은 #코드 로 표기된다");
 
-        // 참조 정합 — 여기가 깨지면 분포가 아니라 데이터가 문제다
         const specCodes = new Set(spec.map((r) => r.item_code));
         const dangling = oi.filter((o) => !specCodes.has(o.item_code)).map((o) => o.item_code);
         add(dangling.length ? "no" : "ok", "order_item → item_spec 참조",
@@ -689,18 +688,19 @@
         if (useCtx) pool.slice(0, 2).forEach((o) => othersReq.add(o.item_code));
 
         const repeat = {};
-        const band = pickBand(type, lv);
+        const daily = clamp(Number($("#rwDaily").value) || 0, 0, 9999);
+        const band = pickBand(type, lv, daily);
         const rule = ruleOf(type);
 
         const seatTally = [new Map(), new Map(), new Map()];
         const tally = new Map(), combo = new Map(), cnt = new Map();
         const samples = [], viol = [];
-        let coin = 0, diff = 0, evt = 0, fail = 0, locked = false, ok = 0;
+        let coin = 0, diff = 0, evt = 0, fail = 0, locked = false, ok = 0, evtBad = 0;
 
         const saved = RNG.save();
         RNG.load(String(fixed ? SEED0 : SEED));
         for (let i = 0; i < N; i++) {
-          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev, repeat, skipFixed: true });
+          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev, repeat, skipFixed: true, dailyDiff: daily });
           if (!r.card) { fail++; if (r.locked) locked = true; continue; }
           ok++;
           const c = r.card;
@@ -713,30 +713,34 @@
           const key = c.reqs.map((q) => q.code).join("+");
           combo.set(key, (combo.get(key) || 0) + 1);
           const v = violations(c, { band, lv, othersReq, prev });
-          if (v.length) viol.push({ card: c, why: v });
-          if (samples.length < 8) samples.push({ card: c, log: r.log, why: v });
+          const ee = expEvt(c);                       // 이벤트 재화 독립 재계산 — 엔진과 다르면 위반
+          if (ee !== (c.evt ?? 0)) { evtBad++; v.msgs.push(`이벤트 재화 ${c.evt} ≠ 재계산 ${ee}`); }
+          if (v.msgs.length) viol.push({ card: c, why: v.msgs });
+          if (samples.length < 8) samples.push({ card: c, log: r.log, why: v.msgs, bad: v.bad });
         }
         if (!fixed) SEED = RNG.save();
         RNG.load(saved);
 
-        LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool,
-                 tally, seatTally, combo, cnt, viol, coin, diff, evt, locked, fixed,
+        LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, daily,
+                 tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed,
                  repeatEnd: Object.keys(repeat).length };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
       }
 
-      /* 규칙 위반 — 기대는 시트 값에서 따로 계산한다(엔진 계산을 다시 쓰지 않는다) */
+      /* 규칙 위반 — 기대는 시트 값에서 따로 계산한다(엔진 계산을 다시 쓰지 않는다).
+         라벨이 이름이라 문자열에서 코드를 못 뽑는다 — 위반 코드는 bad 집합으로 따로 준다. */
       function violations(card, ctx) {
-        const out = [];
+        const msgs = [], bad = new Set();
+        const mark = (code, m) => { msgs.push(m); bad.add(code); };
         const codes = card.reqs.map((q) => q.code);
-        if (new Set(codes).size !== codes.length) out.push("같은 코드를 두 번 요구");
+        if (new Set(codes).size !== codes.length) msgs.push("같은 코드를 두 번 요구");
         for (const q of card.reqs) {
           const o = oiOf(q.code);
-          if (!o) { out.push(`${labelOf(q.code)} order_item 에 없음`); continue; }
-          if (o.unlock_level > ctx.lv) out.push(`${labelOf(q.code)} unlock_level ${o.unlock_level} > Lv${ctx.lv}`);
-          if (ctx.othersReq.has(q.code)) out.push(`${labelOf(q.code)} 타 오더 요구인데 뽑힘`);
-          if (ctx.prev && ctx.prev.includes(q.code)) out.push(`${labelOf(q.code)} 직전 요구인데 뽑힘`);
+          if (!o) { mark(q.code, `${labelOf(q.code)} order_item 에 없음`); continue; }
+          if (o.unlock_level > ctx.lv) mark(q.code, `${labelOf(q.code)} unlock_level ${o.unlock_level} > Lv${ctx.lv}`);
+          if (ctx.othersReq.has(q.code)) mark(q.code, `${labelOf(q.code)} 타 오더 요구인데 뽑힘`);
+          if (ctx.prev && ctx.prev.includes(q.code)) mark(q.code, `${labelOf(q.code)} 직전 요구인데 뽑힘`);
         }
         const b = ctx.band;
         if (b) {
@@ -749,10 +753,26 @@
             if (i >= lim.length) return;
             const st = stepOf(q.code);
             const [lo, hi] = lim[i];
-            if (st < lo || st > hi) out.push(`자리${i + 1} ${labelOf(q.code)} 단계 ${st} 가 밴드 ${lo}~${hi} 밖`);
+            if (st < lo || st > hi) mark(q.code, `자리${i + 1} ${labelOf(q.code)} 단계 ${st} 가 밴드 ${lo}~${hi} 밖`);
           });
         }
-        return out;
+        return { msgs, bad };
+      }
+
+      /* 이벤트 재화 독립 재계산 — 엔진 eventScore 를 다시 부르지 않고 시트 규칙으로 직접.
+         event_id 있으면 첫 이벤트만(엔진 기본과 동일 조건) · score_base=coin 이면 코인 기준. */
+      function expEvt(card) {
+        const rows = (DATA.event_order_score || []).filter((r) => r.in_use);
+        const ids = [...new Set(rows.map((r) => r.event_id).filter((v) => v != null))];
+        const use = (ids.length ? rows.filter((r) => r.event_id === ids[0]) : rows)
+          .sort((a, b) => a.score_min - b.score_min);
+        let hit = null, base = 0;
+        for (const r of use) {
+          const v = r.score_base === "coin" ? card.coin : card.diff;
+          if (v > 0 && v >= r.score_min) { hit = r; base = v; }
+        }
+        if (!hit) return 0;
+        return hit.token_pct > 0 ? Math.floor((base * hit.token_pct) / 10000) : hit.token_fix || 0;
       }
 
       /* ======================================================================
@@ -784,7 +804,7 @@
         $("#rwWhy").innerHTML =
           (L.locked ? `<b style="color:var(--deploy)">${L.type} 은 Lv${L.rule ? L.rule.unlock_level : "?"} 해금 — 이 레벨에서는 0장</b> · ` : "") +
           `후보 ${L.pool.length}종` +
-          ` · 밴드 ${L.band ? `b${L.band.band_seq} ${L.band.first_min}~${L.band.first_max} / ≤${L.band.second_max}${L.band.third_max != null ? ` / ≤${L.band.third_max}` : ""}` : "없음"}` +
+          ` · 밴드 ${L.band ? `b${L.band.band_seq} ${L.band.first_min}~${L.band.first_max} / ≤${L.band.second_max}${L.band.third_max != null ? ` / ≤${L.band.third_max}` : ""}${L.band.diff_sum_min != null ? ` (누적 ${L.daily} ∈ ${L.band.diff_sum_min}~${L.band.diff_sum_max})` : ""}` : "없음"}` +
           ` · 배수 ${Object.entries(bucket).map(([k, v]) => `${SHORT[k] || k} ${v}`).join(" / ") || "—"}` +
           ` · 보유 ${held}종 · 제외 ${L.othersReq.size + (L.prev ? L.prev.length : 0)}종` +
           ` · 눌린 체인 ${L.repeatEnd}` +
@@ -793,14 +813,14 @@
       }
 
       function chipHTML(code, bad) {
-        return `<span class="rw-req${bad ? " bad" : ""}" style="--h:${hueOf(chainOf(code))}deg" title="${nameOf(code)}">${labelOf(code)}</span>`;
+        return `<span class="rw-req${lenOf(code)}${bad ? " bad" : ""}" style="--h:${hueOf(code)}deg" title="${titleOf(code)}">${labelOf(code)}</span>`;
       }
-      function cardHTML(card, why) {
-        const badSet = new Set((why || []).join(" ").match(/\d+-\d+/g) || []);
+      function cardHTML(card, bad) {
+        const badSet = bad || new Set();
         return `<div class="rw-card">
             <span class="rw-npc">${String(card.avatar || "—").slice(0, 3)}</span>
             <div class="rw-top"><span class="rw-ra"><span>◎ ${card.coin}</span>${card.diff ? `<span>◈ ${card.diff}</span>` : ""}</span></div>
-            <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(labelOf(q.code)))).join("")}</div>
+            <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(q.code))).join("")}</div>
             <div class="rw-bot">
               <span class="rw-rb" title="B — 이벤트 재화">◆ ${card.evt ?? 0}</span>
               <span class="rw-rc" title="C — 팩·카드">★ 팩</span>
@@ -809,7 +829,7 @@
       }
       function renderSamples(samples) {
         $("#rwSamples").innerHTML = samples.length
-          ? samples.map((s) => cardHTML(s.card, s.why)).join("")
+          ? samples.map((s) => cardHTML(s.card, s.bad)).join("")
           : '<div class="rw-empty">이 조건에서는 카드가 만들어지지 않았습니다.</div>';
       }
 
@@ -874,8 +894,8 @@
         $("#rwCombo").innerHTML = top.length
           ? top.map(([k, n]) => {
               const items = k.split("+").map(Number);
-              return barHTML(items.map(labelOf).join(" + "), n, ok, null, hueOf(chainOf(items[0])),
-                             items.map(nameOf).join(" + "), comboScale);
+              return barHTML(items.map(labelOf).join(" + "), n, ok, null, hueOf(items[0]),
+                             items.map((c) => `${codeTag(c)} ${labelOf(c)}`).join(" + "), comboScale);
             }).join("")
           : '<div class="rw-empty">조합 없음</div>';
 
@@ -885,8 +905,8 @@
         const s1Scale = Math.max(...seat1.map(([c, n]) => (n / s1) * 100),
                                  ...(es ? seat1.map(([c]) => es.map.get(c) || 0) : [0]));
         $("#rwBars").innerHTML = seat1.length
-          ? seat1.map(([code, n]) => barHTML(`${labelOf(code)} ${nameOf(code)}`, n, s1,
-              es ? es.map.get(code) : null, hueOf(chainOf(code)), nameOf(code), s1Scale)).join("")
+          ? seat1.map(([code, n]) => barHTML(`${codeTag(code)} ${labelOf(code)}`, n, s1,
+              es ? es.map.get(code) : null, hueOf(code), titleOf(code), s1Scale)).join("")
           : '<div class="rw-empty">해당 조건에서 뽑힌 아이템이 없습니다.</div>';
       }
 
@@ -1062,7 +1082,7 @@
       };
       $("#rwRerun").onclick = () => { renderGap(); run(); };
       $("#rwGo").onclick = run;
-      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix"].forEach((s) => {
+      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix", "#rwDaily"].forEach((s) => {
         $(s).addEventListener("change", run);
       });
 
