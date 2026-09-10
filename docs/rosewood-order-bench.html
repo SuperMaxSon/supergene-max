@@ -99,7 +99,7 @@
 
       /* HUD 1줄 — LV · refill · 코인 · 에너지 · shop */
       .rw-hud { display: flex; align-items: center; gap: 6px; }
-      .rw-lv { width: 48px; height: 48px; border-radius: 50%; will-change: transform; border: 1px solid var(--border);
+      .rw-lv { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border);
                background: var(--surface-2); display: flex; flex-direction: column;
                align-items: center; justify-content: center; line-height: 1; flex: none; }
       .rw-lv u { text-decoration: none; font-size: 8px; letter-spacing: 0.06em; color: var(--text-faint); }
@@ -292,8 +292,21 @@
                  align-items: center; justify-content: center; line-height: 1;
                  background: hsl(var(--h) 44% 87%); color: hsl(var(--h) 58% 26%);
                  border: 1px solid hsl(var(--h) 40% 72%);
-                 font-family: ui-monospace, Menlo, monospace; font-weight: 700;
-                 font-size: 15px; will-change: transform; }
+                 font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 15px; }
+      /* will-change 는 실제로 움직이는 동안에만 — 상시로 걸면 칩 63개가 전부 합성 레이어가 된다 */
+      .rw-chip[data-busy], .rw-lv[data-busy] { will-change: transform; }
+      /* 생성기 까딱임은 메인 스레드에서 매 프레임 계산하지 않고 컴포지터에 맡긴다.
+         값(주기·진폭·배율)은 그대로 FX 에서 온다 — :root 변수로 흘려 넣는다. */
+      @keyframes rwBob {
+        0%   { transform: translateY(0) scale(var(--bob-s, 1.05)); }
+        25%  { transform: translateY(var(--bob-px, 3px)) scale(var(--bob-s, 1.05)); }
+        50%  { transform: translateY(0) scale(var(--bob-s, 1.05)); }
+        75%  { transform: translateY(calc(var(--bob-px, 3px) * -1)) scale(var(--bob-s, 1.05)); }
+        100% { transform: translateY(0) scale(var(--bob-s, 1.05)); }
+      }
+      .rw-cell.gen .rw-chip { animation: rwBob var(--bob-sec, 1.6s) ease-in-out infinite; }
+      .rw-chip[data-busy] { animation: none; }
+      @media (prefers-reduced-motion: reduce) { .rw-cell.gen .rw-chip { animation: none; } }
       .rw-cell.hint .rw-chip { box-shadow: 0 0 0 2px var(--balance); }
       .rw-cell.gen .rw-chip { border-width: 2px; border-style: double; }
       /* 셀 배지 슬롯 — 화면 기획서 도해: A 우상단 · B 우하단 · C 좌하단 · D 셀 전체 */
@@ -580,6 +593,9 @@
           같은 조건으로 여러 장을 연속 발급해서 <b>실제로 어떤 오더가 나오는지</b>를 봅니다.
           고정 오더는 빼고 랜덤 경로만 돌립니다. 보드가 비어 있으면 모든 후보가 「미요구」 배수 1000 을 받아
           평평하게 나오고, 보드에 물건이 쌓이면 「동급·하급 보유」 배수 10000 이 걸려 쏠립니다.
+          <b>보드 상황을 바꿔도 결과가 그대로면 보드에 셀 것이 없다는 뜻입니다</b> &mdash;
+          생성기는 세지 않으므로, 생성기만 놓인 보드는 빈 보드와 같습니다. 아래 줄에 실제로 무엇이 걸렸는지 적힙니다.
+          난수는 게임 진행과 분리된 별도 열을 쓰고 돌릴 때마다 이어집니다. 같은 그림을 다시 보려면 <b>시드 고정</b>을 켭니다.
         </div>
         <div class="rw-panel">
           <div class="rw-pb">
@@ -593,9 +609,13 @@
                   <option value="empty">빈 보드</option>
                 </select>
               </div>
+              <label class="rw-chk" title="켜면 매번 같은 난수 열로 돌려 결과를 그대로 재현합니다">
+                <input type="checkbox" id="rwSimFix" /> 시드 고정
+              </label>
               <button class="rw-btn pri" id="rwSimGo">돌리기</button>
             </div>
             <div class="rw-kpis" id="rwKpi"></div>
+            <p class="rw-tnote" id="rwSimWhy"></p>
             <p class="rw-tnote">방금 뽑힌 오더 8장 &mdash; 레일에 서는 그림 그대로</p>
             <div class="rw-samples" id="rwSamples"></div>
             <p class="rw-tnote">가장 많이 나온 요구 조합 &mdash; 상위 10</p>
@@ -671,6 +691,8 @@
          0. 상수 · 유틸
          ====================================================================== */
       const COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
+      // syncFrameHeight 는 boot 의 첫 render 에서 이미 불린다 — 상태를 위에서 선언해 둔다
+      let syncRaf = 0, syncLast = -1;
       const $ = (s) => document.querySelector(s);
       const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
       const letterOf = (c) => String.fromCharCode(65 + (c - 2)); // chain_id 2 → A
@@ -889,8 +911,7 @@
           a.onUpdate(a.state);
           if (k >= 1) { TW.list.splice(i, 1); a.res(); }
         }
-        driveIdleBob(now);
-        if (TW.list.length || (!REDUCED && BOBS.length)) TW.raf = requestAnimationFrame(rafLoop);
+        if (TW.list.length) TW.raf = requestAnimationFrame(rafLoop);
       }
       function kick() { if (!TW.raf) TW.raf = requestAnimationFrame(rafLoop); }
       function tw(state, to, durSec, ease, onUpdate) {
@@ -905,17 +926,12 @@
       const wait = (sec) => (REDUCED ? Promise.resolve() : new Promise((r) => setTimeout(r, sec * 1000)));
 
       /* ── 생성기 아이들 bob ── */
-      let BOBS = [];
-      function driveIdleBob(now) {
-        if (REDUCED || !BOBS.length) return;
-        const period = Math.max(0.05, FX.IDLE_BOB) * 2000;
-        const k = (now % period) / period;
-        const y = Math.sin(k * Math.PI * 2) * FX.IDLE_PX;
-        for (const el of BOBS) {
-          if (!el.isConnected) { BOBS = BOBS.filter((x) => x.isConnected); break; }
-          if (el.dataset.busy) continue;
-          el.style.transform = `translateY(${y.toFixed(2)}px) scale(${FX.IDLE_SCALE})`;
-        }
+      /* 생성기 까딱임 값을 CSS 변수로 흘린다 — 연출 값을 적용할 때마다 한 번만 쓴다 */
+      function applyBobVars() {
+        const r = document.documentElement.style;
+        r.setProperty("--bob-sec", `${Math.max(0.05, FX.IDLE_BOB) * 2}s`);
+        r.setProperty("--bob-px", `${FX.IDLE_PX}px`);
+        r.setProperty("--bob-s", String(FX.IDLE_SCALE));
       }
 
       /* ── 무대 — 보드와 미리보기가 같은 원시 함수를 쓴다 ── */
@@ -1273,18 +1289,33 @@
       });
 
       let DATA = DEFAULTS();
-      const specOf = (code) => DATA.item_spec.find((r) => r.item_code === code);
-      const oiOf = (code) => DATA.order_item.find((o) => o.item_code === code);
+      /* 조회는 인덱스로 — 보드 한 번 그릴 때 specOf 가 수백 번 불린다.
+         DATA 를 통째로 갈아끼울 때만 인덱스를 버린다(reindex). */
+      let IDX = null;
+      function reindex() {
+        IDX = {
+          spec: new Map(DATA.item_spec.map((r) => [r.item_code, r])),
+          oi: new Map(DATA.order_item.map((o) => [o.item_code, o])),
+          rule: new Map(DATA.order_rule.filter((r) => r.in_use).map((r) => [r.order_type, r])),
+          lv: new Map(DATA.level_curve.map((l) => [l.level, l])),
+        };
+        return IDX;
+      }
+      const idx = () => IDX || reindex();
+      const specOf = (code) => idx().spec.get(code);
+      const oiOf = (code) => idx().oi.get(code);
+      const lvOf = (level) => idx().lv.get(level);
 
       /* ======================================================================
          2b. 저장 — 고친 값과 진행 상태를 브라우저에 남긴다.
          localStorage 는 막혀 있을 수 있어(시크릿 · 사이트 데이터 차단) 전부 try 로 감싼다.
          저장 실패는 조용히 넘어가고 페이지는 그대로 돈다.
          ====================================================================== */
-      const BUILD = "v2.2 · 2026-09-10";
+      const BUILD = "v2.3 · 2026-09-10";
       const SAVE_KEY = "rw.orderBench";
       const SAVE_VER = 3;
       let saveTimer = 0;
+      let DATA_CACHE = { ref: null, json: "" };
 
       function saveNow() {
         try {
@@ -1296,7 +1327,10 @@
             slots: S.slots, prevOfSlot: S.prevOfSlot,
             log: S.log.slice(0, 20).map((e) => ({ ...e, t: e.t.toISOString() })),
           };
-          localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VER, at: Date.now(), data: DATA, fx: FX, state: st }));
+          // DATA 는 밸런스 JSON 을 갈아끼울 때 말고는 안 바뀐다 — 직렬화 결과를 재사용한다
+          if (DATA !== DATA_CACHE.ref) DATA_CACHE = { ref: DATA, json: JSON.stringify(DATA) };
+          localStorage.setItem(SAVE_KEY,
+            `{"v":${SAVE_VER},"at":${Date.now()},"data":${DATA_CACHE.json},"fx":${JSON.stringify(FX)},"state":${JSON.stringify(st)}}`);
           const d = new Date();
           const hh = (x) => String(x).padStart(2, "0");
           $("#rwSaved").textContent = `저장 ${hh(d.getHours())}:${hh(d.getMinutes())}:${hh(d.getSeconds())}`;
@@ -1304,7 +1338,14 @@
           $("#rwSaved").textContent = "저장 불가";
         }
       }
-      function save() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
+      function save() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          // 쓰기는 26KB 동기 작업이다 — 한가할 때로 미룬다
+          if (window.requestIdleCallback) requestIdleCallback(saveNow, { timeout: 2000 });
+          else saveNow();
+        }, 900);
+      }
 
       function loadSaved() {
         try {
@@ -1341,7 +1382,7 @@
       }
 
       const slotType = (n) => (n === 1 || n === 2 ? "normal" : n === 3 ? "high" : n === 4 ? "random_3" : n === 5 ? "random_4" : "special");
-      const ruleOf = (type) => DATA.order_rule.find((r) => r.order_type === type && r.in_use);
+      const ruleOf = (type) => idx().rule.get(type);
 
       function openSlots() {
         // 슬롯 1~3 은 Lv1 부터 존재한다 — Lv1~2 구간은 order_fixed 16장이 채운다.
@@ -1738,15 +1779,15 @@
       }
 
       function doChore() {
-        const need = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 999;
+        const need = lvOf(S.level)?.exp_cost ?? 999;
         S.choreSeq++;
         const exp = Math.max(5, Math.round(need / 3)), coin = 16 + S.day * 4;
         S.exp += exp; S.coin += coin;
         if (S.choreSeq % 3 === 0) S.day++;
         let up = false;
         while (S.level < 30) {
-          const c = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? Infinity;
-          if (S.exp >= c) { S.exp -= c; S.level++; S.coin += DATA.level_curve.find((l) => l.level === S.level - 1)?.reward_coin || 0; up = true; }
+          const c = lvOf(S.level)?.exp_cost ?? Infinity;
+          if (S.exp >= c) { S.exp -= c; S.level++; S.coin += lvOf(S.level - 1)?.reward_coin || 0; up = true; }
           else break;
         }
         toast(up ? `레벨 업 → Lv${S.level}` : `심부름 완료 +${exp} exp / +${coin} 코인`);
@@ -1758,6 +1799,16 @@
       /* ======================================================================
          7. 렌더
          ====================================================================== */
+      /* 같은 마크업을 다시 쓰지 않는다. 1초 인터벌이 레일·로그·아웃게임을 통째로
+         새로 만들면 초당 한 번씩 DOM 이 무너졌다 세워져 그게 그대로 버벅임이 된다. */
+      const HTML_LAST = new Map();
+      function setHTML(sel, html) {
+        if (HTML_LAST.get(sel) === html) return false;
+        HTML_LAST.set(sel, html);
+        const el = $(sel); if (el) el.innerHTML = html;
+        return true;
+      }
+
       function render() { renderStats(); renderBoard(); renderInfo(); renderRail(); renderLog(); renderOut(); syncFrameHeight(); save(); }
 
       /* HUD 숫자는 바로 바꾸지 않고 굴린다 — 값이 변한 걸 눈이 잡게 */
@@ -1784,7 +1835,7 @@
       };
 
       function renderStats() {
-        const need = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 0;
+        const need = lvOf(S.level)?.exp_cost ?? 0;
         $("#rwLv").textContent = S.level;
         setNum("#rwCoin", S.coin, (v) => v.toLocaleString());
         setNum("#rwEnergy", S.energy);
@@ -1796,10 +1847,10 @@
         b.textContent = "x" + (S.boost || 1);
         b.className = "rw-boost m" + (S.boost || 1);
 
-        $("#rwStats").innerHTML = [
+        setHTML("#rwStats", [
           ["LV", S.level], ["EXP", `${S.exp}/${need}`], ["에너지", S.energy],
           ["코인", S.coin.toLocaleString()], ["DAY", S.day],
-        ].map(([k, v]) => `<div class="rw-stat"><u>${k}</u><b>${v}</b></div>`).join("");
+        ].map(([k, v]) => `<div class="rw-stat"><u>${k}</u><b>${v}</b></div>`).join(""));
         $("#rwRng").textContent = `rng_state ${S.orderGen.rng_state} · fixed_next ${S.orderGen.fixed_next_seq}`;
       }
 
@@ -1834,13 +1885,13 @@
 
       function renderBoard() {
         const mark = orderMarks();
-        const kids = $("#rwBoard").children;
-        if (kids.length !== CELLS) buildBoard();
+        const board = $("#rwBoard");
+        if (board.children.length !== CELLS) buildBoard();
+        const kids = board.children;
         const now = Date.now() / 1000;
         let filled = 0;
-        const bobs = [];
         for (let i = 0; i < CELLS; i++) {
-          const el = $("#rwBoard").children[i];
+          const el = kids[i];
           const chip = el.children[0], ba = el.children[1], bb = el.children[2], bc = el.children[3];
           const c = S.cells[i];
           if (!c) {
@@ -1893,11 +1944,9 @@
           bc.style.display = maxed ? "" : "none";
           if (maxed) { bc.textContent = "♛"; bc.title = "최고 단계"; }
 
-          if (gen) bobs.push(chip);
         }
-        $("#rwBoardSub").textContent = `${filled}/63 채움 · cell = row×7+col`;
-        BOBS = bobs;
-        kick();
+        const sub = $("#rwBoardSub"), txt = `${filled}/63 채움 · cell = row×7+col`;
+        if (sub.textContent !== txt) sub.textContent = txt;
       }
 
       /* ────────────────────────────────────────────────────────────────
@@ -1909,20 +1958,42 @@
          ──────────────────────────────────────────────────────────────── */
       let DRAG = null, SUPPRESS_CLICK = false;
 
-      function stagePoint(e) {
-        const r = $("#rwStage").getBoundingClientRect();
-        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      /* 포인터가 움직일 때마다 getBoundingClientRect / elementFromPoint 를 부르면
+         이동 한 번에 강제 레이아웃이 두 번씩 난다. 드래그를 시작할 때 무대와 격자를
+         한 번만 재 두고, 그 뒤로는 산술로만 셀을 찾는다. */
+      let GEO = null;
+      function measureGeo() {
+        const st = $("#rwStage").getBoundingClientRect();
+        const bd = $("#rwBoard").getBoundingClientRect();
+        const c0 = $("#rwBoard").children[0].getBoundingClientRect();
+        const c1 = $("#rwBoard").children[1].getBoundingClientRect();
+        const c7 = $("#rwBoard").children[COLS].getBoundingClientRect();
+        GEO = {
+          sx: st.left, sy: st.top,
+          x0: c0.left - st.left, y0: c0.top - st.top,
+          w: c0.width, h: c0.height,
+          stepX: c1.left - c0.left, stepY: c7.top - c0.top,
+        };
+        return GEO;
       }
-      function cellUnder(e) {
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        const cell = el && el.closest && el.closest(".rw-cell");
-        if (!cell || cell.parentElement !== $("#rwBoard")) return -1;
-        return [...$("#rwBoard").children].indexOf(cell);
+      function stagePoint(e) {
+        const g = GEO || measureGeo();
+        return { x: e.clientX - g.sx, y: e.clientY - g.sy };
+      }
+      /* 무대 좌표 → 셀 번호. 칸 사이 틈에 떨어지면 -1 */
+      function cellAt(p) {
+        const g = GEO || measureGeo();
+        const col = Math.floor((p.x - g.x0) / g.stepX), row = Math.floor((p.y - g.y0) / g.stepY);
+        if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return -1;
+        if (p.x - g.x0 - col * g.stepX > g.w || p.y - g.y0 - row * g.stepY > g.h) return -1;
+        return row * COLS + col;
       }
 
       function beginDrag(e, i) {
         if (S.busy || DRAG || e.button > 0 || !S.cells[i]) return;
-        DRAG = { i, id: e.pointerId, p0: stagePoint(e), p: stagePoint(e), live: false, cur: -1 };
+        measureGeo();                                        // 이번 드래그 동안 쓸 격자를 한 번만 잰다
+        const p = stagePoint(e);
+        DRAG = { i, id: e.pointerId, p0: p, p: { ...p }, live: false, cur: -1 };
         const move = (ev) => { if (ev.pointerId === DRAG.id) onDragMove(ev); };
         const up = (ev) => {
           if (ev.pointerId !== DRAG.id) return;
@@ -2010,13 +2081,15 @@
         }
         e.preventDefault();
         // 지나가는 셀에 링을 켠다 — 합쳐질 짝일 때만 (C2 와 같은 규칙)
-        const j = cellUnder(e);
+        const j = cellAt(DRAG.p);
         if (j !== DRAG.cur) {
+          if (DRAG.over) { DRAG.over.classList.remove("over"); DRAG.over = null; }
           DRAG.cur = j;
-          [...$("#rwBoard").children].forEach((c) => c.classList.remove("over"));
           const src = S.cells[DRAG.i], dst = j >= 0 ? S.cells[j] : null;
-          if (j >= 0 && j !== DRAG.i && src && (!dst || (dst.code === src.code && specOf(src.code).merged_item_code)))
-            $("#rwBoard").children[j].classList.add("over");
+          if (j >= 0 && j !== DRAG.i && src && (!dst || (dst.code === src.code && specOf(src.code).merged_item_code))) {
+            DRAG.over = $("#rwBoard").children[j];
+            DRAG.over.classList.add("over");
+          }
         }
       }
 
@@ -2026,9 +2099,9 @@
         if (!d.live) { DRAG = null; return; }               // 움직이지 않았다 — click 이 탭으로 받는다
         DRAG = null; SUPPRESS_CLICK = true;
         setTimeout(() => (SUPPRESS_CLICK = false), 0);
-        [...$("#rwBoard").children].forEach((c) => c.classList.remove("over"));
+        if (d.over) d.over.classList.remove("over");
 
-        const a = d.i, b = cellUnder(e);
+        const a = d.i, b = cellAt(stagePoint(e));
         const A = S.cells[a];
         const restore = () => {
           const chip = chipAt(a);
@@ -2224,16 +2297,16 @@
           const ok = S.orderFree || card.reqs.every((q) => (counts.get(q.code) || 0) >= q.count);
           html += orderCardHTML(card, { slot: n, counts, serve: ok });
         }
-        r.innerHTML = html;
+        setHTML("#rwRail", html);
       }
 
       function renderLog() {
         const l = $("#rwLog");
-        if (!S.log.length) { l.innerHTML = '<div class="rw-e"><div class="rw-steps" style="opacity:.6">아직 발급 기록이 없습니다.</div></div>'; return; }
-        l.innerHTML = S.log.map((e) => `<div class="rw-e">
+        if (!S.log.length) { setHTML("#rwLog", '<div class="rw-e"><div class="rw-steps" style="opacity:.6">아직 발급 기록이 없습니다.</div></div>'); return; }
+        setHTML("#rwLog", S.log.map((e) => `<div class="rw-e">
             <h4>슬롯 ${e.slot} · ${e.type} ${e.ok ? "" : '<span style="color:var(--deploy)">발급 실패</span>'}
               <span class="tag">${e.reason} · ${clock(e.t)}</span></h4>
-            <div class="rw-steps">${e.lines.join("\n")}</div></div>`).join("");
+            <div class="rw-steps">${e.lines.join("\n")}</div></div>`).join(""));
       }
 
       /* 레벨 업 — 코어루프에서 가장 큰 사건이라 배지가 한 번 크게 튄다 */
@@ -2287,7 +2360,7 @@
           if (String(val) !== String(cur)) n++;
           FX[key] = val;
         }
-        renderFxJson(); save();
+        renderFxJson(); applyBobVars(); save();
         $("#rwFxNote").textContent =
           `${n}개 값이 바뀌었습니다.` + (unknown.length ? ` 모르는 키 ${unknown.length}개는 건너뜁니다 — ${unknown.slice(0, 6).join(", ")}${unknown.length > 6 ? " …" : ""}` : "");
         toast(n ? `연출 값 ${n}개를 적용했습니다` : "바뀐 값이 없습니다");
@@ -2363,17 +2436,17 @@
         $("#rwoGem").textContent = S.gem;
         $("#rwOutCap").textContent = OUT_TITLE[v] || v;
 
-        $("#rwCrumb").innerHTML = o.stack.map((s, i) =>
+        setHTML("#rwCrumb", o.stack.map((s, i) =>
           i === o.stack.length - 1
             ? `<span style="color:var(--text-dim);font-weight:700">${OUT_NAME[s]}</span>`
             : `<button onclick="outCut(${i})">${OUT_NAME[s]}</button><span>›</span>`).join("")
-          + (o.stack.length > 1 ? `<button class="rw-back" style="margin-left:auto" onclick="outBack()">← 뒤로</button>` : "");
+          + (o.stack.length > 1 ? `<button class="rw-back" style="margin-left:auto" onclick="outBack()">← 뒤로</button>` : ""));
 
-        $("#rwView").innerHTML = (OUT_VIEW[v] || (() => "<div class=\"rw-sub\">준비 중</div>"))(o);
-        $("#rwNav").innerHTML = [
+        setHTML("#rwView", (OUT_VIEW[v] || (() => "<div class=\"rw-sub\">준비 중</div>"))(o));
+        setHTML("#rwNav", [
           ["chore", "▤", "chore"], ["villages", "🗺", "지도"], ["album", "◫", "앨범"], ["__board", "▦", "board"],
         ].map(([k, g, n]) => `<button onclick="${k === "__board" ? "document.querySelector('#rwFrame').scrollIntoView({block:'center'})" : `outHome();outGo('${k}')`}"
-            aria-current="${o.stack[1] === k}"><b>${g}</b>${n}</button>`).join("");
+            aria-current="${o.stack[1] === k}"><b>${g}</b>${n}</button>`).join(""));
       }
       function outCut(i) { outState().stack.length = i + 1; renderOut(); save(); }
 
@@ -2414,7 +2487,7 @@
         // 78 심부름 — 퀘스트 카드 · Rewards 3 · Start ◎N · Day 진행 바
         chore: (o) => {
           const cost = 16 + S.day * 4, can = S.coin >= cost;
-          const exp = Math.max(5, Math.round((DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 30) / 3));
+          const exp = Math.max(5, Math.round((lvOf(S.level)?.exp_cost ?? 30) / 3));
           return `<div class="rw-title">Chores</div>
             <div class="rw-row" style="cursor:default">
               <span class="rw-thumb">👩</span>
@@ -2568,7 +2641,7 @@
 
         // 67 프로필
         profile: (o) => {
-          const need = DATA.level_curve.find((l) => l.level === S.level)?.exp_cost ?? 0;
+          const need = lvOf(S.level)?.exp_cost ?? 0;
           return `<div class="rw-title">Player Profile</div>
             <div class="rw-row" style="cursor:default"><span class="rw-thumb">${["☺", "🙂", "😊", "🧑", "👩", "🧓"][o.avatar]}</span>
               <span><b>Player</b><div class="rw-sub">ID : JGIEVAH</div></span>
@@ -2652,6 +2725,8 @@
       /* ======================================================================
          9. 분포
          ====================================================================== */
+      const SIM_SEED0 = 20260910;
+      let SIM_SEED = SIM_SEED0;
       function runSim() {
         const N = clamp(Number($("#rwSimN").value) || 1000, 10, 20000);
         const lv = clamp(Number($("#rwSimLv").value) || 1, 1, 30);
@@ -2660,7 +2735,10 @@
         const othersReq = new Set();
         const tally = new Map(), combo = new Map(); let coin = 0, diff = 0, fail = 0;
         const cnt = { 1: 0, 2: 0 }; const samples = [];
+        // 게임 진행용 난수 열은 건드리지 않는다. 대신 분포 전용 열을 따로 두고,
+        // 돌릴 때마다 이어 간다 — 매번 같은 결과가 나오면 고장으로 보인다.
         const saved = RNG.save();
+        RNG.load($("#rwSimFix").checked ? String(SIM_SEED0) : String(SIM_SEED));
         for (let i = 0; i < N; i++) {
           const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev: null, skipFixed: true });
           if (!r.card) { fail++; continue; }
@@ -2672,8 +2750,19 @@
           if (c) c.n++; else combo.set(key, { n: 1 });
           if (samples.length < 8) samples.push(r.card);
         }
+        if (!$("#rwSimFix").checked) SIM_SEED = RNG.save();
         RNG.load(saved);
         const ok = N - fail;
+
+        // 보드 상황이 실제로 무엇을 바꿨는지 — 후보별 배수를 세어 보여 준다
+        const poolNow = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= lv);
+        const bucket = {};
+        poolNow.forEach((o) => { const w = situationMult(o.item_code, othersReq, counts, DATA.const).why; bucket[w] = (bucket[w] || 0) + 1; });
+        const held = [...counts.keys()].length;
+        $("#rwSimWhy").innerHTML =
+          `후보 ${poolNow.length}종 · 배수 ${Object.entries(bucket).map(([k, v]) => `${k} ${v}종`).join(" / ") || "—"}` +
+          ` · 보드에서 세는 아이템 ${held}종${held ? ` (${[...counts.keys()].map(labelOf).slice(0, 8).join(", ")}${held > 8 ? " …" : ""})` : " — 생성기는 세지 않습니다"}` +
+          ` · 시드 ${$("#rwSimFix").checked ? SIM_SEED0 + " (고정)" : "이어서"}`;
         $("#rwKpi").innerHTML = [
           ["발급 성공", `${ok}/${N}`], ["평균 코인", ok ? (coin / ok).toFixed(1) : "—"],
           ["평균 난이도", ok ? (diff / ok).toFixed(1) : "—"],
@@ -2710,15 +2799,16 @@
       function boot(fresh) {
         const saved = fresh ? null : loadSaved();
         if (saved) {
-          DATA = saved.data;
+          DATA = saved.data; reindex();
           FX = Object.assign(FX_DEFAULTS(), saved.fx || {});
           S = Object.assign(freshState(), saved.state); S.busy = false;
-        } else { DATA = DEFAULTS(); FX = FX_DEFAULTS(); S = freshState(); }
+        } else { DATA = DEFAULTS(); reindex(); FX = FX_DEFAULTS(); S = freshState(); }
         RNG.load(S.orderGen.rng_state);
         $("#rwSimType").innerHTML = DATA.order_rule.filter((r) => r.order_type !== "special")
           .map((r) => `<option value="${r.order_type}">${r.order_type}</option>`).join("");
         $("#rwBuild").textContent = `build ${BUILD}`;
         renderFxJson();
+        applyBobVars();
         $("#rwDebug").checked = !!S.debug;
         $("#rwOrderFree").checked = !!S.orderFree;
         $("#rwOrderFreeS").textContent = S.orderFree ? "on" : "off";
@@ -2820,10 +2910,30 @@
       $("#rwSimGo").onclick = runSim;
       $("#rwFxApply").onclick = applyFx;
       $("#rwFxReset").onclick = () => {
-        FX = FX_DEFAULTS(); renderFxJson(); save();
+        FX = FX_DEFAULTS(); renderFxJson(); applyBobVars(); save();
         $("#rwFxNote").textContent = "애니메이션 문서 기본값으로 되돌렸습니다.";
         toast("연출 값을 문서 기본값으로 되돌렸습니다");
       };
+      /* 밸런스 표 통째 교체 — 마크업만 있고 핸들러가 없어 눌러도 아무 일이 없었다 */
+      $("#rwExport").onclick = () => {
+        const ta = $("#rwJson"), bar = $("#rwJsonBar");
+        const open = ta.classList.contains("rw-hide");
+        ta.classList.toggle("rw-hide", !open);
+        bar.classList.toggle("rw-hide", !open);
+        if (open) ta.value = JSON.stringify(DATA, null, 2);
+      };
+      $("#rwJsonApply").onclick = () => {
+        let obj;
+        try { obj = JSON.parse($("#rwJson").value); }
+        catch (e) { toast(`JSON 을 읽지 못했습니다 — ${e.message}`); return; }
+        const need = ["const", "order_rule", "item_spec", "order_item", "level_curve"];
+        const miss = need.filter((k) => !obj || obj[k] == null);
+        if (miss.length) { toast(`필수 키가 없습니다 — ${miss.join(", ")}`); return; }
+        DATA = obj; reindex();
+        fillEmptySlots("밸런스 교체"); render(); runSim();
+        toast("밸런스 데이터를 갈아끼웠습니다");
+      };
+
       $("#rwFxCopy").onclick = async () => {
         const el = $("#rwFxJson");
         el.select();
@@ -2877,15 +2987,23 @@
 
       /* 두 프레임은 같은 기기 해상도를 쓴다 — 아웃게임 높이를 인게임에 맞춘다.
          레일·보드가 바뀌면 인게임 높이도 바뀌므로 관찰로 따라간다. */
+      /* 렌더마다 곧바로 재면 「쓰고 바로 읽기」라 매번 강제 리플로우가 난다.
+         한 프레임 뒤로 미뤄 한 번만 재고, 값이 그대로면 쓰지도 않는다. */
       function syncFrameHeight() {
-        const f = $("#rwFrame"), o = $("#rwOut");
-        if (!f || !o) return;
-        o.style.height = "";                       // 먼저 풀고 인게임의 실제 높이를 잰다
-        const h = f.offsetHeight;
-        if (h > 0) o.style.height = h + "px";
+        if (syncRaf) return;
+        syncRaf = requestAnimationFrame(() => {
+          syncRaf = 0;
+          const f = $("#rwFrame"), o = $("#rwOut");
+          if (!f || !o) return;
+          if (syncLast >= 0) o.style.height = "";
+          const h = f.offsetHeight;
+          if (h > 0 && h !== syncLast) { syncLast = h; o.style.height = h + "px"; }
+          else if (syncLast > 0) o.style.height = syncLast + "px";
+        });
       }
       if (window.ResizeObserver) new ResizeObserver(syncFrameHeight).observe($("#rwFrame"));
-      window.addEventListener("resize", syncFrameHeight);
+      window.addEventListener("resize", () => { GEO = null; syncFrameHeight(); });
+      window.addEventListener("scroll", () => { if (!DRAG) GEO = null; }, { passive: true });
       syncFrameHeight();
 
       setInterval(() => {
