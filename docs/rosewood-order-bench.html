@@ -445,12 +445,13 @@
                        background: var(--analysis); color: #fff; font-size: 9px; display: grid; place-items: center; }
       .rw-sheet .foot { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-faint); }
       .rw-sheet .foot .rw-btn { margin-left: auto; }
-      /* 되돌리기 스낵바 — 판매·치우기 뒤 undo_valid_sec 동안만 */
+      /* 되돌리기 스낵바 — 판매·치우기 뒤 「다음 행동 전까지」. 초 시계는 두지 않는다 */
       .rw-undo { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 18;
                  display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12px;
                  border-radius: 10px; border: 1px solid var(--border);
                  background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
       .rw-undo b { font-weight: 700; }
+      .rw-undo i { font-style: normal; color: var(--text-faint); font-size: 11px; }
       .rw-undo .rw-btn { margin-left: auto; padding: 4px 12px; font-size: 12px; }
       .rw-btn.trash { background: var(--deploy); border-color: var(--deploy); color: #fff; }
 
@@ -707,6 +708,7 @@
               <tr><td><code>order_repeat_reset_count</code> = 3</td><td>const 48행에 이 칸이 <b>없다</b>. 개발 기획서 1.2.1 의 값을 얹었다 &mdash; 시트에 칸이 생기면 지운다</td></tr>
               <tr><td><code>event_order_score</code> 5행</td><td>시트 탭이 <b>[작성중]</b>. 기준값이 무엇인지도 안 적혀 있어 난이도로 가정했다</td></tr>
               <tr><td><code>level_curve.reward_coin</code></td><td>시트의 레벨 보상은 <code>reward_item_key_1~3</code>(아이템 지급)이라 코인 칸이 없다. 레벨업 체감용 임시값</td></tr>
+              <tr><td><code>undo_valid_sec</code> = 5</td><td><b>쓰지 않기로 했다.</b> 되돌리기가 들고 있는 건 {칸·코드·코인} 한 건이라 보관 비용이 없고, 창을 닫아야 하는 진짜 이유는 「서버에 아직 안 보낸 변경을 언제 확정하나」였다. 그 확정 시점을 초 시계 대신 <b>다음 행동</b>에 붙였다 &mdash; 보드·코인을 건드리는 행동이 들어오는 순간 앞의 판매를 커밋한다. 시트에 칸은 남아 있으니 삭제 여부는 기획 판단</td></tr>
               <tr><td>판매 확인창 임계</td><td><code>rare</code> 칸과 문구 스펙 <code>Rw_Board_Sell_Confirm_Popup</code> 이 서로 어긋난 채 열려 있다 (시트 이슈)</td></tr>
               <tr><td>하루 누적 난이도</td><td><code>order_daily_diff_band_1/2</code> 가 const 에 있는데 개발 기획서 A8 은 「쓰지 않는다」고 한다. 벤치는 미구현</td></tr>
               <tr><td><code>refill_max</code> = 0</td><td>실물에서 <b>avatar · special · event 전부 0</b>이다. 이 경로로는 카드가 한 장도 안 나온다 &mdash; 손님·이벤트 오더가 다른 경로(호감도·이벤트 편성)로 들어오는 자리로 보이는데 기획서에 그 경로가 없다. 레일에 「랜덤 발급 없음」으로 그대로 표시한다</td></tr>
@@ -1298,6 +1300,7 @@
 
       async function tapGenerator(i) {
         if (S.busy) return;
+        sealUndo();          // 다음 행동이 곧 앞 판매의 확정 신호다
         const cell = S.cells[i], sp = specOf(cell.code);
         // 재고 → 빈칸 → 에너지 → 산출 추첨. 실패면 아무것도 차감하지 않고 거부 연출만.
         // 문서 B1·B2 — 잘못이 아니라 상태 고지라 흔들지 않는다. 눌림 + 떠오르는 문구로만 알린다
@@ -1345,46 +1348,43 @@
          판매 / 치우기 / 되돌리기 — 기획서 「판매 / 치우기 / 되돌리기」
            selling_price > 0  → Sell + 코인 +n
            selling_price ≤ 0  → 빨간 휴지통만(라벨·금액 숨김)
-           되돌리기는 클라 로컬 const.undo_valid_sec 초. 그 창 안에는 서버로 보내지 않는다.
+           되돌리기는 시간이 아니라 「다음 행동 전까지」다. const.undo_valid_sec 은 쓰지 않는다.
+           초 시계를 둘 이유가 없다 — 되돌리기가 들고 있는 건 {칸, 코드, 코인} 한 건이라
+           보관 비용이 없고, 창을 닫아야 하는 진짜 이유는 「서버에 아직 안 보낸 변경을
+           언제 확정하나」였다. 그 확정 시점을 시계 대신 다음 행동에 붙인다 —
+           보드·코인을 건드리는 행동이 들어오는 순간 앞의 판매를 커밋한다(sealUndo).
            생성기·고가는 확인 팝업을 타고, 그 경로에는 되돌리기를 붙이지 않는다.
          ──────────────────────────────────────────────────────────────── */
       /* 확인 팝업의 「고가」 기준은 시트·기획서 어디에도 확정값이 없다(string_code 문면과
          item_spec.rare 값이 서로 어긋난 채 열려 있는 이슈). selling_price 가 0~12 범위이므로
          그 안의 임시값을 쓴다 — 확정되면 const 로 옮긴다. */
       const HIGH_VALUE_COIN = 10;
-      let UNDO = null, undoTimer = 0;
+      let UNDO = null;
 
-      function clearUndo(send) {
-        clearInterval(undoTimer); undoTimer = 0;
-        if (UNDO && send) UNDO.commit();          // 창이 지나야 서버로 보낸다
+      /* 되돌리기 창을 닫고 서버로 보낸다. 「다음 행동」이 곧 확정 신호다 */
+      function sealUndo() {
+        if (!UNDO) return;
+        UNDO.commit();
         UNDO = null;
         const el = $("#rwUndo"); if (el) el.remove();
       }
 
       function offerUndo(label, restore, commit) {
-        clearUndo(true);
+        sealUndo();                               // 앞의 것부터 확정 — 되돌리기는 늘 「마지막 한 번」이다
         UNDO = { restore, commit };
-        const sec = DATA.const.undo_valid_sec || 5;
         const el = document.createElement("div");
         el.className = "rw-undo"; el.id = "rwUndo";
-        el.innerHTML = `<b>${label}</b><span id="rwUndoSec">${sec}s</span>
-          <button class="rw-btn" onclick="undoLast()">되돌리기</button>`;
+        el.innerHTML = `<b>${label}</b><i>다음 행동 전까지</i>`
+          + `<button class="rw-btn" onclick="undoLast()">되돌리기</button>`;
         $("#rwFrame").appendChild(el);
-        let left = sec;
-        undoTimer = setInterval(() => {
-          left--;
-          const t = $("#rwUndoSec");
-          if (t) t.textContent = `${left}s`;
-          if (left <= 0) clearUndo(true);
-        }, 1000);
       }
 
       function undoLast() {
         if (!UNDO) return;
         const back = UNDO.restore;
-        clearInterval(undoTimer); undoTimer = 0; UNDO = null;
+        UNDO = null;
         const el = $("#rwUndo"); if (el) el.remove();
-        back();
+        if (!back()) { toast("보드가 꽉 차서 되돌릴 자리가 없습니다"); render(); return; }
         render();
         toast("되돌렸습니다 — 서버로는 보내지 않았습니다");
       }
@@ -1406,13 +1406,24 @@
         if (confirmNeeded) { toast(`${name} is sold. +${price}`); return; }   // 확인 팝업 경로엔 되돌리기 없음
         offerUndo(
           trash ? `${name} is removed.` : `${name} is sold. +${price}`,
-          () => { S.cells[snapshot.i] = snapshot.cell; if (!trash) S.coin -= price; },
-          () => {},                                // 창이 지나면 여기서 /board/sell 을 보낸다
+          /* 시계가 없어졌으니 원래 칸이 막혀 있을 가능성을 열어 둔다. sealUndo 가 모든
+             변경 지점에 붙어 있어 실제로는 안 나야 하지만, 한 군데 빠뜨렸을 때
+             남의 칩을 덮어써서 조용히 사라지는 것보다 자리를 옮기는 게 낫다. */
+          () => {
+            let at = snapshot.i;
+            if (S.cells[at]) at = spiralEmpty(snapshot.i);
+            if (at < 0) return false;
+            S.cells[at] = snapshot.cell;
+            if (!trash) S.coin -= price;
+            return true;
+          },
+          () => {},                                // 확정되면 여기서 /board/sell 을 보낸다
         );
       }
 
       // 납품 확정 — 코인·직전 요구품·반복 카운터를 한 번에 처리하고 다음 카드를 발급한다
       function commitServe(n, card, reason) {
+        sealUndo();          // 다음 행동이 곧 앞 판매의 확정 신호다
         S.coin += card.coin;
         S.serveCount = (S.serveCount || 0) + 1;
         S.prevOfSlot[n] = card.reqs.map((q) => q.code);
@@ -1477,6 +1488,7 @@
       }
 
       function doChore() {
+        sealUndo();          // 다음 행동이 곧 앞 판매의 확정 신호다
         const need = lvOf(S.level)?.exp_cost ?? 999;
         S.choreSeq++;
         const exp = Math.max(5, Math.round(need / 3)), coin = 16 + S.day * 4;
@@ -1512,7 +1524,7 @@
          머지 규칙상 보드 구성을 바꾸는 동작 — 이게 전부다.
            구현됨   병합 · 드래그 이동 · 생성기 생산 · 판매 · 납품(오더 클리어)
                     · 재고 회복 · 예산 회복 재발급 · 레벨업 슬롯 개방 · 리롤
-           미구현   치우기(selling_price ≤ 0 휴지통) · 되돌리기(undo_valid_sec 5초)
+           미구현   상자 개봉 배출 · 오더 만료(order_expire)
                     · 인벤토리 넣기/꺼내기(나선 첫 빈 칸) · 보상함 꺼내기
                     · 상자 개봉 배출 · 오더 만료(order_expire)
          새 동작을 붙일 때는 반드시 render() 를 거치게 한다.
@@ -1889,6 +1901,7 @@
 
         // 빈 칸 — 옮긴다
         if (!B) {
+          sealUndo();
           useHost("#rwStage", "#rwFx");
           await settle(cellBox(b));
           cleanup();
@@ -1899,6 +1912,7 @@
         }
 
         // 같은 칩이 아니거나 생성기 — 거부(C1)
+        // 거부·최고단계 고지는 보드를 안 바꾼다 — 앞 판매를 확정하지 않는다
         if (B.code !== A.code || sp.is_generator) {
           await snapBack();
           shake(chipAt(b));
@@ -1917,6 +1931,7 @@
         }
 
         // 병합 — 스냅으로 얹은 다음 흡수 → 임팩트 → 팝
+        sealUndo();
         S.busy = true;
         useHost("#rwStage", "#rwFx");
         const to = cellBox(b);
@@ -2041,6 +2056,7 @@
           openInv("store");
           return;
         }
+        sealUndo();
         S.inv.store.push(c.code);
         S.cells[i] = null; S.sel = null;
         render(); toast(`${labelOf(c.code)} 을(를) 보관했습니다`);
@@ -2051,6 +2067,7 @@
         const code = bag[idx]; if (code == null) return;
         const dest = firstSpiralEmpty();
         if (dest < 0) { toast("No space on the board"); return; }
+        sealUndo();
         bag.splice(idx, 1);
         S.cells[dest] = { code };
         S.sel = dest;
