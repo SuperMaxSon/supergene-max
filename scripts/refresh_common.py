@@ -316,7 +316,10 @@ def guard_stamp(a, published, rebuild):
     반환값이 없다 — 호출자의 종료 코드는 그대로 1 이다. 데이터를 싣지 못한 것은
     여전히 실패이고, 그 사실을 종료 코드에서 지우지 않는다.
     """
-    if not published.get("daily"):
+    # "발행된 것이 있나" 는 last_day 로 판정한다. 예전에는 daily 키를 봤는데 그건
+    # 슬롯 A/B·483 벤치의 키 이름이고, 코인매치는 core 라서 발행된 문서를 두고도
+    # '데이터가 없다' 로 빠졌다(2026-09-11 실측). last_day 는 세 스크립트가 모두 쓴다.
+    if not published.get("last_day"):
         log("가드 — 발행된 데이터가 없어 조회 시각도 남기지 않는다")
         return
     try:
