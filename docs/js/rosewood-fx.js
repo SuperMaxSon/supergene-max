@@ -300,22 +300,61 @@ async function flyBezier(code, from, to, opt = {}) {
   el.remove();
 }
 
+/* ──────────────────────────────────────────────────────────────────────
+   연출 노드 풀 — 실제 클라의 `PoolManager` / `PooledObject` 에 대응한다.
+   링·스파크·코인·하이라이트는 한 번의 병합/납품에 열 개씩 나고 곧 사라진다.
+   매번 createElement 하면 그만큼 GC 가 돌고, 실제 빌드에서는 그게 곧 드로우콜과
+   노드 생성 비용이다. 클래스별로 놀고 있는 노드를 들고 있다가 다시 쓴다.
+
+   계약은 PoolManager 와 같다 — `get(종류)` 로 꺼내고 `put(노드)` 로 돌려준다.
+   돌려줄 때 인라인 스타일·자식을 비워서 「막 만든 것과 같은 상태」로 되돌린다
+   (PooledObject.reset 자리). 통은 종류마다 64개까지만 들고 나머지는 버린다 —
+   연출이 한꺼번에 수백 개 날 일이 없어서 그 위는 캐시가 아니라 누수다. */
+const FxPool = (() => {
+  const bins = new Map();
+  const CAP = 64;
+  let made = 0, reused = 0, seq = 0;
+  function get(cls) {
+    const bin = bins.get(cls);
+    let el = bin && bin.pop();
+    if (el) { reused++; } else { el = document.createElement("div"); made++; }
+    el.className = cls;
+    el.style.cssText = "";
+    /* 세대 번호 — 이게 없으면 재사용이 조용한 버그가 된다.
+       하이라이트 맥박처럼 「노드가 붙어 있는 동안」 도는 루프는 노드가 떨어진 걸로
+       끝을 안다. 그런데 풀에서 같은 노드가 곧바로 다시 나가면 isConnected 가 다시
+       참이 되어 **죽었어야 할 옛 루프가 새 주인의 노드를 계속 굴린다.**
+       꺼낼 때마다 번호를 올리고, 루프는 자기 번호가 아니면 그만둔다. */
+    el.dataset.gen = String(++seq);
+    return el;
+  }
+  function put(el) {
+    if (!el) return;
+    el.remove();
+    if (el.firstChild) el.replaceChildren();
+    const cls = el.className;
+    let bin = bins.get(cls);
+    if (!bin) bins.set(cls, (bin = []));
+    if (bin.length < CAP) bin.push(el);
+  }
+  const stats = () => ({ made, reused, idle: [...bins].map(([k, v]) => `${k}:${v.length}`).join(" ") });
+  return { get, put, stats };
+})();
+
 /* 임팩트 링 + 스파크 */
 function burst(box, code) {
   const h = hueOf(code);
-  const ring = document.createElement("div");
-  ring.className = "rw-ring";
+  const ring = FxPool.get("rw-ring");
   ring.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px;width:${box.w * 0.7}px;height:${box.w * 0.7}px`;
   FXROOT.fx.appendChild(ring);
   const rs = { s: 0.6, o: 0.9 };
   tw(rs, { s: FX.RING_SCALE, o: 0 }, FX.RING_SEC, "quadOut", () => {
     ring.style.transform = `translate(-50%,-50%) scale(${rs.s})`;
     ring.style.opacity = rs.o;
-  }).then(() => ring.remove());
+  }).then(() => FxPool.put(ring));
   const n = Math.max(0, Math.round(FX.SPARKS));
   for (let i = 0; i < n; i++) {
-    const sp = document.createElement("div");
-    sp.className = "rw-spark";
+    const sp = FxPool.get("rw-spark");
     sp.style.cssText = `--h:${h}deg;left:${box.x}px;top:${box.y}px`;
     FXROOT.fx.appendChild(sp);
     const ang = (Math.PI * 2 * i) / n + 0.4, dist = FX.SPARK_R;
@@ -323,7 +362,7 @@ function burst(box, code) {
     tw(ss, { p: 1, o: 0 }, FX.SPARK_SEC, "quadOut", () => {
       sp.style.transform = `translate(calc(-50% + ${Math.cos(ang) * dist * ss.p}px), calc(-50% + ${Math.sin(ang) * dist * ss.p}px)) scale(${1 - ss.p * 0.4})`;
       sp.style.opacity = ss.o;
-    }).then(() => sp.remove());
+    }).then(() => FxPool.put(sp));
   }
 }
 
@@ -414,7 +453,7 @@ async function floatText(box, text, style, tone) {
 
 /* C2 — 합쳐질 짝에만 링을 켠다. 대상이 바뀔 때만 갱신 */
 let HL = [];
-function clearHighlights() { HL.forEach((h) => h.remove()); HL = []; }
+function clearHighlights() { HL.forEach((h) => FxPool.put(h)); HL = []; }
 function highlightMergeTargets(idx) {
   clearHighlights();
   const from = idx != null ? idx : S.sel;
@@ -425,17 +464,18 @@ function highlightMergeTargets(idx) {
   S.cells.forEach((c, i) => {
     if (i === from || !c || c.code !== code) return;
     const b = boxOf($("#rwBoard").children[i]);
-    const el = document.createElement("div");
-    el.className = "rw-hl";
+    const el = FxPool.get("rw-hl");
     el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w - 4}px;height:${b.h - 4}px`;
     FXROOT.fx.appendChild(el); HL.push(el);
     const st = { s: 0.9, o: 0 };
     const dr = () => { el.style.transform = `translate(-50%,-50%) scale(${st.s})`; el.style.opacity = st.o; };
     dr();
+    const gen = el.dataset.gen;                       // 이 노드의 이번 생
+    const mine = () => el.isConnected && el.dataset.gen === gen;
     tw(st, { s: FX.RING_IN_S, o: 1 }, FX.RING_IN, "backOut", dr).then(async () => {
-      while (el.isConnected) {
+      while (mine()) {
         await tw(st, { s: FX.PULSE_MAX, o: FX.PULSE_ALPHA }, FX.PULSE_SEC, FX.E_PULSE, dr);
-        if (!el.isConnected) break;
+        if (!mine()) break;
         await tw(st, { s: FX.PULSE_MIN, o: 1 }, FX.PULSE_SEC, FX.E_PULSE, dr);
       }
     });
@@ -451,8 +491,7 @@ async function coinGather(from) {
   const n = Math.max(1, Math.round(FX.COIN_N));
   await Promise.all(Array.from({ length: n }, async (_, i) => {
     await wait(i * FX.COIN_STAGGER);
-    const el = document.createElement("div");
-    el.className = "rw-coin";
+    const el = FxPool.get("rw-coin");
     FXROOT.fx.appendChild(el);
     const ang = -Math.PI / 2 + (i - (n - 1) / 2) * 0.42;
     const mid = { x: from.x + Math.cos(ang) * FX.SPREAD_R, y: from.y + Math.sin(ang) * FX.SPREAD_R - FX.SPREAD_RISE * 0.2 };
@@ -462,7 +501,7 @@ async function coinGather(from) {
     dr();
     await tw(st, { x: mid.x, y: mid.y, s: FX.SPREAD_S }, FX.SPREAD_SEC, "quadOut", dr);
     await tw(st, { x: to.x, y: to.y, s: 0.8 }, FX.TRACE_SEC, "quadIn", dr);
-    el.remove();
+    FxPool.put(el);
   }));
   const ps = { s: 1 };
   const pd = () => (pill.style.transform = `scale(${ps.s})`);
