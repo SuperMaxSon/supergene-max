@@ -694,7 +694,7 @@
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
       const SPEC_VER = "1.1";
       const SPEC_AT = "2026-09-11 11:49";
-      const BUILD_AT = "2026-09-11 17:33";
+      const BUILD_AT = "2026-09-11 17:37";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -843,6 +843,9 @@
           ["구판 누적 난이도 밴드 (<code>diff_sum</code>)",
            "구판 <code>order_slot_band</code> 에는 <code>diff_sum_min/max</code> 가 있었고 <code>event</code> Lv30 두 행이 <b>그 값으로 갈렸다</b>(0~2000 / 2001~9999). 엔진은 <code>diff_sum</code> 을 안 보므로 <b>구판 번들 비교 모드에서는 그 5번째 밴드가 안 잡힌다</b> — 밴드 4가 먼저 걸린다. 신판은 열과 5번 밴드를 같이 지웠으니 현행 데이터에서는 문제가 없다",
            "구판 비교가 필요해지면 <code>pickBand</code> 에 누적 난이도 조건을 되살려야 한다. 지금 되살리면 신판에 없는 칸을 읽는 코드가 남는다"],
+          ["대본형 오더의 <b>코인</b> 출처",
+           "난이도는 정본이 <b>0 으로 확정</b>했다(「원작처럼 난이도 0을 사용한다」). 코인은 다르다 — 정본 계산식이 <code>Σ(order_item.order_price)</code> 인데 <code>order_special</code> 세 행의 <code>start_item_code</code> 가 <b>어느 것도 order_item 에 없다</b>(Q_CAT·Q_SEW·Q_WAX 체인 통째로 0행). <code>order_special</code> 에는 보상 열 자체가 없고, 짝인 <code>main_task</code> 에는 보상 3칸이 있다 — 심부름 보상으로 대체되는 것인지 오더 보상이 따로 필요한 것인지 <b>데이터로는 안 갈린다</b>",
+           "기획에 「대본형 오더의 코인은 어디서 오나」를 확인. 답이 오면 이 칸은 계산으로 바뀐다 — 그때까지 카드는 「—」로 둔다(0 으로 찍으면 공짜 오더로 읽힌다)"],
           ["<code>special</code> 발급 시점",
            "밴드가 없어 추첨 경로 밖이라는 것까지는 데이터로 확정된다(<code>refresh_sec 0</code> · 밴드 0행). 다만 <code>trigger_task</code> 가 언제 충족되는지는 <code>main_task</code> 진행 상태라 이 페이지가 못 잰다",
            "메인 과제 진행 시뮬이 생기면 그걸 입력으로. 지금은 「대본형」 표기까지만"],
@@ -1971,11 +1974,17 @@
          그래서 이 칸은 <b>줄마다 바뀌지 않는다</b> — 시트가 정한 한 장이다. 레일에 다섯 칸만
          그리면 플레이어가 보는 줄과 칸 수가 달라지므로 여섯 번째로 붙인다.
 
-         <b>보상은 시트에 없다.</b> 세 행의 start_item_code(1804 · 2201 · 2003) 가 전부
-         <code>order_item</code> 에 <b>행이 없다</b> — Q_CAT · Q_WAX · Q_SEW 는 퀘스트 체인이라
-         일반 오더 후보에 아예 안 들어간다. 그러니 코인·난이도를 0 으로 적으면 「공짜 오더」로
-         읽힌다. 「시트에 없음」으로 적고 <b>줄 합계·격차에서도 뺀다</b> — 없는 값을 0 으로
-         세면 합계가 거짓이 된다. */
+         <b>보상은 반만 정해져 있다 — 둘을 갈라 적는다.</b>
+           · <b>난이도는 0 이 정본 확정값이다</b>: 「<code>order_special</code> 의 연속 특수 오더는
+             <b>원작처럼 난이도 0을 사용한다</b>」(개발 기획서 1.2.1 보상 계산). 빠진 값이 아니라
+             <b>정해진 0</b> 이라 그대로 0 으로 찍는다.
+           · <b>코인은 시트에 값이 없다</b>: 코인은 「Σ(order_item.order_price × 요구 개수)」인데
+             세 행의 start_item_code(1804 · 2201 · 2003)가 전부 <code>order_item</code> 에 행이
+             없다 — Q_CAT · Q_WAX · Q_SEW 는 퀘스트 체인이라 일반 오더 후보에 아예 안 들어간다.
+             그래서 코인만 「—」로 두고 <b>줄 합계에서 뺀다</b>. 0 으로 적으면 「공짜 오더」로 읽힌다.
+
+         <b>격차(max/min)에서도 뺀다.</b> 난이도 0 을 집합에 넣으면 최솟값이 0 이 되어 격차가
+         발산한다 — 정해진 0 이라도 비율 계산에는 못 넣는다. */
       const specialSlotNo = () => {
         for (let n = 1; n <= slotCount(); n++) if (slotType(n) === "special") return n;
         return 0;
@@ -1990,8 +1999,9 @@
         const code = Number(r.start_item_code);
         const o = oiOf(code);
         return { no, type: "special", cut: 0, fixed: true, sp: r,
-                 card: { reqs: [{ code }], avatar: r.avatar_key, coin: o ? o.order_price : null,
-                         diff: o ? o.diff_score : null, evt: null, band: null } };
+                 /* 난이도 0 은 정본 확정값 · 코인은 시트에 없음(null) — 위 주석 참조 */
+                 card: { reqs: [{ code }], avatar: r.avatar_key,
+                         coin: o ? o.order_price : null, diff: 0, evt: null, band: null } };
       }
 
       /* 레일 한 줄 — <b>「분포」의 표본 카드와 같은 UI</b>로 그린다. 표로 그렸다가 되돌렸다:
@@ -2009,7 +2019,10 @@
                같은 클래스만 쓴다(새 CSS 없음). 없는 값은 「—」로 두고 아래 문구로 이유를 적는다. */
             return `<div class="rw-card">
                 <span class="rw-npc">${String(x.card.avatar || "—").slice(0, 3)}</span>
-                <div class="rw-top"><span class="rw-ra"><span title="이 오더의 코인·난이도는 시트에 없습니다 — start_item_code 가 order_item 에 행이 없습니다">◎ —</span></span></div>
+                <div class="rw-top"><span class="rw-ra">
+                  <span title="코인은 시트에 값이 없습니다 — 코인은 Σ(order_item.order_price)인데 start_item_code 가 order_item 에 행이 없습니다(퀘스트 체인)">◎ —</span>
+                  <span title="난이도 0 은 정본 확정값입니다 — 「order_special 의 연속 특수 오더는 원작처럼 난이도 0을 사용한다」(개발 기획서 1.2.1). 빠진 값이 아닙니다">◈ 0</span>
+                </span></div>
                 <div class="rw-dish">${x.card.reqs.map((q) => chipHTML(q.code, false)).join("")}</div>
                 <div class="rw-bot"><span class="rw-rb" title="대본형이라 이벤트 환산도 계산할 값이 없습니다">◆ —</span></div>
                 <span class="rw-lbl">${lbl}</span></div>`;
@@ -2030,7 +2043,10 @@
             spx ? `<p class="rw-tnote" style="margin-top:-4px">${spx.no}번 칸은 <b>추첨이 아니다</b> &mdash; ${
               spx.sp ? `<code>order_special</code> 의 <b>${spx.sp.chain_key}</b> 행이 그대로 뜬다(손님 ${spx.sp.avatar_key} · 조건 <code>${spx.sp.trigger_task}</code> · 시작 ${labelOf(Number(spx.sp.start_item_code))}).`
                      : "<code>order_special</code> 에 활성 행이 없다."
-            } <b>보상은 시트에 없다</b> &mdash; <code>start_item_code</code> 가 <code>order_item</code> 에 행이 없어(퀘스트 체인) 코인·난이도를 세울 수 없고, 그래서 위 합계·격차에서도 뺐다</p>` : ""}`;
+            } <b>난이도 0 은 정본 확정값이다</b>(「원작처럼 난이도 0을 사용한다」) &mdash; 빠진 값이 아니다.
+              <b>코인만 시트에 없다</b>: <code>start_item_code</code> 가 <code>order_item</code> 에 행이 없어(퀘스트 체인)
+              <code>order_price</code> 를 세울 수 없다. 그래서 코인은 합계에서 뺐고, 난이도 0 도 <b>격차</b>에서는 뺐다
+              &mdash; 0 을 넣으면 최솟값이 0 이 되어 비율이 발산한다</p>` : ""}`;
       }
 
       /* 「새 레일 한 줄」 — <b>위에 깔린 보드를 그대로 쓴다.</b> 자기 보드를 따로 굴렸더니
