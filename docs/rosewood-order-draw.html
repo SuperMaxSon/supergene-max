@@ -658,8 +658,6 @@
             </div>
             <p class="rw-tnote" style="margin-top:12px">한 줄 안 난이도 격차 &mdash; 가장 어려운 칸 ÷ 가장 쉬운 칸</p>
             <div class="rw-bars" id="rwRailGap"></div>
-            <p class="rw-tnote">표본 레일 3줄 &mdash; 실제로 플레이어가 보는 한 줄</p>
-            <div id="rwRailSamples"></div>
           </div>
         </div>
       </section>
@@ -704,7 +702,7 @@
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
       const SPEC_VER = "1.1";
       const SPEC_AT = "2026-09-11 11:49";
-      const BUILD_AT = "2026-09-11 18:44";
+      const BUILD_AT = "2026-09-11 19:05";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -2104,7 +2102,7 @@
         const R = clamp(Math.round(N / 10), 10, 200);
         const railSlots = railSlotNos();
         const per = railSlots.map((no) => ({ no, type: slotType(no), diff: [], coin: [], empty: 0, cut: 0, draws: 0 }));
-        const sums = []; const gaps = []; const samples = [];
+        const sums = []; const gaps = [];
         for (let i = 0; i < R; i++) {
           const sm = oneRail(lv, boardRandom(lv, fill, `r${BSEED}:${i}`).counts);
           sm.line.forEach((x, k) => {
@@ -2115,7 +2113,6 @@
           });
           sums.push({ d: sm.d, c: sm.c, n: sm.ds.length });
           if (sm.gap != null) gaps.push(sm.gap);
-          if (samples.length < 3) samples.push(sm);
         }
         const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
         const full = sums.filter((x) => x.n === railSlots.length).length;
@@ -2145,7 +2142,6 @@
           ? B.map(([lo, hi], i) => barHTML(hi === Infinity ? `${lo}배 이상` : `${lo}~${hi}배`,
               hist[i], gaps.length, null, (i * 50) % 360, null, (hmax / gaps.length) * 100)).join("")
           : '<div class="rw-empty">칸이 하나뿐이라 격차를 잴 수 없습니다.</div>';
-        $("#rwRailSamples").innerHTML = samples.map((sm, i) => railCards(sm, `<b>표본 ${i + 1}줄</b>`)).join("");
       }
 
       /* 자리별 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
