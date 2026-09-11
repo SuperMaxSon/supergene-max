@@ -39,7 +39,7 @@ const Model = (() => {
         cells: S.cells, level: S.level, exp: S.exp, coin: S.coin, energy: S.energy,
         day: S.day, choreSeq: S.choreSeq, sel: S.sel, orderGen: S.orderGen, orderFree: S.orderFree,
         gem: S.gem, debug: S.debug, serveCount: S.serveCount, energyLastAt: S.energyLastAt,
-        boost: S.boost, out: S.out, inv: S.inv, diff: S.diff,
+        boost: S.boost, out: S.out, inv: S.inv, diff: S.diff, outFold: S.outFold,
         slots: S.slots, prevOfSlot: S.prevOfSlot,
         log: S.log.slice(0, 20).map((e) => ({ ...e, t: e.t.toISOString() })),
       };
