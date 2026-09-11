@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rosewood UI 플로우 맵</title>
+    <meta name="description" content="Rosewood 화면 기획서에서 뽑은 UI 이동 맵. 인게임(01)/아웃게임(58) 두 허브 위에 뷰 15 · 팝업 49 를 얹고, 티어 토글로 층을 켜며 본다. 드래그 이동 · 휠 확대 · 노드 클릭으로 연결만 보기." />
+    <meta name="color-scheme" content="light" />
+  </head>
+  <body>
+<style>
+  /* Rosewood UI 플로우 맵 — 자립 캔버스.
+     허브 style.css 는 문서 페이지용이라 팬/줌 화면을 만들 수 없다.
+     story-merge-flow-canvas.html 과 같은 규격(#stage / #world / .panel / #tools)을 따라
+     팀이 이미 아는 조작(드래그 · 휠 · 전체)을 그대로 쓴다. 토큰 값도 동일하게 맞췄다. */
+  :root {
+    --bg: #f6f7f9; --grid: #e4e8ef; --surface: #ffffff; --surface-2: #f1f3f7;
+    --ink: #16192a; --ink-2: #3c4258; --muted: #5a6178; --faint: #8b93a8;
+    --line: #dfe3ea; --line-soft: #eceff4; --shadow: rgba(20, 25, 45, .1);
+
+    /* 티어 색 — 허브 문서의 티어 표와 같은 순서(위험→보류) */
+    --t0: #c0392b; --t1: #c77b16; --t2: #1d4ed8; --t3: #6d28d9; --t4: #0e7490; --t5: #8b93a8;
+
+    --font-ui: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; overflow: hidden; background: var(--bg); color: var(--ink);
+         font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: fixed; inset: 0; overflow: hidden; cursor: grab; touch-action: none;
+           background-image: linear-gradient(to right, var(--grid) 1px, transparent 1px),
+                             linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+           background-size: 48px 48px; }
+  #stage.dragging { cursor: grabbing; }
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+  #wires { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+  #wlab  { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; z-index: 3; }
+
+  /* 밴드 — 인게임 / 아웃게임 / 공유 HUD / 전역 */
+  .lane { position: absolute; border: 1px dashed var(--line); border-radius: 12px;
+          background: rgba(255,255,255,.42); }
+  .lane-t { position: absolute; font-size: 12px; font-weight: 800; color: var(--faint);
+            letter-spacing: .04em; white-space: nowrap; }
+
+  .wire { fill: none; stroke-width: 1.6; }
+  .wire.src { stroke: var(--ink-2); }
+  .wire.inf { stroke: var(--faint); stroke-dasharray: 6 4; }
+  .wire.tbd { stroke: #d92d20; stroke-dasharray: 3 4; stroke-width: 2.2; }
+  .wire.dim { opacity: .07; }
+  .wlabel { font-family: var(--font-mono); font-size: 10px; fill: var(--muted);
+            paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+  .wlabel.dim { opacity: .07; }
+
+  .node { position: absolute; background: var(--surface); border: 1px solid var(--line);
+          border-left: 4px solid var(--cc); border-radius: 6px; padding: 6px 10px 7px;
+          box-shadow: 0 1px 3px var(--shadow); cursor: pointer; user-select: none;
+          transition: box-shadow .12s, border-color .12s, opacity .12s; }
+  .node:hover { box-shadow: 0 3px 12px var(--shadow); border-color: var(--cc); z-index: 4; }
+  .node.view { border-style: dashed; border-left-style: solid; background: var(--surface-2); }
+  .node.hub { padding: 10px 12px 11px; box-shadow: 0 3px 14px var(--shadow); }
+  .node.dim { opacity: .16; }
+  .node.on  { box-shadow: 0 0 0 2px var(--cc), 0 4px 16px var(--shadow); z-index: 5; }
+  .n-id { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: var(--ink); }
+  .node.hub .n-id { font-size: 13px; }
+  .n-nm { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; line-height: 1.25; }
+  .node.hub .n-nm { font-size: 13px; font-weight: 700; }
+  .n-tg { position: absolute; top: 5px; right: 8px; font-family: var(--font-mono);
+          font-size: 9px; font-weight: 800; color: var(--cc); letter-spacing: .02em; }
+
+  .panel { position: fixed; background: var(--surface); border: 1px solid var(--line);
+           border-radius: 6px; box-shadow: 0 4px 20px var(--shadow); }
+  #head { top: 14px; left: 14px; padding: 11px 13px; max-width: 340px; z-index: 6; }
+  #head h1 { margin: 0; font-size: 13px; font-weight: 750; letter-spacing: -.01em; }
+  #head p { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); line-height: 1.55; }
+  #head b { color: var(--ink-2); font-weight: 650; }
+  #tiers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 9px; padding-top: 9px;
+           border-top: 1px solid var(--line); }
+  .tg { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700;
+        border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; cursor: pointer;
+        color: var(--muted); background: var(--surface); transition: all .12s; }
+  .tg input { display: none; }
+  .tg i { width: 7px; height: 7px; border-radius: 2px; background: var(--cc); }
+  .tg.on { background: var(--cc); border-color: var(--cc); color: #fff; }
+  .tg.on i { background: #fff; }
+  .tg.fixed { background: var(--t0); border-color: var(--t0); color: #fff; cursor: default; }
+  .tg.fixed i { background: #fff; }
+  #legend { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 9px; padding-top: 8px;
+            border-top: 1px solid var(--line); }
+  #legend span { font-size: 9.5px; color: var(--ink-2); display: flex; align-items: center; gap: 5px; }
+  #legend b { font-weight: 700; color: var(--muted); }
+  .lk { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; display: block; }
+
+  #tools { top: 14px; right: 14px; display: flex; gap: 4px; padding: 6px; z-index: 6; align-items: center; }
+  #tools button { font-family: inherit; font-size: 11px; font-weight: 650; color: var(--ink-2);
+                  background: transparent; border: 1px solid var(--line); border-radius: 3px;
+                  padding: 5px 9px; cursor: pointer; min-width: 30px; }
+  #tools button:hover { background: var(--surface-2); color: var(--ink); }
+  #tools button:focus-visible { outline: 2px solid var(--t2); outline-offset: 1px; }
+  #zoomval { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+             padding: 0 6px; font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
+  #count { position: fixed; left: 14px; bottom: 12px; font-family: var(--font-mono); font-size: 10.5px;
+           color: var(--faint); background: rgba(246,247,249,.9); padding: 4px 9px; border-radius: 4px; z-index: 6; }
+  #hint { position: fixed; right: 14px; bottom: 12px; font-size: 10.5px; color: var(--faint);
+          background: rgba(246,247,249,.9); padding: 4px 9px; border-radius: 4px; z-index: 6; }
+</style>
+
+<div id="stage">
+  <div id="world">
+    <svg id="wires" aria-hidden="true">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="context-stroke"></path>
+        </marker>
+      </defs>
+      <g id="wg"></g>
+    </svg>
+    <div id="lanes"></div>
+    <div id="nodes"></div>
+    <!-- 라벨은 카드 위에 그려야 가려지지 않는다 -->
+    <svg id="wlab" aria-hidden="true"><g id="lg"></g></svg>
+  </div>
+</div>
+
+<div id="head" class="panel">
+  <h1>Rosewood — UI 플로우 맵</h1>
+  <p>모든 팝업은 <b>인게임 01</b> 아니면 <b>아웃게임 58</b> 위에 뜬다(기획서 §11.1).
+     기본은 <b>T0 코어</b>만. 티어를 켜면 그 층이 붙는다. <b>노드를 누르면</b> 그 화면에 연결된 선만 남는다.</p>
+  <div id="tiers">
+    <label class="tg fixed"><i></i>T0 코어</label>
+    <label class="tg" data-t="1" style="--cc: var(--t1)"><input type="checkbox" /><i></i>T1 수익·리텐션</label>
+    <label class="tg" data-t="2" style="--cc: var(--t2)"><input type="checkbox" /><i></i>T2 라이브옵스</label>
+    <label class="tg" data-t="3" style="--cc: var(--t3)"><input type="checkbox" /><i></i>T3 TBD</label>
+    <label class="tg" data-t="4" style="--cc: var(--t4)"><input type="checkbox" /><i></i>T4 장터</label>
+    <label class="tg" data-t="5" style="--cc: var(--t5)"><input type="checkbox" /><i></i>T5 업데이트</label>
+  </div>
+  <div id="legend">
+    <span><i class="lk" style="border-color: var(--ink-2)"></i><b>원문 명시</b></span>
+    <span><i class="lk" style="border-color: var(--faint); border-top-style: dashed"></i><b>추론</b></span>
+    <span><i class="lk" style="border-color: #d92d20; border-top-style: dashed"></i><b>미정 · 기획 확인</b></span>
+    <span><i style="width:11px;height:11px;border:1px dashed var(--muted);border-radius:2px"></i><b>뷰</b></span>
+  </div>
+</div>
+
+<div id="tools" class="panel">
+  <button id="b-out" title="축소 (휠 아래)">−</button>
+  <div id="zoomval">100%</div>
+  <button id="b-in" title="확대 (휠 위)">+</button>
+  <button id="b-fit">전체</button>
+  <button id="b-core" title="T0 만 남기고 초기화">초기화</button>
+</div>
+
+<div id="count"></div>
+<div id="hint">드래그 이동 · 휠 확대 · 노드 클릭 = 연결만</div>
+
+<script>
+(function () {
+  var G = {"nodes":[{"id":"01","t":0,"g":"hub","n":"머지 보드","k":"view"},{"id":"58","t":0,"g":"hub","n":"마을 홈","k":"view"},{"id":"67","t":3,"g":"shared","n":"플레이어 프로필","k":"pop"},{"id":"54","t":1,"g":"shared","n":"에너지 구매","k":"pop"},{"id":"56","t":1,"g":"shared","n":"상점 · 특가","k":"pop"},{"id":"122","t":0,"g":"global","n":"연결 끊김","k":"pop"},{"id":"123","t":0,"g":"global","n":"새 버전","k":"pop"},{"id":"146","t":1,"g":"global","n":"로딩 · 진행률","k":"view"},{"id":"72","t":0,"g":"in","n":"인벤토리","k":"pop"},{"id":"94","t":0,"g":"in","n":"생성기 정보","k":"pop"},{"id":"107","t":0,"g":"in","n":"다중 산출 정보","k":"pop"},{"id":"149","t":0,"g":"in","n":"팔기 확인","k":"pop"},{"id":"164","t":0,"g":"in","n":"오더 납품 확인","k":"pop"},{"id":"128","t":0,"g":"in","n":"에너지 부족","k":"pop"},{"id":"78","t":0,"g":"out","n":"심부름 퀘스트","k":"pop"},{"id":"74","t":0,"g":"out","n":"대화 · 통화","k":"view"},{"id":"81","t":1,"g":"out","n":"마을 목록","k":"view"},{"id":"61","t":1,"g":"out","n":"리노베이션 택1","k":"view"},{"id":"60","t":1,"g":"out","n":"새 자리 해금","k":"view"},{"id":"62","t":1,"g":"out","n":"새 날 스플래시","k":"view"},{"id":"04","t":2,"g":"out","n":"시즈널 패스 트랙","k":"view"},{"id":"43","t":3,"g":"out","n":"택1 오퍼","k":"view"},{"id":"23","t":4,"g":"out","n":"장터 도전장 맵","k":"view"},{"id":"32","t":5,"g":"out","n":"월간 앨범","k":"view"},{"id":"34","t":5,"g":"out","n":"앨범 카드 상세","k":"view"},{"id":"39","t":5,"g":"out","n":"중복 교환","k":"view"},{"id":"40","t":5,"g":"out","n":"별 등급","k":"view"},{"id":"50","t":1,"g":"out","n":"이번 주 공방일지","k":"pop"},{"id":"77","t":1,"g":"out","n":"오늘도 로즈우드","k":"pop"},{"id":"59","t":1,"g":"out","n":"마을 게시판","k":"pop"},{"id":"69","t":1,"g":"out","n":"우편함","k":"pop"},{"id":"134","t":1,"g":"out","n":"우편 상세","k":"pop"},{"id":"104","t":1,"g":"out","n":"미수령 보상","k":"pop"},{"id":"80","t":1,"g":"out","n":"내용 소진 안내","k":"pop"},{"id":"02","t":2,"g":"out","n":"패스 · 예고","k":"pop"},{"id":"07","t":2,"g":"out","n":"패스 · 구매 오퍼","k":"pop"},{"id":"10","t":2,"g":"out","n":"패스 · 미션 완료","k":"pop"},{"id":"11","t":2,"g":"out","n":"패스 · 시즌 종료","k":"pop"},{"id":"114","t":2,"g":"out","n":"패스 · VIP 트랙","k":"pop"},{"id":"13","t":2,"g":"out","n":"라파 레이스","k":"pop"},{"id":"12","t":2,"g":"out","n":"레이스 · 예고","k":"pop"},{"id":"14","t":2,"g":"out","n":"레이스 · 종료","k":"pop"},{"id":"44","t":2,"g":"out","n":"로지 · 도입","k":"pop"},{"id":"46","t":2,"g":"out","n":"로지 · 종료","k":"pop"},{"id":"68","t":3,"g":"out","n":"설정","k":"pop"},{"id":"70","t":3,"g":"out","n":"레벨업","k":"pop"},{"id":"135","t":3,"g":"out","n":"아바타 선택","k":"pop"},{"id":"136","t":3,"g":"out","n":"이름 변경","k":"pop"},{"id":"57","t":3,"g":"out","n":"새해 번들","k":"pop"},{"id":"113","t":3,"g":"out","n":"에너지 챌린지","k":"pop"},{"id":"159","t":3,"g":"out","n":"1+1 오퍼","k":"pop"},{"id":"160","t":3,"g":"out","n":"이벤트 참가 오퍼","k":"pop"},{"id":"147","t":3,"g":"out","n":"기능 해금","k":"pop"},{"id":"145","t":3,"g":"out","n":"홈 바로가기","k":"pop"},{"id":"15","t":4,"g":"out","n":"장터 · 라운드 시작","k":"pop"},{"id":"18","t":4,"g":"out","n":"장터 · 트랙 진행","k":"pop"},{"id":"20","t":4,"g":"out","n":"장터 · 전 라운드 완료","k":"pop"},{"id":"21","t":4,"g":"out","n":"장터 · 대회 종료","k":"pop"},{"id":"26","t":5,"g":"out","n":"포피의 보물찾기","k":"pop"},{"id":"30","t":5,"g":"out","n":"포피 · 완료","k":"pop"},{"id":"41","t":5,"g":"out","n":"앨범 · 종료 임박","k":"pop"},{"id":"42","t":5,"g":"out","n":"앨범 · 종료","k":"pop"},{"id":"76","t":5,"g":"out","n":"앨범 · 참가","k":"pop"},{"id":"162","t":5,"g":"out","n":"앨범 · 세트 카드","k":"pop"}],"edges":[{"s":"58","t":"67","l":"아바타 · 레벨","k":"src"},{"s":"58","t":"54","l":"에너지 ＋","k":"src"},{"s":"58","t":"56","l":"상점 버튼","k":"src"},{"s":"58","t":"69","l":"우편함 버튼","k":"src"},{"s":"58","t":"68","l":"설정 버튼","k":"src"},{"s":"58","t":"02","l":"우 레일 · 패스","k":"src"},{"s":"58","t":"57","l":"우 레일 · 오퍼","k":"src"},{"s":"58","t":"78","l":"chore 버튼","k":"src"},{"s":"58","t":"81","l":"지도 아이콘","k":"src"},{"s":"58","t":"32","l":"앨범 아이콘","k":"src"},{"s":"58","t":"01","l":"보드 이동","k":"src"},{"s":"01","t":"67","l":"아바타 · 레벨","k":"src"},{"s":"01","t":"54","l":"에너지 ＋","k":"src"},{"s":"01","t":"56","l":"상점 버튼","k":"src"},{"s":"01","t":"72","l":"bag 슬롯","k":"src"},{"s":"01","t":"149","l":"Sell 슬롯 (고가)","k":"src"},{"s":"01","t":"58","l":"로비 이동","k":"src"},{"s":"81","t":"58","l":"Close","k":"src"},{"s":"72","t":"01","l":"꺼내기","k":"src"},{"s":"164","t":"01","l":"Continue","k":"src"},{"s":"02","t":"04","l":"진입 버튼","k":"src"},{"s":"04","t":"07","l":"Unlock","k":"src"},{"s":"54","t":"07","l":"SUPER PASS","k":"src"},{"s":"12","t":"13","l":"주 버튼","k":"src"},{"s":"15","t":"18","l":"Start Round","k":"src"},{"s":"162","t":"34","l":"카드 (보유)","k":"src"},{"s":"34","t":"162","l":"카드 판","k":"src"},{"s":"41","t":"32","l":"GO","k":"src"},{"s":"69","t":"134","l":"메시지 행","k":"src"},{"s":"134","t":"69","l":"코너 리벳","k":"src"},{"s":"68","t":"136","l":"식별 카드 편집","k":"src"},{"s":"136","t":"67","l":"Save","k":"src"},{"s":"135","t":"67","l":"Save","k":"src"},{"s":"67","t":"135","l":"Avatar 탭","k":"src"},{"s":"122","t":"01","l":"Retry","k":"src"},{"s":"123","t":"62","l":"Reload","k":"src"},{"s":"145","t":"59","l":"Add Shortcut","k":"src"},{"s":"01","t":"94","l":"생성기 탭","k":"inf"},{"s":"01","t":"107","l":"상자 · 저금통 탭","k":"inf"},{"s":"01","t":"164","l":"오더 납품 버튼","k":"inf"},{"s":"01","t":"128","l":"에너지 0 상태","k":"inf"},{"s":"78","t":"61","l":"chore 결제 후","k":"inf"},{"s":"78","t":"74","l":"chore 대화","k":"inf"},{"s":"58","t":"60","l":"새 자리 조건","k":"inf"},{"s":"58","t":"62","l":"새 날 전환","k":"inf"},{"s":"58","t":"59","l":"마을 게시판","k":"inf"},{"s":"59","t":"77","l":"출석 진입","k":"inf"},{"s":"58","t":"50","l":"좌 레일 · 주간","k":"inf"},{"s":"58","t":"104","l":"미수령 조건","k":"inf"},{"s":"58","t":"80","l":"콘텐츠 소진","k":"inf"},{"s":"58","t":"70","l":"레벨업 조건","k":"inf"},{"s":"58","t":"147","l":"해금 조건","k":"inf"},{"s":"58","t":"145","l":"1회 안내","k":"inf"},{"s":"146","t":"58","l":"부팅 완료","k":"inf"},{"s":"04","t":"10","l":"미션 전체 완료","k":"inf"},{"s":"04","t":"11","l":"시즌 종료","k":"inf"},{"s":"04","t":"114","l":"VIP 트랙","k":"inf"},{"s":"44","t":"46","l":"이벤트 종료","k":"inf"},{"s":"12","t":"14","l":"이벤트 종료","k":"inf"},{"s":"23","t":"15","l":"라운드 시작","k":"inf"},{"s":"23","t":"18","l":"트랙 진행","k":"inf"},{"s":"23","t":"20","l":"전 라운드 완료","k":"inf"},{"s":"23","t":"21","l":"대회 종료","k":"inf"},{"s":"26","t":"30","l":"이벤트 완료","k":"inf"},{"s":"32","t":"39","l":"중복 교환","k":"inf"},{"s":"32","t":"40","l":"별 등급","k":"inf"},{"s":"32","t":"41","l":"종료 임박","k":"inf"},{"s":"32","t":"42","l":"이벤트 종료","k":"inf"},{"s":"32","t":"76","l":"참가","k":"inf"},{"s":"32","t":"162","l":"세트 열기","k":"inf"},{"s":"58","t":"43","l":"오퍼 노출","k":"inf"},{"s":"58","t":"113","l":"오퍼 노출","k":"inf"},{"s":"58","t":"159","l":"오퍼 노출","k":"inf"},{"s":"58","t":"160","l":"오퍼 노출","k":"inf"},{"s":"58","t":"12","l":"좌 레일 · 이벤트","k":"tbd"},{"s":"58","t":"44","l":"좌 레일 · 이벤트","k":"tbd"},{"s":"58","t":"26","l":"좌 레일 · 이벤트","k":"tbd"},{"s":"58","t":"23","l":"좌 레일 · 이벤트","k":"tbd"}]};
+  var TC = { 0: "--t0", 1: "--t1", 2: "--t2", 3: "--t3", 4: "--t4", 5: "--t5" };
+  var on = { 0: true, 1: false, 2: false, 3: false, 4: false, 5: false };
+  var focus = null;
+
+  var stage = document.getElementById("stage"), world = document.getElementById("world");
+  var wg = document.getElementById("wg"), lg = document.getElementById("lg");
+  var nodesEl = document.getElementById("nodes"), lanesEl = document.getElementById("lanes");
+  var wires = document.getElementById("wires"), wlab = document.getElementById("wlab");
+  var countEl = document.getElementById("count"), zoomLabel = document.getElementById("zoomval");
+
+  var NW = 178, NH = 48, HH = 60, GX = 16, GY = 24, PAD = 40;
+  var WW = 0, WH = 0;
+  var pos = {};
+
+  function svg(n, a, txt) {
+    var e = document.createElementNS("http://www.w3.org/2000/svg", n);
+    for (var k in a) e.setAttribute(k, a[k]);
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function lane(x, y, w, h, label) {
+    var d = document.createElement("div");
+    d.className = "lane";
+    d.style.cssText = "left:" + x + "px;top:" + y + "px;width:" + w + "px;height:" + h + "px";
+    lanesEl.appendChild(d);
+    var t = document.createElement("div");
+    t.className = "lane-t";
+    t.style.cssText = "left:" + (x + 12) + "px;top:" + (y - 20) + "px";
+    t.textContent = label;
+    lanesEl.appendChild(t);
+  }
+  // 주어진 가로 폭에 카드를 격자로 깐다. 반환 = 격자가 차지한 높이
+  function grid(list, x0, w, y0, cols) {
+    if (!list.length) return 0;
+    cols = Math.min(cols, list.length);
+    var used = cols * NW + (cols - 1) * GX;
+    var sx = x0 + (w - used) / 2;
+    list.forEach(function (n, i) {
+      pos[n.id] = { x: sx + (i % cols) * (NW + GX), y: y0 + Math.floor(i / cols) * (NH + GY), w: NW, h: NH };
+    });
+    return (Math.floor((list.length - 1) / cols) + 1) * (NH + GY) - GY;
+  }
+
+  function build() {
+    pos = {};
+    lanesEl.innerHTML = ""; nodesEl.innerHTML = ""; wg.innerHTML = ""; lg.innerHTML = "";
+    var vis = G.nodes.filter(function (n) { return on[n.t]; });
+    var by = {}; vis.forEach(function (n) { by[n.id] = n; });
+    var pick = function (g) { return vis.filter(function (n) { return n.g === g; }); };
+
+    /* 축은 인게임 / 아웃게임 둘. 가운데 열은 레인이 아니라 이음새 —
+       양쪽에서 똑같이 열리는 HUD 팝업과, 어느 쪽도 아닌 전역 팝업을 세운다.
+       한쪽 레인에 넣으면 "저쪽 것"으로 읽혀 프리팹을 두 벌 만들게 된다. */
+    var IN_COLS = 3, OUT_COLS = 4, MID_GAP = 54;
+    var inW = IN_COLS * NW + (IN_COLS - 1) * GX;
+    var outW = OUT_COLS * NW + (OUT_COLS - 1) * GX;
+    var inX = PAD;
+    var midX = inX + inW + MID_GAP;
+    var outX = midX + NW + MID_GAP;
+    WW = outX + outW + PAD;
+
+    var topY = PAD + 26;
+
+    // 허브 — 각 레인 맨 위
+    ["01", "58"].forEach(function (id) {
+      var n = by[id]; if (!n) return;
+      var x0 = id === "01" ? inX : outX, w = id === "01" ? inW : outW;
+      pos[id] = { x: x0 + (w - NW) / 2, y: topY, w: NW, h: HH };
+    });
+    var childY = topY + HH + 46;
+
+    // 레인 자식
+    var ih = grid(pick("in"), inX, inW, childY, IN_COLS);
+    var oh = grid(pick("out"), outX, outW, childY, OUT_COLS);
+    var laneBottom = childY + Math.max(ih, oh);
+
+    // 가운데 이음새 — 공유 HUD 먼저, 전역은 그 아래
+    var mid = pick("shared").concat(pick("global"));
+    var midH = mid.length * NH + (mid.length - 1) * GY;
+    var midTop = Math.max(topY, topY + ((laneBottom - topY) - midH) / 2);
+    mid.forEach(function (n, i) {
+      pos[n.id] = { x: midX, y: midTop + i * (NH + GY), w: NW, h: NH };
+    });
+
+    var bottom = Math.max(laneBottom, midTop + midH);
+    lane(inX - 14, topY - 14, inW + 28, (bottom - topY) + 28, "인게임 — 01 머지 보드 위");
+    lane(outX - 14, topY - 14, outW + 28, (bottom - topY) + 28, "아웃게임 — 58 마을 홈 위");
+    if (mid.length) {
+      var t = document.createElement("div");
+      t.className = "lane-t";
+      t.style.cssText = "left:" + midX + "px;top:" + (midTop - 22) + "px";
+      t.textContent = "양쪽 공통 · 전역";
+      lanesEl.appendChild(t);
+    }
+    WH = bottom + PAD;
+
+    world.style.width = WW + "px"; world.style.height = WH + "px";
+    [wires, wlab].forEach(function (s) { s.setAttribute("width", WW); s.setAttribute("height", WH); });
+
+    // 간선
+    var es = G.edges.filter(function (e) { return pos[e.s] && pos[e.t]; });
+    var showLabel = es.length <= 40;
+    es.forEach(function (e) {
+      var a = pos[e.s], b = pos[e.t];
+      var ax = a.x + a.w / 2, bx = b.x + b.w / 2;
+      var down = b.y >= a.y;
+      var ay = down ? a.y + a.h : a.y, byy = down ? b.y : b.y + b.h;
+      var dy = Math.max(30, Math.abs(byy - ay) / 2);
+      var d = "M" + ax + "," + ay + " C" + ax + "," + (down ? ay + dy : ay - dy) +
+              " " + bx + "," + (down ? byy - dy : byy + dy) + " " + bx + "," + byy;
+      var p = svg("path", { d: d, class: "wire " + e.k, "marker-end": "url(#ah)" });
+      p.dataset.s = e.s; p.dataset.t = e.t;
+      p.appendChild(svg("title", null, e.s + " → " + e.t + "  [" + e.l + "]"));
+      wg.appendChild(p);
+      if (showLabel) {
+        var t = svg("text", { x: (ax + bx) / 2, y: (ay + byy) / 2 + 3, class: "wlabel", "text-anchor": "middle" }, e.l);
+        t.dataset.s = e.s; t.dataset.t = e.t;
+        lg.appendChild(t);
+      }
+    });
+
+    // 노드
+    vis.forEach(function (n) {
+      var p = pos[n.id]; if (!p) return;
+      var d = document.createElement("div");
+      d.className = "node" + (n.k === "view" ? " view" : "") + (n.g === "hub" ? " hub" : "");
+      d.style.cssText = "left:" + p.x + "px;top:" + p.y + "px;width:" + p.w + "px;height:" + p.h +
+                        "px;--cc: var(" + TC[n.t] + ")";
+      d.dataset.id = n.id;
+      d.innerHTML = '<div class="n-id"></div><div class="n-nm"></div><div class="n-tg"></div>';
+      d.children[0].textContent = n.id;
+      d.children[1].textContent = n.n;
+      d.children[2].textContent = (n.k === "view" ? "VIEW " : "") + "T" + n.t;
+      d.title = n.id + " " + n.n + " · T" + n.t + " · " + (n.k === "view" ? "뷰" : "팝업");
+      nodesEl.appendChild(d);
+    });
+
+    countEl.textContent = "노드 " + vis.length + " / " + G.nodes.length +
+                          "   ·   간선 " + es.length + " / " + G.edges.length +
+                          (showLabel ? "" : "   ·   라벨 숨김 (선에 커서)");
+    applyFocus();
+  }
+
+  function applyFocus() {
+    var near = null;
+    if (focus) {
+      near = {}; near[focus] = 1;
+      G.edges.forEach(function (e) {
+        if (e.s === focus) near[e.t] = 1;
+        if (e.t === focus) near[e.s] = 1;
+      });
+    }
+    nodesEl.querySelectorAll(".node").forEach(function (d) {
+      var id = d.dataset.id;
+      d.classList.toggle("dim", !!near && !near[id]);
+      d.classList.toggle("on", focus === id);
+    });
+    [wg, lg].forEach(function (g) {
+      Array.prototype.forEach.call(g.children, function (p) {
+        p.classList.toggle("dim", !!focus && p.dataset.s !== focus && p.dataset.t !== focus);
+      });
+    });
+  }
+
+  /* ── 팬 / 줌 : story-merge-flow-canvas 와 같은 규격 ── */
+  var tx = 0, ty = 0, sc = 1, MIN = 0.18, MAX = 2.4;
+  function apply() {
+    world.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sc + ")";
+    zoomLabel.textContent = Math.round(sc * 100) + "%";
+    stage.style.backgroundSize = (48 * sc) + "px " + (48 * sc) + "px";
+    stage.style.backgroundPosition = tx + "px " + ty + "px";
+  }
+  function clamp(s) { return Math.max(MIN, Math.min(MAX, s)); }
+  function fit() {
+    var pad = 40;
+    sc = clamp(Math.min((stage.clientWidth - pad * 2) / WW, (stage.clientHeight - pad * 2) / WH));
+    tx = (stage.clientWidth - WW * sc) / 2;
+    ty = (stage.clientHeight - WH * sc) / 2;
+    apply();
+  }
+
+  var dragging = false, moved = 0, lx = 0, ly = 0, pinch = 0, downNode = null;
+  var pointers = new Map();
+  stage.addEventListener("pointerdown", function (ev) {
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size > 1) { dragging = false; downNode = null; return; }
+    dragging = true; moved = 0; lx = ev.clientX; ly = ev.clientY;
+    downNode = ev.target && ev.target.closest ? ev.target.closest(".node") : null;
+    stage.classList.add("dragging");
+  });
+  window.addEventListener("pointermove", function (ev) {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size === 2) {
+      var pp = Array.from(pointers.values());
+      var dd = Math.hypot(pp[0].x - pp[1].x, pp[0].y - pp[1].y);
+      var cx = (pp[0].x + pp[1].x) / 2, cy = (pp[0].y + pp[1].y) / 2;
+      if (pinch) {
+        var ns = clamp(sc * (dd / pinch)), k = ns / sc;
+        tx = cx - (cx - tx) * k; ty = cy - (cy - ty) * k; sc = ns; apply();
+      }
+      pinch = dd; return;
+    }
+    if (!dragging) return;
+    var dx = ev.clientX - lx, dy = ev.clientY - ly;
+    moved += Math.abs(dx) + Math.abs(dy);
+    tx += dx; ty += dy; lx = ev.clientX; ly = ev.clientY; apply();
+  });
+  function endP(ev, cancelled) {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinch = 0;
+    if (pointers.size > 0) return;
+    dragging = false; stage.classList.remove("dragging");
+    var hit = downNode; downNode = null;
+    if (cancelled || moved > 6) return;
+    focus = hit ? (focus === hit.dataset.id ? null : hit.dataset.id) : null;
+    applyFocus();
+  }
+  window.addEventListener("pointerup", function (ev) { endP(ev, false); });
+  window.addEventListener("pointercancel", function (ev) { endP(ev, true); });
+  stage.addEventListener("wheel", function (ev) {
+    ev.preventDefault();
+    var ns = clamp(sc * Math.pow(0.9988, ev.deltaY * (ev.deltaMode === 1 ? 18 : 1))), k = ns / sc;
+    tx = ev.clientX - (ev.clientX - tx) * k; ty = ev.clientY - (ev.clientY - ty) * k; sc = ns; apply();
+  }, { passive: false });
+  function zoomBtn(dir) {
+    var ns = clamp(sc * (dir > 0 ? 1.25 : 0.8)), k = ns / sc;
+    var cx = stage.clientWidth / 2, cy = stage.clientHeight / 2;
+    tx = cx - (cx - tx) * k; ty = cy - (cy - ty) * k; sc = ns; apply();
+  }
+  document.getElementById("b-in").onclick = function () { zoomBtn(1); };
+  document.getElementById("b-out").onclick = function () { zoomBtn(-1); };
+  document.getElementById("b-fit").onclick = fit;
+  document.getElementById("b-core").onclick = function () {
+    focus = null;
+    document.querySelectorAll("#tiers .tg[data-t]").forEach(function (lb) {
+      lb.querySelector("input").checked = false; lb.classList.remove("on"); on[+lb.dataset.t] = false;
+    });
+    build(); fit();
+  };
+  document.querySelectorAll("#tiers .tg[data-t]").forEach(function (lb) {
+    var t = +lb.dataset.t, cb = lb.querySelector("input");
+    cb.addEventListener("change", function () {
+      on[t] = cb.checked; lb.classList.toggle("on", cb.checked);
+      focus = null; build(); fit();
+    });
+  });
+  window.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { focus = null; applyFocus(); }
+    if (ev.key === "0") fit();
+  });
+  window.addEventListener("resize", fit);
+
+  build(); fit();
+})();
+</script>
+  </body>
+</html>
