@@ -247,19 +247,22 @@
       .rw-b .track { display: block; height: 14px; background: var(--surface-2);
                      border: 1px solid var(--border); border-radius: 3px; overflow: hidden; position: relative; }
       .rw-b .fill { display: block; height: 100%; min-width: 2px; background: hsl(var(--h) 52% 48%); }
-      /* 기대값 표식 — 실측 게이지 위에 세로선 하나로 얹는다. 막대를 둘로 나누면
-         상위 30 종이 60 줄이 되어 눈으로 못 따라간다.
+      /* 기대값 표식 — <b>트랙 밖</b>에 작은 ▼ 로 얹는다. 막대를 둘로 나누면 상위
+         30 종이 60 줄이 되어 눈으로 못 따라가므로 한 줄은 유지한다.
 
-         색을 두 번 고쳤다. ① 어두운 회색 한 줄(--text 55%) — 채워진 게이지 안쪽에
-         들어가면 묻혔다. ② 밝은 심지에 어두운 테두리 — 대비는 살았는데 <b>선이 둘로
-         보였다.</b> 결국 <b>한 줄, 형광 마젠타</b>로 간다.
+         자리를 옮긴 이유. 처음엔 게이지 <b>안</b>에 세로선을 그렸는데, 그 선은 두 바닥
+         (빈 트랙·채워진 게이지) 위에 동시에 얹혀서 한 색으로는 한쪽에서 반드시 묻혔다.
+         대비를 색으로 이기려다 ① 어두운 회색(묻힘) ② 밝은 심지+테두리(선이 둘로 보임)
+         ③ 형광 마젠타(눈이 아픔) 를 거쳤다. <b>색 싸움 자체가 잘못된 문제였다</b> —
+         표식을 막대 밖으로 빼면 아이템 색과 겹칠 일이 없어 차분한 붉은색으로 충분하다.
 
-         근거: 게이지 색은 전부 <code>hsl(H 52% 48%)</code> 라 <b>채도가 52% 를 못 넘는다.</b>
-         그래서 채도 100% 인 선은 색상(H)이 우연히 겹쳐도 눈이 갈라낸다 — 어느 아이템
-         막대 위에서도 한 줄로 읽힌다. 트랙 위아래로 3px 내밀어 게이지에 잠겨도
-         꼭지로 위치를 찾을 수 있게 한다. */
-      .rw-b .exp { position: absolute; top: -3px; bottom: -3px; width: 3px;
-                   background: hsl(330 100% 50%); border-radius: 1px; }
+         트랙은 모서리를 자르려고 overflow:hidden 을 쓰므로 그 <b>안에서는 밖으로 못 나간다</b>
+         (앞서 준 top:-3px 오버행은 실제로는 잘려서 안 보였다). 그래서 트랙을 .gauge 로
+         한 겹 감싸고 ▼ 는 그 위에 둔다. */
+      .rw-b .gauge { position: relative; display: block; padding-top: 7px; }
+      .rw-b .exp { position: absolute; top: 0; margin-left: -4px; width: 0; height: 0;
+                   border-left: 4px solid transparent; border-right: 4px solid transparent;
+                   border-top: 5px solid var(--deploy); }
       .rw-b .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .rw-b .n { text-align: right; color: var(--text-dim); }
       .rw-empty { padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm);
@@ -728,7 +731,7 @@
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
       const SPEC_VER = "1.1";
       const SPEC_AT = "2026-09-11 11:49";
-      const BUILD_AT = "2026-09-11 20:41";
+      const BUILD_AT = "2026-09-11 20:52";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -1915,7 +1918,7 @@
         const w = (v) => `${clamp((v / sc) * 100, 0, 100)}%`;
         return `<div class="rw-b" style="--h:${hue}deg">
             <span class="nm" title="${title || name}">${name}</span>
-            <span class="track"><span class="fill" style="width:${w(pct)}"></span>${
+            <span class="gauge"><span class="track"><span class="fill" style="width:${w(pct)}"></span></span>${
               expPct != null ? `<span class="exp" style="left:${w(expPct)}" title="기대 ${expPct.toFixed(2)}%"></span>` : ""
             }</span>
             <span class="n">${pct.toFixed(2)}%${expPct != null ? ` / ${expPct.toFixed(2)}%` : ""} · ${n}</span></div>`;
