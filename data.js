@@ -43,7 +43,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-11 09:20",
+  updated: "2026-09-11 10:53",
 };
 
 /* --------------------------------------------------------------------------
@@ -100,8 +100,8 @@ const SECTIONS = [
         url: "docs/sol-era-watch.html",
         project: "sol",
         status: "Live",
-        version: "v4.3",
-        updated: "2026-09-10 17:34",
+        version: "v4.4",
+        updated: "2026-09-11 10:53",
         pinned: false,
         tags: ["BigQuery", "공유", "이식"],
         share: false,
