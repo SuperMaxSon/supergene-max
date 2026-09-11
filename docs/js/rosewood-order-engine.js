@@ -404,111 +404,114 @@ const ITEM_DB = [
   [3201,3202,-1,0,0,"Simple Pack","Simple Pack","X_CH32",5,0,0,[[2701,4],[2901,6]]],
   [3202,0,-1,0,0,"Fancy Pack","Fancy Pack","X_CH32",11,0,0,[[2701,8],[2702,2],[2901,10],[2902,2]]],
 ];
-/* [item_code, unlock_level, order_price, diff_score, repeat_weight_decrease]
-   A5 계약 컬럼 그대로. weight·weight_multiple 은 계약에 없어 싣지 않는다 */
+/* [item_code, unlock_level, order_price, diff_score, weight, weight_multiple, repeat_weight_decrease]
+   weight  = 기본 추첨 비중 (현재 604 꽃무늬 찻잔만 0, 나머지 101행 100)
+   weight_multiple = <b>보드 상황 집계 대상 플래그</b>(1=포함)다. 곱하는 배수가 아니다 — 30행이 0.
+   한때 「A5 계약에 없다」고 빼 두었는데, 밸런스시트 v1.1(2026-09-11 12:14)이 둘 다
+   「데이터·명세 확정」으로 못 박았다. 빼 두면 벤치만 기본값으로 떨어져 두 페이지가 갈린다. */
 const ORDER_DB = [
-  [203,3,2,3,0],
-  [204,3,4,5,0],
-  [205,3,8,10,0],
-  [206,3,14,21,0],
-  [207,3,24,42,0],
-  [208,3,36,84,0],
-  [209,3,56,154,10],
-  [210,3,88,307,50],
-  [303,4,8,14,0],
-  [304,4,14,27,0],
-  [305,6,24,55,10],
-  [306,15,41,110,50],
-  [307,20,62,220,100],
-  [503,6,8,7,0],
-  [504,6,14,15,0],
-  [505,7,24,30,0],
-  [506,10,36,60,0],
-  [507,15,56,120,0],
-  [508,21,88,239,10],
-  [509,26,132,479,50],
-  [510,31,202,957,100],
-  [603,7,2,2,0],
-  [604,7,4,5,0],
-  [803,1,2,2,0],
-  [804,1,4,5,0],
-  [805,1,8,10,0],
-  [806,1,12,19,0],
-  [807,1,20,39,0],
-  [808,1,32,78,0],
-  [809,1,50,146,10],
-  [810,1,78,293,50],
-  [811,1,118,585,100],
-  [812,1,178,1170,0],
-  [903,2,8,11,0],
-  [904,2,14,23,0],
-  [905,5,24,46,10],
-  [906,15,38,92,50],
-  [907,20,58,184,100],
-  [1103,9,8,9,0],
-  [1104,9,14,18,0],
-  [1105,9,24,35,10],
-  [1106,9,36,70,50],
-  [1107,25,54,140,100],
-  [1303,10,8,3,0],
-  [1304,10,14,7,0],
-  [1305,10,24,13,0],
-  [1306,10,36,27,0],
-  [1307,21,56,58,0],
-  [1308,26,88,91,0],
-  [1309,31,132,183,10],
-  [1310,36,202,366,50],
-  [1311,41,304,731,100],
-  [1603,9,8,3,0],
-  [1604,9,14,6,0],
-  [1605,9,24,13,0],
-  [1606,9,36,26,0],
-  [1607,18,56,52,0],
-  [1608,21,88,88,0],
-  [1609,26,132,176,10],
-  [1610,31,202,352,50],
-  [1611,31,318,704,100],
-  [1703,9,12,12,0],
-  [1704,15,22,24,0],
-  [1705,21,34,48,10],
-  [1706,31,54,97,50],
-  [1707,41,86,194,100],
-  [1903,4,2,2,0],
-  [1904,4,4,5,0],
-  [1905,4,8,10,0],
-  [1906,4,12,19,0],
-  [1907,4,20,39,0],
-  [1908,4,32,78,10],
-  [1909,4,50,146,50],
-  [1910,4,78,293,100],
-  [2103,10,2,2,0],
-  [2104,10,4,5,0],
-  [2105,10,8,10,0],
-  [2106,10,12,19,0],
-  [2107,10,20,39,0],
-  [2108,10,32,78,10],
-  [2109,10,50,146,50],
-  [2110,10,78,293,100],
-  [2303,24,2,2,0],
-  [2304,24,4,5,0],
-  [2305,24,8,10,0],
-  [2306,24,12,19,0],
-  [2307,24,20,39,0],
-  [2308,24,32,78,10],
-  [2309,24,50,146,50],
-  [2310,24,78,293,100],
-  [2403,24,2,2,0],
-  [2404,24,4,5,10],
-  [2405,24,8,10,50],
-  [2406,24,12,19,100],
-  [211,3,132,617,100],
-  [212,3,202,1229,0],
-  [213,3,304,2000,0],
-  [214,3,458,2500,0],
-  [813,1,270,2000,0],
-  [814,1,406,2500,0],
-  [815,1,612,3000,0],
-  [1312,41,458,1463,0],
+  [203,3,2,3,100,0,0],
+  [204,3,4,5,100,0,0],
+  [205,3,8,10,100,0,0],
+  [206,3,14,21,100,0,0],
+  [207,3,24,42,100,0,0],
+  [208,3,36,84,100,1,0],
+  [209,3,56,154,100,1,10],
+  [210,3,88,307,100,1,50],
+  [303,4,8,14,100,0,0],
+  [304,4,14,27,100,0,0],
+  [305,6,24,55,100,1,10],
+  [306,15,41,110,100,1,50],
+  [307,20,62,220,100,1,100],
+  [503,6,8,7,100,0,0],
+  [504,6,14,15,100,0,0],
+  [505,7,24,30,100,0,0],
+  [506,10,36,60,100,0,0],
+  [507,15,56,120,100,1,0],
+  [508,21,88,239,100,1,10],
+  [509,26,132,479,100,1,50],
+  [510,31,202,957,100,1,100],
+  [603,7,2,2,100,1,0],
+  [604,7,4,5,0,0,0],
+  [803,1,2,2,100,0,0],
+  [804,1,4,5,100,0,0],
+  [805,1,8,10,100,0,0],
+  [806,1,12,19,100,0,0],
+  [807,1,20,39,100,0,0],
+  [808,1,32,78,100,1,0],
+  [809,1,50,146,100,1,10],
+  [810,1,78,293,100,1,50],
+  [811,1,118,585,100,1,100],
+  [812,1,178,1170,100,1,0],
+  [903,2,8,11,100,0,0],
+  [904,2,14,23,100,0,0],
+  [905,5,24,46,100,1,10],
+  [906,15,38,92,100,1,50],
+  [907,20,58,184,100,1,100],
+  [1103,9,8,9,100,0,0],
+  [1104,9,14,18,100,0,0],
+  [1105,9,24,35,100,1,10],
+  [1106,9,36,70,100,1,50],
+  [1107,25,54,140,100,1,100],
+  [1303,10,8,3,100,0,0],
+  [1304,10,14,7,100,0,0],
+  [1305,10,24,13,100,0,0],
+  [1306,10,36,27,100,0,0],
+  [1307,21,56,58,100,1,0],
+  [1308,26,88,91,100,1,0],
+  [1309,31,132,183,100,1,10],
+  [1310,36,202,366,100,1,50],
+  [1311,41,304,731,100,1,100],
+  [1603,9,8,3,100,0,0],
+  [1604,9,14,6,100,0,0],
+  [1605,9,24,13,100,0,0],
+  [1606,9,36,26,100,0,0],
+  [1607,18,56,52,100,1,0],
+  [1608,21,88,88,100,1,0],
+  [1609,26,132,176,100,1,10],
+  [1610,31,202,352,100,1,50],
+  [1611,31,318,704,100,1,100],
+  [1703,9,12,12,100,0,0],
+  [1704,15,22,24,100,1,0],
+  [1705,21,34,48,100,1,10],
+  [1706,31,54,97,100,1,50],
+  [1707,41,86,194,100,1,100],
+  [1903,4,2,2,100,1,0],
+  [1904,4,4,5,100,1,0],
+  [1905,4,8,10,100,1,0],
+  [1906,4,12,19,100,1,0],
+  [1907,4,20,39,100,1,0],
+  [1908,4,32,78,100,1,10],
+  [1909,4,50,146,100,1,50],
+  [1910,4,78,293,100,1,100],
+  [2103,10,2,2,100,1,0],
+  [2104,10,4,5,100,1,0],
+  [2105,10,8,10,100,1,0],
+  [2106,10,12,19,100,1,0],
+  [2107,10,20,39,100,1,0],
+  [2108,10,32,78,100,1,10],
+  [2109,10,50,146,100,1,50],
+  [2110,10,78,293,100,1,100],
+  [2303,24,2,2,100,1,0],
+  [2304,24,4,5,100,1,0],
+  [2305,24,8,10,100,1,0],
+  [2306,24,12,19,100,1,0],
+  [2307,24,20,39,100,1,0],
+  [2308,24,32,78,100,1,10],
+  [2309,24,50,146,100,1,50],
+  [2310,24,78,293,100,1,100],
+  [2403,24,2,2,100,1,0],
+  [2404,24,4,5,100,1,10],
+  [2405,24,8,10,100,1,50],
+  [2406,24,12,19,100,1,100],
+  [211,3,132,617,100,1,100],
+  [212,3,202,1229,100,1,0],
+  [213,3,304,2000,100,1,0],
+  [214,3,458,2500,100,1,0],
+  [813,1,270,2000,100,1,0],
+  [814,1,406,2500,100,1,0],
+  [815,1,612,3000,100,1,0],
+  [1312,41,458,1463,100,1,0],
 ];
 /* [order_type, slot_count, item_slot_max, refresh_sec, unlock_level, refill_max] */
 const RULE_DB = [
@@ -735,15 +738,14 @@ function buildItemSpec() {
 /* order_item — 주문 후보 102종. 생성기·상자·재화는 애초에 이 표에 없다.
    unlock_level 은 단계가 아니라 체인 단위다 — Lv3 이 되면 망치부터 공구 세트까지
    여러 종이 한꺼번에 후보가 된다.
-   weight / weight_multiple 은 <b>싣지 않는다</b> — 클라 계약(A5)에 없는 에디터 열이고,
-   신판 export 는 weight_multiple 이 30행 0 이라 곱하면 그 30종이 영구히 안 나온다.
-   열이 시트에 살아 있는 것과 계약에 있는 것은 다른 문제라, 판정은 코드가 아니라
-   추첨 분석 페이지 T13 이 한다. */
+   weight = 기본 추첨 비중(곱한다) · weight_multiple = 보드 상황 집계 대상 표시(곱하지 않는다).
+   한때 둘 다 「클라 계약에 없는 에디터 열」로 읽고 안 실었는데, 밸런스시트·개발 기획서
+   v1.1(2026-09-11)이 둘 다 「데이터·명세 확정」으로 못 박았다 — 그 판단이 틀렸다. */
 function buildOrderItem() {
   return ORDER_DB.map(([item_code, unlock_level, order_price, diff_score,
-                        repeat_weight_decrease]) => ({
+                        weight, weight_multiple, repeat_weight_decrease]) => ({
     item_code, unlock_level, order_price, diff_score,
-    repeat_weight_decrease, in_use: 1,
+    weight, weight_multiple, repeat_weight_decrease, in_use: 1,
   }));
 }
 
@@ -813,7 +815,7 @@ const lvOf = (level) => idx().lv.get(level);
 /* ======================================================================
    2b. 저장 — 읽기만. 쓰기(saveNow/save)는 벤치에 남는다.
    ====================================================================== */
-const BUILD = "v6.1 · 2026-09-11";   // RepeatDecay 로 반복 감쇠 일원화 · slotMap 메모이즈
+const BUILD = "v7.0 · 2026-09-11";   // 기획서 v1.1 정본 반영 — weight 곱 · 보드 집계 표시 · 카운터 정정 · 예산 규칙 3건
 const SAVE_KEY = "rw.orderBench";
 /* 4 → 5: 슬롯이 5칸에서 6칸이 되고 타입 이름이 바뀌었다. 옛 세이브의 slots 는
    키(슬롯 번호)가 다른 타입을 가리키게 되므로 이관하지 않고 버린다. */
@@ -892,6 +894,31 @@ function slotMap() {
 const slotType = (n) => slotMap()[n - 1] || "normal";
 const slotCount = () => slotMap().length;
 const ruleOf = (type) => idx().rule.get(type);
+
+/* 지금 레일에 올라와 있는 <b>검사 대상 주문</b> 수. special 은 제외한다 —
+   정본: 「high는 검사 대상인 다른 주문이 없으면 대기를 건너뛰고 기회도 차감하지 않는다.
+   <b>special은 이 유무 검사에서 제외된다</b>」 */
+function otherOrderCount(exceptSlot) {
+  let n = 0;
+  for (const [k, card] of Object.entries(S.slots || {})) {
+    const no = Number(k);
+    if (!card || no === exceptSlot) continue;
+    if (slotType(no) === "special") continue;
+    n++;
+  }
+  return n;
+}
+
+/* 회복 시 채울 발급 기회 — 정본: 「최초·회복 시 <b>normal 은 기준값에서 남은 normal
+   카드 수를 뺀다</b>. 5에서 일반 카드 1장이 남으면 4, 새 발급 시 1을 쓰면 3이다.」
+   나머지 유형은 refill_max 그대로 한 번 채운다. <b>지난 주기 수만큼 누적하지 않는다.</b> */
+function refillBase(rule, type) {
+  if (type !== "normal") return rule.refill_max;
+  let held = 0;
+  for (const [k, card] of Object.entries(S.slots || {}))
+    if (card && slotType(Number(k)) === "normal") held++;
+  return Math.max(0, rule.refill_max - held);
+}
 
 /* 추첨으로 뜨는 타입인가 — order_slot_band 에 행이 있어야 자리 범위가 나온다.
    신판 special 은 밴드 0행 · refresh_sec 0 · order_special.trigger_task 를 갖는
@@ -983,6 +1010,20 @@ function requiredElsewhere(slotNo) {
   return set;
 }
 
+/* 보드 상황 집계에 넣을 아이템인가 — order_item.weight_multiple 이 그 표시다.
+   정본(개발·밸런스 기획서 v1.1 · 2026-09-11):
+     「weight는 기본 추첨 비중, <b>weight_multiple은 보드 상황을 집계할 아이템 표시</b>다」
+     「<b>표시 0인 아이템도 체인에 계산된 배수의 영향을 받을 수 있다</b>」
+   곱셈 인자가 아니다. 0 이면 <b>보드에 있어도 안 센다</b> — 다만 후보에서 빠지지는
+   않고, 자기 체인에 걸린 배수는 그대로 받는다. 그래서 필터를 counts 를 만드는 쪽이
+   아니라 <b>읽는 쪽</b>에 둔다 — 누가 counts 를 만들어 넘기든 같은 규칙이 걸린다
+   (분포 시뮬은 자기 보드를 만들어 넘긴다).
+   order_item 에 없는 코드(상자·재화 등)는 표시 자체가 없으므로 종전대로 센다. */
+const inBoardTally = (code) => {
+  const o = oiOf(code);
+  return !o || Number(o.weight_multiple) !== 0;
+};
+
 // [4] 보드 상황 배수 — 하나만 적용, 중복 곱 금지
 /* 기획서 [2] 는 「다른 오더가 **이 체인을** 요구」라고 체인 단위로 쓴다.
    후보 제외(banned)만 명시적으로 코드 단위다 — 둘을 섞지 않는다.
@@ -990,12 +1031,12 @@ function requiredElsewhere(slotNo) {
 function situationMult(code, othersReq, counts, C, othersChains) {
   const chains = othersChains || new Set([...othersReq].map(chainOf));
   const wanted = chains.has(chainOf(code));
-  const canServe = (counts.get(code) || 0) > 0;
+  const canServe = inBoardTally(code) && (counts.get(code) || 0) > 0;
   if (wanted && canServe) return { v: C.order_weight_mult_required_enough, why: "타오더 요구+납품가능" };
   if (!wanted) {
     const ch = chainOf(code), st = stepOf(code);
     for (const [c, n] of counts)
-      if (n > 0 && chainOf(c) === ch && stepOf(c) <= st)
+      if (n > 0 && inBoardTally(c) && chainOf(c) === ch && stepOf(c) <= st)
         return { v: C.order_weight_mult_higher_level, why: "미요구+보드에 동급·하급 有" };
     return { v: C.order_weight_mult_not_required, why: "미요구" };
   }
@@ -1016,12 +1057,15 @@ function situationMult(code, othersReq, counts, C, othersChains) {
      ① 제한 횟수 = const.order_repeat_reset_count
      ② 오더가 나가면 그 카드의 요구 체인마다 남은 횟수 = 제한 횟수
      ③ 남은 횟수 > 0 이고 repeat_weight_decrease > 0 인 후보는 가중치를 그 값으로 나눈다
-     ④ 갱신 대상 = 이번에 제한이 걸린 체인 ∪ 이번에 나간 체인 — 나갔으면 리셋, 아니면 −1
-     ⑤ 0 이 되면 표에서 지운다. 고정 오더 발급은 카운터를 건드리지 않는다.
+     ④ 갱신 대상 = <b>이번 추첨에서 제수를 적용한 체인만</b> — 뽑혔으면 리셋, 아니면 −1
+     ⑤ <b>납품 시</b> 요구품 중 제수가 양수인 체인을 같은 값으로 <b>설정</b>한다(더하지 않는다)
+     ⑥ 0 이 되면 표에서 지운다. 고정 오더 <b>발급</b>은 카운터를 건드리지 않는다.
 
-   ④ 의 <b>합집합</b>이 요점이다. 「제한 걸린 체인」만 보면 표가 빈 최초 상태에서 아무것도
-   안 들어가 카운터가 영원히 안 켜지고, 「나간 체인」만 보면 안 뽑힌 체인이 안 줄어
-   한 번 눌린 체인이 영영 눌린 채 남는다. 둘 다 있어야 돈다.
+   ④ 의 「만」이 요점이다. 한동안 「나간 체인」까지 합집합으로 넣었는데, 그건
+   「제한 걸린 체인만 보면 표가 빈 최초 상태에서 카운터가 영원히 안 켜진다」는
+   판단에서 나온 보정이었다. <b>전제가 틀렸다</b> — 카운터가 처음 켜지는 자리는
+   발급이 아니라 <b>납품</b>(⑤)이다. 정본에 그 경로가 있으니 합집합은 초과 동작이고,
+   처음 뽑힌 체인이 발급만으로 눌리게 된다.
 
    모든 랜덤 슬롯이 체인별 표 <b>하나</b>를 공유한다(슬롯별이 아니다).
    직전 요구 코드를 통째로 빼는 banned 와는 다른 축이다 — 그건 코드 단위, 이건 체인 단위. */
@@ -1034,20 +1078,39 @@ const RepeatDecay = {
     return rem > 0 && oi.repeat_weight_decrease > 0 ? Number(oi.repeat_weight_decrease) : 0;
   },
 
-  /* 카드가 나간 뒤 표를 갱신한다. 돌려주는 건 로그용 변경 내역이다.
-     issued  = 실제로 나간 요구의 체인 (버린 후보는 안 들어간다 — 나간 오더가 아니다)
-     divided = 이번 추첨에서 실제로 제수를 적용한 체인 */
+  /* [발급] 후보 평가에서 <b>제수를 적용한 체인만</b> 갱신한다. 뽑혔으면 리셋, 아니면 −1.
+     issued  = 이번 카드가 실제로 요구한 체인 (버린 후보는 안 들어간다)
+     divided = 이번 추첨에서 실제로 제수를 적용한 체인 — <b>갱신 대상은 이쪽이다</b> */
   commit(CR, issued, divided, reset) {
     if (reset <= 0) return [];
     const upd = [];
-    new Set([...divided, ...issued]).forEach((ch) => {
-      if (issued.has(ch)) { CR[ch] = reset; upd.push(`${chainName(ch)}\u2192${reset}`); }
+    divided.forEach((ch) => {
+      if (issued.has(ch)) { CR[ch] = reset; upd.push(`${chainName(ch)}→${reset}`); }
       else {
         CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
         if (!CR[ch]) delete CR[ch];
-        upd.push(`${chainName(ch)}\u22121`);
+        upd.push(`${chainName(ch)}−1`);
       }
     });
+    return upd;
+  },
+
+  /* [납품] 요구품 중 제수가 양수인 체인을 reset 으로 <b>설정</b>한다 — 더하지 않는다.
+     <b>카운터가 처음 켜지는 자리가 여기다.</b> 발급 쪽(commit)은 이미 걸린 것만 손대므로,
+     이 경로가 안 불리면 표가 영원히 비어 있고 반복 감쇠가 한 번도 작동하지 않는다.
+     호출자: 벤치의 납품 처리. 분포 시뮬은 납품을 돌리지 않으므로 「발급 즉시 납품」을
+     가정하고 직접 부른다 — 그 가정은 부르는 쪽이 화면에 밝힌다. */
+  onServe(CR, reqCodes, reset) {
+    if (reset <= 0) return [];
+    const upd = [];
+    for (const code of reqCodes || []) {
+      const o = oiOf(code);
+      if (!o || Number(o.repeat_weight_decrease) <= 0) continue;
+      const ch = chainOf(code);
+      if (CR[ch] === reset) continue;                       // 이미 최대 — 로그만 줄인다
+      CR[ch] = reset;
+      upd.push(`${chainName(ch)}→${reset}`);
+    }
     return upd;
   },
 };
@@ -1129,24 +1192,39 @@ function generateOrder(slotNo, opts = {}) {
         0 = 쌓이지 않는다(주기가 지나면 그 한 장으로 채우고 끝).」  근거: 원작 확인
      즉 refill_max 는 「비축 천장」이고 발급 자체를 막지 않는다. 전에는 0 을 「발급 경로
      없음」으로 읽어 avatar·special·event 가 영구히 안 나왔다 — 그게 오독이었다. */
-  if (!dry) {
-    const t = (S.orderGen.type_timers[type] ||= { refill_left: rule.refill_max, next_refill_at: 0 });
+  /* high 예외 — 정본: 「high는 검사 대상인 다른 주문이 없으면 대기를 건너뛰고
+     기회도 차감하지 않는다. special은 이 유무 검사에서 제외된다」
+     레일이 통째로 비어 있을 때 high 가 대기에 걸려 첫 카드가 안 뜨는 걸 막는 규칙으로
+     읽힌다. 예산 블록 <b>전체</b>를 건너뛴다(차감도 대기 시작도 없다). */
+  const highFree = type === "high" && otherOrderCount(slotNo) === 0;
+  if (highFree)
+    push(`[1] <span class="k">${TYPE_KO[type] || type} 예외</span> — 검사 대상인 다른 주문이 0장이라 대기·기회 차감을 건너뛴다 <span style="opacity:.65">(special 은 이 검사에서 제외)</span>`);
+
+  if (!dry && !highFree) {
+    const t = (S.orderGen.type_timers[type] ||= { refill_left: null, next_refill_at: 0 });
     if (t.remaining_count !== undefined) {                  // 구 세이브 이관
       t.refill_left = t.remaining_count; delete t.remaining_count;
+    }
+    if (t.refill_left == null) {                            // 최초 — 회복과 같은 계산을 쓴다
+      t.refill_left = refillBase(rule, type);
+      push(`[1] 최초 발급 기회 ${t.refill_left}/${rule.refill_max}${type === "normal" ? ` <span style="opacity:.65">(기준 ${rule.refill_max} − 남은 normal 카드)</span>` : ""}`);
     }
     const now = Date.now() / 1000;
     if (t.refill_left > 0) {
       t.refill_left--;
-      push(`[1] 즉시 채움 권한 −1 → ${t.refill_left}/${rule.refill_max} (${type}${type === "normal" ? " · 슬롯 1·2 공유" : ""})`);
+      push(`[1] 발급 기회 −1 → ${t.refill_left}/${rule.refill_max} (${type}${type === "normal" ? " · 슬롯 1·2 공유" : ""})`);
     } else if (t.next_refill_at > 0 && now >= t.next_refill_at) {
-      t.next_refill_at = 0;                                 // 주기 도달 — 그 한 장으로 바로 채운다
-      push(`[1] 갱신 주기 도달 → <span class="k">이번 한 장</span>으로 채움 (비축 천장 ${rule.refill_max})`);
+      /* 대기 종료 — 한 번만 채운다. 지난 주기 수만큼 누적하지 않는다. */
+      t.next_refill_at = 0;
+      t.refill_left = refillBase(rule, type);
+      if (t.refill_left > 0) t.refill_left--;               // 이번 카드가 그중 한 장을 쓴다
+      push(`[1] 대기 종료 → 기회 ${t.refill_left + 1}${type === "normal" ? ` <span style="opacity:.65">(기준 ${rule.refill_max} − 남은 normal 카드)</span>` : `/${rule.refill_max}`} 로 회복, 이번 한 장 사용 → ${t.refill_left}`);
     } else {
       if (t.next_refill_at <= 0) {
         t.next_refill_at = now + rule.refresh_sec;
-        push(`<span class="w">[1] 권한 0 → 대기 시작</span> now+${rule.refresh_sec}s · 카드 만들지 않음`);
+        push(`<span class="w">[1] 기회 0 → 대기 시작</span> now+${rule.refresh_sec}s · 카드 만들지 않음`);
       } else {
-        push(`<span class="w">[1] 권한 0 · 대기 중</span> 남은 ${Math.ceil(t.next_refill_at - now)}s · 종료 시각 안 미룸`);
+        push(`<span class="w">[1] 기회 0 · 대기 중</span> 남은 ${Math.ceil(t.next_refill_at - now)}s · 종료 시각 안 미룸`);
       }
       return { card: null, log: L };
     }
@@ -1203,22 +1281,37 @@ function generateOrder(slotNo, opts = {}) {
       const rem = CR[chainOf(o.item_code)] || 0;
       const div = RepeatDecay.divisorOf(o, CR);
       if (div) divided.add(chainOf(o.item_code));
-      /* 가중식 = 상황 배수 ÷ 반복 제수. order_item.weight / weight_multiple 은
-         클라 계약에 없는 열이라 곱하지 않는다(엔진 머리말 v6.0 참조). */
-      return { o, base: 1, mult: m.v, why: m.why, div, rem, w: m.v / (div || 1) };
+      /* 가중식 = <b>기본 비중 × 상황 배수 ÷ 반복 제수</b>. 정본 원문:
+           「기본 비중에 보드 상황 배수를 곱하고 반복 제한 제수로 나눈 뒤,
+            전체 후보 비중 합으로 나눠 확률을 구한다」
+         기본 비중은 order_item.weight 다. 전 행 100 이고 <b>604 한 행만 0</b> 인데,
+         그 0 도 「원작 대응값」이라고 정본에 못 박혀 있다 — 604 는 안 나오는 게 맞다.
+         weight_multiple 은 여기 안 들어간다(곱셈 인자가 아니라 보드 집계 표시다). */
+      const base = o.weight == null ? 100 : Number(o.weight);
+      return { o, base, mult: m.v, why: m.why, div, rem, w: (base * m.v) / (div || 1) };
     });
     const total = rows.reduce((a, r) => a + r.w, 0);
+    /* 후보는 있는데 비중 합이 0 인 경우 — weight 0 인 행만 남으면 그렇다.
+       뽑을 수 없는 상태라 「후보 0」과 같이 다룬다(난수를 쓰지 않는다). */
+    if (total <= 0) {
+      push(`<span class="w">[4] 자리${seat} 비중 합 0</span> (후보 ${cand.length}종이 전부 weight 0) → 이 자리 이후는 추첨하지 않는다`);
+      break;
+    }
     const win = rows[RNG.pick(rows.map((r) => r.w))];
     picked.push(win.o); chosen.add(win.o.item_code);
 
     const byWhy = {};
     rows.forEach((r) => { byWhy[r.why] = (byWhy[r.why] || 0) + 1; });
     push(`<span class="k">[4] 자리${seat}</span> 범위 ${rangeText(rg)} · 후보 ${cand.length}종 [${Object.entries(byWhy).map(([k, v]) => `${k} ${v}`).join(" / ")}]`);
-    push(`    → <span class="p">${labelOf(win.o.item_code)}</span> 배수 ${win.mult}${win.div ? ` ÷제수 ${win.div}(남은 ${win.rem}회)` : ""} = 가중 ${win.w.toFixed(1)} / 합 ${total.toFixed(1)} = <span class="p">${((win.w / total) * 100).toFixed(2)}%</span>`);
+    push(`    → <span class="p">${labelOf(win.o.item_code)}</span> 비중 ${win.base} × 배수 ${win.mult}${win.div ? ` ÷제수 ${win.div}(남은 ${win.rem}회)` : ""} = 가중 ${win.w.toFixed(1)} / 합 ${total.toFixed(1)} = <span class="p">${((win.w / total) * 100).toFixed(2)}%</span>`);
   }
 
   if (!picked.length) {
-    push(`<span class="w">[4] 첫 자리부터 후보 없음 → 생성 실패.</span> 기회·카운터·난수 상태 전부 보존 (기회 소비 안 함)`);
+    /* 정본: 「일반 발급 경로에서는 <b>후보를 뽑기 전에 기회를 1회 쓴다</b>. 뒤에서 만들
+       후보를 찾지 못해도 <b>쓴 기회는 돌려주지 않는다</b>」 / 「이미 차감한 기회는 유지하며,
+       실행하지 않은 추첨·반복 카운터는 바꾸지 않는다」
+       동작은 원래 그랬는데 <b>로그가 정반대로 적혀 있었다</b>(「기회 소비 안 함」). */
+    push(`<span class="w">[4] 첫 자리부터 후보 없음 → 생성 실패.</span> [1] 에서 <b>이미 쓴 기회는 돌려주지 않는다</b> · 실행 안 한 추첨·반복 카운터는 그대로`);
     return { card: null, log: L, failed: true };
   }
 
