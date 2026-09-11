@@ -847,14 +847,16 @@ const rwTag = (kind, text, title, off) =>
   `<span class="rw-tag t-${kind}${off ? " off" : ""}" title="${title}">${RW_ICON[kind]}<b>${text}</b></span>`;
 
 /* 오더 타입 — 「이 카드가 왜 이렇게 생겼나」를 한 글자로 말한다.
-   고정(order_fixed 대본) / 일반·손님·스페셜·이벤트(랜덤 8단계). 디버그와 무관하게 늘 보인다.
+   고정(order_fixed 대본) / 일반·고급·무작위3·무작위4(랜덤 5종 중 4종) /
+   스페셜(order_special.trigger_task 대본형). 디버그와 무관하게 늘 보인다.
    랜덤 카드는 밴드 번호까지 붙는다 — 밴드가 요구 개수·단계 폭을 정하는 축이라 같이 봐야 한다. */
 const ORDER_TYPE_TITLE = {
   fixed: "고정 오더 — order_fixed 의 대본대로 나온다. 랜덤 추첨을 거치지 않는다",
-  normal: "일반 오더 — 랜덤 8단계로 뽑는다 (Lv3 부터)",
-  avatar: "손님 오더 — 랜덤 8단계 (Lv3 부터)",
-  special: "스페셜 오더 — 랜덤 8단계 (Lv4 부터)",
-  event: "이벤트 오더 — 랜덤 8단계 (Lv6 부터)",
+  normal: "일반 오더 — 슬롯 1·2 두 칸. Lv3 에 열린다",
+  high: "고급 오더 — 슬롯 3. Lv3 에 열린다. 일반보다 요구가 무겁다",
+  random_3: "무작위3 오더 — 슬롯 4. Lv4 에 열린다. 요구 아이템을 무작위로 뽑는다",
+  random_4: "무작위4 오더 — 슬롯 5. Lv5 에 열린다. 요구 아이템을 무작위로 뽑는다",
+  special: "스페셜 오더 — 슬롯 6. order_special.trigger_task 대본형 (Lv4 부터)",
 };
 
 /* 오더 카드 — 보상 축 넷을 색·그림으로 구분한다.
@@ -870,7 +872,7 @@ function orderCardHTML(card, o = {}) {
       <span class="rw-npc">${card.avatar.slice(0, 3)}</span>
       <div class="rw-top">
         <span class="rw-ra">${rwTag("coin", card.coin, "A 보상 — 코인")}${
-          card.diff ? rwTag("diff", card.diff, "난이도 점수 — 하루 누적되어 다음 오더의 밴드를 고른다") : ""}</span>
+          card.diff ? rwTag("diff", card.diff, "난이도 점수 — 이 카드 한 장의 난이도. 이벤트 점수 환산의 기준값") : ""}</span>
       </div>
       <div class="rw-dish">${card.reqs.map((q) => {
         const have = counts ? (counts.get(q.code) || 0) >= q.count : false;
@@ -895,7 +897,8 @@ function renderRail() {
     `<b title="시즌 패스">패스 Lv${Math.min(30, S.level)}</b>`;
   /* 순서는 슬롯 번호로 고정한다 — 실제 게임이 그렇다.
      아직 안 열린 슬롯도 자리만 비워서 보여 준다. 몇 칸짜리 레일인지가 보여야
-     「3개뿐인가」 하고 헷갈리지 않는다. 칸 수는 1~5 로 변하고, 매번 다시 배치된다. */
+     「3개뿐인가」 하고 헷갈리지 않는다. 칸 수는 6칸 고정 —
+     1·2 normal / 3 high / 4 random_3 / 5 random_4 / 6 special. */
   let html = "";
   for (const sl of allSlots()) {
     const n = sl.n;

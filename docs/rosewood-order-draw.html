@@ -321,14 +321,16 @@
           <button class="rw-btn" id="rwRerun">다시 검사</button>
         </div>
         <div id="rwSrcWarn"></div>
-        <!-- 아트와 이름이 다른 판본이다. 그림을 보고 「이 체인이구나」 하고 읽으면 틀린다 —
-             경고를 시트 패널에 붙여 둔다(아트는 시트 JSON 에 안 들어 있어 판정으로는 못 잡는다). -->
+        <!-- 아트는 임시물이다(2026-09-11 확인). 그림과 시트 이름이 안 맞는 게 정상 상태라,
+             「어긋났다」가 아니라 「아직 실물이 아니다」로 적는다 — 맞추려 들면 안 되는 축이다. -->
         <div class="rw-warn" id="rwArtWarn">
-          <b>아이템 아트는 지금 넣은 시트보다 새 판본입니다 &mdash; 그림과 이름이 체인 단위로 어긋납니다.</b>
-          <code>101</code> 은 이름이 「녹슨 못」인데 그림은 <b>커피 원두</b>, <code>203</code> 은
-          「망치」인데 <b>테이크아웃 커피컵</b>입니다. 재화·상자 체인(<code>2701</code> 동전 등)만 맞습니다.
-          <b>이름·단계·체인은 시트가 정본이고 판정은 전부 그 값으로 합니다</b> &mdash; 그림만 믿지 마세요.
-          아트는 시트 JSON 에 없어서 자동 판정으로 잡을 수 없습니다. 위 <b>「아이템 아트」</b> 를 끄면 이름만 나옵니다.
+          <b>아이템 아트는 임시물입니다 &mdash; 그림과 시트 이름은 맞지 않는 것이 정상입니다.</b>
+          <code>101</code> 은 이름이 「녹슨 못」인데 그림은 <b>커피 원두</b>입니다. 여기 붙은 그림은
+          자리를 채우는 용도라, <b>무엇이 몇 개 있는지</b>를 눈으로 세는 데만 쓰세요.
+          <b>이름·단계·체인은 시트가 정본이고 판정은 전부 그 값으로 합니다.</b>
+          실물 아트가 들어오면 <code>item_display.sprite_key</code> 로 기계적으로 이어집니다
+          (접두 <code>m_</code>생성기 · <code>r_</code>산출 · <code>q_</code>퀘스트 · <code>s_</code>씨앗 ·
+          <code>v_</code>재화 · <code>x_</code>상자). 위 <b>「아이템 아트」</b> 를 끄면 이름만 나옵니다.
         </div>
       </section>
 
@@ -344,9 +346,11 @@
           비율은 이항 3σ, 기대빈도 5 미만은 판정에서 뺍니다.
           <b>PASS 는 「그 항목이 맞다」일 뿐 알고리즘이 정상이라는 뜻이 아닙니다</b> &mdash;
           이 페이지가 아예 재지 않는 영역은 「미검증」 표에 적어 뒀습니다.
-          공용 엔진은 벤치와 같은 파일을 읽습니다 &mdash; 갭 3건(가중치 <code>weight×multiple</code> ·
-          <code>score_base(coin)</code>·event_id · 누적 난이도 축) 반영, v4.5 에서 시트 셀 메모 대조로
-          <code>refill_max</code>·반복 감쇠 해석 2건을 정정했습니다.
+          공용 엔진은 벤치와 같은 파일을 읽습니다 &mdash; <b>v6.0 에서 2026-09-11 신판 시트로 이행</b>했습니다:
+          오더 타입 5종(<code>avatar→high</code> · 구 <code>special→random_3</code> · <code>event→random_4</code> 개명,
+          새 <code>special</code> 은 <code>trigger_task</code> 로 뜨는 <b>대본형</b>) · 레일 6칸 ·
+          요구 <b>2자리</b>(셋째 자리 열 삭제) · 하루 누적 난이도 축 폐기 ·
+          <code>order_repeat_reset_count</code>(3) 로 <b>반복 카운터 복구</b>.
           비율 판정은 <b>동시 비교 개수만큼 임계값을 넓힙니다</b> &mdash; 후보 44종을 각각 3σ 로 재면
           엔진이 정상이어도 11% 확률로 하나가 넘어 FAIL 이 뜹니다.
           <br><span class="rw-v no">FAIL</span> 엔진과 시트가 어긋남 ·
@@ -435,7 +439,6 @@
               <div class="rw-f"><label>발급 수</label><input id="rwN" type="number" value="2000" min="10" max="50000" /></div>
               <div class="rw-f"><label>유저 레벨</label><input id="rwLv" type="number" value="5" min="1" max="30" /></div>
               <div class="rw-f"><label>오더 타입</label><select id="rwType"></select></div>
-              <div class="rw-f"><label>누적 난이도</label><input id="rwDaily" type="number" value="0" min="0" max="9999" title="하루 누적 난이도 — order_slot_band.diff_sum_* 축. 누적의 정의는 기획 미확인이라 값만 넣어 본다" /></div>
               <div class="rw-f"><label>보드 상황</label>
                 <select id="rwBoard" title="보드는 [4] 의 상황 배수 한 곳에서만 쓰입니다. 배수는 1 : 100 : 1000 : 10000 이라 보드 상태가 추첨을 지배합니다 — 프리셋은 넷 중 둘을 죽이므로 무작위를 쓰세요.">
                   <option value="rand">무작위 (해금 기준)</option>
@@ -455,7 +458,7 @@
                 </select>
               </div>
               <label class="rw-chk" title="켜면 매번 같은 난수 열로 돌려 결과를 그대로 재현합니다 — 끄면 돌릴 때마다 열을 이어 갑니다"><input type="checkbox" id="rwFix" /> 시드 고정</label>
-              <label class="rw-chk" title="아트 판본이 지금 넣은 시트보다 새것이라 그림과 이름이 체인 단위로 어긋납니다. 끄면 이름만 보여 줍니다."><input type="checkbox" id="rwArt" checked /> 아이템 아트</label>
+              <label class="rw-chk" title="임시 아트입니다 — 그림과 시트 이름이 안 맞는 게 정상입니다. 개수를 눈으로 세는 데만 쓰세요. 끄면 이름만 보여 줍니다."><input type="checkbox" id="rwArt" checked /> 아이템 아트(임시)</label>
               <button class="rw-btn pri" id="rwGo">돌리기</button>
             </div>
             <p class="rw-tnote" id="rwChipNote"></p>
@@ -509,7 +512,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v2.8 · 2026-09-11";   // T9 처방 정정 — 밴드 확장이 아니라 T12 가 정본 수정이다
+      const PAGE_BUILD = "v3.0 · 2026-09-11";   // 신판 시트 이행 — 5타입 6슬롯 2자리 · 반복 카운터 · T13·T14
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -528,7 +531,8 @@
       /* 엔진이 기대하는 최소 형태로 맞춘다. 없는 탭은 빈 배열로 둔다 —
          여기서 죽으면 무엇이 없어서 죽었는지 화면에 못 적는다. */
       const NEED = ["const", "order_rule", "order_slot_band", "order_item", "order_item_count",
-                    "order_avatar", "order_fixed", "event_order_score", "item_spec", "level_curve"];
+                    "order_avatar", "order_special", "order_fixed", "event_order_score",
+                    "item_spec", "level_curve"];
       function normalize(json) {
         const out = { _meta: json._meta || null };
         const warn = [];
@@ -555,10 +559,15 @@
         S.slots = {}; S.prevOfSlot = {};
 
         $("#rwBuild").textContent = `build ${PAGE_BUILD} · engine ${BUILD}`;
-        /* 타입 이름만 있으면 avatar·special·event 가 무엇인지 알 수 없다 — 한글 이름과
-           해금 레벨을 같이 적는다. dry 실행은 예산을 안 쓰므로 refill_max 0 도 돌려 볼 수 있다. */
+        /* 타입 이름(high · random_3 …)만 있으면 무엇인지 알 수 없다 — 한글 이름과 해금 레벨을
+           같이 적는다. 밴드가 없는 타입은 추첨으로 안 뜨므로 목록에서도 그렇게 표시한다.
+           dry 실행은 예산을 안 쓰므로 refill_max 0 도 돌려 볼 수 있다. */
         $("#rwType").innerHTML = DATA.order_rule
-          .map((r) => `<option value="${r.order_type}">${r.order_type} · ${TYPE_KO[r.order_type] || ""} (Lv${r.unlock_level})</option>`).join("")
+          .map((r) => {
+            const drawn = DATA.order_slot_band.some((b) => b.in_use && b.order_type === r.order_type);
+            return `<option value="${r.order_type}">${r.order_type} · ${TYPE_KO[r.order_type] || ""} (Lv${r.unlock_level})`
+                 + `${drawn ? "" : " · 대본형"}</option>`;
+          }).join("")
           || '<option value="">order_rule 없음</option>';
         const C = DATA.const || {};
         $("#rwMultRE").textContent = C.order_weight_mult_required_enough ?? "?";
@@ -625,36 +634,42 @@
           ["[0] 고정 오더 16행",
            "<code>skipFixed:true</code> 로 빼고 돌린다 — 랜덤 경로 분포를 보는 게 목적이라",
            "순번·슬롯·레벨 조건을 순회하는 전용 검사 추가"],
-          ["누적 난이도의 정의",
-           "축은 입력(위 「누적 난이도」)으로 뚫었지만, 무엇의 합인지(발급/납품)·리셋 처리가 미확인",
-           "기획 확인 후 누적 로직을 상태로 구현"],
           ["활성 이벤트 선택",
            "event_id 4종 중 무엇이 활성인지는 편성 몫 — 기본으로 데이터 첫 행으로 계산한다",
            "이벤트 편성 테이블이 생기면 그걸 입력으로"],
-          ["<code>weight</code> 실효",
-           "전 행 100·1 이라 곱해도 결과가 같다 — 값이 흔들려야 T2 가 이 칸을 실제로 잡는다. 해석 자체는 셀 메모(<code>weight_rel</code> · 정규화 금지)로 확정됐다",
-           "값이 갈린 시트로 재검"],
-          ["<code>order_special</code> 탭",
-           "추첨 경로에 안 들어온다고 보고 변환에서 뺐다 — 확인 필요",
-           "special 오더가 이 탭을 읽는지 기획 확인 후 탭 추가"],
+          ["<code>weight</code> 열의 지위",
+           "시트에는 <b>살아 있는데</b> 엔진은 안 읽는다 — 클라 계약(A5)에 없는 열이라서다. 곱하면 0 이 되는 행이 있어 <b>곱느냐 마느냐가 후보 집합을 바꾼다</b>. T13 이 수치를 내지만 <b>어느 쪽이 맞는지는 기획 판단</b>이다",
+           "계약에 넣거나 시트에서 빼거나 — 둘 중 하나로 정리. 정해지면 T13 은 회귀 검사로 남는다"],
+          ["<code>order_repeat_reset_count</code> 의 정의",
+           "신판에 신설된 상수(3)다. 값은 있지만 <b>무엇을 세는 3인지</b>가 데이터에 없다 — 여기서는 「오더가 나간 뒤 다음 3회 발급 동안 그 체인을 감쇠」로 구현했다. 신판에는 셀 메모가 없어 근거를 대조할 수 없다",
+           "기획서에서 카운터 감소 시점(발급 기준인지 납품 기준인지)을 확인. T8 은 구현이 스스로 일관되는지만 본다"],
+          ["<code>special</code> 발급 시점",
+           "밴드가 없어 추첨 경로 밖이라는 것까지는 데이터로 확정된다(<code>refresh_sec 0</code> · 밴드 0행). 다만 <code>trigger_task</code> 가 언제 충족되는지는 <code>main_task</code> 진행 상태라 이 페이지가 못 잰다",
+           "메인 과제 진행 시뮬이 생기면 그걸 입력으로. 지금은 「대본형」 표기까지만"],
+          ["슬롯 번호 ↔ 타입 배정",
+           "슬롯 번호는 <b>시트 열이 아니다</b> — <code>order_rule</code> 행 순서대로 <code>slot_count</code> 만큼 펼친 결과다. <code>order_fixed.slot_1/slot_2</code> 가 그 번호를 가리키므로 순서가 바뀌면 고정 오더가 엉뚱한 칸에 간다",
+           "시트에 슬롯 번호 열이 생기면 그걸 직접 읽는다. 지금은 <code>const.rail_visible_max</code>(6)와 칸 수가 맞는지로만 방증"],
+          ["판본 식별",
+           "신판에는 <code>data_manifest</code> 탭이 <b>없다</b> — 행수·컬럼수·<code>schema_hash</code> 의 정본이 사라졌다. 「탭 판본」 표는 변환기가 세어 넣은 값을 보는 것이라 <b>변환이 흘린 행은 못 잡는다</b>",
+           "시트에 <code>data_manifest</code> 가 복구되면 자동 대조가 돌아온다"],
+          ["셀 메모 (값 규약)",
+           "구판 시트는 컬럼마다 규칙·근거가 달려 있었고 그걸로 오독 2건을 잡았다. 신판 export 에는 <b>메모가 하나도 없다</b> — <code>-1</code> 센티넬·상한값·「정규화 금지」 같은 규약을 데이터만으로는 복원할 수 없다",
+           "메모를 같이 내보내는 export 옵션. 구판 메모 사본은 클라 레포 <code>_ignore/reference-sheet-memos.md</code> 에 있다"],
           ["[6] 손님 배정",
-           "분포에 영향이 없어 판정을 안 만들었다",
-           "<code>open_day · unlock_level</code> 조건과 중복 배정 금지 검사"],
+           "분포에 영향이 없어 판정을 안 만들었다. 신판에서 <code>order_avatar</code> 는 오더 타입이 아니라 초상 테이블이 됐고 걸리는 칸은 <code>open_day</code> 하나뿐이다",
+           "<code>open_day</code> 조건과 중복 배정 금지 검사"],
           ["[7] 보상 단가 곡선",
            "합산·이벤트 재화 일치만 보고, 단가 자체가 옳은지는 안 본다",
            "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
-          ["아이템 아트 ↔ 시트 이름 대응",
-           "아트 224장은 시트 신판 기준인데 여기 넣은 시트는 구판(2026-09-08)이라 <b>체인 단위로 어긋난다</b> — <code>101</code>「녹슨 못」이 커피 원두다. 아트 경로는 시트 JSON 에 없어서(<code>sprite_key</code> 열 폐기) 자동 대조가 불가능하다",
-           "신판 시트로 JSON 을 다시 뽑으면 이름·체인이 아트와 맞는다. <code>scripts/xlsx2balance.py</code> 를 신판 xlsx 로 재실행"],
-          ["요구 종수 상한 &mdash; 문서 대조",
-           "T12 가 정본 값(2칸)을 <b>상수로</b> 대조한다 &mdash; 화면 기획서는 시트 JSON 에 없어 자동 대조가 불가능하다. 상수는 공용 엔진의 <code>SPEC_ITEM_SLOT_MAX</code> 를 읽으므로 「프로토타입」과 같은 값을 본다. <b>기획서가 개정되면 그 상수를 손으로 고쳐야 한다.</b><br><code>order_item_count</code> 20~40% 와 <code>order_fixed</code> 6% 는 <b>서로 안 싸운다</b> &mdash; 앞은 랜덤 오더, 뒤는 랜덤을 거치지 않는 초반 대본이라 모집단이 다르다",
-           "기획서 정본을 기계가 읽을 형태로 뽑아 상수 대신 대조. 지금은 문서 개정 시 엔진의 <code>SPEC_ITEM_SLOT_MAX</code> 를 따라 고치는 수밖에 없다"],
+          ["아이템 아트",
+           "<b>임시 아트다</b>(2026-09-11 확인) — 그림 내용이 시트 체인과 안 맞는 게 정상이고, 맞추려 들면 안 된다. 파일명 규약(<code>item_display.sprite_key</code> = <code>board/items/&lt;접두&gt;&lt;이름&gt;</code>, 접두 <code>m_</code>생성기 <code>r_</code>산출 <code>q_</code>퀘스트 <code>s_</code>씨앗 <code>v_</code>재화 <code>x_</code>상자)은 해독돼 있다",
+           "실물 아트가 오면 <code>sprite_key</code> 로 기계적으로 매핑. 그때 이 칸은 자동 대조로 바뀐다"],
           ["실제 보드 분포",
            "무작위 보드는 <b>체인 편중(Zipf) + 단계 1/2<sup>step-1</sup></b> 가정이다 — 시트에 보드 등장 분포가 없다. 상자·재화 체인(동전·유리알·불씨)은 등장률을 모르고 배수에도 영향이 없어 아예 뺐다",
            "실제 플레이 로그의 보드 스냅샷으로 단계 분포를 대체. <code>item_spec</code> 에 보드 해금·등장 칸이 생기면 그걸 입력으로"],
-          ["반복 감쇠 — 둘째·셋째 자리",
+          ["반복 감쇠 — 둘째 자리",
            "T8 은 자리1 만 본다. 기대값을 자리별로 따로 세워야 하는데 앞 자리 결과에 따라 후보가 바뀐다",
-           "자리별 조건부 기대값 계산 추가. <code>avatar</code> 처럼 자리1 이 한 단계뿐인 타입은 자리1 로는 아예 못 잰다"],
+           "자리별 조건부 기대값 계산 추가. <code>high</code> 처럼 자리1 이 한 단계뿐인 타입은 자리1 로는 아예 못 잰다"],
           ["생성기 주머니 (<code>produce_item_1~20</code>)",
            "오더 추첨 밖이다 — 벤치의 생산 경로 소관",
            "벤치에서 생산 표본을 뽑아 <code>produce_weight</code> 와 대조"],
@@ -711,28 +726,45 @@
         const out = [];
         const add = (v, name, key, sheet, engine, result) => out.push({ v, name, key, sheet, engine, result });
 
-        // ── 1. 오더 타입 목록
-        const want = ["normal", "avatar", "special", "event"];
+        /* ── 1. 오더 타입 목록
+           타입 이름을 여기 박아 두지 않는다 — 2026-09-11 신판에서 네 타입 중 셋이
+           개명됐고(avatar→high · special→random_3 · event→random_4), 박아 둔 목록이
+           있었으면 「시트에 avatar 가 없다 → FAIL」이라는 엉뚱한 판정이 나왔을 것이다.
+           목록은 order_rule 이 정하고, 이 표는 <b>그 목록이 슬롯을 다 채우는지</b>만 본다. */
         const got = uniq(rule, "order_type");
-        const miss = want.filter((t) => !got.includes(t));
-        add(miss.length ? "no" : "ok", "오더 타입 목록", "order_rule.order_type",
+        const drawable = got.filter((t) => band.some((b) => b.in_use && b.order_type === t));
+        const scripted = got.filter((t) => !drawable.includes(t));
+        const seatless = drawable.filter((t) => {
+          const r = rule.find((x) => x.order_type === t) || {};
+          const bs = band.filter((b) => b.in_use && b.order_type === t)[0] || {};
+          const seats = bs.third_max != null ? 3 : bs.second_max != null ? 2 : 1;
+          return Number(r.item_slot_max) > seats;
+        });
+        const railN = rule.filter((r) => r.in_use).reduce((a, r) => a + (Number(r.slot_count) || 0), 0);
+        const railCap = Number(C.rail_visible_max) || 0;
+        add(!got.length ? "no" : railCap && railN !== railCap ? "warn" : "ok",
+            "오더 타입 목록", "order_rule.order_type × slot_count",
             `${rule.length}행 &mdash; ${got.join(" · ") || "없음"}`,
-            "레일 1·2번 칸을 <b>normal</b>, 3번을 <b>avatar</b>, 4번을 <b>special</b>, 5번을 <b>event</b> 로 배정한다",
-            (miss.length
-              ? `시트에 <b>${miss.join(", ")}</b> 이 없어서 그 칸은 영구히 빈다. `
-              : "네 타입이 다 있어 <b>레일 5칸이 전부 채워진다</b>. ")
+            "행 순서대로 <code>slot_count</code> 만큼 레일 칸을 배정한다. <code>order_slot_band</code> 에 행이 없는 타입은 추첨으로 뜨지 않는다",
+            (!got.length ? "타입이 없으면 레일이 통째로 빈다. "
+              : `레일 <b>${railN}칸</b>${railCap ? ` (<code>const.rail_visible_max</code> ${railCap}${railN === railCap ? " 과 일치" : " 와 <b>불일치</b>"})` : ""}. `
+                + `추첨으로 뜨는 타입 ${drawable.length}개`
+                + (scripted.length ? ` · <b>대본형 ${scripted.join("·")}</b>(밴드 0행 &mdash; <code>order_special.trigger_task</code> 로만 뜬다)` : "")
+                + (seatless.length ? ` · <span class="w">자리 부족 ${seatless.join("·")}</span>` : "")
+                + ". ")
             + typeBrief());
 
         // 타입마다 성격이 다르다 — 밴드 첫 자리와 refill_max 로 갈린다
         function typeBrief() {
-          const li = want.filter((t) => got.includes(t)).map((t) => {
+          const li = got.map((t) => {
             const r = rule.find((x) => x.order_type === t) || {};
             const bs = band.filter((x) => x.order_type === t);
             const f = bs.length ? (bs[0].first_min === bs[0].first_max
-              ? `${bs[0].first_min}단계 고정` : `${bs[0].first_min}~${bs[0].first_max}단계`) : "밴드 없음";
-            const budget = `${r.refresh_sec / 60}분 주기`
-              + (Number(r.refill_max) > 0 ? ` · 비축 최대 ${r.refill_max}장` : " · <b>비축 없음</b>");
-            return `<b>${TYPE_KO[t] || t}</b>(${t}) 첫 자리 ${f} · Lv${r.unlock_level} · ${budget}`;
+              ? `${bs[0].first_min}단계 고정` : `${bs[0].first_min}~${bs[0].first_max}단계`) : "<b>밴드 없음 → 대본형</b>";
+            const budget = Number(r.refresh_sec) > 0
+              ? `${r.refresh_sec / 60}분 주기` + (Number(r.refill_max) > 0 ? ` · 비축 최대 ${r.refill_max}장` : " · <b>비축 없음</b>")
+              : "<b>주기 없음</b>";
+            return `<b>${TYPE_KO[t] || t}</b>(${t}) ${r.slot_count}칸 · 첫 자리 ${f} · Lv${r.unlock_level} · ${budget}`;
           });
           return `<span class="li">${li.join("<br>")}</span>`;
         }
@@ -740,48 +772,46 @@
         // ── 2. 카드당 요구 종수 상한
         const slotMaxes = uniq(rule, "item_slot_max").map(Number);
         const maxSlot = Math.max(0, ...slotMaxes);
-        add(maxSlot > 3 ? "no" : "ok", "카드당 요구 종수 상한", "order_rule.item_slot_max",
+        /* 밴드가 실제로 주는 자리 수 — 열의 유무로 센다. 신판은 second_max 까지라 2 다. */
+        const maxSeats = Math.max(0, ...band.map((b) => (b.third_max != null ? 3 : b.second_max != null ? 2 : 1)));
+        add(maxSlot > maxSeats ? "no" : "ok", "카드당 요구 종수 상한", "order_rule.item_slot_max",
             slotMaxes.length === 1 ? `전 행 <b>${maxSlot}</b>` : `${slotMaxes.join(" / ")} (최대 ${maxSlot})`,
             "이 수만큼 자리를 돌며 아이템을 하나씩 뽑는다. 자리마다 허용 단계 범위가 따로 있다",
-            maxSlot > 3
-              ? `자리 <b>${maxSlot}</b>개를 도는데 범위는 3자리까지만 정의돼 있다 &mdash; 4번째 이후는 범위 없이 뽑힌다`
-              : `한 카드가 최대 <b>${maxSlot}종</b>을 요구한다. 세 자리 모두 범위가 정의돼 있다`);
+            maxSlot > maxSeats
+              ? `자리 <b>${maxSlot}</b>개를 도는데 <code>order_slot_band</code> 는 <b>${maxSeats}자리</b>까지만 열이 있다 &mdash; 남는 자리는 범위가 없어 추첨되지 않는다`
+              : `한 카드가 최대 <b>${maxSlot}종</b>을 요구하고, 밴드도 ${maxSeats}자리를 준다 &mdash; 둘이 맞는다`);
 
         // ── 3. 자리별 단계 범위
-        const byType = want.map((t) => `${t} ${band.filter((b) => b.order_type === t).length}`).join(" · ");
-        const b0 = band[0];
-        add(band.length ? "ok" : "no", "자리별 단계 범위", "order_slot_band.first/second/third_min·max",
-            `${band.length}행 &mdash; ${byType}`,
-            "유저 레벨로 밴드 한 줄을 고르고, 자리 1·2·3 각각의 하한~상한 안에 드는 아이템만 후보로 남긴다",
+        const byType = got.map((t) => `${t} ${band.filter((b) => b.order_type === t).length}`).join(" · ");
+        const b0 = band[0] || {};
+        const seatCols = ["first_min", "first_max", "second_min", "second_max", "third_min", "third_max"]
+          .filter((k) => b0[k] != null);
+        add(band.length ? "ok" : "no", "자리별 단계 범위", "order_slot_band 자리 열",
+            `${band.length}행 &mdash; ${byType}<br><span style="opacity:.7">열: ${seatCols.join(" · ") || "없음"}</span>`,
+            "유저 레벨로 밴드 한 줄을 고르고, 자리마다 정해진 하한~상한 안에 드는 아이템만 후보로 남긴다. <b>하한 열이 없으면 하한이 없다</b>",
             band.length
-              ? `앞자리가 더 높은 단계를 받는다. 예: normal 1밴드는 자리1 <b>${b0.first_min}~${b0.first_max}단계</b> · 자리2 <b>${b0.second_min}~${b0.second_max}</b> · 자리3 <b>${b0.third_min}~${b0.third_max}</b>.`
-                + ` 하한과 상한이 같으면 <b>그 단계로 고정</b>이다 &mdash; avatar 는 첫 자리가 7단계 고정이라 체인을 끝까지 올려야 납품된다`
+              ? `자리 수는 밴드가 정한다 &mdash; 지금은 <b>${maxSeats}자리</b>. 예: ${b0.order_type} ${b0.band_seq}밴드는 `
+                + `자리1 <b>${b0.first_min}~${b0.first_max}단계</b> · 자리2 <b>${b0.second_min == null ? `하한 없음~${b0.second_max}` : `${b0.second_min}~${b0.second_max}`}</b>`
+                + (b0.third_max != null ? ` · 자리3 <b>${b0.third_min ?? 0}~${b0.third_max}</b>` : "")
+                + `. 하한과 상한이 같으면 <b>그 단계로 고정</b>이다 &mdash; high 는 첫 자리가 7단계 고정이라 체인을 끝까지 올려야 납품된다`
               : "밴드가 없으면 카드를 한 장도 못 만든다");
 
-        // ── 4. 하루 누적 난이도 축
-        const splits = band.filter((b) => b.in_use && ((b.diff_sum_min ?? 0) > 0 || (b.diff_sum_max ?? 9999) < 9999));
-        const dailyKeys = Object.keys(C).filter((k) => k.startsWith("order_daily_diff"));
-        add(splits.length || dailyKeys.length ? "warn" : "ok", "하루 누적 난이도", "order_slot_band.diff_sum_min·max",
-            splits.length
-              ? `${splits.length}행만 갈린다 &mdash; ${[...new Set(splits.map((b) => b.order_type))].join("·")} 가 <b>${splits[0].diff_sum_max}</b> 에서 밴드를 바꾼다. 나머지는 0~9999(상시)`
-              : "전 행 0~9999 &mdash; 갈리는 구간 없음",
-            "화면 위 「누적 난이도」 입력값으로 밴드를 고른다",
-            splits.length || dailyKeys.length
-              ? `축은 돈다. 다만 <b>이 누적값을 게임이 어떻게 쌓는지가 기획에 없다</b> &mdash; 오더 발급 난이도의 합인지 납품한 것의 합인지, 언제 0 으로 돌아가는지. 지금은 손으로 넣어 보는 것까지만 된다`
-              : "축이 안 쓰이므로 레벨만으로 밴드가 정해진다");
-
-        // ── 5. 아이템 기본 가중치
+        /* ── 4. 아이템 기본 가중치 — 시트에 열이 살아 있는데 엔진이 안 읽는 자리다.
+           둘 중 하나를 코드가 조용히 고르면 안 되므로 검사로 드러낸다(아래 T13 도 같이 본다). */
         const wVals = uniq(oi, "weight"), mVals = uniq(oi, "weight_multiple");
-        const flat = wVals.length === 1 && mVals.length === 1;
-        add(wVals.length ? "warn" : "ok", "아이템 기본 가중치", "order_item.weight × weight_multiple",
+        const dead = oi.filter((o) => (Number(o.weight) || 0) * (Number(o.weight_multiple) || 0) === 0);
+        add(!wVals.length ? "ok" : dead.length ? "warn" : "ok",
+            "아이템 기본 가중치", "order_item.weight × weight_multiple",
             wVals.length
-              ? `${oi.length}행 &mdash; weight ${wVals.join("/")} · multiple ${mVals.join("/")}${flat ? " <b>(전 행 동일)</b>" : ""}`
-              : "칸 없음",
-            "보드 상황 배수에 이 값을 곱해 아이템별 뽑힐 무게를 만든다",
-            !wVals.length ? "칸이 없어 보드 배수만으로 뽑는다"
-              : flat
-                ? `전 행이 같은 값이라 <b>곱해도 순위가 안 바뀐다</b> &mdash; 지금 분포는 이 칸과 무관하다. 값이 갈리기 전엔 이 계산이 맞는지 확인이 안 된다. 시트 메모는 「<code>weight_rel</code> &mdash; 정규화 금지」다: <b>상대 가중치이고 합을 10000 으로 맞추지 말라</b>는 뜻이라 지금 계산 방식이 맞다`
-                : "값이 갈려 있어 아래 T2 가 기대 비율과 실측을 대조한다");
+              ? `${oi.length}행 &mdash; weight ${wVals.join("/")} · multiple ${mVals.join("/")}`
+              : "<b>칸 없음</b>",
+            "엔진은 이 열을 <b>읽지 않는다</b> &mdash; 가중식은 보드 상황 배수 ÷ 반복 제수뿐이다",
+            !wVals.length
+              ? "열이 없다. 클라 계약(A5)에도 없는 열이라 이게 맞는 상태다"
+              : dead.length
+                ? `열이 번들에 남아 있고 그중 <b>${dead.length}행이 곱하면 0</b> 이다. 엔진이 이 열을 곱했다면 그 ${dead.length}종은 <b>오더에 영구히 안 나온다</b>. `
+                  + `지금은 안 곱하므로 나온다 &mdash; <b>어느 쪽이 맞는지는 시트가 아니라 기획이 정해야 한다</b>(T13 이 실측으로 확인).`
+                : "열이 남아 있지만 0 인 행이 없어 곱하든 안 곱하든 결과가 같다");
 
         // ── 6. 종수 가중치
         const lvGroups = [...new Set(cnt.filter((r) => r.in_use).map((r) => r.level))].sort((a, b) => a - b);
@@ -800,10 +830,15 @@
 
         // ── 7. 고정 오더 요구품
         const fx3 = fx.filter((r) => r.requirement_3).length;
-        add("ok", "고정 오더 요구품", "order_fixed.requirement_1~3",
-            `${fx.length}행 &mdash; 3종 쓰는 행 ${fx3}개`,
-            "순번대로 한 장씩 꺼내 쓴다. 요구품 칸 세 개를 다 읽고 빈 칸은 버린다",
-            `${fx.length}장이 순서대로 나온다. 3종 요구도 ${fx3 ? "정상 처리된다" : "없다"}`);
+        const fxSlot3 = fx.filter((r) => Number(r.slot_3) > 0).length;
+        add(fx3 > maxSlot ? "warn" : "ok", "고정 오더 요구품", "order_fixed.requirement_*",
+            `${fx.length}행 &mdash; 3종 쓰는 행 ${fx3}개 · slot_3 쓰는 행 ${fxSlot3}개`,
+            "순번대로 한 장씩 꺼내 쓴다. 빈 칸(0)은 버리고, 요구 칸이 상한을 넘으면 자른다",
+            `${fx.length}장이 순서대로 나온다. `
+            + (fx3
+              ? `요구 3칸을 쓰는 행이 ${fx3}개라 상한 ${maxSlot} 으로 <b>잘린다</b>`
+              : "요구 칸이 둘뿐이라 자를 일이 없다")
+            + (fxSlot3 ? ` · <code>slot_3</code> 을 쓰는 행 ${fxSlot3}개` : " · <code>slot_3</code> 은 전 행 0 이라 <b>3슬롯 신호가 아니다</b>"));
 
         // ── 8. 이벤트 재화 기준값
         const base = uniq(ev, "score_base");
@@ -1143,9 +1178,9 @@
         const useCtx = $("#rwCtx").value === "rail";
         const fixed = $("#rwFix").checked;
 
-        const daily = clamp(Number($("#rwDaily").value) || 0, 0, 9999);
-        const band = pickBand(type, lv, daily);
+        const band = pickBand(type, lv);
         const rule = ruleOf(type);
+        const seats = band ? bandSeats(band) : 0;
 
         /* 레일 맥락 — 빈 집합으로 두면 기획서 [2] 의 배수 4 개 중 「타 오더 요구」 축
            둘(100 · 1)이 아예 발생하지 않아 실제 분포와 달라진다. 실제 레일이 없으므로
@@ -1171,9 +1206,11 @@
           const inSeat = (c) => {
             if (!band) return true;
             const st = stepOf(c);
-            return (st >= band.first_min && st <= band.first_max)
-                || (band.second_max != null && st >= (band.second_min || 0) && st <= band.second_max)
-                || (band.third_max != null && st >= (band.third_min || 0) && st <= band.third_max);
+            for (let k = 1; k <= seats; k++) {
+              const rg = seatRange(band, k);
+              if (rg && st >= rg.lo && st <= rg.hi) return true;
+            }
+            return false;
           };
           const x = pool.find((o) => onB(o.item_code) && inSeat(o.item_code));
           const hit = x && pool.find((o) => chainOf(o.item_code) === chainOf(x.item_code)
@@ -1224,20 +1261,27 @@
         const seatFill = new Map();          // 채운 자리 수 → 발급 수
         const cntBy = new Map();             // `자리수|종수` → 발급 수
         const zeroSeat = [0, 0, 0];          // 자리별 「후보 0」 발생 수
+        /* 반복 카운터 — 신판 const.order_repeat_reset_count(3) 로 되살아난 체인별 표다.
+           게임 상태(S.orderGen.chain_repeat)를 더럽히지 않으려고 사본을 넘긴다.
+           <b>발급 전체가 이 표 하나를 공유</b>해야 카운터가 실제로 돈다 —
+           발급마다 빈 표를 새로 주면 제수가 영원히 안 걸린다. */
+        const CR = {};
+        let crHits = 0;                      // 제수가 실제로 걸린 발급 수
         let fillNA = 0;
         const samples = [], viol = [];
-        let coin = 0, diff = 0, evt = 0, fail = 0, locked = false, ok = 0, evtBad = 0;
+        let coin = 0, diff = 0, evt = 0, fail = 0, locked = false, ok = 0, evtBad = 0, scripted = false;
 
         const saved = RNG.save();
         RNG.load(String(fixed ? SEED0 : SEED));
         for (let i = 0; i < N; i++) {
-          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev, skipFixed: true, dailyDiff: daily });
-          if (!r.card) { fail++; if (r.locked) locked = true; continue; }
+          const r = generateOrder(1, { dry: true, level: lv, type, counts, othersReq, prev, skipFixed: true, repeat: CR });
+          if (!r.card) { fail++; if (r.locked) locked = true; if (r.scripted) scripted = true; continue; }
           ok++;
           const c = r.card;
           coin += c.coin; diff += c.diff; evt += c.evt || 0;
           cnt.set(c.reqs.length, (cnt.get(c.reqs.length) || 0) + 1);
           let filled = 0;
+          if (r.log.some((t) => t.includes("반복 감쇠 적용"))) crHits++;
           for (const line of r.log) {
             const z = /\[4\] 자리(\d) 후보 0/.exec(line);
             if (z) { const i = +z[1] - 1; if (i < 3) zeroSeat[i]++; continue; }
@@ -1273,10 +1317,10 @@
         if (!fixed) SEED = RNG.save();
         RNG.load(saved);
 
-        LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, daily,
+        LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, seats, CR,
                  banned: [...othersReq, ...(prev || [])],
-                 tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, fixed,
-                 seatFill, cntBy, zeroSeat, fillNA, axis, axisSeat, board, kind };
+                 tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, scripted, fixed,
+                 seatFill, cntBy, zeroSeat, fillNA, axis, axisSeat, board, kind, crHits };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
       }
@@ -1297,11 +1341,12 @@
         }
         const b = ctx.band;
         if (b) {
-          const lim = [
-            [b.first_min ?? 0, b.first_max ?? 99],
-            [b.second_min ?? 0, b.second_max ?? 99],
-            [b.third_min ?? 0, b.third_max ?? 99],
-          ];
+          /* 자리 범위는 밴드가 가진 열 만큼만 만든다 — 없는 자리를 0~99 로 채우면
+             「무엇이든 통과」가 되어 검사가 조용히 죽는다. */
+          const lim = Array.from({ length: bandSeats(b) }, (_, i) => {
+            const rg = seatRange(b, i + 1);
+            return [rg.lo, rg.hi];
+          });
           card.reqs.forEach((q, i) => {
             if (i >= lim.length) return;
             const st = stepOf(q.code);
@@ -1355,9 +1400,12 @@
         const SHORT = { "미요구": "미요구", "미요구+보드에 동급·하급 有": "동급하급",
                         "타오더 요구+납품가능": "타오더납품가", "타오더 요구+납품불가(기본)": "기본" };
         $("#rwWhy").innerHTML =
-          (L.locked ? `<b style="color:var(--deploy)">${L.type} 은 Lv${L.rule ? L.rule.unlock_level : "?"} 해금 — 이 레벨에서는 0장</b> · ` : "") +
+          (L.scripted
+            ? `<b style="color:var(--deploy)">${L.type} 은 추첨 대상이 아니다 — <code>order_slot_band</code> 에 행이 없고 `
+              + `<code>refresh_sec</code> 가 0 이다. <code>order_special.trigger_task</code> 로 뜨는 대본형이라 0장이 정상이다</b> · `
+            : L.locked ? `<b style="color:var(--deploy)">${L.type} 은 Lv${L.rule ? L.rule.unlock_level : "?"} 해금 — 이 레벨에서는 0장</b> · ` : "") +
           `후보 ${L.pool.length}종` +
-          ` · 밴드 ${L.band ? `b${L.band.band_seq} ${L.band.first_min}~${L.band.first_max} / ≤${L.band.second_max}${L.band.third_max != null ? ` / ≤${L.band.third_max}` : ""}${L.band.diff_sum_min != null ? ` (누적 ${L.daily} ∈ ${L.band.diff_sum_min}~${L.band.diff_sum_max})` : ""}` : "없음"}` +
+          ` · 밴드 ${L.band ? `b${L.band.band_seq} ` + Array.from({ length: L.seats }, (_, i) => rangeText(seatRange(L.band, i + 1))).join(" / ") : "없음"}` +
           ` · 배수 ${Object.entries(bucket).map(([k, v]) => `${SHORT[k] || k} ${v}`).join(" / ") || "—"}` +
           ` · 보유 ${held}종` +
           ` · 제외 ${L.banned.length}종${L.banned.length ? ` (${L.banned.map(labelOf).join(" · ")})` : ""}` +
@@ -1369,7 +1417,7 @@
       /* 요구 칩 — 프로젝트에 아이템 아트가 224종 들어 있다(docs/img/items). 이름 텍스트만
          쓰면 「받침 찻잔」처럼 긴 이름이 원 안에서 줄어들어 읽히지도 않는다. 아트가 있으면
          아트를, 없으면 이름으로 떨어진다. 경로는 엔진 spriteOf() 한 곳에서만 판다. */
-      /* 아트 판본이 시트보다 새것이라 그림과 이름이 어긋난다(101 녹슨 못 = 커피 원두).
+      /* 임시 아트라 그림과 이름이 안 맞는다(101 녹슨 못 = 커피 원두) — 그게 정상 상태다.
          이름·단계·체인은 시트가 정본이므로 판정에는 영향이 없지만, 그림만 보고 체인을
          읽으면 틀린다. 끌 수 있게 둔다 — 끄면 전부 이름 텍스트로 떨어진다. */
       const artOn = () => { const el = $("#rwArt"); return !el || el.checked; };
@@ -1388,7 +1436,7 @@
         return `<div class="rw-card">
             <span class="rw-npc">${String(card.avatar || "—").slice(0, 3)}</span>
             <div class="rw-top"><span class="rw-ra"><span title="A 보상 — 코인. order_item.order_price 합">◎ ${card.coin}</span>${
-              card.diff ? `<span title="난이도 — order_item.diff_score 합. 하루 누적되어 다음 오더의 밴드를 고른다(order_slot_band.diff_sum_*)">◈ ${card.diff}</span>` : ""}</span></div>
+              card.diff ? `<span title="난이도 — order_item.diff_score 합. 신판에서 하루 누적 난이도 축(order_slot_band.diff_sum_*)이 삭제돼 밴드 선택에는 안 쓰인다">◈ ${card.diff}</span>` : ""}</span></div>
             <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(q.code))).join("")}</div>
             <div class="rw-bot">
               <span class="rw-rb" title="B 보상 — 이벤트 재화. event_order_score 로 코인/난이도에서 환산">◆ ${card.evt ?? 0}</span>
@@ -1456,25 +1504,50 @@
         return { v: 1, why: AXIS_KEY.req_noserve };
       }
 
-      function expectSeat1(noDecay) {
+      /* 자리1 기대 분포 — 엔진을 부르지 않고 시트 값만으로 다시 만든다.
+         `cr` 은 체인별 남은 제한 횟수 표다(반복 카운터). 비워 주면 감쇠 없는 기대다.
+         <b>order_item.weight / weight_multiple 은 곱하지 않는다</b> — 엔진이 안 읽는 열이라
+         여기서 곱하면 이 판정이 엔진이 아니라 우리 기대식을 검사하게 된다(T13 이 따로 본다). */
+      function expectSeat1(cr) {
         const L = LAST, C = DATA.const || {}, b = L.band;
         if (!b) return null;
-        const lo = b.first_min ?? 0, hi = b.first_max ?? 99;
+        const rg = seatRange(b, 1);
+        const lo = rg.lo, hi = rg.hi;
+        const CRm = cr || {};
         const banned = new Set(L.banned);
-        const prevCh = new Set((L.prev || []).map(chainOf));
         const cand = L.pool.filter((o) => {
           const st = stepOf(o.item_code);
           return st >= lo && st <= hi && !banned.has(o.item_code);
         });
         const rows = cand.map((o) => {
           const m = boardMultLocal(o.item_code, L.othersReq, L.counts, C).v;   // 엔진 호출 아님
-          const base = ((Number(o.weight) || 100) * (Number(o.weight_multiple) || 1)) / 100;
-          const div = !noDecay && prevCh.has(chainOf(o.item_code)) && Number(o.repeat_weight_decrease) > 0
+          const div = (CRm[chainOf(o.item_code)] || 0) > 0 && Number(o.repeat_weight_decrease) > 0
             ? Number(o.repeat_weight_decrease) : 1;
-          return { code: o.item_code, w: (base * m) / div };
+          return { code: o.item_code, w: m / div };
         });
         const sum = rows.reduce((a, r) => a + r.w, 0);
         return { map: new Map(rows.map((r) => [r.code, sum ? (r.w / sum) * 100 : 0])), n: cand.length };
+      }
+
+      /* 대조 발급 — 반복 카운터를 <b>고정</b>한 채 자리1 만 센다.
+         본 발급은 카운터가 굴러가며 상태가 매 장 바뀌므로 해석식이 안 선다.
+         여기서는 매 장 사본을 넘겨(엔진이 그 사본만 더럽힌다) cr 을 그대로 유지한다 —
+         그래야 expectSeat1(cr) 와 같은 조건이 되어 대조가 성립한다. */
+      function subSeat1(cr, n) {
+        const L = LAST, t = new Map();
+        let tot = 0;
+        const saved = RNG.save();
+        RNG.load(String(SEED0));
+        for (let i = 0; i < n; i++) {
+          const r = generateOrder(1, { dry: true, level: L.lv, type: L.type, counts: L.counts,
+                                       othersReq: L.othersReq, prev: L.prev, skipFixed: true,
+                                       repeat: { ...cr } });
+          if (!r.card || !r.card.reqs.length) continue;
+          const c = r.card.reqs[0].code;
+          t.set(c, (t.get(c) || 0) + 1); tot++;
+        }
+        RNG.load(saved);
+        return { map: t, n: tot };
       }
 
       /* 종수 기대 분포. 인자 없이 부르면 <b>명목</b>(시트가 선언한 값)이고,
@@ -1674,15 +1747,18 @@
                     + `&mdash; 실측이 전부 이 안에 든다.<br>`
                     + `즉 <b>가중치 편향이 아니라 자리 부족에 의한 절단</b>이다(추첨기는 T1 PASS). `
                     + `깎인 몫이 작은 종수로 되돌아온 양까지 맞는다. `
-                    + `<b>정본 수정은 T12</b>다 &mdash; 요구 종수 상한이 ${typeof SPEC_ITEM_SLOT_MAX !== "undefined" ? SPEC_ITEM_SLOT_MAX : 2}칸으로 `
-                    + `내려오면 마르는 자리 자체가 없어져 절단도 함께 사라진다(밴드 범위는 안 건드려도 된다). 자리별 여유는 T9 참조`
+                    + `상한과 밴드 자리 수가 어긋나면 마르는 자리가 생긴다 &mdash; <b>그 대조는 T12</b>다. `
+                    + `자리별 여유는 T9 참조`
                   : `${bad.join("<br>")}<br>절단으로 설명되지 않는다 &mdash; 자리 부족 ${shortShare.toFixed(2)}% 를 반영한 예측과도 어긋난다`,
               !bad.length ? null : explained ? "data" : "logic");
         }
 
-        // T2 자리1 가중치 분포
-        const es = expectSeat1();
-        const s1n = [...L.seatTally[0].values()].reduce((a, b) => a + b, 0);
+        /* T2 자리1 가중치 분포 — <b>반복 카운터를 끈 대조 발급</b>으로 잰다.
+           본 발급은 카운터가 굴러가며 후보 가중치가 장마다 바뀌어(신판 3틱) 해석식이
+           안 선다. 카운터가 도는지는 T8 이 따로 본다 — 두 축을 한 검사에 섞지 않는다. */
+        const es = expectSeat1({});
+        const sub2 = es ? subSeat1({}, Math.min(L.N, 4000)) : null;
+        const s1n = sub2 ? sub2.n : 0;
         if (!es) add("na", "T2 자리1 가중치 분포", "—", "—", "밴드를 못 골랐다");
         else {
           /* 판정 대상 종수만큼 동시에 비교하므로 항목별 3σ 를 쓰면 오경보가 쌓인다 —
@@ -1692,14 +1768,14 @@
           const judged = judgeable.length, m = judged;
           let worst = null;
           for (const [code, p] of judgeable) {
-            const obs = ((L.seatTally[0].get(code) || 0) / Math.max(1, s1n)) * 100;
+            const obs = ((sub2.map.get(code) || 0) / Math.max(1, s1n)) * 100;
             const tol = tolN(p / 100, s1n, m);
             const d = Math.abs(obs - p) - tol;
             if (!worst || d > worst.d) worst = { code, p, obs, d, tol };
           }
           const need = judged ? "" : `기대빈도 ${MIN_EXPECT} 이상인 후보가 없다 — 발급 수를 늘리세요`;
           add(!judged ? "na" : worst.d > 0 ? "no" : "ok", "T2 자리1 가중치 분포",
-              `후보 ${es.n}종 · <code>weight × weight_multiple × 보드배수 ÷ 제수</code>`,
+              `후보 ${es.n}종 · <code>보드 상황 배수</code> (반복 카운터 끈 대조 발급)`,
               `표본 ${s1n} · 판정 ${judged}종${thin ? ` · 표본 부족 ${thin}종 제외` : ""}`,
               need || `최대 편차 <code>${labelOf(worst.code)}</code> ${nameOf(worst.code)} — `
                 + `실측 ${worst.obs.toFixed(2)}% · 기대 ${worst.p.toFixed(2)}% · 허용 ±${worst.tol.toFixed(2)}%p`
@@ -1712,7 +1788,7 @@
         // T3 밴드 범위
         const bandViol = L.viol.filter((v) => v.why.some((w) => w.includes("밴드")));
         add(bandViol.length ? "no" : "ok", "T3 자리별 단계 범위",
-            L.band ? `자리1 ${L.band.first_min}~${L.band.first_max} · 자리2 ${L.band.second_min ?? 0}~${L.band.second_max} · 자리3 ${L.band.third_min ?? 0}~${L.band.third_max ?? "—"}` : "—",
+            L.band ? Array.from({ length: L.seats }, (_, i) => `자리${i + 1} ${rangeText(seatRange(L.band, i + 1))}`).join(" · ") : "—",
             bandViol.length ? `위반 ${bandViol.length}건` : "위반 0",
             bandViol.length ? bandViol[0].why.filter((w) => w.includes("밴드"))[0] : "전 표본이 밴드 안");
 
@@ -1745,7 +1821,7 @@
           const t = new Map();
           for (let i = 0; i < Math.min(300, L.N); i++) {
             const r = generateOrder(1, { dry: true, level: L.lv, type: L.type, counts: L.counts,
-                                         othersReq: L.othersReq, prev: L.prev, skipFixed: true, dailyDiff: L.daily });
+                                         othersReq: L.othersReq, prev: L.prev, skipFixed: true, repeat: {} });
             if (r.card) r.card.reqs.forEach((q) => t.set(q.code, (t.get(q.code) || 0) + 1));
           }
           return t;
@@ -1759,60 +1835,77 @@
             h(t2) === h(t3) ? "300발급 두 번 일치" : "불일치",
             "xorshift32 는 상태가 전부라 결과가 재현돼야 한다. 어긋나면 엔진 어딘가가 시뮬 밖 상태를 읽는다");
 
-        /* T8 반복 감쇠 — 「직전 오더의 체인」이 실제로 덜 나오는지 본다.
-           제외(banned)는 코드 단위라 직전 요구 아이템 자체는 아예 안 나온다. 감쇠는
-           그 체인의 <b>다른 단계</b>에 걸리므로, 거기를 세야 규칙이 도는지 알 수 있다. */
-        const divisors = uniq(DATA.order_item, "repeat_weight_decrease").map(Number).filter((v) => v > 0);
-        const prevCh = new Set((L.prev || []).map(chainOf));
-        const sib = L.pool.filter((o) => prevCh.has(chainOf(o.item_code))
-          && !L.banned.includes(o.item_code) && Number(o.repeat_weight_decrease) > 0);
-        /* 자리1 범위 밖의 형제는 감쇠와 무관하게 애초에 안 뽑힌다 — 기대도 0, 실측도 0 이라
-           「0.00% → 0.00% · 약 0배 · PASS」 라는 무의미한 통과가 뜬다. 그건 규칙이 돈다는
-           증거가 아니라 판정이 성립하지 않는 조건이다. 범위 안 형제가 있어야 판정한다. */
-        const sibIn = L.band ? sib.filter((o) => {
-          const st = stepOf(o.item_code); return st >= L.band.first_min && st <= L.band.first_max;
-        }) : [];
-        if (!divisors.length || !prevCh.size || !sib.length || !sibIn.length) {
-          add("na", "T8 반복 감쇠 작동",
-              divisors.length ? `제수 ${divisors.join(" / ")} 인 행 존재` : "제수 전 행 0",
-              !prevCh.size ? "직전 요구가 없다(레일 맥락 끔)"
-                : !sib.length ? "직전 체인의 다른 단계가 후보에 없다"
-                : !sibIn.length ? `직전 체인 ${[...prevCh].map(chainName).join(",")} 의 다른 단계가 자리1 범위(${L.band.first_min}~${L.band.first_max}단계) 밖이다`
-                : "제수 없음",
-              !sibIn.length && sib.length
-                ? `감쇠가 걸릴 형제 ${sib.length}종은 ${sib.map((o) => stepOf(o.item_code)).join("·")}단계라 자리1 에 애초에 안 온다 &mdash; `
-                  + `기대도 0 실측도 0 이 되어 <b>통과처럼 보이지만 아무것도 재지 않는다</b>. `
-                  + `레벨을 올려 범위 안 형제가 생기게 하거나, 표본 제외 3종을 범위 안 체인에서 고르게 바꿔야 판정이 선다`
-                : "이 조건에서는 감쇠가 걸릴 자리 자체가 없다 — 레일 맥락을 켜고 발급 수를 늘려 보세요",
-              !sibIn.length && sib.length ? "judge" : null);
-        } else {
-          const seat1 = L.seatTally[0];
-          const s1n = [...seat1.values()].reduce((a, b) => a + b, 0) || 1;
-          const es = expectSeat1(), esNo = expectSeat1(true);
-          const sum = (m) => m ? sib.reduce((a, o) => a + (m.map.get(o.item_code) || 0), 0) : 0;
-          const obs = sib.reduce((a, o) => a + (seat1.get(o.item_code) || 0), 0) / s1n * 100;
-          const exp = sum(es), expNo = sum(esNo);
-          const tol = sigma3(exp / 100, s1n);
-          const divUsed = [...new Set(sib.map((o) => Number(o.repeat_weight_decrease)))].join("/");
-          /* 기대빈도가 5 미만이면 정규근사가 안 먹는다 — 감쇠가 세게 걸리면(제수 50·100 에
-             보드 배수까지 겹치면) 기대가 0.00% 로 내려가고 허용 폭도 0 이 되어, 한 번 뽑히기만
-             해도 FAIL 이 뜬다. 그건 엔진이 아니라 판정이 안 서는 조건이다. T1·T2 에는 이 가드가
-             있는데 T8 에만 없었다 — special Lv20·event Lv11 에서 실제로 가짜 FAIL 이 났다. */
-          if (!testable(exp / 100, s1n))
+        /* ── T8 반복 감쇠 작동 ───────────────────────────────────────────────
+           신판 const.order_repeat_reset_count(3) 로 <b>카운터</b>가 되살아났다.
+           본 발급은 카운터가 굴러가며 상태가 매 장 바뀌어 해석식이 안 서므로,
+           카운터를 <b>한 체인에 고정</b>한 대조 발급을 따로 돌려 그 체인의 자리1 몫이
+           제수만큼 줄어드는지 본다. 제외(banned)는 코드 단위라 직전 요구 아이템 자체는
+           아예 안 나온다 — 감쇠는 같은 체인의 <b>다른 단계</b>에 걸린다. */
+        {
+          const RESET = Number((DATA.const || {}).order_repeat_reset_count) || 0;
+          const divisors = uniq(DATA.order_item, "repeat_weight_decrease").map(Number).filter((v) => v > 0);
+          const rg1 = L.band ? seatRange(L.band, 1) : null;
+          /* 판정이 서는 체인 고르기 — 자리1 범위 안에 제수 > 0 인 후보가 있어야 한다.
+             범위 밖 체인을 고르면 기대도 0 실측도 0 이라 「0.00% → 0.00% · PASS」 라는
+             아무것도 재지 않는 통과가 뜬다. 그건 규칙이 돈다는 증거가 아니다. */
+          const inSeat1 = rg1 ? L.pool.filter((o) => {
+            const st = stepOf(o.item_code);
+            return st >= rg1.lo && st <= rg1.hi && !L.banned.includes(o.item_code);
+          }) : [];
+          const byChain = new Map();
+          inSeat1.forEach((o) => {
+            if (Number(o.repeat_weight_decrease) <= 0) return;
+            byChain.set(chainOf(o.item_code), (byChain.get(chainOf(o.item_code)) || 0) + 1);
+          });
+          const target = [...byChain.entries()].sort((a, b) => b[1] - a[1])[0];
+
+          if (!RESET || !divisors.length || !target) {
             add("na", "T8 반복 감쇠 작동",
-                `감쇠 걸린 기대 ${exp.toFixed(3)}% · 감쇠 없었다면 ${expNo.toFixed(2)}%`,
-                `기대빈도 ${((exp / 100) * s1n).toFixed(2)}건 &lt; ${MIN_EXPECT} — 표본 부족`,
-                `감쇠가 제수 ${divUsed} 에 보드 배수까지 겹쳐 기대가 0 에 붙었다 &mdash; `
-                  + `이 표본 수로는 판정이 서지 않는다. 발급 수를 늘리거나 보드 채움률을 낮춰 보세요`,
+                RESET ? `제한 ${RESET}회 · 제수 ${divisors.join(" / ") || "전 행 0"}` : "<b>const.order_repeat_reset_count 없음</b>",
+                !RESET ? "카운터 상수가 없다"
+                  : !divisors.length ? "repeat_weight_decrease 가 전 행 0 이다"
+                  : "자리1 범위 안에 제수 > 0 인 후보가 없다",
+                !RESET
+                  ? "상수가 없으면 감쇠가 영구히 안 걸린다 &mdash; 신판에는 있어야 한다(key_number 10052)"
+                  : !divisors.length
+                    ? "제수가 전부 0 이면 카운터가 돌아도 가중치가 안 바뀐다 &mdash; 규칙이 죽은 상태다"
+                    : `자리1 범위(${rg1 ? rangeText(rg1) : "—"})에 제수를 가진 후보가 없어 `
+                      + `기대도 0 실측도 0 이 된다. 레벨을 올리거나 타입을 바꿔 범위 안에 후보가 들어오게 해야 판정이 선다`,
                 "judge");
-          else add(Math.abs(obs - exp) > tol ? "no" : "ok", "T8 반복 감쇠 작동",
-              `감쇠 걸린 기대 <b>${exp.toFixed(2)}%</b> · 감쇠 없었다면 ${expNo.toFixed(2)}%`,
-              `실측 <b>${obs.toFixed(2)}%</b> (허용 ±${tol.toFixed(2)}%p)`,
-              Math.abs(obs - exp) > tol
-                ? `기대와 어긋난다 &mdash; 감쇠가 안 걸렸거나 제수가 잘못 적용됐다. 직전 체인 ${[...prevCh].map(chainName).join(",")} 의 다른 단계 ${sib.length}종을 봤다`
-                : `직전 체인 <b>${[...prevCh].map(chainName).join(",")}</b> 의 다른 단계 ${sib.length}종이 제수 ${divUsed} 로 눌려 `
-                  + `<b>${expNo.toFixed(2)}% → ${exp.toFixed(2)}%</b> 로 줄었다(약 ${(expNo / Math.max(exp, 0.001)).toFixed(0)}배). 실측이 그 안에 든다`,
-              Math.abs(obs - exp) > tol ? "logic" : null);
+          } else {
+            const [ch, nSib] = target;
+            const cr = { [ch]: RESET };
+            const esOn = expectSeat1(cr), esOff = expectSeat1({});
+            const sub = subSeat1(cr, Math.min(L.N, 4000));
+            const sibs = inSeat1.filter((o) => chainOf(o.item_code) === ch);
+            const share = (m, tot) => sibs.reduce((a, o) => a + (m.get(o.item_code) || 0), 0) / Math.max(1, tot) * 100;
+            const exp = sibs.reduce((a, o) => a + (esOn.map.get(o.item_code) || 0), 0);
+            const expNo = sibs.reduce((a, o) => a + (esOff.map.get(o.item_code) || 0), 0);
+            const obs = share(sub.map, sub.n);
+            const tol = sigma3(exp / 100, sub.n);
+            const divUsed = [...new Set(sibs.map((o) => Number(o.repeat_weight_decrease)))].join("/");
+            const fold = exp > 0 ? expNo / exp : 0;
+            /* 기대빈도 5 미만이면 정규근사가 안 먹는다 — 제수 50·100 에 보드 배수까지
+               겹치면 기대가 0 에 붙고 허용 폭도 0 이 되어, 한 번만 뽑혀도 FAIL 이 뜬다.
+               그건 엔진이 아니라 판정이 안 서는 조건이다. */
+            if (!testable(exp / 100, sub.n))
+              add("na", "T8 반복 감쇠 작동",
+                  `${chainName(ch)} 제한 ${RESET}회 · 제수 ${divUsed}`,
+                  `기대빈도 ${((exp / 100) * sub.n).toFixed(2)}건 &lt; ${MIN_EXPECT} — 표본 부족`,
+                  `감쇠가 세게 걸려 기대가 ${exp.toFixed(3)}% 로 0 에 붙었다 &mdash; `
+                    + `이 표본 수로는 판정이 서지 않는다. 발급 수를 늘리거나 보드 채움률을 낮춰 보세요`,
+                  "judge");
+            else add(Math.abs(obs - exp) > tol ? "no" : "ok", "T8 반복 감쇠 작동",
+                `${chainName(ch)}(${nSib}종) 제한 ${RESET}회 · 제수 ${divUsed} &mdash; 감쇠 시 기대 <b>${exp.toFixed(2)}%</b> · 없으면 ${expNo.toFixed(2)}%`,
+                `실측 <b>${obs.toFixed(2)}%</b> (표본 ${sub.n} · 허용 ±${tol.toFixed(2)}%p)`,
+                Math.abs(obs - exp) > tol
+                  ? `카운터를 ${RESET} 로 고정했는데 그 체인의 자리1 몫이 기대와 어긋난다 &mdash; `
+                    + `제수를 안 나눴거나(감쇠 미작동), 나눈 뒤 재정규화를 다르게 한다`
+                  : `카운터가 켜지면 ${chainName(ch)} 몫이 <b>${expNo.toFixed(2)}% → ${exp.toFixed(2)}%</b> 로 `
+                    + `약 <b>${fold.toFixed(1)}배</b> 줄고, 실측이 그 안에 든다. `
+                    + `상수(${RESET}회)·제수(${divUsed})·재정규화 셋이 다 맞물려 돈다`,
+                Math.abs(obs - exp) > tol ? "logic" : null);
+          }
         }
 
         /* ── T9 자리 후보 고갈 ───────────────────────────────────────────────
@@ -1824,8 +1917,10 @@
         {
           const b = L.band, rule = L.rule;
           const zs = L.zeroSeat || [0, 0, 0];
-          const ranges = b && rule ? Array.from({ length: rule.item_slot_max }, (_, i) =>
-            i === 0 ? [b.first_min, b.first_max] : i === 1 ? [b.second_min, b.second_max] : [b.third_min, b.third_max]) : [];
+          const ranges = b && rule ? Array.from({ length: rule.item_slot_max }, (_, i) => {
+            const rg = seatRange(b, i + 1);
+            return rg ? [rg.lo, rg.hi] : null;
+          }).filter(Boolean) : [];
           if (!ranges.length) add("na", "T9 자리 후보 고갈", "—", "—", "밴드나 order_rule 이 없어 자리 범위를 모른다");
           else {
             const hit = [], detail = [];
@@ -1850,10 +1945,10 @@
                       + `초반 레벨에서 제외 규칙과 겹치면 마른다. <code>order_slot_band</code> 의 그 자리 최대 단계를 `
                       + `한 칸 넓히면 후보가 배로 늘어 사라진다(초반 난이도가 조금 오르므로 기획 확인 필요). `
                       + `<code>order_slot_band</code> 셀 메모에는 <b>「자리 후보가 비지 않아야 한다」 제약이 없다</b> &mdash; 검증 규칙에 빠진 축이다.`
-                      + `<br><b>다만 밴드를 넓히는 건 정본 수정이 아니다</b> &mdash; 요구 종수 상한이 `
-                      + `${typeof SPEC_ITEM_SLOT_MAX !== "undefined" ? SPEC_ITEM_SLOT_MAX : 2}칸으로 내려오면(T12) `
-                      + `셋째 자리 자체가 사라져 이 고갈도 같이 없어진다. 실측으로 Lv3 의 자리3 후보 0 이 `
-                      + `<b>10.11% → 0%</b>, 종수도 명목(1종 75.0 / 2종 25.0)과 정확히 맞는다. <b>T12 부터 고치는 게 맞다</b>`
+                      + `<br>구판에서는 이 고갈이 대부분 <b>셋째 자리</b>에서 났고, 2026-09-11 신판이 `
+                      + `자리를 둘로 줄이면서 그 몫은 통째로 사라졌다(Lv3 자리3 후보 0 이 10.11% → 0%). `
+                      + `지금도 남아 있다면 그건 셋째 자리 문제가 아니라 <b>이 레벨의 해금 체인 수가 정말 모자란</b> 것이다 &mdash; `
+                      + `밴드를 넓힐지 해금을 당길지는 초반 난이도 문제라 기획이 정한다`
                     : `<br>모든 자리가 제외·중복을 겪고도 후보를 남긴다 &mdash; 절단이 일어나지 않는다`),
                 hit.length ? "data" : null);
           }
@@ -1971,68 +2066,110 @@
           }
         }
 
-        /* ── T12 요구 종수 상한 ↔ 화면 기획서 ────────────────────────────────
-           시트만 보면 이 축은 자기모순이 없다. 문제는 <b>시트 밖 정본</b>과 어긋나는 것이다.
-           화면 기획서(rosewood_screen_spec · Figma 동기화 2026-09-08)는 세 군데에서
-           같은 말을 「확정」으로 못박는다:
-             · 오더 카드 슬롯 구성 — 「요구 아이템 = 2개 고정 → 접시 슬롯 2칸(확정).
-               데이터·UI 모두 두 칸만 사용」
-             · §13-7 클라 구현 체크포인트 — 「가변 개수로 설계하지 않는다」
-             · 미결 목록 — 「오더 1건의 요구 아이템 2개/슬롯 2칸은 확정」(카드 동시 노출 수
-               표기 차이와는 무관하다고 명시)
-           그런데 시트 order_rule.item_slot_max 는 전 타입 3 이고, 그 셀 메모의 근거가
-           <code>uiux_ingame §5-3</code> ― <b>기획서를 근거로 들면서 기획서와 반대다.</b>
-           이건 표 두 개가 싸우는 게 아니라 <b>시트가 정본을 잘못 인용한 것</b>이라, 자동
-           대조가 불가능하다(기획서는 시트 JSON 에 없다). 그래서 정본 값을 상수로 박고 대조한다.
+        /* ── T12 요구 종수 상한 ───────────────────────────────────────────
+           <b>2026-09-11 신판 시트에서 해소됐다.</b> 전사(前史)를 지우지 않고 남긴다 —
+           이 검사가 왜 있었는지가 앞으로 같은 일이 생겼을 때의 판단 근거다.
 
-           2026-09-11 기획 확정 — <b>2칸 고정으로 못 박혔다.</b> 방향이 정해졌으므로
-           「어느 쪽을 고칠지 모른다」가 아니라 <b>시트를 고치면 된다</b>로 문구를 좁힌다.
-           공용 엔진이 v5.1 에서 같은 값을 SPEC_ITEM_SLOT_MAX 로 들고 있으니 그걸 읽는다 —
-           정본 상수가 두 군데서 갈라지면 두 페이지가 다른 말을 하게 된다.
-           엔진은 opts.itemSlotMax 를 안 넘기면 시트 값을 그대로 쓴다. 이 페이지는 일부러
-           안 넘긴다 — 시트를 있는 그대로 봐야 불일치를 검사할 수 있다. */
+             구판 시트  order_rule.item_slot_max = 3 (전 타입)
+             화면 기획서 세 군데에서 「요구 아이템 2개 · 슬롯 2칸 (확정)」
+             시트 셀 메모가 그 기획서(uiux_ingame §5-3)를 <b>근거로 인용하면서 반대로</b> 적었다
+
+           그래서 한동안 정본 값을 상수(SPEC_ITEM_SLOT_MAX)로 코드가 들고 있었다.
+           신판이 전 행 2 로 내려오면서 그 상수를 지웠다 — <b>이제 시트가 정본이다.</b>
+           검사는 그대로 둔다. 다시 3 이 올라오면 여기서 잡힌다(회귀 방지). */
         {
-          const SPEC_MAX = typeof SPEC_ITEM_SLOT_MAX !== "undefined" ? SPEC_ITEM_SLOT_MAX : 2;
-          const SPEC_SRC = "화면 기획서 · 오더 카드 슬롯 구성 + §13-7 (Figma 동기화 2026-09-08) · <b>2026-09-11 기획 확정</b>";
-          const bad = DATA.order_rule.filter((r) => r.in_use && Number(r.item_slot_max) > SPEC_MAX);
-          const over = ecNom ? [...ecNom.map.entries()].filter(([k]) => k > SPEC_MAX) : [];
+          /* 상한을 코드가 들고 있지 않다. 「밴드가 주는 자리 수」가 시트 안의 독립 근거다 —
+             order_slot_band 에 열이 없는 자리는 뽑을 범위가 없어 애초에 못 채운다. */
+          const seatCap = Math.max(0, ...DATA.order_slot_band
+            .filter((r) => r.in_use)
+            .map((r) => (r.third_max != null ? 3 : r.second_max != null ? 2 : 1)));
+          const bad = DATA.order_rule.filter((r) => r.in_use && Number(r.item_slot_max) > seatCap);
+          const over = ecNom ? [...ecNom.map.entries()].filter(([k]) => k > seatCap) : [];
           const overObs = over.reduce((a, [k]) => a + pct(L.cnt.get(k) || 0, ok), 0);
-          /* 고쳤을 때 어떻게 되는지까지 보여 줘야 결정이 쉽다 — order_item_count 에서
-             상한 초과 행을 빼고 남은 행을 합 10000 으로 다시 정규화한 값이다. */
-          const keep = ecNom ? [...ecNom.map.keys()].filter((k) => k <= SPEC_MAX) : [];
-          const grpRows = ecNom ? DATA.order_item_count.filter((r) =>
-            r.in_use && r.level === ecNom.grp && r.item_count <= SPEC_MAX) : [];
-          const keepSum = grpRows.reduce((a, r) => a + r.count_weight, 0);
-          const fixTo = keep.length && keepSum
-            ? grpRows.map((r) => `${r.item_count}종 ${((r.count_weight / keepSum) * 100).toFixed(1)}%`).join(" / ")
-            : "";
-          const fixed3 = (DATA.order_fixed || []).filter((r) =>
+          const fixedOver = (DATA.order_fixed || []).filter((r) =>
             r.in_use && [1, 2, 3].filter((i) => {
               const v = r[`requirement_${i}`]; return v != null && v !== "none" && v !== 0 && v !== "";
-            }).length > SPEC_MAX);
-          add(bad.length ? "no" : "ok", "T12 요구 종수 상한 ↔ 화면 기획서",
-              `<b>${SPEC_MAX}칸 고정</b> <span style="opacity:.65">(${SPEC_SRC} · 「가변 개수로 설계하지 않는다」)</span>`,
+            }).length > seatCap);
+          add(bad.length ? "no" : "ok", "T12 요구 종수 상한 ↔ 자리 수",
+              `<code>order_slot_band</code> 가 주는 자리 <b>${seatCap}개</b> <span style="opacity:.65">(열의 유무로 센다 &mdash; 하한 열이 없어도 자리는 있다)</span>`,
+              `<code>order_rule.item_slot_max</code> = <b>${uniq(DATA.order_rule, "item_slot_max").join("/")}</b>`
+                + (bad.length ? ` · 이 표본에서 ${seatCap}종 초과가 <b>${overObs.toFixed(2)}%</b>` : ""),
               bad.length
-                ? `<code>order_rule.item_slot_max</code> = <b>${[...new Set(bad.map((r) => r.item_slot_max))].join("/")}</b>`
-                  + ` (${bad.map((r) => r.order_type).join(" · ")}) · 이 표본에서 ${SPEC_MAX}종 초과가 <b>${overObs.toFixed(2)}%</b>`
-                : `<code>item_slot_max</code> 전 행 ≤ ${SPEC_MAX}`,
-              bad.length
-                ? `시트가 정본보다 한 칸 넓다. <b>시트 셀 메모의 근거가 <code>uiux_ingame §5-3</code> 인데 그 문서가 「2칸 고정(확정)」이다</b> — `
-                  + `근거 인용이 뒤집혀 있다. 정본을 따르려면 시트 네 곳이 같이 움직인다:<br>`
-                  + `· <code>order_rule.item_slot_max</code> 3 → 2 (${DATA.order_rule.length}행 전부)<br>`
-                  + `· <code>order_item_count</code> 의 ${over.map(([k]) => `${k}종`).join("·")} 행 제거 후 남은 행 합 10000 재정규화`
-                  + (over.length ? ` (지금 명목 ${over.map(([k, q]) => `${k}종 ${q.toFixed(0)}%`).join(" · ")})` : "") + `<br>`
-                  + `· <code>order_fixed.requirement_3</code> 사용 ${fixed3.length}행 정리`
-                  + (fixed3.length ? ` (seq ${fixed3.map((r) => r.fixed_seq).join(",")})` : "") + `<br>`
-                  + `· <code>order_slot_band.third_min/third_max</code> 는 미사용 열이 된다<br>`
-                  + (fixTo
-                    ? `고치면 이 레벨의 명목 분포는 <b>${fixTo}</b> 가 된다(남은 행 재정규화).<br>` : "")
-                  + `<b>2026-09-11 에 2칸으로 확정됐으므로 고칠 쪽은 시트다.</b> `
-                  + `공용 엔진은 v5.1 에서 <code>SPEC_ITEM_SLOT_MAX = 2</code> 를 정본으로 들고 있고, `
-                  + `「프로토타입」은 그 값으로 잘라 낸다 &mdash; 이 페이지는 <b>시트를 있는 그대로</b> 봐야 `
-                  + `불일치가 드러나므로 일부러 안 자른다. 시트가 2로 내려오면 이 검사는 저절로 PASS 가 된다`
-                : `정본과 일치한다`,
+                ? `시트가 자리 수보다 넓게 선언했다 (${bad.map((r) => r.order_type).join(" · ")}). `
+                  + `남는 자리는 뽑을 범위가 없어 <b>조용히 비고</b>, 그만큼 종수 분포가 깎인다(T1b).<br>`
+                  + `같이 움직여야 할 곳: <code>order_item_count</code> 의 ${over.map(([k]) => `${k}종`).join("·") || "초과"} 행`
+                  + (fixedOver.length ? ` · <code>order_fixed</code> seq ${fixedOver.map((r) => r.fixed_seq).join(",")}` : "")
+                : `<b>시트가 스스로 일관된다</b> &mdash; 선언한 상한과 밴드가 주는 자리 수가 같다. `
+                  + `구판(상한 3 · 기획서 2칸 확정)의 불일치는 2026-09-11 신판에서 해소됐고, `
+                  + `코드가 들고 있던 정본 상수(<code>SPEC_ITEM_SLOT_MAX</code>)도 같이 지웠다 &mdash; `
+                  + `<b>이제 시트 하나만 본다.</b> 이 검사는 회귀 방지로 남긴다`,
               bad.length ? "data" : null);
+        }
+
+        /* ── T13 가중치 열 ↔ 엔진 ─────────────────────────────────────────────
+           시트에 살아 있는데 <b>엔진이 안 읽는</b> 열이 하나 있다. 둘 중 하나를 코드가
+           조용히 고르면 안 되므로, 「곱했다면 어떻게 되는가」를 수치로 내놓고 판단은 넘긴다.
+             · 클라 계약(A5)에 weight / weight_multiple 이 없다 → 엔진이 안 읽는다
+             · 신판 export 에는 남아 있고 그중 일부가 곱하면 0 이다 → 곱하면 그 종은 영구 미출현
+           실측으로 「지금은 나온다」까지 확인해야 판정이 성립한다 — 안 나온다면 그건
+           열과 무관한 다른 원인(밴드·해금)이라 따로 봐야 한다. */
+        {
+          const oi = DATA.order_item || [];
+          const hasCol = oi.some((o) => o.weight != null || o.weight_multiple != null);
+          const zero = oi.filter((o) => (Number(o.weight) || 0) * (Number(o.weight_multiple) || 0) === 0);
+          if (!hasCol) {
+            add("ok", "T13 가중치 열 ↔ 엔진", "<code>weight</code> · <code>weight_multiple</code> 열 없음",
+                "엔진도 안 읽는다",
+                "번들에 열이 없고 엔진도 안 읽는다 &mdash; 클라 계약(A5)과 일치한다. 검사할 불일치가 없다");
+          } else if (!zero.length) {
+            add("ok", "T13 가중치 열 ↔ 엔진", `${oi.length}행 &mdash; 곱하면 0 인 행 <b>없음</b>`,
+                "엔진은 이 열을 안 읽는다",
+                `열이 번들에 남아 있지만 0 인 행이 없어 <b>곱하든 안 곱하든 후보 집합이 같다</b>. `
+                  + `순위까지 같은지는 값이 갈릴 때 T2 가 잡는다`);
+          } else {
+            /* 「지금 실제로 나오나」 — 자리 상관없이 이번 표본 전체에서 센다 */
+            const lvOk = zero.filter((o) => Number(o.unlock_level) <= L.lv);
+            const appeared = lvOk.filter((o) => (L.tally.get(o.item_code) || 0) > 0);
+            const hits = lvOk.reduce((a, o) => a + (L.tally.get(o.item_code) || 0), 0);
+            const totalReq = [...L.tally.values()].reduce((a, b) => a + b, 0) || 1;
+            add(appeared.length ? "warn" : "na", "T13 가중치 열 ↔ 엔진",
+                `${oi.length}행 중 <b>곱하면 0 인 행 ${zero.length}개</b> <span style="opacity:.65">(weight ${uniq(oi, "weight").join("/")} × multiple ${uniq(oi, "weight_multiple").join("/")})</span>`,
+                lvOk.length
+                  ? `Lv${L.lv} 해금분 ${lvOk.length}종 중 <b>${appeared.length}종</b>이 실제로 나왔다 &mdash; 요구 ${hits}건 (전체의 ${((hits / totalReq) * 100).toFixed(2)}%)`
+                  : `이 레벨에는 해당 행이 해금되지 않았다 (0종)`,
+                lvOk.length === 0
+                  ? `곱하면 0 이 되는 ${zero.length}종이 Lv${L.lv} 에서는 아직 잠겨 있어 이 레벨에서는 판정이 안 선다 &mdash; 레벨을 올려 보세요`
+                  : `<b>엔진은 이 열을 안 곱한다</b>(클라 계약에 없는 열이다). 그래서 지금은 ${appeared.length}종이 정상적으로 나온다.<br>`
+                    + `만약 계약이 바뀌어 곱하게 되면 이 <b>${zero.length}종은 오더에 영구히 안 나온다</b> &mdash; `
+                    + `이번 표본의 요구 ${((hits / totalReq) * 100).toFixed(2)}% 가 통째로 사라지고 그 몫이 다른 아이템으로 간다.<br>`
+                    + `<b>시트에 열이 남아 있는 것과 계약에 있는 것은 다른 문제다.</b> `
+                    + `열을 지울지, 계약에 넣을지는 기획이 정할 일이라 여기서는 수치만 낸다`,
+                lvOk.length ? "data" : "judge");
+          }
+        }
+
+        /* ── T14 아이템 이름 출처 ──────────────────────────────────────────────
+           신판 시트에는 <b>한글 이름이 한 글자도 없다</b>(36탭 전수). 영문 경로는
+           item_display.name_key → string_code.en 으로 완결되지만, 이 페이지·벤치는
+           사람이 눈으로 읽는 표라 이름을 버리면 못 쓴다. 변환기가 구판 출력본에서
+           한글을 넘겨받아 덮는데, 어디까지 덮였는지 안 보이면 조용히 영문으로 떨어진다. */
+        {
+          const spec = DATA.item_spec || [];
+          const named = spec.filter((r) => r.name && String(r.name).trim());
+          const ko = named.filter((r) => /[가-힣]/.test(String(r.name)));
+          const en = named.length - ko.length;
+          const none = spec.length - named.length;
+          add(none ? "warn" : en ? "warn" : "ok", "T14 아이템 이름 출처",
+              `<code>item_spec</code> ${spec.length}종 &mdash; 신판 시트에 한글 이름 <b>0개</b>`,
+              `한글 <b>${ko.length}</b> · 영문 폴백 <b>${en}</b>` + (none ? ` · <span class="w">이름 없음 ${none}</span>` : ""),
+              none
+                ? `${none}종은 이름이 아예 없다 &mdash; 표에 코드로만 뜬다. 변환기의 이름 조립(<code>item_display.name_key</code> → <code>string_code.en</code>)이 끊긴 자리다`
+                : en
+                  ? `${en}종이 영문으로 떨어졌다. 구판 한글 사이드카가 덮지 못한 <b>신규 아이템</b>일 가능성이 높다 &mdash; `
+                    + `신판에서 추가된 종이라 대응하는 구판 행이 없다. 게임 동작에는 영향이 없고 <b>읽기</b>만 불편하다. `
+                    + `시트에 한글 열이 생기면 저절로 해소된다`
+                  : `${spec.length}종 전부 한글 이름이 붙었다 &mdash; 변환기의 사이드카 주입이 빠짐없이 돌았다`,
+              none || en ? "data" : null);
         }
 
         summarize(rows, "#rwRulesSum");
@@ -2084,7 +2221,7 @@
         const keep = RNG.save(); RNG.load(String(BSEED)); RNG.next(); BSEED = Number(RNG.save()); RNG.load(keep);
         run();
       };
-      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix", "#rwDaily", "#rwFill", "#rwArt"].forEach((s) => {
+      ["#rwN", "#rwLv", "#rwType", "#rwBoard", "#rwCtx", "#rwFix", "#rwFill", "#rwArt"].forEach((s) => {
         $(s).addEventListener("change", run);
       });
 

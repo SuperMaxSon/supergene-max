@@ -198,7 +198,7 @@
       .rw-track { display: flex; gap: 5px; align-items: stretch; min-height: 124px; width: max-content; min-width: 100%; }
       .rw-track > .rw-card, .rw-track > .rw-lane {
         flex: 1 0 112px; width: auto; min-width: 112px; container-type: inline-size; }
-      /* 카드 안쪽은 전부 카드 폭(cqi)에 비례한다 — 5장이 들어와도 글자가 살아 있게 */
+      /* 카드 안쪽은 전부 카드 폭(cqi)에 비례한다 — 6장(슬롯 slot_count 합)이 들어와도 글자가 살아 있게 */
       .rw-track .rw-card { padding: 7px 5px 5px; gap: 4px; }
       .rw-track .rw-npc { top: -11px; left: 4px; width: clamp(19px, 24cqi, 30px);
                           height: clamp(19px, 24cqi, 30px); font-size: clamp(7px, 8cqi, 9px); }
@@ -268,7 +268,7 @@
                 font-variant-numeric: tabular-nums; white-space: nowrap; }
       .rw-tag svg { width: 9px; height: 9px; flex: none; fill: var(--tone); }
       .rw-tag.t-coin { --tone: #E09112; }   /* A 보상 — 코인 */
-      .rw-tag.t-diff { --tone: #7C6BD9; }   /* 난이도 — 하루 누적 축 */
+      .rw-tag.t-diff { --tone: #7C6BD9; }   /* 난이도 — 카드 1장 기준 */
       .rw-tag.t-event { --tone: #0E9C97; }  /* B 보상 — 이벤트 재화 */
       .rw-tag.t-pack { --tone: #D9583F; }   /* C 보상 — 팩·카드 */
       /* 값이 없는 축은 회색으로 죽인다. 색 지정 뒤에 와야 이긴다 —
@@ -276,7 +276,8 @@
       .rw-tag.off { --tone: var(--text-faint); opacity: 0.55; }
       .rw-tags { display: flex; gap: 3px; margin-left: auto; }
 
-      /* 오더 타입 — 고정/일반/손님/스페셜/이벤트. 디버그와 무관하게 늘 보인다 */
+      /* 오더 타입 — 고정 + 신판 5종(일반·고급·무작위3·무작위4·특별). avatar·event 는 소멸.
+         클래스 이름은 엔진 TYPE_KO 키(k-${type}) 그대로다. 디버그와 무관하게 늘 보인다 */
       .rw-type { display: inline-flex; align-items: center; gap: 2px; height: 15px; padding: 0 6px;
                  border-radius: 8px; border: 1px solid color-mix(in srgb, var(--tone) 42%, transparent);
                  background: color-mix(in srgb, var(--tone) 15%, var(--surface));
@@ -285,9 +286,10 @@
       .rw-type i { font-style: normal; opacity: 0.62; font-family: ui-monospace, Menlo, monospace; }
       .rw-type.k-fixed { --tone: #5B6B8C; }
       .rw-type.k-normal { --tone: #2F7DD1; }
-      .rw-type.k-avatar { --tone: #8B5CF6; }
+      .rw-type.k-high { --tone: #8B5CF6; }
+      .rw-type.k-random_3 { --tone: #2E9E5B; }
+      .rw-type.k-random_4 { --tone: #DB3A7B; }
       .rw-type.k-special { --tone: #E08A0B; }
-      .rw-type.k-event { --tone: #DB3A7B; }
       .rw-dish { display: flex; gap: 5px; }
       .rw-btn.serve { background: var(--balance); border-color: var(--balance); color: #fff;
                       padding: 7px 14px; font-size: 12px; border-radius: 14px; min-height: 32px; }
@@ -553,7 +555,8 @@
           배지는 문서의 셀 배지 슬롯을 따릅니다 &mdash;
           <b>A</b> 좌상 재고 · <b>B</b> 우상 ⚡생성기 또는 ✓오더 요구 · <b>C</b> 우하 ♦최고 단계.
           경험치 공급원은 심부름 하나뿐이라, 랜덤 오더를 보려면 <b>심부름 완료</b>로 레벨을 올려야 합니다 &mdash;
-          Lv1 에 열리는 칸은 <b>고정 오더 한 칸</b>뿐이고 일반·손님은 Lv3, 스페셜 Lv4, 이벤트는 Lv6 부터입니다.
+          Lv1 에 열리는 칸은 <b>고정 오더 한 칸</b>뿐이고 일반·고급은 Lv3, 무작위3 은 Lv4, 무작위4 는 Lv5 부터입니다.
+          스페셜(Lv4)은 추첨이 아니라 order_special 의 trigger_task 로 뜨는 <b>대본형</b>입니다.
           생산·병합·거부·납품 연출은 허브 <a href="merge-feedback-anim.html">머지 피드백 애니메이션</a> 문서의
           타이밍·이징을 그대로 씁니다 &mdash; A1 클릭 · A2 베지어 비행 · A4 흡수→임팩트→팝 · C1 거부 · C3 충전 완료 · C4 납품.
         </div>

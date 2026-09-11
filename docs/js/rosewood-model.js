@@ -39,7 +39,7 @@ const Model = (() => {
         cells: S.cells, level: S.level, exp: S.exp, coin: S.coin, energy: S.energy,
         day: S.day, choreSeq: S.choreSeq, sel: S.sel, orderGen: S.orderGen, orderFree: S.orderFree,
         gem: S.gem, debug: S.debug, serveCount: S.serveCount, energyLastAt: S.energyLastAt,
-        boost: S.boost, out: S.out, inv: S.inv, diff: S.diff, outFold: S.outFold,
+        boost: S.boost, out: S.out, inv: S.inv, outFold: S.outFold,
         slots: S.slots, prevOfSlot: S.prevOfSlot,
         log: S.log.slice(0, 20).map((e) => ({ ...e, t: e.t.toISOString() })),
       };
@@ -94,33 +94,6 @@ const Model = (() => {
     return g;
   }
 
-  /* ── 하루 누적 난이도 ──────────────────────────────────────────────────
-     시트 셀 메모의 3번째 축. 납품마다 그 카드의 diff 를 쌓고, 하루가 지나면 0 으로
-     돌아간다. 밴드 선택이 이 값을 본다(`order_slot_band.diff_sum_min/max`).
-     리셋 기준시는 `const.order_daily_diff_reset_utc_sec`(하루 중 UTC 초). */
-  function diffState() {
-    if (!S.diff) S.diff = { score: 0, dayAt: dayStamp() };
-    return S.diff;
-  }
-  function dayStamp(now) {
-    const C = DATA.const || {};
-    const base = C.order_daily_diff_reset_utc_sec || 0;
-    const t = (now == null ? Date.now() / 1000 : now) - base;
-    return Math.floor(t / 86400);
-  }
-  function rollDiffDay(now) {
-    const d = diffState(), stamp = dayStamp(now);
-    if (d.dayAt !== stamp) { d.dayAt = stamp; d.score = 0; changed("rail"); return true; }
-    return false;
-  }
-  function addDiff(n) {
-    const d = diffState();
-    rollDiffDay();
-    d.score += n || 0;
-    changed("rail");
-  }
-  const diffScore = () => { rollDiffDay(); return diffState().score; };
-
   /* ── 보상함 ──────────────────────────────────────────────────────────
      「보드로 못 받는 보상」이 여기로 간다 — 보드가 꽉 찼거나, 애초에 보드 밖에서
      주어지는 보상. 화면 기획서 §8 보상 지급 3분기의 세 번째 갈래다. */
@@ -163,7 +136,7 @@ const Model = (() => {
   function fillEmptySlots(reason) {
     for (const n of openSlots()) {
       if (S.slots[n]) continue;
-      const r = generateOrder(n, { dailyDiff: diffScore(), itemSlotMax: SPEC_ITEM_SLOT_MAX });
+      const r = generateOrder(n);
       S.log.unshift({ slot: n, type: r.card ? r.card.type : slotType(n), ok: !!r.card, reason, lines: r.log, t: new Date() });
       if (r.card) S.slots[n] = r.card;
     }
@@ -172,13 +145,14 @@ const Model = (() => {
   }
 
   /* ── 오더 ────────────────────────────────────────────────────────────
-     납품 확정 — 코인·직전 요구품·난이도 누적을 한 번에 처리하고 다음 카드를 발급한다.
-     반복 감쇠는 카운터가 아니라 **직전 오더의 체인** 한 장으로 판정한다(시트 메모). */
+     납품 확정 — 코인과 직전 요구품을 갈무리하고 다음 카드를 발급한다.
+     `prevOfSlot` 은 다음 추첨의 **후보 제외** 목록이다(제외 단위는 아이템 코드).
+     반복 감쇠 카운터는 엔진이 체인 단위로 따로 들고 있다 — 여기서 만지지 않는다.
+     하루 누적 난이도 축은 신판 시트에서 폐기됐다(`order_slot_band` 는 종류+레벨 두 축). */
   function commitServe(n, card, reason) {
     S.coin += card.coin;
     S.serveCount = (S.serveCount || 0) + 1;
     S.prevOfSlot[n] = card.reqs.map((q) => q.code);
-    addDiff(card.diff || 0);
     S.slots[n] = null;
     fillEmptySlots(reason);
     changed("all");
@@ -194,7 +168,7 @@ const Model = (() => {
     subscribe, changed, save, saveNow,
     cellAt, place, clear, move, select, payProduce,
     addCoin, addGem, addEnergy, gainExp,
-    diffScore, addDiff, rollDiffDay, dayStamp, spiralOrder,
+    spiralOrder,
     toBox, grantItem,
     stash, unstash, buySlot,
     commitServe, dropOrder, fillEmptySlots,
