@@ -583,6 +583,23 @@ const AVATAR_DB = [
   ["Nora",19],
 ];
 /* [level, exp_cost] */
+/* [event_id, band_seq, score_base, score_min, score_max, token_pct, token_fix]
+   실물 시트다. 예전엔 「자리를 채우는 임시값」 5행을 손으로 박아 뒀는데, 그 바람에
+   벤치와 「오더 추첨 분석」의 이벤트 점수가 갈렸다(Lv30 에서 94 대 24). 이제 같은 표를 본다. */
+const EVENT_DB = [
+  [120002,1,"coin",0,9999,2500,0],
+  [120004,1,"coin",0,9999,0,0],
+  [120003,1,"coin",0,9999,2500,0],
+  [120008,1,"coin",0,9999,2500,0],
+  [120009,1,"coin",0,9999,0,0],
+];
+/* [special_no, chain_key, start_item_code, avatar_key, trigger_task, duration_sec, in_use]
+   특별주문 대본. 추첨이 아니라 chore 완료(trigger_task)로 열린다 — 슬롯 6 의 발급 경로다. */
+const SPECIAL_DB = [
+  [1,"Q_CAT",1804,"Poppy","T_TASK_2_7",0,1],
+  [2,"Q_WAX",2201,"Hazel","T_TASK_8_9",0,1],
+  [3,"Q_SEW",2003,"Tess","none",0,0],
+];
 const LEVEL_DB = [
   [1,15],
   [2,30],
@@ -748,16 +765,13 @@ const DEFAULTS = () => ({
                                  first_min, first_max, second_max]) =>
     ({ order_type, band_seq, level_min, level_max,
        first_min, first_max, second_max, in_use: 1 })),
-  /* 이벤트 점수 — 규칙은 기획서 1.2.1 [5] 그대로. 값은 시트가 정본이라
-     여기 5행은 자리를 채우는 임시값이다(실물 시트로 갈아끼워야 한다).
-     기준값이 무엇인지 기획서에 안 적혀 있어 난이도(diff)로 두었다 — 확인 필요. */
-  event_order_score: [
-    { score_min: 0, score_max: 4, token_pct: 0, token_fix: 1, in_use: 1 },
-    { score_min: 5, score_max: 14, token_pct: 0, token_fix: 2, in_use: 1 },
-    { score_min: 15, score_max: 29, token_pct: 2000, token_fix: 0, in_use: 1 },
-    { score_min: 30, score_max: 59, token_pct: 2500, token_fix: 0, in_use: 1 },
-    { score_min: 60, score_max: 9999, token_pct: 3000, token_fix: 0, in_use: 1 },
-  ],
+  /* 이벤트 점수 — 규칙은 기획서 1.2.1 [5], 값은 실물 시트다.
+     score_base 칸이 「coin」이라 기준값은 난이도가 아니라 코인이다. */
+  event_order_score: EVENT_DB.map(([event_id, band_seq, score_base, score_min, score_max, token_pct, token_fix]) =>
+    ({ event_id, band_seq, score_base, score_min, score_max, token_pct, token_fix, in_use: 1 })),
+  /* 특별주문 대본 — 슬롯 6 은 추첨이 아니라 이 표의 trigger_task 로 열린다 */
+  order_special: SPECIAL_DB.map(([special_no, chain_key, start_item_code, avatar_key, trigger_task, duration_sec, in_use]) =>
+    ({ special_no, chain_key, start_item_code, avatar_key, trigger_task, duration_sec, in_use })),
   order_item_count: COUNT_DB.map(([level, item_count, count_weight]) =>
     ({ level, item_count, count_weight, in_use: 1 })),
   /* requirement_3 은 신판에서 삭제됐다. slot_3 열은 남아 있지만 16행 전부 0 이라

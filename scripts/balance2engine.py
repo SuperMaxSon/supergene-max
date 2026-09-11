@@ -39,8 +39,12 @@ def splice(src, name, body, header=None):
     m = open_re.search(src)
     if not m:
         raise SystemExit(f"블록 없음: {name}")
-    end = src.index("\n];", m.end())
-    new = src[:m.start()] + f"const {name} = [\n" + body + src[end:]
+    # 닫는 줄은 「줄 맨 앞의 ];」다. 빈 블록이면 그게 여는 줄 바로 다음이라
+    # "\n];" 로 찾으면 다음 블록의 닫는 줄까지 삼킨다 — 그 사고를 한 번 냈다.
+    close = re.compile(r"(?m)^\];").search(src, m.end())
+    if not close:
+        raise SystemExit(f"블록 끝을 못 찾음: {name}")
+    new = src[:m.start()] + f"const {name} = [\n" + (body + "\n" if body else "") + src[close.start():]
     if header is not None:
         # 블록 바로 앞 주석 한 줄(또는 여러 줄) 교체 — `/* … */` 한 덩어리만 본다
         i = new.index(f"const {name} = [")
@@ -128,6 +132,16 @@ def main():
         "/* [avatar_key, open_day] — unlock_level 은 에디터 전용 열이 됐다.\n"
         "   신판에서 order_avatar 는 오더 타입이 아니라 「손님 초상 테이블」이다 */")
 
+    # 이벤트 점수·특별주문 대본 — 예전엔 DEFAULTS 안에 임시값으로 박혀 있어서
+    # 벤치와 「오더 추첨 분석」의 이벤트 점수가 갈렸다. 같은 표를 보게 한다.
+    src = splice(src, "EVENT_DB", rows([
+        [r["event_id"], r["band_seq"], r["score_base"], r["score_min"], r["score_max"],
+         r["token_pct"], r["token_fix"]] for r in d["event_order_score"]]))
+
+    src = splice(src, "SPECIAL_DB", rows([
+        [r["special_no"], r["chain_key"], r["start_item_code"], r["avatar_key"],
+         r["trigger_task"], r["duration_sec"], r["in_use"]] for r in d["order_special"]]))
+
     src = splice(src, "LEVEL_DB", rows([
         [r["level"], r["exp_cost"]] for r in d["level_curve"]]))
 
@@ -144,6 +158,7 @@ def main():
     for k, t in (("ITEM_DB", "item_spec"), ("ORDER_DB", "order_item"), ("RULE_DB", "order_rule"),
                  ("BAND_DB", "order_slot_band"), ("COUNT_DB", "order_item_count"),
                  ("FIXED_DB", "order_fixed"), ("AVATAR_DB", "order_avatar"),
+                 ("EVENT_DB", "event_order_score"), ("SPECIAL_DB", "order_special"),
                  ("LEVEL_DB", "level_curve")):
         print(f"   {k:10s} {len(d[t])}")
     print(f"   CONST_DB   {len(d['const'])}")
