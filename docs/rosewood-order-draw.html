@@ -731,7 +731,7 @@
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
       const SPEC_VER = "1.1";
       const SPEC_AT = "2026-09-11 11:49";
-      const BUILD_AT = "2026-09-11 20:52";
+      const BUILD_AT = "2026-09-11 21:18";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -3204,18 +3204,43 @@
                      lo: bs.length ? bs[0].first_max : null, hi: bs.length ? bs[bs.length - 1].first_max : null };
           }).filter((x) => x.g != null);
           const flat = grown.filter((x) => x.g <= 0);
+          /* 「안 자란다」만으로는 얼마나 나쁜지 안 보인다 — <b>후보가 몇 종 남는지</b>가
+             실제로 아픈 부분이다. 밴드가 좁으면 후보가 적고, 후보가 적은데 보드 배수가
+             최대 ${mult}배로 갈리면 <b>보드에 무엇이 놓였냐가 결과를 통째로 정한다</b>
+             (실측: Lv5 고급은 한 보드에서 한 아이템이 100% 를 가져갔다).
+             한 단계만 넓혔을 때 후보가 몇으로 느는지까지 같이 준다 — 기획이 고칠 폭을
+             바로 고를 수 있게. 현재 화면 레벨 기준으로 센다. */
+          const candN = (lo, hi, lv) => (DATA.order_item || []).filter((o) => {
+            const st = stepOf(o.item_code);
+            return st >= lo && st <= hi && (o.unlock_level || 0) <= lv;
+          }).length;
+          const mult = (DATA.const || {}).order_weight_mult_higher_level ?? "?";
+          const pool = flat.map((x) => {
+            const b = pickBand(x.t, L.lv);
+            if (!b) return { ...x, now: null };
+            return { ...x, lo2: b.first_min, hi2: b.first_max,
+                     now: candN(b.first_min, b.first_max, L.lv),
+                     wide: candN(b.first_min, b.first_max + 1, L.lv) };
+          });
           if (!grown.length) add("na", "T17 요구 단계 성장", "—", "—", "밴드 행이 없다");
           else add(flat.length ? "warn" : "ok", "T17 요구 단계 성장",
               "레벨 구간이 올라가면 <code>first_max</code> 도 오른다",
               grown.map((x) => `${x.t} ${x.lo}→${x.hi}`).join(" · "),
               flat.length
                 ? `${flat.map((x) => `${typeTag(x.t)} 가 <b>${x.lo}단계에 붙박이</b>`).join(" · ")}`
-                  + ` &mdash; 다른 칸이 깊어지는 동안 혼자 그대로라 후반에 가장 쉬운 칸이 된다`
+                  + ` &mdash; 다른 칸이 깊어지는 동안 혼자 그대로라 후반에 가장 쉬운 칸이 된다.<br>`
+                  + pool.filter((x) => x.now != null).map((x) =>
+                      `<b>Lv${L.lv} 기준 ${typeTag(x.t)} 후보 ${x.now}종</b>(단계 ${x.lo2}~${x.hi2})`
+                      + ` &mdash; 한 단계만 넓히면 <b>${x.wide}종</b>`).join(" · ")
                 : "한 칸짜리 추첨 타입이 모두 레벨에 따라 깊어진다",
               flat.length ? "data" : null,
               flat.length
                 ? `${flat.map((x) => x.t).join("·")} 는 최고 레벨에서도 ${flat[0].hi}단계만 요구합니다. `
-                  + `<b>의도인가요?</b> 전용 카드 아트가 있는 타입이면 「특별한 칸」으로 읽히는데 값은 반대로 서 있습니다`
+                  + `<b>의도인가요?</b> 전용 카드 아트가 있는 타입이면 「특별한 칸」으로 읽히는데 값은 반대로 서 있습니다.<br>`
+                  + pool.filter((x) => x.now != null).map((x) =>
+                      `지금 Lv${L.lv} 에서 후보가 <b>${x.now}종</b>뿐이라, 보드 배수(최대 <b>${mult}배</b>)가 그중 하나에 걸리면 `
+                      + `<b>그 아이템이 사실상 전부를 가져갑니다</b> &mdash; 플레이어 눈에는 「${typeTag(x.t)} 는 맨날 같은 것」으로 보입니다. `
+                      + `밴드를 한 단계만 넓혀도 후보가 <b>${x.wide}종</b>이 됩니다`).join("<br>")
                 : null);
         }
 
