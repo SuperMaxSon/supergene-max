@@ -605,6 +605,14 @@
         </div>
         <div class="rw-panel">
           <div class="rw-pb">
+            <!-- 한 줄만 뽑는 버튼 — 아래 통계는 「돌리기」가 수백 줄을 돌려 평균을 낸 것이고,
+                 이건 <b>지금 화면에 뜰 한 줄</b>을 본다. 누를 때마다 시드가 올라가므로 매번
+                 다른 줄이 나오고, 쓴 시드를 같이 적어 두니 같은 줄을 다시 볼 수도 있다. -->
+            <div class="rw-bar" style="margin-top:0">
+              <button class="rw-btn pri" id="rwRailGo">🎲 새 레일 한 줄</button>
+              <span class="rw-tnote" style="margin:0;align-self:center">누를 때마다 <b>보드와 다섯 칸을 새로</b> 뽑습니다 &mdash; 아래 통계는 안 바뀝니다</span>
+            </div>
+            <div id="rwRailOne"></div>
             <p class="rw-tnote" id="rwRailNote"></p>
             <div class="rw-kpis" id="rwRailKpi"></div>
             <p class="rw-tnote">슬롯별 &mdash; 한 줄 안에서 각 칸이 내놓는 값</p>
@@ -652,7 +660,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v5.0 · 2026-09-11 17:08";   // 날짜만으로는 안 갈린다 — 같은 날 여러 판이 난다. 허브 카드 updated 와 같은 값으로 둔다
+      const PAGE_BUILD = "v5.1 · 2026-09-11 17:15";   // 날짜만으로는 안 갈린다 — 같은 날 여러 판이 난다. 허브 카드 updated 와 같은 값으로 둔다
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -1894,31 +1902,79 @@
         RNG.load(String(SEED0 + 2));
         try { railBody(lv, fill, N); } finally { RNG.load(keep); }
       }
+      /* 레일에 실제로 서는 칸 — special 은 추첨 대상이 아니라 빠진다 */
+      function railSlotNos() {
+        const out = [];
+        for (let n = 1; n <= slotCount(); n++) if (isDrawType(slotType(n))) out.push(n);
+        return out;
+      }
+      /* 레일 한 줄 — 통계용 루프와 「새 레일 한 줄」 버튼이 <b>같은 함수</b>를 쓴다.
+         따로 쓰면 버튼이 보여 주는 줄과 통계가 다른 규칙으로 뽑혀 신뢰가 깨진다.
+         정본 ⑥: 번호순으로 채우고 앞 카드 요구품을 뒤 후보에서 뺀다. */
+      function oneRail(lv, fill, boardSeed) {
+        const bd = boardRandom(lv, fill, boardSeed);
+        const req = new Set(); const CR = {}; const line = [];
+        let d = 0, c = 0; const ds = [];
+        for (const no of railSlotNos()) {
+          const cut = req.size;      // 이 칸이 뽑기 직전에 이미 빠져 있던 코드 수
+          const r = generateOrder(no, { level: lv, counts: bd.counts, othersReq: req,
+                                        prev: null, repeat: CR, dry: true, skipFixed: true });
+          if (!r.card) { line.push({ no, type: slotType(no), cut, why: r.locked ? "미해금" : "발급 실패" }); continue; }
+          r.card.reqs.forEach((q) => req.add(q.code));
+          d += r.card.diff; c += r.card.coin; ds.push(r.card.diff);
+          line.push({ no, type: slotType(no), cut, card: r.card });
+        }
+        const gap = ds.length > 1 ? Math.max(...ds) / Math.max(1, Math.min(...ds)) : null;
+        return { line, d, c, ds, gap, board: bd, seed: boardSeed };
+      }
+      /* 레일 한 줄을 표로 — 통계 쪽 표본 3줄과 버튼이 같은 표를 쓴다 */
+      function railTable(sm, title) {
+        return `<div class="rw-tw" style="margin-bottom:10px">
+            <table><thead><tr><th>슬롯</th><th>타입</th><th>요구</th><th class="num">난이도</th><th class="num">코인</th><th class="num">앞 칸이 뺀 후보</th></tr></thead>
+            <tbody>${sm.line.map((x) => `<tr><td>${x.no}</td><td>${TYPE_KO[x.type] || x.type}</td>
+              <td>${x.card ? `<span class="rw-blabel">${x.card.reqs.map((q) => chipArt(q.code)).join("")}`
+                    + `${x.card.reqs.map((q) => labelOf(q.code)).join(" + ")}</span>`
+                  : `<span class="rw-v na">${x.why}</span>`}</td>
+              <td class="num">${x.card ? x.card.diff : "—"}</td><td class="num">${x.card ? x.card.coin : "—"}</td>
+              <td class="num" style="opacity:.7">${x.cut ? `${x.cut}종` : "—"}</td></tr>`).join("")}
+            <tr><td colspan="3"><b>${title || "줄 합계"}</b>${sm.gap ? ` <span style="opacity:.7">· 가장 어려운 칸이 가장 쉬운 칸의 <b>${sm.gap.toFixed(1)}배</b></span>` : ""}</td>
+                <td class="num"><b>${sm.d}</b></td><td class="num"><b>${sm.c}</b></td><td></td></tr>
+            </tbody></table></div>`;
+      }
+      /* 「새 레일 한 줄」 — 누를 때마다 올라가는 자체 시드를 쓴다. 통계 쪽(SEED0+2)과
+         분리해서, 버튼을 눌러도 아래 평균이 흔들리지 않게 한다. */
+      let RAIL_ONE = 0;
+      function renderRailOne() {
+        const lv = clamp(Number($("#rwLv").value) || 1, 1, 30);
+        const fill = $("#rwFill").value;
+        RAIL_ONE++;
+        const keep = RNG.save();
+        RNG.load(String(SEED0 + 3 + RAIL_ONE * 7919));
+        let sm;
+        try { sm = oneRail(lv, fill, `o${RAIL_ONE}`); } finally { RNG.load(keep); }
+        const live = sm.line.filter((x) => x.card).length;
+        $("#rwRailOne").innerHTML =
+          `<p class="rw-tnote" style="margin-bottom:6px">Lv${lv} · 보드 채움 ${fill}% · `
+          + `${live}/${sm.line.length}칸 발급 · <code>레일 #${RAIL_ONE}</code> `
+          + `<span style="opacity:.65">(같은 번호면 같은 줄이 다시 나옵니다)</span></p>`
+          + railTable(sm, `레일 #${RAIL_ONE} 합계`);
+      }
+
       function railBody(lv, fill, N) {
         const R = clamp(Math.round(N / 10), 10, 200);
-        const railSlots = [];
-        for (let n = 1; n <= slotCount(); n++) if (isDrawType(slotType(n))) railSlots.push(n);
+        const railSlots = railSlotNos();
         const per = railSlots.map((no) => ({ no, type: slotType(no), diff: [], coin: [], empty: 0, cut: 0, draws: 0 }));
         const sums = []; const gaps = []; const samples = [];
         for (let i = 0; i < R; i++) {
-          const bd = boardRandom(lv, fill, `r${BSEED}:${i}`);
-          const req = new Set(); const CR = {}; const line = [];
-          let sd = 0, sc = 0; const ds = [];
-          railSlots.forEach((no, k) => {
-            /* 이 칸이 뽑기 <b>직전</b>에 이미 빠져 있던 코드 수 — 앞 칸들이 요구한 것이다.
-               「요구 제외가 실제로 무나」를 가정 없이 재는 유일한 값이다. */
-            per[k].cut += req.size; per[k].draws++;
-            const r = generateOrder(no, { level: lv, counts: bd.counts, othersReq: req,
-                                          prev: null, repeat: CR, dry: true, skipFixed: true });
-            if (!r.card) { per[k].empty++; line.push({ no, type: slotType(no), why: r.locked ? "미해금" : "발급 실패" }); return; }
-            r.card.reqs.forEach((q) => req.add(q.code));
-            per[k].diff.push(r.card.diff); per[k].coin.push(r.card.coin);
-            sd += r.card.diff; sc += r.card.coin; ds.push(r.card.diff);
-            line.push({ no, type: slotType(no), card: r.card });
+          const sm = oneRail(lv, fill, `r${BSEED}:${i}`);
+          sm.line.forEach((x, k) => {
+            per[k].cut += x.cut; per[k].draws++;
+            if (!x.card) { per[k].empty++; return; }
+            per[k].diff.push(x.card.diff); per[k].coin.push(x.card.coin);
           });
-          sums.push({ d: sd, c: sc, n: ds.length });
-          if (ds.length > 1) gaps.push(Math.max(...ds) / Math.max(1, Math.min(...ds)));
-          if (samples.length < 3) samples.push({ line, d: sd, c: sc, seed: i });
+          sums.push({ d: sm.d, c: sm.c, n: sm.ds.length });
+          if (sm.gap != null) gaps.push(sm.gap);
+          if (samples.length < 3) samples.push(sm);
         }
         const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
         const full = sums.filter((x) => x.n === railSlots.length).length;
@@ -1948,15 +2004,7 @@
           ? B.map(([lo, hi], i) => barHTML(hi === Infinity ? `${lo}배 이상` : `${lo}~${hi}배`,
               hist[i], gaps.length, null, (i * 50) % 360, null, (hmax / gaps.length) * 100)).join("")
           : '<div class="rw-empty">칸이 하나뿐이라 격차를 잴 수 없습니다.</div>';
-        $("#rwRailSamples").innerHTML = samples.map((sm) => `<div class="rw-tw" style="margin-bottom:10px">
-            <table><thead><tr><th>슬롯</th><th>타입</th><th>요구</th><th class="num">난이도</th><th class="num">코인</th></tr></thead>
-            <tbody>${sm.line.map((x) => `<tr><td>${x.no}</td><td>${TYPE_KO[x.type] || x.type}</td>
-              <td>${x.card ? `<span class="rw-blabel">${x.card.reqs.map((q) => chipArt(q.code)).join("")}`
-                    + `${x.card.reqs.map((q) => labelOf(q.code)).join(" + ")}</span>`
-                  : `<span class="rw-v na">${x.why}</span>`}</td>
-              <td class="num">${x.card ? x.card.diff : "—"}</td><td class="num">${x.card ? x.card.coin : "—"}</td></tr>`).join("")}
-            <tr><td colspan="3"><b>줄 합계</b></td><td class="num"><b>${sm.d}</b></td><td class="num"><b>${sm.c}</b></td></tr>
-            </tbody></table></div>`).join("");
+        $("#rwRailSamples").innerHTML = samples.map((sm, i) => railTable(sm, `표본 ${i + 1}줄 합계`)).join("");
       }
 
       /* 자리별 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
@@ -2895,6 +2943,10 @@
       };
       /* 보드만 다시 뽑는다. xorshift 를 한 번 굴려 다음 보드 시드로 쓴다 — 결정적이라
          같은 시드에서는 같은 보드가 나온다(재현성 검사가 이걸 본다). */
+      /* 「새 레일 한 줄」은 run() 을 부르지 않는다 — 수백 줄 통계를 다시 돌릴 이유가 없고,
+         아래 평균이 눌러도 그대로여야 「이 한 줄은 표본 하나」라는 게 읽힌다. */
+      $("#rwRailGo").onclick = () => { if (DATA.order_rule.length) renderRailOne(); };
+
       $("#rwShuffle").onclick = () => {
         if ($("#rwBoard").value !== "rand") { $("#rwBoard").value = "rand"; }
         const keep = RNG.save(); RNG.load(String(BSEED)); RNG.next(); BSEED = Number(RNG.save()); RNG.load(keep);
