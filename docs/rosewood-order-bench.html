@@ -1160,7 +1160,14 @@
         if (saved) {
           DATA = saved.data || DEFAULTS(); Model.dataEdited = !!saved.data; reindex();
           FX = Object.assign(FX_DEFAULTS(), saved.fx || {});
-          S = Object.assign(freshState(), saved.state); S.busy = false;
+          /* orderGen 은 한 겹 더 들어간다 — 위 Object.assign 은 얕아서 옛 세이브의 orderGen 이
+             통째로 갈아끼워진다. 지금은 SAVE_VER 5 내내 칸이 그대로라 빈 칸이 안 생기지만,
+             나중에 이 안에 칸을 하나 늘리고 SAVE_VER 을 안 올리면 그 칸은 세이브를 거친 순간
+             조용히 사라지고 엔진(추첨 경로)이 undefined 표를 직접 쓰다 깨진다.
+             기본값을 깔고 세이브로 덮는다 — 칸이 늘어도 여기가 알아서 메운다. */
+          const fs = freshState(), gen0 = fs.orderGen;
+          S = Object.assign(fs, saved.state); S.busy = false;
+          S.orderGen = Object.assign(gen0, S.orderGen);
           if (!S.inv || !Array.isArray(S.inv.store)) S.inv = { store: [], box: [], bought: 0, tab: "store" };
           if (!Array.isArray(S.inv.box)) S.inv.box = [];
         } else { DATA = DEFAULTS(); reindex(); FX = FX_DEFAULTS(); S = freshState(); }

@@ -158,8 +158,6 @@ const Model = (() => {
        손대므로, 납품에서 걸어 주지 않으면 표가 영원히 비어 감쇠가 한 번도 작동하지 않는다.
        카드를 비우기 전에 부른다 — fillEmptySlots 가 곧바로 다음 카드를 뽑는데,
        그 추첨이 방금 납품한 체인의 눌린 비중을 봐야 한다. */
-    /* 세이브를 거쳐 온 상태에는 이 칸이 없을 수 있다 — 없으면 만들고 넘긴다(엔진이 표를 직접 쓴다) */
-    S.orderGen.chain_repeat ||= {};
     RepeatDecay.onServe(S.orderGen.chain_repeat, reqCodes, RepeatDecay.resetOf(DATA.const));
     S.slots[n] = null;
     fillEmptySlots(reason);
