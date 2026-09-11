@@ -278,11 +278,19 @@ def main():
                 if nm:
                     r["name_ko"] = nm.get("name_ko")
                     r["name_en"] = nm.get("name_en")
-        # 판매 확인창 플래그 — 기획이 2026-09-10 에 `rare` 를 이 뜻으로 쓰기로 했다.
-        # 별칭 — 시트·웹 정본의 열 이름은 `rare` 하나뿐이고 show_sell_confirm 은 없다.
-        # 엔진 ITEM_DB 가 그 이름으로 굳어 있어 여기서 복사해 준다. 개명이 아니다 —
-        # 시트에서 show_sell_confirm 을 찾으면 안 나온다(신판 36탭 전수 0건).
+        # 판매 확인창 플래그 — 정본(시트·웹)의 열 이름은 `rare` 하나뿐이다.
+        # `show_sell_confirm` 은 여기서 붙이는 별칭이고, 엔진 ITEM_DB 가 그 이름으로
+        # 굳어 있어서 복사해 준다. 개명이 아니다 — 시트에서 찾으면 안 나온다
+        # (2026-09-11 신판 36탭 전수 0건, 밸런스시트 웹도 `rare` 로 쓴다).
         if tab == "item_spec":
+            # 시트가 진짜 그 열을 갖게 되는 날을 잡는 자리다. 화이트리스트(TABS)에
+            # 없는 열은 table() 이 먼저 걷어내므로, 아래 별칭이 그 값을 조용히 덮는
+            # 대신 원본 레코드를 직접 들여다본다. 이 경고가 뜨면 별칭을 걷고
+            # `show_sell_confirm` 을 화이트리스트에 넣어 시트 값을 그대로 써야 한다.
+            raw = book.records(real) or []
+            if any("show_sell_confirm" in r for r in raw[:5]):
+                warn.append("item_spec 에 실제 show_sell_confirm 열이 생겼다 — "
+                            "별칭을 걷고 TABS 화이트리스트에 추가할 것")
             for r in rows:
                 r["show_sell_confirm"] = r.get("rare") or 0
         data[tab] = rows

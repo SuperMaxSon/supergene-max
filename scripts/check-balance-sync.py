@@ -240,6 +240,47 @@ def check_db_counts(data):
               f"js={n_js}, json={n_json}")
 
 
+def check_sell_confirm_alias(data):
+    """ITEM_DB 의 판매 확인창 칸이 시트 `rare` 와 같은지.
+
+    시트·웹 정본의 열 이름은 `rare` 하나뿐이고 `show_sell_confirm` 은
+    xlsx2balance.py 가 붙이는 별칭이다. balance2engine.py 는 그 별칭을
+    `r.get("show_sell_confirm") or 0` 로 읽으므로, 별칭이 사라지면 예외 없이
+    **전 행이 조용히 0** 이 된다 — 확인창이 한 번도 안 뜨고 sheetHasConfirm() 이
+    거짓으로 돌아 판매가 임계 폴백이 되살아난다. 눈에 안 띄는 퇴행이라 여기서 막는다.
+
+    주의: balance.json 안에서 `rare` 와 `show_sell_confirm` 을 맞대 보는 건
+    검사가 되지 않는다 — 별칭이 `rare` 를 그대로 복사하므로 항상 같다(항진명제).
+    시트에 진짜 `show_sell_confirm` 열이 생기는 날을 잡는 건 변환기 쪽 경고다.
+    """
+    if data is None:
+        check(False, "ITEM_DB 판매 확인창 == 시트 rare", "balance.json 로드 실패로 생략")
+        return
+    try:
+        src = ENGINE.read_text(encoding="utf-8")
+    except Exception as e:
+        check(False, "ITEM_DB 판매 확인창 == 시트 rare", f"engine.js 읽기 실패: {e}")
+        return
+    m = re.search(r"^const ITEM_DB = \[\s*$", src, re.M)
+    end = re.search(r"^\];", src[m.end():], re.M) if m else None
+    if not end:
+        check(False, "ITEM_DB 판매 확인창 == 시트 rare", "ITEM_DB 블록 없음")
+        return
+    js = {}
+    for ln in src[m.end():m.end() + end.start()].splitlines():
+        # [코드, 다음, 판매가, show_sell_confirm, ...] — 앞 네 칸만 본다
+        f = re.match(r"\s*\[\s*(\d+)\s*,\s*[^,]*,\s*[^,]*,\s*([^,]*),", ln)
+        if f:
+            js[int(f.group(1))] = f.group(2).strip()
+    sheet = {r["item_code"]: (r.get("rare") or 0) for r in data.get("item_spec", [])}
+    off = [c for c, v in sheet.items() if js.get(c) != str(v)]
+    on = sum(1 for v in sheet.values() if v)
+    check(not off and len(js) == len(sheet) and on > 0,
+          "ITEM_DB 판매 확인창 == 시트 rare",
+          f"js={len(js)}행, json={len(sheet)}행, rare=1 {on}행"
+          + (f", 어긋남 {off[:5]}" if off else ""))
+
+
 # ---------------------------------------------------------------- 4. node --check
 def check_syntax():
     for path in (ENGINE, MODEL):
@@ -262,6 +303,7 @@ def main():
     data = check_balance()
     check_tokens()
     check_db_counts(data)
+    check_sell_confirm_alias(data)
     check_syntax()
 
     fails = 0
