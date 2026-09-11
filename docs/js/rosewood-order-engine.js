@@ -79,15 +79,18 @@ const shapeOf = (code) => `rw-shape sh${chainInfo(code).seq % 12}${chainInfo(cod
 /* 이름이 1~9자로 들쭉날쭉하다. 길수록 글자를 줄인다 */
 /* 아이템 아트 — 파일명이 곧 item_code (docs/img/items/<code>.png). 문서 기준 상대경로라
    docs/ 안의 두 페이지(벤치·추첨 분석)에서 똑같이 풀린다.
-   236종 중 224장이 왔다 — 아직 없는 12: 511~514 · 606 · 607 · 1108~1112 · 1612.
+   폴더 실측 232장(scripts/items2web.py 가 이 목록을 쓴다).
    없는 코드는 지금까지처럼 이름 글자로 그린다.
-   ⚠ **아트와 이름이 체인 단위로 어긋난다.** 101 은 이름이 「녹슨 못」인데 그림은 커피 원두,
-      901「산딸기」는 감자, 1601「꽃가루」는 고무 오리다. 재화·상자(2501~3101)만 정확히 맞는다.
-      단순한 번호 밀림이 아니다 — 이름 표에 원두·감자·오리가 **아예 없다**. 아트가 반영한
-      item_spec 신판에는 여기 없는 체인이 들어 있다는 뜻이다.
-      → 이름은 로컬 구판(2026-09-08) 기준이라 신판 시트를 받아야 맞춰진다. 아트는 그대로 쓴다
-        (실루엣·단계 수는 맞고, 이름만 늦다). */
-const SPRITE_CODES = new Set([101,102,103,104,105,106,107,108,109,110,111,201,202,203,204,205,206,207,208,209,210,301,302,303,304,305,306,307,401,402,403,404,405,406,407,408,409,410,411,501,502,503,504,505,506,507,508,509,510,601,602,603,604,605,701,702,703,704,705,706,707,708,709,710,711,801,802,803,804,805,806,807,808,809,810,811,812,901,902,903,904,905,906,907,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1101,1102,1103,1104,1105,1106,1107,1201,1202,1203,1204,1205,1206,1207,1208,1209,1210,1211,1301,1302,1303,1304,1305,1306,1307,1308,1309,1310,1311,1501,1502,1503,1504,1505,1506,1507,1508,1509,1510,1511,1601,1602,1603,1604,1605,1606,1607,1608,1609,1610,1611,1701,1702,1703,1704,1705,1706,1707,1801,1802,1803,1804,1805,1806,1807,1901,1902,1903,1904,1905,1906,1907,1908,1909,1910,2001,2002,2003,2004,2005,2006,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2201,2301,2302,2303,2304,2305,2306,2307,2308,2309,2310,2401,2402,2403,2404,2405,2406,2501,2502,2601,2602,2701,2702,2703,2704,2705,2801,2802,2803,2804,2901,2902,2903,2904,2905,3001,3101,3102,3103]);
+   ⚠ **아트와 이름이 체인 단위로 어긋난다 — 2026-09-11 신판 시트로도 안 풀렸다.**
+      101 은 이름이 「녹슨 못」(Rusty Nail)인데 그림은 커피 원두, 901「산딸기」는 감자,
+      1601「꽃가루」는 고무 오리다. 재화·상자(2501~3101)만 정확히 맞는다.
+      2026-09-10 커밋 af6a114 로 채워진 8장(211~214 · 813~815 · 1312)도 같은 축이다 —
+      211 은 이름이 「정밀 공구 세트」인데 그림은 아이스크림 선디다.
+      단순한 번호 밀림이 아니다. string_code 1032행 어디에도 원두·감자·오리·선디가 없다 —
+      아트가 **다른 아이템 세트**를 그리고 있다는 뜻이고, 이름 표를 늦게 받아서가 아니다.
+      → 칸은 다 찼지만 **그림 내용은 미해결**이다. 아트 쪽 확인이 필요하다
+        (실루엣·단계 수·체인 길이는 맞아서 분포 검증에는 지장이 없다). */
+const SPRITE_CODES = new Set([101,102,103,104,105,106,107,108,109,110,111,201,202,203,204,205,206,207,208,209,210,211,212,213,214,301,302,303,304,305,306,307,401,402,403,404,405,406,407,408,409,410,411,501,502,503,504,505,506,507,508,509,510,601,602,603,604,605,701,702,703,704,705,706,707,708,709,710,711,801,802,803,804,805,806,807,808,809,810,811,812,813,814,815,901,902,903,904,905,906,907,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1101,1102,1103,1104,1105,1106,1107,1201,1202,1203,1204,1205,1206,1207,1208,1209,1210,1211,1301,1302,1303,1304,1305,1306,1307,1308,1309,1310,1311,1312,1501,1502,1503,1504,1505,1506,1507,1508,1509,1510,1511,1601,1602,1603,1604,1605,1606,1607,1608,1609,1610,1611,1701,1702,1703,1704,1705,1706,1707,1801,1802,1803,1804,1805,1806,1807,1901,1902,1903,1904,1905,1906,1907,1908,1909,1910,2001,2002,2003,2004,2005,2006,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2201,2301,2302,2303,2304,2305,2306,2307,2308,2309,2310,2401,2402,2403,2404,2405,2406,2501,2502,2601,2602,2701,2702,2703,2704,2705,2801,2802,2803,2804,2901,2902,2903,2904,2905,3001,3101,3102,3103]);
 const spriteOf = (code) => (SPRITE_CODES.has(code) ? `img/items/${code}.png` : "");
 
 const lenOf = (code) => { const n = labelOf(code).length; return n <= 3 ? "" : n <= 5 ? " l5" : n <= 7 ? " l7" : " l9"; };
@@ -796,7 +799,7 @@ const lvOf = (level) => idx().lv.get(level);
 /* ======================================================================
    2b. 저장 — 읽기만. 쓰기(saveNow/save)는 벤치에 남는다.
    ====================================================================== */
-const BUILD = "v6.0 · 2026-09-11";   // 신판 시트 이행 — 5타입 6슬롯 2자리 · 반복 카운터 복구
+const BUILD = "v6.1 · 2026-09-11";   // RepeatDecay 로 반복 감쇠 일원화 · slotMap 메모이즈
 const SAVE_KEY = "rw.orderBench";
 /* 4 → 5: 슬롯이 5칸에서 6칸이 되고 타입 이름이 바뀌었다. 옛 세이브의 slots 는
    키(슬롯 번호)가 다른 타입을 가리키게 되므로 이관하지 않고 버린다. */
@@ -859,13 +862,18 @@ const TYPE_KO = {
    const.rail_visible_max = 6 과 맞는다. 슬롯 번호는 시트 열이 아니라 이 배치의 결과다 —
    order_fixed.slot_1/slot_2 가 가리키는 번호도 이 배치를 전제한다. */
 const SLOT_ORDER = ["normal", "high", "random_3", "random_4", "special"];
+/* 인덱스에 얹는다 — slotType 이 발급마다 불리는데 매번 order_rule 을 5번 훑을 이유가 없다.
+   DATA 를 갈아끼우면 reindex 가 IDX 를 통째로 버리므로 캐시가 따라 죽는다. */
 function slotMap() {
+  const I = idx();
+  if (I.slots) return I.slots;
   const out = [];
   for (const t of SLOT_ORDER) {
-    const r = DATA.order_rule.find((x) => x.order_type === t && x.in_use);
+    const r = I.rule.get(t);
     for (let i = 0; i < (r ? r.slot_count : 0); i++) out.push(t);
   }
-  return out.length ? out : ["normal", "normal"];
+  I.slots = out.length ? out : ["normal", "normal"];
+  return I.slots;
 }
 const slotType = (n) => slotMap()[n - 1] || "normal";
 const slotCount = () => slotMap().length;
@@ -979,6 +987,56 @@ function situationMult(code, othersReq, counts, C, othersChains) {
   }
   return { v: 1, why: "타오더 요구+납품불가(기본)" };
 }
+
+/* ── 반복 감쇠 ────────────────────────────────────────────────────────────
+   <b>여기가 「시트에 답이 없어 우리가 고른」 자리다.</b> 기획 답이 오면 이 객체만 바꾼다 —
+   흩어 두면 다음 사람이 세 군데 중 하나를 놓친다.
+
+   시트가 주는 것 : const.order_repeat_reset_count = 3
+                    order_item.repeat_weight_decrease (0 · 10 · 50 · 100)
+   시트가 안 주는 것 : <b>무엇을 세는 3인가.</b> 「발급 3회」로 읽었다. 「납품 3회」면
+                    commit 을 부르는 자리가 달라진다(생성이 아니라 납품 시점).
+                    신판에는 셀 메모가 없어 대조할 근거가 없다 — 기획 확인 대기.
+
+   절차(개발 기획서 정본):
+     ① 제한 횟수 = const.order_repeat_reset_count
+     ② 오더가 나가면 그 카드의 요구 체인마다 남은 횟수 = 제한 횟수
+     ③ 남은 횟수 > 0 이고 repeat_weight_decrease > 0 인 후보는 가중치를 그 값으로 나눈다
+     ④ 갱신 대상 = 이번에 제한이 걸린 체인 ∪ 이번에 나간 체인 — 나갔으면 리셋, 아니면 −1
+     ⑤ 0 이 되면 표에서 지운다. 고정 오더 발급은 카운터를 건드리지 않는다.
+
+   ④ 의 <b>합집합</b>이 요점이다. 「제한 걸린 체인」만 보면 표가 빈 최초 상태에서 아무것도
+   안 들어가 카운터가 영원히 안 켜지고, 「나간 체인」만 보면 안 뽑힌 체인이 안 줄어
+   한 번 눌린 체인이 영영 눌린 채 남는다. 둘 다 있어야 돈다.
+
+   모든 랜덤 슬롯이 체인별 표 <b>하나</b>를 공유한다(슬롯별이 아니다).
+   직전 요구 코드를 통째로 빼는 banned 와는 다른 축이다 — 그건 코드 단위, 이건 체인 단위. */
+const RepeatDecay = {
+  resetOf: (C) => Number(C.order_repeat_reset_count) || 0,
+
+  /* 이 후보에 걸리는 제수. 0 이면 안 나눈다. */
+  divisorOf(oi, CR) {
+    const rem = CR[chainOf(oi.item_code)] || 0;
+    return rem > 0 && oi.repeat_weight_decrease > 0 ? Number(oi.repeat_weight_decrease) : 0;
+  },
+
+  /* 카드가 나간 뒤 표를 갱신한다. 돌려주는 건 로그용 변경 내역이다.
+     issued  = 실제로 나간 요구의 체인 (버린 후보는 안 들어간다 — 나간 오더가 아니다)
+     divided = 이번 추첨에서 실제로 제수를 적용한 체인 */
+  commit(CR, issued, divided, reset) {
+    if (reset <= 0) return [];
+    const upd = [];
+    new Set([...divided, ...issued]).forEach((ch) => {
+      if (issued.has(ch)) { CR[ch] = reset; upd.push(`${chainName(ch)}\u2192${reset}`); }
+      else {
+        CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
+        if (!CR[ch]) delete CR[ch];
+        upd.push(`${chainName(ch)}\u22121`);
+      }
+    });
+    return upd;
+  },
+};
 
 /* 밴드 선택 — 레벨 구간 하나뿐이다. 하루 누적 난이도 축(diff_sum_min/max)은
    신판에서 열 셋과 상수 셋이 동시에 삭제돼 통째로 걷었다. */
@@ -1094,17 +1152,10 @@ function generateOrder(slotNo, opts = {}) {
   const counts = opts.counts ?? boardCounts();
   const othersReq = opts.othersReq ?? requiredElsewhere(slotNo);
   const prev = opts.prev !== undefined ? opts.prev : S.prevOfSlot[slotNo];
-  /* 반복 감쇠 — 신판 const.order_repeat_reset_count(3) 가 되살아나 <b>카운터</b>로 돌아왔다.
-     절차(개발 기획서 정본):
-       ① 제한 횟수 = const.order_repeat_reset_count
-       ② 오더가 나가면 그 카드의 요구 체인마다 남은 횟수 = 제한 횟수
-       ③ 남은 횟수 > 0 이고 repeat_weight_decrease > 0 인 후보는 가중치를 그 값으로 나눈다
-       ④ 이번 추첨에서 제한이 걸린 체인 ∪ 이번에 나간 체인만 갱신 — 나갔으면 리셋, 아니면 −1
-       ⑤ 0 이 되면 표에서 지운다. 고정 오더 발급은 카운터를 건드리지 않는다.
-     모든 랜덤 슬롯이 체인별 카운터 표 <b>하나</b>를 공유한다(슬롯별이 아니다).
-     직전 요구 코드는 별도로 아예 제외된다(banned) — 그건 코드 단위, 이건 체인 단위. */
-  const CR = opts.repeat || S.orderGen.chain_repeat;   // 사본을 넘기면 게임 상태를 안 더럽힌다
-  const RESET = Number(C.order_repeat_reset_count) || 0;
+  /* 반복 감쇠 — 규칙은 RepeatDecay 한 곳에 모아 뒀다(위 정의 주석 참조).
+     사본을 넘기면 게임 상태를 안 더럽힌다 — 분포 시뮬이 그렇게 쓴다. */
+  const CR = opts.repeat || S.orderGen.chain_repeat;
+  const RESET = RepeatDecay.resetOf(C);
   const othersChains = new Set([...othersReq].map(chainOf));
   const banned = new Set([...othersReq]);
   if (prev) prev.forEach((c) => banned.add(c));
@@ -1136,7 +1187,7 @@ function generateOrder(slotNo, opts = {}) {
     const rows = cand.map((o) => {
       const m = situationMult(o.item_code, othersReq, counts, C, othersChains);
       const rem = CR[chainOf(o.item_code)] || 0;
-      const div = rem > 0 && o.repeat_weight_decrease > 0 ? o.repeat_weight_decrease : 0;
+      const div = RepeatDecay.divisorOf(o, CR);
       if (div) divided.add(chainOf(o.item_code));
       /* 가중식 = 상황 배수 ÷ 반복 제수. order_item.weight / weight_multiple 은
          클라 계약에 없는 열이라 곱하지 않는다(엔진 머리말 v6.0 참조). */
@@ -1173,21 +1224,10 @@ function generateOrder(slotNo, opts = {}) {
   if (divided.size)
     push(`    반복 감쇠 적용 ${[...divided].map((ch) => `${chainName(ch)}(남은 ${CR[ch]}회)`).join(", ")}`);
 
-  /* ---- 반복 카운터 갱신 — 대상은 「이번에 제한이 걸린 체인」 ∪ 「이번에 나간 체인」이다.
-     제한 걸린 것만으로 대상을 만들면 표가 비어 있는 최초 상태에서 아무것도 안 들어가
-     카운터가 영원히 안 켜진다. 나간 것만으로 만들면 안 뽑힌 체인이 감소하지 않아
-     한 번 눌린 체인이 영영 눌린 채 남는다 — 합집합이라야 둘 다 돈다. */
-  if (RESET > 0 && (!dry || opts.repeat)) {
-    const won = new Set(finalReqs.map((q) => chainOf(q.code)));
-    const upd = [];
-    new Set([...divided, ...won]).forEach((ch) => {
-      if (won.has(ch)) { CR[ch] = RESET; upd.push(`${chainName(ch)}→${RESET}`); }
-      else {
-        CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
-        if (!CR[ch]) delete CR[ch];
-        upd.push(`${chainName(ch)}−1`);
-      }
-    });
+  // ---- 반복 카운터 갱신 (규칙은 RepeatDecay.commit — 합집합인 이유는 거기 적어 뒀다)
+  if (!dry || opts.repeat) {
+    const issued = new Set(finalReqs.map((q) => chainOf(q.code)));
+    const upd = RepeatDecay.commit(CR, issued, divided, RESET);
     if (upd.length) push(`    <span class="k">반복 카운터</span> ${upd.join(", ")} <span style="opacity:.65">(제한 ${RESET}회 · 전 슬롯 공유)</span>`);
   }
 

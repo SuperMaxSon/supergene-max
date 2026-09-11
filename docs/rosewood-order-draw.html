@@ -325,8 +325,11 @@
              「어긋났다」가 아니라 「아직 실물이 아니다」로 적는다 — 맞추려 들면 안 되는 축이다. -->
         <div class="rw-warn" id="rwArtWarn">
           <b>아이템 아트는 임시물입니다 &mdash; 그림과 시트 이름은 맞지 않는 것이 정상입니다.</b>
-          <code>101</code> 은 이름이 「녹슨 못」인데 그림은 <b>커피 원두</b>입니다. 여기 붙은 그림은
-          자리를 채우는 용도라, <b>무엇이 몇 개 있는지</b>를 눈으로 세는 데만 쓰세요.
+          <code>101</code> 은 이름이 「녹슨 못」인데 그림은 <b>커피 원두</b>이고, 2026-09-10 커밋으로
+          새로 채워진 <code>211</code>「정밀 공구 세트」는 <b>아이스크림 선디</b>입니다. 그 8장(<code>211~214</code> ·
+          <code>813~815</code> · <code>1312</code>)이 들어오면서 <b>오더 후보 102종은 전부 그림이 붙었습니다</b>
+          (총 232장 · 팩 <code>3201·3202</code>만 미수급). 다만 <b>채워진 것은 자리뿐이고 그림 내용은 그대로</b>라,
+          여기 붙은 그림은 <b>무엇이 몇 개 있는지</b>를 눈으로 세는 데만 쓰세요.
           <b>이름·단계·체인은 시트가 정본이고 판정은 전부 그 값으로 합니다.</b>
           실물 아트가 들어오면 <code>item_display.sprite_key</code> 로 기계적으로 이어집니다
           (접두 <code>m_</code>생성기 · <code>r_</code>산출 · <code>q_</code>퀘스트 · <code>s_</code>씨앗 ·
@@ -512,7 +515,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v3.0 · 2026-09-11";   // 신판 시트 이행 — 5타입 6슬롯 2자리 · 반복 카운터 · T13·T14
+      const PAGE_BUILD = "v3.1 · 2026-09-11";   // 자리별 조건부 기대값(T8 이 high 를 잰다) · T15 · 자리 수 하드코딩 제거
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -667,9 +670,9 @@
           ["실제 보드 분포",
            "무작위 보드는 <b>체인 편중(Zipf) + 단계 1/2<sup>step-1</sup></b> 가정이다 — 시트에 보드 등장 분포가 없다. 상자·재화 체인(동전·유리알·불씨)은 등장률을 모르고 배수에도 영향이 없어 아예 뺐다",
            "실제 플레이 로그의 보드 스냅샷으로 단계 분포를 대체. <code>item_spec</code> 에 보드 해금·등장 칸이 생기면 그걸 입력으로"],
-          ["반복 감쇠 — 둘째 자리",
-           "T8 은 자리1 만 본다. 기대값을 자리별로 따로 세워야 하는데 앞 자리 결과에 따라 후보가 바뀐다",
-           "자리별 조건부 기대값 계산 추가. <code>high</code> 처럼 자리1 이 한 단계뿐인 타입은 자리1 로는 아예 못 잰다"],
+          ["반복 감쇠 — 초반 레벨",
+           "Lv3 은 해금된 체인 중 <code>repeat_weight_decrease</code> 가 0 이 아닌 것이 자리 범위 안에 <b>하나도 없어</b> 판정이 안 선다. 규칙이 고장난 게 아니라 <b>잴 대상이 없는</b> 것이다 &mdash; 자리2까지 넓혀도 같다",
+           "초반에 감쇠가 걸리는 체인이 생기거나, 제수 값이 초반 체인에도 붙으면 저절로 열린다"],
           ["생성기 주머니 (<code>produce_item_1~20</code>)",
            "오더 추첨 밖이다 — 벤치의 생산 경로 소관",
            "벤치에서 생산 표본을 뽑아 <code>produce_weight</code> 와 대조"],
@@ -1117,7 +1120,7 @@
           return { kinds, n };
         };
         /* 칩 앞머리는 그 체인의 대표 아이템 아트 — 오더 대상 최저 단계를 쓴다.
-           체인 이름만 적어 두면 어떤 물건인지가 안 보인다. 아트는 docs/img/items 에 224종. */
+           체인 이름만 적어 두면 어떤 물건인지가 안 보인다. 아트는 docs/img/items 에 232종. */
         const chip = (ch, e, locked) => {
           const h = held(ch);
           const rep = e.items.slice().sort((a, b) => stepOf(a) - stepOf(b))[0];
@@ -1128,9 +1131,10 @@
             + (locked ? "" : `<i>보드 ${h.kinds ? `${h.kinds}종 ${h.n}개` : "0"}</i>`) + `</span>`;
         };
         const gens = (board && board.gens) || [];
-        /* 아트가 없는 후보 — docs/img/items 에 224종이 있고 시트 후보는 107종이지만
-           고단계 12종(차 s11~14 · 찻잔 s6~7 · 꽃 s8~12 · 꿀 s12)이 비어 있다. 발주 누락이라
-           페이지 결함이 아니지만, 그 칩만 텍스트로 보이는 이유는 적어 둔다. */
+        /* 아트가 없는 후보 — 2026-09-10 커밋 af6a114 로 8장(211~214 · 813~815 · 1312)이
+           채워지면서 **오더 후보 102종은 전부 아트가 있다**(현재 0종). 그래도 목록은 남긴다 —
+           시트가 후보를 늘리면 여기서 다시 뜬다. item_spec 전체로는 3201·3202(팩)만 비어 있고
+           그 둘은 오더 후보가 아니다. */
         const noArt = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && !spriteOf(o.item_code))
                                      .map((o) => o.item_code);
         $("#rwChips").innerHTML =
@@ -1247,7 +1251,11 @@
             : [pool[Math.floor(pool.length / 2)].item_code];
         }
 
-        const seatTally = [new Map(), new Map(), new Map()];
+        /* 자리별 집계 — 길이를 <b>밴드가 주는 자리 수</b>로 만든다. 3 으로 박아 두면
+           2자리 시트에서 세 번째 칸이 영원히 비고, 4자리가 오면 조용히 잘린다.
+           이번 이행에서 우리를 문 게 정확히 이 패턴이라 남겨 두지 않는다. */
+        const nSeat = Math.max(1, seats || 1);
+        const seatTally = Array.from({ length: nSeat }, () => new Map());
         const tally = new Map(), combo = new Map(), cnt = new Map();
         /* [4] 가 몇 자리를 채웠는지 — 엔진이 카드에 안 싣는 값이라 로그에서 뽑는다.
            「후보 자리 n」은 [5] 가 재정규화 판단에 쓰는 그 수라서, 표시 문구가 아니라
@@ -1257,10 +1265,10 @@
         /* [4] 보드 상황 배수 축 발생률 — 로그가 자리마다 「후보 N종 [축이름 n / …]」 을
            찍어 두므로 거기서 센다. 축이 0% 면 그 축은 아예 재지 않은 것이다(T10). */
         const axis = new Map();
-        const axisSeat = [new Map(), new Map(), new Map()];   // 자리별 — T11 이 자리1 을 정확히 대조한다
+        const axisSeat = Array.from({ length: nSeat }, () => new Map());   // 자리별 — T11 이 자리1 을 정확히 대조한다
         const seatFill = new Map();          // 채운 자리 수 → 발급 수
         const cntBy = new Map();             // `자리수|종수` → 발급 수
-        const zeroSeat = [0, 0, 0];          // 자리별 「후보 0」 발생 수
+        const zeroSeat = Array.from({ length: nSeat }, () => 0);   // 자리별 「후보 0」 발생 수
         /* 반복 카운터 — 신판 const.order_repeat_reset_count(3) 로 되살아난 체인별 표다.
            게임 상태(S.orderGen.chain_repeat)를 더럽히지 않으려고 사본을 넘긴다.
            <b>발급 전체가 이 표 하나를 공유</b>해야 카운터가 실제로 돈다 —
@@ -1284,7 +1292,7 @@
           if (r.log.some((t) => t.includes("반복 감쇠 적용"))) crHits++;
           for (const line of r.log) {
             const z = /\[4\] 자리(\d) 후보 0/.exec(line);
-            if (z) { const i = +z[1] - 1; if (i < 3) zeroSeat[i]++; continue; }
+            if (z) { const i = +z[1] - 1; if (i < nSeat) zeroSeat[i]++; continue; }
             const f = /후보 자리 (\d+)/.exec(line);
             if (f) filled = +f[1];
             const ax = /\[4\] 자리(\d)<\/span> 범위 [^·]*· 후보 \d+종 \[([^\]]+)\]/.exec(line);
@@ -1294,7 +1302,7 @@
                 const mm = /^(.*) (\d+)$/.exec(part.trim());
                 if (!mm) continue;
                 axis.set(mm[1], (axis.get(mm[1]) || 0) + Number(mm[2]));
-                if (seat < 3) axisSeat[seat].set(mm[1], (axisSeat[seat].get(mm[1]) || 0) + Number(mm[2]));
+                if (seat < nSeat) axisSeat[seat].set(mm[1], (axisSeat[seat].get(mm[1]) || 0) + Number(mm[2]));
               }
             }
           }
@@ -1304,7 +1312,7 @@
           cntBy.set(ck, (cntBy.get(ck) || 0) + 1);
           c.reqs.forEach((q, seat) => {
             tally.set(q.code, (tally.get(q.code) || 0) + 1);
-            if (seat < 3) seatTally[seat].set(q.code, (seatTally[seat].get(q.code) || 0) + 1);
+            if (seat < nSeat) seatTally[seat].set(q.code, (seatTally[seat].get(q.code) || 0) + 1);
           });
           const key = c.reqs.map((q) => q.code).join("+");
           combo.set(key, (combo.get(key) || 0) + 1);
@@ -1320,7 +1328,8 @@
         LAST = { N, ok, fail, lv, type, counts, othersReq, prev, band, rule, pool, seats, CR,
                  banned: [...othersReq, ...(prev || [])],
                  tally, seatTally, combo, cnt, viol, coin, diff, evt, evtBad, locked, scripted, fixed,
-                 seatFill, cntBy, zeroSeat, fillNA, axis, axisSeat, board, kind, crHits };
+                 seatFill, cntBy, zeroSeat, fillNA, axis, axisSeat, board, kind, crHits,
+                 reset: RepeatDecay.resetOf(DATA.const || {}) };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
       }
@@ -1409,15 +1418,25 @@
           ` · 배수 ${Object.entries(bucket).map(([k, v]) => `${SHORT[k] || k} ${v}`).join(" / ") || "—"}` +
           ` · 보유 ${held}종` +
           ` · 제외 ${L.banned.length}종${L.banned.length ? ` (${L.banned.map(labelOf).join(" · ")})` : ""}` +
-          ` · 감쇠 체인 ${L.prev && L.prev.length ? L.prev.map((c) => chainName(chainOf(c))).join(",") : "없음"}` +
+          /* 제외와 감쇠는 <b>다른 축</b>이다 — 제외는 직전 요구 「코드」를 통째로 빼는 것이고,
+             감쇠는 체인별 카운터가 가중치를 나누는 것이다. 신판에서 감쇠가 prev 기반에서
+             카운터 기반으로 바뀌었는데 라벨만 남아 옛 모델을 말하고 있었다. */
+          ` · 감쇠 체인 ${(() => {
+            const on = Object.entries(L.CR || {}).filter(([, v]) => v > 0);
+            if (!L.reset) return "없음 <span style=\"opacity:.65\">(order_repeat_reset_count 없음)</span>";
+            if (!on.length) return `없음 <span style="opacity:.65">(발급 끝 기준 · 제한 ${L.reset}회)</span>`;
+            return on.map(([ch, v]) => `${chainName(Number(ch))}<s style="text-decoration:none;opacity:.6">${v}</s>`).join(",")
+                 + ` <span style="opacity:.65">(발급 ${L.crHits}회에서 제수 적용 · 제한 ${L.reset}회)</span>`;
+          })()}` +
           ` · 시드 ${L.fixed ? `${SEED0} 고정` : "이어서"}`;
         $("#rwRng").textContent = `seed ${L.fixed ? SEED0 : SEED} · ${L.type} · Lv${L.lv} · ${L.N}발급`;
       }
 
-      /* 요구 칩 — 프로젝트에 아이템 아트가 224종 들어 있다(docs/img/items). 이름 텍스트만
+      /* 요구 칩 — 프로젝트에 아이템 아트가 232종 들어 있다(docs/img/items). 이름 텍스트만
          쓰면 「받침 찻잔」처럼 긴 이름이 원 안에서 줄어들어 읽히지도 않는다. 아트가 있으면
          아트를, 없으면 이름으로 떨어진다. 경로는 엔진 spriteOf() 한 곳에서만 판다. */
-      /* 임시 아트라 그림과 이름이 안 맞는다(101 녹슨 못 = 커피 원두) — 그게 정상 상태다.
+      /* 임시 아트라 그림과 이름이 안 맞는다(101 녹슨 못 = 커피 원두 · 211 정밀 공구 세트 =
+         아이스크림 선디) — 신판 시트로도 안 풀린 상태다. 새로 채운 8장도 같은 축이다.
          이름·단계·체인은 시트가 정본이므로 판정에는 영향이 없지만, 그림만 보고 체인을
          읽으면 틀린다. 끌 수 있게 둔다 — 끄면 전부 이름 텍스트로 떨어진다. */
       const artOn = () => { const el = $("#rwArt"); return !el || el.checked; };
@@ -1463,10 +1482,11 @@
             <span class="n">${pct.toFixed(2)}%${expPct != null ? ` / ${expPct.toFixed(2)}%` : ""} · ${n}</span></div>`;
       }
 
-      /* 자리 1 의 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
-           p ∝ (weight × weight_multiple ÷ 100) × 보드 상황 배수 ÷ 반복 감쇠 제수
-         감쇠 제수는 「직전 오더가 같은 체인이었으면 나눈다」다(order_item 셀 메모).
-         noDecay 를 주면 감쇠를 빼고 계산한다 — T8 이 「감쇠가 없었다면」과 대조하는 데 쓴다. */
+      /* 자리별 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
+           p ∝ 보드 상황 배수 ÷ 반복 감쇠 제수
+         <b>weight / weight_multiple 은 안 곱한다</b> — 엔진이 안 읽는 열이라, 여기서 곱하면
+         이 판정이 엔진이 아니라 우리 기대식을 검사하게 된다(그 열의 지위는 T13 이 따로 본다).
+         감쇠 제수는 체인별 카운터(cr)가 살아 있을 때만 걸린다 — 「직전 오더」가 아니다. */
       /* ── 보드 상황 배수 — 독립 재구현 ────────────────────────────────────
          기획서 [4] 「보드 상황 배수」를 시트 상수만으로 다시 짠다. 엔진의
          situationMult 을 부르지 않는 게 요점이다 — 부르면 축을 잘못 고르거나 상수를
@@ -1508,47 +1528,100 @@
          `cr` 은 체인별 남은 제한 횟수 표다(반복 카운터). 비워 주면 감쇠 없는 기대다.
          <b>order_item.weight / weight_multiple 은 곱하지 않는다</b> — 엔진이 안 읽는 열이라
          여기서 곱하면 이 판정이 엔진이 아니라 우리 기대식을 검사하게 된다(T13 이 따로 본다). */
-      function expectSeat1(cr) {
-        const L = LAST, C = DATA.const || {}, b = L.band;
-        if (!b) return null;
-        const rg = seatRange(b, 1);
-        const lo = rg.lo, hi = rg.hi;
-        const CRm = cr || {};
+      /* 자리 후보 집합 — 엔진 [4] 의 필터와 같은 조건(범위 ∩ 미제외)이다. */
+      function seatCand(seat) {
+        const L = LAST, b = L.band;
+        const rg = b ? seatRange(b, seat) : null;
+        if (!rg) return null;
         const banned = new Set(L.banned);
-        const cand = L.pool.filter((o) => {
+        return L.pool.filter((o) => {
           const st = stepOf(o.item_code);
-          return st >= lo && st <= hi && !banned.has(o.item_code);
+          return st >= rg.lo && st <= rg.hi && !banned.has(o.item_code);
         });
-        const rows = cand.map((o) => {
-          const m = boardMultLocal(o.item_code, L.othersReq, L.counts, C).v;   // 엔진 호출 아님
-          const div = (CRm[chainOf(o.item_code)] || 0) > 0 && Number(o.repeat_weight_decrease) > 0
-            ? Number(o.repeat_weight_decrease) : 1;
-          return { code: o.item_code, w: m / div };
-        });
-        const sum = rows.reduce((a, r) => a + r.w, 0);
-        return { map: new Map(rows.map((r) => [r.code, sum ? (r.w / sum) * 100 : 0])), n: cand.length };
       }
 
-      /* 대조 발급 — 반복 카운터를 <b>고정</b>한 채 자리1 만 센다.
+      /* 후보 하나의 가중치 — 보드 상황 배수 ÷ 반복 감쇠 제수. 엔진을 부르지 않는다. */
+      function candWeight(o, cr) {
+        const L = LAST, C = DATA.const || {};
+        const m = boardMultLocal(o.item_code, L.othersReq, L.counts, C).v;
+        const div = ((cr || {})[chainOf(o.item_code)] || 0) > 0 && Number(o.repeat_weight_decrease) > 0
+          ? Number(o.repeat_weight_decrease) : 1;
+        return m / div;
+      }
+
+      /* ── 자리별 기대 분포 (독립 재계산) ──────────────────────────────────────
+         자리1 은 단순 정규화다. <b>자리2 는 조건부</b>인데, 의존하는 게
+         「자리1 이 무엇을 가져갔나」 하나뿐이라 항이 |자리1 후보| 개로 닫힌다:
+
+           P(자리2 = x) = Σ_y P(자리1 = y) · w(x) / ( W2 − w(y) )     (x ≠ y)
+
+         근사가 아니라 정확값이다. 자리1 승자를 빼면 자리2 후보가 안 남는 가지는
+         애초에 자리2 추첨이 없으므로 분모(mass)에서도 뺀다 — 실측도 「자리2 가 뽑힌
+         발급」만 세므로 같은 조건이 된다.
+
+         이 함수가 필요한 이유: <code>high</code> 는 자리1 이 7단계 고정이라 제수 > 0 인
+         후보가 <b>어느 레벨에도 안 들어온다</b>. 자리1 만 보면 그 타입의 반복 감쇠는
+         영원히 판정 불가다(Lv5·8·11 실측 0종). */
+      function expectSeat(seat, cr) {
+        const L = LAST;
+        if (!L.band) return null;
+        const c1 = seatCand(1);
+        if (!c1 || !c1.length) return null;
+        const w1 = c1.map((o) => candWeight(o, cr));
+        const W1 = w1.reduce((x, y) => x + y, 0);
+        if (seat === 1)
+          return { map: new Map(c1.map((o, i) => [o.item_code, W1 ? (w1[i] / W1) * 100 : 0])), n: c1.length, seat: 1 };
+
+        const c2 = seatCand(seat);
+        if (!c2 || !c2.length || !W1) return null;
+        const w2 = new Map(c2.map((o) => [o.item_code, candWeight(o, cr)]));
+        const W2 = [...w2.values()].reduce((x, y) => x + y, 0);
+        const acc = new Map();
+        let mass = 0;
+        c1.forEach((y, i) => {
+          const p1 = w1[i] / W1;
+          if (!p1) return;
+          const denom = W2 - (w2.get(y.item_code) || 0);
+          if (denom <= 0) return;                       // 자리1 승자를 빼면 남는 후보가 없다
+          mass += p1;
+          for (const [code, w] of w2) {
+            if (code === y.item_code) continue;
+            acc.set(code, (acc.get(code) || 0) + (p1 * w) / denom);
+          }
+        });
+        if (!mass) return null;
+        return { map: new Map([...acc].map(([c, p]) => [c, (p / mass) * 100])), n: c2.length, seat };
+      }
+      const expectSeat1 = (cr) => expectSeat(1, cr);
+
+      /* 대조 발급 — 반복 카운터를 <b>고정</b>한 채 자리별로 센다.
          본 발급은 카운터가 굴러가며 상태가 매 장 바뀌므로 해석식이 안 선다.
          여기서는 매 장 사본을 넘겨(엔진이 그 사본만 더럽힌다) cr 을 그대로 유지한다 —
-         그래야 expectSeat1(cr) 와 같은 조건이 되어 대조가 성립한다. */
-      function subSeat1(cr, n) {
-        const L = LAST, t = new Map();
-        let tot = 0;
+         그래야 expectSeat(k, cr) 와 같은 조건이 되어 대조가 성립한다.
+
+         자리2 표본은 <b>종수가 2 로 뽑힌 발급</b>에서만 나온다. 종수 추첨은 어느 아이템이
+         뽑혔는지와 무관하므로 그 조건이 자리2 분포를 비틀지 않는다 — 표본 수만 줄어든다. */
+      function subSeats(cr, n) {
+        const L = LAST;
+        const seats = Math.max(1, L.seats || 1);
+        const map = Array.from({ length: seats }, () => new Map());
+        const tot = Array.from({ length: seats }, () => 0);
         const saved = RNG.save();
         RNG.load(String(SEED0));
         for (let i = 0; i < n; i++) {
           const r = generateOrder(1, { dry: true, level: L.lv, type: L.type, counts: L.counts,
                                        othersReq: L.othersReq, prev: L.prev, skipFixed: true,
                                        repeat: { ...cr } });
-          if (!r.card || !r.card.reqs.length) continue;
-          const c = r.card.reqs[0].code;
-          t.set(c, (t.get(c) || 0) + 1); tot++;
+          if (!r.card) continue;
+          r.card.reqs.forEach((q, k) => {
+            if (k >= seats) return;
+            map[k].set(q.code, (map[k].get(q.code) || 0) + 1); tot[k]++;
+          });
         }
         RNG.load(saved);
-        return { map: t, n: tot };
+        return { map, n: tot };
       }
+      const subSeat1 = (cr, n) => { const r = subSeats(cr, n); return { map: r.map[0], n: r.n[0] }; };
 
       /* 종수 기대 분포. 인자 없이 부르면 <b>명목</b>(시트가 선언한 값)이고,
          자리 수를 주면 <b>그 조건에서 엔진이 실제로 쓰는</b> 재정규화 분포다.
@@ -1838,73 +1911,111 @@
         /* ── T8 반복 감쇠 작동 ───────────────────────────────────────────────
            신판 const.order_repeat_reset_count(3) 로 <b>카운터</b>가 되살아났다.
            본 발급은 카운터가 굴러가며 상태가 매 장 바뀌어 해석식이 안 서므로,
-           카운터를 <b>한 체인에 고정</b>한 대조 발급을 따로 돌려 그 체인의 자리1 몫이
-           제수만큼 줄어드는지 본다. 제외(banned)는 코드 단위라 직전 요구 아이템 자체는
-           아예 안 나온다 — 감쇠는 같은 체인의 <b>다른 단계</b>에 걸린다. */
+           카운터를 <b>한 체인에 고정</b>한 대조 발급을 따로 돌려 그 체인의 몫이
+           제수만큼 줄어드는지 본다.
+
+           <b>자리를 고른다.</b> 예전엔 자리1 만 봤는데, <code>high</code> 는 자리1 이
+           7단계 고정이라 제수 > 0 인 후보가 <b>어느 레벨에도 안 들어온다</b>(Lv5·8·11 실측 0종).
+           자리1 만 보면 그 타입의 반복 감쇠는 영원히 판정 불가였다. 자리를 순회하며
+           판정이 서는 첫 자리를 쓴다 — 자리1 이 표본이 많아 우선이다.
+
+           제외(banned)는 코드 단위라 직전 요구 아이템 자체는 아예 안 나온다.
+           감쇠는 같은 체인의 <b>다른 단계</b>에 걸린다 — 세는 대상이 다르다. */
         {
           const RESET = Number((DATA.const || {}).order_repeat_reset_count) || 0;
           const divisors = uniq(DATA.order_item, "repeat_weight_decrease").map(Number).filter((v) => v > 0);
-          const rg1 = L.band ? seatRange(L.band, 1) : null;
-          /* 판정이 서는 체인 고르기 — 자리1 범위 안에 제수 > 0 인 후보가 있어야 한다.
-             범위 밖 체인을 고르면 기대도 0 실측도 0 이라 「0.00% → 0.00% · PASS」 라는
-             아무것도 재지 않는 통과가 뜬다. 그건 규칙이 돈다는 증거가 아니다. */
-          const inSeat1 = rg1 ? L.pool.filter((o) => {
-            const st = stepOf(o.item_code);
-            return st >= rg1.lo && st <= rg1.hi && !L.banned.includes(o.item_code);
-          }) : [];
-          const byChain = new Map();
-          inSeat1.forEach((o) => {
-            if (Number(o.repeat_weight_decrease) <= 0) return;
-            byChain.set(chainOf(o.item_code), (byChain.get(chainOf(o.item_code)) || 0) + 1);
-          });
-          const target = [...byChain.entries()].sort((a, b) => b[1] - a[1])[0];
+          const nSeats = Math.max(1, L.seats || 1);
+          /* 자리마다 「제수 > 0 인 후보를 가장 많이 가진 체인」을 뽑아 둔다.
+             기대도 0 실측도 0 인 자리를 고르면 「0.00% → 0.00% · PASS」라는,
+             규칙이 돈다는 증거가 못 되는 통과가 뜬다. */
+          const picks = [];
+          for (let k = 1; k <= nSeats; k++) {
+            const cand = seatCand(k) || [];
+            const byChain = new Map();
+            cand.forEach((o) => {
+              if (Number(o.repeat_weight_decrease) <= 0) return;
+              byChain.set(chainOf(o.item_code), (byChain.get(chainOf(o.item_code)) || 0) + 1);
+            });
+            const best = [...byChain.entries()].sort((x, y) => y[1] - x[1])[0];
+            picks.push({ seat: k, rg: L.band ? seatRange(L.band, k) : null, cand, target: best || null });
+          }
+          const why = picks.map((p) => `자리${p.seat}(${p.rg ? rangeText(p.rg) : "—"}) 후보 ${p.cand.length}종 · 제수 후보 ${p.target ? p.target[1] : 0}종`).join(" · ");
 
-          if (!RESET || !divisors.length || !target) {
+          if (!RESET || !divisors.length || !picks.some((p) => p.target)) {
             add("na", "T8 반복 감쇠 작동",
                 RESET ? `제한 ${RESET}회 · 제수 ${divisors.join(" / ") || "전 행 0"}` : "<b>const.order_repeat_reset_count 없음</b>",
                 !RESET ? "카운터 상수가 없다"
                   : !divisors.length ? "repeat_weight_decrease 가 전 행 0 이다"
-                  : "자리1 범위 안에 제수 > 0 인 후보가 없다",
+                  : `어느 자리에도 제수 > 0 인 후보가 없다 &mdash; ${why}`,
                 !RESET
                   ? "상수가 없으면 감쇠가 영구히 안 걸린다 &mdash; 신판에는 있어야 한다(key_number 10052)"
                   : !divisors.length
                     ? "제수가 전부 0 이면 카운터가 돌아도 가중치가 안 바뀐다 &mdash; 규칙이 죽은 상태다"
-                    : `자리1 범위(${rg1 ? rangeText(rg1) : "—"})에 제수를 가진 후보가 없어 `
-                      + `기대도 0 실측도 0 이 된다. 레벨을 올리거나 타입을 바꿔 범위 안에 후보가 들어오게 해야 판정이 선다`,
+                    : `이 레벨에 해금된 체인 중 <code>repeat_weight_decrease</code> 가 0 이 아닌 것이 `
+                      + `자리 범위 안에 하나도 없다. 기대도 0 실측도 0 이라 판정이 안 선다 &mdash; `
+                      + `<b>규칙이 고장난 게 아니라 잴 대상이 없는 것</b>이다. 레벨을 올려 보세요`,
                 "judge");
           } else {
-            const [ch, nSib] = target;
-            const cr = { [ch]: RESET };
-            const esOn = expectSeat1(cr), esOff = expectSeat1({});
-            const sub = subSeat1(cr, Math.min(L.N, 4000));
-            const sibs = inSeat1.filter((o) => chainOf(o.item_code) === ch);
-            const share = (m, tot) => sibs.reduce((a, o) => a + (m.get(o.item_code) || 0), 0) / Math.max(1, tot) * 100;
-            const exp = sibs.reduce((a, o) => a + (esOn.map.get(o.item_code) || 0), 0);
-            const expNo = sibs.reduce((a, o) => a + (esOff.map.get(o.item_code) || 0), 0);
-            const obs = share(sub.map, sub.n);
-            const tol = sigma3(exp / 100, sub.n);
-            const divUsed = [...new Set(sibs.map((o) => Number(o.repeat_weight_decrease)))].join("/");
-            const fold = exp > 0 ? expNo / exp : 0;
-            /* 기대빈도 5 미만이면 정규근사가 안 먹는다 — 제수 50·100 에 보드 배수까지
-               겹치면 기대가 0 에 붙고 허용 폭도 0 이 되어, 한 번만 뽑혀도 FAIL 이 뜬다.
-               그건 엔진이 아니라 판정이 안 서는 조건이다. */
-            if (!testable(exp / 100, sub.n))
+            /* 자리를 순회하며 <b>판정이 서는 첫 자리</b>를 쓴다. 하나도 안 서면
+               그중 기대빈도가 가장 큰 것을 「표본 부족」으로 보고한다 —
+               어느 자리를 얼마나 못 쟀는지가 보여야 발급 수를 얼마나 올릴지 안다. */
+            const tried = [];
+            let chose = null, best = null;
+            for (const p of picks) {
+              if (!p.target) { tried.push(`자리${p.seat} 제수 후보 없음`); continue; }
+              const [ch, nSib] = p.target;
+              const esOn = expectSeat(p.seat, { [ch]: RESET }), esOff = expectSeat(p.seat, {});
+              if (!esOn || !esOff) { tried.push(`자리${p.seat} 기대 분포 없음`); continue; }
+              const run = subSeats({ [ch]: RESET }, Math.min(L.N, 4000));
+              const obsN = run.n[p.seat - 1] || 0;
+              const sibs = p.cand.filter((o) => chainOf(o.item_code) === ch);
+              const exp = sibs.reduce((x, o) => x + (esOn.map.get(o.item_code) || 0), 0);
+              const cand = {
+                seat: p.seat, ch, nSib, exp, obsN,
+                expNo: sibs.reduce((x, o) => x + (esOff.map.get(o.item_code) || 0), 0),
+                obs: sibs.reduce((x, o) => x + (run.map[p.seat - 1].get(o.item_code) || 0), 0) / Math.max(1, obsN) * 100,
+                div: [...new Set(sibs.map((o) => Number(o.repeat_weight_decrease)))].join("/"),
+                freq: (exp / 100) * obsN,
+              };
+              if (testable(exp / 100, obsN)) { chose = cand; break; }
+              tried.push(`자리${p.seat} ${chainName(ch)} 기대빈도 ${cand.freq.toFixed(2)}건`);
+              if (!best || cand.freq > best.freq) best = cand;
+            }
+            if (!chose && best) { chose = best; chose.thin = true; }
+            if (!chose) {
+              add("na", "T8 반복 감쇠 작동", `제한 ${RESET}회 · 제수 ${divisors.join(" / ")}`,
+                  `판정이 서는 자리가 없다 &mdash; ${tried.join(" · ")}`,
+                  `자리마다 제수 후보를 찾아 봤지만 기대빈도가 ${MIN_EXPECT} 에 못 미친다 &mdash; `
+                    + `감쇠가 세게 걸려 기대가 0 에 붙은 것이다. 발급 수를 늘리거나 보드 채움률을 낮춰 보세요`,
+                  "judge");
+            } else if (chose.thin) {
               add("na", "T8 반복 감쇠 작동",
-                  `${chainName(ch)} 제한 ${RESET}회 · 제수 ${divUsed}`,
-                  `기대빈도 ${((exp / 100) * sub.n).toFixed(2)}건 &lt; ${MIN_EXPECT} — 표본 부족`,
-                  `감쇠가 세게 걸려 기대가 ${exp.toFixed(3)}% 로 0 에 붙었다 &mdash; `
+                  `자리${chose.seat} ${chainName(chose.ch)} 제한 ${RESET}회 · 제수 ${chose.div}`,
+                  `기대빈도 ${((chose.exp / 100) * chose.obsN).toFixed(2)}건 &lt; ${MIN_EXPECT} — 표본 부족`,
+                  `감쇠가 세게 걸려 기대가 ${chose.exp.toFixed(3)}% 로 0 에 붙었다 &mdash; `
                     + `이 표본 수로는 판정이 서지 않는다. 발급 수를 늘리거나 보드 채움률을 낮춰 보세요`,
                   "judge");
-            else add(Math.abs(obs - exp) > tol ? "no" : "ok", "T8 반복 감쇠 작동",
-                `${chainName(ch)}(${nSib}종) 제한 ${RESET}회 · 제수 ${divUsed} &mdash; 감쇠 시 기대 <b>${exp.toFixed(2)}%</b> · 없으면 ${expNo.toFixed(2)}%`,
-                `실측 <b>${obs.toFixed(2)}%</b> (표본 ${sub.n} · 허용 ±${tol.toFixed(2)}%p)`,
-                Math.abs(obs - exp) > tol
-                  ? `카운터를 ${RESET} 로 고정했는데 그 체인의 자리1 몫이 기대와 어긋난다 &mdash; `
-                    + `제수를 안 나눴거나(감쇠 미작동), 나눈 뒤 재정규화를 다르게 한다`
-                  : `카운터가 켜지면 ${chainName(ch)} 몫이 <b>${expNo.toFixed(2)}% → ${exp.toFixed(2)}%</b> 로 `
-                    + `약 <b>${fold.toFixed(1)}배</b> 줄고, 실측이 그 안에 든다. `
-                    + `상수(${RESET}회)·제수(${divUsed})·재정규화 셋이 다 맞물려 돈다`,
-                Math.abs(obs - exp) > tol ? "logic" : null);
+            } else {
+              const tol = sigma3(chose.exp / 100, chose.obsN);
+              const off = Math.abs(chose.obs - chose.exp) > tol;
+              const fold = chose.exp > 0 ? chose.expNo / chose.exp : 0;
+              add(off ? "no" : "ok", "T8 반복 감쇠 작동",
+                  `<b>자리${chose.seat}</b> ${chainName(chose.ch)}(${chose.nSib}종) 제한 ${RESET}회 · 제수 ${chose.div}`
+                    + ` &mdash; 감쇠 시 기대 <b>${chose.exp.toFixed(2)}%</b> · 없으면 ${chose.expNo.toFixed(2)}%`,
+                  `실측 <b>${chose.obs.toFixed(2)}%</b> (표본 ${chose.obsN} · 허용 ±${tol.toFixed(2)}%p)`,
+                  off
+                    ? `카운터를 ${RESET} 로 고정했는데 그 체인의 자리${chose.seat} 몫이 기대와 어긋난다 &mdash; `
+                      + `제수를 안 나눴거나(감쇠 미작동), 나눈 뒤 재정규화를 다르게 한다`
+                    : `카운터가 켜지면 ${chainName(chose.ch)} 몫이 <b>${chose.expNo.toFixed(2)}% → ${chose.exp.toFixed(2)}%</b> 로 `
+                      + `약 <b>${fold.toFixed(1)}배</b> 줄고, 실측이 그 안에 든다. `
+                      + `상수(${RESET}회)·제수(${chose.div})·재정규화 셋이 다 맞물려 돈다`
+                      + (chose.seat > 1
+                        ? `<br>자리1 에는 제수 > 0 인 후보가 없어 <b>자리${chose.seat} 로 판정했다</b> &mdash; `
+                          + `<code>high</code> 처럼 자리1 이 한 단계로 고정된 타입은 이 경로로만 잴 수 있다. `
+                          + `자리2 기대값은 자리1 승자에 대한 <b>조건부 합</b>으로 정확히 계산한다(근사 아님)`
+                        : ""),
+                  off ? "logic" : null);
+            }
           }
         }
 
@@ -1916,7 +2027,7 @@
            어느 쪽을 넓혀야 하는지 바로 보이게 한다. 엔진이 아니라 데이터 축이다. */
         {
           const b = L.band, rule = L.rule;
-          const zs = L.zeroSeat || [0, 0, 0];
+          const zs = L.zeroSeat || [];
           const ranges = b && rule ? Array.from({ length: rule.item_slot_max }, (_, i) => {
             const rg = seatRange(b, i + 1);
             return rg ? [rg.lo, rg.hi] : null;
@@ -2170,6 +2281,36 @@
                     + `시트에 한글 열이 생기면 저절로 해소된다`
                   : `${spec.length}종 전부 한글 이름이 붙었다 &mdash; 변환기의 사이드카 주입이 빠짐없이 돌았다`,
               none || en ? "data" : null);
+        }
+
+        /* ── T15 고정 오더 요구 중복 ──────────────────────────────────────────
+           랜덤 경로는 [4] 가 <code>chosen</code> 으로 같은 코드를 두 번 안 뽑는다(T6 가 본다).
+           <b>고정 오더에는 그 검사가 없다</b> — <code>order_fixed</code> 의 요구 칸을 그대로 편다.
+           이 페이지는 랜덤 경로를 보려고 <code>skipFixed</code> 로 고정을 빼고 도므로
+           표본에는 안 잡힌다. 그래서 표를 직접 읽는다.
+
+           고치지 않는다. 「접시 두 칸에 같은 그림」이 의도인지 「×2 한 칸」이 의도인지는
+           시트가 말해 주지 않는다 — T13 과 같이 <b>표면화만</b> 하고 판단은 넘긴다. */
+        {
+          const fx = (DATA.order_fixed || []).filter((r) => r.in_use);
+          const dup = fx.map((r) => {
+            const req = [r.requirement_1, r.requirement_2, r.requirement_3]
+              .filter((v) => v != null && v !== 0 && v !== "" && v !== "none");
+            return { r, req, dup: req.length !== new Set(req).size };
+          }).filter((e) => e.dup);
+          add(dup.length ? "warn" : "ok", "T15 고정 오더 요구 중복", "<code>order_fixed.requirement_*</code>",
+              dup.length
+                ? `${fx.length}행 중 <b>${dup.length}행</b>이 같은 코드를 두 번 요구한다 &mdash; `
+                  + dup.map((e) => `seq${e.r.fixed_seq} <code>${e.req.join(",")}</code>(${labelOf(e.req[0])})`).join(" · ")
+                : `${fx.length}행 전부 서로 다른 코드`,
+              dup.length
+                ? `엔진은 이걸 <code>[{코드,1},{코드,1}]</code> <b>두 칸</b>으로 편다 &mdash; `
+                  + `<code>{코드,2}</code> 한 칸이 아니다. 접시 두 칸에 같은 그림이 뜬다.<br>`
+                  + `랜덤 경로는 T6 가 중복을 막는데 <b>고정 경로엔 같은 검사가 없다.</b> `
+                  + `둘 중 어느 쪽이 의도인지는 시트로 판별되지 않는다 &mdash; `
+                  + `「2개 필요」면 수량 한 칸이 맞고, 「두 칸을 같은 것으로 채운다」면 지금이 맞다`
+                : `고정 오더도 랜덤과 같은 성질을 만족한다 &mdash; 한 카드가 같은 아이템을 두 칸 요구하지 않는다`,
+              dup.length ? "data" : null);
         }
 
         summarize(rows, "#rwRulesSum");
