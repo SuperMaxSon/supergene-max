@@ -420,22 +420,46 @@ def splice(block):
     return s, new
 
 
+def load_state():
+    return json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
+
+
+def rebuild(state):
+    """주어진 상태 그대로 문서를 다시 찍는다. C.guard_stamp 가 조회 시각만 바꿔 부른다."""
+    block, rng = build_js(state)
+    return rng, splice(block)[1]
+
+
 def main():
     a = C.parse_args()
     if not a.force and not C.enabled():
         log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
         return 0
 
+    # 쿼리 단계와 판정 단계를 나눈다. 쿼리가 실패하면 확인한 것이 없으므로 조회 시각을
+    # 올리면 거짓말이 된다. 판정(check)에서 막힌 경우에만 '봤다' 는 기록을 남긴다.
     try:
         blocks = run_query()
-        state  = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
-        state  = merge_state(state, blocks)
+    except Guard as e:
+        log("중단(가드): %s" % e)
+        notify(str(e))
+        return 1
+    except Exception as e:
+        log("중단(예외): %s: %s" % (type(e).__name__, e))
+        notify("%s: %s" % (type(e).__name__, e))
+        return 1
+
+    published = load_state()          # merge 가 제자리에서 고치므로 따로 읽어 둔다
+    try:
+        state = merge_state(load_state(), blocks)
         check(state)
         block, rng = build_js(state)
         old, new   = splice(block)
     except Guard as e:
         log("중단(가드): %s" % e)
         notify(str(e))
+        published["pulled"] = C.meta_pulled(blocks)
+        C.guard_stamp(a, published, rebuild)
         return 1
     except Exception as e:
         log("중단(예외): %s: %s" % (type(e).__name__, e))

@@ -329,6 +329,42 @@ def stamp_only(a, state, rng, new):
     return commit_push(a, msg, [_C["html"], _C["state"]] + list(shared), "조회 시각 갱신")
 
 
+def meta_pulled(blocks):
+    """0_META 의 조회 시각. 스크립트에 따라 dict 이거나 1행짜리 list 다."""
+    m = blocks.get("0_META")
+    if isinstance(m, list):
+        m = m[0] if m else {}
+    return (m or {}).get("pulled_kst")
+
+
+def guard_stamp(a, published, rebuild):
+    """가드에 막혀 데이터를 못 실을 때도 '언제 확인했는지' 는 남긴다.
+
+    가드의 목적은 **덜 들어온 데이터를 문서에 싣지 않는 것**이지 실행 기록까지 막는 것이
+    아니다. 그런데 가드가 며칠 이어지면 PULLED 가 그대로 멈추고, 문서 freshness() 와
+    app.js liveTimer 가 30h·72h 임계를 넘겨 "자동 갱신이 멈춘 것 같습니다" 라고
+    거짓 경고한다 — 자동화는 매번 정상적으로 돌며 '못 싣는다' 고 판정하고 있는데도.
+    2026-09-11 에 실제로 그랬다(09-10 DAU 가 중앙값의 74% 라 여섯 번 연속 막혔다).
+
+    published 는 **이미 발행된 상태** 다. 호출자가 조회 시각 필드만 갱신해서 넘긴다
+    (키 이름이 스크립트마다 pulled / pulled_kst 로 달라 여기서 건드리지 않는다).
+    새 쿼리 결과는 한 줄도 섞이지 않으므로 문서의 수치는 1비트도 바뀌지 않는다.
+
+    반환값이 없다 — 호출자의 종료 코드는 그대로 1 이다. 데이터를 싣지 못한 것은
+    여전히 실패이고, 러너의 재시도 판정을 여기서 바꾸지 않는다.
+    """
+    if not published.get("daily"):
+        log("가드 — 발행된 데이터가 없어 조회 시각도 남기지 않는다")
+        return
+    try:
+        rng, new = rebuild(published)
+    except Exception as e:
+        log("가드 — 조회 시각 갱신 실패(무시하고 넘어간다) %s: %s" % (type(e).__name__, str(e)[:150]))
+        return
+    log("가드 — 데이터는 그대로 두고 조회 시각만 남긴다")
+    stamp_only(a, published, rng, new)
+
+
 def finish(a, state, rng, old, new, dry_dump=None):
     """멱등 검사부터 커밋·푸시까지. 두 스크립트에서 완전히 같던 꼬리다."""
     # PULLED(조회 시각)와 AUTORUN.pulled 는 매 실행마다 바뀐다. 그것만 다르면

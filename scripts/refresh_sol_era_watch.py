@@ -371,19 +371,41 @@ def splice(state, block):
     return s, new
 
 
+def load_state():
+    return json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
+
+
+def rebuild(state):
+    """주어진 상태 그대로 문서를 다시 찍는다. C.guard_stamp 가 조회 시각만 바꿔 부른다."""
+    block, rng = build_js(state)
+    return rng, splice(state, block)[1]
+
+
 def main():
     a = C.parse_args()
     if not a.force and not C.enabled():
         log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
         return 0
 
+    # 쿼리 단계와 판정 단계를 나눈다 — refresh_sol_slot_ab.main() 과 같은 이유다.
     try:
-        state = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
+        state = load_state()
         prev  = len(state.get("daily", []))
         days  = missing_days(state)
         log("읽을 날짜 %d일%s" % (len(days),
             (" (" + ", ".join(d.isoformat() for d in days) + ")") if days else " — raw 스캔 0"))
         blocks = run_query(days)
+    except Guard as e:
+        log("중단(가드): %s" % e)
+        C.notify(str(e))
+        return 1
+    except Exception as e:
+        log("중단(예외): %s: %s" % (type(e).__name__, e))
+        C.notify("%s: %s" % (type(e).__name__, e))
+        return 1
+
+    published = load_state()
+    try:
         state  = merge_state(state, blocks, days)
         check(state, prev)
         block, rng = build_js(state)
@@ -391,6 +413,8 @@ def main():
     except Guard as e:
         log("중단(가드): %s" % e)
         C.notify(str(e))
+        published["pulled_kst"] = C.meta_pulled(blocks)
+        C.guard_stamp(a, published, rebuild)
         return 1
     except Exception as e:
         log("중단(예외): %s: %s" % (type(e).__name__, e))
