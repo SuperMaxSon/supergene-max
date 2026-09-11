@@ -56,6 +56,26 @@
       .rw-stickybar .rw-bar { margin: 0; }
       .rw-stickyresult { min-height: 1.4em; margin-top: 6px; font-size: 12px;
                           color: var(--text-faint); font-family: ui-monospace, Menlo, monospace; }
+      /* 오더 타입 색 — 타입 이름이 카드 라벨·표·막대·슬롯 목록 여러 군데에 나오는데
+         전부 같은 회색이라 눈으로 못 갈랐다. 타입마다 색을 하나 물려 <b>어디서 보든 같은
+         색</b>으로 읽히게 한다. 색 순서에 뜻을 담았다 — 초록 → 파랑 → 앰버 → 붉음이
+         난이도 오르는 순서다(normal 28 · high 98 · random_3 160 · random_4 225, Lv30 실측).
+         추첨 밖인 두 경로는 계열을 달리 둔다: 대본형 special 보라 · 고정 fixed 청록.
+         허브 토큰만 쓴다 — 새 색을 발명하지 않는다. */
+      .rw-t { color: var(--tc, var(--text-dim)); font-weight: 700; }
+      .rw-t.normal { --tc: var(--balance); }
+      .rw-t.high { --tc: var(--analysis); }
+      .rw-t.random_3 { --tc: var(--validate); }
+      .rw-t.random_4 { --tc: var(--deploy); }
+      .rw-t.special { --tc: var(--plan); }
+      .rw-t.fixed { --tc: var(--tool); }
+      /* 카드 라벨은 카드 아래에 작게 붙는 자리라 색만 물리고 굵기는 원래대로 둔다 */
+      .rw-card .rw-lbl .rw-t { font-weight: 700; }
+      /* 타입 고르는 select 자체에도 색을 물린다 — 지금 무엇을 보고 있는지가 조작 바에서
+         바로 읽힌다. `.rw-f select` 가 color 를 잡고 있어 한 급 더 올려 적는다.
+         <option> 에 색을 주는 건 브라우저마다 달라서 안 쓴다. */
+      .rw-f select.rw-t { color: var(--tc, var(--text)); }
+
       /* 검사 요약 미러 — 「검사」 표 네 개는 이 바보다 <b>위</b>에 있어서, 결과 표를 읽는
          동안에는 판정이 화면 밖이었다. 네 줄을 바 안에 같이 붙여 스크롤을 따라오게 한다.
          값을 다시 세지 않고 각 summary 의 배지 HTML 을 그대로 복제한다 — 따로 계산하면
@@ -660,7 +680,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v5.1 · 2026-09-11 17:15";   // 날짜만으로는 안 갈린다 — 같은 날 여러 판이 난다. 허브 카드 updated 와 같은 값으로 둔다
+      const PAGE_BUILD = "v5.2 · 2026-09-11 17:22";   // 날짜만으로는 안 갈린다 — 같은 날 여러 판이 난다. 허브 카드 updated 와 같은 값으로 둔다
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -990,7 +1010,7 @@
             const budget = Number(r.refresh_sec) > 0
               ? `${r.refresh_sec / 60}분 주기` + (Number(r.refill_max) > 0 ? ` · 비축 최대 ${r.refill_max}장` : " · <b>비축 없음</b>")
               : "<b>주기 없음</b>";
-            return `<b>${TYPE_KO[t] || t}</b>(${t}) ${r.slot_count}칸 · 첫 자리 ${f} · Lv${r.unlock_level} · ${budget}`;
+            return `${typeTag(t)}(${typeTag(t, true)}) ${r.slot_count}칸 · 첫 자리 ${f} · Lv${r.unlock_level} · ${budget}`;
           });
           return `<span class="li">${li.join("<br>")}</span>`;
         }
@@ -1433,6 +1453,8 @@
         const N = clamp(Number($("#rwN").value) || 2000, 10, 50000);
         const lv = clamp(Number($("#rwLv").value) || 1, 1, 30);
         const type = $("#rwType").value;
+        /* 고른 타입 색을 select 에 얹는다 — 표·카드와 같은 색이라 「지금 이 타입을 본다」가 이어진다 */
+        $("#rwType").className = `rw-t ${type}`;
         const kind = $("#rwBoard").value;
         /* 보드 난수는 시뮬 난수열과 섞이면 안 된다 — boardRandom 이 상태를 저장·복원하고
            자기 시드만 굴린다. 「다시 섞기」가 BSEED 를 올린다. */
@@ -1787,7 +1809,7 @@
       }
       function renderSamples(samples) {
         $("#rwSamples").innerHTML = samples.length
-          ? samples.map((s) => cardHTML(s.card, s.bad)).join("")
+          ? samples.map((s) => cardHTML({ ...s.card, type: typeTag(s.card.type) }, s.bad)).join("")
           : '<div class="rw-empty">이 조건에서는 카드가 만들어지지 않았습니다.</div>';
       }
 
@@ -1821,6 +1843,9 @@
             <span class="n">${text}</span></div>`;
       }
       const drawTypes = () => SLOT_ORDER.filter((t) => isDrawType(t));
+      /* 타입 이름은 항상 이걸로 찍는다 — 색이 한 군데서만 정해지게 하려고 헬퍼를 둔다.
+         raw 를 주면 영문 키를 쓴다(표의 <code> 칸처럼 원문이 필요한 자리). */
+      const typeTag = (t, raw) => `<span class="rw-t ${t}">${raw ? t : (TYPE_KO[t] || t)}</span>`;
       const med = (xs) => (xs.length ? xs[Math.floor(xs.length / 2)] : 0);
 
       /* 난이도 분포 — 네 타입을 <b>같은 보드 묶음</b>으로 돌린다. 보드를 카드마다 새로
@@ -1869,7 +1894,7 @@
           + `<th class="num">난이도 최소</th><th class="num">중앙</th><th class="num">최대</th><th class="num">배수</th>`;
         const slotsOf = (t) => { const o = []; for (let n = 1; n <= slotCount(); n++) if (slotType(n) === t) o.push(n); return o; };
         $("#rwTier").innerHTML = rows.map((r) => {
-          const head = `<td><b>${TYPE_KO[r.t] || r.t}</b><span class="key">${r.t}</span></td>`
+          const head = `<td>${typeTag(r.t)}<span class="key">${r.t}</span></td>`
             + `<td>${slotsOf(r.t).join("·") || "—"}</td>`;
           if (r.locked) return `<tr>${head}<td colspan="${stepList.length + 5}"><span class="rw-v na">미해금</span> unlock_level ${r.rule.unlock_level} > Lv${lv}</td></tr>`;
           if (r.noband) return `<tr>${head}<td colspan="${stepList.length + 5}"><span class="rw-v no">밴드 없음</span> order_slot_band 에 Lv${lv} 구간이 없다</td></tr>`;
@@ -1887,7 +1912,7 @@
         const live = rows.filter((r) => !r.locked && !r.noband);
         const mx = Math.max(1, ...live.map((r) => r.max));
         $("#rwTierSpread").innerHTML = live.length
-          ? live.map((r, i) => valBar(`<b>${TYPE_KO[r.t] || r.t}</b>`, r.med, mx, (i * 70) % 360,
+          ? live.map((r, i) => valBar(typeTag(r.t), r.med, mx, (i * 70) % 360,
               `${r.min} ~ <b>${r.med}</b> ~ ${r.max}`,
               `${r.t} · 중앙 ${r.med} · 최소 ${r.min} · 최대 ${r.max}`)).join("")
           : '<div class="rw-empty">이 레벨에 열린 추첨 타입이 없습니다.</div>';
@@ -1927,20 +1952,29 @@
         const gap = ds.length > 1 ? Math.max(...ds) / Math.max(1, Math.min(...ds)) : null;
         return { line, d, c, ds, gap, board: bd, seed: boardSeed };
       }
-      /* 레일 한 줄을 표로 — 통계 쪽 표본 3줄과 버튼이 같은 표를 쓴다 */
-      function railTable(sm, title) {
-        return `<div class="rw-tw" style="margin-bottom:10px">
-            <table><thead><tr><th>슬롯</th><th>타입</th><th>요구</th><th class="num">난이도</th><th class="num">코인</th><th class="num">앞 칸이 뺀 후보</th></tr></thead>
-            <tbody>${sm.line.map((x) => `<tr><td>${x.no}</td><td>${TYPE_KO[x.type] || x.type}</td>
-              <td>${x.card ? `<span class="rw-blabel">${x.card.reqs.map((q) => chipArt(q.code)).join("")}`
-                    + `${x.card.reqs.map((q) => labelOf(q.code)).join(" + ")}</span>`
-                  : `<span class="rw-v na">${x.why}</span>`}</td>
-              <td class="num">${x.card ? x.card.diff : "—"}</td><td class="num">${x.card ? x.card.coin : "—"}</td>
-              <td class="num" style="opacity:.7">${x.cut ? `${x.cut}종` : "—"}</td></tr>`).join("")}
-            <tr><td colspan="3"><b>${title || "줄 합계"}</b>${sm.gap ? ` <span style="opacity:.7">· 가장 어려운 칸이 가장 쉬운 칸의 <b>${sm.gap.toFixed(1)}배</b></span>` : ""}</td>
-                <td class="num"><b>${sm.d}</b></td><td class="num"><b>${sm.c}</b></td><td></td></tr>
-            </tbody></table></div>`;
+      /* 레일 한 줄 — <b>「분포」의 표본 카드와 같은 UI</b>로 그린다. 표로 그렸다가 되돌렸다:
+         레일은 플레이어가 카드 다섯 장을 나란히 보는 화면인데, 같은 페이지 안에서 같은
+         물건(오더 한 장)을 두 가지 모양으로 보여 주면 눈이 두 번 적응해야 한다.
+         cardHTML 을 그대로 쓰고 슬롯 번호만 라벨에 얹는다 — 카드 컴포넌트는 안 건드린다.
+         미해금·실패 칸도 카드 자리를 지킨다. 빠뜨리면 다섯 칸 줄이 세 칸으로 보여서
+         「이 레벨엔 칸이 셋뿐」으로 읽힌다. 새 CSS 는 쓰지 않는다. */
+      function railCards(sm, title) {
+        const cards = sm.line.map((x) => {
+          const lbl = `${x.no}·${typeTag(x.type)}`;
+          if (x.card) return cardHTML({ ...x.card, type: lbl });
+          return `<div class="rw-card"><div class="rw-top"></div>
+              <div class="rw-dish"><span class="rw-v na">${x.why}</span></div>
+              <div class="rw-bot"></div><span class="rw-lbl">${lbl}</span></div>`;
+        }).join("");
+        const cut = sm.line.map((x) => `${x.no}칸 ${x.cut}종`).join(" · ");
+        return `<p class="rw-tnote" style="margin-bottom:0">${title}
+            &mdash; 난이도 합 <b>${sm.d}</b> · 코인 합 <b>${sm.c}</b>${
+              sm.gap ? ` · 가장 어려운 칸이 가장 쉬운 칸의 <b>${sm.gap.toFixed(1)}배</b>` : ""}</p>
+          <div class="rw-samples">${cards}</div>
+          <p class="rw-tnote" style="margin-top:-8px">앞 칸이 뺀 후보 &mdash; ${cut}
+            <span style="opacity:.65">(번호순으로 채우며 앞 카드 요구품을 뒤 후보에서 뺀다)</span></p>`;
       }
+
       /* 「새 레일 한 줄」 — 누를 때마다 올라가는 자체 시드를 쓴다. 통계 쪽(SEED0+2)과
          분리해서, 버튼을 눌러도 아래 평균이 흔들리지 않게 한다. */
       let RAIL_ONE = 0;
@@ -1957,7 +1991,7 @@
           `<p class="rw-tnote" style="margin-bottom:6px">Lv${lv} · 보드 채움 ${fill}% · `
           + `${live}/${sm.line.length}칸 발급 · <code>레일 #${RAIL_ONE}</code> `
           + `<span style="opacity:.65">(같은 번호면 같은 줄이 다시 나옵니다)</span></p>`
-          + railTable(sm, `레일 #${RAIL_ONE} 합계`);
+          + railCards(sm, `<b>레일 #${RAIL_ONE}</b>`);
       }
 
       function railBody(lv, fill, N) {
@@ -1989,7 +2023,7 @@
         ].map(([k, v]) => `<div class="rw-kpi"><u>${k}</u><b>${v}</b></div>`).join("");
         $("#rwRailSlots").innerHTML = per.map((p) => {
           const d = p.diff.slice().sort((a, b) => a - b);
-          return `<tr><td><b>${p.no}</b></td><td>${TYPE_KO[p.type] || p.type}<span class="key">${p.type}</span></td>
+          return `<tr><td><b>${p.no}</b></td><td>${typeTag(p.type)}<span class="key">${p.type}</span></td>
             <td class="num">${avg(p.diff).toFixed(0)}</td><td class="num">${avg(p.coin).toFixed(1)}</td>
             <td class="num">${d.length ? `${d[0]} ~ ${d[d.length - 1]}` : "—"}</td>
             <td class="num">${p.empty ? `${((p.empty / R) * 100).toFixed(0)}%` : "0"}</td>
@@ -2004,7 +2038,7 @@
           ? B.map(([lo, hi], i) => barHTML(hi === Infinity ? `${lo}배 이상` : `${lo}~${hi}배`,
               hist[i], gaps.length, null, (i * 50) % 360, null, (hmax / gaps.length) * 100)).join("")
           : '<div class="rw-empty">칸이 하나뿐이라 격차를 잴 수 없습니다.</div>';
-        $("#rwRailSamples").innerHTML = samples.map((sm, i) => railTable(sm, `표본 ${i + 1}줄 합계`)).join("");
+        $("#rwRailSamples").innerHTML = samples.map((sm, i) => railCards(sm, `<b>표본 ${i + 1}줄</b>`)).join("");
       }
 
       /* 자리별 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
@@ -2222,7 +2256,7 @@
           return;
         }
         $("#rwLog").innerHTML = samples.map((s, i) => `<div class="rw-e">
-            <h4>표본 ${i + 1} · ${s.card.type}${s.card.band ? ` b${s.card.band}` : ""}
+            <h4>표본 ${i + 1} · ${typeTag(s.card.type)}${s.card.band ? ` b${s.card.band}` : ""}
               ${s.why.length ? `<span class="rw-v no">위반 ${s.why.length}</span>` : '<span class="rw-v ok">PASS</span>'}
               <span class="tag">${s.card.reqs.map((q) => nameOf(q.code)).join(" + ")}</span></h4>
             ${s.why.length ? `<div class="rw-steps"><span class="w">${s.why.join("\n")}</span></div>` : ""}
