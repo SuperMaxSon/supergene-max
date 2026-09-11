@@ -303,6 +303,8 @@
         <a class="nav-back" href="#input">입력</a>
         <a class="nav-back" href="#check">검사</a>
         <a class="nav-back" href="#sim">분포</a>
+        <a class="nav-back" href="#tier">난이도</a>
+        <a class="nav-back" href="#rail">레일</a>
         <a class="nav-back" href="#log">로그</a>
         <span class="nav-spacer"></span>
         <a class="nav-back" href="rosewood-order-bench.html">프로토타입 ↗</a>
@@ -555,6 +557,71 @@
         </div>
       </section>
 
+      <!-- ================= 난이도 분포 =================
+           「분포」 섹션은 <b>한 타입만</b> N장 뽑는다. 그런데 플레이어가 한 번에 보는 건
+           서로 난이도가 다른 다섯 칸이다. 이 섹션은 네 추첨 타입을 <b>같은 조건으로 나란히</b>
+           돌려서 「어느 칸에서 무엇이 뜨나」와 「같은 칸 안에서 폭이 얼마나 되나」에 답한다. -->
+      <section class="doc-section" id="tier">
+        <h2 class="doc-h2">난이도 분포</h2>
+        <div class="doc-h2-sub">
+          네 추첨 타입을 <b>같은 레벨·같은 보드 묶음</b>으로 나란히 돌립니다.
+          구간은 <b>단계(step)</b>로 끊습니다 &mdash; <code>order_slot_band</code> 가
+          <code>first_min~first_max</code> 로 단계를 직접 정의하고 난이도가 단계에 거의
+          2배씩 붙기 때문입니다. <b>제가 만든 경계가 아니라 시트가 준 경계</b>라, 기획이
+          밴드를 고치면 이 표도 같이 움직입니다.
+          <br>구판에는 <code>order_slot_band.diff_sum_min/max</code> 라는 타입별 난이도 구간이
+          있었지만 <b>신판에서 삭제됐고</b>, 그것도 13행 중 12행이 <code>0~9999</code>(상한 없음)여서
+          실제로 쓰인 건 <code>event</code> Lv30 두 행뿐이었습니다. 게다가 그 값은
+          <b>카드 한 장이 아니라 하루 누적</b> 난이도라 이 표와는 축이 다릅니다.
+        </div>
+        <div class="rw-panel">
+          <div class="rw-pb">
+            <p class="rw-tnote" id="rwTierNote"></p>
+            <div class="rw-tw">
+              <table>
+                <thead><tr id="rwTierHead"></tr></thead>
+                <tbody id="rwTier"></tbody>
+              </table>
+            </div>
+            <p class="rw-tnote" style="margin-top:12px">카드 난이도 폭 &mdash; 막대가 최소~최대, 표시는 중앙값</p>
+            <div class="rw-bars" id="rwTierSpread"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 리얼 레일 =================
+           지금까지의 모든 표는 카드를 <b>한 장씩</b> 본다. 실제 플레이어는 다섯 칸을 한 줄로
+           본다 — 그리고 그 다섯 장은 서로의 요구품을 후보에서 빼면서 뽑힌다(정본 ⑥).
+           이 섹션만 그 상호작용을 가정 없이 실측한다. -->
+      <section class="doc-section" id="rail">
+        <h2 class="doc-h2">리얼 레일</h2>
+        <div class="doc-h2-sub">
+          슬롯 <b>1~5 를 한 줄로</b> 뽑습니다 &mdash; 정본 ⑥ 그대로 <b>번호순</b>으로 채우고
+          <b>앞 카드의 요구품을 뒤 후보에서 뺍니다</b>. 줄마다 <b>보드를 새로 굴립니다</b>.
+          <br>다른 섹션은 실제 레일이 없어서 「표본 3종을 다른 오더가 요구 중」이라고
+          <b>가정</b>하는데, 여기는 그 가정을 안 씁니다 &mdash; 다섯 칸이 서로의 요구를
+          실제로 보기 때문입니다. 「미검증」의 <b>「레일이 회전하지 않는다」</b> 항목을 이 섹션이
+          부분적으로 닫습니다(납품 뒤 재발급까지는 여전히 안 봅니다).
+        </div>
+        <div class="rw-panel">
+          <div class="rw-pb">
+            <p class="rw-tnote" id="rwRailNote"></p>
+            <div class="rw-kpis" id="rwRailKpi"></div>
+            <p class="rw-tnote">슬롯별 &mdash; 한 줄 안에서 각 칸이 내놓는 값</p>
+            <div class="rw-tw">
+              <table>
+                <thead><tr><th>슬롯</th><th>타입</th><th class="num">난이도 평균</th><th class="num">코인 평균</th><th class="num">난이도 폭</th><th class="num">빈 칸</th><th>요구 제외로 빠진 후보</th></tr></thead>
+                <tbody id="rwRailSlots"></tbody>
+              </table>
+            </div>
+            <p class="rw-tnote" style="margin-top:12px">한 줄 안 난이도 격차 &mdash; 가장 어려운 칸 ÷ 가장 쉬운 칸</p>
+            <div class="rw-bars" id="rwRailGap"></div>
+            <p class="rw-tnote">표본 레일 3줄 &mdash; 실제로 플레이어가 보는 한 줄</p>
+            <div id="rwRailSamples"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= 로그 ================= -->
       <section class="doc-section" id="log">
         <h2 class="doc-h2">판정 로그</h2>
@@ -585,7 +652,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v4.5 · 2026-09-11 15:23";   // 날짜만으로는 안 갈린다 — 같은 날 여러 판이 난다. 허브 카드 updated 와 같은 값으로 둔다
+      const PAGE_BUILD = "v5.0 · 2026-09-11 17:08";   // 날짜만으로는 안 갈린다 — 같은 날 여러 판이 난다. 허브 카드 updated 와 같은 값으로 둔다
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -717,8 +784,8 @@
            "<code>dry:true</code> 가 이 단계를 건너뛴다 — 안 그러면 분포 표본이 예산 소진으로 끊긴다",
            "실시간 타이머를 돌리는 별도 하네스. 벤치에서 직접 눌러 보는 게 빠르다"],
           ["레일이 회전하지 않는다",
-           "표본 3종을 고정으로 제외한다 — 재현성과 기대값 계산을 위해서다. 실제 레일은 납품마다 요구가 바뀐다",
-           "레일 4칸을 함께 발급하며 서로의 요구를 반영하는 하네스. 벤치가 그 동작을 한다"],
+           "<b>위쪽 표들</b>은 표본 3종을 고정으로 제외한다 — 재현성과 기대값 계산을 위해서다. 실제 레일은 납품마다 요구가 바뀐다. <b>「리얼 레일」 섹션은 이 가정을 안 쓴다</b> — 슬롯 1~5 를 번호순으로 뽑으며 앞 카드 요구품을 실제로 빼므로, <b>슬롯 간 제외는 이제 실측된다</b>. 남은 구멍은 <b>납품 뒤 재발급</b>이다",
+           "납품→재발급 한 바퀴를 도는 하네스. 벤치가 그 동작을 한다(오더 납품 페이지)"],
           ["[0] 고정 오더 16행",
            "<code>skipFixed:true</code> 로 빼고 돌린다 — 랜덤 경로 분포를 보는 게 목적이라",
            "순번·슬롯·레벨 조건을 순회하는 전용 검사 추가"],
@@ -731,6 +798,9 @@
           ["반복 카운터 — 이 페이지의 궤적",
            "<b>정의와 시점은 정본에서 확정됐고</b> 그대로 구현돼 있습니다 &mdash; <b>납품할 때</b> 그 체인을 3 으로 놓고, 발급에서는 <b>제한을 적용한 체인만</b> 1 을 뺍니다. 남은 차이는 규칙이 아니라 <b>표본 모형</b>입니다: 이 페이지는 <b>한 장씩 뽑아 곧바로 납품</b>한다고 가정하는데, 실제 게임은 납품 한 번에 빈 레일 칸을 <b>연달아</b> 채우고 그 추첨마다 1 이 빠져 카운터가 3 → 2 → 1 로 더 빨리 내려갑니다",
            "레일을 여러 칸 함께 채우는 벤치 쪽 궤적과 대조. <b>같은 규칙의 다른 표본</b>이라 T8 판정에는 쓰지 않습니다 &mdash; T8 은 구현이 스스로 일관되는지만 봅니다"],
+          ["구판 누적 난이도 밴드 (<code>diff_sum</code>)",
+           "구판 <code>order_slot_band</code> 에는 <code>diff_sum_min/max</code> 가 있었고 <code>event</code> Lv30 두 행이 <b>그 값으로 갈렸다</b>(0~2000 / 2001~9999). 엔진은 <code>diff_sum</code> 을 안 보므로 <b>구판 번들 비교 모드에서는 그 5번째 밴드가 안 잡힌다</b> — 밴드 4가 먼저 걸린다. 신판은 열과 5번 밴드를 같이 지웠으니 현행 데이터에서는 문제가 없다",
+           "구판 비교가 필요해지면 <code>pickBand</code> 에 누적 난이도 조건을 되살려야 한다. 지금 되살리면 신판에 없는 칸을 읽는 코드가 남는다"],
           ["<code>special</code> 발급 시점",
            "밴드가 없어 추첨 경로 밖이라는 것까지는 데이터로 확정된다(<code>refresh_sec 0</code> · 밴드 0행). 다만 <code>trigger_task</code> 가 언제 충족되는지는 <code>main_task</code> 진행 상태라 이 페이지가 못 잰다",
            "메인 과제 진행 시뮬이 생기면 그걸 입력으로. 지금은 「대본형」 표기까지만"],
@@ -1527,6 +1597,11 @@
                  reset: RepeatDecay.resetOf(DATA.const || {}) };
 
         renderKpi(); renderWhy(); renderSamples(samples); renderBars(); renderLog(samples); renderRules();
+        /* 두 섹션은 자기 발급을 따로 돈다 — 위 표본은 한 타입·한 보드라 난이도 비교에
+           쓸 수 없다. 위 판정(GAP_ROWS·RULE_ROWS)이 끝난 뒤에 부른다: 이 둘은 판정을
+           만들지 않으므로 스티키 요약 숫자를 흔들지 않는다. */
+        renderTier(lv, $("#rwFill").value, N);
+        renderRail(lv, $("#rwFill").value, N);
         renderRwStickyResult();
       }
 
@@ -1720,6 +1795,168 @@
               expPct != null ? `<span class="exp" style="left:${w(expPct)}" title="기대 ${expPct.toFixed(2)}%"></span>` : ""
             }</span>
             <span class="n">${pct.toFixed(2)}%${expPct != null ? ` / ${expPct.toFixed(2)}%` : ""} · ${n}</span></div>`;
+      }
+
+      /* ── 난이도 분포 · 리얼 레일 ──────────────────────────────────────────
+         두 섹션의 공통 원칙: <b>보드를 하나로 고정하지 않는다.</b> 한 보드로 다 돌리면
+         그 보드가 못 내는 상황 배수 축이 통째로 빠져서(배수가 1:100:1000:10000 이라
+         지배항이다) 난이도 분포가 한쪽으로 쏠린다. 난이도를 보려는 표에서 그건 치명적이다.
+
+         막대는 기존 `.rw-b` 구조를 그대로 쓴다 — 새 CSS 를 만들지 않는다. 다만 난이도는
+         비율이 아니라 절대값이라 barHTML 의 「n% · n」 표기가 안 맞아서, 같은 클래스에
+         숫자 칸만 내 문구로 바꾼 작은 헬퍼를 따로 둔다. */
+      function valBar(name, val, max, hue, text, title) {
+        const w = clamp(max > 0 ? (val / max) * 100 : 0, 0, 100);
+        return `<div class="rw-b" style="--h:${hue}deg">
+            <span class="nm" title="${title || name}">${name}</span>
+            <span class="track"><span class="fill" style="width:${w}%"></span></span>
+            <span class="n">${text}</span></div>`;
+      }
+      const drawTypes = () => SLOT_ORDER.filter((t) => isDrawType(t));
+      const med = (xs) => (xs.length ? xs[Math.floor(xs.length / 2)] : 0);
+
+      /* 난이도 분포 — 네 타입을 <b>같은 보드 묶음</b>으로 돌린다. 보드를 카드마다 새로
+         굴리면 수백 개를 짓게 되는데(체인마다 item_spec 을 훑는다) 그만한 값을 안 한다.
+         묶음 24개를 돌려 쓰면 축은 골고루 섞이고 비용은 24번으로 끝난다. 묶음 수를
+         화면에 적어 둔다 — 안 적으면 「보드 하나로 돌린 값」으로 읽힌다. */
+      const TIER_BOARDS = 24;
+      function renderTier(lv, fill, N) {
+        /* 난수 격리 — 이 표는 <b>비교용</b>이라 위 본 발급의 난수 열에 얹히면 안 된다.
+           얹히면 「시드 고정」을 켜도 본 발급 길이(N)에 따라 표가 흔들려서 타입끼리
+           비교가 성립하지 않는다. 전용 시드를 물리고 끝나면 되돌린다 —
+           보드는 BSEED 를 타므로 「다시 섞기」에는 그대로 반응한다. */
+        const keep = RNG.save();
+        RNG.load(String(SEED0 + 1));
+        try { tierBody(lv, fill, N); } finally { RNG.load(keep); }
+      }
+      function tierBody(lv, fill, N) {
+        const types = drawTypes();
+        const M = clamp(Math.round(N / 8), 40, 400);
+        const boards = Array.from({ length: TIER_BOARDS }, (_, i) => boardRandom(lv, fill, `t${BSEED}:${i}`));
+        const steps = new Set();
+        const rows = types.map((t) => {
+          const rule = ruleOf(t), band = pickBand(t, lv);
+          if (!rule || lv < rule.unlock_level) return { t, locked: true, rule };
+          if (!band) return { t, noband: true, rule };
+          const byStep = new Map(); const diffs = []; let ok = 0;
+          for (let i = 0; i < M; i++) {
+            const bd = boards[i % boards.length];
+            const r = generateOrder(1, { level: lv, type: t, counts: bd.counts, othersReq: new Set(),
+                                         prev: null, repeat: {}, dry: true, skipFixed: true });
+            if (!r.card || !r.card.reqs.length) continue;
+            ok++;
+            const st = stepOf(r.card.reqs[0].code);
+            steps.add(st); byStep.set(st, (byStep.get(st) || 0) + 1);
+            diffs.push(r.card.diff);
+          }
+          diffs.sort((a, b) => a - b);
+          return { t, rule, band, byStep, ok,
+                   min: diffs[0] || 0, med: med(diffs), max: diffs[diffs.length - 1] || 0 };
+        });
+        const stepList = [...steps].sort((a, b) => a - b);
+        $("#rwTierNote").innerHTML = `타입당 <b>${M.toLocaleString()}장</b> · 보드 <b>${TIER_BOARDS}개</b>를 돌려 씁니다 · `
+          + `Lv${lv} · 칸은 <b>자리1 아이템의 단계</b> 비율입니다 — 자리1 이 난이도를 지배합니다`;
+        $("#rwTierHead").innerHTML = `<th>타입</th><th>슬롯</th><th>자리1 단계 범위</th>`
+          + stepList.map((st) => `<th class="num">${st}단계</th>`).join("")
+          + `<th class="num">난이도 최소</th><th class="num">중앙</th><th class="num">최대</th><th class="num">배수</th>`;
+        const slotsOf = (t) => { const o = []; for (let n = 1; n <= slotCount(); n++) if (slotType(n) === t) o.push(n); return o; };
+        $("#rwTier").innerHTML = rows.map((r) => {
+          const head = `<td><b>${TYPE_KO[r.t] || r.t}</b><span class="key">${r.t}</span></td>`
+            + `<td>${slotsOf(r.t).join("·") || "—"}</td>`;
+          if (r.locked) return `<tr>${head}<td colspan="${stepList.length + 5}"><span class="rw-v na">미해금</span> unlock_level ${r.rule.unlock_level} > Lv${lv}</td></tr>`;
+          if (r.noband) return `<tr>${head}<td colspan="${stepList.length + 5}"><span class="rw-v no">밴드 없음</span> order_slot_band 에 Lv${lv} 구간이 없다</td></tr>`;
+          const cells = stepList.map((st) => {
+            const n = r.byStep.get(st) || 0;
+            const inRange = st >= r.band.first_min && st <= r.band.first_max;
+            if (!n) return `<td class="num" style="opacity:${inRange ? ".5" : ".2"}">${inRange ? "0%" : "—"}</td>`;
+            return `<td class="num"><b>${((n / r.ok) * 100).toFixed(0)}%</b></td>`;
+          }).join("");
+          const ratio = r.min > 0 ? (r.max / r.min) : 0;
+          return `<tr>${head}<td><code>${r.band.first_min}~${r.band.first_max}</code></td>${cells}`
+            + `<td class="num">${r.min}</td><td class="num"><b>${r.med}</b></td><td class="num">${r.max}</td>`
+            + `<td class="num">${ratio ? `${ratio.toFixed(1)}배` : "—"}</td></tr>`;
+        }).join("");
+        const live = rows.filter((r) => !r.locked && !r.noband);
+        const mx = Math.max(1, ...live.map((r) => r.max));
+        $("#rwTierSpread").innerHTML = live.length
+          ? live.map((r, i) => valBar(`<b>${TYPE_KO[r.t] || r.t}</b>`, r.med, mx, (i * 70) % 360,
+              `${r.min} ~ <b>${r.med}</b> ~ ${r.max}`,
+              `${r.t} · 중앙 ${r.med} · 최소 ${r.min} · 최대 ${r.max}`)).join("")
+          : '<div class="rw-empty">이 레벨에 열린 추첨 타입이 없습니다.</div>';
+      }
+
+      /* 리얼 레일 — 슬롯 1~5 를 <b>한 줄로</b> 뽑는다. 정본 ⑥ 「여러 빈자리는 번호순으로
+         채우고 앞 카드의 요구품을 뒤 후보 계산에 반영한다」를 그대로 돈다. 그래서 이
+         섹션만은 「표본 3종을 다른 오더가 요구 중」 가정을 <b>안 쓴다</b> — 다섯 칸이 서로의
+         요구를 실제로 본다. 반복 카운터도 줄마다 새로 시작한다(납품을 안 하므로 감쇠만 돈다). */
+      function renderRail(lv, fill, N) {
+        const keep = RNG.save();                       // 위 renderTier 와 같은 이유
+        RNG.load(String(SEED0 + 2));
+        try { railBody(lv, fill, N); } finally { RNG.load(keep); }
+      }
+      function railBody(lv, fill, N) {
+        const R = clamp(Math.round(N / 10), 10, 200);
+        const railSlots = [];
+        for (let n = 1; n <= slotCount(); n++) if (isDrawType(slotType(n))) railSlots.push(n);
+        const per = railSlots.map((no) => ({ no, type: slotType(no), diff: [], coin: [], empty: 0, cut: 0, draws: 0 }));
+        const sums = []; const gaps = []; const samples = [];
+        for (let i = 0; i < R; i++) {
+          const bd = boardRandom(lv, fill, `r${BSEED}:${i}`);
+          const req = new Set(); const CR = {}; const line = [];
+          let sd = 0, sc = 0; const ds = [];
+          railSlots.forEach((no, k) => {
+            /* 이 칸이 뽑기 <b>직전</b>에 이미 빠져 있던 코드 수 — 앞 칸들이 요구한 것이다.
+               「요구 제외가 실제로 무나」를 가정 없이 재는 유일한 값이다. */
+            per[k].cut += req.size; per[k].draws++;
+            const r = generateOrder(no, { level: lv, counts: bd.counts, othersReq: req,
+                                          prev: null, repeat: CR, dry: true, skipFixed: true });
+            if (!r.card) { per[k].empty++; line.push({ no, type: slotType(no), why: r.locked ? "미해금" : "발급 실패" }); return; }
+            r.card.reqs.forEach((q) => req.add(q.code));
+            per[k].diff.push(r.card.diff); per[k].coin.push(r.card.coin);
+            sd += r.card.diff; sc += r.card.coin; ds.push(r.card.diff);
+            line.push({ no, type: slotType(no), card: r.card });
+          });
+          sums.push({ d: sd, c: sc, n: ds.length });
+          if (ds.length > 1) gaps.push(Math.max(...ds) / Math.max(1, Math.min(...ds)));
+          if (samples.length < 3) samples.push({ line, d: sd, c: sc, seed: i });
+        }
+        const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+        const full = sums.filter((x) => x.n === railSlots.length).length;
+        $("#rwRailNote").innerHTML = `레일 <b>${R.toLocaleString()}줄</b> · 줄마다 보드를 새로 굴립니다 · `
+          + `Lv${lv} · 칸 ${railSlots.length}개(${railSlots.join("·")}) — <code>special</code> 은 추첨 대상이 아니라 빠집니다`;
+        $("#rwRailKpi").innerHTML = [
+          ["다 찬 줄", `${((full / R) * 100).toFixed(0)}%`],
+          ["줄 난이도 평균", avg(sums.map((x) => x.d)).toFixed(0)],
+          ["줄 코인 평균", avg(sums.map((x) => x.c)).toFixed(0)],
+          ["줄 안 난이도 격차", gaps.length ? `${avg(gaps).toFixed(1)}배` : "—"],
+          ["가장 벌어진 줄", gaps.length ? `${Math.max(...gaps).toFixed(1)}배` : "—"],
+        ].map(([k, v]) => `<div class="rw-kpi"><u>${k}</u><b>${v}</b></div>`).join("");
+        $("#rwRailSlots").innerHTML = per.map((p) => {
+          const d = p.diff.slice().sort((a, b) => a - b);
+          return `<tr><td><b>${p.no}</b></td><td>${TYPE_KO[p.type] || p.type}<span class="key">${p.type}</span></td>
+            <td class="num">${avg(p.diff).toFixed(0)}</td><td class="num">${avg(p.coin).toFixed(1)}</td>
+            <td class="num">${d.length ? `${d[0]} ~ ${d[d.length - 1]}` : "—"}</td>
+            <td class="num">${p.empty ? `${((p.empty / R) * 100).toFixed(0)}%` : "0"}</td>
+            <td class="num">${(p.cut / Math.max(1, p.draws)).toFixed(1)}종</td></tr>`;
+        }).join("");
+        /* 격차는 배수라 구간을 로그처럼 끊는다 — 1.5 미만이면 「고른 줄」, 5 이상이면
+           「쉬운 칸과 어려운 칸이 같이 떠 있는 줄」이다. */
+        const B = [[1, 1.5], [1.5, 2], [2, 3], [3, 5], [5, 10], [10, Infinity]];
+        const hist = B.map(([lo, hi]) => gaps.filter((g) => g >= lo && g < hi).length);
+        const hmax = Math.max(1, ...hist);
+        $("#rwRailGap").innerHTML = gaps.length
+          ? B.map(([lo, hi], i) => barHTML(hi === Infinity ? `${lo}배 이상` : `${lo}~${hi}배`,
+              hist[i], gaps.length, null, (i * 50) % 360, null, (hmax / gaps.length) * 100)).join("")
+          : '<div class="rw-empty">칸이 하나뿐이라 격차를 잴 수 없습니다.</div>';
+        $("#rwRailSamples").innerHTML = samples.map((sm) => `<div class="rw-tw" style="margin-bottom:10px">
+            <table><thead><tr><th>슬롯</th><th>타입</th><th>요구</th><th class="num">난이도</th><th class="num">코인</th></tr></thead>
+            <tbody>${sm.line.map((x) => `<tr><td>${x.no}</td><td>${TYPE_KO[x.type] || x.type}</td>
+              <td>${x.card ? `<span class="rw-blabel">${x.card.reqs.map((q) => chipArt(q.code)).join("")}`
+                    + `${x.card.reqs.map((q) => labelOf(q.code)).join(" + ")}</span>`
+                  : `<span class="rw-v na">${x.why}</span>`}</td>
+              <td class="num">${x.card ? x.card.diff : "—"}</td><td class="num">${x.card ? x.card.coin : "—"}</td></tr>`).join("")}
+            <tr><td colspan="3"><b>줄 합계</b></td><td class="num"><b>${sm.d}</b></td><td class="num"><b>${sm.c}</b></td></tr>
+            </tbody></table></div>`).join("");
       }
 
       /* 자리별 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
@@ -2114,7 +2351,12 @@
                 + (worst.d > 0 ? ` <b>(${worst.d.toFixed(2)}%p 초과)</b>`
                   : ` (${judged}종 동시 비교라 ${zFor(m).toFixed(2)}σ 로 묶었다 — 항목별 3σ 면 정상인데도 `
                     + `${(100 * (1 - Math.pow(0.9973, m))).toFixed(0)}% 확률로 하나가 넘는다)`),
-              worst.d > 0 ? "logic" : null);
+              /* 판정 대상이 0종이면 worst 가 null 로 남는다 — 판정·문구는 need 로 짧게
+                 끊기는데 <b>원인 인자는 단축 평가를 안 거쳐</b> 그대로 평가돼 터졌다.
+                 Lv1~2 가 그 자리다: 정본이 「Lv1~2 는 고정 오더 16장」이라 랜덤 타입이
+                 통째로 미해금이고, 그러면 자리1 표본이 0 이라 판정 대상이 없다. 실제로
+                 이 페이지의 「검사」 섹션 전체가 Lv1·Lv2 에서 렌더를 멈추고 있었다. */
+              worst && worst.d > 0 ? "logic" : null);
         }
 
         // T3 밴드 범위
