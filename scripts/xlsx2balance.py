@@ -279,7 +279,9 @@ def main():
                     r["name_ko"] = nm.get("name_ko")
                     r["name_en"] = nm.get("name_en")
         # 판매 확인창 플래그 — 기획이 2026-09-10 에 `rare` 를 이 뜻으로 쓰기로 했다.
-        # rosewood-ingame.js 가 show_sell_confirm 을 읽으므로 여기서 별칭을 붙인다.
+        # 별칭 — 시트·웹 정본의 열 이름은 `rare` 하나뿐이고 show_sell_confirm 은 없다.
+        # 엔진 ITEM_DB 가 그 이름으로 굳어 있어 여기서 복사해 준다. 개명이 아니다 —
+        # 시트에서 show_sell_confirm 을 찾으면 안 나온다(신판 36탭 전수 0건).
         if tab == "item_spec":
             for r in rows:
                 r["show_sell_confirm"] = r.get("rare") or 0

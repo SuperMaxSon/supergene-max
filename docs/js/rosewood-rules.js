@@ -92,8 +92,9 @@ const Rules = {
 
   /* ── 판매 / 치우기 ────────────────────────────────────────────────────
      selling_price > 0 → 판매(+코인) · ≤ 0 → 치우기(휴지통, 금액 숨김).
-     확인창 여부는 시트 `show_sell_confirm` 이 정본. 그 칸이 통째로 비어 있는 구판
-     데이터에서만 판매가 임계로 대신한다 — 값이 하나라도 차면 저절로 시트 기준으로 간다. */
+     확인창 여부는 시트의 `rare` 열이 정본이다(`show_sell_confirm` 은 변환기가 붙인 별칭 —
+     rosewood-ingame.js:73 참고). 신판은 94행이 차 있어 시트 기준으로 가고, 판매가 임계는
+     그 칸이 통째로 비어 있는 구판을 불러왔을 때만 대신한다. */
   sellPlan(cell, spec, opt) {
     if (spec.is_generator) return { ok: false, reason: "generator" };
     const price = spec.selling_price || 0;
