@@ -101,10 +101,15 @@ def main():
     # ── ORDER_DB — A5 계약 컬럼. weight·weight_multiple 은 계약에 없다
     src = splice(src, "ORDER_DB", rows([
         [r["item_code"], r["unlock_level"], r["order_price"], r["diff_score"],
+         r.get("weight") if r.get("weight") is not None else 100,
+         r.get("weight_multiple") if r.get("weight_multiple") is not None else 1,
          r.get("repeat_weight_decrease") or 0]
         for r in d["order_item"]]),
-        "/* [item_code, unlock_level, order_price, diff_score, repeat_weight_decrease]\n"
-        "   A5 계약 컬럼 그대로. weight·weight_multiple 은 계약에 없어 싣지 않는다 */")
+        "/* [item_code, unlock_level, order_price, diff_score, weight, weight_multiple, repeat_weight_decrease]\n"
+        "   weight  = 기본 추첨 비중 (현재 604 꽃무늬 찻잔만 0, 나머지 101행 100)\n"
+        "   weight_multiple = <b>보드 상황 집계 대상 플래그</b>(1=포함)다. 곱하는 배수가 아니다 — 30행이 0.\n"
+        "   한때 「A5 계약에 없다」고 빼 두었는데, 밸런스시트 v1.1(2026-09-11 12:14)이 둘 다\n"
+        "   「데이터·명세 확정」으로 못 박았다. 빼 두면 벤치만 기본값으로 떨어져 두 페이지가 갈린다. */")
 
     src = splice(src, "RULE_DB", rows([
         [r["order_type"], r["slot_count"], r["item_slot_max"], r["refresh_sec"],
