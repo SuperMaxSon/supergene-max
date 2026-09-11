@@ -694,7 +694,7 @@
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
       const SPEC_VER = "1.1";
       const SPEC_AT = "2026-09-11 11:49";
-      const BUILD_AT = "2026-09-11 17:53";
+      const BUILD_AT = "2026-09-11 18:10";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -864,6 +864,9 @@
           ["[7] 보상 단가 곡선",
            "합산·이벤트 재화 일치만 보고, 단가 자체가 옳은지는 안 본다",
            "<code>order_price · diff_score</code> 를 기획서 계산 예와 대조"],
+          ["줄 안 난이도 격차 &middot; 타입 순서",
+           "<b>「리얼 레일」이 값은 재지만, 그 값이 의도인지는 못 판단한다.</b> Lv5 200줄 실측 &mdash; 한 줄 안 격차가 <b>10배 이상인 줄이 41%</b>(최대 53.5배). 같은 줄에 난이도 2 칸과 89 칸이 같이 뜬다. 더불어 <b>슬롯 4(<code>random_3</code>) 평균 33 이 슬롯 3(<code>high</code>) 평균 46 보다 낮은데 대기는 절반</b>(900초 대 1800초)이다 &mdash; 쉬운 칸이 두 배 빨리 돌아온다. 밴드 폭이 넓어 생긴 결과인지 「쉬운 칸 하나는 늘 있게」라는 의도인지는 <b>시트 값으로 안 갈린다</b>: <code>order_slot_band</code> 는 타입별 단계 범위만 주고 줄 단위 조합 제약이 없다",
+           "기획 확인 &mdash; ① 한 줄 안 격차에 상한이 있나 ② <code>high</code> 와 <code>random_3</code> 의 난이도·대기 순서가 지금대로 맞나. 답이 오면 여기 대신 <b>판정</b>으로 옮긴다"],
           ["아이템 아트",
            "<b>임시 아트다</b>(2026-09-11 확인) — 그림 내용이 시트 체인과 안 맞는 게 정상이고, 맞추려 들면 안 된다. 파일명 규약(<code>item_display.sprite_key</code> = <code>board/items/&lt;접두&gt;&lt;이름&gt;</code>, 접두 <code>m_</code>생성기 <code>r_</code>산출 <code>q_</code>퀘스트 <code>s_</code>씨앗 <code>v_</code>재화 <code>x_</code>상자)은 해독돼 있다",
            "실물 아트가 오면 <code>sprite_key</code> 로 기계적으로 매핑. 그때 이 칸은 자동 대조로 바뀐다"],
@@ -2988,7 +2991,13 @@
            표본에는 안 잡힌다. 그래서 표를 직접 읽는다.
 
            고치지 않는다. 「접시 두 칸에 같은 그림」이 의도인지 「×2 한 칸」이 의도인지는
-           시트가 말해 주지 않는다 — T13 과 같이 <b>표면화만</b> 하고 판단은 넘긴다. */
+           시트가 말해 주지 않는다 — T13 과 같이 <b>표면화만</b> 하고 판단은 넘긴다.
+
+           <b>계산 쪽은 정본이 닫았다</b>(2026-09-11 확인) — 「수량이 여러 개인 경우 코인과
+           난이도 모두 수량을 곱한다. <b>같은 아이템 2개는 두 번 합산한다</b>」. 두 읽기가
+           합계에서 같은 값을 낸다는 뜻이라, 남은 건 <b>표기</b>뿐이고 합계 쪽 개발 수정은
+           없다. 엔진도 이미 두 번 더한다(reqs 를 Set 으로 접지 않는다 — seq11 은
+           코인 8 · 난이도 10 으로 실측된다). <b>중복을 제거하면 오히려 정본을 어긴다.</b> */
         {
           const fx = (DATA.order_fixed || []).filter((r) => r.in_use);
           const dup = fx.map((r) => {
@@ -2996,6 +3005,12 @@
               .filter((v) => v != null && v !== 0 && v !== "" && v !== "none");
             return { r, req, dup: req.length !== new Set(req).size };
           }).filter((e) => e.dup);
+          /* 「두 번 합산」의 실측값 — 문구에 숫자를 박지 않는다. 시트가 바뀌면 같이 움직여야 한다. */
+          const dupCalc = dup.map((e) => {
+            const coin = e.req.reduce((a, c) => a + (oiOf(c)?.order_price || 0), 0);
+            const diff = e.req.reduce((a, c) => a + (oiOf(c)?.diff_score || 0), 0);
+            return `seq${e.r.fixed_seq} = 코인 <b>${coin}</b> · 난이도 <b>${diff}</b>`;
+          }).join(" · ");
           add(dup.length ? "warn" : "ok", "T15 고정 오더 요구 중복", "<code>order_fixed.requirement_*</code>",
               dup.length
                 ? `${fx.length}행 중 <b>${dup.length}행</b>이 같은 코드를 두 번 요구한다 &mdash; `
@@ -3005,7 +3020,10 @@
                 ? `지금 게임은 이걸 <b>접시 두 칸에 같은 그림</b>으로 냅니다 &mdash; 「○ 1개 + ○ 1개」. `
                   + `「○ 2개」 한 칸이 아닙니다.<br>`
                   + `무작위 오더는 같은 아이템을 두 번 요구하지 못하게 막혀 있는데(T6), <b>고정 오더에는 그 제한이 없습니다.</b><br>`
-                  + `<b>어느 쪽이 의도인지 알려 주세요</b> &mdash; ① 「2개 가져와」가 의도 → 수량 한 칸으로 내야 하고 개발 수정이 필요합니다 / `
+                  + `<b>계산은 정본이 이미 답했습니다</b> &mdash; 「수량이 여러 개인 경우 코인과 난이도 모두 수량을 곱한다. `
+                  + `<b>같은 아이템 2개는 두 번 합산한다</b>」. 그래서 두 읽기가 합계에서 같은 값을 내고(${dupCalc}), `
+                  + `<b>중복을 제거하면 오히려 정본을 어깁니다.</b><br>`
+                  + `남은 건 <b>화면 표기</b>뿐입니다 &mdash; ① 「○ 2개」 한 칸으로 보일 것 (UI 수정, 합계는 그대로) / `
                   + `② 접시 두 칸을 같은 것으로 채우는 게 의도 → 지금이 맞습니다`
                 : `고정 오더도 한 카드에서 같은 아이템을 두 번 요구하지 않습니다`,
               dup.length ? "data" : null,
