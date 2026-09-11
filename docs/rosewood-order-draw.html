@@ -226,6 +226,10 @@
       /* 분포 컨트롤 · 게이지 */
       .rw-f { display: flex; flex-direction: column; gap: 3px; }
       .rw-f label { font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
+      /* 라벨 옆 범위 표시(「분포 전용」) — s 기본값이 취소선이라 그대로 두면 지운 글자로 보인다.
+         이 페이지의 다른 <s> 들(rw-chip·rw-hi)과 같은 처리를 쓴다. */
+      .rw-f label s { text-decoration: none; letter-spacing: 0; text-transform: none;
+                      color: var(--tool); opacity: .85; }
       .rw-f input, .rw-f select { font: inherit; font-size: 13px; font-family: ui-monospace, Menlo, monospace;
         padding: 5px 8px; width: 132px; border: 1px solid var(--border); border-radius: var(--radius-sm);
         background: var(--surface); color: var(--text); }
@@ -505,7 +509,11 @@
         <div class="rw-bar">
           <div class="rw-f"><label>발급 수</label><input id="rwN" type="number" value="2000" min="10" max="50000" /></div>
           <div class="rw-f"><label>유저 레벨</label><input id="rwLv" type="number" value="5" min="1" max="30" /></div>
-          <div class="rw-f"><label>오더 타입</label><select id="rwType"></select></div>
+          <!-- 이 둘은 <b>「뽑기 분포」에서만</b> 쓰인다. 난이도 분포는 네 타입을 한꺼번에
+               돌리고, 리얼 레일은 칸마다 타입이 정해져 있으며 서로의 요구를 실제로 본다.
+               바가 문서 끝까지 따라다니게 되면서 「바꿔도 아무 일이 없는」 자리가 눈에
+               띄게 됐다 — 지우는 대신 <b>어디에 듣는지</b>를 라벨에 적는다. -->
+          <div class="rw-f"><label>오더 타입 <s>분포 전용</s></label><select id="rwType"></select></div>
           <div class="rw-f"><label>보드 상황</label>
             <select id="rwBoard" title="보드는 [4] 의 상황 배수 한 곳에서만 쓰입니다. 배수는 1 : 100 : 1000 : 10000 이라 보드 상태가 추첨을 지배합니다 — 프리셋은 넷 중 둘을 죽이므로 무작위를 쓰세요.">
               <option value="rand">무작위 (해금 기준)</option>
@@ -518,7 +526,7 @@
             <input id="rwFill" type="number" value="40" min="0" max="100" step="5"
                    title="63셀(const board_row×board_column) 중 아이템이 놓인 비율. 0% 는 빈 보드, 100% 는 꽉 찬 보드와 같습니다." /></div>
           <button class="rw-btn" id="rwShuffle" title="보드만 다시 뽑습니다 — 같은 시드면 같은 보드가 나옵니다">🎲 다시 섞기</button>
-          <div class="rw-f"><label>레일 맥락</label>
+          <div class="rw-f"><label>레일 맥락 <s>분포 전용</s></label>
             <select id="rwCtx" title="실제 레일이 없으므로 후보 목록에서 표본 3종을 골라 「다른 오더가 요구 중(2종) + 직전 요구(1종)」으로 가정합니다. 매 발급 같은 3종이라 결과가 재현됩니다.">
               <option value="rail">표본 3종 제외 (타 오더 2 + 직전 1)</option>
               <option value="none">제외 없음</option>
@@ -656,8 +664,6 @@
                 <tbody id="rwRailSlots"></tbody>
               </table>
             </div>
-            <p class="rw-tnote" style="margin-top:12px">한 줄 안 난이도 격차 &mdash; 가장 어려운 칸 ÷ 가장 쉬운 칸</p>
-            <div class="rw-bars" id="rwRailGap"></div>
             <!-- 칸마다 값이 왜 다른지는 슬롯 표만 봐서는 안 읽힌다 — 타입을 가르는 축
                  (해금·대기·요구 단계)을 시트에서 그대로 펴 놓는다. 판정은 여기 적지 않고
                  「검사 > 규칙 위반」의 T16~T18 이 불을 켠다. 시트를 고치면 자동으로 꺼진다. -->
@@ -713,7 +719,7 @@
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
       const SPEC_VER = "1.1";
       const SPEC_AT = "2026-09-11 11:49";
-      const BUILD_AT = "2026-09-11 19:40";
+      const BUILD_AT = "2026-09-11 20:15";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -1114,12 +1120,31 @@
           return `Lv${lv} ${rows.map((r) => pct(r.count_weight, sum)).join("/")}`;
         }).join(" · ");
         const maxCount = Math.max(0, ...cnt.map((r) => Number(r.item_count) || 0));
+        /* 종수 목록·마지막 줄 문구를 <b>시트에서 읽어 쓴다</b>. 예전엔 「1종·2종·3종」과
+           「3종 비율이 A% → B%」가 글자로 박혀 있었는데, 신판이 요구 2칸으로 내려오면서
+           세 번째 값이 없어져 화면에 undefined% 가 찍혔다. 칸 수가 또 바뀌어도 안 깨지게
+           <b>가장 높은 종수</b>를 골라 첫 묶음과 마지막 묶음의 비율을 비교한다. */
+        const kinds = [...new Set(cnt.filter((r) => r.in_use).map((r) => Number(r.item_count) || 0))]
+          .filter(Boolean).sort((a, b) => a - b);
+        const shareOf = (lv, n) => {
+          const rows = cnt.filter((r) => r.in_use && r.level === lv);
+          const sum = rows.reduce((a, r) => a + r.count_weight, 0);
+          const hit = rows.find((r) => Number(r.item_count) === n);
+          return hit ? pct(hit.count_weight, sum) : null;
+        };
+        const topN = kinds[kinds.length - 1];
+        const first = lvGroups.length ? shareOf(lvGroups[0], topN) : null;
+        const last = lvGroups.length ? shareOf(lvGroups[lvGroups.length - 1], topN) : null;
         add(maxCount > maxSlot ? "no" : "ok", "요구 종수 비율", "order_item_count.count_weight",
             `${cnt.length}행 &mdash; ${brief}`,
-            "유저 레벨 이하 중 가장 높은 묶음을 골라, 그 가중치로 1종·2종·3종 중 하나를 뽑는다",
+            `유저 레벨 이하 중 가장 높은 묶음을 골라, 그 가중치로 ${kinds.join("종·") || "?"}종 중 하나를 뽑는다`,
             maxCount > maxSlot
               ? `<b>${maxCount}종</b> 행이 있는데 자리는 ${maxSlot}개뿐이라 그 행은 절대 안 뽑힌다`
-              : `레벨이 오르면 3종 비율이 <b>${brief.split("·")[0].split(" ")[1].split("/")[2]}% → ${brief.split("·").pop().trim().split(" ")[1].split("/")[2]}%</b> 로 늘어난다`);
+              : first == null || last == null
+                ? `묶음이 ${lvGroups.length}개뿐이라 추세를 볼 것이 없다`
+                : first === last
+                  ? `<b>${topN}종 비율이 ${first}% 로 처음부터 끝까지 같다</b> &mdash; 레벨이 올라도 요구 종수는 안 바뀐다`
+                  : `레벨이 오르면 ${topN}종 비율이 <b>${first}% → ${last}%</b> 로 ${Number(last) > Number(first) ? "늘어난다" : "줄어든다"}`);
 
         // ── 7. 고정 오더 요구품
         const fx3 = fx.filter((r) => r.requirement_3).length;
@@ -1400,8 +1425,18 @@
               + (art || `<span class="t">${labelOf(c.code)}</span>`) + `</span>`;
           }).join("");
         } else {
-          grid.style.display = "none";
-          grid.innerHTML = "";
+          /* 프리셋은 셀 좌표가 없다(종류만 정한다). 그냥 숨기면 격자 자리가 통째로
+             비어서, 리얼 레일의 「위에 깔린 보드로 뽑습니다」가 없는 것을 가리킨다.
+             빈칸 대신 왜 없는지와 무엇으로 계산하는지를 적는다. */
+          const KIND_TXT = {
+            empty: "빈 보드 &mdash; 아무것도 안 놓인 상태로 계산합니다",
+            all: "후보 전종 1개씩 &mdash; 모든 후보가 보드에 있다고 보고 계산합니다",
+            half: "홀수 체인만 &mdash; 체인을 하나 걸러 하나만 놓아, 배수 축 「미요구+동급·하급 보유」를 죽입니다",
+          };
+          grid.style.display = "block";
+          grid.innerHTML = `<div class="rw-empty">${KIND_TXT[$("#rwBoard").value] || "프리셋"}`
+            + `<br><span style="opacity:.7">프리셋은 <b>종류만</b> 정하고 칸 좌표가 없어서 격자를 그릴 것이 없습니다 &mdash; `
+            + `아래 「보드에 놓인 칩」이 실제 계산에 쓰이는 목록입니다. 격자를 보려면 <b>무작위</b>를 고르세요.</span></div>`;
         }
 
         const items = [...counts.entries()].sort((a, b) =>
@@ -2194,6 +2229,10 @@
           ["줄 난이도 평균", avg(sums.map((x) => x.d)).toFixed(0)],
           ["줄 코인 평균", avg(sums.map((x) => x.c)).toFixed(0)],
           ["줄 안 난이도 격차", gaps.length ? `${avg(gaps).toFixed(1)}배` : "—"],
+          /* 막대 그래프 6칸을 이 한 칸으로 줄였다. 여섯 구간이 말해 주던 것은
+             「평균 격차가 소수 이상치 탓이 아니다」 하나뿐이었고, 그건 이 비율이
+             그대로 말한다. 10배는 T16·미검증 표가 인용하는 기준선이다. */
+          ["10배 이상 벌어진 줄", gaps.length ? `${((gaps.filter((g) => g >= 10).length / gaps.length) * 100).toFixed(0)}%` : "—"],
           ["가장 벌어진 줄", gaps.length ? `${Math.max(...gaps).toFixed(1)}배` : "—"],
         ].map(([k, v]) => `<div class="rw-kpi"><u>${k}</u><b>${v}</b></div>`).join("");
         $("#rwRailSlots").innerHTML = per.map((p) => {
@@ -2204,15 +2243,6 @@
             <td class="num">${p.empty ? `${((p.empty / R) * 100).toFixed(0)}%` : "0"}</td>
             <td class="num">${(p.cut / Math.max(1, p.draws)).toFixed(1)}종</td></tr>`;
         }).join("");
-        /* 격차는 배수라 구간을 로그처럼 끊는다 — 1.5 미만이면 「고른 줄」, 5 이상이면
-           「쉬운 칸과 어려운 칸이 같이 떠 있는 줄」이다. */
-        const B = [[1, 1.5], [1.5, 2], [2, 3], [3, 5], [5, 10], [10, Infinity]];
-        const hist = B.map(([lo, hi]) => gaps.filter((g) => g >= lo && g < hi).length);
-        const hmax = Math.max(1, ...hist);
-        $("#rwRailGap").innerHTML = gaps.length
-          ? B.map(([lo, hi], i) => barHTML(hi === Infinity ? `${lo}배 이상` : `${lo}~${hi}배`,
-              hist[i], gaps.length, null, (i * 50) % 360, null, (hmax / gaps.length) * 100)).join("")
-          : '<div class="rw-empty">칸이 하나뿐이라 격차를 잴 수 없습니다.</div>';
       }
 
       /* 자리별 기대 확률 — 엔진을 부르지 않고 시트 규칙만으로 다시 계산한다.
