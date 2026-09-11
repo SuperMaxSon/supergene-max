@@ -228,7 +228,11 @@ def hour_grid(hours):
     return "".join(cells)
 
 
-def next_run(hours):
+def next_run(hours, any_on=True):
+    """다음 예정 시각. 켜진 작업이 하나도 없으면 시각을 말하지 않는다 —
+    아무도 돌지 않는데 '내일 09:00' 이라고 적으면 오지 않을 갱신을 예고하는 것이다."""
+    if not any_on:
+        return "없음 (모든 작업이 꺼져 있습니다 — 수동 실행)"
     if not hours:
         return "없음 (선택된 시각이 없습니다)"
     now = datetime.datetime.now()
@@ -430,9 +434,15 @@ def page(warn=""):
     cells.forEach(function (c) { c.classList.toggle("is-on", base.indexOf(Number(c.dataset.h)) !== -1); });
     sync();
   });
-  // 적용 안 한 변경을 들고 떠나는 것을 막는다
+  /* 적용 안 한 변경을 들고 떠나는 것을 막는다.
+     단 '적용하기' 자체도 폼 전송 = 이탈이다. 그때까지 경고를 띄우면
+     저장하려는 사람에게 "나가시겠습니까?"를 묻는 꼴이 된다 — 보내는 중에는 끈다. */
+  var sending = false;
+  form.addEventListener("submit", function () { sending = true; });
   window.addEventListener("beforeunload", function (e) {
-    if (!apply.disabled) { e.preventDefault(); e.returnValue = ""; }
+    if (sending || apply.disabled) return;
+    e.preventDefault();
+    e.returnValue = "";
   });
   sync();
 })();
@@ -508,8 +518,13 @@ def page(warn=""):
       document.getElementById("rform").submit();
     });
   });
+  // 적용하기(폼 전송)로 떠나는 것은 경고 대상이 아니다 — 위 시간 그리드와 같은 규칙.
+  var sending = false;
+  form.addEventListener("submit", function () { sending = true; });
   window.addEventListener("beforeunload", function (e) {
-    if (!apply.disabled) { e.preventDefault(); e.returnValue = ""; }
+    if (sending || apply.disabled) return;
+    e.preventDefault();
+    e.returnValue = "";
   });
   sync();
 })();
@@ -522,7 +537,8 @@ def page(warn=""):
         ("{{HOURGRID}}", hour_grid(hours)),
         ("{{HOURS}}", ",".join(map(str, hours))),
         ("{{HOURCOUNT}}", str(len(hours))),
-        ("{{NEXTRUN}}", next_run(hours)),
+        ("{{NEXTRUN}}", next_run(hours, any(bool(j.get("enabled"))
+                                            for j in reg.get("jobs", {}).values()))),
         ("{{ROWS}}",  "".join(rows) or '<tr><td colspan="5" class="mut">등록된 작업이 없습니다</td></tr>'),
         ("{{LOG}}",   html.escape(tail)),
     ):
