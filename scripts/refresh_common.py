@@ -253,10 +253,10 @@ def stamp(now, bust, rng, bump_version=True):
     # 카드의 updated (url 뒤쪽 블록 안) 갱신
     d = re.sub(r'(url: "%s".*?updated: ")[^"]*(")' % url,
                r"\g<1>%s\g<2>" % now, d, count=1, flags=re.S)
-    # 자동 갱신되는 문서는 Live 다. 허브에서 Live 배지(빨강)는 '이 자동화가 돌고 있다'는
-    # 뜻이므로 사람이 카드를 손대다 상태를 되돌려도 다음 실행에 복구되게 한다.
-    d = re.sub(r'(url: "%s".*?status: ")[^"]*(")' % url,
-               r"\g<1>Live\g<2>", d, count=1, flags=re.S)
+    # status 는 건드리지 않는다. 예전에는 실행할 때마다 "Live" 로 되박았다 — 그 배지가
+    # '이 자동화가 돌고 있다' 는 뜻이었기 때문이다. 2026-09-11 에 전 작업을 수동으로
+    # 돌리기로 하면서 그 뜻이 성립하지 않게 됐고, 되박으면 손으로 내린 상태가 다음
+    # 실행에 다시 Live 로 올라가 거짓말이 된다.
     open(DATA_JS, "w", encoding="utf-8").write(d)
     touched.append(DATA_JS)
 

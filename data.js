@@ -7,10 +7,9 @@
      desc:    "한 줄 설명",           // 선택 · 한 문장 90자 이내 (아래 ★★)
      url:     "https://... 또는 docs/xxx.html",  // 필수 (없으면 "#")
      status:  "진행중" | "초안" | "완료" (설정탭에서 배지 클릭으로 변경)
-              //   "Live" = scripts/automation.json 에 등록돼 매일 자동 갱신되는 문서.
-              //   손으로 적지 않는다 — refresh_common.py 가 실행할 때마다 되박고,
-              //   app.js 가 그 카드를 맨 위 「라이브」 섹션으로 옮긴다.
-              //   섹션 안 정렬 순서: Live > 진행중 > 초안 > 완료 (pinned 가 그보다 우선)
+              //   섹션 안 정렬 순서: 진행중 > 초안 > 완료 (pinned 가 그보다 우선)
+              //   "Live"(= 자동 갱신 중) 는 2026-09-11 에 걷어냈다. bq 재인증이 하루
+              //   한 번 사람을 부르는 한 '자동'이 성립하지 않아 전 작업을 수동으로 돌린다.
      version: "v4.3",
      updated: "2026-08-07 10:48",     // 날짜 + 시각(HH:MM)
      pinned:  true,                  // 상단 강조
@@ -69,15 +68,6 @@ const PROJECTS = {
 
 const SECTIONS = [
   {
-    // 카드를 여기에 적지 않는다. app.js 가 status:"Live" 카드를 원래 섹션에서
-    // 끌어와 채운다 — automation.json 에 작업을 등록하면 저절로 여기 뜬다.
-    id: "live",
-    label: "라이브",
-    accent: "live-badge",
-    desc: "매일 자동 갱신되는 문서 — scripts/automation.json 에 등록된 작업이 값을 다시 채운다",
-    cards: [],
-  },
-  {
     id: "analysis",
     label: "분석",
     accent: "analysis",
@@ -99,7 +89,7 @@ const SECTIONS = [
         desc: "482 이하와 483 이상을 빌드별로 합산해 DAU당 9행으로 대조한다. 목표선은 벤치 3사 고정 기준선이고, 일자별 원본과 갱신 쿼리는 폴드에 그대로 둔다.",
         url: "docs/sol-era-watch.html",
         project: "sol",
-        status: "Live",
+        status: "진행중",
         version: "v4.4",
         updated: "2026-09-11 17:10",
         pinned: false,
@@ -536,7 +526,7 @@ const SECTIONS = [
         desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 리텐션(stat 사전집계, raw 스캔 0)은 55쌍 24:31(p≈0.42)로 무승부입니다.",
         url: "docs/coin-match-tournament-reject-ab.html",
         project: "cmt",
-        status: "Live",
+        status: "진행중",
         paused: true,
         version: "v2.10",
         updated: "2026-09-08 09:22",
@@ -549,7 +539,7 @@ const SECTIONS = [
         desc: "A(485 교대) ↔ B(486 공유 전용) · 9/3~9/6 나흘치. 주지표(공유 성공/DAU)가 +65%로 유의하게 올랐고(p<.001), 초대를 전부 없앴는데도 유입 총량은 오히려 +4%입니다. 통과율은 7.7% → 5.6%로 떨어졌지만 시도를 2.3배 밀어 성공 건수를 늘렸습니다. 리텐션(팀 표준 NRU 설치 코호트)·생성률·배정 균형은 이상 없습니다.",
         url: "docs/sol-tournament-slot-ab.html",
         project: "sol",
-        status: "Live",
+        status: "진행중",
         version: "v24.13",
         updated: "2026-09-11 17:52",
         pinned: false,
