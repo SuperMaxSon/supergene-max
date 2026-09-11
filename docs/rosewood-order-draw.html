@@ -525,7 +525,7 @@
       /* ======================================================================
          0. 입력 — 기본 JSON · 드롭 · 캐시
          ====================================================================== */
-      const PAGE_BUILD = "v3.3 · 2026-09-11";   // 판정 요약을 돌리기 버튼 아래에도 — 위로 스크롤 안 해도 보이게
+      const PAGE_BUILD = "v3.4 · 2026-09-11";   // 체인 칩 이름↔그림 불일치 수정 — 1단계 이름에 3단계 그림이 붙어 있었다
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -1042,9 +1042,19 @@
           m.set(ch, e);
         }
         for (const [ch, e] of m) {
-          const sp = DATA.item_spec.find((r) => chainOf(r.item_code) === ch);
-          e.name = (sp && (sp.chain_name_ko || sp.name)) || chainName(ch);
           e.steps.sort((a, b) => a - b);
+          e.items.sort((a, b) => stepOf(a) - stepOf(b));
+          /* 칩에 그려질 대표 아이템 — <b>오더 대상 최저 단계</b>다(체인 1단계가 아니다.
+             order_item 은 대개 3단계부터 시작한다). 이름도 여기서 같이 판다. */
+          e.rep = e.items[0];
+          /* 체인 이름은 <b>체인 사전</b>에서 온다. 예전엔 item_spec 의 <b>첫 행</b> 이름을
+             썼는데, 그건 <b>1단계 아이템의 이름</b>이라 칩에 그려지는 그림(3단계)과 다른
+             물건이었다 — 「아기 고양이」라 적고 얼룩 고양이를 그리는 식이다.
+             신판 시트에 chain_name_ko 열이 없어져 그 폴백이 상시 경로가 되면서 드러났다.
+             사전에 없는 체인이면 대표 아이템 이름으로 떨어뜨린다 — 그러면 이름과 그림이 같다. */
+          const dict = chainName(ch);
+          e.name = /^#\d+$/.test(dict) ? labelOf(e.rep) : dict;
+          e.repName = labelOf(e.rep);
         }
         return m;
       }
@@ -1208,11 +1218,15 @@
           return { kinds, n };
         };
         /* 칩 앞머리는 그 체인의 대표 아이템 아트 — 오더 대상 최저 단계를 쓴다.
-           체인 이름만 적어 두면 어떤 물건인지가 안 보인다. 아트는 docs/img/items 에 232종. */
+           <b>칩의 굵은 글씨는 체인 이름이고, 그림은 그 체인의 한 아이템이다.</b> 둘이 같은
+           물건이 아니므로 툴팁에 그림이 무엇인지 적어 둔다 — 안 적으면 「이름과 그림이
+           다르다」로 읽힌다(실제로 그렇게 보고가 왔다). 아트는 docs/img/items 에 232종. */
         const chip = (ch, e, locked) => {
           const h = held(ch);
-          const rep = e.items.slice().sort((a, b) => stepOf(a) - stepOf(b))[0];
-          return `<span class="rw-chip${locked ? " lock" : ""}" title="체인 ${ch} · 오더 대상 ${e.items.length}종">`
+          const rep = e.rep;
+          return `<span class="rw-chip${locked ? " lock" : ""}"`
+            + ` title="체인 ${ch} ${e.name} · 오더 대상 ${e.items.length}종 (${e.steps[0]}~${e.steps[e.steps.length - 1]}단계)`
+            + ` · 그림은 ${e.repName} (${e.steps[0]}단계 · ${codeTag(rep)})">`
             + chipArt(rep)
             + `<b>${e.name}</b><s>Lv${e.lv}</s>`
             + `<s>${e.steps[0]}~${e.steps[e.steps.length - 1]}단계</s>`
