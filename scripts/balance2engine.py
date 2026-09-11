@@ -138,7 +138,7 @@ def main():
         "   신판에서 order_avatar 는 오더 타입이 아니라 「손님 초상 테이블」이다 */")
 
     # 이벤트 점수·특별주문 대본 — 예전엔 DEFAULTS 안에 임시값으로 박혀 있어서
-    # 벤치와 「오더 추첨 분석」의 이벤트 점수가 갈렸다. 같은 표를 보게 한다.
+    # 벤치와 「오더 시뮬레이터」의 이벤트 점수가 갈렸다. 같은 표를 보게 한다.
     src = splice(src, "EVENT_DB", rows([
         [r["event_id"], r["band_seq"], r["score_base"], r["score_min"], r["score_max"],
          r["token_pct"], r["token_fix"]] for r in d["event_order_score"]]))

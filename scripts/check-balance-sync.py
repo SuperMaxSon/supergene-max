@@ -103,7 +103,7 @@ def check_balance():
 TOKENS = ("diff_sum", "dailyDiff", "SPEC_ITEM_SLOT_MAX", "third_min", "order_daily_diff")
 EXEMPT_WORDS = ("삭제", "폐기", "없다", "신판", "걷었다")
 
-# 코드 예외 — 구판 데이터도 읽어야 하는 정규화 레이어. 「오더 추첨 분석」의
+# 코드 예외 — 구판 데이터도 읽어야 하는 정규화 레이어. 「오더 시뮬레이터」의
 # 구판 번들 재투입 회귀가 이 함수에 걸려 있어서, 폐기 열 이름이 코드에 남는 게 맞다.
 # (파일 이름, 블록 시작 문자열, 블록 끝 문자열) — 시작~끝 사이 줄은 코드 토큰도 통과.
 CODE_EXEMPT_BLOCKS = (
