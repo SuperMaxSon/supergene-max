@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""솔리테어 483 전후 — 벤치 대조 문서 자동 갱신.
+"""솔리테어 483 전후 — 벤치 대조 문서 갱신 (수동 실행).
 
 흐름
     bq query (결손일만) -> docs/data/sol-era-watch.json 병합
@@ -40,7 +40,7 @@ CUT      = 483                   # 이 빌드 이상이 '개편 후'
 C.configure(job_id=JOB_ID, log_prefix="[era] ",
             notify_title="483 전후 대조 갱신 실패",
             html=HTML, state=STATE, doc_url="docs/sol-era-watch.html",
-            commit_msg="[Max] 솔리테어 483 전후 대조 자동 갱신 — %s 까지 (%s)")
+            commit_msg="[Max] 솔리테어 483 전후 대조 갱신 — %s 까지 (%s)")
 
 # 벤치 3사 8/31~9/2 3일 합산 — 2026-09-02 실행 결과를 고정한 기준선. 재조회하지 않는다.
 BENCH = {
@@ -383,10 +383,6 @@ def rebuild(state):
 
 def main():
     a = C.parse_args()
-    if not a.force and not C.enabled():
-        log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
-        return 0
-
     # 쿼리 단계와 판정 단계를 나눈다 — refresh_sol_slot_ab.main() 과 같은 이유다.
     try:
         state = load_state()

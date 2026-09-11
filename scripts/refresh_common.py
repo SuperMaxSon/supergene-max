@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""두 자동 갱신 스크립트(refresh_sol_slot_ab.py / refresh_coin_match_ab.py)의 공통부.
+"""문서 갱신 스크립트 3종(refresh_sol_slot_ab / refresh_sol_era_watch / refresh_coin_match_ab)의 공통부.
+
+스케줄러는 없다 — 손으로 부른다. bq 재인증이 하루 한 번 사람을 부르는 한 무인 실행이
+성립하지 않아, 2026-09-11 에 launchd·제어판·automation.json 을 전부 걷어냈다.
 
 문서마다 다른 것은 '쿼리 -> 상태 병합 -> JS 블록 생성' 까지고, 그 뒤
 '멱등 검사 -> 파일 쓰기 -> 스탬프 -> 커밋 -> 푸시' 는 완전히 같다.
@@ -24,14 +27,13 @@ REPO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_JS  = os.path.join(REPO, "data.js")
 INDEX    = os.path.join(REPO, "index.html")
 LOG      = os.path.join(REPO, "scripts", "refresh.log")
-REGISTRY = os.path.join(REPO, "scripts", "automation.json")
 
 BQ       = "/opt/homebrew/bin/bq"
 PROJECT  = "game-log-359704"
 
 # 작업별 설정. configure() 로만 바꾼다.
 #   commit_msg 는 (last_day, rng) 두 값을 받는 %-템플릿이다.
-_C = {"job_id": "", "log_prefix": "", "notify_title": "자동 갱신 실패",
+_C = {"job_id": "", "log_prefix": "", "notify_title": "문서 갱신 실패",
       "html": "", "state": "", "doc_url": "", "commit_msg": "%s (%s)"}
 
 
@@ -127,44 +129,7 @@ def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-push", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--force", action="store_true", help="꺼져 있어도 실행")
     return ap.parse_args()
-
-
-def enabled():
-    """제어판(scripts/control_panel.py)이 끈 작업은 아무것도 하지 않는다.
-    launchd 를 껐다 켜는 것보다 이쪽이 안전하다 — 스케줄 정의를 건드리지 않는다."""
-    try:
-        reg = json.load(open(REGISTRY, encoding="utf-8"))
-        return bool(reg["jobs"][_C["job_id"]]["enabled"])
-    except Exception:
-        return True          # 레지스트리가 깨졌으면 멈추지 않는다
-
-
-AUTO_RE = re.compile(r"<!-- AUTO:START -->.*?<!-- AUTO:END -->", re.S)
-
-
-def schedule():
-    """이 작업의 예정 시각 목록. 작업별 hours 가 있으면 그것, 없으면 defaults."""
-    try:
-        reg   = json.load(open(REGISTRY, encoding="utf-8"))
-        job   = reg["jobs"][_C["job_id"]]
-        hours = job.get("hours") or reg.get("defaults", {}).get("hours") or []
-        return sorted(int(h) for h in hours), bool(job.get("enabled", True))
-    except Exception:
-        return [], True
-
-
-def auto_block(now):
-    """문서 페이지가 '다음 갱신까지 얼마나 남았는지'를 계산하려면 스케줄을 알아야 한다.
-    automation.json 은 scripts/ 안에 있어 브라우저가 못 읽으므로, 실행할 때마다 문서에 심는다.
-    읽는 쪽은 app.js 의 liveTimer()."""
-    hours, en = schedule()
-    return ('<!-- AUTO:START --><script>\n'
-            '      /* scripts/refresh_common.py 가 매 실행마다 덮어쓴다. 손으로 고치면 다음 갱신에 사라진다. */\n'
-            '      window.AUTORUN = { hours: %s, pulled: "%s", enabled: %s };\n'
-            '    </script><!-- AUTO:END -->'
-            % (j(hours), now, "true" if en else "false"))
 
 
 def git(*args):
@@ -226,13 +191,9 @@ def stamp(now, bust, rng, bump_version=True):
     s = open(_C["html"], encoding="utf-8").read()
     s = re.sub(r"문서 갱신 <b>[^<]*</b> KST", "문서 갱신 <b>%s</b> KST" % now, s, count=1)
     s = re.sub(r"데이터 <b>[^<]*</b>", "데이터 <b>%s</b>" % rng, s, count=1)
-    # 스케줄·조회시각 블록. 마커가 없으면 <body> 뒤에 새로 넣는다 — 손으로 심는 것을 잊어도 붙는다.
-    # 치환은 lambda 로 한다: 문자열 replacement 는 \g 같은 시퀀스를 해석해 블록을 깨뜨릴 수 있다.
-    blk = auto_block(now)
-    if AUTO_RE.search(s):
-        s = AUTO_RE.sub(lambda m: blk, s, count=1)
-    else:
-        s = re.sub(r"<body>", lambda m: "<body>\n    " + blk, s, count=1)
+    # 예전에는 여기서 window.AUTORUN(스케줄·조회시각)을 문서에 심었다. 문서 머리의
+    # "다음 갱신까지" 카운터가 그걸 읽었는데, 2026-09-11 에 자동화를 걷어내면서
+    # 예정된 갱신 자체가 없어져 카운터도 블록도 같이 없앴다.
     open(_C["html"], "w", encoding="utf-8").write(s)
 
     touched = []
@@ -281,7 +242,11 @@ def commit_push(a, msg, paths, ok_log):
     들어온다(더러운 것은 stamp() 가 이미 뺐다).
     """
     git("add", "--", *paths)
-    r = git("commit", "-q", "-m", msg)
+    # 경로를 반드시 준다. 경로 없는 commit 은 **인덱스 전체**를 커밋해서, 다른 작업이
+    # add 만 해 두고 아직 커밋하지 않은 파일까지 이 커밋에 딸려 들어간다.
+    # 2026-09-11 에 실제로 그랬다 — 자동화를 걷어내며 git rm 해 둔 파일들이
+    # '조회 시각만(변화 없음)' 커밋에 통째로 실렸다.
+    r = git("commit", "-q", "-m", msg, "--", *paths)
     if r.returncode != 0:
         # 스테이징된 게 정말 없으면(같은 분에 두 번 실행 등) 실패가 아니다.
         if git("diff", "--cached", "--quiet").returncode == 0:
@@ -305,11 +270,10 @@ def commit_push(a, msg, paths, ok_log):
 def stamp_only(a, state, rng, new):
     """데이터는 그대로지만 '언제 확인했는지' 는 남긴다.
 
-    PULLED / AUTORUN.pulled 는 문서와 허브가 자동화 생존 신호로 쓴다
-    (문서 freshness() 30h·72h, app.js liveTimer STALE_H=30). 변화가 없다는 이유로
-    이 값을 묶어 두면, 며칠간 새 데이터가 없을 때 멀쩡히 도는 자동화를 두고
-    페이지가 스스로 "자동 갱신이 멈춘 것 같습니다" 라고 거짓 경고한다.
-    실행했다는 사실 자체가 정보이므로 시간값만이라도 커밋한다.
+    PULLED 는 문서가 '이 값이 얼마나 오래됐는지' 를 스스로 알리는 데 쓴다
+    (문서 freshness() 의 "마지막 조회 N일 전"). 변화가 없다는 이유로 이 값을 묶어 두면,
+    돌려 본 날에도 문서가 더 오래된 시각을 가리킨다. 돌려 봤다는 사실 자체가
+    정보이므로 시간값만이라도 커밋한다.
 
     커밋 메시지에 꼬리표를 붙여 내용 커밋과 구분한다 — git 로그에서 실제 수치가
     바뀐 날을 찾을 때 이게 없으면 둘을 가릴 수 없다.
@@ -340,10 +304,9 @@ def meta_pulled(blocks):
 def guard_stamp(a, published, rebuild):
     """가드에 막혀 데이터를 못 실을 때도 '언제 확인했는지' 는 남긴다.
 
-    가드의 목적은 **덜 들어온 데이터를 문서에 싣지 않는 것**이지 실행 기록까지 막는 것이
-    아니다. 그런데 가드가 며칠 이어지면 PULLED 가 그대로 멈추고, 문서 freshness() 와
-    app.js liveTimer 가 30h·72h 임계를 넘겨 "자동 갱신이 멈춘 것 같습니다" 라고
-    거짓 경고한다 — 자동화는 매번 정상적으로 돌며 '못 싣는다' 고 판정하고 있는데도.
+    가드의 목적은 **덜 들어온 데이터를 문서에 싣지 않는 것**이지 돌려 봤다는 기록까지
+    막는 것이 아니다. 그런데 가드가 며칠 이어지면 PULLED 가 멈춰서, 매일 돌려 보고
+    있는데도 문서는 "마지막 조회 N일 전" 이라고 말한다.
     2026-09-11 에 실제로 그랬다(09-10 DAU 가 중앙값의 74% 라 여섯 번 연속 막혔다).
 
     published 는 **이미 발행된 상태** 다. 호출자가 조회 시각 필드만 갱신해서 넘긴다
@@ -351,7 +314,7 @@ def guard_stamp(a, published, rebuild):
     새 쿼리 결과는 한 줄도 섞이지 않으므로 문서의 수치는 1비트도 바뀌지 않는다.
 
     반환값이 없다 — 호출자의 종료 코드는 그대로 1 이다. 데이터를 싣지 못한 것은
-    여전히 실패이고, 러너의 재시도 판정을 여기서 바꾸지 않는다.
+    여전히 실패이고, 그 사실을 종료 코드에서 지우지 않는다.
     """
     if not published.get("daily"):
         log("가드 — 발행된 데이터가 없어 조회 시각도 남기지 않는다")
@@ -367,13 +330,12 @@ def guard_stamp(a, published, rebuild):
 
 def finish(a, state, rng, old, new, dry_dump=None):
     """멱등 검사부터 커밋·푸시까지. 두 스크립트에서 완전히 같던 꼬리다."""
-    # PULLED(조회 시각)와 AUTORUN.pulled 는 매 실행마다 바뀐다. 그것만 다르면
+    # PULLED(조회 시각)는 매 실행마다 바뀐다. 그것만 다르면
     # '데이터는 그대로' 라는 뜻이므로 비교에서 뺀다 — 여기서 갈라지는 것은
     # 커밋 여부가 아니라 커밋의 성격이다(내용 갱신이냐, 조회 시각만이냐).
     # hours 는 빼지 않는다(스케줄이 바뀌면 커밋되어야 한다). 다만 old·new 둘 다 stamp() 이전
     # 상태라 스케줄 변경 자체가 여기서 보이지는 않는다 — 다음 내용 변경 때 문서에 반영된다.
-    strip = lambda t: re.sub(r'pulled: "[^"]*"', "",
-                             re.sub(r'\n *const PULLED = "[^"]*";', "", t))
+    strip = lambda t: re.sub(r'\n *const PULLED = "[^"]*";', "", t)
     if strip(old) == strip(new):
         log("변화 없음 — 조회 시각만 갱신한다 (last_day=%s)" % state["last_day"])
         return stamp_only(a, state, rng, new)

@@ -5,90 +5,6 @@
    테마 전환은 라이트 단일 테마로 정리하면서 제거됨.
    ========================================================================== */
 
-/* ==========================================================================
-   라이브 문서 헤더의 "다음 갱신까지" 타이머.
-
-   허브 렌더 IIFE 밖(위)에 두는 이유: 그 IIFE 는 #nav/#main 이 없으면 즉시 리턴하고,
-   문서 페이지에는 둘 다 없다. 안에 넣으면 문서에서 영영 돌지 않는다.
-
-   window.AUTORUN 은 scripts/refresh_common.py 의 auto_block() 이 각 라이브 문서에
-   심는다({hours, pulled, enabled}). 허브에는 #nextrun 도 AUTORUN 도 없어 그대로 no-op.
-
-   ★ 항상 그린다. 하루 1회 갱신이라 "다음 갱신"은 언제나 존재하고, 예정 시각이 지나면
-   그 순간 다음 날 시각으로 넘어가 24시간을 다시 센다. 그래서 빈칸도, 멈춘 숫자도 없다.
-
-   launchd 가 정각이 아니라 15분 간격으로 깨기 때문에 실제 갱신은 09:00~09:15 사이
-   아무 때나 들어온다. 그 몇 분을 "밀렸다"고 표시하면 매일 아침 경고가 뜬다 — 정상 동작인데.
-   그래서 시각은 예정 시각(09:00)으로 고정해 세고, 정말 고장났는지는 색으로만 알린다.
-   ========================================================================== */
-(function liveTimer() {
-  var STALE_H = 30; /* 마지막 갱신이 이보다 오래됐으면 색을 --bad 로. 문서 freshness() 와 같은 임계. */
-
-  function start() {
-    var el = document.getElementById("nextrun");
-    var A = window.AUTORUN;
-    if (!el || !A) return false;
-
-    /* 자동 갱신이 꺼진 문서(제어판에서 OFF)에서 "다음 갱신 07:12:33 남음" 은
-       오지 않을 갱신을 세는 거짓말이다. 통째로 감춘다 — 대체 문구도 넣지 않는다.
-       헤더의 "문서 갱신 … KST · 데이터 …" 가 남아 있어 데이터가 어느 시점에
-       굳었는지는 그대로 보인다. 다시 켜면 이 줄이 그대로 돌아온다. */
-    if (A.enabled === false) {
-      el.style.display = "none";
-      return true;
-    }
-
-    if (!A.pulled || !A.hours || !A.hours.length) return false;
-
-    var hours = A.hours.slice().sort(function (a, b) { return a - b; });
-    var pulled = Date.parse(A.pulled.replace(" ", "T") + ":00+09:00");
-    if (isNaN(pulled)) return false;
-
-    /* 시간대를 KST 로 못박는다. 뷰어가 어느 TZ 에 있든 팀이 보는 시각은 하나다.
-       epoch 을 +9h 옮기면 그 Date 의 getUTC* 가 곧 KST 달력값이 된다. */
-    function kst(ms) { return new Date(ms + 9 * 3600000); }
-    function slot(ms, h) {
-      var k = kst(ms);
-      return Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate(), h) - 9 * 3600000;
-    }
-    function pad(n) { return (n < 10 ? "0" : "") + n; }
-
-    function paint() {
-      var now = Date.now();
-
-      /* 다음 예정 시각. 오늘 남은 것이 없으면 내일 첫 시각으로 넘어간다 —
-         09:00 을 지나는 순간 카운터가 23:59:59 로 되감기며 24시간을 다시 센다.
-         control_panel.py 의 next_run() 과 같은 규칙이다. */
-      var next = null, i, t;
-      for (i = 0; i < hours.length && next === null; i++) {
-        t = slot(now, hours[i]);
-        if (t > now) next = t;
-      }
-      if (next === null) next = slot(now + 86400000, hours[0]);
-
-      /* 예정 시각이 몇 분 지나 아직 안 들어온 것은 정상 동작이라 건드리지 않는다.
-         하루가 넘도록 안 들어왔을 때만 색으로 알린다. */
-      var sec = Math.max(0, Math.round((next - now) / 1000));
-      var tint = now - pulled >= STALE_H * 3600000 ? "--bad" : "--live";
-
-      el.innerHTML =
-        "다음 갱신 <b>" +
-        (kst(next).getUTCDate() === kst(now).getUTCDate() ? "오늘" : "내일") +
-        " " + pad(kst(next).getUTCHours()) + ':00</b> · <b style="color:var(' + tint + ')">' +
-        pad(Math.floor(sec / 3600)) + ":" + pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60) +
-        "</b> 남음";
-    }
-
-    paint();
-    setInterval(paint, 1000);
-    return true;
-  }
-
-  /* app.js 는 문서에서 body 끝에 실려 헤더를 만드는 인라인 스크립트보다 뒤에 돈다.
-     그래도 순서가 바뀔 수 있으니 한 번 더 기회를 준다. */
-  if (!start()) document.addEventListener("DOMContentLoaded", start);
-})();
-
 (function () {
   "use strict";
 
@@ -112,21 +28,15 @@
 
   /* ---------- 상태 우선순위 ----------
      섹션 안에서 손이 필요한 문서가 위로 오게 한다: 진행중 > 초안 > 완료.
-     Live 는 매주 갱신되는 상시 문서라 그보다 위. 목록에 없는 값은 맨 뒤로 보낸다 —
-     새 상태 값이 생겨도 카드가 사라지지 않고 아래에 쌓이기만 한다. */
-  var STATUS_ORDER = { Live: 0, "진행중": 1, "초안": 2, "완료": 3 };
+     목록에 없는 값은 맨 뒤로 보낸다 — 새 상태 값이 생겨도 카드가 사라지지 않고
+     아래에 쌓이기만 한다. ("Live" 는 자동 갱신과 함께 2026-09-11 에 걷어냈다.) */
+  var STATUS_ORDER = { "진행중": 0, "초안": 1, "완료": 2 };
 
   function statusRank(card) {
     var r = STATUS_ORDER[card.status];
     return r == null ? 90 : r;
   }
 
-  /* paused = 제어판에서 자동 갱신을 끈 문서(scripts/control_panel.py 가 data.js 에 박는다).
-     status 는 "Live" 그대로 둔다 — 카드를 라이브 섹션에서 빼내지 않고 그 안에서만
-     아래로 내린다. 멈춘 문서가 조용히 사라지는 것보다, 멈춘 채로 보이는 편이 안전하다. */
-  function pausedRank(card) {
-    return card.paused ? 1 : 0;
-  }
 
   /* pinned 는 사람이 직접 올린 것이라 자동 정렬이 끌어내리면 안 된다 — 상태보다 우선.
      sort 는 안정 정렬이라 순위가 같으면 data.js 선언 순서가 그대로 유지된다. */
@@ -135,8 +45,6 @@
       var pa = a.pinned ? 0 : 1;
       var pb = b.pinned ? 0 : 1;
       if (pa !== pb) return pa - pb;
-      var ra = pausedRank(a), rb = pausedRank(b);
-      if (ra !== rb) return ra - rb;
       return statusRank(a) - statusRank(b);
     });
   }
@@ -180,14 +88,9 @@
     top.appendChild(el("span", "card-title", card.title));
     if (isExternal(url)) top.appendChild(el("span", "card-ext", "↗"));
     if (card.status) {
-      /* data-status 는 원래 값을 그대로 둔다(색·모양 규칙이 여기 걸려 있다).
-         멈춘 라이브 문서만 문구를 바꾸고 is-paused 로 회색 처리한다 —
-         회색만으로는 스크린샷·색약 환경에서 "그냥 흐린 Live" 로 읽힌다. */
-      var paused = !!card.paused;
-      var st = el("span", "status" + (paused ? " is-paused" : ""),
-                  paused && card.status === "Live" ? "Live 중지" : card.status);
+      // data-status 는 원래 값을 그대로 둔다 — 색·모양 규칙이 여기 걸려 있다.
+      var st = el("span", "status", card.status);
       st.setAttribute("data-status", card.status);
-      if (paused) st.title = "자동 갱신이 꺼져 있습니다 — 데이터가 마지막 갱신 시점에 멈춰 있습니다";
       top.appendChild(st);
     }
     a.appendChild(top);
@@ -222,55 +125,12 @@
   /* pill 을 섹션 id 로 찾아 두면 필터로 빈 섹션이 됐을 때 같이 숨길 수 있다. */
   var pillById = {};
 
-  /* ---------- 라이브 섹션 ----------
-     자동 갱신되는 문서는 status:"Live" 다 — scripts/refresh_common.py 가 실행할 때마다
-     data.js 의 그 카드에 되박는다. 여기서는 그 카드를 원래 섹션에서 빼내 맨 위
-     라이브 섹션 하나로 모은다.
-
-     복사가 아니라 **이동**이다. 복사면 한 카드가 허브에 두 번 나오고, 검색 결과도
-     두 줄이 된다(프로젝트 필터의 "좁히기만 하고 늘리지 않는다" 원칙과도 어긋난다).
-
-     data.js 의 live 섹션은 cards 가 비어 있고 이 코드가 채운다. 그래서
-     automation.json 에 작업을 등록하면 다음 실행에 status 가 Live 로 박히고,
-     카드를 옮기는 손질 없이 이 탭에 저절로 뜬다. 반대로 자동화를 끄고 상태를 내리면
-     원래 섹션으로 되돌아간다. */
   var VIEW = SECTIONS.map(function (sec) {
     return {
       id: sec.id, label: sec.label, accent: sec.accent, desc: sec.desc,
       cards: (sec.cards || []).slice(),
     };
   });
-  var liveSec = null;
-  VIEW.forEach(function (sec) { if (sec.id === "live") liveSec = sec; });
-  if (liveSec) {
-    VIEW.forEach(function (sec) {
-      if (sec === liveSec) return;
-      var keep = [];
-      sec.cards.forEach(function (c) {
-        // 원래 섹션 이름은 검색 색인용으로만 달고 간다 — "분석"으로도 계속 잡히게.
-        if (c.status === "Live") liveSec.cards.push(Object.assign({}, c, { _from: sec.label }));
-        else keep.push(c);
-      });
-      sec.cards = keep;
-    });
-
-    /* 라이브 카드는 원래 섹션(분석·검증…) 순서로 모이므로 프로젝트가 흩어진다 —
-       솔·솔·코인매치·솔 처럼 한 프로젝트가 가운데 끼면 눈이 매번 다시 찾아야 한다.
-       PROJECTS 선언 순서로 묶는다: 프로젝트 버튼 줄과 같은 순서라 두 곳이 어긋나지 않는다.
-       같은 프로젝트 안에서는 원래 순서 그대로다(안정 정렬 + 인덱스 tiebreak). */
-    var porder = typeof PROJECTS !== "undefined" ? Object.keys(PROJECTS) : [];
-    liveSec.cards = liveSec.cards
-      .map(function (c, i) {
-        var r = porder.indexOf(c.project);
-        return { c: c, i: i, r: r < 0 ? porder.length : r,     // project 없는 카드는 맨 뒤
-                 p: pausedRank(c) };
-      })
-      /* 멈춘 카드는 프로젝트 묶음보다 먼저 갈린다 — 돌고 있는 문서 사이에 끼면
-         회색이라도 눈에 안 띈다. 섹션 맨 아래에 따로 모은다. */
-      .sort(function (a, b) { return a.p - b.p || a.r - b.r || a.i - b.i; })
-      .map(function (x) { return x.c; });
-  }
-
   VIEW.forEach(function (sec) {
     // share:false 는 설정탭에서 숨긴 카드다. 플래그가 없으면 노출(기존 카드 무손상).
     var cards = (sec.cards || []).filter(function (c) {

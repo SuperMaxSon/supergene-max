@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""판 클리어 초대 제거 A/B 문서 자동 갱신.
+"""판 클리어 초대 제거 A/B 문서 갱신 (수동 실행).
 
 흐름
     bq query (블록당 1행 JSON)
@@ -34,12 +34,12 @@ JOB_ID  = "sol-slot-ab"
 
 C.configure(job_id=JOB_ID, log_prefix="", notify_title="슬롯 A/B 갱신 실패",
             html=HTML, state=STATE, doc_url=DOC_URL,
-            commit_msg="[Max] 슬롯 A/B 자동 갱신 — %s 까지 (%s)")
+            commit_msg="[Max] 슬롯 A/B 갱신 — %s 까지 (%s)")
 
 EXP_FROM = "2026-09-03"          # 실험 시작일
 A, B     = "485", "486"
 
-SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 가 매일 KST 09시(scripts/automation.json 기준)에 이 문자열을
+SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py 를 손으로 돌리면 이 문자열을
 -- 그대로 실행하고, 같은 문자열을 문서의 SQL 폴드에 심는다 — 사본이 갈라질 수 없다.
 --
 -- 스캔 원칙
@@ -432,10 +432,6 @@ def rebuild(state):
 
 def main():
     a = C.parse_args()
-    if not a.force and not C.enabled():
-        log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
-        return 0
-
     # 쿼리 단계와 판정 단계를 나눈다. 쿼리가 실패하면 확인한 것이 없으므로 조회 시각을
     # 올리면 거짓말이 된다. 판정(check)에서 막힌 경우에만 '봤다' 는 기록을 남긴다.
     try:

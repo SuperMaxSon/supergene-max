@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-11 17:52",
+  updated: "2026-09-11 19:04",
 };
 
 /* --------------------------------------------------------------------------
@@ -91,7 +91,7 @@ const SECTIONS = [
         project: "sol",
         status: "진행중",
         version: "v4.4",
-        updated: "2026-09-11 17:10",
+        updated: "2026-09-11 19:04",
         pinned: false,
         tags: ["BigQuery", "공유", "이식"],
         share: false,

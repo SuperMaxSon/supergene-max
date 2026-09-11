@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""토너먼트 연속 거절 차단 A/B 문서 자동 갱신.
+"""토너먼트 연속 거절 차단 A/B 문서 갱신 (수동 실행).
 
 흐름
     bq query (블록당 1행 JSON)
@@ -46,7 +46,7 @@ JOB_ID   = "coin-match-reject-ab"
 
 C.configure(job_id=JOB_ID, log_prefix="[cm] ", notify_title="코인매치 A/B 갱신 실패",
             html=HTML, state=STATE, doc_url=DOC_URL,
-            commit_msg="[Max] 코인매치 연속거절 A/B 자동 갱신 — %s 까지 (%s)")
+            commit_msg="[Max] 코인매치 연속거절 A/B 갱신 — %s 까지 (%s)")
 
 SQL = r"""
 WITH base AS (
@@ -459,10 +459,6 @@ def rebuild(state):
 
 def main():
     a = C.parse_args()
-    if not a.force and not C.enabled():
-        log("건너뜀 — 제어판에서 꺼져 있다 (%s)" % JOB_ID)
-        return 0
-
     # 쿼리 단계와 판정 단계를 나눈다 — refresh_sol_slot_ab.main() 과 같은 이유다.
     try:
         state  = load_state()
