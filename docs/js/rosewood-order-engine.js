@@ -33,6 +33,25 @@
 
 const COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
 
+/* 오더 한 장이 요구할 수 있는 아이템 **종수 상한 — 정본은 2 다**.
+   ─────────────────────────────────────────────────────────────────────────
+   시트 `order_rule.item_slot_max` 는 3(네 타입 전부)이고 셀 메모가
+   「3 이 물리적 상한 — 아이콘 자리가 셋뿐 · 근거: uiux_ingame §5-3」이라고 적혀 있다.
+   그런데 그 문서(화면 기획서)는 세 군데서 반대로 못 박는다 —
+   「요구 아이템 = 2개 고정 → 접시 슬롯 2칸 (확정). 데이터·UI 모두 두 칸만 사용」 /
+   「가변 개수로 설계하지 않는다」 / 「요구 아이템 2개·슬롯 2칸은 확정」.
+   **시트가 정본을 인용하면서 정본과 반대로 적은 것**이다. 2026-09-11 기획 확정: 2 칸.
+
+   시트가 고쳐질 때까지 코드가 정본을 들고 있는다. 시트가 바뀌면 이 상수를 지우고
+   `rule.item_slot_max` 하나만 보면 된다. 시트에서 같이 움직여야 할 네 곳:
+     · order_rule.item_slot_max 3 → 2 (4행)
+     · order_item_count 3종 행 제거 + 남은 행 합 10000 재정규화
+     · order_fixed.requirement_3 쓰는 1행(fixed_seq 15) 정리
+     · order_slot_band.third_min / third_max 는 미사용 열이 된다
+   호출자가 `opts.itemSlotMax` 로 덮을 수 있다 — 「오더 추첨 분석」은 시트 값 그대로
+   봐야 불일치를 검사할 수 있어서 안 넘긴다. */
+const SPEC_ITEM_SLOT_MAX = 2;
+
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const codeOf = (chain, step) => chain * 100 + step;
@@ -770,7 +789,7 @@ const lvOf = (level) => idx().lv.get(level);
 /* ======================================================================
    2b. 저장 — 읽기만. 쓰기(saveNow/save)는 벤치에 남는다.
    ====================================================================== */
-const BUILD = "v5.0 · 2026-09-10";   // 인게임 재구조화(Rules/Model/FX/ViewGame) · 아트 224장
+const BUILD = "v5.1 · 2026-09-11";   // 요구 종수 상한 정본 2칸 확정 · refill_max 오독 제거
 const SAVE_KEY = "rw.orderBench";
 const SAVE_VER = 4;
 
@@ -810,10 +829,6 @@ function freshState() {
     cells, level: 1, exp: 0, coin: DATA.const.nru_start_coin, gem: 0, debug: false,
     inv: { store: [], box: [], bought: 0, tab: "store" },
     energy: DATA.const.default_max_energy, energyLastAt: Date.now() / 1000, serveCount: 0, boost: 1,
-    /* specSlotMax — 요구 종수 상한을 화면 기획서 정본(2)으로 누른다. 0 이면 시트 값(3).
-       [GAP-3] 참조. 기본을 2 로 둔 건 기획서가 세 군데서 「확정」이라 못 박고, 시트 메모의
-       근거가 바로 그 문서라서다. 개발자 조작에서 한 번 눌러 시트 값으로 되돌릴 수 있다. */
-    specSlotMax: 2,
     day: 1, choreSeq: 0, sel: null, busy: false, orderFree: false, out: null,
     /* chain_repeat 은 죽은 필드라 뺐다 — 반복 감쇠가 「누적 카운터」에서 「직전 오더의
        체인 한 장」으로 정정되면서(시트 셀 메모) 셀 자리가 없어졌다. 감쇠 대상은 prevOfSlot 이다. */
@@ -943,8 +958,15 @@ function generateOrder(slotNo, opts = {}) {
       const slotOk = [fx.slot_1, fx.slot_2, fx.slot_3].includes(slotNo);
       const lvOk = level >= fx.unlock_level;
       if (slotOk && lvOk) {
-        const reqs = [fx.requirement_1, fx.requirement_2, fx.requirement_3]
-          .filter(Boolean).map((code) => ({ code, count: 1 }));
+        /* 고정 오더는 랜덤 종수 추첨을 안 거치지만 상한은 똑같이 받는다 —
+           order_fixed 는 requirement_1~3 세 칸이고 실제로 fixed_seq 15 한 장이
+           세 칸을 다 쓴다. 상한이 2 면 그 한 장만 두 칸으로 잘린다.
+           시트에서 그 행이 정리되면 이 slice 는 아무 일도 안 하게 된다. */
+        const capFix = opts.itemSlotMax ?? Infinity;
+        const rawFix = [fx.requirement_1, fx.requirement_2, fx.requirement_3].filter(Boolean);
+        const reqs = rawFix.slice(0, capFix).map((code) => ({ code, count: 1 }));
+        if (rawFix.length > reqs.length)
+          push(`    <span class="w">요구 ${rawFix.length}종 → ${reqs.length}종으로 자름</span> (정본 상한 ${capFix} · 시트 order_fixed 는 아직 ${rawFix.length}칸)`);
         const coin = reqs.reduce((a, q) => a + (oiOf(q.code)?.order_price || 0), 0);
         const diff = reqs.reduce((a, q) => a + (oiOf(q.code)?.diff_score || 0), 0);
         push(`<span class="k">[0] 고정 오더 채택</span> fixed_seq=${fx.fixed_seq} (unlock_level ${fx.unlock_level} ≤ Lv${level} · 슬롯 ${fx.slot_1}/${fx.slot_2}/${fx.slot_3} 에 ${slotNo} 포함)`);
@@ -1018,15 +1040,8 @@ function generateOrder(slotNo, opts = {}) {
   push(`[3] 제외 item_code: ${banned.size ? [...banned].map(labelOf).join(", ") : "없음"} <span style="opacity:.65">(체인 전체 아님)</span>`);
 
   const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level);
-  /* [GAP-3] 요구 종수 상한 — 정본이 어긋난 자리다.
-     시트 `order_rule.item_slot_max` 는 3(네 타입 전부)이고, 그 셀 메모의 근거가
-     `uiux_ingame §5-3` 이라고 적혀 있다. 그런데 그 문서는 세 군데서 「요구 아이템
-     2개 · 접시 슬롯 2칸(확정) · 가변 개수로 설계하지 않는다」라고 못 박는다 —
-     **시트가 정본을 인용하면서 정본과 반대로 적었다.** 표 둘의 싸움이 아니다.
-     어느 쪽으로 갈지는 문서 결정이라 여기서 못 정한다. 호출자가 고를 수 있게 열어 둔다:
-     안 넘기면 시트 값 그대로라 「오더 추첨 분석」 페이지의 판정은 변하지 않는다.
-     2 를 넘기면 후보 필터(아래 [5] 종수)에서 3종 행이 빠지고 남은 가중치로만 뽑는다
-     — 시트를 정본대로 고쳤을 때와 같은 결과다(가중치는 상대값이라 재정규화가 필요 없다). */
+  /* 요구 종수 상한 — 정본은 2 다(SPEC_ITEM_SLOT_MAX 주석 참조). 시트는 아직 3.
+     안 넘기면 시트 값 그대로라 추첨 분석 페이지의 불일치 검사가 살아 있다. */
   const slotMax = Math.min(rule.item_slot_max, opts.itemSlotMax ?? Infinity);
   const picked = [];
   const chosen = new Set();
