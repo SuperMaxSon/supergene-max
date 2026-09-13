@@ -44,6 +44,9 @@ SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py �
 --
 -- 스캔 원칙
 --  · 오늘은 절대 넣지 않는다. 마지막 날은 항상 어제다(log_date 는 KST 기준).
+--    그래서 CURRENT_DATE 는 반드시 'Asia/Seoul' 을 준다. 인자 없는 CURRENT_DATE() 는 UTC 라
+--    00:00~09:00 KST 사이에 하루 전을 가리키고, 창이 통째로 하루 밀려 가드가 걸린다
+--    (2026-09-14 08:38 실측: 마지막 날이 9/13 이어야 하는데 9/12 로 나왔다).
 --  · 무거운 컬럼(data · entrypoint_now)은 최근 3일만 읽는다. 그 이전은 이미 뽑혀 있고 불변이다.
 --  · raw 스캔은 이 3일 창 하나뿐이다. DAU·빌드 점유·배정 균형은 stat 사전집계에서 뽑는다.
 --  · 초대(3460 position)와 유입(payload.social)만 raw 전용이다 — stat 에 그 차원이 없다.
@@ -52,8 +55,8 @@ SQL = r"""-- 이 문서를 채우는 쿼리다. scripts/refresh_sol_slot_ab.py �
 WITH us AS (
     SELECT log_date, player_id, event, data, entrypoint_now, client_version
     FROM `game-log-359704.raw.solitaire_city_journey`
-    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
-                       AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE log_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 DAY)
+                       AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
         AND country = 'US'
 ),
 slog AS (
@@ -63,7 +66,7 @@ slog AS (
     SELECT log_date, client_version, IFNULL(country, '(null)') AS country,
            IFNULL(os, '(null)') AS os, player_count
     FROM `game-log-359704.stat.solitaire_city_journey`
-    WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE log_date BETWEEN DATE '2026-09-03' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
         AND stat_name = '1000_LOGIN_COMPLETE'
         AND player_type = 'ALL'
 ),
@@ -122,7 +125,7 @@ retn AS (
     SELECT
         join_date, client_version, social,
         SUM(nru_count) AS coh,
-        DATE_DIFF(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY), join_date, DAY) AS observed_days,
+        DATE_DIFF(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), join_date, DAY) AS observed_days,
         ROUND(SUM(nru_count * d1)) AS d1,
         ROUND(SUM(nru_count * d2)) AS d2,
         ROUND(SUM(nru_count * d3)) AS d3,
@@ -169,7 +172,7 @@ bal AS (
     SELECT client_version, country, os, player_count AS users
     FROM slog
     WHERE client_version IN (485, 486)
-        AND log_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND log_date = DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
         AND player_count >= 10
 ),
 vers AS (
@@ -186,8 +189,8 @@ vers AS (
 SELECT '0_META' AS blk, 1 AS rows_n,
     TO_JSON_STRING(STRUCT(
         FORMAT_DATETIME('%Y-%m-%d %H:%M', CURRENT_DATETIME('Asia/Seoul')) AS pulled_kst,
-        DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_day,
-        DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AS heavy_scan_from)) AS payload
+        DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY) AS last_day,
+        DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 DAY) AS heavy_scan_from)) AS payload
 UNION ALL SELECT '1_DAILY', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, CAST(client_version AS STRING) AS ver, seg,
     ud, fin, sh_try, sh_ok, inv_try, inv_ok, sup, cr_try, cr_ok, it, rv)
@@ -196,8 +199,12 @@ UNION ALL SELECT '2_EXTRA', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     CAST(client_version AS STRING) AS ver, seg, uday, avg_n, p50, p75, p90, play, p50p)
     ORDER BY seg, client_version)) FROM dist
 UNION ALL SELECT '3_RET', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    -- d1~d14 를 전부 내보낸다. retn 은 처음부터 d14 까지 계산했는데 여기서 d7 까지만
+    -- 실어 보냈다 — 코호트가 8일을 넘기는 순간 build_js 의 r["d8"] 이 KeyError 로 죽는다.
+    -- 2026-09-14 에 실제로 터졌다(9/3 코호트 observed_days=10).
     FORMAT_DATE('%m-%d', join_date) AS coh_date, CAST(client_version AS STRING) AS ver,
-    social, coh, observed_days, d1, d2, d3, d4, d5, d6, d7)
+    social, coh, observed_days, d1, d2, d3, d4, d5, d6, d7,
+    d8, d9, d10, d11, d12, d13, d14)
     ORDER BY join_date, client_version, social)) FROM retn
 UNION ALL SELECT '4_INFLOW', COUNT(*), TO_JSON_STRING(ARRAY_AGG(STRUCT(
     FORMAT_DATE('%m-%d', log_date) AS d, t, ti)
