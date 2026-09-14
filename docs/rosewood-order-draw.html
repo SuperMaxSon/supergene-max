@@ -748,15 +748,19 @@
          event_order_score). 편성이 정할 값이라 시트에는 없다 — 정본이 임시로 못 박은
          값이라 여기 상수로 둔다. 시트에서 이 id 가 사라지면 아래 검사가 경고한다. */
       const SPEC_EVENT = 120002;
-      /* ⟲ 되살린 상수. 한 번 지웠던 값이다 — 신판 시트가 item_slot_max 를 전 행 2 로
-         내려서 「시트 하나만 보면 된다」고 판단했다. 그런데 그건 <b>시트가 자기끼리
-         일관되기만 하면 통과</b>하는 판정이다. 밴드 열과 상한이 같이 3 으로 올라가면
-         T12 는 조용히 PASS 하는데 정본은 이렇게 못 박고 있다:
-         「카드당 요구 아이템은 <b>최대 2개로 확정했다. 생성 데이터와 UI 모두 두 자리만
-         사용한다</b>」 · 「카드당 요구 아이템 상한은 2개다」. <b>UI 까지 묶은 제약이라
-         시트가 혼자 바꿀 수 있는 값이 아니다.</b> */
+      /* <b>값의 정본은 시트다</b> — 화면이 몇 칸을 그릴지는 order_rule.item_slot_max 를
+         읽어서 정하고, 이 상수로 그리지 않는다. 여기 2 를 둔 이유는 하나뿐이다:
+         <b>시트가 그 값을 바꿨을 때 알아채려고.</b>
+
+         구조는 3칸도 그릴 수 있다. 규칙이 2칸일 뿐이다. 그래서 시트가 밴드 열과
+         item_slot_max 를 <b>같이</b> 3 으로 올리면 「시트끼리 일관」이라 T12 가 조용히
+         지나간다 — 실제로 교란해서 확인했다. 정본은 「카드당 요구 아이템은 최대 2개로
+         확정했다. <b>생성 데이터와 UI 모두 두 자리만 사용한다</b>」로 화면까지 묶어 뒀다.
+
+         그래서 판정은 FAIL 이 아니라 <b>확인 필요</b>다. 시트가 2 가 아니면 「시트가
+         틀렸다」가 아니라 <b>「정본이 움직였나, 시트가 틀렸나」를 사람이 갈라야 한다.</b> */
       const SPEC_SLOT_MAX = 2;
-      const BUILD_AT = "2026-09-14 10:38";
+      const BUILD_AT = "2026-09-14 10:52";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -3051,23 +3055,29 @@
             r.in_use && [1, 2, 3].filter((i) => {
               const v = r[`requirement_${i}`]; return v != null && v !== "none" && v !== 0 && v !== "";
             }).length > seatCap);
-          add(bad.length || overSpec.length ? "no" : "ok", "T12 요구 종수 상한 ↔ 자리 수",
+          add(bad.length ? "no" : overSpec.length ? "warn" : "ok", "T12 요구 종수 상한 ↔ 자리 수",
               `<code>order_slot_band</code> 가 주는 자리 <b>${seatCap}개</b> <span style="opacity:.65">(열의 유무로 센다 &mdash; 하한 열이 없어도 자리는 있다)</span>`,
               `<code>order_rule.item_slot_max</code> = <b>${uniq(DATA.order_rule, "item_slot_max").join("/")}</b>`
                 + (bad.length ? ` · 이 표본에서 ${seatCap}종 초과가 <b>${overObs.toFixed(2)}%</b>` : ""),
               overSpec.length
-                ? `<b>정본 상한 ${SPEC_SLOT_MAX}칸을 넘는다</b> (${overSpec.map((r) => `${r.order_type} ${r.item_slot_max}`).join(" · ")}). `
-                  + `정본은 「카드당 요구 아이템은 최대 2개로 확정했다. <b>생성 데이터와 UI 모두 두 자리만 사용한다</b>」고 못 박았다 &mdash; `
-                  + `시트가 밴드와 같이 올려서 <b>자기끼리는 일관해도</b> 화면이 못 그린다`
+                ? `<b>시트가 ${overSpec.map((r) => `${r.order_type} ${r.item_slot_max}`).join(" · ")} 로 올라갔다</b> &mdash; `
+                  + `마지막으로 대조한 정본은 「카드당 요구 아이템은 최대 ${SPEC_SLOT_MAX}개로 확정했다. `
+                  + `<b>생성 데이터와 UI 모두 두 자리만 사용한다</b>」였다. `
+                  + `<b>정본이 움직인 건지 시트가 틀린 건지는 값만 봐서는 안 갈린다</b> &mdash; 화면은 시트대로 그린다`
               : bad.length
                 ? `시트가 자리 수보다 넓게 선언했다 (${bad.map((r) => r.order_type).join(" · ")}). `
                   + `남는 자리는 뽑을 범위가 없어 <b>조용히 비고</b>, 그만큼 종수 분포가 깎인다(T1b).<br>`
                   + `같이 움직여야 할 곳: <code>order_item_count</code> 의 ${over.map(([k]) => `${k}종`).join("·") || "초과"} 행`
                   + (fixedOver.length ? ` · <code>order_fixed</code> seq ${fixedOver.map((r) => r.fixed_seq).join(",")}` : "")
-                : `<b>두 축이 다 맞다</b> &mdash; 선언한 상한이 밴드가 주는 자리 수와 같고, 정본 상한 ${SPEC_SLOT_MAX}칸도 안 넘는다. `
-                  + `정본 상수를 한 번 지웠다가 되살렸다(⟲) &mdash; 시트끼리만 대조하면 밴드와 상한이 <b>같이</b> 올라갈 때 `
-                  + `조용히 통과한다. 정본은 「생성 데이터와 <b>UI 모두</b> 두 자리만 사용한다」로 화면까지 묶어 뒀다`,
-              bad.length || overSpec.length ? "data" : null);
+                : `<b>두 축이 다 맞다</b> &mdash; 선언한 상한이 밴드가 주는 자리 수와 같고, 마지막 대조 정본의 ${SPEC_SLOT_MAX}칸과도 같다. `
+                  + `<b>값은 시트에서 읽는다</b> &mdash; 화면이 몇 칸을 그릴지는 <code>item_slot_max</code> 가 정하고 코드가 2 를 박아 그리지 않는다. `
+                  + `<b>구조는 3칸도 그릴 수 있고 규칙이 2칸일 뿐</b>이라, 시트가 밴드와 상한을 같이 올리면 시트끼리는 일관해 조용히 지나간다 &mdash; `
+                  + `그 변화를 알아채려고 정본 값을 하나 들고 있는다`,
+              bad.length || overSpec.length ? "data" : null,
+              overSpec.length
+                ? `요구 칸이 <b>${overSpec[0].item_slot_max}칸</b>으로 올라왔습니다. 마지막으로 받은 정본은 <b>2칸 확정</b>(「생성 데이터와 UI 모두 두 자리만 사용한다」)이었습니다 &mdash; `
+                  + `<b>정본이 바뀐 건가요?</b> 구조는 3칸도 그릴 수 있어서 화면은 시트대로 따라갑니다`
+                : null);
         }
 
         /* ── T13 보드 집계 제외 표시 ──────────────────────────────────────────
