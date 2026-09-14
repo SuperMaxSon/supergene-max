@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-14 08:40",
+  updated: "2026-09-15 08:37",
 };
 
 /* --------------------------------------------------------------------------
@@ -105,6 +105,7 @@ const SECTIONS = [
         updated: "2026-08-27 17:13",
         pinned: false,
         tags: ["인프라"],
+        share: false,
       },
       {
         title: "로그 적용 매트릭스",
@@ -566,6 +567,7 @@ const SECTIONS = [
         updated: "2026-09-14 08:40",
         pinned: false,
         tags: ["토너먼트", "BigQuery", "A/B", "상시"],
+        share: false,
       },
       {
         title: "토너 8/27 배포 KPI",
@@ -724,6 +726,7 @@ const SECTIONS = [
         updated: "2026-09-10 09:40",
         pinned: false,
         tags: ["Claude Code", "정본"],
+        share: false,
       },
       {
         title: "데코 아트 리소스 트리",
