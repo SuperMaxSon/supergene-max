@@ -1123,9 +1123,10 @@ function situationMult(code, reqQty, hold, C) {
 
    시트가 주는 것 : const.order_repeat_reset_count = 3
                     order_item.repeat_weight_decrease (0 · 10 · 50 · 100)
-   시트가 안 주는 것 : <b>무엇을 세는 3인가.</b> 「발급 3회」로 읽었다. 「납품 3회」면
-                    commit 을 부르는 자리가 달라진다(생성이 아니라 납품 시점).
-                    신판에는 셀 메모가 없어 대조할 근거가 없다 — 기획 확인 대기.
+   <b>「무엇을 세는 3인가」는 v1.3 이 닫았다.</b> 한동안 「발급 3회냐 납품 3회냐」로
+   열어 뒀는데, 정본이 <b>두 경로를 다 쓴다</b>고 명시했다 — 납품 때 대상 체인을 3 으로
+   <b>설정</b>하고(더하지 않는다), 발급 때 자리별 마지막 기록에 따라 <b>1 감소 또는 3 재설정</b>
+   한다. 그래서 commit(발급) 과 onServe(납품) 가 둘 다 있는 게 맞다.
 
    절차(개발 기획서 정본):
      ① 제한 횟수 = const.order_repeat_reset_count
@@ -1135,11 +1136,18 @@ function situationMult(code, reqQty, hold, C) {
      ⑤ <b>납품 시</b> 요구품 중 제수가 양수인 체인을 같은 값으로 <b>설정</b>한다(더하지 않는다)
      ⑥ 0 이 되면 표에서 지운다. 고정 오더 <b>발급</b>은 카운터를 건드리지 않는다.
 
-   ④ 의 「만」이 요점이다. 한동안 「나간 체인」까지 합집합으로 넣었는데, 그건
-   「제한 걸린 체인만 보면 표가 빈 최초 상태에서 카운터가 영원히 안 켜진다」는
-   판단에서 나온 보정이었다. <b>전제가 틀렸다</b> — 카운터가 처음 켜지는 자리는
-   발급이 아니라 <b>납품</b>(⑤)이다. 정본에 그 경로가 있으니 합집합은 초과 동작이고,
-   처음 뽑힌 체인이 발급만으로 눌리게 된다.
+   <b>v1.3(2026-09-14) §9 가 ③④ 를 자리 단위로 다시 썼다.</b> 「뽑혔으면 리셋」이
+   아니라 <b>자리마다 예정을 덮어쓰고 마지막 기록을 적용</b>한다:
+     ② 그 자리에서 제수를 적용한 체인 → <b>감소 예정</b>으로 기록
+     ③ 그 자리에서 <b>뽑은</b> 아이템이 제한 대상이면 → <b>재설정 예정</b>으로 덮어쓴다
+     ④ 다음 자리에서 ②→③ 을 반복한다. <b>앞 자리의 재설정 예정도 덮어쓸 수 있다</b>
+     ⑤ 최종 종수에서 <b>잘린 후보의 기록도 유지</b>한다 — 최종 카드에 그 체인이 있는지로
+        다시 계산하지 않는다
+   정본 예시가 옛 구현과 갈리는 자리를 둘 짚어 준다(둘 다 기존 카운터 2 · 재설정 3):
+     · 첫째에서 X 선택 → 둘째에서 X 에 제수 적용 → 둘째는 다른 체인 선택
+       ⇒ 마지막 기록이 <b>감소</b>라 2→1. 「뽑혔으니 리셋」으로 보면 3 이 된다
+     · 첫째 다른 체인 → 둘째 X 선택 → 최종 1종이라 둘째가 잘림
+       ⇒ 잘려도 기록이 살아 <b>3 으로 재설정</b>. 최종 목록으로 다시 세면 2→1 이 된다
 
    모든 랜덤 슬롯이 체인별 표 <b>하나</b>를 공유한다(슬롯별이 아니다).
    직전 요구 코드를 통째로 빼는 banned 와는 다른 축이다 — 그건 코드 단위, 이건 체인 단위. */
@@ -1152,14 +1160,15 @@ const RepeatDecay = {
     return rem > 0 && oi.repeat_weight_decrease > 0 ? Number(oi.repeat_weight_decrease) : 0;
   },
 
-  /* [발급] 후보 평가에서 <b>제수를 적용한 체인만</b> 갱신한다. 뽑혔으면 리셋, 아니면 −1.
-     issued  = 이번 카드가 실제로 요구한 체인 (버린 후보는 안 들어간다)
-     divided = 이번 추첨에서 실제로 제수를 적용한 체인 — <b>갱신 대상은 이쪽이다</b> */
-  commit(CR, issued, divided, reset) {
+  /* [발급] 정본 v1.3 §9 — <b>자리마다 예정을 기록하고 마지막 기록만 적용</b>한다.
+     pend = Map(체인 → "dec" | "reset"). 기록이 없는 체인은 건드리지 않는다.
+     <b>최종 종수에서 잘린 후보의 기록도 그대로 산다</b> — 「최종 카드 목록에 그 체인이
+     있는지로 다시 계산하지 않는다」가 정본 문장이다. */
+  commit(CR, pend, reset) {
     if (reset <= 0) return [];
     const upd = [];
-    divided.forEach((ch) => {
-      if (issued.has(ch)) { CR[ch] = reset; upd.push(`${chainName(ch)}→${reset}`); }
+    pend.forEach((mark, ch) => {
+      if (mark === "reset") { CR[ch] = reset; upd.push(`${chainName(ch)}→${reset}`); }
       else {
         CR[ch] = Math.max(0, (CR[ch] || 0) - 1);
         if (!CR[ch]) delete CR[ch];
@@ -1385,8 +1394,11 @@ function generateOrder(slotNo, opts = {}) {
     push(`<span class="w">[4] item_slot_max ${rule.item_slot_max} > 밴드 자리 ${seats}</span> → ${slotMax}자리로 제한 (order_slot_band 에 그만큼의 열이 없다)`);
   const picked = [];
   const chosen = new Set();
-  // 가중치를 실제로 나눈 체인 — 카운터 갱신 대상은 「뽑힌 것」이 아니라 「제한이 걸린 것」이 기준이다
+  // 가중치를 실제로 나눈 체인 — 로그용(어디에 감쇠가 먹었나)
   const divided = new Set();
+  /* 체인별 <b>예정 상태</b>(정본 §9). 자리마다 덮어쓰고 마지막 기록만 커밋한다.
+     카드 한 장의 추첨 안에서만 사는 값이라 여기서 비운 채 시작한다(§9①). */
+  const pend = new Map();
 
   for (let seat = 1; seat <= slotMax; seat++) {
     const rg = seatRange(band, seat);
@@ -1404,7 +1416,7 @@ function generateOrder(slotNo, opts = {}) {
       const m = situationMult(o.item_code, reqNow, counts, C);
       const rem = CR[chainOf(o.item_code)] || 0;
       const div = RepeatDecay.divisorOf(o, CR);
-      if (div) divided.add(chainOf(o.item_code));
+      if (div) { divided.add(chainOf(o.item_code)); pend.set(chainOf(o.item_code), "dec"); }   // §9②
       /* 가중식 = <b>기본 비중 × 상황 배수 ÷ 반복 제수</b>. 정본 원문:
            「기본 비중에 보드 상황 배수를 곱하고 반복 제한 제수로 나눈 뒤,
             전체 후보 비중 합으로 나눠 확률을 구한다」
@@ -1427,6 +1439,8 @@ function generateOrder(slotNo, opts = {}) {
        정본이 실패 예시로 못 박아 둔 자리다: 「첫째 전의 10000배를 재사용하면 실패다」.
        같은 코드 재추첨 금지(chosen)와는 다른 축이다 — 이건 <b>배수</b>가 바뀌는 것이다. */
     reqNow.set(win.o.item_code, (reqNow.get(win.o.item_code) || 0) + 1);
+    // §9③ — 뽑은 것이 제한 대상이면 그 체인을 재설정 예정으로 <b>덮어쓴다</b>
+    if (RepeatDecay.divisorOf(win.o, CR)) pend.set(chainOf(win.o.item_code), "reset");
 
     const byWhy = {};
     rows.forEach((r) => { byWhy[r.why] = (byWhy[r.why] || 0) + 1; });
@@ -1455,15 +1469,14 @@ function generateOrder(slotNo, opts = {}) {
   }
   const finalReqs = picked.slice(0, n).map((o) => ({ code: o.item_code, count: 1 }));
   if (n < picked.length)
-    push(`    버린 후보 ${picked.slice(n).map((o) => labelOf(o.item_code)).join(", ")} — <span class="k">카운터 갱신에서도 제외</span> (나간 오더가 아니다)`);
+    push(`    버린 후보 ${picked.slice(n).map((o) => labelOf(o.item_code)).join(", ")} — 카드에는 안 실린다. <span class="k">단 반복 예정 기록은 살아 있다</span> (정본 §9⑤)`);
 
   if (divided.size)
     push(`    반복 감쇠 적용 ${[...divided].map((ch) => `${chainName(ch)}(남은 ${CR[ch]}회)`).join(", ")}`);
 
   // ---- 반복 카운터 갱신 (규칙은 RepeatDecay.commit — 합집합인 이유는 거기 적어 뒀다)
   if (!dry || opts.repeat) {
-    const issued = new Set(finalReqs.map((q) => chainOf(q.code)));
-    const upd = RepeatDecay.commit(CR, issued, divided, RESET);
+    const upd = RepeatDecay.commit(CR, pend, RESET);
     if (upd.length) push(`    <span class="k">반복 카운터</span> ${upd.join(", ")} <span style="opacity:.65">(제한 ${RESET}회 · 전 슬롯 공유)</span>`);
   }
 
