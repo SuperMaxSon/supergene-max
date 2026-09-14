@@ -748,7 +748,15 @@
          event_order_score). 편성이 정할 값이라 시트에는 없다 — 정본이 임시로 못 박은
          값이라 여기 상수로 둔다. 시트에서 이 id 가 사라지면 아래 검사가 경고한다. */
       const SPEC_EVENT = 120002;
-      const BUILD_AT = "2026-09-14 10:05";
+      /* ⟲ 되살린 상수. 한 번 지웠던 값이다 — 신판 시트가 item_slot_max 를 전 행 2 로
+         내려서 「시트 하나만 보면 된다」고 판단했다. 그런데 그건 <b>시트가 자기끼리
+         일관되기만 하면 통과</b>하는 판정이다. 밴드 열과 상한이 같이 3 으로 올라가면
+         T12 는 조용히 PASS 하는데 정본은 이렇게 못 박고 있다:
+         「카드당 요구 아이템은 <b>최대 2개로 확정했다. 생성 데이터와 UI 모두 두 자리만
+         사용한다</b>」 · 「카드당 요구 아이템 상한은 2개다」. <b>UI 까지 묶은 제약이라
+         시트가 혼자 바꿀 수 있는 값이 아니다.</b> */
+      const SPEC_SLOT_MAX = 2;
+      const BUILD_AT = "2026-09-14 10:38";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -3035,26 +3043,31 @@
             .filter((r) => r.in_use)
             .map((r) => (r.third_max != null ? 3 : r.second_max != null ? 2 : 1)));
           const bad = DATA.order_rule.filter((r) => r.in_use && Number(r.item_slot_max) > seatCap);
+          /* 두 번째 축 — 시트가 자기끼리 일관해도 정본 상한을 넘으면 어긋난 것이다 */
+          const overSpec = DATA.order_rule.filter((r) => r.in_use && Number(r.item_slot_max) > SPEC_SLOT_MAX);
           const over = ecNom ? [...ecNom.map.entries()].filter(([k]) => k > seatCap) : [];
           const overObs = over.reduce((a, [k]) => a + pct(L.cnt.get(k) || 0, ok), 0);
           const fixedOver = (DATA.order_fixed || []).filter((r) =>
             r.in_use && [1, 2, 3].filter((i) => {
               const v = r[`requirement_${i}`]; return v != null && v !== "none" && v !== 0 && v !== "";
             }).length > seatCap);
-          add(bad.length ? "no" : "ok", "T12 요구 종수 상한 ↔ 자리 수",
+          add(bad.length || overSpec.length ? "no" : "ok", "T12 요구 종수 상한 ↔ 자리 수",
               `<code>order_slot_band</code> 가 주는 자리 <b>${seatCap}개</b> <span style="opacity:.65">(열의 유무로 센다 &mdash; 하한 열이 없어도 자리는 있다)</span>`,
               `<code>order_rule.item_slot_max</code> = <b>${uniq(DATA.order_rule, "item_slot_max").join("/")}</b>`
                 + (bad.length ? ` · 이 표본에서 ${seatCap}종 초과가 <b>${overObs.toFixed(2)}%</b>` : ""),
-              bad.length
+              overSpec.length
+                ? `<b>정본 상한 ${SPEC_SLOT_MAX}칸을 넘는다</b> (${overSpec.map((r) => `${r.order_type} ${r.item_slot_max}`).join(" · ")}). `
+                  + `정본은 「카드당 요구 아이템은 최대 2개로 확정했다. <b>생성 데이터와 UI 모두 두 자리만 사용한다</b>」고 못 박았다 &mdash; `
+                  + `시트가 밴드와 같이 올려서 <b>자기끼리는 일관해도</b> 화면이 못 그린다`
+              : bad.length
                 ? `시트가 자리 수보다 넓게 선언했다 (${bad.map((r) => r.order_type).join(" · ")}). `
                   + `남는 자리는 뽑을 범위가 없어 <b>조용히 비고</b>, 그만큼 종수 분포가 깎인다(T1b).<br>`
                   + `같이 움직여야 할 곳: <code>order_item_count</code> 의 ${over.map(([k]) => `${k}종`).join("·") || "초과"} 행`
                   + (fixedOver.length ? ` · <code>order_fixed</code> seq ${fixedOver.map((r) => r.fixed_seq).join(",")}` : "")
-                : `<b>시트가 스스로 일관된다</b> &mdash; 선언한 상한과 밴드가 주는 자리 수가 같다. `
-                  + `구판(상한 3 · 기획서 2칸 확정)의 불일치는 2026-09-11 신판에서 해소됐고, `
-                  + `코드가 들고 있던 정본 상수(<code>SPEC_ITEM_SLOT_MAX</code>)도 같이 지웠다 &mdash; `
-                  + `<b>이제 시트 하나만 본다.</b> 이 검사는 회귀 방지로 남긴다`,
-              bad.length ? "data" : null);
+                : `<b>두 축이 다 맞다</b> &mdash; 선언한 상한이 밴드가 주는 자리 수와 같고, 정본 상한 ${SPEC_SLOT_MAX}칸도 안 넘는다. `
+                  + `정본 상수를 한 번 지웠다가 되살렸다(⟲) &mdash; 시트끼리만 대조하면 밴드와 상한이 <b>같이</b> 올라갈 때 `
+                  + `조용히 통과한다. 정본은 「생성 데이터와 <b>UI 모두</b> 두 자리만 사용한다」로 화면까지 묶어 뒀다`,
+              bad.length || overSpec.length ? "data" : null);
         }
 
         /* ── T13 보드 집계 제외 표시 ──────────────────────────────────────────
