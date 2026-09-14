@@ -872,15 +872,28 @@ function freshState() {
 /* 신판 실물 5타입. avatar·event 는 없어진 이름이라 표에서도 걷었다.
    high / random_3 / random_4 는 시트·string_code 어디에도 한글 라벨이 없다 —
    아래는 <b>임시 표기</b>이고 기획 확정 전까지 이 파일이 유일한 출처다. */
+/* 고정 오더 경로에서 order_rule 을 못 찾았을 때만 쓰는 <b>최후 폴백</b>이다.
+   평소엔 시트(order_rule.item_slot_max)가 상한을 정하고 이 값은 안 탄다 —
+   타면 로그에 「상한 출처 없음」이 찍힌다. 정본: 「카드당 요구 아이템은 최대
+   2개로 확정했다. 생성 데이터와 UI 모두 두 자리만 사용한다.」 */
+const SPEC_SLOT_MAX_FALLBACK = 2;
+
 const TYPE_KO = {
   normal: "일반", high: "고급", random_3: "무작위3", random_4: "무작위4",
   special: "특별(대본)", fixed: "고정",
 };
 
-/* 슬롯 ↔ 타입 — order_rule 행 순서대로 slot_count 만큼 펼친다.
+/* 슬롯 ↔ 타입 — <b>아래 배열 순서대로</b> slot_count 만큼 펼친다.
    normal 2 + high 1 + random_3 1 + random_4 1 + special 1 = <b>6칸</b>이고
    const.rail_visible_max = 6 과 맞는다. 슬롯 번호는 시트 열이 아니라 이 배치의 결과다 —
-   order_fixed.slot_1/slot_2 가 가리키는 번호도 이 배치를 전제한다. */
+   order_fixed.slot_1/slot_2 가 가리키는 번호도 이 배치를 전제한다.
+
+   <b>「order_rule 행 순서대로」가 아니다</b> — 예전 주석이 그렇게 적혀 있었는데 사실이
+   아니다. 시트 행 순서는 normal · special · high · random_3 · random_4 라, 그대로
+   펼치면 <b>3번 칸이 special</b> 이 된다. 정본은 「기본 자리: 1·2 normal / 3 high /
+   4 random_3 / 5 random_4. special은 별도 6번」으로 못 박았고 order_fixed 에도
+   slot_1 = 3 을 가리키는 행이 있다. 그래서 순서는 <b>정본이 정하고 이 배열이 든다</b> —
+   시트가 행 순서를 바꿔도 여기는 안 따라간다. */
 const SLOT_ORDER = ["normal", "high", "random_3", "random_4", "special"];
 /* 인덱스에 얹는다 — slotType 이 발급마다 불리는데 매번 order_rule 을 5번 훑을 이유가 없다.
    DATA 를 갈아끼우면 reindex 가 IDX 를 통째로 버리므로 캐시가 따라 죽는다. */
@@ -1155,11 +1168,29 @@ function generateOrder(slotNo, opts = {}) {
         /* 신판 order_fixed 는 requirement_1·2 두 칸뿐이다 — 셋째 칸이 삭제되면서
            자르기가 필요 없어졌다. 구판 번들을 드롭했을 때만 requirement_3 이
            딸려 오므로, 있으면 그때만 상한으로 자른다. */
-        const capFix = ruleOf(slotType(slotNo))?.item_slot_max ?? 2;
+        /* 상한을 <b>어디서 얻었는지</b>를 값과 같이 들고 간다. 예전엔
+           `ruleOf(...)?.item_slot_max ?? 2` 한 줄이었는데, `?.` 가 두 가지 결손을
+           같은 모양으로 삼켰다 — ① item_slot_max 열이 없다 ② 그 타입의 order_rule
+           <b>행 자체가 없다</b>. ②는 랜덤 경로가 18줄 아래에서 「활성 행 없음」으로
+           <b>카드를 안 만들고 끊는</b> 조건이다. 같은 결손에 두 경로가 정반대로
+           반응하면 안 된다 — 고정 경로는 조용히 2로 메우고 카드를 만들어 냈다.
+
+           죽이지는 않는다. 이 엔진은 분석 도구라, 결손을 보려고 켠 도구가 그 결손에
+           죽으면 쓸 수가 없다. <b>끝까지 돌되 크게 말한다.</b> */
+        const ruleFix = ruleOf(slotType(slotNo));
+        const capSrc = !ruleFix ? `order_rule 에 ${slotType(slotNo)} 활성 행 없음 → 정본 상한`
+                     : ruleFix.item_slot_max == null ? "order_rule 에 item_slot_max 열 없음 → 정본 상한"
+                     : "order_rule.item_slot_max";
+        const capFix = (ruleFix && ruleFix.item_slot_max != null) ? ruleFix.item_slot_max : SPEC_SLOT_MAX_FALLBACK;
+        /* 폴백이 탔으면 <b>자르든 안 자르든</b> 남긴다. 안 잘렸는데 폴백이 탄 건
+           「이번엔 우연히 값이 같았다」는 뜻이지 정상이 아니다 — 자를 때만 말하면
+           그 우연이 영영 안 보인다. */
+        if (capSrc !== "order_rule.item_slot_max")
+          push(`    <span class="w">상한 출처 없음</span> — ${capSrc} ${capFix} 을 썼다. 시트를 확인하라`);
         const rawFix = [fx.requirement_1, fx.requirement_2, fx.requirement_3].filter(Boolean);
         const reqs = rawFix.slice(0, capFix).map((code) => ({ code, count: 1 }));
         if (rawFix.length > reqs.length)
-          push(`    <span class="w">요구 ${rawFix.length}종 → ${reqs.length}종으로 자름</span> (order_rule.item_slot_max ${capFix} · 이 행은 ${rawFix.length}칸)`);
+          push(`    <span class="w">요구 ${rawFix.length}종 → ${reqs.length}종으로 자름</span> (${capSrc} ${capFix} · 이 행은 ${rawFix.length}칸)`);
         const coin = reqs.reduce((a, q) => a + (oiOf(q.code)?.order_price || 0), 0);
         const diff = reqs.reduce((a, q) => a + (oiOf(q.code)?.diff_score || 0), 0);
         push(`<span class="k">[0] 고정 오더 채택</span> fixed_seq=${fx.fixed_seq} (unlock_level ${fx.unlock_level} ≤ Lv${level} · 슬롯 ${fxSlots.join("/")} 에 ${slotNo} 포함)`);
@@ -1257,7 +1288,21 @@ function generateOrder(slotNo, opts = {}) {
   if (prev) prev.forEach((c) => banned.add(c));
   push(`[3] 제외 item_code: ${banned.size ? [...banned].map(labelOf).join(", ") : "없음"} <span style="opacity:.65">(체인 전체 아님)</span>`);
 
-  const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level);
+  /* 후보 조건 — 정본은 넷을 건다: 「후보 아이템은 order_item 에 등록되어 있고,
+     해금 레벨에 도달했으며, <b>연결된 생성기를 해금했고</b>, in_use 가 참이어야 한다」.
+     여기는 셋만 건다. 셋째(생성기 해금)는 <b>자리를 만들어 두되 비워 둔다</b> —
+     시트로는 못 재기 때문이다:
+
+       · 생성기는 order_item 에 행이 없다(29종 전수 확인) — 그쪽 unlock_level 이 없다
+       · unlock_level 열을 가진 탭은 ad_placement · event_schedule · order_fixed ·
+         order_item · order_rule · shop 뿐이고 생성기는 어디에도 안 걸린다
+       · 「해금했나」는 결국 <b>플레이어 상태</b>다. 시트가 아니라 세이브가 답한다
+
+     그래서 늘 참을 돌려준다. <b>지우지 말 것</b> — 지우면 다음 사람이 「정본 조건이
+     셋이구나」로 읽는다. 플레이어 상태가 들어오면 이 함수 하나만 채우면 된다.
+     지금 이 구멍이 분포에 얼마나 먹는지는 두 페이지의 「미검증」 표가 말한다. */
+  const genUnlocked = (_o) => true;
+  const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && genUnlocked(o));
   /* 요구 종수 상한 — 시트 order_rule.item_slot_max 하나만 본다. 호출자 스위치는 걷었다.
      밴드가 주는 자리 수보다 클 수 없다(신판은 둘 다 2 라 같은 값이다). */
   const slotMax = Math.min(rule.item_slot_max, seats);
