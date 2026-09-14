@@ -313,6 +313,32 @@
       .rw-lbl { display: block; text-align: center; font-size: 10px; color: var(--text-faint);
                 font-family: ui-monospace, Menlo, monospace; white-space: nowrap;
                 overflow: hidden; text-overflow: ellipsis; }
+      /* ── 보상 표기 — 유니코드 기호(◎ ◈ ◆) 를 걷어낸 자리 ─────────────────────
+         코인·이벤트 재화는 <b>그림</b>으로, 난이도는 <b>글자</b>로 간다. 계열을 일부러 가른다:
+         앞의 둘은 게임 화면에 실제로 있는 값이고 난이도는 <b>이 페이지가 붙인 분석값</b>이라,
+         셋을 같은 모양으로 세워 두면 분석값이 게임값인 척한다.
+         아이콘은 아이템 아트(img/items)에서 고르지 않는다 — 보드에 깔리는 그림을 보상
+         자리에 두면 「그 아이템을 준다」로 읽힌다. UI 아이콘이라 계열이 아예 다르다. */
+      .rw-ra img.ic, .rw-rb img.ic { width: 13px; height: 13px; object-fit: contain;
+                                     display: block; pointer-events: none; -webkit-user-drag: none; }
+      .rw-dl { font-family: inherit; font-size: 9px; font-weight: 800;
+               letter-spacing: -0.01em; color: var(--text); }
+      /* 난이도 <b>숫자</b>에만 색 — 구간이 바뀌는 지점이 눈에 걸리게 한다.
+         <b>시트에는 난이도 구간이 없다</b>(신판에서 하루 누적 난이도 축이 삭제됐고,
+         order_slot_band 는 난이도가 아니라 <b>요구 단계</b>를 가른다). 그래서 구간은 이
+         페이지가 정한 값이다 — 자릿수로 끊었다. 난이도가 단계마다 대략 배로 뛰어
+         (3단계 2~14 · 8단계 78~239 · 12단계 1170~1463) 선형으로 자르면 위쪽이 한 칸에 뭉친다.
+         색은 페이지가 이미 「난이도 오르는 순서」로 쓰는 램프 그대로다. */
+      .rw-dv { font-weight: 800; color: var(--dc, var(--text)); }
+      .rw-dv.d1 { --dc: var(--balance); }
+      .rw-dv.d2 { --dc: var(--analysis); }
+      .rw-dv.d3 { --dc: var(--validate); }
+      .rw-dv.d4 { --dc: var(--deploy); }
+      /* 손님 색 — 13명이라 허브 토큰(6개)으로는 못 준다. 체인 칩과 같은 방식으로 hsl 한
+         축만 돌린다(style.css 를 안 건드리려는 것도 같은 이유다). 같은 손님은 어느 카드에서든
+         같은 색이라, 한 줄에 같은 손님이 겹치는 게 눈에 걸린다. */
+      .rw-npc.c { background: hsl(var(--h) 52% 90%); border-color: hsl(var(--h) 40% 72%);
+                  color: hsl(var(--h) 55% 28%); }
 
       /* 판정 로그 — 8단계가 줄바꿈되어 읽히게. 벤치에서는 이 규칙이 없어서
          lines.join("\n") 이 한 덩어리로 뭉쳐 있었다. */
@@ -348,6 +374,7 @@
         <a class="nav-back" href="#rail">레일</a>
         <a class="nav-back" href="#log">로그</a>
         <span class="nav-spacer"></span>
+        <a class="nav-back" href="rosewood-order-fixed.html">고정 오더 ↗</a>
         <a class="nav-back" href="rosewood-order-bench.html">프로토타입 ↗</a>
         <a class="nav-back" href="https://atomking0.github.io/supergene-esther/rosewood_dev_spec.html" target="_blank" rel="noopener">개발 기획서 ↗</a>
       </div>
@@ -597,12 +624,15 @@
             <p class="rw-tnote" id="rwWhy"></p>
             <!-- 이 카드는 <b>분석용 표기</b>다. 정본 화면의 오더 카드는 손님 초상 · 요구
                  트레이 · 보상 스택 세 덩어리이고 보상은 A(기본) · B(이벤트 재화) ·
-                 C(팩/상자) 세 영역이다 — <b>난이도는 화면에 안 나온다</b>. 여기 ◈ 는
+                 C(팩/상자) 세 영역이다 — <b>난이도는 화면에 안 나온다</b>. 여기 「난이도」는
                  시트의 diff_score 합이라 내부 값이고, 이 줄이 없으면 「실제 카드가 이렇게
-                 생겼구나」로 읽힐 자리다. -->
+                 생겼구나」로 읽힐 자리다. 그래서 코인·이벤트 재화만 <b>그림</b>이고 난이도는
+                 <b>글자</b>다 — 모양이 다르면 어느 쪽이 게임 밖 값인지 설명 없이 읽힌다. -->
             <p class="rw-tnote">방금 뽑힌 오더 8장 &mdash; 붉은 테두리는 규칙 위반 ·
-              <span style="opacity:.7"><b>분석용 표기입니다</b> &mdash; <code>◎</code> 코인 · <code>◈</code> 난이도 · <code>◆</code> 이벤트 재화.
-              실제 카드에는 <b>난이도가 안 나옵니다</b>(정본 카드 보상은 기본 · 이벤트 재화 · 팩/상자 세 영역)</span></p>
+              <span style="opacity:.7"><b>분석용 표기입니다</b> &mdash; 위가 코인과 난이도, 아래가 이벤트 재화.
+              난이도만 그림 대신 <b>글자</b>인 건 <b>실제 카드에 안 나오는 값</b>이기 때문입니다(정본 카드 보상은 기본 · 이벤트 재화 · 팩/상자 세 영역).
+              난이도 숫자 색은 <b>자릿수 구간</b>(~9 · ~99 · ~999 · 1000~)이고, <b>시트에 난이도 구간이 없어</b> 이 페이지가 정한 값입니다.
+              손님 색은 <code>order_avatar</code> 행 순서로 나눈 것입니다</span></p>
             <div class="rw-samples" id="rwSamples"></div>
             <p class="rw-tnote">요구 종수 &mdash; 세로선이 <code>order_item_count</code> 기대값</p>
             <div class="rw-bars" id="rwCount" style="margin-bottom:18px"></div>
@@ -760,7 +790,7 @@
          그래서 판정은 FAIL 이 아니라 <b>확인 필요</b>다. 시트가 2 가 아니면 「시트가
          틀렸다」가 아니라 <b>「정본이 움직였나, 시트가 틀렸나」를 사람이 갈라야 한다.</b> */
       const SPEC_SLOT_MAX = 2;
-      const BUILD_AT = "2026-09-14 09:44";
+      const BUILD_AT = "2026-09-14 10:49";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -797,7 +827,7 @@
 
       function applyBalance(json, kind) {
         const n = normalize(json);
-        DATA = n.data; IDX = null; TALLY_IDX = null; reindex();
+        DATA = n.data; IDX = null; TALLY_IDX = null; AV_HUE = null; reindex();
         SRC = { kind, meta: DATA._meta, warn: n.warn.concat((DATA._meta && DATA._meta.warnings) || []) };
 
         S = freshState();
@@ -1941,15 +1971,29 @@
         return `<span class="rw-req${art ? "" : lenOf(code)}${bad ? " bad" : ""}"`
           + ` style="--h:${hueOf(code)}deg" title="${titleOf(code)}">${art || labelOf(code)}</span>`;
       }
+      /* 보상 아이콘 — 메달 ↔ 트로피는 이 한 줄로 갈린다 (img/ui/) */
+      const EVT_ICON = "event-medal";
+      /* 난이도 구간 — <b>시트에 없는 값이라 여기서 정의한다</b>. 자릿수로 끊는다. */
+      const diffBand = (d) => (d < 10 ? "d1" : d < 100 ? "d2" : d < 1000 ? "d3" : "d4");
+      /* 손님 색 — order_avatar 행 순서로 색상환을 고르게 나눈다. 이름에 색을 박지 않는다:
+         손님이 늘면 박아 둔 쪽이 더 크게 틀어진다. DATA 를 갈아끼우면 캐시를 버린다. */
+      let AV_HUE = null;
+      function avatarHue(key) {
+        if (!AV_HUE) {
+          const list = (DATA.order_avatar || []).filter((a) => a.in_use);
+          AV_HUE = new Map(list.map((a, i) => [a.avatar_key, Math.round((360 / list.length) * i)]));
+        }
+        return AV_HUE.get(key) ?? 0;
+      }
       function cardHTML(card, bad) {
         const badSet = bad || new Set();
         return `<div class="rw-card">
-            <span class="rw-npc">${String(card.avatar || "—").slice(0, 3)}</span>
-            <div class="rw-top"><span class="rw-ra"><span title="A 보상 — 코인. order_item.order_price 합">◎ ${card.coin}</span>${
-              card.diff ? `<span title="난이도 — order_item.diff_score 합. 신판에서 하루 누적 난이도 축(order_slot_band.diff_sum_*)이 삭제돼 밴드 선택에는 안 쓰인다">◈ ${card.diff}</span>` : ""}</span></div>
+            <span class="rw-npc c" style="--h:${avatarHue(card.avatar)}deg" title="${card.avatar || "—"}">${String(card.avatar || "—").slice(0, 3)}</span>
+            <div class="rw-top"><span class="rw-ra"><span title="A 보상 — 코인. order_item.order_price 합"><img class="ic" src="img/ui/coin.png" alt="코인">${card.coin}</span>${
+              card.diff ? `<span title="난이도 — order_item.diff_score 합. 신판에서 하루 누적 난이도 축(order_slot_band.diff_sum_*)이 삭제돼 밴드 선택에는 안 쓰인다. 숫자 색은 이 페이지가 정한 자릿수 구간이다"><b class="rw-dl">난이도</b><b class="rw-dv ${diffBand(card.diff)}">${card.diff}</b></span>` : ""}</span></div>
             <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(q.code))).join("")}</div>
             <div class="rw-bot">
-              <span class="rw-rb" title="B 보상 — 이벤트 재화. event_order_score 로 코인/난이도에서 환산">◆ ${card.evt ?? 0}</span>
+              <span class="rw-rb" title="B 보상 — 이벤트 재화. event_order_score 로 코인/난이도에서 환산"><img class="ic" src="img/ui/${EVT_ICON}.png" alt="이벤트 재화">${card.evt ?? 0}</span>
             </div>
             <span class="rw-lbl">${card.type}${card.band ? ` · b${card.band}` : ""}</span></div>`;
       }
@@ -2203,7 +2247,7 @@
           /* 고정 칸의 「어느 행이 뜨나」는 <b>라벨 툴팁</b>으로만 남긴다. 문단으로 적었다가
              두 번 걷었다 — 표본마다 같은 글자가 반복되고, 한 번으로 줄여도 카드 다섯 장
              밑에 문단 하나가 더 붙는 게 읽는 흐름을 끊었다. 코인·난이도 이유는 이미
-             ◎ — · ◈ 0 툴팁에 있고, 미검증 표에도 「대본형 오더의 코인 출처」로 서 있다. */
+             코인 「—」 · 난이도 「0」 툴팁에 있고, 미검증 표에도 「대본형 오더의 코인 출처」로 서 있다. */
           const tip = x.fixed && x.sp
             ? ` title="추첨이 아닙니다 — order_special 의 ${x.sp.chain_key} 행이 그대로 뜹니다(조건 ${x.sp.trigger_task})"`
             : "";
@@ -2213,13 +2257,13 @@
             /* 고정 칸 — cardHTML 은 코인·난이도가 숫자라고 보고 그리므로 직접 짠다.
                같은 클래스만 쓴다(새 CSS 없음). 없는 값은 「—」로 두고 아래 문구로 이유를 적는다. */
             return `<div class="rw-card">
-                <span class="rw-npc">${String(x.card.avatar || "—").slice(0, 3)}</span>
+                <span class="rw-npc c" style="--h:${avatarHue(x.card.avatar)}deg" title="${x.card.avatar || "—"}">${String(x.card.avatar || "—").slice(0, 3)}</span>
                 <div class="rw-top"><span class="rw-ra">
-                  <span title="코인은 시트에 값이 없습니다 — 코인은 Σ(order_item.order_price)인데 start_item_code 가 order_item 에 행이 없습니다(퀘스트 체인)">◎ —</span>
-                  <span title="난이도 0 은 정본 확정값입니다 — 「order_special 의 연속 특수 오더는 원작처럼 난이도 0을 사용한다」(개발 기획서 1.2.1). 빠진 값이 아닙니다">◈ 0</span>
+                  <span title="코인은 시트에 값이 없습니다 — 코인은 Σ(order_item.order_price)인데 start_item_code 가 order_item 에 행이 없습니다(퀘스트 체인)"><img class="ic" src="img/ui/coin.png" alt="코인">—</span>
+                  <span title="난이도 0 은 정본 확정값입니다 — 「order_special 의 연속 특수 오더는 원작처럼 난이도 0을 사용한다」(개발 기획서 1.2.1). 빠진 값이 아닙니다"><b class="rw-dl">난이도</b><b class="rw-dv d1">0</b></span>
                 </span></div>
                 <div class="rw-dish">${x.card.reqs.map((q) => chipHTML(q.code, false)).join("")}</div>
-                <div class="rw-bot"><span class="rw-rb" title="대본형이라 이벤트 환산도 계산할 값이 없습니다">◆ —</span></div>
+                <div class="rw-bot"><span class="rw-rb" title="대본형이라 이벤트 환산도 계산할 값이 없습니다"><img class="ic" src="img/ui/${EVT_ICON}.png" alt="이벤트 재화">—</span></div>
                 <span class="rw-lbl">${lbl}</span></div>`;
           }
           return `<div class="rw-card"><div class="rw-top"></div>

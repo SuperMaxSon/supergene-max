@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>고정 오더</title>
+    <meta
+      name="description"
+      content="Rosewood 의 order_fixed 16행 — 게임 시작부터 순번대로 나가는 오더를 한 줄로 편다. 추첨이 아니라 시트에 박힌 값이라, 뽑기 시뮬레이터가 skipFixed 로 빼고 도는 경로를 여기서 본다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+    <style>
+      /* ==========================================================================
+         오더 시뮬레이터 — 페이지 전용 스타일
+         허브 토큰(--surface / --border / --text / --tool …)만 쓴다. 새 토큰은 만들지 않는다.
+         클래스는 전부 rw- 접두 — style.css(141KB) 와 이름이 겹치지 않게.
+         칩 색만 hsl 로 직접 만든다. 체인이 31 종이라 토큰으로 두면 style.css 를 건드려야 한다.
+         오더 벤치와 겹치는 규칙이 있지만 파일을 공유하지 않는다 — 벤치는 칩 실루엣을
+         계속 고치는 중이고, 테스트 페이지는 카드를 더 작게 쓴다.
+         ========================================================================== */
+      .rw-panel { border: 1px solid var(--border); border-radius: var(--radius);
+                  background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+      .rw-pb { padding: 12px; }
+      .rw-ph { display: flex; align-items: center; gap: 8px; padding: 8px 13px;
+               border-bottom: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; }
+      .rw-ph h3 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -0.005em; }
+      .rw-ph .sub { margin-left: auto; font-size: 11.5px; color: var(--text-faint);
+                    font-family: ui-monospace, Menlo, monospace; }
+
+      .rw-btn { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm);
+                padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+                color: var(--text); transition: border-color 0.14s, color 0.14s; }
+      .rw-btn:hover { border-color: var(--tool); color: var(--tool); }
+      .rw-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .rw-btn.pri { background: var(--tool); border-color: var(--tool); color: #fff; }
+      .rw-btn.pri:hover { filter: brightness(1.08); color: #fff; }
+      .rw-btn.sm { padding: 3px 9px; font-size: 12px; font-weight: 500; }
+      .rw-btn:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible
+        { outline: 2px solid var(--tool); outline-offset: 2px; }
+      .rw-chk { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+      .rw-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; margin: 12px 0; }
+      .rw-tnote { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
+      .rw-hide { display: none !important; }
+
+      /* 조작 바 sticky — 결과 표가 길어 스크롤하면 「돌리기」가 화면 밖으로 나갔다.
+         허브 전역 nav 가 top:0·z-index:20 으로 고정돼 있으니 그 밑(--nav-h)에 붙이고,
+         z-index 는 nav 보다 낮게 둬 nav 를 덮지 않게 한다. 배경을 불투명하게 깔아야
+         아래로 지나가는 표 내용이 안 비친다. */
+      .rw-stickybar { position: sticky; top: calc(var(--nav-h) + 8px); z-index: 10;
+                      background: var(--surface); border: 1px solid var(--border);
+                      border-radius: var(--radius); padding: 10px 12px; margin: 18px 0 0;
+                      /* 검사 요약까지 얹으니 낮은 화면에서 바가 화면을 다 먹을 수 있다 —
+                         스크롤을 주고 잘라, 어떤 화면에서도 결과 표가 보일 자리를 남긴다 */
+                      max-height: calc(100vh - var(--nav-h) - 22px); overflow: auto; }
+      .rw-stickybar .rw-bar { margin: 0; }
+      /* 바가 main 직계로 올라가 문서 끝까지 떠 있게 되면서, 목차 앵커로 점프했을 때
+         섹션 제목이 바 밑으로 들어간다. 바 높이를 런타임에 재서(--rw-bar-h) 섹션
+         scroll-margin 에 더한다 — 전역 style.css 의 .doc-section 은 건드리지 않고
+         이 페이지에서만 덮는다. 바 높이는 검사 요약이 차면 늘어나므로 다시 잰다. */
+      .doc-section { scroll-margin-top: calc(var(--nav-h) + 16px + var(--rw-bar-h, 0px)); }
+      .rw-stickyresult { min-height: 1.4em; margin-top: 6px; font-size: 12px;
+                          color: var(--text-faint); font-family: ui-monospace, Menlo, monospace; }
+      /* 오더 타입 색 — 타입 이름이 카드 라벨·표·막대·슬롯 목록 여러 군데에 나오는데
+         전부 같은 회색이라 눈으로 못 갈랐다. 타입마다 색을 하나 물려 <b>어디서 보든 같은
+         색</b>으로 읽히게 한다. 색 순서에 뜻을 담았다 — 초록 → 파랑 → 앰버 → 붉음이
+         난이도 오르는 순서다(normal 28 · high 98 · random_3 160 · random_4 225, Lv30 실측).
+         추첨 밖인 두 경로는 계열을 달리 둔다: 대본형 special 보라 · 고정 fixed 청록.
+         허브 토큰만 쓴다 — 새 색을 발명하지 않는다. */
+      .rw-t { color: var(--tc, var(--text-dim)); font-weight: 700; }
+      .rw-t.normal { --tc: var(--balance); }
+      .rw-t.high { --tc: var(--analysis); }
+      .rw-t.random_3 { --tc: var(--validate); }
+      .rw-t.random_4 { --tc: var(--deploy); }
+      .rw-t.special { --tc: var(--plan); }
+      .rw-t.fixed { --tc: var(--tool); }
+      /* 카드 라벨은 카드 아래에 작게 붙는 자리라 색만 물리고 굵기는 원래대로 둔다 */
+      .rw-card .rw-lbl .rw-t { font-weight: 700; }
+      /* 타입 고르는 select 자체에도 색을 물린다 — 지금 무엇을 보고 있는지가 조작 바에서
+         바로 읽힌다. `.rw-f select` 가 color 를 잡고 있어 한 급 더 올려 적는다.
+         <option> 에 색을 주는 건 브라우저마다 달라서 안 쓴다. */
+      .rw-f select.rw-t { color: var(--tc, var(--text)); }
+
+      /* 검사 요약 미러 — 「검사」 표 네 개는 이 바보다 <b>위</b>에 있어서, 결과 표를 읽는
+         동안에는 판정이 화면 밖이었다. 네 줄을 바 안에 같이 붙여 스크롤을 따라오게 한다.
+         값을 다시 세지 않고 각 summary 의 배지 HTML 을 그대로 복제한다 — 따로 계산하면
+         두 숫자가 갈릴 수 있고, 갈리면 읽는 사람이 어느 쪽이 맞는지 알 수 없다. */
+      .rw-stickychecks { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 12px;
+                         margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border); }
+      .rw-stickychecks button { display: flex; align-items: baseline; gap: 6px; cursor: pointer;
+                                background: none; border: 0; padding: 0; margin: 0; font: inherit;
+                                color: var(--text-dim); text-align: left; }
+      .rw-stickychecks .rw-sck { flex: none; color: var(--text-faint); }
+      .rw-stickychecks button:hover .rw-sck { color: var(--tool); text-decoration: underline; }
+      /* 눌러서 표로 갈 때 전역 nav 밑에 제목이 가리지 않게 */
+      .rw-fold { scroll-margin-top: calc(var(--nav-h) + 14px); }
+      /* 좁은 화면은 필드 10개가 여러 줄로 접혀 sticky 로 붙이면 화면을 다 먹는다 — 그냥 흘려보낸다 */
+      @media (max-width: 720px) { .rw-stickybar { position: static; max-height: none; } }
+
+      /* 해금 칩 — 「그 레벨에 무엇이 열렸나」를 보드 구성과 같이 보여 준다.
+         체인 해금 래더는 order_item.unlock_level 이 체인 단위로 균일한 데서 읽는다.
+         item_spec 에는 보드 해금 칸이 없다 — 그 사실도 칩 줄 옆에 적는다. */
+      .rw-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 12px; }
+      .rw-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 9px;
+                 border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+                 font-size: 11.5px; line-height: 1.5; white-space: nowrap; }
+      .rw-chip b { font-size: 12px; font-weight: 700; color: var(--text); }
+      .rw-chip s { text-decoration: none; color: var(--text-faint);
+                   font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; }
+      .rw-chip i { font-style: normal; font-weight: 700; color: var(--tool);
+                   font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; }
+      .rw-chip.lock { border-style: dashed; opacity: 0.55; }
+      .rw-chip.lock b { color: var(--text-dim); font-weight: 500; }
+      .rw-chip.gen { border-color: hsl(258 40% 82%); background: hsl(258 45% 97%); }
+      /* 칩 앞머리 아트 — 그 체인의 대표 아이템(오더 대상 최저 단계) */
+      .rw-chip .a { width: 20px; height: 20px; align-self: center; margin-left: -2px; }
+      .rw-chip.lock .a { filter: grayscale(1) opacity(0.6); }
+      /* 보드 격자 — const.board_column × board_row 그대로. 어떤 칩이 어디에 얼마나
+         놓였는지 눈으로 봐야 배수 축이 왜 그렇게 나오는지 납득이 된다. */
+      .rw-boardwrap { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; margin: 0 0 12px; }
+      .rw-grid { display: grid; gap: 2px; padding: 5px; border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); background: var(--surface-2); flex: none; }
+      .rw-cell { width: 30px; height: 30px; border-radius: 6px; background: var(--surface);
+                 border: 1px dashed var(--border); display: flex; align-items: center;
+                 justify-content: center; overflow: hidden; }
+      .rw-cell.on { border-style: solid; border-color: hsl(var(--h) 45% 68%);
+                    background: hsl(var(--h) 46% 92%); }
+      .rw-cell.gen { border-width: 2px; box-shadow: inset 0 0 0 1.5px var(--surface); }
+      .rw-cell .a { display: block; width: 88%; height: 88%; object-fit: contain; pointer-events: none; }
+      .rw-cell .t { font-size: 7px; line-height: 1.05; text-align: center; word-break: keep-all;
+                    color: hsl(var(--h) 58% 28%); padding: 0 1px; }
+      .rw-hold { flex: 1 1 260px; min-width: 240px; }
+      .rw-hold h5 { margin: 0 0 6px; font-size: 11.5px; font-weight: 800; color: var(--text-dim); }
+      .rw-holdrow { display: flex; flex-wrap: wrap; gap: 4px; }
+      .rw-hi { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 3px;
+               border: 1px solid hsl(var(--h) 45% 78%); border-radius: 11px;
+               background: hsl(var(--h) 46% 96%); font-size: 11px; white-space: nowrap; }
+      .rw-hi .a { display: block; width: 18px; height: 18px; object-fit: contain; }
+      .rw-hi b { font-weight: 700; }
+      .rw-hi s { text-decoration: none; font-family: ui-monospace, Menlo, monospace;
+                 font-size: 10px; color: var(--text-faint); }
+      .rw-hi.g { border-style: dashed; }
+
+      /* 막대 라벨 — 이름 앞에 아트를 붙여 어떤 물건인지 바로 보이게 한다 */
+      .rw-blabel { display: inline-flex; align-items: center; gap: 5px; }
+      .rw-blabel .a { width: 18px; height: 18px; flex: none; }
+
+      /* 입력 — 판본 표시와 드롭존 */
+      .rw-drop { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 18px 14px;
+                 text-align: center; font-size: 12.5px; color: var(--text-dim); background: var(--surface-2);
+                 transition: border-color 0.14s, background 0.14s; }
+      .rw-drop.on { border-color: var(--tool); background: hsl(210 60% 97%); color: var(--tool); }
+      /* 데이터 판본 경고 — 자동 판정으로 못 잡는 종류라 눈에 띄게 박아 둔다 */
+      .rw-warn { margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+                 border: 1px solid hsl(38 70% 78%); background: hsl(45 85% 96%);
+                 font-size: 12px; line-height: 1.65; color: hsl(30 55% 24%); }
+      .rw-warn b { color: hsl(25 70% 30%); }
+      .rw-warn code { font-size: 11.5px; }
+      .rw-drop b { display: block; font-size: 13px; color: var(--text); margin-bottom: 3px; }
+      .rw-src { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+                background: var(--border); border: 1px solid var(--border);
+                border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; }
+      .rw-src div { background: var(--surface); padding: 8px 11px; }
+      .rw-src u { text-decoration: none; display: block; font-size: 10px; letter-spacing: 0.09em;
+                  text-transform: uppercase; color: var(--text-faint); }
+      .rw-src b { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700;
+                  overflow-wrap: anywhere; }
+
+      /* 판정 배지 */
+      .rw-v { display: inline-flex; align-items: center; justify-content: center; min-width: 46px;
+              padding: 1px 7px; border-radius: 10px; font-size: 10.5px; font-weight: 800;
+              letter-spacing: 0.03em; font-family: ui-monospace, Menlo, monospace; }
+      .rw-v.ok { background: hsl(145 45% 90%); color: hsl(145 60% 24%); }
+      .rw-v.no { background: hsl(4 60% 92%); color: hsl(4 62% 34%); }
+      .rw-v.warn { background: hsl(38 70% 90%); color: hsl(30 70% 28%); }
+      .rw-v.na { background: var(--surface-2); color: var(--text-faint); }
+
+      /* 귀속 배지 — 판정(맞다/틀리다)과 원인(누구를 고쳐야 하나)은 다른 축이다.
+         판정만 있으면 FAIL 을 보고도 엔진·시트·테스트 중 어디를 열지 모른다. */
+      .rw-c { display: inline-flex; align-items: center; justify-content: center; min-width: 46px;
+              margin-top: 3px; padding: 0 7px; border-radius: 10px; font-size: 10px; font-weight: 700;
+              letter-spacing: 0.03em; font-family: ui-monospace, Menlo, monospace;
+              border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
+      .rw-c.logic { border-color: hsl(4 50% 78%); color: hsl(4 62% 38%); }
+      .rw-c.data  { border-color: hsl(258 40% 78%); color: hsl(258 45% 42%); }
+      .rw-c.judge { border-color: hsl(200 40% 74%); color: hsl(200 50% 34%); }
+
+      /* 접기 — 검사 표는 기본 접힘. summary 한 줄에 판정 요약이 남는다 */
+      .rw-fold { border: 1px solid var(--border); border-radius: var(--radius-sm);
+                 background: var(--surface); margin-top: 10px; overflow: hidden; }
+      .rw-fold > summary { cursor: pointer; padding: 9px 13px; display: flex; gap: 9px;
+                           align-items: center; flex-wrap: wrap; font-size: 13px; font-weight: 700;
+                           list-style: none; background: var(--surface-2); }
+      .rw-fold > summary::-webkit-details-marker { display: none; }
+      .rw-fold > summary::before { content: "▸"; color: var(--text-faint); font-size: 10px; font-weight: 400; }
+      .rw-fold[open] > summary::before { content: "▾"; }
+      .rw-fold[open] > summary { border-bottom: 1px solid var(--border); }
+      .rw-fold > summary:hover { color: var(--tool); }
+      .rw-fold > summary .fx { font-size: 11.5px; font-weight: 400; color: var(--text-dim);
+                               margin-left: auto; text-align: right; }
+      .rw-fold .rw-tw { border: 0; border-radius: 0; }
+
+      /* 표 */
+      .rw-tw { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);
+               background: var(--surface); }
+      .rw-tw table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      .rw-tw th, .rw-tw td { text-align: left; padding: 7px 11px; border-bottom: 1px solid var(--border-soft);
+                             vertical-align: top; }
+      .rw-tw th { font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+                  color: var(--text-faint); background: var(--surface-2); white-space: nowrap; }
+      .rw-tw tr:last-child td { border-bottom: 0; }
+      .rw-tw code { font-size: 11.5px; }
+      /* 다섯 칸이 전부 문장이라 좁히면 한 글자씩 끊긴다 — 최소폭을 주고 표를 스크롤시킨다 */
+      #rwGap ~ * , .rw-tw table.wide { min-width: 0; }
+      .rw-tw table { min-width: 720px; }
+      .rw-tw td .key { display: block; margin-top: 2px; font-family: ui-monospace, Menlo, monospace;
+                       font-size: 10.5px; color: var(--text-faint); overflow-wrap: anywhere; }
+      .rw-tw td.say { color: var(--text); }
+      /* 타입별 성격은 줄바꿈 목록이 표보다 읽기 쉽다 */
+      .rw-tw td .li { display: block; margin-top: 5px; padding-top: 5px; font-size: 11.5px;
+                      line-height: 1.7; color: var(--text-dim); border-top: 1px solid var(--border-soft); }
+      .rw-tw td:first-child { white-space: nowrap; }
+      .rw-tw .num { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums;
+                    text-align: right; white-space: nowrap; }
+
+      /* 분포 컨트롤 · 게이지 */
+      .rw-f { display: flex; flex-direction: column; gap: 3px; }
+      .rw-f label { font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
+      /* 라벨 옆 범위 표시(「분포 전용」) — s 기본값이 취소선이라 그대로 두면 지운 글자로 보인다.
+         이 페이지의 다른 <s> 들(rw-chip·rw-hi)과 같은 처리를 쓴다. */
+      .rw-f label s { text-decoration: none; letter-spacing: 0; text-transform: none;
+                      color: var(--tool); opacity: .85; }
+      .rw-f input, .rw-f select { font: inherit; font-size: 13px; font-family: ui-monospace, Menlo, monospace;
+        padding: 5px 8px; width: 132px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        background: var(--surface); color: var(--text); }
+      .rw-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); gap: 1px;
+                 background: var(--border); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 14px; }
+      .rw-kpi { background: var(--surface); padding: 9px 12px; }
+      .rw-kpi u { text-decoration: none; display: block; font-size: 10px; letter-spacing: 0.09em;
+                  text-transform: uppercase; color: var(--text-faint); }
+      .rw-kpi b { font-family: ui-monospace, Menlo, monospace; font-size: 18px; font-variant-numeric: tabular-nums; }
+      .rw-bars { display: flex; flex-direction: column; gap: 3px; }
+      .rw-b { display: grid; grid-template-columns: 132px 1fr 136px; gap: 9px; align-items: center;
+              font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+      /* span 은 기본이 inline 이라 width·height 가 먹지 않는다 — 게이지가 0px 로 그려지던 자리 */
+      .rw-b .track { display: block; height: 14px; background: var(--surface-2);
+                     border: 1px solid var(--border); border-radius: 3px; overflow: hidden; position: relative; }
+      .rw-b .fill { display: block; height: 100%; min-width: 2px; background: hsl(var(--h) 52% 48%); }
+      /* 기대값 표식 — <b>트랙 밖</b>에 작은 ▼ 로 얹는다. 막대를 둘로 나누면 상위
+         30 종이 60 줄이 되어 눈으로 못 따라가므로 한 줄은 유지한다.
+
+         자리를 옮긴 이유. 처음엔 게이지 <b>안</b>에 세로선을 그렸는데, 그 선은 두 바닥
+         (빈 트랙·채워진 게이지) 위에 동시에 얹혀서 한 색으로는 한쪽에서 반드시 묻혔다.
+         대비를 색으로 이기려다 ① 어두운 회색(묻힘) ② 밝은 심지+테두리(선이 둘로 보임)
+         ③ 형광 마젠타(눈이 아픔) 를 거쳤다. <b>색 싸움 자체가 잘못된 문제였다</b> —
+         표식을 막대 밖으로 빼면 아이템 색과 겹칠 일이 없어 차분한 붉은색으로 충분하다.
+
+         트랙은 모서리를 자르려고 overflow:hidden 을 쓰므로 그 <b>안에서는 밖으로 못 나간다</b>
+         (앞서 준 top:-3px 오버행은 실제로는 잘려서 안 보였다). 그래서 트랙을 .gauge 로
+         한 겹 감싸고 ▼ 는 그 위에 둔다. */
+      .rw-b .gauge { position: relative; display: block; padding-top: 7px; }
+      .rw-b .exp { position: absolute; top: 0; margin-left: -4px; width: 0; height: 0;
+                   border-left: 4px solid transparent; border-right: 4px solid transparent;
+                   border-top: 5px solid var(--deploy); }
+      .rw-b .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rw-b .n { text-align: right; color: var(--text-dim); }
+      .rw-empty { padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm);
+                  font-size: 12px; color: var(--text-faint); text-align: center; }
+
+      /* 오더 카드 — 벤치 레일과 같은 해부 구조(초상·접시·A·B·C).
+         칩 라벨이 `31-14` 처럼 5 자까지 나오므로 칩을 42px 로 잡는다 — 32px 에서는 잘렸다.
+         자리 3 개(42×3 + 간격 10 = 136)가 안쪽 폭에 들어가도록 카드 폭을 160 으로 둔다.
+         타입·밴드 라벨은 아래 줄로 뺐다 — ◆·★ 와 한 줄에 두면 셋이 서로를 밀어냈다. */
+      .rw-samples { display: flex; gap: 15px; flex-wrap: wrap; padding-top: 16px; margin-bottom: 18px; }
+      .rw-card { position: relative; flex: none; width: 160px; border: 1px solid var(--border);
+                 border-radius: 11px; background: var(--surface); padding: 12px 10px 9px;
+                 display: flex; flex-direction: column; gap: 7px; }
+      .rw-npc { position: absolute; top: -15px; left: 9px; width: 34px; height: 34px; border-radius: 50%;
+                background: var(--surface-2); border: 1px solid var(--border); display: grid;
+                place-items: center; font-size: 10.5px; font-weight: 800; color: var(--text-dim); }
+      .rw-top { display: flex; gap: 6px; align-items: flex-start; padding-left: 38px; min-height: 26px; }
+      .rw-ra { display: flex; flex-direction: column; gap: 3px; margin-left: auto; align-items: flex-end; }
+      .rw-ra span { display: flex; align-items: center; gap: 4px; height: 18px; padding: 0 8px;
+                    border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border);
+                    font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 700;
+                    white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .rw-dish { display: flex; gap: 5px; justify-content: center; }
+      .rw-req { position: relative; width: 42px; height: 42px; border-radius: 50%; display: flex;
+                align-items: center; justify-content: center; font-family: ui-monospace, Menlo, monospace;
+                font-size: 11.5px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap;
+                background: hsl(var(--h) 46% 86%);
+                color: hsl(var(--h) 58% 26%); box-shadow: inset 0 0 0 1.5px hsl(var(--h) 45% 66%); }
+      .rw-req.bad { box-shadow: inset 0 0 0 2.5px var(--deploy); }
+      /* 아이템 아트 — docs/img/items/<item_code>.png. 엔진 spriteOf() 가 경로를 판다.
+         비율이 제각각이라 contain 으로 원 안에 앉히고, 체인 색 링은 밖에 남는다.
+         아트가 없는 코드는 이름 텍스트로 떨어진다(SPRITE_CODES 밖). */
+      .rw-req .a, .rw-chip .a, .rw-blabel .a {
+        display: block; object-fit: contain; pointer-events: none; -webkit-user-drag: none;
+        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.22)); }
+      .rw-req .a { width: 88%; height: 88%; }
+      /* 이름 라벨은 1~9자 — 길수록 줄인다(엔진 lenOf 가 붙이는 클래스) */
+      .rw-req.l5 { font-size: 9.5px; letter-spacing: -0.03em; }
+      .rw-req.l7 { font-size: 8px; letter-spacing: -0.04em; }
+      .rw-req.l9 { font-size: 7px; letter-spacing: -0.05em; }
+      .rw-req.l7, .rw-req.l9 { word-break: keep-all; text-align: center; line-height: 1.15;
+                               white-space: normal; padding: 0 2px; }
+      .rw-bot { display: flex; align-items: center; gap: 5px; margin-top: auto; }
+      .rw-rb { display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px;
+                       border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
+                       font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 700;
+                       white-space: nowrap; }
+      .rw-lbl { display: block; text-align: center; font-size: 10px; color: var(--text-faint);
+                font-family: ui-monospace, Menlo, monospace; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis; }
+      /* ── 보상 표기 — 유니코드 기호(◎ ◈ ◆) 를 걷어낸 자리 ─────────────────────
+         코인·이벤트 재화는 <b>그림</b>으로, 난이도는 <b>글자</b>로 간다. 계열을 일부러 가른다:
+         앞의 둘은 게임 화면에 실제로 있는 값이고 난이도는 <b>이 페이지가 붙인 분석값</b>이라,
+         셋을 같은 모양으로 세워 두면 분석값이 게임값인 척한다.
+         아이콘은 아이템 아트(img/items)에서 고르지 않는다 — 보드에 깔리는 그림을 보상
+         자리에 두면 「그 아이템을 준다」로 읽힌다. UI 아이콘이라 계열이 아예 다르다. */
+      .rw-ra img.ic, .rw-rb img.ic { width: 13px; height: 13px; object-fit: contain;
+                                     display: block; pointer-events: none; -webkit-user-drag: none; }
+      .rw-dl { font-family: inherit; font-size: 9px; font-weight: 800;
+               letter-spacing: -0.01em; color: var(--text); }
+      /* 난이도 <b>숫자</b>에만 색 — 구간이 바뀌는 지점이 눈에 걸리게 한다.
+         <b>시트에는 난이도 구간이 없다</b>(신판에서 하루 누적 난이도 축이 삭제됐고,
+         order_slot_band 는 난이도가 아니라 <b>요구 단계</b>를 가른다). 그래서 구간은 이
+         페이지가 정한 값이다 — 자릿수로 끊었다. 난이도가 단계마다 대략 배로 뛰어
+         (3단계 2~14 · 8단계 78~239 · 12단계 1170~1463) 선형으로 자르면 위쪽이 한 칸에 뭉친다.
+         색은 페이지가 이미 「난이도 오르는 순서」로 쓰는 램프 그대로다. */
+      .rw-dv { font-weight: 800; color: var(--dc, var(--text)); }
+      .rw-dv.d1 { --dc: var(--balance); }
+      .rw-dv.d2 { --dc: var(--analysis); }
+      .rw-dv.d3 { --dc: var(--validate); }
+      .rw-dv.d4 { --dc: var(--deploy); }
+      /* 손님 색 — 13명이라 허브 토큰(6개)으로는 못 준다. 체인 칩과 같은 방식으로 hsl 한
+         축만 돌린다(style.css 를 안 건드리려는 것도 같은 이유다). 같은 손님은 어느 카드에서든
+         같은 색이라, 한 줄에 같은 손님이 겹치는 게 눈에 걸린다. */
+      .rw-npc.c { background: hsl(var(--h) 52% 90%); border-color: hsl(var(--h) 40% 72%);
+                  color: hsl(var(--h) 55% 28%); }
+
+      /* 판정 로그 — 8단계가 줄바꿈되어 읽히게. 벤치에서는 이 규칙이 없어서
+         lines.join("\n") 이 한 덩어리로 뭉쳐 있었다. */
+      .rw-log { max-height: 560px; overflow-y: auto; }
+      .rw-e { padding: 10px 13px; border-bottom: 1px solid var(--border-soft); }
+      .rw-e:last-child { border-bottom: 0; }
+      .rw-e h4 { margin: 0 0 5px; font-size: 12px; font-weight: 800; display: flex; gap: 7px;
+                 align-items: baseline; flex-wrap: wrap; }
+      .rw-steps { white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace;
+                  font-size: 11.5px; line-height: 1.65; color: var(--text-dim); overflow-wrap: anywhere; }
+      .rw-steps .k { color: var(--tool); font-weight: 700; }
+      .rw-steps .w { color: var(--deploy); font-weight: 700; }
+      .rw-steps .p { color: var(--balance); font-weight: 700; }
+
+      .rw-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+                  background: var(--text); color: var(--surface); padding: 8px 16px;
+                  border-radius: 20px; font-size: 12.5px; z-index: 90; opacity: 0;
+                  pointer-events: none; transition: opacity 0.18s; }
+      .rw-toast.on { opacity: 1; }
+      @media (prefers-reduced-motion: reduce) { .rw-toast { transition: none; } }
+      @media (max-width: 620px) { .rw-b { grid-template-columns: 96px 1fr 104px; } }
+    </style>
+
+  </head>
+
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#fixed">고정 오더</a>
+        <span class="nav-spacer"></span>
+        <a class="nav-back" href="rosewood-order-draw.html">오더 시뮬레이터 ↗</a>
+        <a class="nav-back" href="rosewood-order-bench.html">프로토타입 ↗</a>
+        <a class="nav-back" href="https://atomking0.github.io/supergene-esther/rosewood_dev_spec.html" target="_blank" rel="noopener">개발 기획서 ↗</a>
+      </div>
+    </nav>
+
+    <header class="doc-header wrap wrap--wide">
+      <div class="doc-eyebrow">Rosewood · 오더</div>
+      <h1 class="doc-title">고정 오더</h1>
+      <p class="doc-lede">
+        <code>order_fixed</code> 16행이 <b>게임 시작부터 어떤 순서로 나가는지</b>를 폅니다.
+        <b>추첨이 아닙니다</b> &mdash; 요구품이 시트에 박혀 있고 순번대로 한 장씩 나갑니다.
+        <a href="rosewood-order-draw.html">오더 시뮬레이터</a>는 랜덤 경로를 보려고 이 경로를
+        <code>skipFixed</code> 로 빼고 돌기 때문에, 초반 구간이 그쪽 화면에는 <b>비어서</b> 나옵니다.
+        <code>order_rule.normal.unlock_level</code> 이 3 이라 <b>Lv1~2 는 랜덤이 한 장도 안 뜨고</b>,
+        그 구간 오더는 전량 여기 있는 16행입니다.
+      </p>
+      <div class="doc-meta">
+        <span class="pill" style="--acc: var(--tool)" id="rwSpecTag">대조 정본 …</span>
+        <span class="tag" id="rwSrcTag">데이터 읽는 중…</span>
+        <span class="tag">엔진 <span id="rwEngineTag">…</span></span>
+        <span class="tag" id="rwBuild">이 페이지 …</span>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="fixed">
+        <h2 class="doc-h2">고정 오더</h2>
+        <div class="doc-h2-sub">
+          <b>추첨이 아닙니다.</b> <code>order_fixed</code> 에 요구품이 박혀 있고, 순번<code>(fixed_seq)</code>대로
+          한 장씩 나갑니다. 레벨은 각 행의 <code>unlock_level</code> 로 <b>자동 진행</b>하며
+          <b>랜덤 오더는 섞지 않습니다</b> &mdash; 실제 플레이는 Lv3 부터 둘이 섞이지만, 그걸 재현하려면
+          <b>오더 하나당 경험치</b>가 있어야 레벨업 시점이 잡힙니다. 시트에 그 열이 없어 가정을 지어내야 하므로 그리지 않습니다.
+        </div>
+
+        <div class="rw-panel">
+          <div class="rw-pb">
+            <div class="rw-kpis" id="rwFixKpi"></div>
+
+            <p class="rw-tnote" style="margin-top:14px">
+              순서대로 &mdash; 위가 <b>코인</b>과 <b>난이도</b>, 아래가 <b>이벤트 재화</b>입니다.
+              난이도만 그림 대신 글자인 건 <b>게임 화면에 없는 분석값</b>이기 때문입니다 &mdash; 실제 카드에는 안 나옵니다.
+              난이도 숫자 색은 <b>자릿수 구간</b>(~9 · ~99 · ~999 · 1000~)입니다 &mdash;
+              <b>시트에는 난이도 구간이 없어서</b> 이 페이지가 정한 값입니다. 손님 색은 <code>order_avatar</code> 행 순서로 나눴습니다.
+              손님 얼굴은 <b>이 화면에서 유일한 난수</b>라 고정 시드로 한 번만 뽑습니다.
+            </p>
+            <div class="rw-samples" id="rwFixCards"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/rosewood-order-engine.js?v=16"></script>
+    <script>
+      /* 오더 시뮬레이터에서 그대로 가져온 조각 — 미리보기라 복사하지만, 본 페이지에
+         합칠 때는 이미 있는 것이라 전부 버린다. 새로 만든 것은 아래 「고정 오더」 블록뿐. */
+      const BAL_URL = "data/rosewood-balance.json";
+      /* 판본 — 오더 시뮬레이터와 같은 값을 들고 간다. 두 페이지가 같은 정본을 봤다고
+         말하려면 스탬프도 같아야 한다(다르면 어느 쪽이 낡았는지 화면에서 갈린다). */
+      const SPEC_VER = "1.1", SPEC_AT = "2026-09-11 11:49", SPEC_SEEN = "2026-09-14";
+      const BUILD_AT = "2026-09-14 10:49";
+      const NEED = ["const", "order_rule", "order_slot_band", "order_item", "order_item_count",
+                    "order_avatar", "order_special", "order_fixed", "event_order_score",
+                    "item_spec", "level_curve"];
+      function normalize(json) {
+        const out = { _meta: json._meta || null };
+        for (const k of NEED) {
+          const v = json[k];
+          if (k === "const") out[k] = v && typeof v === "object" && !Array.isArray(v) ? v : {};
+          else out[k] = Array.isArray(v) ? v : [];
+        }
+        for (const r of out.item_spec) if (r.name == null && r.name_ko != null) r.name = r.name_ko;
+        return out;
+      }
+      function chipArt(code) {
+        const src = spriteOf(code);
+        return src ? `<img class="a" src="${src}" alt="${labelOf(code)}" loading="lazy" decoding="async">` : "";
+      }
+      function chipHTML(code, bad) {
+        const art = chipArt(code);
+        return `<span class="rw-req${art ? "" : lenOf(code)}${bad ? " bad" : ""}"`
+          + ` style="--h:${hueOf(code)}deg" title="${titleOf(code)}">${art || labelOf(code)}</span>`;
+      }
+      function cardHTML(card, bad) {
+        const badSet = bad || new Set();
+        return `<div class="rw-card">
+            <span class="rw-npc c" style="--h:${avatarHue(card.avatar)}deg" title="${card.avatar || "—"}">${String(card.avatar || "—").slice(0, 3)}</span>
+            <div class="rw-top"><span class="rw-ra"><span title="A 보상 — 코인. order_item.order_price 합"><img class="ic" src="img/ui/coin.png" alt="코인">${card.coin}</span>${
+              card.diff ? `<span title="난이도 — order_item.diff_score 합. 게임 화면에는 안 나오는 분석값이라 아이콘을 주지 않는다"><b class="rw-dl">난이도</b><b class="rw-dv ${diffBand(card.diff)}">${card.diff}</b></span>` : ""}</span></div>
+            <div class="rw-dish">${card.reqs.map((q) => chipHTML(q.code, badSet.has(q.code))).join("")}</div>
+            <div class="rw-bot">
+              <span class="rw-rb" title="B 보상 — 이벤트 재화. event_order_score 로 환산"><img class="ic" src="img/ui/${EVT_ICON}.png" alt="이벤트 재화">${card.evt ?? 0}</span>
+            </div>
+            <span class="rw-lbl">${card.type}${card.band ? ` · b${card.band}` : ""}</span></div>`;
+      }
+      /* 난이도 구간 — 시트에 없는 값이라 여기서 정의한다. 자릿수로 끊는다. */
+      const diffBand = (d) => (d < 10 ? "d1" : d < 100 ? "d2" : d < 1000 ? "d3" : "d4");
+      /* 손님 색 — order_avatar 행 순서로 색상환을 고르게 나눈다. 시트 순서가 바뀌면
+         색도 따라 바뀐다(이름에 색을 박아 두지 않는다 — 손님이 늘면 그게 더 틀어진다). */
+      let AV_HUE = null;
+      function avatarHue(key) {
+        if (!AV_HUE) {
+          const list = (DATA.order_avatar || []).filter((a) => a.in_use);
+          AV_HUE = new Map(list.map((a, i) => [a.avatar_key, Math.round((360 / list.length) * i)]));
+        }
+        return AV_HUE.get(key) ?? 0;
+      }
+      /* 메달 ↔ 트로피 — 여기 한 줄만 바꾸면 갈린다 */
+      const EVT_ICON = "event-medal";
+      const typeTag = (t) => `<span class="rw-t ${t}">${TYPE_KO[t] || t}</span>`;
+
+      /* ── 여기부터가 새로 만드는 것 ────────────────────────────────────────── */
+
+      /* 이 화면 전용 시드. 아바타는 S.day·S.slots 에도 걸려서 다시 그릴 때마다 얼굴이
+         바뀐다 — 결정론을 보여 주는 자리라 화면이 흔들리면 안 된다. */
+      const FIX_SEED = "20260914";
+
+      const fixedRows = () => (DATA.order_fixed || []).filter((f) => f.in_use)
+        .slice().sort((a, b) => a.fixed_seq - b.fixed_seq);
+
+      /* 그 레벨에서 열려 있는 칸. slotNeed() 는 S.level 을 안 보는 순수 함수라 그대로 쓴다. */
+      const openAt = (lv) => Array.from({ length: slotCount() }, (_, i) => i + 1)
+        .filter((n) => lv >= slotNeed(n));
+
+      /* 커서를 실제로 태운다 — 슬롯을 번호순으로 돌며 조건이 맞는 칸이 순번을 집어 간다.
+         엔진의 발급 루프와 같은 순서다. 커서가 전체에 하나뿐이라 두 칸이 <b>교대로</b> 먹는다. */
+      function trace(lv) {
+        const rows = fixedRows(), open = openAt(lv), out = [];
+        let cur = rows.length ? rows[0].fixed_seq : 1;
+        for (let cycle = 0; cycle < 64; cycle++) {
+          let moved = false;
+          for (const n of open) {
+            const fx = rows.find((f) => f.fixed_seq === cur);
+            if (!fx) return { out, cur, why: "남은 행 없음 — 소진" };
+            if (lv < fx.unlock_level) return { out, cur, why: `#${cur} 의 unlock_level ${fx.unlock_level} > Lv${lv}` };
+            if (!fixedSlots(fx).includes(n)) continue;
+            out.push({ slot: n, seq: cur }); cur++; moved = true;
+          }
+          if (!moved) {
+            const fx = rows.find((f) => f.fixed_seq === cur);
+            return { out, cur, why: fx ? `#${cur} 가 노리는 칸 ${fixedSlots(fx).join("/")} 이 Lv${lv} 에 안 열림` : "남은 행 없음 — 소진" };
+          }
+        }
+        return { out, cur, why: "—" };
+      }
+
+      /* 16행을 카드로 — dry:true 라 커서가 안 움직이고, 커서는 우리가 직접 놓는다.
+         level 은 opts 로 넘겨 전역 S.level 을 안 건드린다. */
+      function buildCards() {
+        const keepSeq = S.orderGen.fixed_next_seq, keepRng = RNG.save();
+        RNG.load(FIX_SEED);
+        const rows = fixedRows().map((fx) => {
+          S.orderGen.fixed_next_seq = fx.fixed_seq;
+          const slots = fixedSlots(fx);
+          const r = generateOrder(slots[0], { dry: true, level: fx.unlock_level });
+          return { fx, slots, card: r.card };
+        });
+        S.orderGen.fixed_next_seq = keepSeq; RNG.load(keepRng);
+        return rows;
+      }
+
+      function renderFixed() {
+        const rows = buildCards();
+        const lvs = [...new Set(rows.map((r) => r.fx.unlock_level))].sort((a, b) => a - b);
+        const diffs = rows.map((r) => r.card.diff);
+        const randLv = Math.min(...DATA.order_rule.filter((r) => r.in_use
+          && DATA.order_slot_band.some((b) => b.in_use && b.order_type === r.order_type))
+          .map((r) => r.unlock_level));
+        const beforeRandom = trace(randLv - 1).out.length;
+
+        $("#rwFixKpi").innerHTML = [
+          ["고정 오더", `${rows.length}장`],
+          ["랜덤 해금 전", `${beforeRandom}장`],
+          ["커버 구간", `Lv${lvs[0]}~${lvs[lvs.length - 1]}`],
+          ["난이도 폭", `${Math.min(...diffs)} ~ ${Math.max(...diffs)}`],
+        ].map(([u, b]) => `<div class="rw-kpi"><u>${u}</u><b>${b}</b></div>`).join("");
+
+        $("#rwFixCards").innerHTML = rows.map((r) =>
+          cardHTML({ ...r.card, type: `#${r.fx.fixed_seq} ${typeTag("fixed")}` })).join("");
+
+      }
+
+      async function boot() {
+        try {
+          const res = await fetch(BAL_URL, { cache: "no-store" });
+          if (!res.ok) throw new Error(`${BAL_URL} — HTTP ${res.status}`);
+          DATA = normalize(await res.json()); IDX = null; reindex();
+          S = freshState();
+          S.cells = new Array(CELLS).fill(null);
+          S.day = 999; S.slots = {}; S.prevOfSlot = {};
+          const m = DATA._meta || {};
+          $("#rwSrcTag").textContent = m.source ? `데이터 ${m.source}` : "데이터 판본 미표기";
+          $("#rwEngineTag").textContent = BUILD;
+          $("#rwSpecTag").textContent = `대조 정본 ${SPEC_VER} · ${SPEC_AT} · 본문 확인 ${SPEC_SEEN}`;
+          $("#rwBuild").textContent = `이 페이지 ${BUILD_AT}`;
+          renderFixed();
+        } catch (e) {
+          $("#rwFixCards").innerHTML = `<div class="rw-empty">데이터를 읽지 못했습니다 — ${e.message}<br>`
+            + `<code>file://</code> 로 열면 fetch 가 막힙니다. 레포 루트에서 <code>python3 -m http.server</code> 로 띄우세요.</div>`;
+        }
+      }
+      boot();
+    </script>
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>
