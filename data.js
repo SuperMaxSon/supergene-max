@@ -533,6 +533,17 @@ const SECTIONS = [
     desc: "수정 전/후 결과 대조",
     cards: [
       {
+        title: "토너 클리어 생성 지면 A/B",
+        desc: "AOS에서 토너먼트가 붙은 컨텍스트의 판 클리어 지면을 공유(A · 빌드 487)에서 생성(B · 빌드 488)으로 바꾸면 수락률이 오르는지 보는 A/B입니다. 두 빌드가 갈리는 건 AOS · 토너 있는 컨텍스트 · 판 클리어 세 조건이 모두 맞을 때뿐이라 분모를 그 조건으로 좁혔고, 어느 칸이 갈리는지를 2단계 판별 도식으로 세웠습니다. 주 지표 2개와 가드레일 3개, 채택 조건까지 정의해 뒀습니다.",
+        url: "docs/sol-clear-create-slot.html",
+        project: "sol",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-14 17:55",
+        pinned: false,
+        tags: ["A/B", "토너먼트", "BigQuery"],
+      },
+      {
         title: "토너 거절 차단 A/B",
         desc: "3374 ↔ 3375. 두 빌드는 이 처치 말고 코드가 같습니다. 생성 시도는 −38%인데 실제 생성 성공은 +5.8%로 늘었고 다른 지면 이탈도 없습니다. 리텐션(stat 사전집계, raw 스캔 0)은 55쌍 24:31(p≈0.42)로 무승부입니다.",
         url: "docs/coin-match-tournament-reject-ab.html",

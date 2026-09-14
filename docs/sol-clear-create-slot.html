@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>토너 클리어 생성 지면 A/B</title>
+    <meta
+      name="description"
+      content="AOS 토너 컨텍스트 판 클리어 지면을 공유(A · 487)에서 생성(B · 488)으로 바꾼 A/B. 지면 플로우 차이와 판정에 쓸 KPI 정의를 담는다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <style>
+      /* 이 <style>은 이 문서 전용이다. 인라인 SVG 도식의 래퍼와 캡션만 정의한다.
+         도형·화살표는 SVG 안에서 style.css 토큰(--sol/--warn/--border)을 직접 읽는다. */
+      .dg {
+        margin: 12px 0 4px;
+        padding: 14px 10px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        overflow-x: auto;
+      }
+      /* 좁은 화면에서 글자가 뭉개지지 않게 최소폭을 주고 가로 스크롤로 넘긴다. */
+      .dg svg {
+        display: block;
+        width: 100%;
+        min-width: 720px;
+        height: auto;
+      }
+      .dg-cap {
+        margin: 8px 2px 0;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.7;
+        color: var(--text-dim);
+      }
+      .dg-cap b {
+        color: var(--text);
+      }
+      /* SVG 내부 공통 타이포 — 속성으로 매번 반복하지 않으려고 클래스로 묶는다. */
+      .n-box {
+        fill: #fff;
+        stroke: var(--border);
+        stroke-width: 1.2;
+      }
+      .n-box.acc {
+        fill: var(--sol);
+        stroke: var(--sol);
+      }
+      .n-box.gray {
+        fill: #8b93a8;
+        stroke: #8b93a8;
+      }
+      .n-box.soft {
+        fill: #f1f3f7;
+        stroke: var(--border);
+      }
+      .n-t {
+        font: 700 12px/1 system-ui, sans-serif;
+        fill: var(--text);
+        text-anchor: middle;
+      }
+      .n-t.w {
+        fill: #fff;
+      }
+      .n-s {
+        font: 700 10px/1 system-ui, sans-serif;
+        fill: var(--text-dim);
+        text-anchor: middle;
+      }
+      .n-s.w {
+        fill: #e8eeff;
+      }
+      .e-l {
+        stroke: #c3cad6;
+        stroke-width: 1.4;
+        fill: none;
+      }
+      .e-t {
+        font: 700 10px/1 system-ui, sans-serif;
+        fill: var(--text-dim);
+      }
+      .row-t {
+        font: 800 11px/1 system-ui, sans-serif;
+        letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#ab">A/B 정의</a>
+        <a class="nav-back" href="#flow">지면 플로우</a>
+        <a class="nav-back" href="#kpi">KPI</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · 솔리테어</div>
+        <h1 class="doc-title">토너 클리어 생성 지면 A/B</h1>
+        <p class="doc-lede">
+          AOS에서 <b>토너먼트가 붙은 컨텍스트의 판 클리어 지면</b>을 공유에서 생성으로 바꾸면
+          수락률이 오르는지 보는 A/B입니다. 두 빌드가 같은 기간에 서빙되므로 날짜 교란 없이
+          대조합니다. <b>AOS 외 OS와 SOLO 컨텍스트는 양쪽 빌드가 동일</b>하므로 분모에서
+          제외합니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">A 487 · B 488</span>
+          <span class="tag">AOS 한정</span>
+          <span class="tag">측정 대기</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── A/B 정의 ─────────────────────────────────────────── -->
+    <section class="doc-section" id="ab">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          A/B 정의
+          <span class="doc-h2-sub">무엇과 무엇을 견주는가</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>군</th>
+                <th>빌드</th>
+                <th>토너 컨텍스트 클리어 지면</th>
+                <th>기존 토너 FB 점수 등록</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>A</b> 대조군</td>
+                <td><code>client_version = 487</code></td>
+                <td>공유 (<code>shareAsync</code>)</td>
+                <td>공유를 수락했을 때만</td>
+              </tr>
+              <tr>
+                <td><b>B</b> 처치군</td>
+                <td><code>client_version = 488</code></td>
+                <td>생성 (<code>createAsync</code>)</td>
+                <td>수락과 무관하게 무조건</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--sol)">
+            <div class="note-title">분모를 좁히는 이유</div>
+            <p>
+              두 빌드가 갈리는 건 <strong>AOS · 토너 있는 컨텍스트 · 판 클리어</strong> 세 조건이
+              모두 맞을 때뿐입니다. iOS·PC와 SOLO 판, 토너 없는 스레드는 A·B가 완전히 같은
+              코드를 타므로 분모에 넣으면 차이가 희석됩니다. 모든 KPI는 이 조건으로 필터한 뒤
+              계산합니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 지면 플로우 ──────────────────────────────────────── -->
+    <section class="doc-section" id="flow">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          지면 플로우
+          <span class="doc-h2-sub">어느 칸이 갈리는가</span>
+        </h2>
+
+        <div class="dg">
+          <svg viewBox="0 0 960 328" role="img" aria-label="클리어 컨텍스트 2단계 판별">
+            <defs>
+              <marker id="a1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,1 L7,4 L0,7 z" fill="#c3cad6" />
+              </marker>
+            </defs>
+
+            <rect class="n-box soft" x="410" y="10" width="140" height="34" rx="8" />
+            <text class="n-t" x="480" y="32">판 클리어</text>
+            <line class="e-l" x1="480" y1="44" x2="480" y2="66" marker-end="url(#a1)" />
+
+            <!-- 1단계: 컨텍스트 타입. 코드상 ViewGame.callRegistTournament 에서 먼저 갈린다. -->
+            <rect class="n-box soft" x="385" y="68" width="190" height="34" rx="8" />
+            <text class="n-t" x="480" y="90">1단계 · 컨텍스트 타입</text>
+
+            <path class="e-l" d="M480,102 L480,118 M180,118 L700,118" />
+            <line class="e-l" x1="180" y1="118" x2="180" y2="142" marker-end="url(#a1)" />
+            <line class="e-l" x1="700" y1="118" x2="700" y2="142" marker-end="url(#a1)" />
+
+            <rect class="n-box" x="105" y="144" width="150" height="34" rx="8" />
+            <text class="n-t" x="180" y="166">SOLO</text>
+
+            <rect class="n-box" x="585" y="144" width="230" height="34" rx="8" />
+            <text class="n-t" x="700" y="166">THREAD</text>
+
+            <!-- THREAD 안에서 친구 유무가 p2p / tournament 를 가르지만, 지면 분기에는 쓰이지 않는다. -->
+            <text class="n-s" x="700" y="192">친구 있음 = p2p · 없음 = tournament</text>
+
+            <line class="e-l" x1="180" y1="178" x2="180" y2="240" marker-end="url(#a1)" />
+            <line class="e-l" x1="700" y1="198" x2="700" y2="212" marker-end="url(#a1)" />
+
+            <!-- 2단계: 토너 유무. handleFacebookShare 안에서 getTournamentAsync 로 확인한다. -->
+            <rect class="n-box soft" x="585" y="214" width="230" height="34" rx="8" />
+            <text class="n-t" x="700" y="236">2단계 · 토너 조회</text>
+
+            <path class="e-l" d="M700,248 L700,262 M545,262 L855,262" />
+            <line class="e-l" x1="545" y1="262" x2="545" y2="278" marker-end="url(#a1)" />
+            <line class="e-l" x1="855" y1="262" x2="855" y2="278" marker-end="url(#a1)" />
+            <text class="e-t" x="470" y="275">없음 · 만료</text>
+            <text class="e-t" x="866" y="275">있음</text>
+
+            <rect class="n-box" x="105" y="242" width="150" height="52" rx="8" />
+            <text class="n-t" x="180" y="265">생성 지면</text>
+            <text class="n-s" x="180" y="283">전/후 동일</text>
+
+            <rect class="n-box" x="455" y="280" width="180" height="34" rx="8" />
+            <text class="n-t" x="545" y="302">생성 지면 · 전/후 동일</text>
+
+            <!-- AOS 게이트가 여기 하나에만 걸린다. 비AOS 는 이 칸이 '공유' 로 남는다. -->
+            <rect class="n-box acc" x="765" y="274" width="180" height="46" rx="8" />
+            <text class="n-t w" x="855" y="293">공유 → 생성</text>
+            <text class="n-s w" x="855" y="310">AOS만 · 비AOS는 공유 유지</text>
+          </svg>
+          <div class="dg-cap">
+            판별은 <b>두 단계</b>입니다. 컨텍스트 타입(SOLO / THREAD)을 먼저 가르고, THREAD일
+            때만 토너 유무를 한 번 더 조회합니다. A와 B가 갈리는 칸은 <b>파란 칸 하나</b>이고,
+            나머지 경로는 두 빌드가 동일합니다.
+          </div>
+        </div>
+
+        <div class="dg">
+          <svg viewBox="0 0 960 300" role="img" aria-label="토너 컨텍스트 전후 플로우 비교">
+            <defs>
+              <marker id="a2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,1 L7,4 L0,7 z" fill="#c3cad6" />
+              </marker>
+            </defs>
+
+            <!-- 전 -->
+            <text class="row-t" x="14" y="26" fill="#8b93a8">A · 빌드 487 — 공유 지면</text>
+            <rect class="n-box soft" x="14" y="44" width="96" height="36" rx="8" />
+            <text class="n-t" x="62" y="67">판 클리어</text>
+            <line class="e-l" x1="110" y1="62" x2="130" y2="62" marker-end="url(#a2)" />
+
+            <rect class="n-box soft" x="132" y="44" width="118" height="36" rx="8" />
+            <text class="n-t" x="191" y="67">서버 점수 갱신</text>
+            <line class="e-l" x1="250" y1="62" x2="270" y2="62" marker-end="url(#a2)" />
+
+            <rect class="n-box gray" x="272" y="44" width="112" height="36" rx="8" />
+            <text class="n-t w" x="328" y="67">공유 지면</text>
+
+            <!-- 수락 여부로 갈린다. 전에서는 FB 점수가 이 분기에 걸려 있다. -->
+            <path class="e-l" d="M384,62 L404,62 L404,34 L462,34" marker-end="url(#a2)" />
+            <path class="e-l" d="M384,62 L404,62 L404,98 L462,98" marker-end="url(#a2)" />
+            <text class="e-t" x="410" y="26">수락</text>
+            <text class="e-t" x="410" y="116">거절</text>
+
+            <rect class="n-box" x="466" y="16" width="250" height="36" rx="8" />
+            <text class="n-t" x="591" y="39">FB 점수 등록 · 컨텍스트 유지</text>
+
+            <rect class="n-box" x="466" y="80" width="250" height="36" rx="8" />
+            <text class="n-t" x="591" y="103">등록 없음 · 컨텍스트 유지</text>
+
+            <line class="e-l" x1="14" y1="148" x2="946" y2="148" stroke-dasharray="4 4" />
+
+            <!-- 후 -->
+            <text class="row-t" x="14" y="181" fill="var(--sol)">B · 빌드 488 — 생성 지면</text>
+            <rect class="n-box soft" x="14" y="199" width="96" height="36" rx="8" />
+            <text class="n-t" x="62" y="222">판 클리어</text>
+            <line class="e-l" x1="110" y1="217" x2="130" y2="217" marker-end="url(#a2)" />
+
+            <rect class="n-box soft" x="132" y="199" width="118" height="36" rx="8" />
+            <text class="n-t" x="191" y="222">서버 점수 갱신</text>
+            <line class="e-l" x1="250" y1="217" x2="270" y2="217" marker-end="url(#a2)" />
+
+            <!-- 분기 앞으로 나온 칸. 수락 여부와 무관하게 여기서 이미 등록이 끝난다. -->
+            <rect class="n-box acc" x="272" y="199" width="124" height="36" rx="8" />
+            <text class="n-t w" x="334" y="222">FB 점수 등록</text>
+            <line class="e-l" x1="396" y1="217" x2="416" y2="217" marker-end="url(#a2)" />
+
+            <rect class="n-box acc" x="418" y="199" width="112" height="36" rx="8" />
+            <text class="n-t w" x="474" y="222">생성 지면</text>
+
+            <path class="e-l" d="M530,217 L550,217 L550,189 L608,189" marker-end="url(#a2)" />
+            <path class="e-l" d="M530,217 L550,217 L550,253 L608,253" marker-end="url(#a2)" />
+            <text class="e-t" x="556" y="181">수락</text>
+            <text class="e-t" x="556" y="271">거절</text>
+
+            <rect class="n-box" x="612" y="171" width="250" height="36" rx="8" />
+            <text class="n-t" x="737" y="194">새 토너 이동 · 친구 해제</text>
+
+            <rect class="n-box" x="612" y="235" width="250" height="36" rx="8" />
+            <text class="n-t" x="737" y="258">컨텍스트 유지</text>
+          </svg>
+          <div class="dg-cap">
+            B에서는 <b>FB 점수 등록 칸이 분기 앞으로 나옵니다</b>. A는 등록이 공유 수락에 걸려
+            있어 거절하면 기록이 남지 않지만, B는 지면을 거절해도 등록이 끝나 있습니다. 대신
+            수락하면 새 토너로 옮겨가며 <b>친구 컨텍스트가 해제</b>됩니다 — A에서는 공유가
+            컨텍스트를 건드리지 않아 유지되던 부분입니다.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── KPI ──────────────────────────────────────────────── -->
+    <section class="doc-section" id="kpi">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          KPI
+          <span class="doc-h2-sub">판정 지표와 기준</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>지표</th>
+                <th>계산</th>
+                <th>판정 방향</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill">주</span></td>
+                <td><b>지면 수락률</b></td>
+                <td>A <code>3210 ÷ 3200</code> · B <code>3110 ÷ 3100</code></td>
+                <td>B &gt; A 여야 채택</td>
+              </tr>
+              <tr>
+                <td><span class="pill">주</span></td>
+                <td><b>클리어당 바이럴 발사</b></td>
+                <td>수락 건수 ÷ 대상 클리어 수</td>
+                <td>B &gt; A</td>
+              </tr>
+              <tr>
+                <td>보조</td>
+                <td>FB 점수 등록률</td>
+                <td><code>3310 ÷ 대상 클리어 수</code></td>
+                <td>B가 구조적으로 높아야 정상</td>
+              </tr>
+              <tr>
+                <td>보조</td>
+                <td>신규 토너 생성 수</td>
+                <td><code>3110</code> (<code>position = game_clear_tournament</code>)</td>
+                <td>B에서만 발생</td>
+              </tr>
+              <tr>
+                <td>가드레일</td>
+                <td>지면 미노출률</td>
+                <td><code>3130 ÷ 대상 클리어 수</code></td>
+                <td>B에서 과도하면 거절 누적 신호</td>
+              </tr>
+              <tr>
+                <td>가드레일</td>
+                <td>P2P 메시지 발송</td>
+                <td><code>3400 / 3410</code></td>
+                <td>B에서 하락하면 친구 컨텍스트 상실 영향</td>
+              </tr>
+              <tr>
+                <td>가드레일</td>
+                <td>판수 · D1 잔존</td>
+                <td>유저당 클리어 수 · 익일 복귀율</td>
+                <td>B가 A 대비 하락하면 중단</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">채택 조건</div>
+            <p>
+              주 지표 <strong>둘 다 B가 앞서고</strong>, 가드레일 셋 중 어느 것도 유의하게
+              나빠지지 않아야 채택합니다. 수락률만 오르고 판수·잔존이 빠지면 <strong>바이럴을
+              얻고 플레이를 잃은 것</strong>이므로 되돌립니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">집계 시 주의</div>
+            <p>
+              같은 <code>3100</code>·<code>3110</code>이라도 SOLO 컨텍스트 생성은
+              <code>position = game_clear</code>, 이번 A/B 대상은
+              <code>game_clear_tournament</code>로 찍힙니다. <strong>position을 반드시
+              필터</strong>해야 하며, 섞으면 B의 수락률이 기존 SOLO 생성분에 희석됩니다.
+              <code>3300</code>계열은 2026-08-19 이전 구간과 의미가 달라 시계열 비교에서
+              제외합니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="wrap wrap--wide">작성 2026-09-14 · Supergene</div>
+    </footer>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
