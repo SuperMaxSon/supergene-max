@@ -465,7 +465,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "정본 1.1",
-        updated: "2026-09-14 10:49",
+        updated: "2026-09-14 10:57",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스"],
       },
