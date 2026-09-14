@@ -1172,20 +1172,30 @@ function generateOrder(slotNo, opts = {}) {
            `ruleOf(...)?.item_slot_max ?? 2` 한 줄이었는데, `?.` 가 두 가지 결손을
            같은 모양으로 삼켰다 — ① item_slot_max 열이 없다 ② 그 타입의 order_rule
            <b>행 자체가 없다</b>. ②는 랜덤 경로가 18줄 아래에서 「활성 행 없음」으로
-           <b>카드를 안 만들고 끊는</b> 조건이다. 같은 결손에 두 경로가 정반대로
-           반응하면 안 된다 — 고정 경로는 조용히 2로 메우고 카드를 만들어 냈다.
+           <b>카드를 안 만들고 끊는</b> 조건인데, 고정 경로는 그걸 조용히 2로 메우고
+           카드를 만들어 냈다.
+
+           <b>두 경로를 같게 만들지는 않았다</b> — 고정 오더는 요구품이 시트에 박혀
+           있어서 상한만 있으면 카드가 서고, 랜덤은 후보를 못 고르면 애초에 설 수가
+           없다. 결손에 대한 반응이 다른 게 맞다. 맞춘 것은 <b>말하는 방식</b>이다:
+           예전엔 고정 경로가 아무 말 없이 메웠고, 이제는 무엇으로 메웠는지 남긴다.
 
            죽이지는 않는다. 이 엔진은 분석 도구라, 결손을 보려고 켠 도구가 그 결손에
            죽으면 쓸 수가 없다. <b>끝까지 돌되 크게 말한다.</b> */
-        const ruleFix = ruleOf(slotType(slotNo));
-        const capSrc = !ruleFix ? `order_rule 에 ${slotType(slotNo)} 활성 행 없음 → 정본 상한`
+        const fixType = slotMap()[slotNo - 1];     // 매핑이 없으면 undefined — slotType 의 "normal" 기본값을 안 쓴다
+        const ruleFix = fixType ? ruleOf(fixType) : null;
+        /* 폴백 여부는 <b>불리언 하나</b>로 잡는다. 표시 문구로 판정하면 문구를 다듬는 순간
+           정상 데이터에서도 경고가 매 카드 찍힌다 — 문구와 판정을 같은 값에 묶지 않는다. */
+        const capFallback = !ruleFix || ruleFix.item_slot_max == null;
+        const capSrc = !fixType ? `슬롯 ${slotNo} 에 타입 매핑 없음 → 정본 상한`
+                     : !ruleFix ? `order_rule 에 ${fixType} 활성 행 없음 → 정본 상한`
                      : ruleFix.item_slot_max == null ? "order_rule 에 item_slot_max 열 없음 → 정본 상한"
                      : "order_rule.item_slot_max";
-        const capFix = (ruleFix && ruleFix.item_slot_max != null) ? ruleFix.item_slot_max : SPEC_SLOT_MAX_FALLBACK;
+        const capFix = capFallback ? SPEC_SLOT_MAX_FALLBACK : ruleFix.item_slot_max;
         /* 폴백이 탔으면 <b>자르든 안 자르든</b> 남긴다. 안 잘렸는데 폴백이 탄 건
            「이번엔 우연히 값이 같았다」는 뜻이지 정상이 아니다 — 자를 때만 말하면
            그 우연이 영영 안 보인다. */
-        if (capSrc !== "order_rule.item_slot_max")
+        if (capFallback)
           push(`    <span class="w">상한 출처 없음</span> — ${capSrc} ${capFix} 을 썼다. 시트를 확인하라`);
         const rawFix = [fx.requirement_1, fx.requirement_2, fx.requirement_3].filter(Boolean);
         const reqs = rawFix.slice(0, capFix).map((code) => ({ code, count: 1 }));
@@ -1293,7 +1303,8 @@ function generateOrder(slotNo, opts = {}) {
      여기는 셋만 건다. 셋째(생성기 해금)는 <b>자리를 만들어 두되 비워 둔다</b> —
      시트로는 못 재기 때문이다:
 
-       · 생성기는 order_item 에 행이 없다(29종 전수 확인) — 그쪽 unlock_level 이 없다
+       · 생성기는 order_item 에 행이 없다 — item_spec.is_generator 52행 대 order_item 102행,
+         교집합 0(실측). 그러니 그쪽 unlock_level 을 읽을 자리가 아예 없다
        · unlock_level 열을 가진 탭은 ad_placement · event_schedule · order_fixed ·
          order_item · order_rule · shop 뿐이고 생성기는 어디에도 안 걸린다
        · 「해금했나」는 결국 <b>플레이어 상태</b>다. 시트가 아니라 세이브가 답한다
