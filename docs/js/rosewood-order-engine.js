@@ -819,7 +819,7 @@ const lvOf = (level) => idx().lv.get(level);
    엔진이 v7.0 이면 「일곱 세대 앞섰다」로 읽힌다. 이 파일은 <b>절반이 데이터</b>(*_DB 블록)라
    축이 둘이다 — 어느 정본을 대조했나, 어느 시트 판을 구웠나. 둘 다 적는다.
    <b>값을 치러야 올라간다</b>: 정본이 1.2 를 내면 다시 대조하고 나서, 데이터는 재생성하고 나서. */
-const BUILD = "정본 1.1 · 데이터 2026-09-11-export";
+const BUILD = "정본 1.3 · 데이터 2026-09-11-export";
 const SAVE_KEY = "rw.orderBench";
 /* 4 → 5: 슬롯이 5칸에서 6칸이 되고 타입 이름이 바뀌었다. 옛 세이브의 slots 는
    키(슬롯 번호)가 다른 타입을 가리키게 되므로 이관하지 않고 버린다. */
@@ -997,6 +997,19 @@ function boardCounts() {
   }
   return m;
 }
+/* 보유량 — 정본 v1.3 §6②: 「보드와 인벤토리의 코드별 보유량을 합친다. <b>수령 대기열은
+   넣지 않는다</b>」. S.inv.store 가 인벤토리이고 S.inv.box 는 보상함(수령 대기열)이라 뺀다.
+   boardCounts() 는 그대로 둔다 — 인게임 화면이 <b>보드만</b> 세려고 쓰는 함수다. */
+function holdCounts() {
+  const m = boardCounts();
+  for (const code of (S.inv && S.inv.store) || []) {
+    const sp = specOf(code);
+    if (sp && sp.is_generator) continue;
+    m.set(code, (m.get(code) || 0) + 1);
+  }
+  return m;
+}
+
 /* [5] 이벤트 점수 — score_min 오름차순으로 「기준값 >= score_min 인 마지막 행」.
    score_max 는 검사용이라 런타임 선택에 쓰지 않는다. 행이 없거나 기준값 0 이면 0. */
 /* [GAP-2] 실물 시트는 event_id 별 행에 score_base("coin") 칸을 갖는다 — 칸이 있으면 그
@@ -1016,6 +1029,17 @@ function eventScore(basis, eventId) {
   if (!hit) return 0;
   if (hit.token_pct > 0) return Math.floor((base * hit.token_pct) / 10000);
   return hit.token_fix || 0;
+}
+
+/* 다른 카드의 요구 <b>개수</b> — 정본 §6①: 「같은 코드 두 칸은 요구량 2」.
+   코드 집합(requiredElsewhere)은 후보 제외(banned)에 쓰고, 이 Map 은 배수 판정에 쓴다. */
+function requiredQtyElsewhere(slotNo) {
+  const m = new Map();
+  for (const [n, card] of Object.entries(S.slots)) {
+    if (Number(n) === slotNo || !card) continue;
+    card.reqs.forEach((q) => m.set(q.code, (m.get(q.code) || 0) + (q.count || 1)));
+  }
+  return m;
 }
 
 function requiredElsewhere(slotNo) {
@@ -1041,23 +1065,56 @@ const inBoardTally = (code) => {
   return !o || Number(o.weight_multiple) !== 0;
 };
 
-// [4] 보드 상황 배수 — 하나만 적용, 중복 곱 금지
-/* 기획서 [2] 는 「다른 오더가 **이 체인을** 요구」라고 체인 단위로 쓴다.
-   후보 제외(banned)만 명시적으로 코드 단위다 — 둘을 섞지 않는다.
-   납품 가능 여부는 그 코드가 보드에 있어야 하므로 코드 단위 그대로. */
-function situationMult(code, othersReq, counts, C, othersChains) {
-  const chains = othersChains || new Set([...othersReq].map(chainOf));
-  const wanted = chains.has(chainOf(code));
-  const canServe = inBoardTally(code) && (counts.get(code) || 0) > 0;
-  if (wanted && canServe) return { v: C.order_weight_mult_required_enough, why: "타오더 요구+납품가능" };
-  if (!wanted) {
-    const ch = chainOf(code), st = stepOf(code);
-    for (const [c, n] of counts)
-      if (n > 0 && inBoardTally(c) && chainOf(c) === ch && stepOf(c) <= st)
-        return { v: C.order_weight_mult_higher_level, why: "미요구+보드에 동급·하급 有" };
-    return { v: C.order_weight_mult_not_required, why: "미요구" };
+/* [4] 상황 배수 — 정본 v1.3(2026-09-14) 1.2.1 §6 을 그대로 옮긴 것이다.
+   v1.1 까지는 「요구 유무 × 보드에 하나라도 있나」였고 그렇게 구현돼 있었다.
+   v1.3 이 <b>수량 판정</b>으로 못 박으면서 세 군데가 갈렸다:
+
+     ① 요구량은 <b>코드별 개수</b>다 — 「같은 코드 두 칸은 요구량 2」.
+        정본 검증 예시: 「A 2개 요구, A 1개 보유 → B 배수 1. <b>요구를 Set으로 바꾸면 안 된다</b>」
+     ② 보유량은 <b>보드+인벤토리</b>이고 수령 대기열(보상함)은 뺀다 → holdCounts()
+     ③ 개별 높은 배수(order_weight_mult_higher_level)는 <b>표시 1인 후보에만</b> 준다.
+        「표시 0에는 개별 10000배를 주지 않는다」 — 전에는 후보의 표시를 안 봤다.
+
+   선택 순서는 ⑦ 그대로 <b>개별 → 체인 → 기본 1</b>, 하나만 적용한다(중복 곱 금지).
+   집계에 넣는 코드는 weight_multiple=1 뿐이고, <b>표시 1인 코드가 하나도 없는 체인은
+   기본 1배</b>다 — 표시 0만 있는 체인이 「요구 없음」으로 1000배를 받으면 안 된다.
+
+   reqQty 는 Map(code→개수)다. 예전 호출부가 Set 을 넘기므로 그때는 개수 1로 읽는다. */
+function chainHasTally(ch) {
+  const I = idx();
+  if (!I.tallyChain) {
+    I.tallyChain = new Set();
+    for (const o of DATA.order_item) if (o.in_use && Number(o.weight_multiple) === 1) I.tallyChain.add(chainOf(o.item_code));
   }
-  return { v: 1, why: "타오더 요구+납품불가(기본)" };
+  return I.tallyChain.has(ch);
+}
+const asQty = (req) => (req instanceof Map ? req
+  : new Map([...(req || [])].map((c) => [c, 1])));
+
+function situationMult(code, reqQty, hold, C) {
+  const ch = chainOf(code);
+  if (!chainHasTally(ch)) return { v: 1, why: "집계 대상 없는 체인(기본)" };
+  const req = asQty(reqQty);
+
+  // ③④⑤ 체인 단위 — 집계 대상(표시 1) 요구만 본다. 하나라도 모자라면 배수가 죽는다.
+  let anyReq = false, short = false;
+  for (const [c, q] of req) {
+    if (!inBoardTally(c) || chainOf(c) !== ch) continue;
+    anyReq = true;
+    if ((hold.get(c) || 0) < q) short = true;
+  }
+  if (anyReq)
+    return short ? { v: 1, why: "요구 있음+수량 부족(기본)" }
+                 : { v: C.order_weight_mult_required_enough, why: "요구 있음+수량 충분" };
+
+  // ⑥ 요구가 없을 때만 — 후보가 표시 1 이고, 표시 1 보유 중 가장 낮은 단계 이상이면 개별 배수
+  if (inBoardTally(code)) {
+    const st = stepOf(code);
+    for (const [c, n] of hold)
+      if (n > 0 && inBoardTally(c) && chainOf(c) === ch && stepOf(c) <= st)
+        return { v: C.order_weight_mult_higher_level, why: "미요구+동급·하급 보유" };
+  }
+  return { v: C.order_weight_mult_not_required, why: "미요구" };
 }
 
 /* ── 반복 감쇠 ────────────────────────────────────────────────────────────
@@ -1286,32 +1343,39 @@ function generateOrder(slotNo, opts = {}) {
   push(`<span class="k">[2] 밴드</span> band_seq=${band.band_seq} (Lv ${band.level_min}~${band.level_max}) · ${seatTxt} 단계 <span style="opacity:.65">(밴드가 자리 ${seats}개를 준다${seats === 2 ? " · 둘째는 하한 열이 없다" : ""})</span>`);
 
   // ---- [3] 후보 집합
-  const counts = opts.counts ?? boardCounts();
+  const counts = opts.counts ?? holdCounts();
   const othersReq = opts.othersReq ?? requiredElsewhere(slotNo);
+  /* 배수 판정용 요구 <b>개수</b>. 호출부가 코드 집합만 넘기면 개수 1로 읽는다.
+     자리마다 이 사본에 <b>방금 뽑은 코드를 더해</b> 배수를 다시 계산한다(§7). */
+  const reqNow = new Map(opts.reqQty ? opts.reqQty
+    : opts.othersReq ? asQty(opts.othersReq) : requiredQtyElsewhere(slotNo));
   const prev = opts.prev !== undefined ? opts.prev : S.prevOfSlot[slotNo];
   /* 반복 감쇠 — 규칙은 RepeatDecay 한 곳에 모아 뒀다(위 정의 주석 참조).
      사본을 넘기면 게임 상태를 안 더럽힌다 — 분포 시뮬이 그렇게 쓴다. */
   const CR = opts.repeat || S.orderGen.chain_repeat;
   const RESET = RepeatDecay.resetOf(C);
-  const othersChains = new Set([...othersReq].map(chainOf));
   const banned = new Set([...othersReq]);
   if (prev) prev.forEach((c) => banned.add(c));
   push(`[3] 제외 item_code: ${banned.size ? [...banned].map(labelOf).join(", ") : "없음"} <span style="opacity:.65">(체인 전체 아님)</span>`);
 
-  /* 후보 조건 — 정본은 넷을 건다: 「후보 아이템은 order_item 에 등록되어 있고,
-     해금 레벨에 도달했으며, <b>연결된 생성기를 해금했고</b>, in_use 가 참이어야 한다」.
-     여기는 셋만 건다. 셋째(생성기 해금)는 <b>자리를 만들어 두되 비워 둔다</b> —
-     시트로는 못 재기 때문이다:
+  /* 후보 조건 — 정본은 넷을 건다: 「order_item 에 등록 · 해금 레벨 도달 ·
+     <b>연결된 생성기를 해금</b> · in_use 참」. 여기는 셋만 건다.
 
-       · 생성기는 order_item 에 행이 없다 — item_spec.is_generator 52행 대 order_item 102행,
-         교집합 0(실측). 그러니 그쪽 unlock_level 을 읽을 자리가 아예 없다
-       · unlock_level 열을 가진 탭은 ad_placement · event_schedule · order_fixed ·
-         order_item · order_rule · shop 뿐이고 생성기는 어디에도 안 걸린다
-       · 「해금했나」는 결국 <b>플레이어 상태</b>다. 시트가 아니라 세이브가 답한다
+     <b>v1.3(2026-09-14)이 셋째의 절차를 통째로 썼다(1.2.1 §8).</b>
+       ① 후보 chain_id 에 대응하는 <b>생성기 코드 목록</b>을 조회한다
+          (PMM 은 item_spec.produce_item_N·produce_weight_N·chain_id 로 직접 생산 연결을 찾는다)
+       ② 그중 하나라도 <b>유저의 영구 아이템 해금 이력</b>에 있으면 통과, 없으면 후보 제외
+       ③ <b>해금 상태가 로드되지 않았으면 추첨을 보류한다 — 전부 해금으로 처리하지 않는다</b>
 
-     그래서 늘 참을 돌려준다. <b>지우지 말 것</b> — 지우면 다음 사람이 「정본 조건이
-     셋이구나」로 읽는다. 플레이어 상태가 들어오면 이 함수 하나만 채우면 된다.
-     지금 이 구멍이 분포에 얼마나 먹는지는 두 페이지의 「미검증」 표가 말한다. */
+     그러니 「시트로는 잴 수 없다」는 예전 서술은 <b>반만 맞다</b>. 연결은 시트에 있다
+     (생성기 52행 전부 produce_item_1 이 차 있다 · 실측). 없는 것은 둘이다 —
+     <b>해금 이력</b>은 세이브가 답하고, 원작 First·SecondLevelGeneratorChain 에 해당하는
+     <b>예외 체인 목록</b>은 정본이 밝힌 대로 PMM 시트에 아직 없다.
+
+     그래서 늘 참을 돌려준다. ③ 의 「보류」는 여기서 못 한다 — 분포를 보려고 켠 도구가
+     멈추면 쓸 수가 없다. 대신 그 차이를 두 페이지의 「미검증」 표가 말한다.
+     <b>지우지 말 것</b> — 지우면 다음 사람이 「정본 조건이 셋이구나」로 읽는다.
+     정본이 적어 둔 방향은 <b>생성기 목록·해금 목록을 입력으로 받는 것</b>이다. */
   const genUnlocked = (_o) => true;
   const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && genUnlocked(o));
   /* 요구 종수 상한 — 시트 order_rule.item_slot_max 하나만 본다. 호출자 스위치는 걷었다.
@@ -1337,7 +1401,7 @@ function generateOrder(slotNo, opts = {}) {
       break;
     }
     const rows = cand.map((o) => {
-      const m = situationMult(o.item_code, othersReq, counts, C, othersChains);
+      const m = situationMult(o.item_code, reqNow, counts, C);
       const rem = CR[chainOf(o.item_code)] || 0;
       const div = RepeatDecay.divisorOf(o, CR);
       if (div) divided.add(chainOf(o.item_code));
@@ -1359,10 +1423,15 @@ function generateOrder(slotNo, opts = {}) {
     }
     const win = rows[RNG.pick(rows.map((r) => r.w))];
     picked.push(win.o); chosen.add(win.o.item_code);
+    /* §7 — 뽑은 코드를 <b>요구량에 더한다</b>. 다음 자리는 6번 전체를 다시 계산한다.
+       정본이 실패 예시로 못 박아 둔 자리다: 「첫째 전의 10000배를 재사용하면 실패다」.
+       같은 코드 재추첨 금지(chosen)와는 다른 축이다 — 이건 <b>배수</b>가 바뀌는 것이다. */
+    reqNow.set(win.o.item_code, (reqNow.get(win.o.item_code) || 0) + 1);
 
     const byWhy = {};
     rows.forEach((r) => { byWhy[r.why] = (byWhy[r.why] || 0) + 1; });
-    push(`<span class="k">[4] 자리${seat}</span> 범위 ${rangeText(rg)} · 후보 ${cand.length}종 [${Object.entries(byWhy).map(([k, v]) => `${k} ${v}`).join(" / ")}]`);
+    push(`<span class="k">[4] 자리${seat}</span> 범위 ${rangeText(rg)} · 후보 ${cand.length}종 [${Object.entries(byWhy).map(([k, v]) => `${k} ${v}`).join(" / ")}]`
+        + (seat > 1 ? ` <span style="opacity:.65">(앞 자리 요구품을 넣고 배수 재계산)</span>` : ""));
     push(`    → <span class="p">${labelOf(win.o.item_code)}</span> 비중 ${win.base} × 배수 ${win.mult}${win.div ? ` ÷제수 ${win.div}(남은 ${win.rem}회)` : ""} = 가중 ${win.w.toFixed(1)} / 합 ${total.toFixed(1)} = <span class="p">${((win.w / total) * 100).toFixed(2)}%</span>`);
   }
 

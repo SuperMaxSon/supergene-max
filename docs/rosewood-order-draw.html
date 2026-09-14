@@ -590,8 +590,9 @@
         <div class="doc-h2-sub">
           고정 오더는 빼고 랜덤 경로만 연속 발급합니다.
           <b>보드가 추첨의 지배항입니다</b> &mdash; <code>[4]</code> 의 상황 배수는
-          <code>1</code>(요구+납품불가) : <code id="rwMultRE">100</code>(요구+납품가능) :
+          <code>1</code>(요구 있음+수량 부족) : <code id="rwMultRE">100</code>(요구 있음+수량 충분) :
           <code id="rwMultNR">1000</code>(미요구) : <code id="rwMultHL">10000</code>(미요구+동급·하급 보유)
+          &mdash; 정본 v1.3 부터 <b>요구는 개수로, 보유는 보드+인벤토리로</b> 셉니다
           로 네 자릿수 차이입니다.
           <b>보드는 시트에 없습니다</b> &mdash; <code>item_spec</code> 에 보드 해금·등장 칸이 없어
           「그 레벨에 보드에 무엇이 있나」를 시트에서 읽을 수 없습니다. 그래서
@@ -771,8 +772,8 @@
          SPEC_VER 은 <b>값을 치러야 올라가는 숫자</b>다 — 기획서가 1.2 를 내면 실제로
          다시 대조하고 나서야 여기를 올린다. 근거는 문서 안 spec-build-note 이고
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
-      const SPEC_VER = "1.1";
-      const SPEC_AT = "2026-09-11 11:49";
+      const SPEC_VER = "1.3";
+      const SPEC_AT = "2026-09-14 12:08";
       /* 정본 본문을 마지막으로 받아 대조한 날. <b>판본 스탬프와 따로 적는다</b> —
          개발 기획서는 빌드 노트(v1.1 · 2026-09-11 11:49)를 찍고 <b>같은 날 18:34 KST
          경에 본문이 바뀌었는데</b> 버전은 그대로였다. 처음엔 이걸 「9/14 변경」으로 적었다가
@@ -795,7 +796,7 @@
          그래서 판정은 FAIL 이 아니라 <b>확인 필요</b>다. 시트가 2 가 아니면 「시트가
          틀렸다」가 아니라 <b>「정본이 움직였나, 시트가 틀렸나」를 사람이 갈라야 한다.</b> */
       const SPEC_SLOT_MAX = 2;
-      const BUILD_AT = "2026-09-14 10:57";
+      const BUILD_AT = "2026-09-14 14:27";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -832,7 +833,7 @@
 
       function applyBalance(json, kind) {
         const n = normalize(json);
-        DATA = n.data; IDX = null; TALLY_IDX = null; AV_HUE = null; reindex();
+        DATA = n.data; IDX = null; TALLY_IDX = null; TALLY_CHAIN.on = TALLY_CHAIN.off = null; AV_HUE = null; reindex();
         SRC = { kind, meta: DATA._meta, warn: n.warn.concat((DATA._meta && DATA._meta.warnings) || []) };
 
         S = freshState();
@@ -959,11 +960,11 @@
            "신판에는 <code>data_manifest</code> 탭이 <b>없다</b> — 행수·컬럼수·<code>schema_hash</code> 의 정본이 사라졌다. 「탭 판본」 표는 변환기가 세어 넣은 값을 보는 것이라 <b>변환이 흘린 행은 못 잡는다</b>",
            "시트에 <code>data_manifest</code> 가 복구되면 자동 대조가 돌아온다"],
           ["후보 조건 「연결된 생성기를 해금했고」",
-           "<b>정본 후보 조건 넷 중 하나를 못 건다.</b> 「후보 아이템은 order_item 에 등록되어 있고, 해금 레벨에 도달했으며, <b>연결된 생성기를 해금했고</b>, in_use 가 참이어야 한다」 — 앞의 셋만 건다. 시트로는 잴 수 없다: 생성기는 <code>order_item</code> 에 행이 없고(<code>item_spec.is_generator</code> 52행 대 <code>order_item</code> 102행 · 교집합 0 실측), <code>unlock_level</code> 열을 가진 탭 여섯 곳(<code>ad_placement · event_schedule · order_fixed · order_item · order_rule · shop</code>) 어디에도 생성기가 안 걸린다. 「해금했나」는 결국 <b>플레이어 상태</b>라 세이브가 답할 값이다",
-           "엔진에 <b>빈 필터 자리</b>(<code>genUnlocked</code>)를 만들어 뒀다 — 늘 참을 돌려준다. 플레이어 상태가 들어오면 그 함수 하나만 채우면 된다. 그때까지 이 페이지의 후보 수는 <b>실제보다 넓다</b> — 아직 못 만드는 아이템도 후보에 든다는 뜻이다"],
+           "<b>정본 v1.3 이 이 조건의 절차를 통째로 썼다(§8).</b> 「후보 <code>chain_id</code> 에 대응하는 <b>생성기 코드 목록</b>을 조회하고, 그중 하나라도 <b>유저의 영구 아이템 해금 이력</b>에 있으면 통과」. 연결은 시트로 구할 수 있다 — <code>item_spec.produce_item_N · produce_weight_N · chain_id</code> 가 실물에 있고 <b>생성기 52행 전부 <code>produce_item_1</code> 이 차 있다</b>(실측). 못 구하는 것은 둘이다: ① <b>해금 이력</b>은 시트가 아니라 세이브가 답한다 ② 정본이 밝힌 대로 원작 <code>FirstLevel·SecondLevelGeneratorChain</code> 예외 체인 목록이 <b>PMM 시트에 아직 없다</b>",
+           "엔진에 <b>빈 필터 자리</b>(<code>genUnlocked</code>)를 만들어 뒀다 — 늘 참을 돌려준다. <b>정본은 「이력 미로딩은 통과가 아니라 추첨 보류」로 못 박았는데, 이 페이지는 보류할 수가 없다</b>(분포를 보려고 켠 도구가 멈추면 쓸 수 없다). 그래서 여기 후보 수는 <b>실제보다 넓다</b>. 시뮬레이터가 생성기 목록·해금 목록을 <b>입력으로 받아</b> 검증할 수 있게 하라는 것이 정본이 적어 둔 방향이다"],
           ["정본 문서의 판본 표기",
-           "<b>본문이 바뀌어도 버전 스탬프가 안 움직인다.</b> 개발 기획서는 빌드 노트 <code>v1.1 · 2026-09-11 11:49</code> 를 찍은 뒤 <b>같은 날 18:34 KST 경에 본문이 바뀌었다</b>(추가 353줄 · 삭제 341줄). 버전은 그대로였고, 그 갱신에 <b>확정 2건</b>이 들어 있었다 — 기준 이벤트 <code>120002</code>, 고정 오더 중복 표기. 그 뒤 재배포는 <code>last-modified</code> 만 움직였다(9/13 23:10 GMT) — 본문은 그대로다. <b>스탬프도 헤더도 판본을 못 가린다</b>",
-           "본문 해시로 본다 — <code>curl -s &lt;url&gt; | md5</code>. 개발 기획서 <code>ccaacecaed50d5b74833d8976f82727f</code> · 밸런스시트 기획서 <code>da13fc4a98cb4784dfc31944bb1e7f94</code>(2026-09-14 확인). 해시가 같으면 헤더가 움직여도 볼 것이 없고, 다르면 그때만 본문을 대조한다. <b>이 방법이 통하는 전제</b>는 두 문서가 빌드 시각을 본문에 안 박는다는 것이다 — 9/13 재배포를 지나고도 해시가 그대로였던 것이 근거다. 박기 시작하면 재배포마다 해시가 달라져 이 줄은 못 쓴다"],
+           "<b>버전이 올라가도 알려 주는 것이 없다 — 우리가 먼저 물어야 안다.</b> v1.1 때는 반대 사고였다(스탬프가 안 움직이는데 본문이 바뀜). 이번엔 <b>스탬프가 두 번 올라가는 동안 우리가 못 봤다</b> — <code>v1.2</code>(2026-09-11 22:32)를 통째로 놓치고 <code>v1.3</code>(2026-09-14 12:08)에서야 대조했다. <b>해시 확인은 물어볼 때만 도는 절차라, 안 물어보면 두 판본이 지나간다</b>",
+           "본문 해시로 본다 — <code>curl -s &lt;url&gt; | md5</code>. 개발 기획서 <code>776ad711af02477dba588722fddfe68e</code> · 밸런스시트 기획서 <code>f18645bb3a4525a27545a29b605acaa4</code>(2026-09-14 v1.3 확인). <b>이 방법이 통하는 전제</b>는 두 문서가 빌드 시각을 본문에 안 박는다는 것이다 — 재배포를 지나고도 해시가 그대로였던 것이 근거이고, v1.3 에서도 내부 <code>spec-build-note</code> 가 해시와 같이 움직여 전제가 유지된다"],
           ["셀 메모 (값 규약)",
            "구판 시트는 컬럼마다 규칙·근거가 달려 있었고 그걸로 오독 2건을 잡았다. 신판 export 에는 <b>메모가 하나도 없다</b> — <code>-1</code> 센티넬·상한값·「정규화 금지」 같은 규약을 데이터만으로는 복원할 수 없다",
            "메모를 같이 내보내는 export 옵션. 구판 메모 사본은 클라 레포 <code>_ignore/reference-sheet-memos.md</code> 에 있다"],
@@ -1414,15 +1415,15 @@
 
       /* ── 무작위 보드 ──────────────────────────────────────────────────────
          프리셋 셋(빈/전종/홀수)은 [4] 보드 상황 배수 4 축 중 둘을 각각 죽인다 —
-         빈 보드는 「요구+납품가능(×100)」과 「미요구+동급하급(×10000)」을 아예 못 내고,
-         전종 보유는 반대로 「미요구(×1000)」와 「요구+납품불가(×1)」을 못 낸다.
+         빈 보드는 「요구 있음+수량 충분(×100)」과 「미요구+동급하급(×10000)」을 아예 못 내고,
+         전종 보유는 반대로 「미요구(×1000)」와 「요구 있음+수량 부족(×1)」을 못 낸다.
          배수가 1 : 100 : 1000 : 10000 이라 그 축이 죽으면 추첨의 지배항이 사라진다.
          넷을 다 살리려면 <b>부분적으로 찬</b> 보드여야 한다 — 그게 이 함수다.
 
          가정 두 개뿐이고 둘 다 화면에 적는다:
            ① 체인은 <b>편중</b>된다 — 시드로 섞은 뒤 k 번째 체인 가중 1/(k+1)(Zipf).
               플레이어는 한두 체인을 집중해 굴리고 나머지는 보드에 아예 없다. 균등으로
-              뿌리면 <b>모든 체인에 하급이 깔려 「미요구+보드에 없다」(×1000) 축이 죽는다</b> —
+              뿌리면 <b>모든 체인에 하급이 깔려 「미요구」(×1000) 축이 죽는다</b> —
               실측으로 Lv8·Lv30 에서 2/4 축만 살았다. 편중이 현실에도 더 가깝고 축도 살린다.
            ② 단계는 기하 감쇠 1/decay^(step-1) — 머지 보드는 하급이 쌓이고 상급이 드물다
          상자·재화 체인(동전·유리알·불씨…)은 넣지 않는다 — 등장률 데이터가 없고
@@ -1932,8 +1933,9 @@
         });
         const held = L.counts.size;
         // 배수 이름이 길어 한 줄을 다 먹는다 — 약어로 줄인다
-        const SHORT = { "미요구": "미요구", "미요구+보드에 동급·하급 有": "동급하급",
-                        "타오더 요구+납품가능": "타오더납품가", "타오더 요구+납품불가(기본)": "기본" };
+        const SHORT = { "미요구": "미요구", "미요구+동급·하급 보유": "동급하급",
+                        "요구 있음+수량 충분": "요구충분", "요구 있음+수량 부족(기본)": "요구부족",
+                        "집계 대상 없는 체인(기본)": "집계없음" };
         $("#rwWhy").innerHTML =
           (L.scripted
             ? `<b style="color:var(--deploy)">${L.type} 은 추첨 대상이 아니다 — <code>order_slot_band</code> 에 행이 없고 `
@@ -2381,10 +2383,11 @@
          「동급·하급」은 stepOf(보드코드) <= stepOf(후보) 다 — 같은 체인 안에서만 본다.
          생성기는 boardCounts() 가 건너뛰므로 counts 에 애초에 없다. */
       const AXIS_KEY = {
-        req_serve: "타오더 요구+납품가능",
-        higher: "미요구+보드에 동급·하급 有",
+        req_serve: "요구 있음+수량 충분",
+        higher: "미요구+동급·하급 보유",
         not_req: "미요구",
-        req_noserve: "타오더 요구+납품불가(기본)",
+        req_noserve: "요구 있음+수량 부족(기본)",
+        no_tally: "집계 대상 없는 체인(기본)",
       };
       /* 보드 집계에 넣을 아이템인가 — <code>order_item.weight_multiple</code> 이 그 표시다.
          정본 v1.1: 「weight_multiple은 보드 상황을 집계할 아이템 표시다」 ·
@@ -2404,19 +2407,44 @@
       }
       function withoutTally(fn) { TALLY_ON = false; try { return fn(); } finally { TALLY_ON = true; } }
 
-      function boardMultLocal(code, othersReq, counts, C) {
-        const reqChains = new Set([...othersReq].map(chainOf));
-        const wanted = reqChains.has(chainOf(code));
-        const canServe = inTallyLocal(code) && (counts.get(code) || 0) > 0;
-        if (wanted && canServe) return { v: C.order_weight_mult_required_enough, why: AXIS_KEY.req_serve };
-        if (!wanted) {
-          const ch = chainOf(code), st = stepOf(code);
+      /* 정본 v1.3 §6 — 요구는 <b>수량</b>으로 보고, 보유는 보드+인벤토리다(이 페이지의
+         보드는 프리셋이라 인벤토리가 비어 있다). 요구가 있으면 체인 안 집계 대상이
+         <b>모두 충분</b>해야 ×100 이고 하나라도 모자라면 1 이다. 요구가 없을 때만
+         개별 배수를 보는데, 그건 <b>표시 1인 후보에만</b> 준다.
+         Set 을 받으면 개수 1로 읽는다 — 이 페이지의 「타 오더 요구 3종」 가정이 그렇다. */
+      function boardMultLocal(code, req, counts, C) {
+        const ch = chainOf(code);
+        const reqMap = req instanceof Map ? req : new Map([...(req || [])].map((c) => [c, 1]));
+        if (!tallyChainLocal(ch)) return { v: 1, why: AXIS_KEY.no_tally };
+        let anyReq = false, short = false;
+        for (const [c, q] of reqMap) {
+          if (!inTallyLocal(c) || chainOf(c) !== ch) continue;
+          anyReq = true;
+          if ((counts.get(c) || 0) < q) short = true;
+        }
+        if (anyReq)
+          return short ? { v: 1, why: AXIS_KEY.req_noserve }
+                       : { v: C.order_weight_mult_required_enough, why: AXIS_KEY.req_serve };
+        if (inTallyLocal(code)) {
+          const st = stepOf(code);
           for (const [c, n] of counts)
             if (n > 0 && inTallyLocal(c) && chainOf(c) === ch && stepOf(c) <= st)
               return { v: C.order_weight_mult_higher_level, why: AXIS_KEY.higher };
-          return { v: C.order_weight_mult_not_required, why: AXIS_KEY.not_req };
         }
-        return { v: 1, why: AXIS_KEY.req_noserve };
+        return { v: C.order_weight_mult_not_required, why: AXIS_KEY.not_req };
+      }
+      /* 「표시 1인 코드가 하나도 없는 체인은 기본 1배」 — 엔진과 같은 판정을 시트에서 다시 판다.
+         T13 이 표시를 통째로 끄면(withoutTally) 이 집합도 달라지므로 <b>스위치 상태별로</b>
+         따로 캐시한다. 한 칸에 담아 두면 T13 이 켜 둔 값을 본 판정이 그대로 쓴다. */
+      const TALLY_CHAIN = { on: null, off: null };
+      function tallyChainLocal(ch) {
+        const k = TALLY_ON ? "on" : "off";
+        if (!TALLY_CHAIN[k]) {
+          const set = new Set();
+          for (const o of DATA.order_item) if (o.in_use && inTallyLocal(o.item_code)) set.add(chainOf(o.item_code));
+          TALLY_CHAIN[k] = set;
+        }
+        return TALLY_CHAIN[k].has(ch);
       }
 
       /* 자리 후보 집합 — 엔진 [4] 의 필터와 같은 조건(범위 ∩ 미제외)이다. */
@@ -2436,9 +2464,12 @@
          전체 후보 비중 합으로 나눠 확률을 구한다」. 기본 비중은 <code>order_item.weight</code> 다.
          <code>weight_multiple</code> 은 여기 안 들어간다 — 곱셈 인자가 아니라 보드 집계 표시라
          <code>boardMultLocal</code> 안에서 걸린다. 엔진을 부르지 않고 시트 값으로 다시 판다. */
-      function candWeight(o, cr) {
+      function candWeight(o, cr, alsoReq) {
         const L = LAST, C = DATA.const || {};
-        const m = boardMultLocal(o.item_code, L.othersReq, L.counts, C).v;
+        /* §7 — 둘째 자리는 첫째로 뽑은 코드를 요구에 <b>넣고</b> 다시 계산한다 */
+        const req = new Map([...L.othersReq].map((c) => [c, 1]));
+        if (alsoReq != null) req.set(alsoReq, (req.get(alsoReq) || 0) + 1);
+        const m = boardMultLocal(o.item_code, req, L.counts, C).v;
         const div = ((cr || {})[chainOf(o.item_code)] || 0) > 0 && Number(o.repeat_weight_decrease) > 0
           ? Number(o.repeat_weight_decrease) : 1;
         const base = o.weight == null ? 100 : Number(o.weight);
@@ -2470,13 +2501,16 @@
 
         const c2 = seatCand(seat);
         if (!c2 || !c2.length || !W1) return null;
-        const w2 = new Map(c2.map((o) => [o.item_code, candWeight(o, cr)]));
-        const W2 = [...w2.values()].reduce((x, y) => x + y, 0);
         const acc = new Map();
         let mass = 0;
+        /* 자리2 의 가중치는 <b>자리1 승자에 따라 달라진다</b>(정본 v1.3 §7). 예전엔 w2 를
+           한 번만 만들어 모든 분기에 썼는데, 그건 정본이 실패 예시로 못 박은 계산이다 —
+           「첫째 전의 10000배를 재사용하면 실패다」. 승자마다 다시 만든다. */
         c1.forEach((y, i) => {
           const p1 = w1[i] / W1;
           if (!p1) return;
+          const w2 = new Map(c2.map((o) => [o.item_code, candWeight(o, cr, y.item_code)]));
+          const W2 = [...w2.values()].reduce((x, z) => x + z, 0);
           const denom = W2 - (w2.get(y.item_code) || 0);
           if (denom <= 0) return;                       // 자리1 승자를 빼면 남는 후보가 없다
           mass += p1;
@@ -2989,16 +3023,16 @@
           const ladderTxt = `해금 체인 ${openN} · 요구가 ${reqChains.size}체인 · 미요구 ${freeChains.length}체인`
             + `(그중 보드가 빈 체인 ${dryFree.length})`;
           const AX = [
-            ["타오더 요구+납품가능", "요구 체인 + 그 코드가 보드에 있다", C.order_weight_mult_required_enough,
+            ["요구 있음+수량 충분", "요구된 코드가 <b>요구한 개수만큼</b> 보드+인벤토리에 있다", C.order_weight_mult_required_enough,
              "요구 체인의 <b>다른 단계</b>가 보드에 없다(요구된 코드 자신은 후보에서 빠진다) — 채움률을 올리세요"],
-            ["미요구+보드에 동급·하급 有", "미요구 + 같은 체인 동급·하급이 보드에 있다", C.order_weight_mult_higher_level,
+            ["미요구+동급·하급 보유", "미요구 + 같은 체인 동급·하급 보유(표시 1인 후보에만)", C.order_weight_mult_higher_level,
              "미요구 체인이 보드에 전혀 없다 — 채움률을 올리세요"],
-            ["미요구", "미요구 + 보드에 없다", C.order_weight_mult_not_required,
+            ["미요구", "미요구 + 동급·하급도 없다", C.order_weight_mult_not_required,
              structural
                ? `구조적이다 &mdash; ${ladderTxt}. 남은 미요구 체인이 보드에 있으면 ×10000 이 먹고, 비우면 ×10000 이 죽는다. `
                  + `이 레벨에서는 채움률을 어떻게 돌려도 넷이 동시에 살지 않는다`
                : `미요구 체인 ${freeChains.length}개가 모두 보드에 깔려 있다 &mdash; 채움률을 낮춰 하나를 비우세요 (${ladderTxt})`],
-            ["타오더 요구+납품불가(기본)", "요구 체인 + 납품 불가", 1,
+            ["요구 있음+수량 부족(기본)", "요구가 있는데 <b>개수가 모자란다</b> — 집계 대상 없는 체인도 같은 ×1 이다", 1,
              "요구 2종의 체인이 다 보드에 깔려 있다 — 채움률을 낮추세요"],
           ];
           const tot = [...(L.axis || new Map()).values()].reduce((a, b) => a + b, 0);
