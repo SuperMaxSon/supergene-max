@@ -566,6 +566,10 @@
               <option value="empty">빈 보드</option>
               <option value="all">후보 전종 1개씩 보유</option>
               <option value="half">홀수 체인만 보유</option>
+              <!-- 정본 v1.5 「T10: 요구 중이며 수량 부족한 보드를 테스트 입력으로 추가한다」.
+                   ×1 축(요구 있음+수량 부족)은 다른 프리셋에서 거의 안 걸린다 — 요구 코드가
+                   보드에 같이 깔려 버리기 때문이다. 이 프리셋은 요구 3종만 걷어낸다. -->
+              <option value="short">요구 3종만 빼고 보유 (×1 축 확인용)</option>
             </select>
           </div>
           <div class="rw-f"><label>보드 채움</label>
@@ -728,7 +732,9 @@
             </div>
             <!-- 칸마다 값이 왜 다른지는 슬롯 표만 봐서는 안 읽힌다 — 타입을 가르는 축
                  (해금·대기·요구 단계)을 시트에서 그대로 펴 놓는다. 판정은 여기 적지 않고
-                 「검사 > 규칙 위반」의 T16~T18 이 불을 켠다. 시트를 고치면 자동으로 꺼진다. -->
+                 「검사 > 규칙 위반」의 T16~T18 이 맡는데, <b>그 셋은 이제 원작 대조다</b> —
+                 정본 v1.5 가 이 값들을 원작 설정과 같다고 확정했다. 여기 표에 보이는
+                 「느린데 쉽다」는 <b>경제 검토 지표</b>이지 고칠 오류가 아니다. -->
             <p class="rw-tnote" style="margin-top:12px">타입 설계 &mdash; 칸을 가르는 축은 셋입니다(해금 · 대기 · 요구 단계)</p>
             <div class="rw-tw">
               <table>
@@ -779,14 +785,14 @@
          SPEC_VER 은 <b>값을 치러야 올라가는 숫자</b>다 — 기획서가 1.2 를 내면 실제로
          다시 대조하고 나서야 여기를 올린다. 근거는 문서 안 spec-build-note 이고
          HTTP last-modified 는 안 본다(사이트 통째 재배포에 같이 튄다 — 미검증 표 참조). */
-      const SPEC_VER = "1.3";
-      const SPEC_AT = "2026-09-14 12:08";
+      const SPEC_VER = "1.5";
+      const SPEC_AT = "2026-09-14 18:54";
       /* 정본 본문을 마지막으로 받아 대조한 날. <b>판본 스탬프와 따로 적는다</b> —
          개발 기획서는 빌드 노트(v1.1 · 2026-09-11 11:49)를 찍고 <b>같은 날 18:34 KST
          경에 본문이 바뀌었는데</b> 버전은 그대로였다. 처음엔 이걸 「9/14 변경」으로 적었다가
          고쳤다 — 내 기준 사본이 9/11 17:53 것이라 그 뒤 변경을 뭉뚱그렸다.
          <b>「알아챈 날」과 「바뀐 날」은 다르다.</b> 판본 확인은 본문 해시로 한다. */
-      const SPEC_SEEN = "2026-09-14";
+      const SPEC_SEEN = "2026-09-15";
       /* 「편성 표가 서기 전까지 기준 이벤트는 120002 로 확정한다」(개발 기획서 A5
          event_order_score). 편성이 정할 값이라 시트에는 없다 — 정본이 임시로 못 박은
          값이라 여기 상수로 둔다. 시트에서 이 id 가 사라지면 아래 검사가 경고한다. */
@@ -803,7 +809,7 @@
          그래서 판정은 FAIL 이 아니라 <b>확인 필요</b>다. 시트가 2 가 아니면 「시트가
          틀렸다」가 아니라 <b>「정본이 움직였나, 시트가 틀렸나」를 사람이 갈라야 한다.</b> */
       const SPEC_SLOT_MAX = 2;
-      const BUILD_AT = "2026-09-14 16:11";
+      const BUILD_AT = "2026-09-15 09:00";
       const BAL_KEY = "rw.orderDraw.balance";   // 벤치 세이브(rw.orderBench)와 분리한다
       const BAL_URL = "data/rosewood-balance.json";
       const SEED0 = 20260910;
@@ -969,11 +975,14 @@
            "신판에는 <code>data_manifest</code> 탭이 <b>없다</b> — 행수·컬럼수·<code>schema_hash</code> 의 정본이 사라졌다. 「탭 판본」 표는 변환기가 세어 넣은 값을 보는 것이라 <b>변환이 흘린 행은 못 잡는다</b>",
            "시트에 <code>data_manifest</code> 가 복구되면 자동 대조가 돌아온다"],
           ["후보 조건 「연결된 생성기를 해금했고」",
-           "<b>정본 v1.3 이 이 조건의 절차를 통째로 썼다(§8).</b> 「후보 <code>chain_id</code> 에 대응하는 <b>생성기 코드 목록</b>을 조회하고, 그중 하나라도 <b>유저의 영구 아이템 해금 이력</b>에 있으면 통과」. 연결은 시트로 구할 수 있다 — <code>item_spec.produce_item_N · produce_weight_N · chain_id</code> 가 실물에 있고 <b>생성기 52행 전부 <code>produce_item_1</code> 이 차 있다</b>(실측). 못 구하는 것은 둘이다: ① <b>해금 이력</b>은 시트가 아니라 세이브가 답한다 ② 정본이 밝힌 대로 원작 <code>FirstLevel·SecondLevelGeneratorChain</code> 예외 체인 목록이 <b>PMM 시트에 아직 없다</b>",
-           "엔진에 <b>빈 필터 자리</b>(<code>genUnlocked</code>)를 만들어 뒀다 — 늘 참을 돌려준다. <b>정본은 「이력 미로딩은 통과가 아니라 추첨 보류」로 못 박았는데, 이 페이지는 보류할 수가 없다</b>(분포를 보려고 켠 도구가 멈추면 쓸 수 없다). 그래서 여기 후보 수는 <b>실제보다 넓다</b>. 시뮬레이터가 생성기 목록·해금 목록을 <b>입력으로 받아</b> 검증할 수 있게 하라는 것이 정본이 적어 둔 방향이다"],
+           "<b>정본이 절차(v1.3 §8)에 이어 예외 실값까지 줬다(v1.5 §13).</b> 시트에 <code>item_spec.first_generator_chain_id</code>·<code>second_generator_chain_id</code> 두 열이 복원됐고(v1.4 · <code>0</code> 은 기본 연결), 예외는 <b>차 체인 하나</b>다 — <code>chain_id=5</code>(차 · <code>501~510</code>)의 직접 생산 생성기는 <code>605</code>(찻잔), <b>주문 해금 검사</b>에 쓰는 생성기는 <code>405~411</code>(찻주전자). 남은 미지는 <b>해금 이력</b>뿐이고 그건 시트가 아니라 세이브가 답한다",
+           "<b>지금은 못 채운다 — 그 두 열이 이 페이지 데이터(09-11 export)에 없다</b>(실측). 새 export 가 오면 <code>genUnlocked</code> 한 함수만 채우면 된다. 정본은 「이력 미로딩은 통과가 아니라 <b>추첨 보류</b>」라고 못 박았는데 분석 도구는 보류할 수 없어, 그때까지 이 페이지의 후보 수는 <b>실제보다 넓다</b>"],
           ["정본 문서의 판본 표기",
-           "<b>버전이 올라가도 알려 주는 것이 없다 — 우리가 먼저 물어야 안다.</b> v1.1 때는 반대 사고였다(스탬프가 안 움직이는데 본문이 바뀜). 이번엔 <b>스탬프가 두 번 올라가는 동안 우리가 못 봤다</b> — <code>v1.2</code>(2026-09-11 22:32)를 통째로 놓치고 <code>v1.3</code>(2026-09-14 12:08)에서야 대조했다. <b>해시 확인은 물어볼 때만 도는 절차라, 안 물어보면 두 판본이 지나간다</b>",
-           "본문 해시로 본다 — <code>curl -s &lt;url&gt; | md5</code>. 개발 기획서 <code>776ad711af02477dba588722fddfe68e</code> · 밸런스시트 기획서 <code>f18645bb3a4525a27545a29b605acaa4</code>(2026-09-14 v1.3 확인). <b>이 방법이 통하는 전제</b>는 두 문서가 빌드 시각을 본문에 안 박는다는 것이다 — 재배포를 지나고도 해시가 그대로였던 것이 근거이고, v1.3 에서도 내부 <code>spec-build-note</code> 가 해시와 같이 움직여 전제가 유지된다"],
+           "<b>판본이 우리 확인보다 빨리 움직인다.</b> v1.1 때는 스탬프가 안 움직이는데 본문이 바뀌었고, 이번엔 반대로 <b>스탬프가 네 번 올라가는 동안 우리가 두 번 놓쳤다</b> — <code>v1.2</code>(09-11 22:32) · <code>v1.4</code>(09-14 14:23) 를 지나쳤다. 해시 확인은 <b>물어볼 때만 도는 절차</b>라 안 물어보면 판본이 지나간다",
+           "본문 해시로 본다 — <code>curl -s &lt;url&gt; | md5</code>. 개발 기획서 <code>7f0d9079b8210b086aee6783456dab16</code> · 밸런스시트 기획서 <code>16cf8b163710edc75107e699139b32d3</code>(2026-09-15 v1.5 확인). 전제는 두 문서가 빌드 시각을 본문에 안 박는다는 것이고, v1.5 까지 내부 <code>spec-build-note</code> 가 해시와 같이 움직여 유지된다"],
+          ["입력 데이터가 정본보다 낡았다",
+           "<b>정본이 우리보다 앞서 있다고 정본이 직접 적었다.</b> v1.5: 「확인 당시 공개 시뮬레이터는 <code>item_spec</code> 234종·<code>order_item</code> 102행, 현재 온라인 시트는 <b>239종·104행</b>이다. <code>order_item.in_use=true</code> 인 활성 후보는 <b>74종</b>」. v1.4 가 <code>progress_unlock</code>·<code>difficulty_level</code>(order_item)과 <code>first_generator_chain_id</code>·<code>second_generator_chain_id</code>(item_spec)를 신설했고 확장 후보 30행을 비활성으로 돌렸는데, <b>이 페이지 데이터에는 그 네 열이 없다</b>(실측)",
+           "<b>새 export 를 받아야 한다.</b> 그때까지 분포·난이도·후보 수는 <b>102종 전량 활성 기준</b>이라 실제보다 넓다. 절차(엔진)는 v1.5 를 따르고 입력(데이터)은 09-11 판이라, 위 판본 배지와 데이터 태그를 <b>따로</b> 읽어야 한다 — 정본도 「엔진 절차 버전과 입력 데이터 버전을 각각 표시한다」고 요구한다"],
           ["셀 메모 (값 규약)",
            "구판 시트는 컬럼마다 규칙·근거가 달려 있었고 그걸로 오독 2건을 잡았다. 신판 export 에는 <b>메모가 하나도 없다</b> — <code>-1</code> 센티넬·상한값·「정규화 금지」 같은 규약을 데이터만으로는 복원할 수 없다",
            "메모를 같이 내보내는 export 옵션. 구판 메모 사본은 클라 레포 <code>_ignore/reference-sheet-memos.md</code> 에 있다"],
@@ -1507,6 +1516,8 @@
         const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level);
         for (const o of pool) {
           if (kind === "half" && chainOf(o.item_code) % 2 === 0) continue;
+          /* short 는 여기서 전종을 채우고, 타 오더 요구 3종을 run() 이 뒤에서 뺀다 —
+             요구가 무엇인지는 이 함수가 알 수 없다(보드를 먼저 만들고 요구를 고른다). */
           m.set(o.item_code, 1);
         }
         return m;
@@ -1538,6 +1549,7 @@
             empty: "빈 보드 &mdash; 아무것도 안 놓인 상태로 계산합니다",
             all: "후보 전종 1개씩 &mdash; 모든 후보가 보드에 있다고 보고 계산합니다",
             half: "홀수 체인만 &mdash; 체인을 하나 걸러 하나만 놓아, 배수 축 「미요구+동급·하급 보유」를 죽입니다",
+            short: "요구 3종만 빼고 보유 &mdash; <b>×1 축(요구 있음+수량 부족)</b>을 일부러 살리는 보드입니다. 정본 v1.5 가 T10 에 요청한 테스트 입력입니다",
           };
           grid.style.display = "block";
           grid.innerHTML = `<div class="rw-empty">${KIND_TXT[$("#rwBoard").value] || "프리셋"}`
@@ -1691,6 +1703,31 @@
                     || pool.find((o) => (!hit || chainOf(o.item_code) !== chainOf(hit.item_code)) && dry(chainOf(o.item_code)));
           if (hit && miss) { othersReq.add(hit.item_code); othersReq.add(miss.item_code); }
           else pool.slice(0, 2).forEach((o) => othersReq.add(o.item_code));
+        }
+        /* short 프리셋 — 「요구는 있는데 보유가 모자란다」를 <b>일부러 만든다</b>(정본 v1.5 T10 요청).
+           보드를 먼저 만들고 요구를 나중에 고르는 순서라 뺄 수 있는 자리가 여기뿐이다.
+
+           <b>아무 요구나 빼서는 안 된다.</b> 상황 집계는 <code>weight_multiple=1</code> 인 코드만
+           세는데(정본 §6③), 실물 시트는 활성 102행 중 <b>30행이 표시 0</b>이다. 표시 0인 코드를
+           빼면 요구가 집계에 안 잡혀 축이 그대로 죽는다 — 처음 그렇게 만들었다가 ×1 이 0% 로
+           남는 걸 실측하고 고쳤다. 그래서 <b>표시 1이고 · 보드에 있고 · 자리 범위 안이며 ·
+           같은 체인에 형제가 남는</b> 코드를 하나 골라 요구에 넣고, 그것을 보드에서 뺀다. */
+        if (kind === "short") {
+          const inSeatAny = (c) => {
+            if (!band) return true;
+            const st = stepOf(c);
+            for (let k = 1; k <= seats; k++) {
+              const rg = seatRange(band, k);
+              if (rg && st >= rg.lo && st <= rg.hi) return true;
+            }
+            return false;
+          };
+          const t = pool.find((o) => inTallyLocal(o.item_code) && (counts.get(o.item_code) || 0) > 0
+            && inSeatAny(o.item_code)
+            && pool.some((q) => q.item_code !== o.item_code && chainOf(q.item_code) === chainOf(o.item_code)
+                             && inSeatAny(q.item_code)));
+          if (t) othersReq.add(t.item_code);
+          othersReq.forEach((c) => counts.delete(c));
         }
 
         /* 직전 요구는 아무거나 고르면 안 된다 — 반복 감쇠(T8)는 「직전 체인의 다른 단계」에
@@ -2054,7 +2091,9 @@
          칸마다 난이도가 다른 이유를 슬롯 표는 결과로만 보여 준다. 원인은 시트의 세 축
          (해금 레벨 · 재발급 대기 · 요구 단계 범위)이고, 그 셋이 서로 어긋나 있는지는
          값을 나란히 놓아야 보인다. <b>여기서는 판정하지 않는다</b> — 규칙 표의
-         T16~T18 이 불을 켜고, 시트를 고치면 그 불이 저절로 꺼진다.
+         T16~T18 이 <b>원작 설정과 같은지</b>를 잰다(정본 v1.5 §11·§12 인용값 기준).
+         「느린데 쉽다」는 그 판정에 안 들어간다. 정본이 「원작 설정과 일치하는 수치를
+         경고 해소 목적으로 변경하지 않는다」고 확정했기 때문이다.
 
          「요구 단계」는 첫 자리(first_min~first_max)다. 둘째 자리는 상한만 있어
          타입을 가르는 축이 아니다. */
@@ -2102,10 +2141,12 @@
           `대기가 <b>긴</b> 순서로 늘어놓으면 요구 단계(최고 레벨 기준)는 `
           + single.map((x) => `${typeTag(x.t)} <b>${x.top}</b>`).join(" → ")
           + (flipped
-              ? ` 입니다 &mdash; <b>오래 기다리는 칸이 더 쉽습니다.</b> 겉모습이 같은 타입끼리는 `
-                + `대기와 난이도 말고 구분할 단서가 없어서, 이 순서가 뒤집히면 긴 대기 칸은 칠 이유가 없어집니다. `
-                + `판정은 「검사 &gt; 규칙 위반」의 <b>T16</b> 에 있습니다 &mdash; <b>시트를 고치면 저절로 꺼집니다.</b>`
-              : ` 입니다 &mdash; 오래 기다리는 칸이 더 어렵습니다. 순서가 맞습니다(T16 통과).`);
+              ? ` 입니다 &mdash; <b>오래 기다리는 칸이 더 쉽습니다.</b> 기다렸다 빠른 칸을 두 번 치는 게 `
+                + `유리해져서 긴 대기를 칠 이유가 옅어집니다. <b>다만 이 값들은 원작과 같습니다</b> `
+                + `&mdash; 정본 v1.5 가 「필수 오류로 삼지 않는다」로 확정했고, 검사 <b>T16·T17</b> 은 `
+                + `이제 <b>원작 대조</b>를 합니다. 이 줄은 판정이 아니라 <b>경제 검토 지표</b>입니다. `
+                + `<span style="opacity:.7">정본은 「high 만 고쳐도 random_3·random_4 의 역순은 남는다」고 덧붙였습니다.</span>`
+              : ` 입니다 &mdash; 오래 기다리는 칸이 더 어렵습니다. 순서가 맞습니다.`);
       }
 
       /* 타입 이름은 항상 이걸로 찍는다 — 색이 한 군데서만 정해지게 하려고 헬퍼를 둔다.
@@ -3313,133 +3354,119 @@
               null, null);
         }
 
-        /* ── T16 대기 ↔ 요구 단계 순서 ────────────────────────────────────
-           한 칸짜리 추첨 타입들은 겉모습이 거의 같아서(카드 스킨) 플레이어가
-           구분할 단서가 없다. 그러면 남는 차이는 <b>대기와 난이도</b> 둘뿐이고,
-           그 둘은 같은 방향이어야 뜻이 선다 — 오래 기다린 칸이 더 어렵고 더 준다.
-           반대 방향이면 긴 대기 칸은 칠 이유가 없어진다(기다렸다 짧은 칸을 두 번
-           치는 게 낫다). <b>시트 값만으로 판정한다</b> — 시뮬레이션 평균이 아니라
-           order_rule.refresh_sec 와 order_slot_band.first_max 를 직접 본다. */
+        /* ── T16·T17·T18 — 정본 v1.5 가 판정 기준을 바꿔 놓은 자리 ────────────
+           v1.5 「10. 시뮬레이터 확인 필요 — 원작 대조와 경제 의견을 구분」이 확정했다:
+             · T16 현 값 유지(c) — 「대기가 길수록 요구 단계가 높아야 한다」를 <b>필수 오류로 삼지 않는다</b>
+             · T17 high 의 첫째 요구 단계 7→7 유지
+             · T18 현 값 유지(b) — 가격/난이도 비율 1.5배 미만을 <b>필수 오류로 삼지 않는다</b>
+             · 확정 기준: 「원작 설정과 일치하는 수치를 <b>경고 해소 목적으로 변경하지 않는다</b>.
+                T16~T18 은 원작 일치 시 기획 미결로 남기지 않고 <b>경제 검토 지표</b>로 표시한다」
+
+           그래서 판정식을 바꿨다. 전에는 <b>우리가 세운 설계 규칙</b>(대기와 난이도가 같은
+           방향이어야 한다 · 레벨이 오르면 깊어져야 한다 · 난이도당 코인이 안 떨어져야 한다)을
+           기준으로 재서 전부 「확인 필요」였다. 이제는 <b>정본이 인용한 원작 설정값과 같은가</b>를
+           잰다 — 그건 우리 취향이 아니라 대조 가능한 사실이다.
+
+           <b>관측은 지우지 않는다.</b> 「느린데 쉽다」·「난이도당 코인이 역진한다」는 여전히
+           참이고, 그건 판정이 아니라 <b>지표</b>로 같은 줄에 남긴다. 정본이 요구한 구분이 그것이다. */
         {
-          const single = (DATA.order_rule || [])
-            .filter((r) => r.in_use && r.slot_count === 1 && isDrawType(r.order_type))
-            .map((r) => {
-              const bs = bandsOfType(r.order_type);
-              return { t: r.order_type, sec: r.refresh_sec, top: bs.length ? bs[bs.length - 1].first_max : null };
-            })
-            .filter((x) => x.top != null)
-            .sort((a, b) => b.sec - a.sec);
-          if (single.length < 2) add("na", "T16 대기 ↔ 요구 단계 순서", "—", "—", "한 칸짜리 추첨 타입이 둘 미만이다");
-          else {
-            /* 대기 내림차순으로 놓았을 때 단계가 오름차순이면 뒤집힌 것이다 */
+          /* 정본 v1.5 §11·§12 가 인용한 원작 설정값 — 이 값과 시트가 같은지가 판정 기준이다.
+             §11 원작 OrderRandomConfig: Type2(high) RefreshTime 1800 · Filters 7/7 (둘째 상한만 5→6)
+                                          Type3 → 900 / FirstMax 7·8·9·10 · Type4 → 300 / FirstMax 8·9·10·11
+             §12 원작 OrderItemConfig  : 503→203 Price 2/Diff 3 · 510→210 88/307 · 512→212 202/1229 */
+          const ORIG_RULE = { high: { sec: 1800, firstMax: [7, 7] },
+                              random_3: { sec: 900, firstMax: [7, 8, 9, 10] },
+                              random_4: { sec: 300, firstMax: [8, 9, 10, 11] } };
+          const ORIG_ITEM = [[203, 2, 3], [210, 88, 307], [212, 202, 1229]];
+          const ruleRow = (t) => (DATA.order_rule || []).find((r) => r.in_use && r.order_type === t);
+
+          // ── T16 재발급 대기 ↔ 원작
+          {
+            const seen = [], bad = [];
+            for (const [t, o] of Object.entries(ORIG_RULE)) {
+              const r = ruleRow(t);
+              if (!r) { bad.push(`${t} 활성 행 없음`); continue; }
+              seen.push(`${t} ${r.refresh_sec}초`);
+              if (Number(r.refresh_sec) !== o.sec) bad.push(`${t} ${r.refresh_sec}초 ≠ 원작 ${o.sec}초`);
+            }
+            /* 경제 지표 — 판정과 분리한다. 대기 내림차순으로 놓고 단계가 안 따라 오르면 적는다 */
+            const single = Object.entries(ORIG_RULE).map(([t]) => {
+              const bs = bandsOfType(t);
+              return { t, sec: (ruleRow(t) || {}).refresh_sec, top: bs.length ? bs[bs.length - 1].first_max : null };
+            }).filter((x) => x.top != null).sort((a, b) => b.sec - a.sec);
             const inv = [];
             for (let i = 0; i < single.length - 1; i++)
               for (let j = i + 1; j < single.length; j++)
                 if (single[i].top <= single[j].top && single[i].sec > single[j].sec) inv.push([single[i], single[j]]);
-            add(inv.length ? "warn" : "ok", "T16 대기 ↔ 요구 단계 순서",
-                "대기가 길수록 요구 단계가 높다 <s>최고 레벨 구간 기준</s>",
-                single.map((x) => `${x.t} ${x.sec}초/${x.top}단계`).join(" · "),
-                inv.length
-                  ? `<b>${inv.length}쌍이 뒤집혀 있다</b> &mdash; `
-                    + inv.map(([a, b]) => `${typeTag(a.t)}(${a.sec}초·${a.top}단계)가 ${typeTag(b.t)}(${b.sec}초·${b.top}단계)보다 `
-                        + `<b>느린데 더 쉽거나 같다</b>`).join(" · ")
-                  : "대기가 긴 칸일수록 요구 단계가 높다 — 순서가 맞다",
-                inv.length ? "data" : null,
-                inv.length
-                  ? `느리고 쉬운 칸은 플레이어가 칠 이유가 없습니다 &mdash; 기다렸다 빠른 칸을 두 번 치는 게 낫습니다.<br>`
-                    + `<b>대기와 난이도 중 어느 쪽이 의도한 값인가요?</b> 카드 겉모습이 같은 타입끼리는 이 둘 말고 구분할 단서가 없습니다`
-                  : null);
+            add(bad.length ? "no" : "ok", "T16 재발급 대기 ↔ 원작",
+                "<code>order_rule.refresh_sec</code> 가 원작 <code>OrderRandomConfig.RefreshTime</code> 과 같다",
+                seen.join(" · "),
+                bad.length ? `<b>${bad.join(" · ")}</b>`
+                  : "세 타입 모두 원작 값과 같다 &mdash; 정본 v1.5 §11 인용값 기준"
+                    + (inv.length
+                      ? `<br><span style="opacity:.75"><b>경제 검토 지표</b>(판정 아님) &mdash; 대기 내림차순으로 놓으면 `
+                        + inv.map(([x, y]) => `${typeTag(x.t)}(${x.sec}초·${x.top}단계)가 ${typeTag(y.t)}(${y.sec}초·${y.top}단계)보다 <b>느린데 더 쉽거나 같다</b>`).join(" · ")
+                        + `. 정본은 이를 <b>필수 오류로 삼지 않는다</b>고 확정했다 &mdash; 원작이 그 값이기 때문이다</span>`
+                      : ""),
+                bad.length ? "data" : null, null);
+          }
+
+          // ── T17 요구 단계 ↔ 원작
+          {
+            const seen = [], bad = [];
+            for (const [t, o] of Object.entries(ORIG_RULE)) {
+              const bs = bandsOfType(t);
+              const got = bs.map((b) => b.first_max);
+              seen.push(`${t} ${got.join("·") || "밴드 없음"}`);
+              if (got.join(",") !== o.firstMax.join(",")) bad.push(`${t} [${got.join("·")}] ≠ 원작 [${o.firstMax.join("·")}]`);
+            }
+            add(bad.length ? "no" : "ok", "T17 요구 단계 ↔ 원작",
+                "<code>order_slot_band.first_max</code> 시퀀스가 원작 <code>Filters.FirstMax</code> 와 같다",
+                seen.join(" · "),
+                bad.length ? `<b>${bad.join(" · ")}</b>`
+                  : `세 타입 모두 원작 시퀀스와 같다. <code>high</code> 가 <b>7→7 붙박이인 것도 원작 값</b>이다 `
+                    + `&mdash; 정본 v1.5: 「high의 첫째 요구 단계 7→7을 유지한다」<br>`
+                    + `<span style="opacity:.75"><b>경제 검토 지표</b>(판정 아님) &mdash; high 는 후반에 가장 얕은 칸이 된다. `
+                    + `정본은 <b>high 만 고쳐도 random_3·random_4 의 역순은 남는다</b>고 덧붙였다 &mdash; 한 번의 조정으로 닫히는 문제가 아니다</span>`,
+                bad.length ? "data" : null, null);
+          }
+
+          // ── T18 가격·난이도 ↔ 원작
+          {
+            const seen = [], bad = [];
+            for (const [code, price, diff] of ORIG_ITEM) {
+              const o = (DATA.order_item || []).find((r) => Number(r.item_code) === code);
+              if (!o) { bad.push(`${code} 행 없음`); continue; }
+              seen.push(`${labelOf(code)} ${o.order_price}/${o.diff_score}`);
+              if (Number(o.order_price) !== price || Number(o.diff_score) !== diff)
+                bad.push(`${code} ${o.order_price}/${o.diff_score} ≠ 원작 ${price}/${diff}`);
+            }
+            /* 지표용 역진 — 판정에는 안 쓴다 */
+            const by = new Map();
+            for (const o of (DATA.order_item || [])) {
+              if (!o.diff_score) continue;
+              const st = stepOf(o.item_code);
+              if (!st) continue;
+              if (!by.has(st)) by.set(st, []);
+              by.get(st).push(o.order_price / o.diff_score);
+            }
+            const pts = [...by.entries()].filter(([, v]) => v.length >= 3)
+              .map(([st, v]) => ({ st, r: v.reduce((a, b) => a + b, 0) / v.length })).sort((a, b) => a.st - b.st);
+            const drop = pts.length >= 2 ? pts[0].r / (pts[pts.length - 1].r || 1) : null;
+            add(bad.length ? "no" : "ok", "T18 가격·난이도 ↔ 원작",
+                "<code>order_price</code>·<code>diff_score</code> 가 원작 <code>OrderItemConfig</code> 의 <code>Price</code>·<code>DiffScore</code> 와 같다",
+                seen.join(" · "),
+                bad.length ? `<b>${bad.join(" · ")}</b>`
+                  : `정본 v1.5 §12 가 인용한 세 행이 시트와 일치한다.<br>`
+                    + (drop
+                      ? `<span style="opacity:.75"><b>경제 검토 지표</b>(판정 아님) &mdash; 단계별 <code>order_price÷diff_score</code> 평균이 `
+                        + `${pts[0].st}단계 <b>${pts[0].r.toFixed(2)}</b> → ${pts[pts.length - 1].st}단계 <b>${pts[pts.length - 1].r.toFixed(2)}</b>`
+                        + ` (<b>${drop.toFixed(1)}배 역진</b>). 정본: 「비율이 낮다는 이유만으로 가격을 올리거나 난이도 점수를 낮추지 않는다」</span>`
+                      : ""),
+                bad.length ? "data" : null, null);
           }
         }
 
-        /* ── T17 요구 단계 성장 ───────────────────────────────────────────
-           레벨이 오르면 보드가 커지고 체인이 깊어지므로 요구도 따라 깊어져야 한다.
-           안 자라는 칸은 후반으로 갈수록 상대적으로 쉬워져 자리값을 잃는다.
-           두 칸짜리(normal)는 「7단계 미만 전부」를 받는 자리라 성격이 달라 뺀다. */
-        {
-          const single = (DATA.order_rule || [])
-            .filter((r) => r.in_use && r.slot_count === 1 && isDrawType(r.order_type));
-          const grown = single.map((r) => {
-            const bs = bandsOfType(r.order_type);
-            return { t: r.order_type, n: bs.length, g: bs.length ? bs[bs.length - 1].first_max - bs[0].first_max : null,
-                     lo: bs.length ? bs[0].first_max : null, hi: bs.length ? bs[bs.length - 1].first_max : null };
-          }).filter((x) => x.g != null);
-          const flat = grown.filter((x) => x.g <= 0);
-          /* 「안 자란다」만으로는 얼마나 나쁜지 안 보인다 — <b>후보가 몇 종 남는지</b>가
-             실제로 아픈 부분이다. 밴드가 좁으면 후보가 적고, 후보가 적은데 보드 배수가
-             최대 ${mult}배로 갈리면 <b>보드에 무엇이 놓였냐가 결과를 통째로 정한다</b>
-             (실측: Lv5 고급은 한 보드에서 한 아이템이 100% 를 가져갔다).
-             한 단계만 넓혔을 때 후보가 몇으로 느는지까지 같이 준다 — 기획이 고칠 폭을
-             바로 고를 수 있게. 현재 화면 레벨 기준으로 센다. */
-          const candN = (lo, hi, lv) => (DATA.order_item || []).filter((o) => {
-            const st = stepOf(o.item_code);
-            return st >= lo && st <= hi && (o.unlock_level || 0) <= lv;
-          }).length;
-          const mult = (DATA.const || {}).order_weight_mult_higher_level ?? "?";
-          const pool = flat.map((x) => {
-            const b = pickBand(x.t, L.lv);
-            if (!b) return { ...x, now: null };
-            return { ...x, lo2: b.first_min, hi2: b.first_max,
-                     now: candN(b.first_min, b.first_max, L.lv),
-                     wide: candN(b.first_min, b.first_max + 1, L.lv) };
-          });
-          if (!grown.length) add("na", "T17 요구 단계 성장", "—", "—", "밴드 행이 없다");
-          else add(flat.length ? "warn" : "ok", "T17 요구 단계 성장",
-              "레벨 구간이 올라가면 <code>first_max</code> 도 오른다",
-              grown.map((x) => `${x.t} ${x.lo}→${x.hi}`).join(" · "),
-              flat.length
-                ? `${flat.map((x) => `${typeTag(x.t)} 가 <b>${x.lo}단계에 붙박이</b>`).join(" · ")}`
-                  + ` &mdash; 다른 칸이 깊어지는 동안 혼자 그대로라 후반에 가장 쉬운 칸이 된다.<br>`
-                  + pool.filter((x) => x.now != null).map((x) =>
-                      `<b>Lv${L.lv} 기준 ${typeTag(x.t)} 후보 ${x.now}종</b>(단계 ${x.lo2}~${x.hi2})`
-                      + ` &mdash; 한 단계만 넓히면 <b>${x.wide}종</b>`).join(" · ")
-                : "한 칸짜리 추첨 타입이 모두 레벨에 따라 깊어진다",
-              flat.length ? "data" : null,
-              flat.length
-                ? `${flat.map((x) => x.t).join("·")} 는 최고 레벨에서도 ${flat[0].hi}단계만 요구합니다. `
-                  + `<b>의도인가요?</b> 전용 카드 아트가 있는 타입이면 「특별한 칸」으로 읽히는데 값은 반대로 서 있습니다.<br>`
-                  + pool.filter((x) => x.now != null).map((x) =>
-                      `지금 Lv${L.lv} 에서 후보가 <b>${x.now}종</b>뿐이라, 보드 배수(최대 <b>${mult}배</b>)가 그중 하나에 걸리면 `
-                      + `<b>그 아이템이 사실상 전부를 가져갑니다</b> &mdash; 플레이어 눈에는 「${typeTag(x.t)} 는 맨날 같은 것」으로 보입니다. `
-                      + `밴드를 한 단계만 넓혀도 후보가 <b>${x.wide}종</b>이 됩니다`).join("<br>")
-                : null);
-        }
-
-        /* ── T18 난이도당 코인 ────────────────────────────────────────────
-           보상 단가가 옳은지는 [7] 이 안 본다(미검증 표에 그렇게 적어 뒀다). 여기서는
-           그중 한 축만 본다 — <b>깊은 단계일수록 난이도당 코인이 낮아지는가</b>.
-           낮아지면 어려운 칸을 치는 게 손해라, 플레이어는 쉬운 칸만 돌리는 게 최적이 된다.
-           단계별 평균으로 보고, 표본이 3개 미만인 단계는 뺀다(값 하나에 흔들린다). */
-        {
-          const by = new Map();
-          for (const o of (DATA.order_item || [])) {
-            if (!o.diff_score) continue;
-            const st = stepOf(o.item_code);
-            if (!st) continue;
-            if (!by.has(st)) by.set(st, []);
-            by.get(st).push(o.order_price / o.diff_score);
-          }
-          const pts = [...by.entries()].filter(([, v]) => v.length >= 3)
-            .map(([st, v]) => ({ st, r: v.reduce((a, b) => a + b, 0) / v.length, n: v.length }))
-            .sort((a, b) => a.st - b.st);
-          if (pts.length < 3) add("na", "T18 난이도당 코인", "—", "—", "단계별 표본이 모자라다");
-          else {
-            const lo = pts[0], hi = pts[pts.length - 1];
-            const drop = lo.r / (hi.r || 1);
-            add(drop > 1.5 ? "warn" : "ok", "T18 난이도당 코인",
-                "깊은 단계라고 난이도당 코인이 떨어지지 않는다",
-                pts.map((p) => `${p.st}단계 ${p.r.toFixed(2)}`).join(" · "),
-                drop > 1.5
-                  ? `${lo.st}단계 <b>${lo.r.toFixed(2)}</b> → ${hi.st}단계 <b>${hi.r.toFixed(2)}</b> `
-                    + `&mdash; <b>${drop.toFixed(1)}배 역진</b>. 어려운 오더일수록 난이도 대비 코인이 적다`
-                  : `${lo.st}단계 ${lo.r.toFixed(2)} → ${hi.st}단계 ${hi.r.toFixed(2)} — 큰 역진 없음`,
-                drop > 1.5 ? "data" : null,
-                drop > 1.5
-                  ? `깊은 체인을 요구하는 칸이 <b>난이도 대비로는 가장 적게 줍니다.</b> `
-                    + `T16 과 합치면 「쉬운 칸만 돌리는 게 최적」이 됩니다 &mdash; <b>의도한 곡선인가요?</b>`
-                  : null);
-          }
-        }
 
         RULE_ROWS = rows; renderTodo();
         summarize(rows, "#rwRulesSum");

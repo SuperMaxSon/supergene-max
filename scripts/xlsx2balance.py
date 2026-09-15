@@ -199,6 +199,17 @@ def table(book, tab, key_col, cols):
     return out, missing
 
 
+# 정본 v1.5 §13 「T14 이름 확정」이 직접 적어 준 10종. 09-11 export 에는 name_ko 가
+# 없고 직전 출력본에도 없던(= 신판에서 새로 생긴) 아이템이라 이월로는 못 채운다.
+# 새 export 가 name_ko 를 싣고 오면 이 표는 지운다 — 그때는 시트가 정본이다.
+SPEC_NAMES = {
+    211: "정밀 공구 세트", 212: "전문가 공구 캐비닛", 213: "복원 장비 카트",
+    214: "장인 공구 컬렉션", 813: "축하 케이크", 814: "디저트 카트",
+    815: "연회 디저트 테이블", 1312: "로즈우드 리넨 컬렉션",
+    3201: "심플 상자", 3202: "팬시 상자",
+}
+
+
 def build_names(book, legacy_path):
     """item_code → {name_ko, name_en}.
 
@@ -230,10 +241,15 @@ def build_names(book, legacy_path):
                     legacy[r["item_code"]] = r.get("name_ko") or r.get("name")
         except (ValueError, KeyError):
             pass
+    # 우선순위: 정본 확정 > 직전 출력본 이월 > 영문. 정본이 값을 준 것은 이월보다 세다 —
+    # 이월은 「지난 판이 정답」이라는 보장이 없고, 정본은 기획이 직접 적은 값이다.
     for code, rec in names.items():
-        rec["name_ko"] = legacy.get(code) or rec.get("name_en")
+        rec["name_ko"] = SPEC_NAMES.get(code) or legacy.get(code) or rec.get("name_en")
     for code, ko in legacy.items():
         names.setdefault(code, {"name_en": None, "name_ko": ko})
+    for code, ko in SPEC_NAMES.items():
+        names.setdefault(code, {"name_en": None, "name_ko": ko})
+        names[code]["name_ko"] = ko
     return names, len(legacy)
 
 
