@@ -1193,10 +1193,18 @@ function requiredElsewhere(slotNo) {
    않고, 자기 체인에 걸린 배수는 그대로 받는다. 그래서 필터를 counts 를 만드는 쪽이
    아니라 <b>읽는 쪽</b>에 둔다 — 누가 counts 를 만들어 넘기든 같은 규칙이 걸린다
    (분포 시뮬은 자기 보드를 만들어 넘긴다).
-   order_item 에 없는 코드(상자·재화 등)는 표시 자체가 없으므로 종전대로 센다. */
+   order_item 에 없는 코드(상자·재화 등)는 표시 자체가 없으므로 종전대로 센다.
+
+   <b>판정은 「=== 1」이다. 「!== 0」이 아니다.</b> 정본이 「<b>weight_multiple=1인 코드만</b>
+   상황 집계에 사용한다」로 쓴다 — 화이트리스트지 블랙리스트가 아니다.
+   지금 데이터는 값역이 {0,1} 이라 둘이 같은 답을 내지만, <b>열이 빠진 export</b> 에서는
+   갈린다: `Number(undefined)` 는 NaN 이라 「!== 0」은 <b>참</b>(집계함), 「=== 1」은
+   <b>거짓</b>(집계 안 함)이다. 한동안 이 함수만 「!== 0」이고 chainHasTally 는 「=== 1」이라
+   <b>같은 파일 안에서 규약이 갈려 있었다</b>(2026-09-15 정리). 두 곳이 이 술어를 같이 쓴다. */
+const isTallyMark = (o) => Number(o && o.weight_multiple) === 1;
 const inBoardTally = (code) => {
   const o = oiOf(code);
-  return !o || Number(o.weight_multiple) !== 0;
+  return !o || isTallyMark(o);
 };
 
 /* 기본 추첨 비중을 읽는 자리 하나 — order_item.weight.
@@ -1232,7 +1240,7 @@ function chainHasTally(ch) {
   const I = idx();
   if (!I.tallyChain) {
     I.tallyChain = new Set();
-    for (const o of DATA.order_item) if (o.in_use && Number(o.weight_multiple) === 1) I.tallyChain.add(chainOf(o.item_code));
+    for (const o of DATA.order_item) if (o.in_use && isTallyMark(o)) I.tallyChain.add(chainOf(o.item_code));
   }
   return I.tallyChain.has(ch);
 }
