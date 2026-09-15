@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rosewood 신판 시트(2026-09-11) 동기화 검증.
+"""Rosewood 신판 시트(2026-09-15) 동기화 검증.
 
 exit 0 = 전부 통과, exit 1 = 실패 있음.
 Python3 stdlib only.
