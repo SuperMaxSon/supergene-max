@@ -41,9 +41,10 @@
                   축을 통째로 걷었다(dailyDiff 입력 제거).
      반복 감쇠     const.order_repeat_reset_count = 3 이 <b>신설</b>됐다(key_number 10052).
                   v4.5 에서 구판 셀 메모를 근거로 걷어낸 카운터를 되살린다.
-     가중치        order_item.weight / weight_multiple 은 클라 계약(A5)에 없는 열이다.
-                  신판 export 는 weight_multiple 이 30행 0 이라 곱하면 후보가 통째로
-                  죽는다. 가중식은 상황 배수 × ÷제수 만 쓴다 — 이 불일치는 오더 시뮬레이터
+     가중치        order_item.weight / weight_multiple 은 이제 클라 계약(A5)에도 실리는 열이다.
+                  신판 export 는 weight_multiple 이 활성 74행 중 31행 0 이라(전체 61행) 곱하면
+                  후보가 통째로 죽는다 — 곱하는 배수가 아니라 보드 집계 표시다. 가중식은
+                  weight × 상황 배수 ÷ 반복 제수만 쓴다. 이 불일치는 오더 시뮬레이터
                   페이지 T13 이 검사로 드러낸다(코드가 조용히 정하지 않는다).
 
    로드 순서: 이 파일이 페이지 스크립트보다 먼저 와야 한다(DATA · S 를 여기서 선언).
@@ -125,8 +126,8 @@ const RNG = {
    2. 데이터 — 확인값 + 시드값(근거 섹션 참조)
    ====================================================================== */
 /* ── 실물 시트 데이터 ─────────────────────────────────────────
-   출처  [PMM] 밸런스시트.xlsx · 구판 2026-09-08
-   생성  _ignore/tools/extract-items.py — 시트가 바뀌면 다시 돌려 통째로 교체한다
+   출처  시트 export 2026-09-15 (탭별 JSON 59개)
+   생성  scripts/balance2engine.py — 시트가 바뀌면 다시 돌려 통째로 교체한다
    주의  name 은 시트의 에디터 전용 사이드카 칸이다. 실물 런타임은
          item_display.name_key → string_code 를 거친다. 벤치는 문구
          테이블을 안 쓰므로 이름을 직접 박는다.
@@ -171,7 +172,8 @@ const CHAIN_DB = [
   [36,"X_CH36","Starter Supply Chest",9,5,"res"],
 ];
 /* [코드, 다음, 판매가, show_sell_confirm, 생성기, 이름, name_en, chain_key,
-    재고상한, 에너지, 회복초, [[산출코드, 가중치], …]] */
+    재고상한, 에너지, 회복초, first_gen_chain, second_gen_chain, spread_weight_type,
+    in_use, [[산출코드, 가중치], …]] — 16칸. balance2engine.py 튜플 순서와 같다 */
 const ITEM_DB = [
   [101,102,0,1,0,"녹슨 못","Rusty Nail","M_TOOL",0,0,0,0,0,0,1,[]],
   [102,103,0,1,0,"못 상자","Box of Nails","M_TOOL",0,0,0,0,0,0,1,[]],
@@ -839,9 +841,10 @@ const lvOf = (level) => idx().lv.get(level);
      order_item.difficulty_level       18행이 양수 (306→7 · 307→8 · 502→3 · 503~510→4~11 · 906·907 · 1703~1707)
      item_spec.first_generator_chain_id   10행 → 501~510 전부 <b>6</b>
      item_spec.second_generator_chain_id  10행 → 501~510 전부 <b>4</b>
-   <b>네 열은 2026-09-15 export 부터 실제로 들어온다.</b> 한동안 안 들어왔던 건 시트 탓이
-   아니라 `scripts/xlsx2balance.py` 의 TABS 화이트리스트가 안 뽑았기 때문이고, 그때는
-   실측값을 상수표로 박아 두고 버텼다. 지금은 <b>양쪽 경로가 다 실값을 본다</b> —
+   <b>네 열은 2026-09-15 export 부터 실제로 들어온다.</b> 그 전 export(09-11·09-14)에는
+   열 자체가 없었고(시트 쪽 부재), 09-15 반영 때는 `scripts/xlsx2balance.py` 의 TABS
+   화이트리스트에 안 올려 한 번 조용히 빠질 뻔했다 — 열이 없던 동안은 실측값을
+   상수표로 박아 두고 버텼다. 지금은 <b>양쪽 경로가 다 실값을 본다</b> —
    드로우는 `docs/data/rosewood-balance.json` 을, 벤치는 `balance2engine.py` 가 구운
    ORDER_DB·ITEM_DB 튜플을 읽는다. 그래서 상수표를 걷었다.
    <b>둘 중 하나만 열을 실으면 두 페이지가 갈린다</b> — 열을 늘릴 때는 화이트리스트와
@@ -863,8 +866,9 @@ const drawStepOf = (code) => {
   return d > 0 ? d : stepOf(code);
 };
 
-/* 생성기 판정 — 정본은 <b>spread_weight_type ≠ 0</b> 으로 본다. 그 열은 balance.json 에는
-   있고 엔진 ITEM_DB 튜플에는 없어서, 없으면 is_generator 로 떨어진다.
+/* 생성기 판정 — 정본은 <b>spread_weight_type ≠ 0</b> 으로 본다. 그 열은 balance.json 과
+   엔진 ITEM_DB 튜플(14번 자리) 양쪽에 실린다 — is_generator 폴백은 열이 빠진
+   옛 export 용 보험이다.
    실측(2026-09-15): spread_weight_type≠0 <b>67행</b> ⊃ is_generator=1 <b>52행</b>이고,
    차이 15행은 전부 상자·재화 체인(25·26·30~36)이다 — <b>주문 후보가 닿는 체인에는 없다</b>.
    그래서 두 페이지(벤치/드로우)가 이 갈래로 갈리지 않는다. */

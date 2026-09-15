@@ -449,7 +449,7 @@
           <code>101</code> 은 이름이 「녹슨 못」인데 그림은 <b>커피 원두</b>이고, 2026-09-10 커밋으로
           새로 채워진 <code>211</code>「정밀 공구 세트」는 <b>아이스크림 선디</b>입니다. 그 8장(<code>211~214</code> ·
           <code>813~815</code> · <code>1312</code>)이 들어오면서 <b>활성 오더 후보 74종은 전부 그림이 붙었습니다</b>
-          (총 232장 · 팩 <code>3201·3202</code>만 미수급). 다만 <b>채워진 것은 자리뿐이고 그림 내용은 그대로</b>라,
+          (총 232장 · 상자 <code>3201~3203</code>·<code>3301</code>·<code>3401</code>·<code>3501</code>·<code>3601</code> 7종만 미수급 — 오더 후보가 아니다). 다만 <b>채워진 것은 자리뿐이고 그림 내용은 그대로</b>라,
           여기 붙은 그림은 <b>무엇이 몇 개 있는지</b>를 눈으로 세는 데만 쓰세요.
           <b>이름·단계·체인은 시트가 정본이고 판정은 전부 그 값으로 합니다.</b>
           실물 아트가 들어오면 <code>item_display.sprite_key</code> 로 기계적으로 이어집니다
@@ -989,7 +989,7 @@
            "본문 해시로 본다 — <code>curl -s &lt;url&gt; | md5</code>. 개발 기획서 <code>d8c599beafdc4bea7db59f50c0eb0d8a</code> · 밸런스시트 기획서 <code>f121386b1b92099523794695801757a1</code>(2026-09-15 확인 · 둘 다 <b>v1.6</b> · 배포 10:41 KST). 어제 값은 <code>7f0d9079…</code> / <code>16cf8b16…</code>(v1.5 / v1.4)였다 — <b>하루에 두 번 움직였다</b>. 전제는 두 문서가 빌드 시각을 본문에 안 박는다는 것이고, 지금까지 내부 <code>spec-build-note</code> 가 해시와 같이 움직여 유지된다"],
           ["입력 데이터 — 2026-09-15 export 로 맞췄다",
            "<b>닫혔다.</b> 오래 「정본이 우리보다 앞서 있다」로 열려 있던 칸이다. 새 export 를 넣어 <code>item_spec</code> <b>239종</b> · <code>order_item</code> <b>104행(활성 74 · 비활성 30)</b> 이 됐고, 정본이 코드로 짚어 준 두 자리도 실물에서 확인했다 — <code>604</code> 는 <b>비활성</b>, <code>502</code> 는 <b>활성인데 비중 0</b>(<code>difficulty_level 3</code>). 막혀 있던 네 열(<code>progress_unlock</code> 46행 · <code>difficulty_level</code> 18행 · 생성기 2열 10행)도 다 실렸다",
-           "<b>한동안 못 받은 게 시트 탓이 아니었다</b> — 네 열은 export 에 있었는데 <code>scripts/xlsx2balance.py</code> 의 컬럼 화이트리스트가 안 뽑아서 조용히 빠졌다. 「열이 없다」로 오진할 뻔한 자리라 변환기 주석에 남겨 뒀다. <b>열을 늘릴 때는 화이트리스트와 <code>balance2engine.py</code> 튜플을 같이 건드린다</b> — 한쪽만 고치면 드로우는 실값을, 벤치는 기본값을 봐서 두 페이지가 갈린다"],
+           "<b>못 받은 이유가 두 겹이었다</b> — 09-14 이전 export 에는 네 열 자체가 없었고(시트 쪽 부재), 09-15 export 에 처음 실렸는데 이번엔 <code>scripts/xlsx2balance.py</code> 의 컬럼 화이트리스트가 안 뽑아 조용히 빠질 뻔했다. 「열이 없다」로 오진할 뻔한 자리라 변환기 주석에 남겨 뒀다. <b>열을 늘릴 때는 화이트리스트와 <code>balance2engine.py</code> 튜플을 같이 건드린다</b> — 한쪽만 고치면 드로우는 실값을, 벤치는 기본값을 봐서 두 페이지가 갈린다"],
           ["셀 메모 (값 규약)",
            "구판 시트는 컬럼마다 규칙·근거가 달려 있었고 그걸로 오독 2건을 잡았다. 신판 export 에는 <b>메모가 하나도 없다</b> — <code>-1</code> 센티넬·상한값·「정규화 금지」 같은 규약을 데이터만으로는 복원할 수 없다",
            "메모를 같이 내보내는 export 옵션. 구판 메모 사본은 클라 레포 <code>_ignore/reference-sheet-memos.md</code> 에 있다"],
@@ -1200,15 +1200,16 @@
         /* ── 4. 두 가중치 칸 — 이름이 비슷한데 <b>하는 일이 전혀 다르다</b>.
            정본 v1.1: 「weight는 기본 추첨 비중, weight_multiple은 보드 상황을 집계할 아이템 표시다」
            한동안 둘 다 「엔진이 안 읽는 열」로 적어 뒀는데 그게 틀렸다 — 둘 다 확정된 열이다. */
+        const oiAct = oi.filter((o) => o.in_use);   // 추첨에 걸리는 건 활성 행뿐이다
         const wVals = uniq(oi, "weight"), mVals = uniq(oi, "weight_multiple");
-        const wZero = oi.filter((o) => Number(o.weight) === 0);
-        const mZero = oi.filter((o) => Number(o.weight_multiple) === 0);
+        const wZero = oiAct.filter((o) => Number(o.weight) === 0);
+        const mZero = oiAct.filter((o) => Number(o.weight_multiple) === 0);
         const flat = wVals.filter((v) => Number(v) !== 0).length <= 1;
         add(!wVals.length ? "warn" : "ok",
             "두 가중치 칸", "order_item.weight · weight_multiple",
             wVals.length
-              ? `${oi.length}행 &mdash; <b>비중</b> ${wVals.join("/")} (0 인 행 ${wZero.length})`
-                + ` · <b>집계 표시</b> ${mVals.join("/")} (0 인 행 ${mZero.length})`
+              ? `${oi.length}행(활성 ${oiAct.length}) &mdash; <b>비중</b> ${wVals.join("/")} (활성 중 0 인 행 ${wZero.length})`
+                + ` · <b>집계 표시</b> ${mVals.join("/")} (활성 중 0 인 행 ${mZero.length})`
               : "<b>칸 없음</b>",
             "<b>비중</b>은 뽑힐 무게로 <b>곱한다</b>. <b>집계 표시</b>는 곱하지 않는다 &mdash; 그 아이템을 보드 상황 계산에 넣을지 정하는 표시다",
             !wVals.length
@@ -1305,10 +1306,10 @@
 
         // ── 10. 반복 억제 리셋값
         const divs = uniq(oi, "repeat_weight_decrease").map(Number).filter((v) => v > 0).sort((a, b) => a - b);
-        const divRows = oi.filter((o) => Number(o.repeat_weight_decrease) > 0).length;
+        const divRows = oiAct.filter((o) => Number(o.repeat_weight_decrease) > 0).length;
         const resetN = Number(C.order_repeat_reset_count) || 0;
         add(divRows ? "ok" : "warn", "같은 체인 연속 방지", "order_item.repeat_weight_decrease",
-            divRows ? `${divRows}/${oi.length}행 &mdash; 나누는 값 ${divs.join(" · ")}` : "전 행 0",
+            divRows ? `활성 ${divRows}/${oiAct.length}행 &mdash; 나누는 값 ${divs.join(" · ")}` : "전 행 0",
             resetN
               ? `한 번 오더로 나간 체인은 <b>다음 ${resetN}번의 발급 동안</b> 그 체인 아이템의 뽑힐 무게를 이 값으로 나눈다`
               : "한 번 오더로 나간 체인의 무게를 이 값으로 나눈다 (<b>몇 번 동안인지는 시트에 없다</b>)",
@@ -1613,8 +1614,8 @@
         const gens = (board && board.gens) || [];
         /* 아트가 없는 후보 — 2026-09-10 커밋 af6a114 로 8장(211~214 · 813~815 · 1312)이
            채워지면서 **활성 오더 후보 74종은 전부 아트가 있다**(현재 0종). 그래도 목록은 남긴다 —
-           시트가 후보를 늘리면 여기서 다시 뜬다. item_spec 전체로는 3201·3202(팩)만 비어 있고
-           그 둘은 오더 후보가 아니다. */
+           시트가 후보를 늘리면 여기서 다시 뜬다. item_spec 전체로는 상자 3201~3203 · 3301 · 3401 · 3501 · 3601 일곱 종만 비어 있고
+           전부 오더 후보가 아니다. */
         const noArt = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && !spriteOf(o.item_code))
                                      .map((o) => o.item_code);
         $("#rwChips").innerHTML =
@@ -1700,7 +1701,7 @@
           const onB = (c) => inTallyLocal(c) && (counts.get(c) || 0) > 0;
           const inSeat = (c) => {
             if (!band) return true;
-            const st = stepOf(c);
+            const st = drawStepOf(c);   // 엔진 [4] cand 필터와 같은 기준 — 자리 범위는 추첨용 단계다
             for (let k = 1; k <= seats; k++) {
               const rg = seatRange(band, k);
               if (rg && st >= rg.lo && st <= rg.hi) return true;
@@ -1728,7 +1729,7 @@
         if (kind === "short") {
           const inSeatAny = (c) => {
             if (!band) return true;
-            const st = stepOf(c);
+            const st = drawStepOf(c);   // 엔진 [4] cand 필터와 같은 기준 — 자리 범위는 추첨용 단계다
             for (let k = 1; k <= seats; k++) {
               const rg = seatRange(band, k);
               if (rg && st >= rg.lo && st <= rg.hi) return true;
@@ -2466,7 +2467,7 @@
         if (!TALLY_ON) return true;
         if (!TALLY_IDX) TALLY_IDX = new Map(DATA.order_item.map((o) => [o.item_code, o]));
         const o = TALLY_IDX.get(code);
-        return !o || Number(o.weight_multiple) !== 0;
+        return !o || Number(o.weight_multiple) === 1;   // 엔진 chainHasTally 와 같은 규약(1=집계) — 열이 빠진 export 에서 갈리지 않게
       }
       function withoutTally(fn) { TALLY_ON = false; try { return fn(); } finally { TALLY_ON = true; } }
 
@@ -2803,8 +2804,8 @@
                 + ` <span style="opacity:.65">(시트 명목)</span>`,
               [...ecNom.map.keys()].map((k) => `${k}종 ${pct(L.cnt.get(k) || 0, ok).toFixed(2)}%`).join(" / "),
               !bad.length
-                ? `<code>count_weight</code> 셀 메모가 「<code>weight_norm</code> &mdash; 레벨 밴드마다 합 10000」 이라 `
-                  + `이 표는 <b>명목이 아니라 실현 분포</b>다. 전 자리가 채워져 절단이 없고, 실현이 명목과 3σ 안`
+                ? `<code>count_weight</code> 는 상대 가중이라(v1.6 &mdash; 합 10000 정규화 미강제 · 실측 합 8000/7000/6600/6000) `
+                  + `명목은 실제 합으로 정규화해 얻고, 이 표는 <b>명목이 아니라 실현 분포</b>다. 전 자리가 채워져 절단이 없고, 실현이 명목과 3σ 안`
                   + (thin.length ? ` · 표본 부족으로 제외 ${thin.join(", ")}` : "")
                 : explained
                   ? `${bad.join("<br>")}<br>`
@@ -3257,7 +3258,7 @@
            여기서는 「그래서 얼마나 달라지나」만 낸다 — 0 이면 이 설정에서는 표시가 의미가 없다. */
         {
           const oi = DATA.order_item || [];
-          const flagged = oi.filter((o) => Number(o.weight_multiple) === 0);
+          const flagged = oi.filter((o) => o.in_use && Number(o.weight_multiple) === 0);   // 활성 기준 — 본문 「활성 74행 중 31행」과 같은 축
           const onBoard = flagged.filter((o) => (L.counts.get(o.item_code) || 0) > 0);
           const cells = onBoard.reduce((a, o) => a + (L.counts.get(o.item_code) || 0), 0);
           const es = expectSeat(1, {});

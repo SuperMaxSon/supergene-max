@@ -35,13 +35,13 @@ RNS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_SRC = os.path.expanduser(
-    "~/Projects/story-merge-proto-client/_ignore/item-sheets/2026-09-11-export")
+    "~/Projects/story-merge-proto-client/_ignore/item-sheets/2026-09-15-export")
 DEFAULT_OUT = os.path.join(HERE, "docs", "data", "rosewood-balance.json")
 
 PRODUCE = [c for i in range(1, 21) for c in (f"produce_item_{i}", f"produce_weight_{i}")]
 
 # 탭 → (키 컬럼, 남길 컬럼). 키 컬럼이 비면 패딩 행으로 보고 버린다.
-# 2026-09-11 신판 스키마 — 폐기된 열은 여기서도 빠졌다:
+# 2026-09-11 개편에서 폐기된 열은 여기서도 빠졌다(2026-09-15 export 도 동일):
 #   order_slot_band  diff_sum_min/max · second_min · third_min/max
 #   order_fixed      slot_3 · requirement_3
 TABS = {
@@ -190,7 +190,7 @@ def table(book, tab, key_col, cols):
     if not rows:
         return [], list(cols)
     present = set()
-    for r in rows[:5]:
+    for r in rows:   # 전 행을 본다 — 앞 행에 값이 없어 키가 생략된 열이 조용히 빠지는 함정
         present |= set(r.keys())
     missing = [c for c in cols if c not in present]
     out = []
@@ -329,7 +329,7 @@ def main():
         # 판매 확인창 플래그 — 정본(시트·웹)의 열 이름은 `rare` 하나뿐이다.
         # `show_sell_confirm` 은 여기서 붙이는 별칭이고, 엔진 ITEM_DB 가 그 이름으로
         # 굳어 있어서 복사해 준다. 개명이 아니다 — 시트에서 찾으면 안 나온다
-        # (2026-09-11 신판 36탭 전수 0건, 밸런스시트 웹도 `rare` 로 쓴다).
+        # (2026-09-15 신판 59탭 전수 0건, 밸런스시트 웹도 `rare` 로 쓴다).
         if tab == "item_spec":
             # 시트가 진짜 그 열을 갖게 되는 날을 잡는 자리다. 화이트리스트(TABS)에
             # 없는 열은 table() 이 먼저 걷어내므로, 아래 별칭이 그 값을 조용히 덮는
