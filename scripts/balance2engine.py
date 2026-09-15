@@ -92,6 +92,12 @@ def main():
             chain_key.get(r["chain_id"], "?"),
             r.get("spread_item_max") or 0, r.get("spread_cost_energy") or 0,
             r.get("spread_item_recovery_sec") or 0,
+            # 생성기 연결 예외 2열(정본 v1.4 복원) + 생성기 판정에 쓰는 spread_weight_type,
+            # 그리고 in_use. 넷 다 벤치가 안 실으면 드로우와 갈린다 — 드로우는 JSON 을
+            # 직접 읽어 실값을 보고, 벤치는 여기 튜플만 본다.
+            r.get("first_generator_chain_id") or 0, r.get("second_generator_chain_id") or 0,
+            r.get("spread_weight_type") or 0,
+            1 if r.get("in_use") in (True, 1, "true", "TRUE", "1") else 0,
         ])
         items[-1].append("[" + ",".join("[%d,%d]" % (a, b) for a, b in prod) + "]")
     body = "\n".join(
@@ -103,13 +109,18 @@ def main():
         [r["item_code"], r["unlock_level"], r["order_price"], r["diff_score"],
          r.get("weight") if r.get("weight") is not None else 100,
          r.get("weight_multiple") if r.get("weight_multiple") is not None else 1,
-         r.get("repeat_weight_decrease") or 0]
+         r.get("repeat_weight_decrease") or 0,
+         r.get("progress_unlock") or 0, r.get("difficulty_level") or 0,
+         1 if r.get("in_use") in (True, 1, "true", "TRUE", "1") else 0]
         for r in d["order_item"]]),
-        "/* [item_code, unlock_level, order_price, diff_score, weight, weight_multiple, repeat_weight_decrease]\n"
-        "   weight  = 기본 추첨 비중 (현재 604 꽃무늬 찻잔만 0, 나머지 101행 100)\n"
-        "   weight_multiple = <b>보드 상황 집계 대상 플래그</b>(1=포함)다. 곱하는 배수가 아니다 — 30행이 0.\n"
-        "   한때 「A5 계약에 없다」고 빼 두었는데, 밸런스시트 v1.1(2026-09-11 12:14)이 둘 다\n"
-        "   「데이터·명세 확정」으로 못 박았다. 빼 두면 벤치만 기본값으로 떨어져 두 페이지가 갈린다. */")
+        "/* [item_code, unlock_level, order_price, diff_score, weight, weight_multiple,\n"
+        "    repeat_weight_decrease, progress_unlock, difficulty_level, in_use]\n"
+        "   weight  = 기본 추첨 비중. <b>0 이면 후보가 아니다</b>(정본 §2).\n"
+        "   weight_multiple = <b>보드 상황 집계 대상 플래그</b>(1=포함)다. 곱하는 배수가 아니다.\n"
+        "   progress_unlock = 1 이면 바로 전 실제 단계의 영구 해금 이력이 필요하다.\n"
+        "   difficulty_level = 양수면 자리 단계 범위 비교에 step 대신 이 값을 쓴다.\n"
+        "   <b>in_use 를 실제로 싣는다</b> — 신판은 104행 중 30행이 false 다.\n"
+        "   전에는 파서가 in_use:1 로 못박아 벤치가 비활성 행까지 후보로 봤다. */")
 
     src = splice(src, "RULE_DB", rows([
         [r["order_type"], r["slot_count"], r["item_slot_max"], r["refresh_sec"],

@@ -51,9 +51,14 @@ TABS = {
     "order_slot_band": ("order_type", [
         "order_type", "band_seq", "level_min", "level_max",
         "first_min", "first_max", "second_max", "in_use"]),
+    # progress_unlock·difficulty_level 은 2026-09-14 신판(정본 v1.4)이 원작에서 복원한 열이다.
+    # 둘 다 추첨 절차가 직접 읽는다 — 화이트리스트에 없으면 조용히 빠져서
+    # 「열이 없다」로 오진한다(2026-09-15 실제로 그랬다).
+    #   progress_unlock  1 이면 바로 전 실제 단계의 영구 해금 이력이 필요하다
+    #   difficulty_level 양수면 자리 단계 범위 비교에 step 대신 이 값을 쓴다
     "order_item": ("item_code", [
         "item_code", "unlock_level", "order_price", "diff_score", "weight", "weight_multiple",
-        "repeat_weight_decrease", "in_use"]),
+        "repeat_weight_decrease", "progress_unlock", "difficulty_level", "in_use"]),
     "order_item_count": ("level", ["level", "item_count", "count_weight", "in_use"]),
     # 추첨 알고리즘은 안 읽지만 엔진의 reindex 가 인덱스를 만든다 — 30행이라 넣어 두는 편이 싸다
     "level_curve": ("level", [
@@ -77,6 +82,10 @@ TABS = {
         "spread_item_max", "spread_storage_max", "spread_cost_energy",
         "spread_item_recovery_sec", "spread_storage_recovery_sec",
         "shop_price", "merge_score_race",
+        # 생성기 연결 예외 — 정본 v1.4 가 복원한 두 열. 0 이면 기본 연결(자기 체인)이고,
+        # 양수면 그 체인에서 spread_weight_type != 0 인 코드를 생성기로 본다.
+        # 현재 실물은 차 체인(501~510)만 예외다: first=6(찻잔) · second=4(찻주전자).
+        "first_generator_chain_id", "second_generator_chain_id",
         ] + PRODUCE + ["in_use"]),
 }
 CONST_TAB = "const"
@@ -199,7 +208,7 @@ def table(book, tab, key_col, cols):
     return out, missing
 
 
-# 정본 v1.5 §13 「T14 이름 확정」이 직접 적어 준 10종. 09-11 export 에는 name_ko 가
+# 정본 v1.5 §13 「T14 이름 확정」이 직접 적어 준 10종. export 에는 name_ko 가
 # 없고 직전 출력본에도 없던(= 신판에서 새로 생긴) 아이템이라 이월로는 못 채운다.
 # 새 export 가 name_ko 를 싣고 오면 이 표는 지운다 — 그때는 시트가 정본이다.
 SPEC_NAMES = {
@@ -207,6 +216,18 @@ SPEC_NAMES = {
     214: "장인 공구 컬렉션", 813: "축하 케이크", 814: "디저트 카트",
     815: "연회 디저트 테이블", 1312: "로즈우드 리넨 컬렉션",
     3201: "심플 상자", 3202: "팬시 상자",
+}
+
+# 위 SPEC_NAMES 와 출처가 다르다 — 정본이 확정해 준 이름이 아니라, 09-15 export 에
+# 새로 생긴 상자류(생성기 아님·order_item 후보 아님) 5종을 영문 name_key 뜻 그대로
+# 옮긴 임시값이다. 정본이 이 코드들의 이름을 확정하면 이 표에서 지우고 SPEC_NAMES
+# (또는 이월)로 옮긴다.
+SPEC_NAMES_TRANSLATED = {
+    3203: "대형 무료 선물 상자",  # Large Free Gift Chest (chain 32 step3)
+    3301: "스타터 에너지 상자",   # Starter Energy Chest
+    3401: "소형 에너지 상자",     # Small Energy Chest
+    3501: "스타터 젬 상자",       # Starter Gem Chest
+    3601: "스타터 보급 상자",     # Starter Supply Chest
 }
 
 
@@ -241,12 +262,23 @@ def build_names(book, legacy_path):
                     legacy[r["item_code"]] = r.get("name_ko") or r.get("name")
         except (ValueError, KeyError):
             pass
-    # 우선순위: 정본 확정 > 직전 출력본 이월 > 영문. 정본이 값을 준 것은 이월보다 세다 —
-    # 이월은 「지난 판이 정답」이라는 보장이 없고, 정본은 기획이 직접 적은 값이다.
+    # 우선순위: 정본 확정 > 영문 임시 번역 > 직전 출력본 이월 > 영문 그대로. 정본/임시
+    # 번역 두 표는 사람이 이번에 직접 적어 넣은 값이라 이월(직전 산출물을 그대로 베낀
+    # 값, 지난 판이 정답이라는 보장이 없다)보다 세다. SPEC_NAMES_TRANSLATED 는 legacy_path
+    # 가 곧 이번 출력 파일이라 직전 실행에서 새로 생긴 코드에 영문을 그대로 흘려보낸
+    # 경우(이월 자체가 영문)를 다시 영문으로 확정해버리는 것을 막기 위해 이월보다 위에 둔다.
     for code, rec in names.items():
-        rec["name_ko"] = SPEC_NAMES.get(code) or legacy.get(code) or rec.get("name_en")
+        rec["name_ko"] = (
+            SPEC_NAMES.get(code)
+            or SPEC_NAMES_TRANSLATED.get(code)
+            or legacy.get(code)
+            or rec.get("name_en")
+        )
     for code, ko in legacy.items():
         names.setdefault(code, {"name_en": None, "name_ko": ko})
+    for code, ko in SPEC_NAMES_TRANSLATED.items():
+        names.setdefault(code, {"name_en": None, "name_ko": ko})
+        names[code]["name_ko"] = ko
     for code, ko in SPEC_NAMES.items():
         names.setdefault(code, {"name_en": None, "name_ko": ko})
         names[code]["name_ko"] = ko
@@ -343,6 +375,11 @@ def main():
             "converted_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "converter": "scripts/xlsx2balance.py",
             "name_ko_carried": carried,
+            "name_source": "시트 export 엔 name_ko 가 없다(에디터 전용 열이라 클라 JSON 에서 빠진다). "
+                "그래서 이름은 직전 출력본 이월 + SPEC_NAMES 로 채운다 — 정본이 "
+                "「변환기는 이 이름을 item_code 로 연결한다」고 이 경로를 인정했다. "
+                "SPEC_NAMES_TRANSLATED 5종(3203/3301/3401/3501/3601)은 정본 확정이 아니라 "
+                "우리가 영문에서 옮긴 임시값이다.",
             "version_check": "판본은 tabs[].records 로 본다. schema_hash 는 열 구조라 내용 변화에 안 움직인다",
             "tabs": meta_tabs,
             "warnings": warn,
