@@ -1677,8 +1677,13 @@
            604 는 weight 0 이라 어떤 오더도 요구할 수 없다. 열이 없는 데이터도 돌아야 해서
            <code>== null</code> 이면 100 으로 본다(엔진과 같은 규약). 보드를 만드는
            <code>boardPreset</code> 은 <b>이 조건을 쓰지 않는다</b> — 못 뽑히는 아이템도 보드에는 놓인다. */
+        /* 해금 축도 엔진과 같이 건다. <b>이력을 안 넣으면 전부 통과</b>라 지금은 결과가
+           같지만, <code>S.itemUnlock</code> 을 넣는 순간 엔진 [3] pool 과 갈린다 —
+           여기만 안 걸면 「다른 오더가 요구 중」에 <b>발급될 수 없는 코드</b>가 섞인다. */
+        const hist = unlockHistoryOf({});
         const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= lv
-          && (o.weight == null || Number(o.weight) > 0));
+          && (o.weight == null || Number(o.weight) > 0)
+          && hasGeneratorUnlock(o, hist) && hasProgressUnlock(o, hist));
         /* 「타 오더가 요구 중」 2종도 아무거나 고르면 안 된다. 보드 상황 배수 축 넷 중
            둘이 이 집합에 달려 있고, 둘을 가르는 조건은 <b>후보 자신</b>이 보드에 있나다:
 
