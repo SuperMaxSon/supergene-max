@@ -539,14 +539,14 @@ const BAND_DB = [
 ];
 /* [level, item_count, count_weight] — 종수는 1·2 뿐이다 */
 const COUNT_DB = [
-  [1,1,7500],
-  [1,2,2500],
-  [4,1,5714],
-  [4,2,4286],
-  [8,1,5000],
-  [8,2,5000],
-  [11,1,5000],
-  [11,2,5000],
+  [1,1,6000],
+  [1,2,2000],
+  [4,1,4000],
+  [4,2,3000],
+  [8,1,3300],
+  [8,2,3300],
+  [11,1,3000],
+  [11,2,3000],
 ];
 /* [fixed_seq, unlock_level, slot_1, slot_2, requirement_1, requirement_2]
    slot_3 · requirement_3 은 신판에서 삭제됐다 */
@@ -1065,6 +1065,14 @@ const inBoardTally = (code) => {
   return !o || Number(o.weight_multiple) !== 0;
 };
 
+/* 기본 추첨 비중을 읽는 자리 하나 — order_item.weight.
+   정본(개발 기획서 v1.5) 「2. 후보 아이템의 추첨 비중 계산하기 · 후보 사용 여부」:
+     「order_item.in_use 가 참인 아이템만 사용한다. <b>weight가 0보다 커야 후보다</b>」
+   그래서 <b>후보 판정</b>([3] pool)과 <b>가중식</b>([4] base)이 같은 값을 봐야 한다 —
+   두 곳이 각자 `== null` 을 처리하면 열이 빠진 export 에서 둘이 갈린다.
+   <b>열이 없으면 100</b>으로 본다(후보로 남긴다). 값이 있는데 0 이하일 때만 뺀다. */
+const baseWeightOf = (o) => (o == null || o.weight == null ? 100 : Number(o.weight));
+
 /* [4] 상황 배수 — 정본 v1.3(2026-09-14) 1.2.1 §6 을 그대로 옮긴 것이다.
    v1.1 까지는 「요구 유무 × 보드에 하나라도 있나」였고 그렇게 구현돼 있었다.
    v1.3 이 <b>수량 판정</b>으로 못 박으면서 세 군데가 갈렸다:
@@ -1399,7 +1407,14 @@ function generateOrder(slotNo, opts = {}) {
      <b>지우지 말 것</b> — 지우면 다음 사람이 「정본 조건이 셋이구나」로 읽는다.
      정본이 적어 둔 방향은 <b>생성기 목록·해금 목록을 입력으로 받는 것</b>이다. */
   const genUnlocked = (_o) => true;
-  const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && genUnlocked(o));
+  /* <b>weight &gt; 0</b> — 정본 「order_item.in_use 가 참인 아이템만 사용한다.
+     <b>weight가 0보다 커야 후보다</b>」. 확률은 안 바뀐다(base 0 이라 뽑힐 일이 없다).
+     바뀌는 것은 <b>후보 종수</b>다 — 로그의 「후보 N종」, [7] 의 「실제 후보 수와
+     item_slot_max 안에서 개수를 뽑는다」, 그리고 후보 고갈 판정이 이 수를 본다.
+     현행 데이터에서 걸리는 행은 <b>604 꽃무늬 찻잔</b>(체인 6 · step 4 · unlock_level 7)
+     하나뿐이라, 그 자리 범위에 들 때 종수가 1 만큼 줄어든다.
+     열 없는 export 규약은 baseWeightOf 가 쥔다(없으면 100 → 후보로 남는다). */
+  const pool = DATA.order_item.filter((o) => o.in_use && o.unlock_level <= level && baseWeightOf(o) > 0 && genUnlocked(o));
   /* 요구 종수 상한 — 시트 order_rule.item_slot_max 하나만 본다. 호출자 스위치는 걷었다.
      밴드가 주는 자리 수보다 클 수 없다(신판은 둘 다 2 라 같은 값이다). */
   const slotMax = Math.min(rule.item_slot_max, seats);
@@ -1436,7 +1451,7 @@ function generateOrder(slotNo, opts = {}) {
          기본 비중은 order_item.weight 다. 전 행 100 이고 <b>604 한 행만 0</b> 인데,
          그 0 도 「원작 대응값」이라고 정본에 못 박혀 있다 — 604 는 안 나오는 게 맞다.
          weight_multiple 은 여기 안 들어간다(곱셈 인자가 아니라 보드 집계 표시다). */
-      const base = o.weight == null ? 100 : Number(o.weight);
+      const base = baseWeightOf(o);   // 후보 판정([3] pool)과 <b>같은 함수</b>를 쓴다
       return { o, base, mult: m.v, why: m.why, div, rem, w: (base * m.v) / (div || 1) };
     });
     const total = rows.reduce((a, r) => a + r.w, 0);
