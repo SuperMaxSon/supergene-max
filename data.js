@@ -368,6 +368,18 @@ const SECTIONS = [
         share: false,
       },
       {
+        title: "스토리머지 인게임 아키텍처",
+        desc: "인게임 구조를 표가 아니라 도식 7장으로 세운 문서입니다. 실선은 코드가 있는 칸, 점선은 정본 기획에는 있고 코드가 0줄인 칸이라 어디가 비었는지가 색과 선만 보고 갈립니다. 인게임은 판정(rules 1,830줄 · Node 러너 16종 608 PASS)과 상태(vm)가 들어와 view 배선만 남았고, 아웃게임은 view·pooled·vm·rules·data 5층이 통째로 비어 있습니다. 상태를 PlayerVM(계정)과 IngameVM(세션)으로 가른 기준, 판정과 적용을 2메서드로 나눈 이유, 오더가 양 끝만 있는 상태까지 한 바퀴로 읽힙니다.",
+        url: "docs/story-merge-ingame-architecture.html",
+        project: "smg",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-09-16 15:20",
+        pinned: false,
+        tags: ["코드 실측", "구조"],
+        share: false,
+      },
+      {
         title: "스토리머지 지면 플로우 맵",
         desc: "맵을 세로로 세웠습니다. 가운데 줄기가 실제 재생 순서(켜짐 → 진입 → 노드 1~11 → 종료)이고 왼쪽은 읽는 것, 오른쪽은 여는 지면입니다. 노드 11개를 카드 안에 접지 않고 줄기 위에 펴서, 대사·태스크·삽화가 번갈아 나오는 진행이 한눈에 보입니다.",
         url: "docs/story-merge-flow-map.html",
