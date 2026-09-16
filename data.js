@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-16 15:09",
+  updated: "2026-09-16 16:45",
 };
 
 /* --------------------------------------------------------------------------
@@ -271,6 +271,18 @@ const SECTIONS = [
         status: "초안",
         version: "v2.0",
         updated: "2026-09-10 17:14",
+        pinned: false,
+        tags: ["머지", "기획 범위"],
+        share: false,
+      },
+      {
+        title: "저장 데이터 TODO",
+        desc: "기획이 요구하는 영속 저장 항목 140개를 인게임 56 · 아웃게임 84 로 갈라 필드 단위로 펼치고, 현재 코드에 있는지만 표시한 판. 있음 41 · 없음 99.",
+        url: "docs/story-merge-save-todo.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-16 16:45",
         pinned: false,
         tags: ["머지", "기획 범위"],
         share: false,
