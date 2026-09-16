@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CP 원격설정 3380 트래킹</title>
+    <meta
+      name="description"
+      content="CP 팝업을 원격 설정·프리팹 통합으로 바꾼 빌드 3380의 롤아웃 KPI 트래킹. 같은 날 서빙되는 3375를 대조로 두고 CP 퍼널·PLAY 전환·회귀 지표를 표본이 찰 때마다 판정한다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <!-- 이 <style>은 문서 전용 구역이다. 보드(.kb .mx)·표·노트는 전부 style.css 공용 클래스를 쓴다.
+         여기 남은 것은 이 문서에만 필요한 셋뿐이다:
+           · #tip      — .mx 의 ⓘ 툴팁 컨테이너 (보드를 쓰는 문서가 각자 들고 있다)
+           · .doc-when — 라이브 수치 문서의 '언제 것인가' 줄
+           · .ramp     — 롤아웃 진행 중 경고 바. 표본이 차기 전에 이 문서를 판정으로 읽으면
+                         안 된다는 경고라, 접거나 툴팁으로 숨기면 안 되고 맨 위에 박혀 있어야 한다. -->
+    <style>
+      .doc-when{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin:8px 0 2px;
+        font-size:11.5px;font-weight:700;color:var(--text-dim)}
+      .doc-when b{color:var(--text);font-variant-numeric:tabular-nums}
+      .doc-when i{width:6px;height:6px;border-radius:50%;background:var(--live);
+        display:inline-block;margin-right:6px;vertical-align:1px}
+      .ramp{margin:14px 0 2px;padding:10px 14px;border:1px dashed #cbd5e1;border-left:3px solid var(--warn);
+        border-radius:var(--radius);background:#fffdf5;font-size:12px;line-height:1.75;
+        color:var(--text-dim);font-weight:600}
+      .ramp b{color:var(--text)}
+      .ramp code{background:#eef1f6;padding:0 4px;border-radius:4px;font-size:11px}
+      #tip{position:fixed;z-index:999;pointer-events:none;display:none;max-width:330px;
+        background:#1f2533;color:#fff;border-radius:8px;padding:9px 11px;font-size:11.5px;
+        line-height:1.55;font-weight:600;box-shadow:0 6px 20px rgba(20,25,40,.28);white-space:pre-line}
+      #tip b{color:#ffd9a8;font-weight:800}
+      body{padding-bottom:260px}
+    </style>
+  </head>
+  <body>
+    <div id="tip"></div>
+
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#rollout">롤아웃</a>
+        <a class="nav-back" href="#board">KPI</a>
+        <a class="nav-back" href="#detail">지면 상세</a>
+        <a class="nav-back" href="#verdict">판정</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">검증 · 라이브 데이터</div>
+        <h1 class="doc-title">CP 원격설정 3380 트래킹</h1>
+        <div class="doc-when">
+          <span><i></i>데이터 <b id="w-pulled"></b> KST</span>
+          <span>대조 <b>3375</b> · 신빌드 <b>3380</b></span>
+          <span id="w-range"></span>
+        </div>
+        <p class="doc-lede">
+          CP 팝업을 <b>시트 원격 설정 + 프리팹 통합</b>으로 바꾼 빌드가 라이브에서 구버전만큼 도는지 봅니다.
+          두 빌드가 같은 날 함께 서빙되므로 <b>요일·이벤트·이용자 구성이 양쪽에 똑같이 걸리고</b>,
+          비율 지표는 그대로 대조할 수 있습니다. 다만 아직 <b>3380 표본이 판정선에 못 미쳐</b>
+          대부분의 행이 잠겨 있습니다 — 표본이 차면 그 행부터 자동으로 열립니다.
+        </p>
+        <div class="ramp" id="w-ramp"></div>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--coz)">코인매치</span>
+          <span class="tag">BigQuery · raw.coin_match</span>
+          <span class="tag" id="w-tag-live"></span>
+          <span class="tag" id="w-tag-n"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="rollout">
+        <h2 class="doc-h2">
+          롤아웃 현황
+          <span class="doc-h2-sub">판정에 앞서 "볼 만큼 퍼졌는가"부터 봅니다</span>
+        </h2>
+        <div class="stat-row" id="cards"></div>
+        <div class="table-scroll" id="vertbl"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>일자별 <code>1000_LOGIN_COMPLETE</code> 고유 <code>player_id</code> 입니다.
+              페이스북은 빌드를 한 번에 바꾸지 않아 <b>며칠에 걸쳐 구버전이 신버전으로 갈립니다</b>.
+              3380 점유가 낮은 동안은 신빌드 쪽 유저가 <b>"방금 접속을 시작한 사람"에 치우쳐</b>
+              세션이 짧게 잘리므로, 세션·플레이 계열 지표가 실제보다 낮게 나옵니다.
+              점유가 올라올 때까지 그 행들은 잠가 둡니다.</p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">내부 QA 로그는 제외했습니다</div>
+            <p>3380 은 라이브 전에도 <b>9/10 · 9/11 · 9/15</b> 에 로그가 있습니다 — 페이스북 테스트 빌드로
+              돌린 내부 검증이고, 특히 9/10 은 <b>CP 강제 노출</b>(시트 <code>cross_it=100</code>)로
+              지면을 인위적으로 열어 둔 날입니다. 이 문서의 3380 수치는 <b>실유저 롤아웃 이후</b>만 셉니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section kb" id="board">
+        <h2 class="doc-h2">
+          KPI 보드
+          <span class="doc-h2-sub">같은 날(<span id="w-day"></span>) 3375 를 대조로 둡니다 · 점선은 3375 의 6일 기준선</span>
+        </h2>
+        <div id="groups"></div>
+        <div class="kb-foot">
+          <b>회색 빗금 칸</b>은 표본 미달입니다 — 분모가 판정선에 닿지 않아 값을 그리지 않습니다.
+          비율을 억지로 그려 두면 3건짜리 분모가 1,300건짜리 분모와 같은 길이의 막대로 보입니다.
+          <b>점선</b>은 3375 의 <span id="w-basedays"></span> 기준선이고, 대조 막대(3375 당일)가 그 선에서 크게 벗어나 있으면
+          당일 자체가 특이한 날이라는 뜻이라 Δ 판정을 미뤄야 합니다.
+        </div>
+      </section>
+
+      <section class="doc-section" id="detail">
+        <h2 class="doc-h2">
+          지면 상세
+          <span class="doc-h2-sub">대상 게임 배분과 전환 실패 사유</span>
+        </h2>
+        <div class="table-scroll" id="gametbl"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">대상 게임 배분</div>
+            <p>시트 <code>cp_order</code> 순서대로 <b>라운드로빈으로 교대</b>하고, 배너가 없는 게임은 건너뜁니다.
+              원격 설정이 깨지면 여기가 <b>한 게임으로 쏠리거나 비어</b> 나타납니다.
+              구버전과 <b>같은 두 게임이 비슷한 비율로</b> 잡히면 설정 로드와 교대가 정상입니다.</p>
+          </div>
+        </div>
+        <div class="table-scroll" id="fctbl"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">FAIL 사유 — 많다고 나쁜 게 아닙니다</div>
+            <p><code>8990_CROSS_PROMO_FAIL</code> 은 <code>switchGameAsync</code> 의 <code>.catch</code> 입니다.
+              <b>USER_INPUT</b>(전환 확인창에서 유저가 취소) · <b>CLIENT_UNSUPPORTED_OPERATION</b>(해당 클라가 전환 미지원) ·
+              <b>INVALID_PARAM</b> 은 구버전에서도 늘 있던 정상 범주이고, 구버전 기준 PLAY 의 절반 이상이 여기로 떨어집니다.
+              판정 대상은 <b>비율의 급변</b>과 <b>새로 등장한 코드</b>이지 FAIL 의 존재 자체가 아닙니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="verdict">
+        <h2 class="doc-h2">
+          판정 기준
+          <span class="doc-h2-sub">표본이 찼을 때 무엇을 보고 통과·회귀로 부를지 미리 못박아 둡니다</span>
+        </h2>
+        <div class="table-scroll" id="vtbl"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">이번 배포에서 가장 중요한 행</div>
+            <p><b>PLAY 후 20초 내 재시작률</b>입니다. 페이스북 테스트 빌드(9/10)에서 PLAY 를 누르면
+              대상 게임 대신 <b>우리 게임이 재시작되는 현상</b>이 9건 중 2건 나왔고, 코드 대조로는 원인이
+              전부 배제돼 <b>테스트 빌드 환경 탓으로 보류</b>한 건입니다. 정식 빌드에서 구버전 수준(2~3%)이면
+              그 보류를 종결할 수 있고, 10% 를 넘으면 이번 변경의 회귀로 봐야 합니다.</p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">이 문서로 판정할 수 없는 것</div>
+            <p><b>CP 팝업 중 DOM 오버레이 차단</b>(이름·사진 레이어)은 로그가 없어 BQ 로 확인되지 않습니다 —
+              디바이스나 FB 빌드에서 눈으로 봐야 합니다. <b>배너 렌더 품질</b>(규격 왜곡·깨짐)도 마찬가지입니다.
+              <b>PLAY 의 실제 전환 성공</b>도 셀 수 없습니다: 전환에 성공하면 페이지가 언로드돼
+              성공 로그를 남길 기회 자체가 없기 때문에, <b>FAIL 이 아닌 PLAY</b> 를 성공의 대리 지표로 씁니다.</p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>수치를 만든 쿼리 — raw 를 한 번만 훑습니다</summary>
+          <div class="fold-body">
+            <pre><code id="sqlbox"></code></pre>
+          </div>
+        </details>
+
+        <div class="foot">
+          <b>확인 범위</b> 2026-09-10 ~ 조회일까지 <code>game-log-359704.raw.coin_match</code> 실측입니다.
+          리텐션은 코호트가 하루도 차지 않아 아직 넣지 않았습니다 — 3380 설치 코호트의 D+1 이 도래하면
+          <code>stat.coin_match_prod_nru_retention3</code> 에서 가중 복원해 추가합니다.
+          당일 값은 <b>부분일</b>이라 절대량이 아니라 비율로만 읽어야 합니다.
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // ── 데이터 ───────────────────────────────────────────────────────────
+      // 이 블록은 조회 결과를 그대로 심은 것이다. 페이지는 fetch 를 쓰지 않는다 —
+      // 자기완결이어야 링크만 열어도 같은 값이 보인다.
+      /* DATA:START */
+      const PULLED = "2026-09-16 14:06";
+
+      // 일자 × 빌드. 보드는 여기서 기간을 합산해 만든다 — 모든 행이 더할 수 있는 카운트다.
+      const DAILY = [
+        { ver:"3375", d:"2026-09-10", ud:56310, ses:89628, s300:29536, ps:262201, pf:224397, it:124549, rv:152019, impr:2128, play:235, fail:124, ex:2020, cu:470, err:0 },
+        { ver:"3380", d:"2026-09-10", ud:8, ses:26, s300:9, ps:38, pf:11, it:1, rv:0, impr:22, play:9, fail:6, ex:18, cu:4, err:0 },
+        { ver:"3375", d:"2026-09-11", ud:53323, ses:86506, s300:28906, ps:250379, pf:213679, it:118851, rv:146004, impr:2308, play:222, fail:111, ex:2212, cu:465, err:0 },
+        { ver:"3380", d:"2026-09-11", ud:2, ses:11, s300:7, ps:11, pf:1, it:0, rv:0, impr:0, play:0, fail:0, ex:0, cu:0, err:0 },
+        { ver:"3375", d:"2026-09-12", ud:52815, ses:84183, s300:28205, ps:246183, pf:209230, it:115307, rv:147954, impr:2285, play:190, fail:102, ex:2204, cu:430, err:0 },
+        { ver:"3375", d:"2026-09-13", ud:60941, ses:94836, s300:29605, ps:271729, pf:229861, it:125393, rv:154952, impr:2287, play:250, fail:146, ex:2185, cu:482, err:0 },
+        { ver:"3375", d:"2026-09-14", ud:53505, ses:86836, s300:28188, ps:254959, pf:217850, it:121631, rv:148130, impr:2067, play:230, fail:145, ex:1994, cu:448, err:0 },
+        { ver:"3375", d:"2026-09-15", ud:55530, ses:88171, s300:28572, ps:258034, pf:220603, it:122055, rv:147208, impr:2125, play:227, fail:144, ex:2095, cu:446, err:0 },
+        { ver:"3380", d:"2026-09-15", ud:17, ses:28, s300:9, ps:37, pf:15, it:2, rv:2, impr:9, play:3, fail:3, ex:9, cu:3, err:0 },
+        { ver:"3375", d:"2026-09-16", ud:33876, ses:49795, s300:16195, ps:148190, pf:126614, it:69716, rv:88522, impr:1292, play:108, fail:52, ex:1233, cu:313, err:0 },
+        { ver:"3380", d:"2026-09-16", ud:703, ses:815, s300:209, ps:1415, pf:998, it:428, rv:449, impr:24, play:3, fail:1, ex:22, cu:5, err:1 },
+      ];
+
+      // PLAY 한 건마다 20초 창을 열어 FAIL·재로그인을 붙인 결과. 창을 넘기면 다른 세션이 섞인다.
+      const PLAYEVAL = [
+        { ver:"3375", d:"2026-09-10", plays:234, fail20:127, restart20:7 },
+        { ver:"3375", d:"2026-09-11", plays:222, fail20:110, restart20:10 },
+        { ver:"3375", d:"2026-09-12", plays:190, fail20:101, restart20:5 },
+        { ver:"3375", d:"2026-09-13", plays:250, fail20:144, restart20:10 },
+        { ver:"3375", d:"2026-09-14", plays:230, fail20:150, restart20:1 },
+        { ver:"3375", d:"2026-09-15", plays:227, fail20:139, restart20:6 },
+        { ver:"3375", d:"2026-09-16", plays:108, fail20:51, restart20:1 },
+        { ver:"3380", d:"2026-09-10", plays:9, fail20:6, restart20:2 },
+        { ver:"3380", d:"2026-09-15", plays:3, fail20:3, restart20:0 },
+        { ver:"3380", d:"2026-09-16", plays:3, fail20:1, restart20:0 },
+      ];
+
+      const GAME = [
+        { ver:"3375", d:"2026-09-10", game:"SolitaireCityJourney", impr:1446, play:153, fail:82 },
+        { ver:"3375", d:"2026-09-10", game:"ThePuzzle", impr:682, play:82, fail:42 },
+        { ver:"3375", d:"2026-09-11", game:"SolitaireCityJourney", impr:1562, play:159, fail:76 },
+        { ver:"3375", d:"2026-09-11", game:"ThePuzzle", impr:746, play:63, fail:35 },
+        { ver:"3375", d:"2026-09-12", game:"SolitaireCityJourney", impr:1592, play:133, fail:73 },
+        { ver:"3375", d:"2026-09-12", game:"ThePuzzle", impr:693, play:57, fail:29 },
+        { ver:"3375", d:"2026-09-13", game:"SolitaireCityJourney", impr:1597, play:182, fail:104 },
+        { ver:"3375", d:"2026-09-13", game:"ThePuzzle", impr:690, play:68, fail:42 },
+        { ver:"3375", d:"2026-09-14", game:"SolitaireCityJourney", impr:1410, play:154, fail:83 },
+        { ver:"3375", d:"2026-09-14", game:"ThePuzzle", impr:657, play:76, fail:62 },
+        { ver:"3375", d:"2026-09-15", game:"SolitaireCityJourney", impr:1440, play:139, fail:78 },
+        { ver:"3375", d:"2026-09-15", game:"ThePuzzle", impr:685, play:88, fail:66 },
+        { ver:"3375", d:"2026-09-16", game:"SolitaireCityJourney", impr:879, play:69, fail:33 },
+        { ver:"3375", d:"2026-09-16", game:"ThePuzzle", impr:413, play:39, fail:19 },
+        { ver:"3380", d:"2026-09-10", game:"SolitaireCityJourney", impr:16, play:7, fail:5 },
+        { ver:"3380", d:"2026-09-10", game:"ThePuzzle", impr:6, play:2, fail:1 },
+        { ver:"3380", d:"2026-09-15", game:"SolitaireCityJourney", impr:6, play:2, fail:2 },
+        { ver:"3380", d:"2026-09-15", game:"ThePuzzle", impr:3, play:1, fail:1 },
+        { ver:"3380", d:"2026-09-16", game:"SolitaireCityJourney", impr:15, play:2, fail:0 },
+        { ver:"3380", d:"2026-09-16", game:"ThePuzzle", impr:9, play:1, fail:1 },
+      ];
+
+      const FAILCODE = [
+        { ver:"3375", d:"2026-09-10", ec:"USER_INPUT", n:68 },
+        { ver:"3375", d:"2026-09-10", ec:"CLIENT_UNSUPPORTED_OPERATION", n:46 },
+        { ver:"3375", d:"2026-09-10", ec:"INVALID_PARAM", n:10 },
+        { ver:"3375", d:"2026-09-11", ec:"USER_INPUT", n:64 },
+        { ver:"3375", d:"2026-09-11", ec:"CLIENT_UNSUPPORTED_OPERATION", n:44 },
+        { ver:"3375", d:"2026-09-11", ec:"NETWORK_FAILURE", n:2 },
+        { ver:"3375", d:"2026-09-11", ec:"INVALID_PARAM", n:1 },
+        { ver:"3375", d:"2026-09-12", ec:"USER_INPUT", n:77 },
+        { ver:"3375", d:"2026-09-12", ec:"CLIENT_UNSUPPORTED_OPERATION", n:14 },
+        { ver:"3375", d:"2026-09-12", ec:"INVALID_PARAM", n:10 },
+        { ver:"3375", d:"2026-09-12", ec:"NETWORK_FAILURE", n:1 },
+        { ver:"3375", d:"2026-09-13", ec:"USER_INPUT", n:80 },
+        { ver:"3375", d:"2026-09-13", ec:"CLIENT_UNSUPPORTED_OPERATION", n:46 },
+        { ver:"3375", d:"2026-09-13", ec:"INVALID_PARAM", n:15 },
+        { ver:"3375", d:"2026-09-13", ec:"NETWORK_FAILURE", n:5 },
+        { ver:"3375", d:"2026-09-14", ec:"CLIENT_UNSUPPORTED_OPERATION", n:78 },
+        { ver:"3375", d:"2026-09-14", ec:"USER_INPUT", n:55 },
+        { ver:"3375", d:"2026-09-14", ec:"INVALID_PARAM", n:11 },
+        { ver:"3375", d:"2026-09-14", ec:"NETWORK_FAILURE", n:1 },
+        { ver:"3375", d:"2026-09-15", ec:"USER_INPUT", n:74 },
+        { ver:"3375", d:"2026-09-15", ec:"CLIENT_UNSUPPORTED_OPERATION", n:39 },
+        { ver:"3375", d:"2026-09-15", ec:"INVALID_PARAM", n:30 },
+        { ver:"3375", d:"2026-09-15", ec:"NETWORK_FAILURE", n:1 },
+        { ver:"3375", d:"2026-09-16", ec:"USER_INPUT", n:33 },
+        { ver:"3375", d:"2026-09-16", ec:"CLIENT_UNSUPPORTED_OPERATION", n:14 },
+        { ver:"3375", d:"2026-09-16", ec:"INVALID_PARAM", n:5 },
+        { ver:"3380", d:"2026-09-10", ec:"USER_INPUT", n:6 },
+        { ver:"3380", d:"2026-09-15", ec:"USER_INPUT", n:3 },
+        { ver:"3380", d:"2026-09-16", ec:"USER_INPUT", n:1 },
+      ];
+
+      const VERSION = [
+        { d:"2026-09-10", ver:"3375", dau:56310 },
+        { d:"2026-09-11", ver:"3375", dau:53323 },
+        { d:"2026-09-12", ver:"3375", dau:52815 },
+        { d:"2026-09-13", ver:"3375", dau:60941 },
+        { d:"2026-09-14", ver:"3375", dau:53505 },
+        { d:"2026-09-15", ver:"3375", dau:55530 },
+        { d:"2026-09-16", ver:"3375", dau:33876 },
+        { d:"2026-09-16", ver:"3380", dau:703 },
+      ];
+      /* DATA:END */
+
+      // ── 기간 정의 ────────────────────────────────────────────────────────
+      // 3380 은 라이브 전 내부 QA 로그가 섞여 있다(9/10 은 CP 강제 노출까지 켠 날).
+      // LIVE_FROM 이전 3380 행은 이 문서의 어떤 계산에도 들어가지 않는다.
+      const LIVE_FROM = "2026-09-16";
+      const BASE_FROM = "2026-09-10", BASE_TO = "2026-09-15";   // 3375 완전일 기준선
+
+      const LIVE_DAYS = [...new Set(DAILY.filter(r => r.ver === "3380" && r.d >= LIVE_FROM).map(r => r.d))].sort();
+      const DAY = LIVE_DAYS[LIVE_DAYS.length - 1] || LIVE_FROM;
+
+      const sum = rows => rows.reduce((o, r) => {
+        for (const k in r) if (typeof r[k] === "number") o[k] = (o[k] || 0) + r[k];
+        return o;
+      }, {});
+      const span = (src, ver, from, to) =>
+        sum(src.filter(r => r.ver === ver && r.d >= from && r.d <= to));
+
+      // 세 덩어리. A 는 "같은 날 구버전", B 는 "라이브 이후 신버전", BASE 는 완전일 기준선.
+      const A    = { c: span(DAILY, "3375", LIVE_FROM, "9999"), p: span(PLAYEVAL, "3375", LIVE_FROM, "9999") };
+      const B    = { c: span(DAILY, "3380", LIVE_FROM, "9999"), p: span(PLAYEVAL, "3380", LIVE_FROM, "9999") };
+      const BASE = { c: span(DAILY, "3375", BASE_FROM, BASE_TO), p: span(PLAYEVAL, "3375", BASE_FROM, BASE_TO) };
+
+      // ── 포맷 ─────────────────────────────────────────────────────────────
+      const nf  = v => (v || 0).toLocaleString("en-US");
+      const pc  = v => v.toFixed(1) + "%";
+      const pc2 = v => v.toFixed(2) + "%";
+      const p2  = v => v.toFixed(2);
+      const p3  = v => v.toFixed(3);
+
+      // ── 지표 정의 ────────────────────────────────────────────────────────
+      // v   값 함수 · n 분모(표본) 함수 · min 판정에 필요한 최소 분모
+      // dir +1 이면 오르는 게 좋고, -1 이면 내리는 게 좋고, 0 이면 방향 판정을 하지 않는다.
+      // min 을 둔 이유: 분모 3건짜리 비율도 막대는 똑같이 그려져서, 잠그지 않으면
+      // 표본 부족이 "판정 완료"처럼 보인다. 이 문서가 가장 크게 틀릴 수 있는 지점이다.
+      const M = {
+        impr_pu:  { lab:"CP 노출 / DAU",        v:x=>x.c.impr/x.c.ud,          n:x=>x.c.ud,    min:2000, fmt:p3,  scale:"g_small", dir:0,
+                    note:"8990_CROSS_PROMO ÷ DAU. CP 는 광고 노필 때 대체로 뜨는 지면이라 노필 발생량에 따라 흔들립니다 — 0 이 아니라는 것(원격 설정과 배너가 로드됐다는 것)이 1차 판정이고, 절대 수준은 지면 정책이 같을 때만 비교됩니다" },
+        reach:    { lab:"CP 도달 유저 비율",     v:x=>x.c.cu/x.c.ud*100,        n:x=>x.c.ud,    min:2000, fmt:pc2, scale:"g_pct2",  dir:0,
+                    note:"하루에 CP 를 한 번이라도 본 유저 비중입니다. 노출/DAU 와 달리 세션 캡(게임당 3회)에 덜 휘둘려서, 지면이 실제로 열리는지 보는 데는 이 쪽이 안정적입니다" },
+        ctr:      { lab:"CTR (PLAY / 노출)",     v:x=>x.c.play/x.c.impr*100,    n:x=>x.c.impr,  min:300,  fmt:pc,  scale:"g_pct",   dir:1, key:true,
+                    note:"8990_CROSS_PROMO_PLAY ÷ 8990_CROSS_PROMO. 배너가 제대로 렌더되는지까지 간접으로 담는 행입니다 — 이미지가 깨져 보이면 가장 먼저 여기가 꺼집니다" },
+        exitr:    { lab:"닫기 / 노출",           v:x=>x.c.ex/x.c.impr*100,      n:x=>x.c.impr,  min:300,  fmt:pc,  scale:"g_pct",   dir:0,
+                    note:"8990_CROSS_PROMO_EXIT ÷ 노출. CTR 의 사실상 여집합입니다. 둘의 합이 100% 에 크게 못 미치면 팝업이 닫히지도 눌리지도 않고 사라진 것이라, 그때는 흐름이 굳었는지 봐야 합니다" },
+        failr:    { lab:"FAIL / PLAY",           v:x=>x.p.fail20/x.p.plays*100, n:x=>x.p.plays, min:50,   fmt:pc,  scale:"g_pct",   dir:0,
+                    note:"PLAY 후 20초 안에 8990_CROSS_PROMO_FAIL 이 붙은 비율. 구버전도 절반 이상이 여기로 떨어지며 대부분 USER_INPUT(유저 취소)입니다 — 수준이 비슷한지만 봅니다" },
+        restartr: { lab:"PLAY 후 재시작 / PLAY", v:x=>x.p.restart20/x.p.plays*100, n:x=>x.p.plays, min:50, fmt:pc, scale:"g_pct",  dir:-1, key:true,
+                    note:"PLAY 후 20초 안에 1000_LOGIN_COMPLETE 가 찍힌 비율 — 대상 게임으로 가지 않고 우리 게임이 다시 뜬 경우입니다. 페이스북 테스트 빌드에서 9건 중 2건 나왔던 현상이고, 이 문서에서 가장 중요한 행입니다" },
+        pps:      { lab:"판수 / 세션",           v:x=>x.c.ps/x.c.ses,           n:x=>x.c.ses,   min:5000, fmt:p2,  scale:"g_play",  dir:1,
+                    note:"2100_GAMEPLAY_START ÷ 세션(player_id + logincount_total). 롤아웃 초반에는 신빌드 세션이 '방금 시작한' 것들이라 구조적으로 낮게 나옵니다 — 점유가 올라온 뒤에 봐야 합니다" },
+        finr:     { lab:"판 완료율",             v:x=>x.c.pf/x.c.ps*100,        n:x=>x.c.ps,    min:5000, fmt:pc,  scale:"g_pct",   dir:1,
+                    note:"2300_GAMEPLAY_FINISH ÷ 2100_GAMEPLAY_START. 진행 중인 판이 분모에만 잡히므로 이것도 롤아웃 초반에는 낮게 나옵니다" },
+        s300:     { lab:"5분 이상 세션",         v:x=>x.c.s300/x.c.ses*100,     n:x=>x.c.ses,   min:5000, fmt:pc,  scale:"g_pct",   dir:1,
+                    note:"1170_PLAYTIME_300S 가 찍힌 세션 비중. 팝업이 흐름을 굳히면 여기가 먼저 꺼집니다" },
+        ads:      { lab:"광고 완료 / DAU",       v:x=>(x.c.it+x.c.rv)/x.c.ud,   n:x=>x.c.ud,    min:2000, fmt:p2,  scale:"g_ads",   dir:0,
+                    note:"4010(전면) + 4210(RV) ÷ DAU. CP 는 광고 노필의 대체 지면이라 광고가 통째로 죽었는지 확인하는 안전망입니다" },
+        errpu:    { lab:"클라 에러 / 1k DAU",    v:x=>x.c.err/x.c.ud*1000,      n:x=>x.c.ud,    min:2000, fmt:p2,  scale:"g_err",   dir:-1,
+                    note:"9200_CLIENT_ERROR ÷ DAU × 1000. 구버전은 이 기간 0 건이라 신빌드에서 올라오면 그대로 신호입니다" },
+      };
+
+      const GROUPS = [
+        { name:"CP 지면", acc:"#d97706", keys:["impr_pu","reach","ctr","exitr"],
+          sub:"팝업이 뜨고 눌리는가 — 원격 설정·CDN 배너가 살아 있는지 보는 구역입니다" },
+        { name:"PLAY 전환", acc:"#dc2626", keys:["failr","restartr"],
+          sub:"누른 다음 대상 게임으로 실제로 넘어가는가 — 이번 배포의 미결 항목입니다" },
+        { name:"회귀 감시", acc:"#15803d", keys:["pps","finr","s300","ads","errpu"],
+          sub:"CP 와 무관해야 하는 값 · 롤아웃 초반에는 신빌드 세션이 짧게 잘려 구조적으로 낮게 나옵니다" },
+      ];
+
+      // ── 보드 ─────────────────────────────────────────────────────────────
+      // 스케일은 같은 단위 계열끼리 공유한다. 행마다 자기 최대로 늘리면 모든 막대가
+      // 꽉 차서 길이가 Δ 이상의 정보를 주지 못한다.
+      const GMX = {};
+      Object.values(M).forEach(m => {
+        [A, B, BASE].forEach(x => {
+          const v = m.v(x);
+          if (isFinite(v)) GMX[m.scale] = Math.max(GMX[m.scale] || 0, v);
+        });
+      });
+
+      const barRow = (lab, v, cls, fmt, scale, nx) => {
+        const mx = (GMX[scale] || 0) * 1.35;
+        const w = mx > 0 ? Math.max(v / mx * 100, v > 0 ? 1.5 : 0) : 0;
+        return `<div class="br"><span class="bl">${lab}</span>`
+          + `<div class="bt"><i class="${cls}" style="width:${w.toFixed(1)}%"></i></div>`
+          + `<span class="bv ${cls}">${fmt(v)}</span>`
+          + `<span class="bn">${nx}</span></div>`;
+      };
+
+      const row = k => {
+        const m = M[k];
+        const a = m.v(A), b = m.v(B), base = m.v(BASE);
+        const nA = m.n(A), nB = m.n(B);
+        const ok = nB >= m.min && isFinite(b);
+
+        // 목표선 — 3375 의 완전일 기준선. 당일 대조가 이 선에서 멀면 그 날이 특이한 날이다.
+        const mx = (GMX[m.scale] || 0) * 1.35;
+        const tgx = mx > 0 && isFinite(base) ? Math.min(base / mx * 100, 100) : null;
+
+        let bs;
+        if (ok) {
+          bs = barRow("3375", a, "a", m.fmt, m.scale, nf(nA))
+             + barRow("3380", b, "b", m.fmt, m.scale, nf(nB));
+        } else {
+          // 표본 미달 — 값을 그리지 않는다. 대신 얼마나 더 있어야 열리는지 적는다.
+          bs = barRow("3375", a, "a", m.fmt, m.scale, nf(nA))
+             + `<div class="na">3380 표본 ${nf(nB)} / 판정선 ${nf(m.min)} — 잠김</div>`;
+        }
+        if (tgx != null && ok) {
+          bs += `<div class="tgs"><span class="tgl" style="left:${tgx.toFixed(1)}%">기준선 ${m.fmt(base)}</span></div>`;
+        }
+
+        let bd = "—", cls = "mute";
+        if (ok && a > 0) {
+          const dv = (b - a) / a * 100;
+          bd = (dv > 0 ? "+" : "") + dv.toFixed(1) + "%";
+          if (m.dir === 0 || Math.abs(dv) < 5) cls = m.dir === 0 ? "spec" : "mute";
+          else cls = (dv > 0 ? 1 : -1) === m.dir ? "good" : "bad";
+        } else if (!ok) {
+          bd = "대기";
+        }
+
+        const tip = `${m.note}\n\n기준선(3375 ${BASE_FROM.slice(5)}~${BASE_TO.slice(5)}) ${isFinite(base) ? m.fmt(base) : "—"}`;
+        // 잠긴 행이라고 통째로 흐리게 하지 않는다 — 지금은 전 행이 잠겨 있어서
+        // dim 을 걸면 보드 전체가 읽히지 않는다. 잠김은 .na 스트립이 이미 말한다.
+        return `<div class="mr${m.key ? " key" : ""}">
+            <div class="ml">${m.lab}<span class="q" data-tip="${tip}">ⓘ</span></div>
+            <div class="bs">${bs}</div>
+            <div class="bd ${cls}">${bd}</div>
+          </div>`;
+      };
+
+      document.getElementById("groups").innerHTML = GROUPS.map(g => `
+        <div class="gp mx" style="--g:${g.acc}">
+          <h3>${g.name}<span>${g.sub}</span></h3>
+          <div class="mr hd">
+            <div class="ml">지표</div>
+            <div class="bs"><span class="ha">3375 · 구버전</span><span class="hb">3380 · 신빌드</span></div>
+            <div class="bd">Δ</div>
+          </div>
+          ${g.keys.map(row).join("")}
+        </div>`).join("");
+
+      // ── 상단 카드 ────────────────────────────────────────────────────────
+      // 하드코딩하면 갱신에서 굳는다. 전부 위 데이터에서 만든다.
+      const shareB = B.c.ud / (A.c.ud + B.c.ud) * 100;
+      const restOK = B.p.plays >= M.restartr.min;
+      document.getElementById("cards").innerHTML = `
+        <div class="stat" style="--acc: var(--deploy)">
+          <div class="stat-num">${nf(B.c.ud)}</div>
+          <div class="stat-name">3380 DAU</div>
+          <div class="stat-sub">${DAY} 부분일 · 계속 증가 중</div>
+        </div>
+        <div class="stat" style="--acc: #1d4ed8">
+          <div class="stat-num">${shareB.toFixed(1)}<span class="stat-unit">%</span></div>
+          <div class="stat-name">신빌드 점유</div>
+          <div class="stat-sub">3375 ${nf(A.c.ud)} : 3380 ${nf(B.c.ud)}</div>
+        </div>
+        <div class="stat" style="--acc: #d97706">
+          <div class="stat-num">${nf(B.c.impr)}</div>
+          <div class="stat-name">CP 노출 표본</div>
+          <div class="stat-sub">CTR 판정선 ${nf(M.ctr.min)} · ${B.c.impr >= M.ctr.min ? "열림" : "잠김"}</div>
+        </div>
+        <div class="stat" style="--acc: ${restOK ? "var(--ok)" : "#5f6878"}">
+          <div class="stat-num">${B.p.plays ? (B.p.restart20 / B.p.plays * 100).toFixed(0) + "%" : "—"}</div>
+          <div class="stat-name">PLAY 후 재시작</div>
+          <div class="stat-sub">${nf(B.p.restart20)} / ${nf(B.p.plays)} · ${restOK ? "판정 가능" : "표본 미달"}</div>
+        </div>`;
+
+      // ── 롤아웃 표 ────────────────────────────────────────────────────────
+      const VDAYS = [...new Set(VERSION.map(r => r.d))].sort();
+      const VERS  = [...new Set(VERSION.map(r => r.ver))].sort();
+      document.getElementById("vertbl").innerHTML = `<table>
+        <thead><tr><th>일자</th>${VERS.map(v => `<th style="text-align:right">${v}</th>`).join("")}
+          <th style="text-align:right">3380 점유</th></tr></thead>
+        <tbody>${VDAYS.map(d => {
+          const cell = v => (VERSION.find(r => r.d === d && r.ver === v) || {}).dau || 0;
+          const tot = VERS.reduce((t, v) => t + cell(v), 0);
+          const sh  = tot ? cell("3380") / tot * 100 : 0;
+          return `<tr><td>${d}${d === DAY ? " <span class=\"pill\" style=\"--acc: var(--warn)\">부분일</span>" : ""}</td>`
+            + VERS.map(v => `<td style="text-align: right">${cell(v) ? nf(cell(v)) : "·"}</td>`).join("")
+            + `<td style="text-align: right">${sh ? sh.toFixed(2) + "%" : "·"}</td></tr>`;
+        }).join("")}</tbody></table>`;
+
+      // ── 게임별 배분 ──────────────────────────────────────────────────────
+      const gameRows = ver => GAME.filter(r => r.ver === ver && r.d >= LIVE_FROM);
+      const GAMES = [...new Set(GAME.filter(r => r.d >= LIVE_FROM).map(r => r.game))];
+      document.getElementById("gametbl").innerHTML = `<table>
+        <thead><tr><th>대상 게임</th><th style="text-align:right">3375 노출</th><th style="text-align:right">점유</th>
+          <th style="text-align:right">3380 노출</th><th style="text-align:right">점유</th>
+          <th style="text-align:right">3380 PLAY</th></tr></thead>
+        <tbody>${GAMES.map(g => {
+          const a = gameRows("3375").find(r => r.game === g) || { impr: 0, play: 0 };
+          const b = gameRows("3380").find(r => r.game === g) || { impr: 0, play: 0 };
+          const ta = sum(gameRows("3375")).impr || 0, tb = sum(gameRows("3380")).impr || 0;
+          return `<tr><td><code>${g}</code></td>
+            <td style="text-align: right">${nf(a.impr)}</td>
+            <td style="text-align: right">${ta ? (a.impr / ta * 100).toFixed(1) + "%" : "·"}</td>
+            <td style="text-align: right">${nf(b.impr)}</td>
+            <td style="text-align: right">${tb ? (b.impr / tb * 100).toFixed(1) + "%" : "·"}</td>
+            <td style="text-align: right">${nf(b.play)}</td></tr>`;
+        }).join("")}</tbody></table>`;
+
+      // ── FAIL 사유 ────────────────────────────────────────────────────────
+      const fcRows = ver => FAILCODE.filter(r => r.ver === ver && r.d >= LIVE_FROM);
+      const CODES = [...new Set(FAILCODE.filter(r => r.d >= LIVE_FROM).map(r => r.ec))];
+      const fcSum = ver => fcRows(ver).reduce((t, r) => t + r.n, 0);
+      document.getElementById("fctbl").innerHTML = `<table>
+        <thead><tr><th>error_code</th><th style="text-align:right">3375</th><th style="text-align:right">비중</th>
+          <th style="text-align:right">3380</th><th>판정</th></tr></thead>
+        <tbody>${CODES.map(ec => {
+          const a = fcRows("3375").filter(r => r.ec === ec).reduce((t, r) => t + r.n, 0);
+          const b = fcRows("3380").filter(r => r.ec === ec).reduce((t, r) => t + r.n, 0);
+          const ta = fcSum("3375");
+          const known = a > 0;
+          return `<tr><td><code>${ec}</code></td>
+            <td style="text-align: right">${nf(a)}</td>
+            <td style="text-align: right">${ta ? (a / ta * 100).toFixed(1) + "%" : "·"}</td>
+            <td style="text-align: right">${nf(b)}</td>
+            <td>${known ? `<span class="pill" style="--acc: var(--ok)">구버전에도 있던 코드</span>`
+                         : `<span class="pill" style="--acc: var(--bad)">신빌드에서 새로 등장</span>`}</td></tr>`;
+        }).join("")}</tbody></table>`;
+
+      // ── 판정 기준표 ──────────────────────────────────────────────────────
+      // 통과선은 '기준선 대비 몇 %' 로 적는다. 절대값으로 박아 두면 구버전이 움직였을 때
+      // 기준만 옛 자리에 남는다.
+      const TH = [
+        ["reach",    "±40%",  v => Math.abs(v) <= 40, "지면이 열리는지 · 0 에 수렴하면 설정·배너 로드 실패"],
+        ["ctr",      "−30%",  v => v >= -30,          "배너가 보이고 눌리는지"],
+        ["failr",    "±25%",  v => Math.abs(v) <= 25, "전환 실패 수준이 구버전과 같은지"],
+        ["restartr", "≤ 2배", v => v <= 100,          "테스트 빌드 현상(재시작)이 정식에서도 나는지 — 핵심"],
+        ["pps",      "−10%",  v => v >= -10,          "게임 플레이 회귀"],
+        ["s300",     "−10%",  v => v >= -10,          "세션 길이 회귀"],
+        ["ads",      "−15%",  v => v >= -15,          "광고 지면이 통째로 죽었는지"],
+        ["errpu",    "+0.5",  v => true,              "신빌드에서 클라 에러가 올라오는지"],
+      ];
+      document.getElementById("vtbl").innerHTML = `<table>
+        <thead><tr><th>지표</th><th style="text-align:right">기준선 (3375)</th><th style="text-align:right">통과 조건</th>
+          <th style="text-align:right">현재 (3380)</th><th>상태</th><th>무엇을 잡는 행인가</th></tr></thead>
+        <tbody>${TH.map(([k, cond, pass, why]) => {
+          const m = M[k];
+          const base = m.v(BASE), a = m.v(A), b = m.v(B);
+          const ok = m.n(B) >= m.min && isFinite(b);
+          const dv = ok && a > 0 ? (b - a) / a * 100 : null;
+          const st = !ok ? `<span class="pill" style="--acc: #5f6878">표본 대기</span>`
+            : pass(dv) ? `<span class="pill" style="--acc: var(--ok)">통과</span>`
+                       : `<span class="pill" style="--acc: var(--bad)">확인 필요</span>`;
+          return `<tr><td>${m.lab}</td>
+            <td style="text-align: right">${isFinite(base) ? m.fmt(base) : "·"}</td>
+            <td style="text-align: right">${cond}</td>
+            <td style="text-align: right">${ok ? m.fmt(b) : `<span style="color: var(--text-faint)">${nf(m.n(B))} / ${nf(m.min)}</span>`}</td>
+            <td>${st}</td><td>${why}</td></tr>`;
+        }).join("")}</tbody></table>`;
+
+      // ── 머리말의 숫자 ────────────────────────────────────────────────────
+      const put = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+      put("w-pulled", PULLED);
+      put("w-range", `대조 구간 <b>${DAY}</b> · 기준선 <b>${BASE_FROM.slice(5)}~${BASE_TO.slice(5)}</b>`);
+      put("w-day", DAY);
+      put("w-basedays", `${BASE_FROM.slice(5)}~${BASE_TO.slice(5)} (6일)`);
+      put("w-tag-live", `롤아웃 ${LIVE_FROM} ~`);
+      put("w-tag-n", `3380 n=${nf(B.c.ud)} DAU · CP 노출 ${nf(B.c.impr)}`);
+      const locked = Object.keys(M).filter(k => M[k].n(B) < M[k].min).length;
+      put("w-ramp", `<b>롤아웃 진행 중 — 아직 판정 문서가 아닙니다.</b> 3380 점유가
+        <b>${shareB.toFixed(1)}%</b>(DAU ${nf(B.c.ud)})이고, 전체 ${Object.keys(M).length}개 지표 중
+        <b>${locked}개가 표본 미달로 잠겨</b> 있습니다. 지금 읽을 수 있는 것은
+        <b>"CP 가 뜨고 눌리며 새 에러 코드가 없다"</b>까지입니다. Δ 를 결론으로 인용하지 마세요.`);
+
+      put("sqlbox", document.getElementById("sqlsrc").textContent.trim());
+
+      // ── 툴팁 ─────────────────────────────────────────────────────────────
+      // 주석을 본문에 다 깔면 표가 글에 묻힌다. 필요할 때만 꺼내 보게 한다.
+      const tip = document.getElementById("tip");
+      document.addEventListener("mouseover", e => {
+        const t = e.target.closest("[data-tip]");
+        if (!t) return;
+        tip.innerHTML = t.getAttribute("data-tip");
+        tip.style.display = "block";
+      });
+      document.addEventListener("mousemove", e => {
+        if (tip.style.display !== "block") return;
+        const pad = 14;
+        let x = e.clientX + pad, y = e.clientY + pad;
+        if (x + tip.offsetWidth > innerWidth - 8) x = e.clientX - tip.offsetWidth - pad;
+        if (y + tip.offsetHeight > innerHeight - 8) y = e.clientY - tip.offsetHeight - pad;
+        tip.style.left = x + "px";
+        tip.style.top = y + "px";
+      });
+      document.addEventListener("mouseout", e => {
+        if (e.target.closest("[data-tip]")) tip.style.display = "none";
+      });
+    </script>
+
+    <script type="text/plain" id="sqlsrc">
+WITH base AS (
+  SELECT
+    CAST(client_version AS STRING) AS ver,
+    FORMAT_DATE('%Y-%m-%d', log_date) AS d,
+    log_time, player_id, event,
+    CONCAT(CAST(player_id AS STRING), '_', CAST(logincount_total AS STRING)) AS session_key,
+    JSON_VALUE(data, '$.game')       AS game,
+    JSON_VALUE(data, '$.error_code') AS ec
+  FROM `game-log-359704.raw.coin_match`
+  WHERE log_date BETWEEN '2026-09-10' AND CURRENT_DATE()
+),
+scoped AS (SELECT * FROM base WHERE ver IN ('3375','3380')),
+core AS (
+  SELECT ver, d,
+    COUNT(DISTINCT IF(event='1000_LOGIN_COMPLETE', player_id, NULL))   AS users_day,
+    COUNT(DISTINCT IF(event='1000_LOGIN_COMPLETE', session_key, NULL)) AS sessions,
+    COUNT(DISTINCT IF(event='1170_PLAYTIME_300S', session_key, NULL))  AS sessions_300s,
+    COUNTIF(event='2100_GAMEPLAY_START')          AS play_starts,
+    COUNTIF(event='2300_GAMEPLAY_FINISH')         AS play_finishes,
+    COUNTIF(event='4010_INTERSTITIAL_AD_FINISH')  AS it_ok,
+    COUNTIF(event='4210_RV_FINISH')               AS rv_ok,
+    COUNTIF(event='8990_CROSS_PROMO')             AS cp_impr,
+    COUNTIF(event='8990_CROSS_PROMO_PLAY')        AS cp_play,
+    COUNTIF(event='8990_CROSS_PROMO_FAIL')        AS cp_fail,
+    COUNTIF(event='8990_CROSS_PROMO_EXIT')        AS cp_exit,
+    COUNT(DISTINCT IF(event='8990_CROSS_PROMO', player_id, NULL)) AS cp_users,
+    COUNTIF(event='9200_CLIENT_ERROR')            AS client_err
+  FROM scoped GROUP BY ver, d
+),
+-- PLAY 한 건마다 20초 창을 연다. 전환에 성공하면 페이지가 언로드돼 성공 로그가 없으므로,
+-- FAIL 이 안 붙은 PLAY 를 성공의 대리 지표로 쓴다. 재로그인은 '대상 게임 대신 우리 게임이
+-- 다시 뜬' 경우다 — 창을 20초보다 넓히면 그냥 돌아온 유저까지 섞인다.
+play AS (SELECT ver, d, player_id, log_time FROM scoped WHERE event='8990_CROSS_PROMO_PLAY'),
+ev AS (
+  SELECT p.ver, p.d, p.player_id, p.log_time,
+    MAX(IF(o.event='8990_CROSS_PROMO_FAIL',1,0)) AS failed,
+    MAX(IF(o.event='1000_LOGIN_COMPLETE',1,0))   AS restarted
+  FROM play p LEFT JOIN scoped o
+    ON o.player_id = p.player_id AND o.log_time > p.log_time
+   AND o.log_time <= TIMESTAMP_ADD(p.log_time, INTERVAL 20 SECOND)
+   AND o.event IN ('8990_CROSS_PROMO_FAIL','1000_LOGIN_COMPLETE')
+  GROUP BY 1,2,3,4
+)
+SELECT ver, d, COUNT(*) AS plays, SUM(failed) AS fail20, SUM(restarted) AS restart20
+FROM ev GROUP BY ver, d ORDER BY ver, d
+    </script>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
