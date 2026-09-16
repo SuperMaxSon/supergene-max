@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-16 14:25",
+  updated: "2026-09-16 15:09",
 };
 
 /* --------------------------------------------------------------------------
@@ -551,8 +551,8 @@ const SECTIONS = [
         url: "docs/coin-match-cp-3380.html",
         project: "cmt",
         status: "측정 중",
-        version: "v1.1",
-        updated: "2026-09-16 14:25",
+        version: "v1.2",
+        updated: "2026-09-16 15:09",
         pinned: false,
         tags: ["CP", "롤아웃", "BigQuery", "KPI"],
       },
