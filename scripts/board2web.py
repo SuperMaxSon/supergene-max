@@ -6,8 +6,9 @@
 
 담는 것은 두 가지뿐이다.
   board — initial_board 63행을 cell 번호로 접은 것 (코드 · 상자 · 거미줄)
-  items — 보드에서 **머지로 도달할 수 있는** 코드 전부의 이름 · 체인 · 단계 · 다음 단계
-          (보드에 깔린 54종만 담으면 합친 결과의 이름·다음 단계를 모른다)
+  items — 보드에서 **머지·생산으로 도달할 수 있는** 코드 전부의 이름 · 체인 · 단계 ·
+          다음 단계, 그리고 생성기면 산출 규격(`p`)까지
+          (보드에 깔린 54종만 담으면 합친 결과와 생성기가 뱉는 것을 모른다)
 
 사용:  python3 scripts/board2web.py
 """
@@ -27,6 +28,31 @@ bal = json.load(open(BAL, encoding="utf-8"))
 loc = json.load(open(LOC, encoding="utf-8"))
 spec = {r["item_code"]: r for r in bal["item_spec"]}
 disp = {r["item_code"]: r for r in bal["item_display"]}
+
+
+PRODUCE_SLOT_MAX = 20
+
+
+def produce_of(s):
+    """생성기 산출 규격. `produce_weight_N` 은 확률이 아니라 **개수**다(정본 A1)."""
+    slots = []
+    for n in range(1, PRODUCE_SLOT_MAX + 1):
+        code, cnt = s.get(f"produce_item_{n}"), s.get(f"produce_weight_{n}")
+        if not isinstance(code, int) or code <= 0:
+            continue
+        if not isinstance(cnt, int) or cnt <= 0:
+            continue
+        slots.append([code, cnt])
+    if not slots:
+        return None
+    return {
+        "auto": bool(s.get("spread_auto")),        # 자동 산출은 탭을 받지 않는다(정본 1.1.1)
+        "wt": s.get("spread_weight_type", 1),      # 1 = 비면 재충전 · 2 = 소모형(재충전 없음)
+        "max": s.get("spread_item_max", 0),        # 재고 상한. 시작은 만땅
+        "cost": s.get("spread_cost_energy", 0),
+        "rec": s.get("spread_item_recovery_sec", 0),
+        "slots": slots,
+    }
 
 
 def nxt(code):
@@ -52,6 +78,9 @@ while queue:
     n = nxt(c)
     if n:
         queue.append(n)
+    p = produce_of(spec[c])
+    if p:
+        queue.extend(slot[0] for slot in p["slots"])
 
 items = {}
 for c in sorted(codes):
@@ -64,6 +93,9 @@ for c in sorted(codes):
         "gen": bool(s.get("is_generator")),
         "img": os.path.exists(os.path.join(IMG, f"{c}.png")),
     }
+    p = produce_of(s)
+    if p:
+        items[str(c)]["p"] = p
 
 out = {
     "_meta": {
@@ -71,6 +103,9 @@ out = {
         "sheet": bal.get("_meta", {}),
         "cols": COLS,
         "rows": ROWS,
+        # 생산은 에너지를 쓴다. 시작값은 시트 const 를 그대로 읽는다.
+        "energy": next((r["const_value"] for r in bal["const"]
+                        if r.get("const_name") == "default_max_energy"), 100),
     },
     "board": board,
     "items": items,

@@ -1,36 +1,47 @@
 /* ============================================================================
    rosewood-board.js — 초기 보드를 스스로 풀어 보이는 판 하나.
 
-   판정은 클라 구현(`IngameVM` · `MergeRules`)을 그대로 옮긴 것이고, 여기서 규칙을
-   새로 만들지 않는다. 옮긴 것은 넷뿐이다.
-     canPick      집기는 상자·거미줄을 **둘 다** 막는다
-     mergeCheckAt 놓기는 상자만 막는다 — 거미줄 칸은 도착지로 **연다**
-     mergeCheck   같은 체인·같은 단계 + 다음 단계가 있을 것
-     shock        4방향 · 상자만 반응 · 드러난 칸이 움직일 수 있으면 연쇄
+   판정은 클라 구현(`IngameVM` · `MergeRules` · `ProduceRules`)을 그대로 옮긴 것이고,
+   여기서 규칙을 새로 만들지 않는다. 옮긴 것은 이만큼이다.
+     canPick        집기는 상자·거미줄을 **둘 다** 막는다
+     mergeCheckAt   놓기는 상자만 막는다 — 거미줄 칸은 도착지로 **연다**
+     mergeCheck     같은 체인·같은 단계 + 다음 단계가 있을 것
+     shock          4방향 · 상자만 반응 · 드러난 칸이 움직일 수 있으면 연쇄
+     produceCheck   재고 → 빈칸 → 에너지 → 산출 순서. 자동 산출 생성기는 탭을 안 받는다
+     drawFromBag    `produce_weight_N` 은 확률이 아니라 **개수**. 비면 재충전(방식 1)
+     rechargeStock  `경과 ÷ 회복초` 만큼 채우고 나머지 초는 버리지 않는다
+   옮기지 않은 것: 럭키 산출(`lucky_produce`)·천장·소모형 개체 주머니(방식 2).
+   지금 시트에서 이 보드가 닿는 생성기 47종은 전부 방식 1이고 럭키 행이 없다.
 
-   사람이 끌어다 놓는 대신 **재생**이 가능한 머지를 찾아 연달아 둔다. 후보를
-   출발 칸 · 도착 칸 오름차순으로 고르면 정본 튜토리얼 3수와 같은 순서가 나온다.
+   사람이 끌어다 놓는 대신 **재생**이 머지를 찾아 두고, 둘 게 없으면 생성기를 눌러
+   산출을 빈 칸에 떨어뜨린 뒤 다시 머지를 본다. 후보를 인덱스 오름차순으로 고르면
+   같은 보드에서 늘 같은 순서가 나온다.
    ========================================================================== */
 (function () {
   "use strict";
 
   var DATA_URL = "data/rosewood-board.json";
   var COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
-  var STEP_MS = 620;                               // 한 수와 다음 수 사이
-  var FLY_MS = 300;                                // 칩이 날아가는 시간
+  var STEP_MS = 420;                               // 한 수와 다음 수 사이
+  var FLY_MS = 240;                                // 칩이 날아가는 시간
 
-  var DB = null;     // { board, items }
+  var DB = null;     // { board, items, _meta }
   var S = null;      // 현재 보드 — [{code,box,web}|null] × 63
+  var PROD = null;   // 칸 번호 → { code, stock, lastAt } — 생성기 재고는 칸에 붙는다
+  var BAGS = null;   // 아이템 코드 → 잔량 배열 — 방식 1은 **종류별 하나**를 공유한다
+  var ENERGY = 0;
   var LOG = [];
-  var PLAYING = false, TIMER = null, BUSY = false;
+  var PLAYING = false, TIMER = null, BUSY = false, IDLE = 0;
+  var IDLE_MAX = 40;
   var $ = function (s, r) { return (r || document).querySelector(s); };
+  var now = function () { return Date.now() / 1000; };
 
   /* ── 조회 ────────────────────────────────────────────────────────────── */
   function spec(code) { return DB.items[String(code)] || null; }
   function nameOf(code) { var s = spec(code); return s ? s.name : String(code); }
   function imgOf(code) { return "img/items/" + code + ".png"; }
 
-  /* ── 판정 (클라 이식) ────────────────────────────────────────────────── */
+  /* ── 머지 판정 (클라 이식) ───────────────────────────────────────────── */
   function canPick(i) {
     var c = S[i];
     if (!c) return false;
@@ -76,9 +87,8 @@
     }
   }
 
-  /* 둘 수 있는 머지 한 수. 출발 · 도착 오름차순이라 같은 보드에서 늘 같은 순서가 나온다.
-     이동(`move`)은 후보로 보지 않는다 — 보드를 푸는 건 머지뿐이라 빈 칸으로 옮겨 봐야
-     상태가 제자리를 돈다. */
+  /* 둘 수 있는 머지 한 수. 이동(`move`)은 후보로 보지 않는다 — 빈 칸으로 옮겨 봐야
+     보드 상태가 제자리를 돈다. */
   function findMerge() {
     for (var from = 0; from < CELLS; from++) {
       if (!canPick(from)) continue;
@@ -91,18 +101,111 @@
     return null;
   }
 
-  /* 적용. 돌려주는 값이 그대로 로그 한 줄이 된다. */
-  function apply(from, to) {
+  function applyMerge(from, to) {
     var r = mergeCheckAt(from, to);
     if (!r.ok) return r;
     S[from] = null;
     S[to] = { code: r.code, box: false, web: false };
+    PROD.delete(from);                             // 떠난 칸의 재고 기록을 지운다
+    PROD.delete(to);                               // 합친 결과는 다른 코드의 새 개체다
     var popped = [];
     shock(to, [], popped);                         // 합치기에만 걸린다 — 이동은 트리거가 아니다
     popped.sort(function (a, b) { return a - b; });
-    r.popped = popped;
-    LOG.push({ from: from, to: to, code: r.code, popped: popped });
-    return r;
+    LOG.push({ t: "merge", from: from, to: to, code: r.code, popped: popped });
+    return { ok: true, kind: "merge", code: r.code, popped: popped };
+  }
+
+  /* ── 생산 판정 (클라 이식) ───────────────────────────────────────────── */
+  function firstEmpty() {
+    for (var i = 0; i < CELLS; i++) if (!S[i]) return i;
+    return -1;
+  }
+
+  /* 재고 기록은 칸에 붙는다. 코드가 바뀌었으면(합쳐졌으면) 다른 개체라 새로 만든다.
+     기록이 없을 때 만땅으로 시작하는 것도 클라와 같다 — 저장본 없는 첫 진입의 동작이다. */
+  function prodAt(i, p) {
+    var st = PROD.get(i);
+    if (!st || st.code !== S[i].code) {
+      st = { code: S[i].code, stock: p.max, lastAt: now() };
+      PROD.set(i, st);
+    }
+    return st;
+  }
+
+  /* IngameVM.rechargeStock — 나머지 초를 버리지 않으려고 lastAt 을 간격 배수로만 민다. */
+  function recharge(st, p) {
+    if (p.rec <= 0 || st.stock >= p.max) return;
+    var elapsed = now() - st.lastAt;
+    if (elapsed < 0) { st.lastAt = now(); return; }
+    if (elapsed < p.rec) return;
+    var gained = Math.floor(elapsed / p.rec);
+    st.stock = Math.min(p.max, st.stock + gained);
+    st.lastAt = st.stock >= p.max ? now() : st.lastAt + gained * p.rec;
+  }
+
+  /* 탭 가능 여부 — 재고 → 빈칸 → 에너지 → 산출 순서(정본). 어느 단계에서 막히든 아무것도 깎지 않는다. */
+  function produceCheckAt(i) {
+    var c = S[i];
+    if (!c || c.box || c.web) return { ok: false, reason: "no_produce" };
+    var p = (spec(c.code) || {}).p;
+    if (!p) return { ok: false, reason: "no_produce" };
+    if (p.auto) return { ok: false, reason: "auto_only" };   // 자동 산출은 탭을 받지 않는다
+    var st = prodAt(i, p);
+    recharge(st, p);
+    if (st.stock <= 0) return { ok: false, reason: "recharging", wait: Math.max(0, p.rec - (now() - st.lastAt)) };
+    var dest = firstEmpty();
+    if (dest < 0) return { ok: false, reason: "board_full" };
+    if (ENERGY < p.cost) return { ok: false, reason: "energy_short" };
+    return { ok: true, dest: dest, p: p, st: st };
+  }
+
+  /* 보드에서 지금 누를 수 있는 생성기 하나. 없으면 왜 없는지까지 돌려준다. */
+  function findProduce() {
+    var why = null;
+    for (var i = 0; i < CELLS; i++) {
+      var r = produceCheckAt(i);
+      if (r.ok) return { index: i, check: r };
+      if (r.reason === "no_produce" || r.reason === "auto_only") continue;
+      // 막힌 사유는 「생성기가 아예 없다」와 구분해야 해서 남긴다. 회복 대기가 가장 약한 정지 사유다.
+      if (!why || why.reason !== "recharging") why = r;
+    }
+    return { index: -1, why: why };
+  }
+
+  /* ProduceRules.drawFromBag — `produce_weight_N` 은 개수다. 뽑으면 그 칸이 1 줄고,
+     다 비면 방식 1은 재충전한다(지금 시트의 생성기는 전부 방식 1). */
+  function drawFromBag(code, p) {
+    var remain = BAGS.get(code);
+    if (!remain || remain.length !== p.slots.length) remain = p.slots.map(function (s) { return s[1]; });
+    var total = remain.reduce(function (a, b) { return a + b; }, 0);
+    var refilled = false;
+    if (total <= 0) {
+      if (p.wt === 2) return null;                 // 소모형은 재충전하지 않는다
+      remain = p.slots.map(function (s) { return s[1]; });
+      total = remain.reduce(function (a, b) { return a + b; }, 0);
+      refilled = true;
+    }
+    var r = Math.floor(Math.random() * total);
+    for (var i = 0; i < remain.length; i++) {
+      r -= remain[i];
+      if (r >= 0) continue;
+      remain[i] -= 1;
+      BAGS.set(code, remain);
+      return { code: p.slots[i][0], refilled: refilled };
+    }
+    return null;
+  }
+
+  function applyProduce(i, check) {
+    var draw = drawFromBag(S[i].code, check.p);
+    if (!draw) return null;
+    ENERGY -= check.p.cost;                        // 에너지가 먼저, 그 다음 재고
+    check.st.stock -= 1;
+    check.st.lastAt = now();
+    S[check.dest] = { code: draw.code, box: false, web: false };
+    LOG.push({ t: "produce", from: i, to: check.dest, code: draw.code, cost: check.p.cost,
+               stock: check.st.stock, refilled: draw.refilled });
+    return { dest: check.dest, code: draw.code };
   }
 
   /* ── 렌더 ────────────────────────────────────────────────────────────── */
@@ -120,8 +223,10 @@
     if (!c) return "cell " + i + " · " + xy + " · 빈 칸";
     var s = spec(c.code) || {};
     var lock = c.box && c.web ? "상자+거미줄" : c.box ? "상자" : c.web ? "거미줄" : "잠금 없음";
-    return "cell " + i + " · " + xy + " · " + c.code + " " + (s.name || "")
+    var t = "cell " + i + " · " + xy + " · " + c.code + " " + (s.name || "")
       + " · 체인 " + s.chain + "-" + s.step + " · " + lock;
+    if (s.p && PROD.has(i)) t += " · 재고 " + PROD.get(i).stock + "/" + s.p.max;
+    return t;
   }
 
   function build() {
@@ -138,11 +243,17 @@
       el.className = classOf(c);
       el.title = titleOf(i, c);
       var s = c ? (spec(c.code) || {}) : null;
+      var badge = "";
+      if (c && s.p && !s.p.auto) {
+        var st = PROD.get(i);
+        badge = '<span class="bc-gen" title="생성기 재고">⚡' + (st ? st.stock : s.p.max) + "</span>";
+      } else if (c && s.p && s.p.auto) {
+        badge = '<span class="bc-gen" title="자동 산출 생성기 — 탭을 받지 않습니다">⏱</span>';
+      }
       el.innerHTML = '<span class="bc-c">' + i + "</span>"
         + (c ? '<img src="' + imgOf(c.code) + '" alt="" loading="lazy" draggable="false" />'
              + '<span class="bc-code">' + c.code + "</span>"
-             + '<span class="bc-nm">' + (s.name || "") + "</span>"
-             + (s.gen ? '<span class="bc-gen" title="생성기">⚡</span>' : "")
+             + '<span class="bc-nm">' + (s.name || "") + "</span>" + badge
            : "");
     }
     renderStats();
@@ -160,7 +271,7 @@
       else n.free++;
     }
     set("#rwbNbw", n.bw); set("#rwbNw", n.w); set("#rwbNb", n.b); set("#rwbNfree", n.free);
-    set("#rwbNmv", LOG.length);
+    set("#rwbNmv", LOG.length); set("#rwbEnergy", ENERGY);
   }
 
   function set(sel, v) { var e = $(sel); if (e) e.textContent = String(v); }
@@ -168,17 +279,22 @@
   function renderLog() {
     var box = $("#rwbLog");
     if (!LOG.length) {
-      box.innerHTML = '<p class="rwb-empty">재생을 누르면 둘 수 있는 머지를 찾아 연달아 둡니다.</p>';
+      box.innerHTML = '<p class="rwb-empty">재생을 누르면 머지를 찾아 두고, 둘 게 없으면 생성기를 눌러 다시 봅니다.</p>';
       return;
     }
     var out = [];
     for (var i = LOG.length - 1; i >= 0; i--) {
-      var m = LOG[i];
-      out.push('<div class="rwb-l"><b>수 ' + (i + 1) + " · cell" + m.from + " → cell" + m.to
-        + "</b> <code>" + m.code + "</code> " + nameOf(m.code)
-        + (m.popped.length
-            ? ' <span class="rwb-pop">상자 걷힘 ' + m.popped.map(function (c) { return "cell" + c; }).join(" · ") + "</span>"
-            : ' <span class="rwb-dim">걷힌 상자 없음</span>') + "</div>");
+      var m = LOG[i], head = "수 " + (i + 1) + " · cell" + m.from + " → cell" + m.to;
+      if (m.t === "merge") {
+        out.push('<div class="rwb-l"><b>' + head + "</b> 합치기 <code>" + m.code + "</code> " + nameOf(m.code)
+          + (m.popped.length
+              ? ' <span class="rwb-pop">상자 걷힘 ' + m.popped.map(function (c) { return "cell" + c; }).join(" · ") + "</span>"
+              : ' <span class="rwb-dim">걷힌 상자 없음</span>') + "</div>");
+      } else {
+        out.push('<div class="rwb-l"><b>' + head + "</b> 생산 <code>" + m.code + "</code> " + nameOf(m.code)
+          + ' <span class="rwb-dim">에너지 −' + m.cost + " · 재고 " + m.stock + "</span>"
+          + (m.refilled ? ' <span class="rwb-pop">주머니 재충전</span>' : "") + "</div>");
+      }
     }
     box.innerHTML = out.join("");
   }
@@ -197,7 +313,7 @@
   }
 
   /* 출발 칸의 그림이 도착 칸으로 날아간다. 판정과 무관한 연출이라 상태를 만지지 않는다. */
-  function fly(from, to, done) {
+  function fly(from, to, code, done) {
     var b = $("#rwbBoard");
     var a = b.children[from].getBoundingClientRect();
     var z = b.children[to].getBoundingClientRect();
@@ -207,7 +323,7 @@
     el.style.width = a.width + "px";
     el.style.height = a.height + "px";
     el.style.transform = "translate(" + (a.left - host.left) + "px," + (a.top - host.top) + "px)";
-    el.innerHTML = '<img src="' + imgOf(S[from].code) + '" alt="" />';
+    el.innerHTML = '<img src="' + imgOf(code) + '" alt="" />';
     b.appendChild(el);
     void el.offsetWidth;
     el.style.transition = "transform " + FLY_MS + "ms cubic-bezier(.2,.7,.3,1)";
@@ -215,40 +331,77 @@
     setTimeout(function () { el.remove(); done(); }, FLY_MS);
   }
 
-  /* ── 재생 ────────────────────────────────────────────────────────────── */
+  var STOP_MSG = {
+    board_full: "보드가 가득 차서 더 생산할 수 없습니다",
+    energy_short: "에너지가 모자랍니다",
+    no_generator: "누를 수 있는 생성기가 없습니다",
+  };
+
+  /* ── 한 수 ───────────────────────────────────────────────────────────── */
   function step(then) {
     if (BUSY) return;
     var mv = findMerge();
-    if (!mv) {
-      stop();
-      status("더 둘 수 있는 머지가 없습니다 — 여기서부터는 생성기가 돌아야 합니다");
+    if (mv) { runMerge(mv, then); return; }
+
+    var pr = findProduce();
+    if (pr.index >= 0) { runProduce(pr, then); return; }
+
+    // 회복 대기는 정지가 아니다 — 시간이 지나면 다시 눌릴 칸이라 재생을 그대로 둔다.
+    if (pr.why && pr.why.reason === "recharging" && IDLE < IDLE_MAX) {
+      IDLE++;
+      status("재고 회복 대기 " + Math.ceil(pr.why.wait) + "초 — 기다렸다 다시 생산합니다");
+      if (then) then();
       return;
     }
-    BUSY = true;
-    $("#rwbBoard").children[mv.from].classList.add("is-src");
-    $("#rwbBoard").children[mv.to].classList.add("is-dst");
-    fly(mv.from, mv.to, function () {
-      var r = apply(mv.from, mv.to);
+    if (IDLE >= IDLE_MAX) { stop(); status("회복을 기다려도 둘 수 있는 수가 없습니다"); return; }
+    stop();
+    status(STOP_MSG[(pr.why && pr.why.reason) || "no_generator"] || "더 진행할 수 없습니다");
+  }
+
+  function runMerge(mv, then) {
+    BUSY = true; IDLE = 0;
+    var b = $("#rwbBoard");
+    b.children[mv.from].classList.add("is-src");
+    b.children[mv.to].classList.add("is-dst");
+    fly(mv.from, mv.to, S[mv.from].code, function () {
+      var r = applyMerge(mv.from, mv.to);
       render();
       flash([mv.to], "fx-pop");
       if (r.popped.length) flash(r.popped, "fx-shock");
-      status("수 " + LOG.length + " · cell" + mv.from + " → cell" + mv.to + " · " + nameOf(r.code)
+      status("수 " + LOG.length + " · 합치기 cell" + mv.from + " → cell" + mv.to + " · " + nameOf(r.code)
         + (r.popped.length ? " · 상자 " + r.popped.length + "칸 걷힘" : ""));
       BUSY = false;
       if (then) then();
     });
   }
 
+  function runProduce(pr, then) {
+    BUSY = true; IDLE = 0;
+    var b = $("#rwbBoard");
+    b.children[pr.index].classList.add("is-src");
+    b.children[pr.check.dest].classList.add("is-dst");
+    var out = applyProduce(pr.index, pr.check);
+    if (!out) { BUSY = false; stop(); status("주머니가 비어 더 뽑을 수 없습니다"); return; }
+    fly(pr.index, out.dest, out.code, function () {
+      render();
+      flash([out.dest], "fx-pop");
+      status("수 " + LOG.length + " · 생산 cell" + pr.index + " → cell" + out.dest + " · " + nameOf(out.code)
+        + " · 에너지 " + ENERGY);
+      BUSY = false;
+      if (then) then();
+    });
+  }
+
+  /* ── 재생 ────────────────────────────────────────────────────────────── */
   function tick() {
     step(function () {
       if (!PLAYING) return;
-      TIMER = setTimeout(tick, STEP_MS - FLY_MS);
+      TIMER = setTimeout(tick, Math.max(80, STEP_MS - FLY_MS));
     });
   }
 
   function play() {
     if (PLAYING) return;
-    if (!findMerge()) { status("더 둘 수 있는 머지가 없습니다 — 초기화 후 다시 재생하세요"); return; }
     PLAYING = true;
     $("#rwbPlay").textContent = "⏸ 일시정지";
     tick();
@@ -262,8 +415,11 @@
 
   function reset() {
     stop();
-    BUSY = false;
+    BUSY = false; IDLE = 0;
     S = DB.board.map(function (c) { return c ? { code: c.code, box: c.box, web: c.web } : null; });
+    PROD = new Map();
+    BAGS = new Map();
+    ENERGY = DB._meta.energy;
     LOG = [];
     render();
     status("초기 상태 — 잠금 없는 칸은 cell22 · cell29 두 곳뿐입니다");
