@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-16 18:47",
+  updated: "2026-09-17 09:15",
 };
 
 /* --------------------------------------------------------------------------
@@ -286,6 +286,17 @@ const SECTIONS = [
         pinned: false,
         tags: ["머지", "기획 범위"],
         share: false,
+      },
+      {
+        title: "초기 보드",
+        desc: "initial_board 63칸을 7×9 그대로 펼치고 지금 쓰는 더미 아이템 그림을 그대로 박은 판. 상자+거미줄 60 · 거미줄만 1 · 잠금 없음 2 라 첫 수는 701 페어 하나뿐입니다. 정본 튜토리얼 3수가 어떻게 704 생성기까지 닿는지 수순별로 봅니다.",
+        url: "docs/rosewood-initial-board.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-09-17 09:15",
+        pinned: false,
+        tags: ["머지", "밸런스"],
       },
       {
         title: "리소스 예산",

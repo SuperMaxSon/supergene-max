@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>로즈우드 초기 보드</title>
+    <meta
+      name="description"
+      content="rosewood-balance.json initial_board 63칸을 실제 더미 아이템 이미지로 펼친 문서. 종이상자·거미줄 잠금 상태와 정본 튜토리얼 3수의 연쇄 해제를 함께 본다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <style>
+      /* 이 <style>은 이 문서 전용이다. 보드 격자(7×9)와 칸 하나의 표현만 정의한다.
+         색·테두리·반경은 전부 style.css 토큰을 읽고, 새 색을 만들지 않는다. */
+      .bgrid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+      }
+      /* 국소 비교용은 6열이다 — 3수가 x1~x6 안에서 끝나므로 그만큼만 자른다. */
+      .bgrid--mini { grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 7px; }
+
+      .bc {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .bc img { width: 58%; height: 58%; object-fit: contain; }
+      .bc-c {
+        position: absolute; top: 3px; left: 4px;
+        font: 700 9px/1 system-ui, sans-serif; color: var(--text-faint);
+      }
+      .bc-xy { font: 700 9px/1 system-ui, sans-serif; color: var(--text-faint); }
+      .bc-code { font: 800 10px/1 system-ui, sans-serif; color: var(--text-dim); }
+      .bc-nm {
+        max-width: 96%; font: 700 9px/1.2 system-ui, sans-serif; color: var(--text-faint);
+        text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .bgrid--mini .bc img { width: 50%; height: 50%; }
+
+      /* 종이상자 = 덮개. 아이템이 무엇인지는 보여주되 흐리게 눌러 "가려진 상태"를 만든다.
+         실제 게임 아트는 아직 없어서(플레이스홀더) 색면으로 대신한다. */
+      .bc.is-box { background: #efe6da; border-color: #d8c6ab; }
+      .bc.is-box img { opacity: 0.3; }
+      .bc.is-box .bc-code, .bc.is-box .bc-nm { opacity: 0.55; }
+      /* 거미줄 = 도착지 표식. 칸 위에 얇은 대각선을 덮어 "집을 수 없음"을 표시한다. */
+      .bc.is-web::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background:
+          repeating-linear-gradient(45deg, #ffffffb0 0 1px, transparent 1px 7px),
+          repeating-linear-gradient(-45deg, #ffffffb0 0 1px, transparent 1px 7px);
+      }
+      .bc.is-web { box-shadow: inset 0 0 0 2px #b9c2d4; }
+      .bc.is-free { border-color: var(--ok); box-shadow: inset 0 0 0 2px var(--ok); }
+      .bc.bc-empty { background: var(--surface-3); border-style: dashed; }
+
+      .bc.hi-src { outline: 2px solid var(--text-dim); outline-offset: -2px; }
+      .bc.hi-dst { outline: 3px solid var(--validate); outline-offset: -3px; }
+      .bc.hi-pop { outline: 3px solid var(--warn); outline-offset: -3px; }
+
+      /* 수순 비교는 4장을 나란히 두고 같은 칸이 어떻게 변하는지 눈으로 좇게 한다. */
+      .mv-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      @media (max-width: 720px) { .mv-row { grid-template-columns: 1fr; } }
+      .mv-t { font: 800 12px/1.6 system-ui, sans-serif; color: var(--text); margin-bottom: 6px; }
+      .mv-c { margin: 8px 2px 0; font-size: 11px; line-height: 1.7; color: var(--text-dim); }
+      .lg { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+      .lg .bc { width: 84px; aspect-ratio: 1 / 1; }
+      .lg figure { margin: 0; text-align: center; }
+      .lg figcaption { margin-top: 5px; font: 700 10px/1.5 system-ui, sans-serif; color: var(--text-dim); }
+      td.ic { width: 44px; }
+      td.ic img { width: 34px; height: 34px; object-fit: contain; display: block; }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#board">초기 보드</a>
+        <a class="nav-back" href="#lock">잠금 규칙</a>
+        <a class="nav-back" href="#tutorial">튜토리얼 3수</a>
+        <a class="nav-back" href="#items">아이템 목록</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">기획 · 로즈우드</div>
+        <h1 class="doc-title">로즈우드 초기 보드</h1>
+        <p class="doc-lede">
+          밸런스 시트 <code>initial_board</code> 63행을 <b>7×9 보드 그대로</b> 펼친 문서입니다.
+          칸에 박힌 그림은 지금 클라이언트가 쓰고 있는 <b>더미 아이템 이미지</b>라서
+          이름과 그림이 어긋나 보이는 건 정상입니다. 잠금은 <b>종이상자</b>와 <b>거미줄</b>
+          두 플래그가 칸마다 따로 붙고, 조합으로 상태가 갈립니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">assets/bundle/data/rosewood-balance.json 실측</span>
+          <span class="tag">63칸 · 아이템 54종</span>
+          <span class="tag">아트 플레이스홀더</span>
+          <span class="tag">2026-09-17</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── 초기 보드 ────────────────────────────────────────── -->
+    <section class="doc-section" id="board">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          초기 보드
+          <span class="doc-h2-sub">7×7이 아니라 7열 × 9행 · 빈 칸 없음</span>
+        </h2>
+
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--balance)">
+            <div class="stat-num">60</div>
+            <div class="stat-name">상자 + 거미줄</div>
+            <div class="stat-sub">두 겹으로 잠긴 칸</div>
+          </div>
+          <div class="stat" style="--acc: var(--plan)">
+            <div class="stat-num">1</div>
+            <div class="stat-name">거미줄만</div>
+            <div class="stat-sub">cell30 · 702</div>
+          </div>
+          <div class="stat" style="--acc: var(--validate)">
+            <div class="stat-num">0</div>
+            <div class="stat-name">상자만</div>
+            <div class="stat-sub">현재 데이터엔 없음</div>
+          </div>
+          <div class="stat" style="--acc: var(--deploy)">
+            <div class="stat-num">2</div>
+            <div class="stat-name">잠금 없음</div>
+            <div class="stat-sub">cell22 · cell29 · 701 페어</div>
+          </div>
+        </div>
+
+        <div class="bgrid">
+<div class="bc is-box is-web" title="cell 0 · x1·y1 · 1002 Seed Packet"><span class="bc-c">0</span><img src="img/items/1002.png" alt="" loading="lazy" /><span class="bc-code">1002</span><span class="bc-nm">Seed Packet</span></div>
+<div class="bc is-box is-web" title="cell 1 · x2·y1 · 601 Clay Cup"><span class="bc-c">1</span><img src="img/items/601.png" alt="" loading="lazy" /><span class="bc-code">601</span><span class="bc-nm">Clay Cup</span></div>
+<div class="bc is-box is-web" title="cell 2 · x3·y1 · 1901 Kitten"><span class="bc-c">2</span><img src="img/items/1901.png" alt="" loading="lazy" /><span class="bc-code">1901</span><span class="bc-nm">Kitten</span></div>
+<div class="bc is-box is-web" title="cell 3 · x4·y1 · 303 Paint Brush"><span class="bc-c">3</span><img src="img/items/303.png" alt="" loading="lazy" /><span class="bc-code">303</span><span class="bc-nm">Paint Brush</span></div>
+<div class="bc is-box is-web" title="cell 4 · x5·y1 · 1005 Planter Box"><span class="bc-c">4</span><img src="img/items/1005.png" alt="" loading="lazy" /><span class="bc-code">1005</span><span class="bc-nm">Planter Box</span></div>
+<div class="bc is-box is-web" title="cell 5 · x6·y1 · 404 Porcelain Teapot"><span class="bc-c">5</span><img src="img/items/404.png" alt="" loading="lazy" /><span class="bc-code">404</span><span class="bc-nm">Porcelain Teapot</span></div>
+<div class="bc is-box is-web" title="cell 6 · x7·y1 · 1701 Wax Flake"><span class="bc-c">6</span><img src="img/items/1701.png" alt="" loading="lazy" /><span class="bc-code">1701</span><span class="bc-nm">Wax Flake</span></div>
+<div class="bc is-box is-web" title="cell 7 · x1·y2 · 1601 Honeycomb Bit"><span class="bc-c">7</span><img src="img/items/1601.png" alt="" loading="lazy" /><span class="bc-code">1601</span><span class="bc-nm">Honeycomb Bit</span></div>
+<div class="bc is-box is-web" title="cell 8 · x2·y2 · 807 Muffin"><span class="bc-c">8</span><img src="img/items/807.png" alt="" loading="lazy" /><span class="bc-code">807</span><span class="bc-nm">Muffin</span></div>
+<div class="bc is-box is-web" title="cell 9 · x3·y2 · 904 Strawberry Jam"><span class="bc-c">9</span><img src="img/items/904.png" alt="" loading="lazy" /><span class="bc-code">904</span><span class="bc-nm">Strawberry Jam</span></div>
+<div class="bc is-box is-web" title="cell 10 · x4·y2 · 203 Hand Hammer"><span class="bc-c">10</span><img src="img/items/203.png" alt="" loading="lazy" /><span class="bc-code">203</span><span class="bc-nm">Hand Hammer</span></div>
+<div class="bc is-box is-web" title="cell 11 · x5·y2 · 1602 Honeycomb"><span class="bc-c">11</span><img src="img/items/1602.png" alt="" loading="lazy" /><span class="bc-code">1602</span><span class="bc-nm">Honeycomb</span></div>
+<div class="bc is-box is-web" title="cell 12 · x6·y2 · 202 Wood Screw"><span class="bc-c">12</span><img src="img/items/202.png" alt="" loading="lazy" /><span class="bc-code">202</span><span class="bc-nm">Wood Screw</span></div>
+<div class="bc is-box is-web" title="cell 13 · x7·y2 · 506 Green Tea"><span class="bc-c">13</span><img src="img/items/506.png" alt="" loading="lazy" /><span class="bc-code">506</span><span class="bc-nm">Green Tea</span></div>
+<div class="bc is-box is-web" title="cell 14 · x1·y3 · 2701 Loose Coin"><span class="bc-c">14</span><img src="img/items/2701.png" alt="" loading="lazy" /><span class="bc-code">2701</span><span class="bc-nm">Loose Coin</span></div>
+<div class="bc is-box is-web" title="cell 15 · x2·y3 · 807 Muffin"><span class="bc-c">15</span><img src="img/items/807.png" alt="" loading="lazy" /><span class="bc-code">807</span><span class="bc-nm">Muffin</span></div>
+<div class="bc is-box is-web" title="cell 16 · x3·y3 · 806 Cinnamon Bun"><span class="bc-c">16</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span><span class="bc-nm">Cinnamon Bun</span></div>
+<div class="bc is-box is-web" title="cell 17 · x4·y3 · 806 Cinnamon Bun"><span class="bc-c">17</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span><span class="bc-nm">Cinnamon Bun</span></div>
+<div class="bc is-box is-web" title="cell 18 · x5·y3 · 201 Bent Nail"><span class="bc-c">18</span><img src="img/items/201.png" alt="" loading="lazy" /><span class="bc-code">201</span><span class="bc-nm">Bent Nail</span></div>
+<div class="bc is-box is-web" title="cell 19 · x6·y3 · 806 Cinnamon Bun"><span class="bc-c">19</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span><span class="bc-nm">Cinnamon Bun</span></div>
+<div class="bc is-box is-web" title="cell 20 · x7·y3 · 2704 Coin Sack"><span class="bc-c">20</span><img src="img/items/2704.png" alt="" loading="lazy" /><span class="bc-code">2704</span><span class="bc-nm">Coin Sack</span></div>
+<div class="bc is-box is-web" title="cell 21 · x1·y4 · 804 Croissant"><span class="bc-c">21</span><img src="img/items/804.png" alt="" loading="lazy" /><span class="bc-code">804</span><span class="bc-nm">Croissant</span></div>
+<div class="bc is-free" title="cell 22 · x2·y4 · 701 Clay Stove"><span class="bc-c">22</span><img src="img/items/701.png" alt="" loading="lazy" /><span class="bc-code">701</span><span class="bc-nm">Clay Stove</span></div>
+<div class="bc is-box is-web" title="cell 23 · x3·y4 · 802 Bread Roll"><span class="bc-c">23</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span><span class="bc-nm">Bread Roll</span></div>
+<div class="bc is-box is-web" title="cell 24 · x4·y4 · 902 Crushed Berries"><span class="bc-c">24</span><img src="img/items/902.png" alt="" loading="lazy" /><span class="bc-code">902</span><span class="bc-nm">Crushed Berries</span></div>
+<div class="bc is-box is-web" title="cell 25 · x5·y4 · 802 Bread Roll"><span class="bc-c">25</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span><span class="bc-nm">Bread Roll</span></div>
+<div class="bc is-box is-web" title="cell 26 · x6·y4 · 205 Screwdriver"><span class="bc-c">26</span><img src="img/items/205.png" alt="" loading="lazy" /><span class="bc-code">205</span><span class="bc-nm">Screwdriver</span></div>
+<div class="bc is-box is-web" title="cell 27 · x7·y4 · 402 Chipped Teapot"><span class="bc-c">27</span><img src="img/items/402.png" alt="" loading="lazy" /><span class="bc-code">402</span><span class="bc-nm">Chipped Teapot</span></div>
+<div class="bc is-box is-web" title="cell 28 · x1·y5 · 803 Baguette"><span class="bc-c">28</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span><span class="bc-nm">Baguette</span></div>
+<div class="bc is-free" title="cell 29 · x2·y5 · 701 Clay Stove"><span class="bc-c">29</span><img src="img/items/701.png" alt="" loading="lazy" /><span class="bc-code">701</span><span class="bc-nm">Clay Stove</span></div>
+<div class="bc is-web" title="cell 30 · x3·y5 · 702 Brick Oven"><span class="bc-c">30</span><img src="img/items/702.png" alt="" loading="lazy" /><span class="bc-code">702</span><span class="bc-nm">Brick Oven</span></div>
+<div class="bc is-box is-web" title="cell 31 · x4·y5 · 703 Iron Oven"><span class="bc-c">31</span><img src="img/items/703.png" alt="" loading="lazy" /><span class="bc-code">703</span><span class="bc-nm">Iron Oven</span></div>
+<div class="bc is-box is-web" title="cell 32 · x5·y5 · 805 Butter Scone"><span class="bc-c">32</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span><span class="bc-nm">Butter Scone</span></div>
+<div class="bc is-box is-web" title="cell 33 · x6·y5 · 103 Painted Toolbox"><span class="bc-c">33</span><img src="img/items/103.png" alt="" loading="lazy" /><span class="bc-code">103</span><span class="bc-nm">Painted Toolbox</span></div>
+<div class="bc is-box is-web" title="cell 34 · x7·y5 · 401 Clay Teapot"><span class="bc-c">34</span><img src="img/items/401.png" alt="" loading="lazy" /><span class="bc-code">401</span><span class="bc-nm">Clay Teapot</span></div>
+<div class="bc is-box is-web" title="cell 35 · x1·y6 · 101 Tin Toolbox"><span class="bc-c">35</span><img src="img/items/101.png" alt="" loading="lazy" /><span class="bc-code">101</span><span class="bc-nm">Tin Toolbox</span></div>
+<div class="bc is-box is-web" title="cell 36 · x2·y6 · 903 Jam Jar"><span class="bc-c">36</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span><span class="bc-nm">Jam Jar</span></div>
+<div class="bc is-box is-web" title="cell 37 · x3·y6 · 901 Berry Basket"><span class="bc-c">37</span><img src="img/items/901.png" alt="" loading="lazy" /><span class="bc-code">901</span><span class="bc-nm">Berry Basket</span></div>
+<div class="bc is-box is-web" title="cell 38 · x4·y6 · 805 Butter Scone"><span class="bc-c">38</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span><span class="bc-nm">Butter Scone</span></div>
+<div class="bc is-box is-web" title="cell 39 · x5·y6 · 803 Baguette"><span class="bc-c">39</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span><span class="bc-nm">Baguette</span></div>
+<div class="bc is-box is-web" title="cell 40 · x6·y6 · 903 Jam Jar"><span class="bc-c">40</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span><span class="bc-nm">Jam Jar</span></div>
+<div class="bc is-box is-web" title="cell 41 · x7·y6 · 603 Painted Teacup"><span class="bc-c">41</span><img src="img/items/603.png" alt="" loading="lazy" /><span class="bc-code">603</span><span class="bc-nm">Painted Teacup</span></div>
+<div class="bc is-box is-web" title="cell 42 · x1·y7 · 1903 Calico Kitten"><span class="bc-c">42</span><img src="img/items/1903.png" alt="" loading="lazy" /><span class="bc-code">1903</span><span class="bc-nm">Calico Kitten</span></div>
+<div class="bc is-box is-web" title="cell 43 · x2·y7 · 1501 Wild Hive"><span class="bc-c">43</span><img src="img/items/1501.png" alt="" loading="lazy" /><span class="bc-code">1501</span><span class="bc-nm">Wild Hive</span></div>
+<div class="bc is-box is-web" title="cell 44 · x3·y7 · 102 Wooden Toolbox"><span class="bc-c">44</span><img src="img/items/102.png" alt="" loading="lazy" /><span class="bc-code">102</span><span class="bc-nm">Wooden Toolbox</span></div>
+<div class="bc is-box is-web" title="cell 45 · x4·y7 · 1801 Straw Cat Bed"><span class="bc-c">45</span><img src="img/items/1801.png" alt="" loading="lazy" /><span class="bc-code">1801</span><span class="bc-nm">Straw Cat Bed</span></div>
+<div class="bc is-box is-web" title="cell 46 · x5·y7 · 1001 Seed Pouch"><span class="bc-c">46</span><img src="img/items/1001.png" alt="" loading="lazy" /><span class="bc-code">1001</span><span class="bc-nm">Seed Pouch</span></div>
+<div class="bc is-box is-web" title="cell 47 · x6·y7 · 1502 Straw Skep"><span class="bc-c">47</span><img src="img/items/1502.png" alt="" loading="lazy" /><span class="bc-code">1502</span><span class="bc-nm">Straw Skep</span></div>
+<div class="bc is-box is-web" title="cell 48 · x7·y7 · 210 Hand Drill"><span class="bc-c">48</span><img src="img/items/210.png" alt="" loading="lazy" /><span class="bc-code">210</span><span class="bc-nm">Hand Drill</span></div>
+<div class="bc is-box is-web" title="cell 49 · x1·y8 · 1103 Tulip"><span class="bc-c">49</span><img src="img/items/1103.png" alt="" loading="lazy" /><span class="bc-code">1103</span><span class="bc-nm">Tulip</span></div>
+<div class="bc is-box is-web" title="cell 50 · x2·y8 · 810 Fruit Tart"><span class="bc-c">50</span><img src="img/items/810.png" alt="" loading="lazy" /><span class="bc-code">810</span><span class="bc-nm">Fruit Tart</span></div>
+<div class="bc is-box is-web" title="cell 51 · x3·y8 · 1104 Sunflower"><span class="bc-c">51</span><img src="img/items/1104.png" alt="" loading="lazy" /><span class="bc-code">1104</span><span class="bc-nm">Sunflower</span></div>
+<div class="bc is-box is-web" title="cell 52 · x4·y8 · 1607 Clover Honey"><span class="bc-c">52</span><img src="img/items/1607.png" alt="" loading="lazy" /><span class="bc-code">1607</span><span class="bc-nm">Clover Honey</span></div>
+<div class="bc is-box is-web" title="cell 53 · x5·y8 · 1301 Cotton Thread"><span class="bc-c">53</span><img src="img/items/1301.png" alt="" loading="lazy" /><span class="bc-code">1301</span><span class="bc-nm">Cotton Thread</span></div>
+<div class="bc is-box is-web" title="cell 54 · x6·y8 · 1201 Straw Basket"><span class="bc-c">54</span><img src="img/items/1201.png" alt="" loading="lazy" /><span class="bc-code">1201</span><span class="bc-nm">Straw Basket</span></div>
+<div class="bc is-box is-web" title="cell 55 · x7·y8 · 507 Jasmine Tea"><span class="bc-c">55</span><img src="img/items/507.png" alt="" loading="lazy" /><span class="bc-code">507</span><span class="bc-nm">Jasmine Tea</span></div>
+<div class="bc is-box is-web" title="cell 56 · x1·y9 · 1305 Bath Towel"><span class="bc-c">56</span><img src="img/items/1305.png" alt="" loading="lazy" /><span class="bc-code">1305</span><span class="bc-nm">Bath Towel</span></div>
+<div class="bc is-box is-web" title="cell 57 · x2·y9 · 1605 Honey Pot"><span class="bc-c">57</span><img src="img/items/1605.png" alt="" loading="lazy" /><span class="bc-code">1605</span><span class="bc-nm">Honey Pot</span></div>
+<div class="bc is-box is-web" title="cell 58 · x3·y9 · 1202 Woven Basket"><span class="bc-c">58</span><img src="img/items/1202.png" alt="" loading="lazy" /><span class="bc-code">1202</span><span class="bc-nm">Woven Basket</span></div>
+<div class="bc is-box is-web" title="cell 59 · x4·y9 · 809 Doughnut"><span class="bc-c">59</span><img src="img/items/809.png" alt="" loading="lazy" /><span class="bc-code">809</span><span class="bc-nm">Doughnut</span></div>
+<div class="bc is-box is-web" title="cell 60 · x5·y9 · 1304 Hand Towel"><span class="bc-c">60</span><img src="img/items/1304.png" alt="" loading="lazy" /><span class="bc-code">1304</span><span class="bc-nm">Hand Towel</span></div>
+<div class="bc is-box is-web" title="cell 61 · x6·y9 · 1305 Bath Towel"><span class="bc-c">61</span><img src="img/items/1305.png" alt="" loading="lazy" /><span class="bc-code">1305</span><span class="bc-nm">Bath Towel</span></div>
+<div class="bc is-box is-web" title="cell 62 · x7·y9 · 1705 Wax Bar"><span class="bc-c">62</span><img src="img/items/1705.png" alt="" loading="lazy" /><span class="bc-code">1705</span><span class="bc-nm">Wax Bar</span></div>
+</div>
+
+        <div class="lg">
+          <figure><div class="bc is-box is-web"><span class="bc-c">n</span><span class="bc-code">코드</span></div><figcaption>상자 + 거미줄</figcaption></figure>
+          <figure><div class="bc is-web"><span class="bc-c">n</span><span class="bc-code">코드</span></div><figcaption>거미줄만</figcaption></figure>
+          <figure><div class="bc is-box"><span class="bc-c">n</span><span class="bc-code">코드</span></div><figcaption>상자만</figcaption></figure>
+          <figure><div class="bc is-free"><span class="bc-c">n</span><span class="bc-code">코드</span></div><figcaption>잠금 없음</figcaption></figure>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">이 그림을 읽는 법</div>
+            <p>
+              왼쪽 위 작은 숫자가 <code>cell</code> 번호(<code>(y-1)×7 + (x-1)</code>)입니다.
+              베이지 바탕에 흐린 그림은 <strong>종이상자에 덮여 있는 칸</strong>으로, 실제 화면에서는
+              아이템이 보이지 않습니다. 여기서는 안에 무엇이 들었는지 같이 보려고 비쳐 두었습니다.
+              대각선 빗금은 <strong>거미줄</strong>입니다. 그림이 이름과 안 맞는 건
+              아트가 아직 임시 플레이스홀더이기 때문이고, 버그가 아닙니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 잠금 규칙 ────────────────────────────────────────── -->
+    <section class="doc-section" id="lock">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          잠금 규칙
+          <span class="doc-h2-sub">개발 기획서 §5.1.1 · 원작 Lua 인용</span>
+        </h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>종이상자</th>
+                <th>거미줄</th>
+                <th>보이는 상태</th>
+                <th>푸는 방법</th>
+                <th style="text-align: right">칸 수</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>×</td><td>×</td><td>일반 아이템</td><td>집어서 옮기고 합칠 수 있다</td><td style="text-align:right">2</td></tr>
+              <tr><td>×</td><td>O</td><td>아이템 위 거미줄</td><td><b>같은 아이템을 이 칸에 합쳐 넣으면</b> 풀린다 — 도착지 전용</td><td style="text-align:right">1</td></tr>
+              <tr><td>O</td><td>×</td><td>종이상자 덮개</td><td><b>옆 칸에서 머지</b>하면 걷힌다. 드러난 칸에서 충격이 <b>연쇄</b></td><td style="text-align:right">0</td></tr>
+              <tr><td>O</td><td>O</td><td>상자 안 거미줄 아이템</td><td>옆 머지로 <b>상자만</b> 걷히고 거미줄은 남는다 → 같은 아이템을 가져와 합친다</td><td style="text-align:right">60</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">거미줄 칸은 집는 곳이 아니라 놓는 곳</div>
+            <p>
+              정본의 두 문장이 모두 같은 방향입니다 — 「이 칸에 합치면」, 「가져와 머지한다」.
+              거미줄 칸을 <strong>출발지로 집는 수는 정본에 하나도 없습니다.</strong>
+              구현도 <code>IngameVM.canPick</code>에서 상자·거미줄을 똑같이 막고,
+              도착 판정(<code>mergeCheckAt</code>)만 거미줄을 허용합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">충격은 4방향 · 상자만 반응 · 연쇄한다</div>
+            <p>
+              원작 <code>ShockNeighborItems</code>가 <code>for dir = 1, 4</code>라 <strong>대각선은 없습니다.</strong>
+              충격에 반응하는 건 종이상자뿐이고, 상자가 걷혀 드러난 아이템이 움직일 수 있으면
+              그 자리에서 충격이 <strong>다시 퍼집니다.</strong> 거미줄이 남아 못 움직이는 칸에서 멈춥니다.
+              트리거는 머지뿐이고 단순 이동은 아무 일도 일으키지 않습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">지금 데이터로는 연쇄가 한 겹에서 멈춘다</div>
+            <p>
+              63칸 중 「상자만」이 <strong>0건</strong>이라, 상자를 걷어도 거미줄이 남아 연쇄가 이어지지 않습니다.
+              코드에 연쇄가 들어간 건 <strong>규칙이 그렇기 때문</strong>이지 지금 데이터가 그래서가 아닙니다 —
+              시트에 「상자O · 거미줄X」 칸이 생기는 순간 갈라집니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 튜토리얼 3수 ─────────────────────────────────────── -->
+    <section class="doc-section" id="tutorial">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          튜토리얼 3수
+          <span class="doc-h2-sub">잠긴 보드가 어떻게 열리기 시작하는가</span>
+        </h2>
+
+        <div class="mv-row">
+          <div class="mv"><div class="mv-t">초기</div><div class="bgrid bgrid--mini">
+<div class="bc is-box is-web" title="cell 14 · x1·y3 · 2701 Loose Coin"><span class="bc-c">14</span><img src="img/items/2701.png" alt="" loading="lazy" /><span class="bc-code">2701</span></div>
+<div class="bc is-box is-web" title="cell 15 · x2·y3 · 807 Muffin"><span class="bc-c">15</span><img src="img/items/807.png" alt="" loading="lazy" /><span class="bc-code">807</span></div>
+<div class="bc is-box is-web" title="cell 16 · x3·y3 · 806 Cinnamon Bun"><span class="bc-c">16</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 17 · x4·y3 · 806 Cinnamon Bun"><span class="bc-c">17</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 18 · x5·y3 · 201 Bent Nail"><span class="bc-c">18</span><img src="img/items/201.png" alt="" loading="lazy" /><span class="bc-code">201</span></div>
+<div class="bc is-box is-web" title="cell 19 · x6·y3 · 806 Cinnamon Bun"><span class="bc-c">19</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 21 · x1·y4 · 804 Croissant"><span class="bc-c">21</span><img src="img/items/804.png" alt="" loading="lazy" /><span class="bc-code">804</span></div>
+<div class="bc is-free" title="cell 22 · x2·y4 · 701 Clay Stove"><span class="bc-c">22</span><img src="img/items/701.png" alt="" loading="lazy" /><span class="bc-code">701</span></div>
+<div class="bc is-box is-web" title="cell 23 · x3·y4 · 802 Bread Roll"><span class="bc-c">23</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 24 · x4·y4 · 902 Crushed Berries"><span class="bc-c">24</span><img src="img/items/902.png" alt="" loading="lazy" /><span class="bc-code">902</span></div>
+<div class="bc is-box is-web" title="cell 25 · x5·y4 · 802 Bread Roll"><span class="bc-c">25</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 26 · x6·y4 · 205 Screwdriver"><span class="bc-c">26</span><img src="img/items/205.png" alt="" loading="lazy" /><span class="bc-code">205</span></div>
+<div class="bc is-box is-web" title="cell 28 · x1·y5 · 803 Baguette"><span class="bc-c">28</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc is-free" title="cell 29 · x2·y5 · 701 Clay Stove"><span class="bc-c">29</span><img src="img/items/701.png" alt="" loading="lazy" /><span class="bc-code">701</span></div>
+<div class="bc is-web" title="cell 30 · x3·y5 · 702 Brick Oven"><span class="bc-c">30</span><img src="img/items/702.png" alt="" loading="lazy" /><span class="bc-code">702</span></div>
+<div class="bc is-box is-web" title="cell 31 · x4·y5 · 703 Iron Oven"><span class="bc-c">31</span><img src="img/items/703.png" alt="" loading="lazy" /><span class="bc-code">703</span></div>
+<div class="bc is-box is-web" title="cell 32 · x5·y5 · 805 Butter Scone"><span class="bc-c">32</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 33 · x6·y5 · 103 Painted Toolbox"><span class="bc-c">33</span><img src="img/items/103.png" alt="" loading="lazy" /><span class="bc-code">103</span></div>
+<div class="bc is-box is-web" title="cell 35 · x1·y6 · 101 Tin Toolbox"><span class="bc-c">35</span><img src="img/items/101.png" alt="" loading="lazy" /><span class="bc-code">101</span></div>
+<div class="bc is-box is-web" title="cell 36 · x2·y6 · 903 Jam Jar"><span class="bc-c">36</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+<div class="bc is-box is-web" title="cell 37 · x3·y6 · 901 Berry Basket"><span class="bc-c">37</span><img src="img/items/901.png" alt="" loading="lazy" /><span class="bc-code">901</span></div>
+<div class="bc is-box is-web" title="cell 38 · x4·y6 · 805 Butter Scone"><span class="bc-c">38</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 39 · x5·y6 · 803 Baguette"><span class="bc-c">39</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc is-box is-web" title="cell 40 · x6·y6 · 903 Jam Jar"><span class="bc-c">40</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+</div><p class="mv-c">움직일 수 있는 칸은 <b>cell22 · cell29</b> 뿐입니다.</p></div><div class="mv"><div class="mv-t">수 1 · cell22 → cell29</div><div class="bgrid bgrid--mini">
+<div class="bc is-box is-web" title="cell 14 · x1·y3 · 2701 Loose Coin"><span class="bc-c">14</span><img src="img/items/2701.png" alt="" loading="lazy" /><span class="bc-code">2701</span></div>
+<div class="bc is-box is-web" title="cell 15 · x2·y3 · 807 Muffin"><span class="bc-c">15</span><img src="img/items/807.png" alt="" loading="lazy" /><span class="bc-code">807</span></div>
+<div class="bc is-box is-web" title="cell 16 · x3·y3 · 806 Cinnamon Bun"><span class="bc-c">16</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 17 · x4·y3 · 806 Cinnamon Bun"><span class="bc-c">17</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 18 · x5·y3 · 201 Bent Nail"><span class="bc-c">18</span><img src="img/items/201.png" alt="" loading="lazy" /><span class="bc-code">201</span></div>
+<div class="bc is-box is-web" title="cell 19 · x6·y3 · 806 Cinnamon Bun"><span class="bc-c">19</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 21 · x1·y4 · 804 Croissant"><span class="bc-c">21</span><img src="img/items/804.png" alt="" loading="lazy" /><span class="bc-code">804</span></div>
+<div class="bc bc-empty"><span class="bc-c">22</span><span class="bc-xy">x2·y4</span></div>
+<div class="bc is-box is-web" title="cell 23 · x3·y4 · 802 Bread Roll"><span class="bc-c">23</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 24 · x4·y4 · 902 Crushed Berries"><span class="bc-c">24</span><img src="img/items/902.png" alt="" loading="lazy" /><span class="bc-code">902</span></div>
+<div class="bc is-box is-web" title="cell 25 · x5·y4 · 802 Bread Roll"><span class="bc-c">25</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 26 · x6·y4 · 205 Screwdriver"><span class="bc-c">26</span><img src="img/items/205.png" alt="" loading="lazy" /><span class="bc-code">205</span></div>
+<div class="bc is-web hi-pop" title="cell 28 · x1·y5 · 803 Baguette"><span class="bc-c">28</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc is-free hi-dst" title="cell 29 · x2·y5 · 702 Brick Oven"><span class="bc-c">29</span><img src="img/items/702.png" alt="" loading="lazy" /><span class="bc-code">702</span></div>
+<div class="bc is-web" title="cell 30 · x3·y5 · 702 Brick Oven"><span class="bc-c">30</span><img src="img/items/702.png" alt="" loading="lazy" /><span class="bc-code">702</span></div>
+<div class="bc is-box is-web" title="cell 31 · x4·y5 · 703 Iron Oven"><span class="bc-c">31</span><img src="img/items/703.png" alt="" loading="lazy" /><span class="bc-code">703</span></div>
+<div class="bc is-box is-web" title="cell 32 · x5·y5 · 805 Butter Scone"><span class="bc-c">32</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 33 · x6·y5 · 103 Painted Toolbox"><span class="bc-c">33</span><img src="img/items/103.png" alt="" loading="lazy" /><span class="bc-code">103</span></div>
+<div class="bc is-box is-web" title="cell 35 · x1·y6 · 101 Tin Toolbox"><span class="bc-c">35</span><img src="img/items/101.png" alt="" loading="lazy" /><span class="bc-code">101</span></div>
+<div class="bc is-web hi-pop" title="cell 36 · x2·y6 · 903 Jam Jar"><span class="bc-c">36</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+<div class="bc is-box is-web" title="cell 37 · x3·y6 · 901 Berry Basket"><span class="bc-c">37</span><img src="img/items/901.png" alt="" loading="lazy" /><span class="bc-code">901</span></div>
+<div class="bc is-box is-web" title="cell 38 · x4·y6 · 805 Butter Scone"><span class="bc-c">38</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 39 · x5·y6 · 803 Baguette"><span class="bc-c">39</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc is-box is-web" title="cell 40 · x6·y6 · 903 Jam Jar"><span class="bc-c">40</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+</div><p class="mv-c">cell29에 <b>702</b>. 충격으로 <b>cell28 · cell36</b>의 상자가 걷히지만 거미줄은 남습니다.</p></div><div class="mv"><div class="mv-t">수 2 · cell29 → cell30</div><div class="bgrid bgrid--mini">
+<div class="bc is-box is-web" title="cell 14 · x1·y3 · 2701 Loose Coin"><span class="bc-c">14</span><img src="img/items/2701.png" alt="" loading="lazy" /><span class="bc-code">2701</span></div>
+<div class="bc is-box is-web" title="cell 15 · x2·y3 · 807 Muffin"><span class="bc-c">15</span><img src="img/items/807.png" alt="" loading="lazy" /><span class="bc-code">807</span></div>
+<div class="bc is-box is-web" title="cell 16 · x3·y3 · 806 Cinnamon Bun"><span class="bc-c">16</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 17 · x4·y3 · 806 Cinnamon Bun"><span class="bc-c">17</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 18 · x5·y3 · 201 Bent Nail"><span class="bc-c">18</span><img src="img/items/201.png" alt="" loading="lazy" /><span class="bc-code">201</span></div>
+<div class="bc is-box is-web" title="cell 19 · x6·y3 · 806 Cinnamon Bun"><span class="bc-c">19</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 21 · x1·y4 · 804 Croissant"><span class="bc-c">21</span><img src="img/items/804.png" alt="" loading="lazy" /><span class="bc-code">804</span></div>
+<div class="bc bc-empty"><span class="bc-c">22</span><span class="bc-xy">x2·y4</span></div>
+<div class="bc is-web hi-pop" title="cell 23 · x3·y4 · 802 Bread Roll"><span class="bc-c">23</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 24 · x4·y4 · 902 Crushed Berries"><span class="bc-c">24</span><img src="img/items/902.png" alt="" loading="lazy" /><span class="bc-code">902</span></div>
+<div class="bc is-box is-web" title="cell 25 · x5·y4 · 802 Bread Roll"><span class="bc-c">25</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 26 · x6·y4 · 205 Screwdriver"><span class="bc-c">26</span><img src="img/items/205.png" alt="" loading="lazy" /><span class="bc-code">205</span></div>
+<div class="bc is-web" title="cell 28 · x1·y5 · 803 Baguette"><span class="bc-c">28</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc bc-empty"><span class="bc-c">29</span><span class="bc-xy">x2·y5</span></div>
+<div class="bc is-free hi-dst" title="cell 30 · x3·y5 · 703 Iron Oven"><span class="bc-c">30</span><img src="img/items/703.png" alt="" loading="lazy" /><span class="bc-code">703</span></div>
+<div class="bc is-web hi-pop" title="cell 31 · x4·y5 · 703 Iron Oven"><span class="bc-c">31</span><img src="img/items/703.png" alt="" loading="lazy" /><span class="bc-code">703</span></div>
+<div class="bc is-box is-web" title="cell 32 · x5·y5 · 805 Butter Scone"><span class="bc-c">32</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 33 · x6·y5 · 103 Painted Toolbox"><span class="bc-c">33</span><img src="img/items/103.png" alt="" loading="lazy" /><span class="bc-code">103</span></div>
+<div class="bc is-box is-web" title="cell 35 · x1·y6 · 101 Tin Toolbox"><span class="bc-c">35</span><img src="img/items/101.png" alt="" loading="lazy" /><span class="bc-code">101</span></div>
+<div class="bc is-web" title="cell 36 · x2·y6 · 903 Jam Jar"><span class="bc-c">36</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+<div class="bc is-web hi-pop" title="cell 37 · x3·y6 · 901 Berry Basket"><span class="bc-c">37</span><img src="img/items/901.png" alt="" loading="lazy" /><span class="bc-code">901</span></div>
+<div class="bc is-box is-web" title="cell 38 · x4·y6 · 805 Butter Scone"><span class="bc-c">38</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 39 · x5·y6 · 803 Baguette"><span class="bc-c">39</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc is-box is-web" title="cell 40 · x6·y6 · 903 Jam Jar"><span class="bc-c">40</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+</div><p class="mv-c">거미줄 칸에 <b>합쳐 넣어</b> 703. 충격이 <b>cell23 · 31 · 37</b>의 상자를 걷어 cell31의 703이 드러납니다.</p></div><div class="mv"><div class="mv-t">수 3 · cell30 → cell31</div><div class="bgrid bgrid--mini">
+<div class="bc is-box is-web" title="cell 14 · x1·y3 · 2701 Loose Coin"><span class="bc-c">14</span><img src="img/items/2701.png" alt="" loading="lazy" /><span class="bc-code">2701</span></div>
+<div class="bc is-box is-web" title="cell 15 · x2·y3 · 807 Muffin"><span class="bc-c">15</span><img src="img/items/807.png" alt="" loading="lazy" /><span class="bc-code">807</span></div>
+<div class="bc is-box is-web" title="cell 16 · x3·y3 · 806 Cinnamon Bun"><span class="bc-c">16</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 17 · x4·y3 · 806 Cinnamon Bun"><span class="bc-c">17</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 18 · x5·y3 · 201 Bent Nail"><span class="bc-c">18</span><img src="img/items/201.png" alt="" loading="lazy" /><span class="bc-code">201</span></div>
+<div class="bc is-box is-web" title="cell 19 · x6·y3 · 806 Cinnamon Bun"><span class="bc-c">19</span><img src="img/items/806.png" alt="" loading="lazy" /><span class="bc-code">806</span></div>
+<div class="bc is-box is-web" title="cell 21 · x1·y4 · 804 Croissant"><span class="bc-c">21</span><img src="img/items/804.png" alt="" loading="lazy" /><span class="bc-code">804</span></div>
+<div class="bc bc-empty"><span class="bc-c">22</span><span class="bc-xy">x2·y4</span></div>
+<div class="bc is-web" title="cell 23 · x3·y4 · 802 Bread Roll"><span class="bc-c">23</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-web hi-pop" title="cell 24 · x4·y4 · 902 Crushed Berries"><span class="bc-c">24</span><img src="img/items/902.png" alt="" loading="lazy" /><span class="bc-code">902</span></div>
+<div class="bc is-box is-web" title="cell 25 · x5·y4 · 802 Bread Roll"><span class="bc-c">25</span><img src="img/items/802.png" alt="" loading="lazy" /><span class="bc-code">802</span></div>
+<div class="bc is-box is-web" title="cell 26 · x6·y4 · 205 Screwdriver"><span class="bc-c">26</span><img src="img/items/205.png" alt="" loading="lazy" /><span class="bc-code">205</span></div>
+<div class="bc is-web" title="cell 28 · x1·y5 · 803 Baguette"><span class="bc-c">28</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc bc-empty"><span class="bc-c">29</span><span class="bc-xy">x2·y5</span></div>
+<div class="bc bc-empty"><span class="bc-c">30</span><span class="bc-xy">x3·y5</span></div>
+<div class="bc is-free hi-dst" title="cell 31 · x4·y5 · 704 Cast Iron Oven"><span class="bc-c">31</span><img src="img/items/704.png" alt="" loading="lazy" /><span class="bc-code">704</span></div>
+<div class="bc is-web hi-pop" title="cell 32 · x5·y5 · 805 Butter Scone"><span class="bc-c">32</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 33 · x6·y5 · 103 Painted Toolbox"><span class="bc-c">33</span><img src="img/items/103.png" alt="" loading="lazy" /><span class="bc-code">103</span></div>
+<div class="bc is-box is-web" title="cell 35 · x1·y6 · 101 Tin Toolbox"><span class="bc-c">35</span><img src="img/items/101.png" alt="" loading="lazy" /><span class="bc-code">101</span></div>
+<div class="bc is-web" title="cell 36 · x2·y6 · 903 Jam Jar"><span class="bc-c">36</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+<div class="bc is-web" title="cell 37 · x3·y6 · 901 Berry Basket"><span class="bc-c">37</span><img src="img/items/901.png" alt="" loading="lazy" /><span class="bc-code">901</span></div>
+<div class="bc is-web hi-pop" title="cell 38 · x4·y6 · 805 Butter Scone"><span class="bc-c">38</span><img src="img/items/805.png" alt="" loading="lazy" /><span class="bc-code">805</span></div>
+<div class="bc is-box is-web" title="cell 39 · x5·y6 · 803 Baguette"><span class="bc-c">39</span><img src="img/items/803.png" alt="" loading="lazy" /><span class="bc-code">803</span></div>
+<div class="bc is-box is-web" title="cell 40 · x6·y6 · 903 Jam Jar"><span class="bc-c">40</span><img src="img/items/903.png" alt="" loading="lazy" /><span class="bc-code">903</span></div>
+</div><p class="mv-c">cell31에 <b>704 생성기</b>. 잠금이 풀려 이제 생산이 돕니다.</p></div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">테두리 색</div>
+            <p>
+              회색은 <strong>집어 온 칸</strong>, 파랑은 <strong>합쳐진 도착 칸</strong>,
+              주황은 그 수의 충격으로 <strong>상자가 걷힌 칸</strong>입니다.
+              세 수 모두 방향이 「일반 칸 → 거미줄 칸」이고, 거미줄 칸에서 출발하는 수는 없습니다.
+              열려 있는 701 페어에서 시작해 <code>704</code> 생성기에 닿는 것이 이 보드의 유일한 실마리이고,
+              나머지 60칸은 그 생성기가 돌기 시작해야 손댈 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 아이템 목록 ──────────────────────────────────────── -->
+    <section class="doc-section" id="items">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          아이템 목록
+          <span class="doc-h2-sub">초기 보드에 깔린 54종</span>
+        </h2>
+
+        <details class="fold">
+          <summary>체인·단계 순으로 펼치기</summary>
+          <div class="fold-body">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>그림</th><th>코드</th><th>이름</th>
+                    <th style="text-align: right">체인</th>
+                    <th style="text-align: right">단계</th>
+                    <th style="text-align: right">칸 수</th>
+                    <th>비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="ic"><img src="img/items/101.png" alt="" loading="lazy" /></td><td><code>101</code></td><td>Tin Toolbox</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/102.png" alt="" loading="lazy" /></td><td><code>102</code></td><td>Wooden Toolbox</td><td style="text-align:right">1</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/103.png" alt="" loading="lazy" /></td><td><code>103</code></td><td>Painted Toolbox</td><td style="text-align:right">1</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/201.png" alt="" loading="lazy" /></td><td><code>201</code></td><td>Bent Nail</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/202.png" alt="" loading="lazy" /></td><td><code>202</code></td><td>Wood Screw</td><td style="text-align:right">2</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/203.png" alt="" loading="lazy" /></td><td><code>203</code></td><td>Hand Hammer</td><td style="text-align:right">2</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/205.png" alt="" loading="lazy" /></td><td><code>205</code></td><td>Screwdriver</td><td style="text-align:right">2</td><td style="text-align:right">5</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/210.png" alt="" loading="lazy" /></td><td><code>210</code></td><td>Hand Drill</td><td style="text-align:right">2</td><td style="text-align:right">10</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/303.png" alt="" loading="lazy" /></td><td><code>303</code></td><td>Paint Brush</td><td style="text-align:right">3</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/401.png" alt="" loading="lazy" /></td><td><code>401</code></td><td>Clay Teapot</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/402.png" alt="" loading="lazy" /></td><td><code>402</code></td><td>Chipped Teapot</td><td style="text-align:right">4</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/404.png" alt="" loading="lazy" /></td><td><code>404</code></td><td>Porcelain Teapot</td><td style="text-align:right">4</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/506.png" alt="" loading="lazy" /></td><td><code>506</code></td><td>Green Tea</td><td style="text-align:right">5</td><td style="text-align:right">6</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/507.png" alt="" loading="lazy" /></td><td><code>507</code></td><td>Jasmine Tea</td><td style="text-align:right">5</td><td style="text-align:right">7</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/601.png" alt="" loading="lazy" /></td><td><code>601</code></td><td>Clay Cup</td><td style="text-align:right">6</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/603.png" alt="" loading="lazy" /></td><td><code>603</code></td><td>Painted Teacup</td><td style="text-align:right">6</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/701.png" alt="" loading="lazy" /></td><td><code>701</code></td><td>Clay Stove</td><td style="text-align:right">7</td><td style="text-align:right">1</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/702.png" alt="" loading="lazy" /></td><td><code>702</code></td><td>Brick Oven</td><td style="text-align:right">7</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/703.png" alt="" loading="lazy" /></td><td><code>703</code></td><td>Iron Oven</td><td style="text-align:right">7</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/802.png" alt="" loading="lazy" /></td><td><code>802</code></td><td>Bread Roll</td><td style="text-align:right">8</td><td style="text-align:right">2</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/803.png" alt="" loading="lazy" /></td><td><code>803</code></td><td>Baguette</td><td style="text-align:right">8</td><td style="text-align:right">3</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/804.png" alt="" loading="lazy" /></td><td><code>804</code></td><td>Croissant</td><td style="text-align:right">8</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/805.png" alt="" loading="lazy" /></td><td><code>805</code></td><td>Butter Scone</td><td style="text-align:right">8</td><td style="text-align:right">5</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/806.png" alt="" loading="lazy" /></td><td><code>806</code></td><td>Cinnamon Bun</td><td style="text-align:right">8</td><td style="text-align:right">6</td><td style="text-align:right">3</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/807.png" alt="" loading="lazy" /></td><td><code>807</code></td><td>Muffin</td><td style="text-align:right">8</td><td style="text-align:right">7</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/809.png" alt="" loading="lazy" /></td><td><code>809</code></td><td>Doughnut</td><td style="text-align:right">8</td><td style="text-align:right">9</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/810.png" alt="" loading="lazy" /></td><td><code>810</code></td><td>Fruit Tart</td><td style="text-align:right">8</td><td style="text-align:right">10</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/901.png" alt="" loading="lazy" /></td><td><code>901</code></td><td>Berry Basket</td><td style="text-align:right">9</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/902.png" alt="" loading="lazy" /></td><td><code>902</code></td><td>Crushed Berries</td><td style="text-align:right">9</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/903.png" alt="" loading="lazy" /></td><td><code>903</code></td><td>Jam Jar</td><td style="text-align:right">9</td><td style="text-align:right">3</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/904.png" alt="" loading="lazy" /></td><td><code>904</code></td><td>Strawberry Jam</td><td style="text-align:right">9</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1001.png" alt="" loading="lazy" /></td><td><code>1001</code></td><td>Seed Pouch</td><td style="text-align:right">10</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1002.png" alt="" loading="lazy" /></td><td><code>1002</code></td><td>Seed Packet</td><td style="text-align:right">10</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1005.png" alt="" loading="lazy" /></td><td><code>1005</code></td><td>Planter Box</td><td style="text-align:right">10</td><td style="text-align:right">5</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1103.png" alt="" loading="lazy" /></td><td><code>1103</code></td><td>Tulip</td><td style="text-align:right">11</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1104.png" alt="" loading="lazy" /></td><td><code>1104</code></td><td>Sunflower</td><td style="text-align:right">11</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1201.png" alt="" loading="lazy" /></td><td><code>1201</code></td><td>Straw Basket</td><td style="text-align:right">12</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1202.png" alt="" loading="lazy" /></td><td><code>1202</code></td><td>Woven Basket</td><td style="text-align:right">12</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1301.png" alt="" loading="lazy" /></td><td><code>1301</code></td><td>Cotton Thread</td><td style="text-align:right">13</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1304.png" alt="" loading="lazy" /></td><td><code>1304</code></td><td>Hand Towel</td><td style="text-align:right">13</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1305.png" alt="" loading="lazy" /></td><td><code>1305</code></td><td>Bath Towel</td><td style="text-align:right">13</td><td style="text-align:right">5</td><td style="text-align:right">2</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1501.png" alt="" loading="lazy" /></td><td><code>1501</code></td><td>Wild Hive</td><td style="text-align:right">15</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1502.png" alt="" loading="lazy" /></td><td><code>1502</code></td><td>Straw Skep</td><td style="text-align:right">15</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1601.png" alt="" loading="lazy" /></td><td><code>1601</code></td><td>Honeycomb Bit</td><td style="text-align:right">16</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1602.png" alt="" loading="lazy" /></td><td><code>1602</code></td><td>Honeycomb</td><td style="text-align:right">16</td><td style="text-align:right">2</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1605.png" alt="" loading="lazy" /></td><td><code>1605</code></td><td>Honey Pot</td><td style="text-align:right">16</td><td style="text-align:right">5</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1607.png" alt="" loading="lazy" /></td><td><code>1607</code></td><td>Clover Honey</td><td style="text-align:right">16</td><td style="text-align:right">7</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1701.png" alt="" loading="lazy" /></td><td><code>1701</code></td><td>Wax Flake</td><td style="text-align:right">17</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1705.png" alt="" loading="lazy" /></td><td><code>1705</code></td><td>Wax Bar</td><td style="text-align:right">17</td><td style="text-align:right">5</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1801.png" alt="" loading="lazy" /></td><td><code>1801</code></td><td>Straw Cat Bed</td><td style="text-align:right">18</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1901.png" alt="" loading="lazy" /></td><td><code>1901</code></td><td>Kitten</td><td style="text-align:right">19</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/1903.png" alt="" loading="lazy" /></td><td><code>1903</code></td><td>Calico Kitten</td><td style="text-align:right">19</td><td style="text-align:right">3</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/2701.png" alt="" loading="lazy" /></td><td><code>2701</code></td><td>Loose Coin</td><td style="text-align:right">27</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td></td></tr>
+<tr><td class="ic"><img src="img/items/2704.png" alt="" loading="lazy" /></td><td><code>2704</code></td><td>Coin Sack</td><td style="text-align:right">27</td><td style="text-align:right">4</td><td style="text-align:right">1</td><td></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <div class="foot">
+          <b>확인 범위</b> 보드 배치·잠금 플래그는 <code>assets/bundle/data/rosewood-balance.json</code>의
+          <code>initial_board</code> 63행 실측, 이름은 <code>assets/localization/en.json</code>,
+          그림은 클라이언트가 지금 쓰는 <code>bundle/board/items/&lt;item_code&gt;.png</code> 그대로입니다.
+          튜토리얼 3수는 정본 §5.1.1의 규칙을 그대로 돌려 얻은 결과이고, 구현 러너 결과와 일치합니다.
+          해제 연출(노란 파편)과 상자·거미줄 아트는 아직 없습니다.
+        </div>
+      </div>
+    </section>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
