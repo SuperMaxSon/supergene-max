@@ -103,9 +103,12 @@ out = {
         "sheet": bal.get("_meta", {}),
         "cols": COLS,
         "rows": ROWS,
-        # 생산은 에너지를 쓴다. 시작값은 시트 const 를 그대로 읽는다.
+        # 생산은 에너지를 쓴다. 시작값·회복 간격 모두 시트 const 를 그대로 읽는다
+        # (정본 「에너지」: 상한 100 · 120초에 1칸 · 나머지 초는 이월).
         "energy": next((r["const_value"] for r in bal["const"]
                         if r.get("const_name") == "default_max_energy"), 100),
+        "energyRec": next((r["const_value"] for r in bal["const"]
+                           if r.get("const_name") == "default_recovery_duration_sec"), 120),
     },
     "board": board,
     "items": items,

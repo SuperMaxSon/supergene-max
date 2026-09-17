@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-17 09:40",
+  updated: "2026-09-17 09:48",
 };
 
 /* --------------------------------------------------------------------------
@@ -522,8 +522,8 @@ const SECTIONS = [
         url: "docs/rosewood-initial-board.html",
         project: "smg",
         status: "초안",
-        version: "v1.3",
-        updated: "2026-09-17 09:40",
+        version: "v1.4",
+        updated: "2026-09-17 09:48",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스"],
       },

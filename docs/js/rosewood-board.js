@@ -34,13 +34,24 @@
   var S = null;      // 현재 보드 — [{code,box,web}|null] × 63
   var PROD = null;   // 칸 번호 → { code, stock, lastAt } — 생성기 재고는 칸에 붙는다
   var BAGS = null;   // 아이템 코드 → 잔량 배열 — 방식 1은 **종류별 하나**를 공유한다
-  var ENERGY = 0;
+  var ENERGY = 0, ENERGY_MAX = 0, ENERGY_REC = 0, ENERGY_AT = 0;
   var LOG = [];
   var PLAYING = false, TIMER = null, BUSY = false;
   var LAST_PROGRESS = 0;                           // 마지막으로 수를 둔 시각(초)
-  var IDLE_MAX_SEC = 15;                           // 이만큼 아무 수도 못 두면 멈춘다
+  var IDLE_MAX_SEC = 400;                          // 게임 시각으로 이만큼 못 두면 멈춘다
+                                                   // (에너지 1칸 = 120초라 그보다 넉넉해야 한다)
   var $ = function (s, r) { return (r || document).querySelector(s); };
-  var now = function () { return Date.now() / 1000; };
+
+  /* 회복은 **게임 시각**으로 잰다. 배속을 올리면 연출만 빨라지고 재고·에너지 회복은
+     실시간 그대로라, 8배속에서도 120초를 꼬박 기다리게 된다 — 시계를 같이 감는다.
+     경과를 그때그때 배수로 적립하므로 배속을 바꿔도 이미 흐른 시간은 보존된다. */
+  var CLOCK = { t: 0, wall: Date.now() / 1000 };
+  function now() {
+    var w = Date.now() / 1000;
+    CLOCK.t += (w - CLOCK.wall) * SPEED;
+    CLOCK.wall = w;
+    return CLOCK.t;
+  }
 
   /* ── 조회 ────────────────────────────────────────────────────────────── */
   function spec(code) { return DB.items[String(code)] || null; }
@@ -121,6 +132,24 @@
     return { ok: true, kind: "merge", code: r.code, popped: popped };
   }
 
+  /* 에너지 자연 회복 — 정본 「에너지」 그대로.
+       직전 >= 상한 → 회복 정지 · 아니면 floor(경과 ÷ 120) 만큼 채우고 기준시각을 배수로 스냅
+     (나머지 초를 버리면 회복이 영원히 느려진다). 보상·구매로 상한을 넘겨 갖는 건 줄이지 않는다. */
+  function rechargeEnergy() {
+    if (ENERGY_REC <= 0 || ENERGY >= ENERGY_MAX) { ENERGY_AT = now(); return; }
+    var elapsed = now() - ENERGY_AT;
+    if (elapsed < 0) { ENERGY_AT = now(); return; }
+    if (elapsed < ENERGY_REC) return;
+    var gained = Math.floor(elapsed / ENERGY_REC);
+    ENERGY = Math.min(ENERGY_MAX, ENERGY + gained);
+    ENERGY_AT = ENERGY >= ENERGY_MAX ? now() : ENERGY_AT + gained * ENERGY_REC;
+  }
+
+  function energyWait() {
+    if (ENERGY >= ENERGY_MAX || ENERGY_REC <= 0) return 0;
+    return Math.max(0, ENERGY_REC - (now() - ENERGY_AT));
+  }
+
   /* ── 생산 판정 (클라 이식) ───────────────────────────────────────────── */
   function firstEmpty() {
     for (var i = 0; i < CELLS; i++) if (!S[i]) return i;
@@ -161,19 +190,20 @@
     if (st.stock <= 0) return { ok: false, reason: "recharging", wait: Math.max(0, p.rec - (now() - st.lastAt)) };
     var dest = firstEmpty();
     if (dest < 0) return { ok: false, reason: "board_full" };
-    if (ENERGY < p.cost) return { ok: false, reason: "energy_short" };
+    if (ENERGY < p.cost) return { ok: false, reason: "energy_short", wait: energyWait() };
     return { ok: true, dest: dest, p: p, st: st };
   }
 
   /* 보드에서 지금 누를 수 있는 생성기 하나. 없으면 왜 없는지까지 돌려준다. */
   function findProduce() {
+    rechargeEnergy();
     var why = null;
     for (var i = 0; i < CELLS; i++) {
       var r = produceCheckAt(i);
       if (r.ok) return { index: i, check: r };
       if (r.reason === "no_produce" || r.reason === "auto_only") continue;
-      // 막힌 사유는 「생성기가 아예 없다」와 구분해야 해서 남긴다. 회복 대기가 가장 약한 정지 사유다.
-      if (!why || why.reason !== "recharging") why = r;
+      // 막힌 사유는 「생성기가 아예 없다」와 구분해야 해서 남긴다. 기다리면 풀리는 사유가 가장 약하다.
+      if (!why || !isWait(why)) why = r;
     }
     return { index: -1, why: why };
   }
@@ -202,9 +232,13 @@
     return null;
   }
 
+  /* 기다리면 풀리는 사유. 보드가 가득하거나 생성기가 없는 것과 달리 시간이 해결한다. */
+  function isWait(r) { return r && (r.reason === "recharging" || r.reason === "energy_short"); }
+
   function applyProduce(i, check) {
     var draw = drawFromBag(S[i].code, check.p);
     if (!draw) return null;
+    if (ENERGY >= ENERGY_MAX) ENERGY_AT = now();   // 만땅에서 처음 쓰는 순간부터 회복 시계가 돈다
     ENERGY -= check.p.cost;                        // 에너지가 먼저, 그 다음 재고
     check.st.stock -= 1;
     check.st.lastAt = now();
@@ -278,6 +312,8 @@
     }
     set("#rwbNbw", n.bw); set("#rwbNw", n.w); set("#rwbNb", n.b); set("#rwbNfree", n.free);
     set("#rwbNmv", LOG.length); set("#rwbEnergy", ENERGY);
+    var wait = energyWait();
+    set("#rwbEnergySub", ENERGY >= ENERGY_MAX ? "가득" : "+1까지 " + Math.ceil(wait) + "초");
   }
 
   function set(sel, v) { var e = $(sel); if (e) e.textContent = String(v); }
@@ -288,6 +324,7 @@
   }
 
   function cycleSpeed() {
+    now();                                         // 배속을 바꾸기 **전에** 지금까지 흐른 시간을 적립한다
     SPEED = SPEEDS[(SPEEDS.indexOf(SPEED) + 1) % SPEEDS.length];
     applySpeed();
   }
@@ -371,8 +408,10 @@
 
     // 회복 대기는 정지가 아니다 — 시간이 지나면 다시 눌릴 칸이라 재생을 그대로 둔다.
     var idle = now() - LAST_PROGRESS;
-    if (pr.why && pr.why.reason === "recharging" && idle < IDLE_MAX_SEC) {
-      status("재고 회복 대기 " + Math.ceil(pr.why.wait) + "초 — 기다렸다 다시 생산합니다");
+    if (isWait(pr.why) && idle < IDLE_MAX_SEC) {
+      renderStats();
+      status((pr.why.reason === "energy_short" ? "에너지 회복 대기 " : "재고 회복 대기 ")
+        + Math.ceil(pr.why.wait) + "초 — 게임 시각 기준, 배속만큼 빨리 흐릅니다");
       if (then) then();
       return;
     }
@@ -442,7 +481,10 @@
     S = DB.board.map(function (c) { return c ? { code: c.code, box: c.box, web: c.web } : null; });
     PROD = new Map();
     BAGS = new Map();
-    ENERGY = DB._meta.energy;
+    ENERGY = ENERGY_MAX = DB._meta.energy;
+    ENERGY_REC = DB._meta.energyRec || 0;
+    CLOCK = { t: 0, wall: Date.now() / 1000 };     // 게임 시각도 같이 되감는다
+    ENERGY_AT = 0;
     LOG = [];
     render();
     status("초기 상태 — 잠금 없는 칸은 cell22 · cell29 두 곳뿐입니다");
