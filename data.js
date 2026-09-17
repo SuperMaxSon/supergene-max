@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-17 09:15",
+  updated: "2026-09-17 09:26",
 };
 
 /* --------------------------------------------------------------------------
@@ -288,17 +288,6 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "초기 보드",
-        desc: "initial_board 63칸을 7×9 그대로 펼치고 지금 쓰는 더미 아이템 그림을 그대로 박은 판. 상자+거미줄 60 · 거미줄만 1 · 잠금 없음 2 라 첫 수는 701 페어 하나뿐입니다. 정본 튜토리얼 3수가 어떻게 704 생성기까지 닿는지 수순별로 봅니다.",
-        url: "docs/rosewood-initial-board.html",
-        project: "smg",
-        status: "초안",
-        version: "v1.0",
-        updated: "2026-09-17 09:15",
-        pinned: false,
-        tags: ["머지", "밸런스"],
-      },
-      {
         title: "리소스 예산",
         desc: "무엇이 무겁고 언제 불러오는가. 메모리는 파일이 아니라 해상도로 정해집니다 — 대화 애니 파일 7.3MB 가 메모리 90.8MB. 로딩 단위를 캐릭터가 아니라 감정(5.7MB)으로 잡아야 하는 이유를 솔리테어 실측으로 맞췄습니다.",
         url: "docs/story-merge-resource-budget.html",
@@ -526,6 +515,17 @@ const SECTIONS = [
         updated: "2026-09-15 18:20",
         pinned: false,
         tags: ["머지", "인터랙티브"],
+      },
+      {
+        title: "초기 보드",
+        desc: "initial_board 63칸을 7×9 그대로 깔고 재생을 누르면 클라 판정(canPick · mergeCheckAt · 4방향 충격)으로 둘 수 있는 머지를 연달아 둡니다. 701 페어에서 출발해 704 생성기에 닿는 3수에서 멈추는 게 지금 데이터의 전부입니다.",
+        url: "docs/rosewood-initial-board.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.1",
+        updated: "2026-09-17 09:26",
+        pinned: false,
+        tags: ["머지", "인터랙티브", "밸런스"],
       },
     ],
   },
