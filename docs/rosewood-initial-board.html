@@ -25,13 +25,37 @@
       }
       .rwb-btn:hover { background: var(--surface-2); }
       .rwb-btn.pri { border-color: var(--tool); color: var(--tool); }
-      .rwb-stat { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; font-size: 11.5px; color: var(--text-dim); }
+      .rwb-stat { display: flex; gap: 10px; flex-wrap: wrap; align-content: center; font-size: 11.5px; color: var(--text-dim); }
       .rwb-stat b { color: var(--text); font-variant-numeric: tabular-nums; }
-      .rwb-status {
-        margin: 0 0 10px; min-height: 18px; font-size: 12px; font-weight: 600; color: var(--text-dim);
+
+      /* 둔 수 · 에너지는 재생 내내 좇는 값이라 크게 뽑는다. 나머지 잠금 집계는 옆에 작게 붙는다. */
+      .rwb-kpis { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+      .rwb-kpi {
+        min-width: 104px; padding: 8px 14px 9px;
+        border: 1px solid var(--border); border-left: 4px solid var(--tool);
+        border-radius: var(--radius); background: var(--surface);
       }
+      .rwb-kpi.e { border-left-color: var(--warn); }
+      .rwb-kpi-n {
+        font: 800 27px/1.1 system-ui, sans-serif; letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums; color: var(--tool);
+      }
+      .rwb-kpi.e .rwb-kpi-n { color: #b45309; }
+      .rwb-kpi-l { margin-top: 3px; font: 700 11px/1 system-ui, sans-serif; color: var(--text-dim); }
+
+      /* 상태줄은 배속이 빠를수록 잘 놓쳐서, 띠로 세우고 바뀔 때 한 번 밝아지게 한다. */
+      .rwb-status {
+        margin: 0 0 10px; padding: 9px 13px; min-height: 19px;
+        border: 1px solid var(--border); border-left: 4px solid var(--text-faint);
+        border-radius: var(--radius); background: var(--surface);
+        font-size: 13px; font-weight: 700; color: var(--text);
+      }
+      @keyframes rwbHit { 0% { background: #fff5d8; border-left-color: var(--warn); } 100% { background: var(--surface); border-left-color: var(--text-faint); } }
+      .rwb-status.hit { animation: rwbHit 0.5s ease-out; }
 
       .bgrid {
+        /* 본문 폭을 다 쓰면 칸이 과하게 커진다 — 10% 줄여서 로그·상태줄과 같이 한눈에 들어오게 둔다. */
+        max-width: 90%;
         position: relative;
         display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
         padding: 10px; border: 1px solid var(--border); border-radius: var(--radius);
@@ -77,9 +101,9 @@
       .rwb-fly img { width: 58%; height: 58%; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(20, 25, 45, 0.28)); }
 
       @keyframes rwbPop { 0% { transform: scale(0.72); } 55% { transform: scale(1.14); } 100% { transform: scale(1); } }
-      .bc.fx-pop img { animation: rwbPop 0.42s cubic-bezier(.2,.7,.3,1); }
+      .bc.fx-pop img { animation: rwbPop calc(0.42s / var(--sp, 1)) cubic-bezier(.2,.7,.3,1); }
       @keyframes rwbShock { 0% { background: #ffe9c2; } 100% { background: var(--surface); } }
-      .bc.fx-shock { animation: rwbShock 0.6s ease-out; }
+      .bc.fx-shock { animation: rwbShock calc(0.6s / var(--sp, 1)) ease-out; }
 
       .rwb-lg { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 2px 0; font-size: 11px; color: var(--text-dim); }
       .rwb-lg i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
@@ -113,10 +137,20 @@
       <div class="rwb-bar">
         <button type="button" class="rwb-btn pri" id="rwbPlay">▶ 재생</button>
         <button type="button" class="rwb-btn" id="rwbStep">⏭ 한 수</button>
+        <button type="button" class="rwb-btn" id="rwbSpeed">⏩ 1배속</button>
         <button type="button" class="rwb-btn" id="rwbReset">↺ 보드 초기화</button>
+      </div>
+
+      <div class="rwb-kpis">
+        <div class="rwb-kpi">
+          <div class="rwb-kpi-n" id="rwbNmv">0</div>
+          <div class="rwb-kpi-l">둔 수</div>
+        </div>
+        <div class="rwb-kpi e">
+          <div class="rwb-kpi-n" id="rwbEnergy">0</div>
+          <div class="rwb-kpi-l">에너지</div>
+        </div>
         <div class="rwb-stat">
-          <span>둔 수 <b id="rwbNmv">0</b></span>
-          <span>에너지 <b id="rwbEnergy">0</b></span>
           <span>상자+거미줄 <b id="rwbNbw">0</b></span>
           <span>거미줄만 <b id="rwbNw">0</b></span>
           <span>상자만 <b id="rwbNb">0</b></span>
@@ -138,6 +172,6 @@
       <div class="rwb-log" id="rwbLog"></div>
     </div>
 
-    <script src="js/rosewood-board.js?v=2"></script>
+    <script src="js/rosewood-board.js?v=5"></script>
   </body>
 </html>

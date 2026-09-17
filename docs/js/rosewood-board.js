@@ -22,8 +22,13 @@
 
   var DATA_URL = "data/rosewood-board.json";
   var COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
-  var STEP_MS = 420;                               // 한 수와 다음 수 사이
-  var FLY_MS = 240;                                // 칩이 날아가는 시간
+  var STEP_MS = 420;                               // 한 수와 다음 수 사이 (1배속 기준)
+  var FLY_MS = 240;                                // 칩이 날아가는 시간 (1배속 기준)
+  var SPEEDS = [1, 2, 4, 8];
+  var SPEED = 1;                                   // 간격·연출을 **같은 배수**로 줄인다.
+                                                   // 한쪽만 줄이면 8배속에서 칩이 도착하기 전에 다음 수가 들어온다.
+  function stepMs() { return Math.max(24, STEP_MS / SPEED); }
+  function flyMs() { return Math.max(40, FLY_MS / SPEED); }
 
   var DB = null;     // { board, items, _meta }
   var S = null;      // 현재 보드 — [{code,box,web}|null] × 63
@@ -31,8 +36,9 @@
   var BAGS = null;   // 아이템 코드 → 잔량 배열 — 방식 1은 **종류별 하나**를 공유한다
   var ENERGY = 0;
   var LOG = [];
-  var PLAYING = false, TIMER = null, BUSY = false, IDLE = 0;
-  var IDLE_MAX = 40;
+  var PLAYING = false, TIMER = null, BUSY = false;
+  var LAST_PROGRESS = 0;                           // 마지막으로 수를 둔 시각(초)
+  var IDLE_MAX_SEC = 15;                           // 이만큼 아무 수도 못 두면 멈춘다
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var now = function () { return Date.now() / 1000; };
 
@@ -276,6 +282,16 @@
 
   function set(sel, v) { var e = $(sel); if (e) e.textContent = String(v); }
 
+  function applySpeed() {
+    $("#rwbBoard").style.setProperty("--sp", String(SPEED));
+    $("#rwbSpeed").textContent = "⏩ " + SPEED + "배속";
+  }
+
+  function cycleSpeed() {
+    SPEED = SPEEDS[(SPEEDS.indexOf(SPEED) + 1) % SPEEDS.length];
+    applySpeed();
+  }
+
   function renderLog() {
     var box = $("#rwbLog");
     if (!LOG.length) {
@@ -299,7 +315,14 @@
     box.innerHTML = out.join("");
   }
 
-  function status(msg) { set("#rwbStatus", msg); }
+  function status(msg) {
+    var e = $("#rwbStatus");
+    if (!e || e.textContent === msg) return;
+    e.textContent = msg;
+    e.classList.remove("hit");
+    void e.offsetWidth;
+    e.classList.add("hit");
+  }
 
   function flash(list, cls) {
     var b = $("#rwbBoard");
@@ -308,7 +331,7 @@
       el.classList.remove(cls);
       void el.offsetWidth;                         // 같은 칸이 연속으로 맞을 때 애니를 다시 태운다
       el.classList.add(cls);
-      setTimeout(function () { el.classList.remove(cls); }, 620);
+      setTimeout(function () { el.classList.remove(cls); }, 620 / SPEED);
     });
   }
 
@@ -326,9 +349,9 @@
     el.innerHTML = '<img src="' + imgOf(code) + '" alt="" />';
     b.appendChild(el);
     void el.offsetWidth;
-    el.style.transition = "transform " + FLY_MS + "ms cubic-bezier(.2,.7,.3,1)";
+    el.style.transition = "transform " + flyMs() + "ms cubic-bezier(.2,.7,.3,1)";
     el.style.transform = "translate(" + (z.left - host.left) + "px," + (z.top - host.top) + "px)";
-    setTimeout(function () { el.remove(); done(); }, FLY_MS);
+    setTimeout(function () { el.remove(); done(); }, flyMs());
   }
 
   var STOP_MSG = {
@@ -347,19 +370,19 @@
     if (pr.index >= 0) { runProduce(pr, then); return; }
 
     // 회복 대기는 정지가 아니다 — 시간이 지나면 다시 눌릴 칸이라 재생을 그대로 둔다.
-    if (pr.why && pr.why.reason === "recharging" && IDLE < IDLE_MAX) {
-      IDLE++;
+    var idle = now() - LAST_PROGRESS;
+    if (pr.why && pr.why.reason === "recharging" && idle < IDLE_MAX_SEC) {
       status("재고 회복 대기 " + Math.ceil(pr.why.wait) + "초 — 기다렸다 다시 생산합니다");
       if (then) then();
       return;
     }
-    if (IDLE >= IDLE_MAX) { stop(); status("회복을 기다려도 둘 수 있는 수가 없습니다"); return; }
+    if (idle >= IDLE_MAX_SEC) { stop(); status("회복을 기다려도 둘 수 있는 수가 없습니다"); return; }
     stop();
     status(STOP_MSG[(pr.why && pr.why.reason) || "no_generator"] || "더 진행할 수 없습니다");
   }
 
   function runMerge(mv, then) {
-    BUSY = true; IDLE = 0;
+    BUSY = true; LAST_PROGRESS = now();
     var b = $("#rwbBoard");
     b.children[mv.from].classList.add("is-src");
     b.children[mv.to].classList.add("is-dst");
@@ -376,7 +399,7 @@
   }
 
   function runProduce(pr, then) {
-    BUSY = true; IDLE = 0;
+    BUSY = true; LAST_PROGRESS = now();
     var b = $("#rwbBoard");
     b.children[pr.index].classList.add("is-src");
     b.children[pr.check.dest].classList.add("is-dst");
@@ -396,7 +419,7 @@
   function tick() {
     step(function () {
       if (!PLAYING) return;
-      TIMER = setTimeout(tick, Math.max(80, STEP_MS - FLY_MS));
+      TIMER = setTimeout(tick, Math.max(16, stepMs() - flyMs()));
     });
   }
 
@@ -415,7 +438,7 @@
 
   function reset() {
     stop();
-    BUSY = false; IDLE = 0;
+    BUSY = false; LAST_PROGRESS = now();
     S = DB.board.map(function (c) { return c ? { code: c.code, box: c.box, web: c.web } : null; });
     PROD = new Map();
     BAGS = new Map();
@@ -435,6 +458,8 @@
       $("#rwbPlay").addEventListener("click", function () { PLAYING ? stop() : play(); });
       $("#rwbStep").addEventListener("click", function () { stop(); step(); });
       $("#rwbReset").addEventListener("click", reset);
+      $("#rwbSpeed").addEventListener("click", cycleSpeed);
+      applySpeed();
     })
     .catch(function (e) {
       $("#rwbBoard").innerHTML = '<p class="rwb-empty" style="grid-column:1/-1">'
