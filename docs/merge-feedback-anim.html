@@ -372,14 +372,14 @@
            "언제 띄우나" 는 텍스트 연출 3종이 정하고, "어떻게 뜨나" 는 여기가 정한다.
            그래서 스타일 값은 f1~f5 한 군데에만 있고, B1·B2·B3 은 그중 하나를 고른다.
            전부 노드 하나에 cc.tween 을 거는 방식이라 코코스로 그대로 옮겨진다
-           (F5 만 글자 수만큼 Label 노드가 필요하다).
+           (F5 도 라벨 한 장이다 — cc.Label 은 글자를 쪼갤 수 없다).
            ────────────────────────────────────────────────────────────────── */
         var FLOAT_STYLES = [
           ["rise",  "F1 상승 페이드"],
           ["arc",   "F2 포물선 튐"],
           ["punch", "F3 임팩트 스탬프"],
           ["slide", "F4 슬라이드 인"],
-          ["wave",  "F5 글자 웨이브"],
+          ["wave",  "F5 라벨 웨이브"],
         ];
         var STYLE_PARAM = { rise: "f1", arc: "f2", punch: "f3", slide: "f4", wave: "f5" };
 
@@ -460,42 +460,20 @@
             .then(function () { floatDone(st, t); });
         }
 
-        /* F5 · 글자 웨이브 — 글자가 순서대로 튀어 오른다. 레벨업·해금처럼
-           1회성 축하에만 쓴다. 글자 수만큼 노드가 늘어나니 상시 연출에는 금지. */
+        /* F5 · 라벨 웨이브 — 문구 한 장이 통째로 튀어 올랐다 내려앉는다.
+           레벨업·해금처럼 1회성 축하에만 쓴다.
+
+           글자를 쪼개지 않는다. cc.Label 은 글자 단위로 나눌 수 없어서 글자마다
+           노드를 새로 세워야 하는데, 그건 이 연출 하나를 위해 노드 수를 글자 수만큼
+           늘리는 일이다. 라벨 하나를 글자 하나처럼 움직이는 것이 정본이다
+           (클라이언트 FloatingLabelNode 와 같은 궤적). */
         function floatWave(st, text, at, S, good) {
-          var chars = String(text).split("");
-          var inner = chars.map(function (c) {
-            return '<span class="ch">' + (c === " " ? "&nbsp;" : c) + "</span>";
-          }).join("");
-          var t = floatNode(st, inner, good);
+          var t = floatNode(st, text, good);
           var y0 = at.y + gv(S, "gap", 34);
-          t.set({ x: at.x, y: y0, a: 1, sx: 1, sy: 1 });
-          var spans = t.el.querySelectorAll(".ch");
-          var stagger = gv(S, "stagger", 0.045), rise = gv(S, "charRise", 14);
-          var inSec = gv(S, "charInSec", 0.16), backSec = gv(S, "settleSec", 0.18);
-          var inEase = gv(S, "charInEase", "quadOut"), backEase = gv(S, "settleEase", "backOut");
-          var legs = [];
-          Array.prototype.forEach.call(spans, function (sp, i) {
-            /* CSS 를 건드리지 않고 인라인으로 세운다 — 이 문서의 스타일시트는
-               다른 작업과 공유라 여기서 늘리지 않는다 */
-            sp.style.display = "inline-block";
-            sp.style.opacity = "0";
-            legs.push(
-              wait(i * stagger)
-                .then(function () {
-                  return tw(inSec, inEase, function (e) {
-                    sp.style.opacity = String(e);
-                    sp.style.transform = "translateY(" + (-rise * e) + "px)";
-                  });
-                })
-                .then(function () {
-                  return tw(backSec, backEase, function (e) {
-                    sp.style.transform = "translateY(" + (-rise * (1 - e)) + "px)";
-                  });
-                })
-            );
-          });
-          return Promise.all(legs)
+          var rise = gv(S, "charRise", 14);
+          t.set({ x: at.x, y: y0, a: 0, sx: 1, sy: 1 });
+          return t.to(gv(S, "charInSec", 0.16), { y: y0 + rise, a: 1 }, gv(S, "charInEase", "quadOut"))
+            .then(function () { return t.to(gv(S, "settleSec", 0.18), { y: y0 }, gv(S, "settleEase", "backOut")); })
             .then(function () { return wait(gv(S, "hold", 0.5)); })
             .then(function () { return t.to(gv(S, "outSec", 0.40), { y: y0 + gv(S, "drift", 30), a: 0 }, gv(S, "outEase", "quadOut")); })
             .then(function () { floatDone(st, t); });
@@ -897,10 +875,9 @@
           ],
           f5: [
             { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_GAP" },
-            { k:"stagger",    label:"글자 간격",     v:0.045,min:0,    max:0.4,step:0.005,unit:"s",                                    cfg:"MERGE_FLOAT_WAVE_STAGGER",       note:"글자 하나씩 밀리는 시간" },
-            { k:"charInSec",  label:"글자 상승",     v:0.16, min:0.02, max:1,  step:0.01, unit:"s", easeK:"charInEase", ease:"quadOut", cfg:"MERGE_FLOAT_WAVE_UP_SEC" },
-            { k:"charRise",   label:"글자 높이",     v:14,   min:2,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_RISE" },
-            { k:"settleSec",  label:"글자 복귀",     v:0.18, min:0.02, max:1,  step:0.01, unit:"s", easeK:"settleEase", ease:"backOut", cfg:"MERGE_FLOAT_WAVE_BACK_SEC" },
+            { k:"charInSec",  label:"라벨 상승",     v:0.16, min:0.02, max:1,  step:0.01, unit:"s", easeK:"charInEase", ease:"quadOut", cfg:"MERGE_FLOAT_WAVE_UP_SEC",        note:"라벨 통째로 — 글자 쪼개기 없음" },
+            { k:"charRise",   label:"라벨 높이",     v:14,   min:2,    max:60, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_RISE" },
+            { k:"settleSec",  label:"라벨 복귀",     v:0.18, min:0.02, max:1,  step:0.01, unit:"s", easeK:"settleEase", ease:"backOut", cfg:"MERGE_FLOAT_WAVE_BACK_SEC" },
             { k:"hold",       label:"유지",          v:0.50, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_WAVE_HOLD_SEC" },
             { k:"outSec",     label:"퇴장",          v:0.40, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"MERGE_FLOAT_WAVE_OUT_SEC" },
             { k:"drift",      label:"퇴장 상승",     v:30,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_WAVE_DRIFT" },
@@ -1228,6 +1205,9 @@
 
           function merge(src, dst, cell) {
             var b = st.cellPos(cell), mine = era;
+            /* 이식 주의 — 흡수(absorbSec/absorbScale)의 대상은 클라에서 이 src 가 아니라 드래그 분신이다.
+               커밋 직후 renderBoard() 가 원본 칩을 풀에 반납해 버려서 걸 데가 없고,
+               fxRoot 에 떠 있는 분신(BoardInputNode.spawnDragGhost)이 그 자리를 대신한다. */
             return src.to(P.absorbSec, { x: b.x, y: b.y, sx: P.absorbScale, sy: P.absorbScale, a: 0 }, P.absorbEase).then(function () {
               src.kill();
               var ring = st.spr('<div class="mfx-ring"></div>');
@@ -1705,32 +1685,63 @@
           return { st: st, reset: reset, play: play, hint: "두 칩 다 끌 수 있습니다 · 하나를 다른 하나 위에 놓아 보세요" };
         };
 
-        /* C6 · 미션 납품 — 보드 밖 미션 노드로 날아간다 ---------------------- */
+        /* C6 · 오더 납품 — 보드 밖 오더 카드의 "요구 칩" 으로 날아간다 --------
+
+           목적지는 카드 한 장이 아니라 그 안의 요구 칩 각각이다. 요구는 2칸 고정이고
+           (정본 확정값) 오더는 통째로 소모되므로 카운터("0 / 3")가 없다 —
+           칩 두 개가 다 차면 카드 자체가 레일에서 빠진다. */
         DEMOS.c6 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.c6, panel = null, cnt = null, done = 0, items = [];
-          var SRC = [8, 9, 10], NEED = 3;
-          function ensurePanel() {
-            if (panel) return;
-            panel = document.createElement("div");
-            panel.className = "mfx-slot";
-            panel.innerHTML = '<svg viewBox="0 0 66 66"><use href="#mfx-mission"></use></svg><span class="cnt">0 / 3</span>';
-            st.wrap.insertBefore(panel, st.board);
-            cnt = panel.querySelector(".cnt");
+          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.c6;
+          var rail = null, card = null, chips = [], done = 0, items = [], gen = 0;
+          var SRC = [8, 10], NEED = 2;
+
+          function ensureRail() {
+            if (rail) return;
+            rail = elm("div");
+            rail.style.cssText = "display:flex;align-items:center;gap:8px;min-height:58px";
+            card = elm("div", "mfx-slot");
+            card.innerHTML = '<svg viewBox="0 0 66 66"><use href="#mfx-mission"></use></svg>';
+            for (var i = 0; i < NEED; i++) {
+              /* CSS 를 건드리지 않고 인라인으로 세운다 — 이 문서의 스타일시트는
+                 다른 작업과 공유라 여기서 늘리지 않는다 */
+              var chip = elm("span");
+              chip.style.cssText =
+                "display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;" +
+                "border-radius:11px;background:rgba(122,78,43,.10);box-shadow:inset 0 2px 0 rgba(122,78,43,.16)";
+              chip.innerHTML = '<svg viewBox="0 0 66 66"><use href="#mfx-product"></use></svg>';
+              card.appendChild(chip);
+              chips.push(chip);
+            }
+            rail.appendChild(card);
+            st.wrap.insertBefore(rail, st.board);
           }
+
+          /* 카드를 새 오더 상태로 되돌린다. 칩은 아직 안 채운 요구라 옅게 둔다. */
+          function dressCard() {
+            card.classList.remove("is-done");
+            card.style.visibility = "";
+            card.style.opacity = "";
+            card.style.transform = "";
+            chips.forEach(function (chip) {
+              chip.style.transform = "";
+              chip.firstChild.style.opacity = "0.34";
+            });
+          }
+
           function reset() {
-            ensurePanel();
+            ensureRail();
             st.clear();
+            gen++;                                 // 이전 회차의 비행이 새 카드를 건드리지 못하게
             done = 0;
             items = [];
-            cnt.textContent = "0 / 3";
-            panel.classList.remove("is-done");
-            panel.style.transform = "";
-            SRC.forEach(function (i) {
+            dressCard();
+            SRC.forEach(function (i, n) {
               var p = st.cellPos(i);
               var t = st.tile("mfx-product", 3);
               t.set({ x: p.x, y: p.y });
+              t.req = n;                           // 어느 요구 칩으로 갈지 — 출발 전에 굳힌다
               items.push(t);
-              /* 미션판은 보드 밖 노드라 셀 인덱스가 없다 — 위쪽으로 끌어 올리면 납품 */
+              /* 오더 카드는 보드 밖 노드라 셀 인덱스가 없다 — 위쪽으로 끌어 올리면 납품 */
               dragify(st, t, {
                 onDrop: function (cell) {
                   if (t.y > st.layer.clientHeight / 2 - 24) return deliver(t);
@@ -1740,36 +1751,57 @@
               });
             });
           }
+
           function deliver(t) {
-            var from = { x: t.x, y: t.y }, to = st.at(panel), mine = 0;
+            if (t.served) return null;             // 요구 칩 하나에 아이템 하나 — 두 번 날리지 않는다
+            t.served = true;
+            var chip = chips[t.req], mineGen = gen;
+            var from = { x: t.x, y: t.y }, to = st.at(chip), mine = 0;
             t.el.style.zIndex = 5;
             t.to(P.raiseSec, { sx: P.raiseScale, sy: P.raiseScale }, P.raiseEase)
               .then(function () { return t.to(P.shrinkSec, { sx: P.shrinkScale, sy: P.shrinkScale }, P.shrinkEase); });
             return flyBezier(t, from, to, P.flightSec, P.liftRatio, P.minLift, P.flightEase).then(function () {
               t.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { t.kill(); });
+              if (mineGen !== gen) return null;    // 그 사이 리셋됐으면 남의 카드다
               done++;
               mine = done;                         // 내가 몇 번째로 도착했는지 그 자리에서 박아 둔다
-              cnt.textContent = done + " / " + NEED;
-              return nodePunch(panel, P.slotInSec, P.slotScale, P.slotOutSec, P.slotOutEase, P.slotEase);
+              chip.firstChild.style.opacity = "1";
+              /* 도착 반응(slotInSec/slotScale/slotOutSec)은 카드가 아니라 그 요구 칩에 걸린다 */
+              return nodePunch(chip, P.slotInSec, P.slotScale, P.slotOutSec, P.slotOutEase, P.slotEase);
             }).then(function () {
-              /* done 을 여기서 읽으면 셋 다 3 을 본다 — 펀치가 끝날 즈음엔 이미 다 도착해 있다 */
-              if (mine < NEED) return null;
-              panel.classList.add("is-done");
-              var to2 = st.at(panel);
-              /* 도장을 찍지 않는다 — 완료도 그냥 문구다 */
-              return Promise.all([
-                floatText(st, "미션 클리어!", to2, P, true),
-                sparks(st, to2, 8, "#7FC9BA", 0.34, 40, "quadOut"),
-              ]).then(function () { reset(); });
+              /* done 을 여기서 읽으면 둘 다 2 를 본다 — 펀치가 끝날 즈음엔 이미 다 도착해 있다 */
+              if (mineGen !== gen || mine < NEED) return null;
+              return retire();
             });
           }
+
+          /* 오더가 통째로 소모된다 — 마지막 칩이 차면 카드가 레일에서 빠진다.
+             완료 문구는 카드가 서 있던 자리에 띄운다. 레일 가운데에 띄우면
+             어느 오더가 나갔는지 안 보인다. */
+          function retire() {
+            var mineGen = gen, to2 = st.at(card);
+            card.classList.add("is-done");
+            return tw(0.22, "quadIn", function (e) {
+              card.style.opacity = String(1 - e);
+              card.style.transform = "translateY(" + (-10 * e) + "px) scale(" + (1 - 0.3 * e) + ")";
+            }).then(function () {
+              if (mineGen !== gen) return null;
+              card.style.visibility = "hidden";
+              /* 도장을 찍지 않는다 — 완료도 그냥 문구다 */
+              return Promise.all([
+                floatText(st, "오더 완료!", to2, P, true),
+                sparks(st, to2, 8, "#7FC9BA", 0.34, 40, "quadOut"),
+              ]).then(function () { if (mineGen === gen) reset(); });
+            });
+          }
+
           function play() {
             reset();
             return Promise.all(items.map(function (t, i) {
               return wait(i * P.stagger).then(function () { return deliver(t); });
             }));
           }
-          return { st: st, reset: reset, play: play, hint: "타일을 보드 위쪽 미션판으로 끌어 올려 보세요" };
+          return { st: st, reset: reset, play: play, hint: "타일을 보드 위쪽 오더 카드의 요구 칩으로 끌어 올려 보세요" };
         };
 
         /* ======================================================================
@@ -2148,14 +2180,15 @@
 "        .start();\n" +
 "}" },
 
-          { group: "gap", id: "c6", no: "C4", title: "미션 납품", state: "none", label: "없음 · 우선순위 4",
-            why: "핵심은 <b>목적지가 보드 밖</b>이라는 겁니다. 미션판은 보드의 자식이 아니라 <b>별도 노드</b>고, 아이템은 보드를 <b>벗어나서</b> 그쪽으로 날아갑니다. 보드 안에서 끝나면 \"어디로 갔는지\"가 안 남습니다. 부모가 다르니 목적지 좌표는 <b>CCnode.getTargetPos</b> 로 변환해야 하고, 이건 <b>ItemGatheringAnimation</b> 이 코인을 HUD 로 보낼 때 이미 쓰는 방식입니다. 비행 자체는 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다.",
+          { group: "gap", id: "c6", no: "C4", title: "오더 납품", state: "none", label: "없음 · 우선순위 4",
+            why: "핵심은 <b>목적지가 보드 밖</b>이라는 겁니다. 오더 카드는 보드의 자식이 아니라 <b>별도 노드</b>고, 아이템은 보드를 <b>벗어나서</b> 그쪽으로 날아갑니다. 보드 안에서 끝나면 \"어디로 갔는지\"가 안 남습니다. 부모가 다르니 목적지 좌표는 <b>CCnode.getTargetPos</b> 로 변환해야 하고, 이건 <b>ItemGatheringAnimation</b> 이 코인을 HUD 로 보낼 때 이미 쓰는 방식입니다. 목적지는 카드 한 장이 아니라 <b>요구 칩 각각</b>입니다 — 요구는 <b>2칸 고정</b>이고, 도착 반응(슬롯 눌림)은 그 칩에 겁니다. 오더는 통째로 소모되므로 카운터가 오르는 게 아니라 <b>카드가 레일에서 빠집니다</b>. 비행 자체는 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다.",
             code:
-"// slotNode 는 gridRoot 의 자식이 아니다 — 보드 밖 미션판에 붙어 있다.\n" +
+"// 요구 칩은 gridRoot 의 자식이 아니다 — 보드 밖 오더 카드에 붙어 있다.\n" +
 "// 그래서 목적지는 반드시 좌표계를 옮겨서 받는다. 보드 좌표로 쓰면 엉뚱한 데로 난다.\n" +
-"private async playDelivery(items: MergeBoardDragItem[], slotNode: cc.Node): Promise<void> {\n" +
-"    const to = CCnode.getTargetPos(slotNode, this.gridRoot);   // 부모가 다른 노드 → 로컬 좌표 변환\n" +
+"private async playDelivery(items: MergeBoardDragItem[], chipNodes: cc.Node[]): Promise<void> {\n" +
 "    const flights = items.map(async (item, index) => {\n" +
+"        const chip = chipNodes[index];                         // 요구 칩 — 아이템 하나에 칩 하나\n" +
+"        const to = CCnode.getTargetPos(chip, this.gridRoot);   // 부모가 다른 노드 → 로컬 좌표 변환\n" +
 "        await CCts.delay(index * DELIVERY_STAGGER_SEC);    // 0.06\n" +
 "        const node = item.node;\n" +
 "        if (!node.isValid) return;\n" +
@@ -2167,14 +2200,17 @@
 "        await this.flyToCell(node, node.getPosition(), to, 0.44, 0.30, 60);\n" +
 "        if (!this.isValid) return;\n" +
 "        node.active = false;\n" +
-"        this.punch(slotNode);\n" +
-"        GameSound.play(\"FX_COIN_GET\", slotNode);\n" +
+"        this.punch(chip);                                      // 카드가 아니라 그 칩이 반응한다\n" +
+"        GameSound.play(\"FX_COIN_GET\", chip);\n" +
 "    });\n" +
 "\n" +
 "    await Promise.all(flights);\n" +
 "    if (!this.isValid) return;\n" +
-"    this.showFloatText(Localization.getString(\"merge_mission_clear\"), slotNode);  // \"미션 클리어!\" — 도장 아님\n" +
-"    GameSound.play(\"FX_GAME_CLEAR\", slotNode);\n" +
+"    // 오더는 통째로 소모된다 — 카운터가 오르는 게 아니라 카드가 레일에서 빠진다.\n" +
+"    const at = chipNodes[chipNodes.length - 1];\n" +
+"    this.retireOrderCard();\n" +
+"    this.showFloatText(Localization.getString(\"merge_order_complete\"), at);  // \"오더 완료!\" — 도장 아님\n" +
+"    GameSound.play(\"FX_GAME_CLEAR\", at);\n" +
 "}" },          { group: "gap", id: "c4", no: "C5", title: "최대 단계 도달", state: "none", label: "없음 · 우선순위 5",
             why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라, 붉은 거부음과 흔들림 대신 <b>문구</b>로 알립니다. 별도의 도장 프리팹을 만들지 않고 다른 문구와 같은 <b>F3 임팩트 스탬프</b> 를 씁니다 — 연출이 하나 늘면 만들 것도 튜닝할 것도 하나 늘어납니다.",
             code:
