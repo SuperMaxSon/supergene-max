@@ -6,7 +6,7 @@
     <title>스토리머지 인게임 아키텍처</title>
     <meta
       name="description"
-      content="story-merge-proto-client 의 인게임 5층 구조와 아웃게임 공백을 도식 7장으로 세운 문서. 2026-09-16 코드 실측 기준."
+      content="story-merge-proto-client 의 인게임 6층 구조와 아웃게임 공백을 도식 7장으로 세운 문서. 2026-09-18 코드 실측 기준."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css" />
@@ -151,15 +151,16 @@
         <p class="doc-lede">
           <b>story-merge-proto-client</b> 의 현재 구조를 도식 7장으로 세운 문서입니다. 표가 아니라
           그림으로 읽습니다 — <b>실선은 코드가 있는 칸, 점선은 정본 기획에는 있고 코드가 0줄인 칸</b>입니다.
-          인게임은 판정(rules)·상태(vm)에 이어 <b>보드 입력과 오더 레일 배선까지 닫혔고</b>, 12단계 중
-          마지막 «마감»(실패 UX·연출)만 남았습니다 — <b>Node 러너 15종 816 PASS / 0 FAIL</b>.
+          인게임은 판정(rules)·상태(vm)·보드 입력·오더 레일에 이어 <b>연출(fx) 층까지 새로 들어왔고</b>,
+          12단계 중 마지막 «마감» 안에서 남은 건 <b>사운드 한 칸</b>입니다 — 인게임 <code>CCaudio</code>
+          참조가 <b>0건</b>입니다. 러너는 <b>16종 1,033 PASS / 0 FAIL</b>.
           반대로 <b>아웃게임은 5층이 통째로 비어</b> 있습니다.
         </p>
         <div class="doc-meta">
           <span class="tag">코드 실측</span>
-          <span class="tag">2026-09-16 15:40 재실측</span>
-          <span class="tag">작업 트리 · HEAD 496f3a1 + 미커밋</span>
-          <span class="tag">러너 816 PASS / 0 FAIL</span>
+          <span class="tag">2026-09-18 09:33 재실측</span>
+          <span class="tag">작업 트리 · HEAD b5ea365 + 미커밋 12파일</span>
+          <span class="tag">러너 1,033 PASS / 0 FAIL</span>
         </div>
       </div>
     </header>
@@ -167,13 +168,13 @@
     <main class="wrap wrap--wide" style="--acc: var(--smg)">
       <div class="stat-row">
         <div class="stat" style="--acc: var(--ok)">
-          <div class="stat-num">9,220<span class="stat-unit">줄</span></div>
+          <div class="stat-num">14,467<span class="stat-unit">줄</span></div>
           <div class="stat-name">인게임 코드</div>
-          <div class="stat-sub">+ 계정층 810줄 · 8디렉터리</div>
+          <div class="stat-sub">+ 계정층 949줄 · fx 층 1,285줄 신규</div>
         </div>
         <div class="stat" style="--acc: var(--analysis)">
-          <div class="stat-num">816<span class="stat-unit">PASS</span></div>
-          <div class="stat-name">Node 러너 15종</div>
+          <div class="stat-num">1,033<span class="stat-unit">PASS</span></div>
+          <div class="stat-name">Node 러너 16종</div>
           <div class="stat-sub">0 FAIL · rules cc 참조 0건</div>
         </div>
         <div class="stat" style="--acc: var(--bad)">
@@ -200,10 +201,10 @@
       <section class="doc-section" id="whole">
         <h2 class="doc-h2">
           게임 전체
-          <span class="doc-h2-sub">공유층 한 벌 + 뷰 두 축</span>
+          <span class="doc-h2-sub">공유층 한 벌 + 뷰 두 축 · 이번에 6층이 됐다</span>
         </h2>
 <div class="dg">
-<svg viewBox="0 0 940 560" class="dgsvg" role="img" aria-label="게임 전체 구조">
+<svg viewBox="0 0 940 596" class="dgsvg" role="img" aria-label="게임 전체 구조">
 <defs>
   <marker id="g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
     <path d="M0,0 L10,5 L0,10 z" fill="var(--d-ink2)"/></marker>
@@ -232,7 +233,7 @@
   <text x="205" y="131" text-anchor="middle" font-size="10" fill="var(--d-ink2)">level · exp · energy · coin · gem — 양쪽에 다 뜬다</text>
 
   <rect x="384" y="98" width="338" height="40" rx="6" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
-  <text x="553" y="115" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--d-warn)">PlayerVM — 계정 상태 · 559줄</text>
+  <text x="553" y="115" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--d-warn)">PlayerVM — 계정 상태 · 640줄</text>
   <text x="553" y="131" text-anchor="middle" font-size="10" fill="var(--d-ink2)">wallet · level · energy · inventory · 발견이력 · rewardBox</text>
 
   <rect x="732" y="98" width="172" height="40" rx="6" fill="var(--d-surf)" stroke="var(--d-acc)"/>
@@ -244,26 +245,28 @@
 <line x1="700" y1="156" x2="700" y2="192" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#g1)"/>
 
 <!-- 인게임 -->
-<rect x="16" y="196" width="440" height="266" rx="10" fill="var(--d-surf2)" stroke="var(--d-ok)" stroke-width="2"/>
+<rect x="16" y="196" width="440" height="302" rx="10" fill="var(--d-surf2)" stroke="var(--d-ok)" stroke-width="2"/>
 <text x="236" y="224" text-anchor="middle" font-size="15" font-weight="700" fill="var(--d-ok)">인게임 — 머지 보드</text>
-<text x="236" y="243" text-anchor="middle" font-size="11" fill="var(--d-ink3)">정본 화면 01 · 코드 9,220줄 + 계정층 810줄</text>
+<text x="236" y="243" text-anchor="middle" font-size="11" fill="var(--d-ink3)">정본 화면 01 · 코드 14,467줄 + 계정층 949줄</text>
 
 <g class="m" font-size="10.5">
   <rect x="36" y="256" width="400" height="30" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="236" y="276" text-anchor="middle" fill="var(--d-ink)">view  ViewIngame · BoardInput · OrderRail · Toast — 9파일</text>
-  <rect x="36" y="292" width="400" height="30" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="236" y="312" text-anchor="middle" fill="var(--d-ink)">pooled 7종 · popup 9종 · 프리팹 22</text>
-  <rect x="36" y="328" width="400" height="34" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
-  <text x="236" y="349" text-anchor="middle" font-weight="700" fill="var(--d-warn)">vm  IngameVM 1,384줄 — 오더까지 배선됐다</text>
-  <rect x="36" y="368" width="400" height="30" rx="5" fill="var(--d-blue-s)" stroke="var(--d-blue)"/>
-  <text x="236" y="388" text-anchor="middle" fill="var(--d-ink)">rules 8종 2,541줄 · cc 0건</text>
-  <rect x="36" y="404" width="400" height="30" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="236" y="424" text-anchor="middle" fill="var(--d-ink)">data  시트 20탭 로드 · 세이브 3키</text>
+  <text x="236" y="276" text-anchor="middle" fill="var(--d-ink)">view  ViewIngame · BoardInput · OrderRail · Toast — 9파일 3,983줄</text>
+  <rect x="36" y="292" width="400" height="30" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
+  <text x="236" y="312" text-anchor="middle" font-weight="700" fill="var(--d-warn)">fx  5종 1,285줄 — 이번에 들어왔다 · cc 를 쓴다</text>
+  <rect x="36" y="328" width="400" height="30" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
+  <text x="236" y="348" text-anchor="middle" fill="var(--d-ink)">pooled 7종 · popup 9종 · 프리팹 22</text>
+  <rect x="36" y="364" width="400" height="34" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
+  <text x="236" y="385" text-anchor="middle" font-weight="700" fill="var(--d-warn)">vm  IngameVM 2,188줄 — 분할 기준 600줄</text>
+  <rect x="36" y="404" width="400" height="30" rx="5" fill="var(--d-blue-s)" stroke="var(--d-blue)"/>
+  <text x="236" y="424" text-anchor="middle" fill="var(--d-ink)">rules 9종 2,927줄 · cc 0건</text>
+  <rect x="36" y="440" width="400" height="30" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
+  <text x="236" y="460" text-anchor="middle" fill="var(--d-ink)">data  시트 20탭 로드 · 세이브 3키</text>
 </g>
-<text x="236" y="452" text-anchor="middle" font-size="10.5" fill="var(--d-warn)">보드·레일까지 붙었다 — 남은 건 연출·실패 UX</text>
+<text x="236" y="488" text-anchor="middle" font-size="10.5" fill="var(--d-warn)">연출까지 붙었다 — 남은 건 사운드 한 칸</text>
 
 <!-- 아웃게임 -->
-<rect x="484" y="196" width="440" height="266" rx="10" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-width="2.5" stroke-dasharray="10 5"/>
+<rect x="484" y="196" width="440" height="302" rx="10" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-width="2.5" stroke-dasharray="10 5"/>
 <text x="704" y="224" text-anchor="middle" font-size="15" font-weight="700" fill="var(--d-bad)">아웃게임 — 마을 · 꾸미기</text>
 <text x="704" y="243" text-anchor="middle" font-size="11" fill="var(--d-ink3)">정본 화면 58 · 81 · 78 · 61 · 32 — 코드 0줄</text>
 
@@ -271,35 +274,37 @@
   <rect x="504" y="256" width="400" height="30" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-dasharray="5 3"/>
   <text x="704" y="276" text-anchor="middle" fill="var(--d-ink2)">view  ViewLobby · 마을목록 · chore · 리노베이션</text>
   <rect x="504" y="292" width="400" height="30" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-dasharray="5 3"/>
-  <text x="704" y="312" text-anchor="middle" fill="var(--d-ink2)">pooled 마을카드 · 퀘스트카드 · 데코슬롯</text>
-  <rect x="504" y="328" width="400" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="704" y="349" text-anchor="middle" font-weight="700" fill="var(--d-bad)">vm  OutgameVM — 없다</text>
-  <rect x="504" y="368" width="400" height="30" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-dasharray="5 3"/>
-  <text x="704" y="388" text-anchor="middle" fill="var(--d-ink2)">rules  chore · 해금 · 꾸미기 판정 — 없다</text>
-  <rect x="504" y="404" width="400" height="30" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)"/>
-  <text x="704" y="424" text-anchor="middle" fill="var(--d-ink)">data  시트엔 있다 · 로더가 안 읽는다</text>
+  <text x="704" y="312" text-anchor="middle" fill="var(--d-ink2)">fx  꾸미기 · 리노베이션 연출 — 없다</text>
+  <rect x="504" y="328" width="400" height="30" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-dasharray="5 3"/>
+  <text x="704" y="348" text-anchor="middle" fill="var(--d-ink2)">pooled 마을카드 · 퀘스트카드 · 데코슬롯</text>
+  <rect x="504" y="364" width="400" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="704" y="385" text-anchor="middle" font-weight="700" fill="var(--d-bad)">vm  OutgameVM — 없다</text>
+  <rect x="504" y="404" width="400" height="30" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-dasharray="5 3"/>
+  <text x="704" y="424" text-anchor="middle" fill="var(--d-ink2)">rules  chore · 해금 · 꾸미기 판정 — 없다</text>
+  <rect x="504" y="440" width="400" height="30" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)"/>
+  <text x="704" y="460" text-anchor="middle" fill="var(--d-ink)">data  시트엔 있다 · 로더가 안 읽는다</text>
 </g>
-<text x="704" y="452" text-anchor="middle" font-size="10.5" fill="var(--d-bad)">층 다섯이 통째로 비었다</text>
+<text x="704" y="488" text-anchor="middle" font-size="10.5" fill="var(--d-bad)">층 여섯이 통째로 비었다</text>
 
 <!-- 왕복 -->
-<path d="M456,300 L484,300" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#g2)"/>
-<path d="M484,330 L456,330" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#g2)"/>
-<text x="470" y="288" text-anchor="middle" font-size="9.5" fill="var(--d-acc)">왕복</text>
+<path d="M456,320 L484,320" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#g2)"/>
+<path d="M484,350 L456,350" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#g2)"/>
+<text x="470" y="308" text-anchor="middle" font-size="9.5" fill="var(--d-acc)">왕복</text>
 
 <!-- 스토리 -->
-<rect x="16" y="482" width="908" height="62" rx="9" fill="var(--d-blue-s)" stroke="var(--d-blue)" stroke-width="1.5"/>
-<text x="130" y="506" font-size="12.5" font-weight="700" fill="var(--d-blue)">스토리 연출</text>
-<text x="130" y="526" font-size="10.5" fill="var(--d-ink3)">양쪽에서 부른다</text>
+<rect x="16" y="518" width="908" height="62" rx="9" fill="var(--d-blue-s)" stroke="var(--d-blue)" stroke-width="1.5"/>
+<text x="130" y="542" font-size="12.5" font-weight="700" fill="var(--d-blue)">스토리 연출</text>
+<text x="130" y="562" font-size="10.5" fill="var(--d-ink3)">양쪽에서 부른다</text>
 <g class="m" font-size="11">
-  <rect x="240" y="494" width="140" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="310" y="517" text-anchor="middle" fill="var(--d-ink)">chat</text>
-  <rect x="392" y="494" width="140" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="462" y="517" text-anchor="middle" fill="var(--d-ink)">stillcut</text>
-  <rect x="544" y="494" width="140" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="614" y="517" text-anchor="middle" fill="var(--d-ink)">video</text>
-  <rect x="696" y="494" width="208" height="36" rx="6" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-dasharray="6 4"/>
-  <text x="800" y="512" text-anchor="middle" font-size="10.5" fill="var(--d-ink)">task — 자동 완료</text>
-  <text x="800" y="525" text-anchor="middle" font-size="9" fill="var(--d-ink3)">레거시 2종 제거 · 기획 대기</text>
+  <rect x="240" y="530" width="140" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="310" y="553" text-anchor="middle" fill="var(--d-ink)">chat</text>
+  <rect x="392" y="530" width="140" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="462" y="553" text-anchor="middle" fill="var(--d-ink)">stillcut</text>
+  <rect x="544" y="530" width="140" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="614" y="553" text-anchor="middle" fill="var(--d-ink)">video</text>
+  <rect x="696" y="530" width="208" height="36" rx="6" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-dasharray="6 4"/>
+  <text x="800" y="548" text-anchor="middle" font-size="10.5" fill="var(--d-ink)">task — 자동 완료</text>
+  <text x="800" y="561" text-anchor="middle" font-size="9" fill="var(--d-ink3)">레거시 2종 제거 · 기획 대기</text>
 </g>
 </svg>
 </div>
@@ -307,7 +312,7 @@
         <div class="notes">
           <div class="note">
             <div class="note-title">이 그림을 읽는 법</div>
-            <p>가로 세 덩어리가 <b>공유층 · 인게임 · 아웃게임</b>입니다. 공유층은 뷰가 바뀌어도 살아 있는 층이라 위에 따로 뺐고, 아래 두 축은 <b>같은 5층(view · pooled+popup · vm · rules · data)</b>을 각각 한 벌씩 가집니다. 인게임 쪽은 실선, 아웃게임 쪽은 점선입니다 — <strong>점선은 정본 기획에는 있고 코드가 0줄인 칸</strong>입니다. 주황은 뒤늦게 들어온 층(PlayerVM · IngameVM)입니다. 인게임 쪽은 그 뒤로 <b>보드 입력과 오더 레일까지 붙어</b> view 가 실제로 VM 을 읽고 있고, 남은 건 연출·실패 UX 마감입니다. 스토리 태스크 칸이 점선인 건 <strong>레거시 2종(<code>PopupTask</code> · <code>ViewMergeBoard</code> 42칸)을 2026-09-16 에 지웠기</strong> 때문입니다 — 아웃게임 기획이 없어 완료 조건을 정의할 수 없으므로 태스크 노드는 지금 자동 완료로 넘깁니다.</p>
+            <p>가로 세 덩어리가 <b>공유층 · 인게임 · 아웃게임</b>입니다. 공유층은 뷰가 바뀌어도 살아 있는 층이라 위에 따로 뺐고, 아래 두 축은 <b>같은 6층(view · fx · pooled+popup · vm · rules · data)</b>을 각각 한 벌씩 가집니다. 인게임 쪽은 실선, 아웃게임 쪽은 점선입니다 — <strong>점선은 정본 기획에는 있고 코드가 0줄인 칸</strong>입니다. 주황은 뒤늦게 들어온 층입니다. <strong>이번 판본에서 층이 하나 늘었습니다</strong> — 연출을 담는 <code>fx</code> 5종 1,285줄이 새로 생겨 5층이 6층이 됐습니다. <code>rules</code> 와 달리 <b><code>fx</code> 는 5파일 전부 <code>cc</code> 를 씁니다</b> — 순수 계산층이 아니라 화면을 직접 만지는 층이라 러너로 검증되지 않습니다. 인게임 쪽은 보드 입력·오더 레일에 이어 연출까지 붙어 <b>12단계 중 남은 칸이 사운드 하나</b>이고, 아웃게임은 같은 기간 0줄 그대로입니다. 스토리 태스크 칸이 점선인 건 <strong>레거시 2종(<code>PopupTask</code> · <code>ViewMergeBoard</code> 42칸)을 2026-09-16 에 지웠기</strong> 때문입니다 — 아웃게임 기획이 없어 완료 조건을 정의할 수 없으므로 태스크 노드는 지금 자동 완료로 넘깁니다.</p>
           </div>
         </div>
       </section>
@@ -377,11 +382,11 @@
 <text x="691" y="371" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">PlayerVM — 코인·레벨을 양쪽이 같이 쓴다</text>
 </svg>
 </div>
-<div class="dg-cap">아웃게임은 <strong>인게임과 같은 5층을 그대로 한 벌 더</strong> 세우게 된다 — 공유층만 겹친다</div>
+<div class="dg-cap">아웃게임은 <strong>인게임과 같은 6층을 그대로 한 벌 더</strong> 세우게 된다 — 공유층만 겹친다</div>
         <div class="notes">
           <div class="note">
             <div class="note-title">왜 이 그림이 비어 보이나</div>
-            <p>화면 58(마을 홈)을 뿌리로 두고 여는 지면 4장을 내린 것입니다. 전부 점선인 이유는 <strong>정본 화면 기획서에는 확정돼 있는데 클라이언트 코드가 아직 한 줄도 없기 때문</strong>입니다. 현재 코드에 존재하는 아웃게임 진입점은 여전히 <code>onClickOutgame()</code> 안의 <code>CClog("not implemented yet")</code> 한 줄입니다 — 인게임이 5,229줄에서 9,220줄로 크는 동안 이 축은 0줄 그대로입니다. 규모(꾸미기 자리 130 · chore 188건 · Day 20)를 같이 적은 건 이 축이 인게임의 곁가지가 아니라 <b>인게임과 대등한 한 벌</b>이라는 판단 근거이기 때문입니다.</p>
+            <p>화면 58(마을 홈)을 뿌리로 두고 여는 지면 4장을 내린 것입니다. 전부 점선인 이유는 <strong>정본 화면 기획서에는 확정돼 있는데 클라이언트 코드가 아직 한 줄도 없기 때문</strong>입니다. 현재 코드에 존재하는 아웃게임 진입점은 여전히 <code>onClickOutgame()</code> 안의 <code>CClog("not implemented yet")</code> 한 줄입니다 — 인게임이 5,229줄에서 14,467줄로 크는 동안 이 축은 0줄 그대로입니다. 규모(꾸미기 자리 130 · chore 188건 · Day 20)를 같이 적은 건 이 축이 인게임의 곁가지가 아니라 <b>인게임과 대등한 한 벌</b>이라는 판단 근거이기 때문입니다.</p>
           </div>
         </div>
       </section>
@@ -392,7 +397,7 @@
           <span class="doc-h2-sub">목표 구조 · 지금 어디까지 찼나</span>
         </h2>
 <div class="dg">
-<svg viewBox="0 0 940 700" class="dgsvg" role="img" aria-label="완성형 인게임 아키텍처">
+<svg viewBox="0 0 940 784" class="dgsvg" role="img" aria-label="완성형 인게임 아키텍처">
 <defs>
   <marker id="dn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
     <path d="M0,0 L10,5 L0,10 z" fill="var(--d-ink2)"/></marker>
@@ -424,12 +429,12 @@
 <text x="194" y="128" text-anchor="middle" font-size="12" class="m" fill="var(--d-ink)">ViewIngame</text>
 <circle cx="284" cy="110" r="9" fill="var(--d-ink)"/><text x="284" y="114" text-anchor="middle" font-size="9.5" class="m" font-weight="700" fill="var(--d-inv)">3</text>
 
-<rect x="300" y="104" width="196" height="40" rx="6" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-width="2" stroke-dasharray="6 4"/>
-<text x="398" y="128" text-anchor="middle" font-size="12" class="m" fill="var(--d-ink)">BoardInputNode</text>
+<rect x="300" y="104" width="196" height="40" rx="6" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="1.5"/>
+<text x="398" y="128" text-anchor="middle" font-size="12" class="m" fill="var(--d-ink)">BoardInputNode 1,547</text>
 <circle cx="488" cy="110" r="9" fill="var(--d-ink)"/><text x="488" y="114" text-anchor="middle" font-size="9.5" class="m" font-weight="700" fill="var(--d-inv)">6</text>
 
-<rect x="504" y="104" width="196" height="40" rx="6" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-width="2" stroke-dasharray="6 4"/>
-<text x="602" y="128" text-anchor="middle" font-size="12" class="m" fill="var(--d-ink)">OrderRailNode</text>
+<rect x="504" y="104" width="196" height="40" rx="6" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="1.5"/>
+<text x="602" y="128" text-anchor="middle" font-size="12" class="m" fill="var(--d-ink)">OrderRailNode 575</text>
 <circle cx="692" cy="110" r="9" fill="var(--d-warn)"/><text x="692" y="114" text-anchor="middle" font-size="9.5" class="m" font-weight="700" fill="#fff">11</text>
 
 <rect x="708" y="104" width="200" height="40" rx="6" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="1.5"/>
@@ -445,12 +450,13 @@
   <text x="418" y="174" text-anchor="middle" fill="var(--d-ink)">ReqChip 16</text>
   <rect x="477" y="154" width="101" height="32" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
   <text x="527" y="174" text-anchor="middle" fill="var(--d-ink)">InvSlot 12</text>
-  <rect x="586" y="154" width="101" height="32" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)"/>
+  <rect x="586" y="154" width="101" height="32" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
   <text x="636" y="174" text-anchor="middle" fill="var(--d-ink)">MergeFx 6</text>
   <rect x="695" y="154" width="101" height="32" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
   <text x="745" y="174" text-anchor="middle" fill="var(--d-ink)">Floating 8</text>
   <rect x="804" y="154" width="101" height="32" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)"/>
-  <text x="854" y="174" text-anchor="middle" fill="var(--d-ink)">RailCard 8</text>
+  <text x="854" y="170" text-anchor="middle" fill="var(--d-ink)">RailCard 8</text>
+  <text x="854" y="181" text-anchor="middle" font-size="8.5" fill="var(--d-warn)">wanted = 0</text>
 </g>
 
 <text x="96" y="208" font-size="10.5" class="m" fill="var(--d-ink3)">popup</text>
@@ -468,95 +474,119 @@
 <text x="470" y="256" text-anchor="middle" font-size="11" fill="var(--d-ink3)">
   프리팹 22종 · 풀 premake 128 — <tspan font-weight="700" fill="var(--d-ok)">전부 이미 있다</tspan></text>
 <text x="470" y="272" text-anchor="middle" font-size="11" fill="var(--d-ink3)">
-  9종 팝업 중 호출부가 있는 건 <tspan font-weight="700" fill="var(--d-bad)">2종</tspan>뿐 — 그 2종도 Inventory 는 슬롯이 안 채워진다</text>
+  9종 팝업 <tspan font-weight="700" fill="var(--d-ok)">전부 ViewCreator 에 배선됐다</tspan> — Inventory 슬롯도 채워진다</text>
+
+<!-- FX -->
+<rect x="16" y="292" width="908" height="72" rx="9" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2.5"/>
+<text x="32" y="314" font-size="11.5" font-weight="700" fill="var(--d-warn)">fx</text>
+<text x="32" y="332" font-size="10.5" class="m" fill="var(--d-ink3)">연출</text>
+<text x="32" y="348" font-size="10.5" class="m" fill="var(--d-warn)">cc 씀</text>
+<g font-size="10.5" class="m">
+  <rect x="96" y="302" width="156" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-warn)" stroke-width="1.8"/>
+  <text x="174" y="324" text-anchor="middle" fill="var(--d-ink)">MergeFxConfig 375</text>
+  <rect x="260" y="302" width="156" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-warn)" stroke-width="1.8"/>
+  <text x="338" y="324" text-anchor="middle" fill="var(--d-ink)">FlightPath 149</text>
+  <rect x="424" y="302" width="156" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-warn)" stroke-width="1.8"/>
+  <text x="502" y="324" text-anchor="middle" fill="var(--d-ink)">ProduceSpawn 212</text>
+  <rect x="588" y="302" width="156" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-warn)" stroke-width="1.8"/>
+  <text x="666" y="324" text-anchor="middle" fill="var(--d-ink)">CoinGain 240</text>
+  <rect x="752" y="302" width="156" height="36" rx="6" fill="var(--d-surf)" stroke="var(--d-warn)" stroke-width="1.8"/>
+  <text x="830" y="324" text-anchor="middle" fill="var(--d-ink)">OrderServe 269</text>
+</g>
+<text x="502" y="356" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">
+  값 테이블 1 + 재생기 4 · 1,285줄 — <tspan font-weight="700" fill="var(--d-warn)">5파일 전부 cc 를 쓴다 · 러너 밖이다</tspan></text>
 
 <!-- 화살표 -->
-<line x1="200" y1="284" x2="200" y2="312" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#dn)"/>
-<text x="212" y="303" font-size="11" fill="var(--d-ink2)">입력 · tick()</text>
-<line x1="740" y1="312" x2="740" y2="284" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#up)"/>
-<text x="752" y="303" font-size="11" fill="var(--d-acc)">bus.emit(scope)</text>
+<line x1="200" y1="368" x2="200" y2="396" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#dn)"/>
+<text x="212" y="387" font-size="11" fill="var(--d-ink2)">입력 · tick()</text>
+<line x1="740" y1="396" x2="740" y2="368" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#up)"/>
+<text x="752" y="387" font-size="11" fill="var(--d-acc)">bus.emit(scope)</text>
 
 <!-- VM -->
-<rect x="16" y="318" width="908" height="112" rx="9" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2.5"/>
-<text x="32" y="340" font-size="11.5" font-weight="700" fill="var(--d-warn)">vm</text>
-<text x="32" y="358" font-size="10.5" class="m" fill="var(--d-ink3)">상태</text>
-<text x="32" y="374" font-size="10.5" class="m" fill="var(--d-ink3)">조합</text>
+<rect x="16" y="402" width="908" height="112" rx="9" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2.5"/>
+<text x="32" y="424" font-size="11.5" font-weight="700" fill="var(--d-warn)">vm</text>
+<text x="32" y="442" font-size="10.5" class="m" fill="var(--d-ink3)">상태</text>
+<text x="32" y="458" font-size="10.5" class="m" fill="var(--d-ink3)">조합</text>
 
-<rect x="96" y="332" width="290" height="82" rx="7" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
-<text x="241" y="356" text-anchor="middle" font-size="13.5" font-weight="700" class="m" fill="var(--d-ink)">IngameVM</text>
-<text x="241" y="376" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">세션 상태 · IngameState · IngameBus</text>
-<text x="241" y="394" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">cells · orders · produce · undo · genState</text>
-<circle cx="378" cy="338" r="9" fill="var(--d-ink)"/><text x="378" y="342" text-anchor="middle" font-size="9.5" class="m" font-weight="700" fill="var(--d-inv)">1</text>
+<rect x="96" y="416" width="290" height="82" rx="7" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
+<text x="241" y="440" text-anchor="middle" font-size="13.5" font-weight="700" class="m" fill="var(--d-ink)">IngameVM 2,188</text>
+<text x="241" y="460" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">세션 상태 · IngameState · IngameBus</text>
+<text x="241" y="478" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">cells · orders · produce · undo · genState</text>
+<circle cx="378" cy="422" r="9" fill="var(--d-ink)"/><text x="378" y="426" text-anchor="middle" font-size="9.5" class="m" font-weight="700" fill="var(--d-inv)">1</text>
 
-<rect x="398" y="332" width="256" height="82" rx="7" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
-<text x="526" y="356" text-anchor="middle" font-size="13.5" font-weight="700" class="m" fill="var(--d-ink)">PlayerVM</text>
-<text x="526" y="376" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">계정 상태 · reset 대상 아님</text>
-<text x="526" y="394" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">wallet · level · energy · inventory</text>
-<circle cx="646" cy="338" r="9" fill="var(--d-warn)"/><text x="646" y="342" text-anchor="middle" font-size="9" class="m" font-weight="700" fill="#fff">新</text>
+<rect x="398" y="416" width="256" height="82" rx="7" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2"/>
+<text x="526" y="440" text-anchor="middle" font-size="13.5" font-weight="700" class="m" fill="var(--d-ink)">PlayerVM 640</text>
+<text x="526" y="460" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">계정 상태 · reset 대상 아님</text>
+<text x="526" y="478" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">wallet · level · energy · inventory</text>
 
-<rect x="666" y="332" width="242" height="82" rx="7" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="2" stroke-dasharray="6 4"/>
-<text x="787" y="356" text-anchor="middle" font-size="12" class="m" fill="var(--d-warn)">BoardOps · OrderOps — 미분할</text>
-<text x="787" y="376" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">기준 600줄 · 현재 IngameVM 1,384줄</text>
-<text x="787" y="394" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">뺄 시점이 이미 지났다</text>
+<rect x="666" y="416" width="242" height="82" rx="7" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="787" y="440" text-anchor="middle" font-size="12" class="m" fill="var(--d-bad)">BoardOps · OrderOps — 미분할</text>
+<text x="787" y="460" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">기준 600줄 · 현재 2,188줄</text>
+<text x="787" y="478" text-anchor="middle" font-size="10.5" fill="var(--d-bad)">직전 판본 1,384줄 → 더 벌어졌다</text>
 
-<line x1="200" y1="434" x2="200" y2="462" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#dn)"/>
-<text x="212" y="453" font-size="11" fill="var(--d-ink2)">Context 조립</text>
-<line x1="740" y1="462" x2="740" y2="434" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#up)"/>
-<text x="752" y="453" font-size="11" fill="var(--d-acc)">판정 결과</text>
+<line x1="200" y1="518" x2="200" y2="546" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#dn)"/>
+<text x="212" y="537" font-size="11" fill="var(--d-ink2)">Context 조립</text>
+<line x1="740" y1="546" x2="740" y2="518" stroke="var(--d-acc)" stroke-width="2" marker-end="url(#up)"/>
+<text x="752" y="537" font-size="11" fill="var(--d-acc)">판정 결과</text>
 
 <!-- RULES -->
-<rect x="16" y="468" width="908" height="96" rx="9" fill="var(--d-blue-s)" stroke="var(--d-blue)" stroke-width="1.5"/>
-<text x="32" y="490" font-size="11.5" font-weight="700" fill="var(--d-blue)">rules</text>
-<text x="32" y="508" font-size="10.5" class="m" fill="var(--d-ink3)">순수</text>
-<text x="32" y="524" font-size="10.5" class="m" fill="var(--d-ink3)">cc 0건</text>
+<rect x="16" y="552" width="908" height="96" rx="9" fill="var(--d-blue-s)" stroke="var(--d-blue)" stroke-width="1.5"/>
+<text x="32" y="574" font-size="11.5" font-weight="700" fill="var(--d-blue)">rules</text>
+<text x="32" y="592" font-size="10.5" class="m" fill="var(--d-ink3)">순수</text>
+<text x="32" y="608" font-size="10.5" class="m" fill="var(--d-ink3)">cc 0건</text>
 
-<g font-size="10.5" class="m">
-  <rect x="96" y="480" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="143" y="501" text-anchor="middle" fill="var(--d-ink)">Merge 118</text>
-  <rect x="198" y="480" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="245" y="501" text-anchor="middle" fill="var(--d-ink)">Sell 132</text>
-  <rect x="300" y="480" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="347" y="501" text-anchor="middle" fill="var(--d-ink)">Box 112</text>
-  <rect x="402" y="480" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="449" y="501" text-anchor="middle" fill="var(--d-ink)">Tool 191</text>
-  <rect x="504" y="480" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="551" y="501" text-anchor="middle" fill="var(--d-ink)">Produce 473</text>
-  <rect x="606" y="480" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
-  <text x="653" y="501" text-anchor="middle" fill="var(--d-ink)">Order 526</text>
-  <rect x="708" y="480" width="94" height="34" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="1.8"/>
-  <text x="755" y="501" text-anchor="middle" fill="var(--d-ink)">Draw 876</text>
-  <rect x="810" y="480" width="94" height="34" rx="5" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="1.8"/>
-  <text x="857" y="501" text-anchor="middle" fill="var(--d-ink)">Rng 113</text>
+<g font-size="9.5" class="m">
+  <rect x="96" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="137" y="585" text-anchor="middle" fill="var(--d-ink)">Merge 123</text>
+  <rect x="186" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="227" y="585" text-anchor="middle" fill="var(--d-ink)">Sell 132</text>
+  <rect x="276" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="317" y="585" text-anchor="middle" fill="var(--d-ink)">Box 112</text>
+  <rect x="366" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="407" y="585" text-anchor="middle" fill="var(--d-ink)">Tool 191</text>
+  <rect x="456" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="497" y="585" text-anchor="middle" fill="var(--d-ink)">Inven 232</text>
+  <rect x="546" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="587" y="585" text-anchor="middle" fill="var(--d-ink)">Produce 608</text>
+  <rect x="636" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="677" y="585" text-anchor="middle" fill="var(--d-ink)">Order 526</text>
+  <rect x="726" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="767" y="585" text-anchor="middle" fill="var(--d-ink)">Draw 876</text>
+  <rect x="816" y="564" width="83" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-blue)"/>
+  <text x="857" y="585" text-anchor="middle" fill="var(--d-ink)">Rng 127</text>
 </g>
-<text x="470" y="540" text-anchor="middle" font-size="11" fill="var(--d-ink3)">
-  2,541줄 · Node 러너 15종 <tspan font-weight="700" fill="var(--d-ok)">816 PASS / 0 FAIL</tspan>
-  — 판정 호출부는 이제 <tspan font-weight="700" fill="var(--d-warn)">IngameVM</tspan> 하나다</text>
-<text x="470" y="556" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">상태 없음 · Math.random 없음 — 무작위는 PickFn 으로 받는다</text>
+<text x="470" y="624" text-anchor="middle" font-size="11" fill="var(--d-ink3)">
+  9종 2,927줄 · Node 러너 16종 <tspan font-weight="700" fill="var(--d-ok)">1,033 PASS / 0 FAIL</tspan>
+  — 판정 호출부는 <tspan font-weight="700" fill="var(--d-warn)">IngameVM</tspan> 하나다</text>
+<text x="470" y="640" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">상태 없음 · Math.random 없음 — 무작위는 PickFn 으로 받는다</text>
 
-<line x1="470" y1="568" x2="470" y2="592" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#dn)"/>
+<line x1="470" y1="652" x2="470" y2="676" stroke="var(--d-ink2)" stroke-width="2" marker-end="url(#dn)"/>
 
 <!-- DATA -->
-<rect x="16" y="598" width="908" height="82" rx="9" fill="var(--d-surf)" stroke="var(--d-line2)" stroke-width="1.5"/>
-<text x="32" y="620" font-size="11.5" font-weight="700" fill="var(--d-ink2)">data</text>
+<rect x="16" y="682" width="908" height="82" rx="9" fill="var(--d-surf)" stroke="var(--d-line2)" stroke-width="1.5"/>
+<text x="32" y="704" font-size="11.5" font-weight="700" fill="var(--d-ink2)">data</text>
 <g font-size="11" class="m">
-  <rect x="96" y="612" width="190" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="191" y="633" text-anchor="middle" fill="var(--d-ink)">BalanceTypes 601</text>
-  <rect x="294" y="612" width="190" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="389" y="633" text-anchor="middle" fill="var(--d-ink)">BalanceLoader 218</text>
-  <rect x="492" y="612" width="190" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="587" y="633" text-anchor="middle" fill="var(--d-ink)">BoardState 141</text>
-  <rect x="690" y="612" width="218" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
-  <text x="799" y="633" text-anchor="middle" fill="var(--d-ink)">Store — 세션 · 계정 · 발급 3키</text>
+  <rect x="96" y="696" width="190" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
+  <text x="191" y="717" text-anchor="middle" fill="var(--d-ink)">BalanceTypes 606</text>
+  <rect x="294" y="696" width="190" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
+  <text x="389" y="717" text-anchor="middle" fill="var(--d-ink)">BalanceLoader 218</text>
+  <rect x="492" y="696" width="190" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
+  <text x="587" y="717" text-anchor="middle" fill="var(--d-ink)">BoardState 348 · v2</text>
+  <rect x="690" y="696" width="218" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)"/>
+  <text x="799" y="717" text-anchor="middle" fill="var(--d-ink)">Store — 세션 · 계정 · 발급 3키</text>
 </g>
-<text x="470" y="666" text-anchor="middle" font-size="10.5" fill="var(--d-ok)">
-  boardState(세션) + playerState(계정) + orderGenState(발급 난수·고정 순번)</text>
+<text x="470" y="750" text-anchor="middle" font-size="10.5" fill="var(--d-ok)">
+  boardState v2(세션) + playerState v1(계정) + orderGenState v2(발급 난수·고정 순번)</text>
 </svg>
 </div>
-<div class="dg-cap">가운데 층과 보드·레일 배선이 들어왔다 — 남은 건 <strong>연출·실패 UX 마감</strong>과 아웃게임 한 벌이다</div>
+<div class="dg-cap">층이 하나 늘었다 — <strong>fx 5종 1,285줄</strong>이 view 와 vm 사이에 들어왔고, 남은 건 <strong>사운드</strong>와 아웃게임 한 벌이다</div>
         <div class="notes">
           <div class="note">
             <div class="note-title">완성형과 현재의 차이</div>
-            <p>위에서 아래로 <b>view → vm → rules → data</b>, 올라오는 화살표는 이벤트(<code>bus.emit(scope)</code>)입니다. <strong>rules 층은 순수 계산이라 <code>cc</code> 참조가 0건이고 <code>Math.random</code> 도 없습니다</strong> — 무작위는 <code>PickFn</code> 으로 주입받기 때문에 Node 러너 15종 816 PASS 가 엔진 없이 돌아갑니다. 주황 두 칸(<code>OrderDraw</code> 876줄 · <code>OrderRng</code> 113줄)이 이번에 들어온 추첨 경로이고, rules 는 6종 1,415줄에서 <b>8종 2,541줄</b>로 커졌습니다. 프리팹은 22종(레거시 3종 삭제), 풀 premake 128입니다. 팝업 9종 중 <b>호출부가 연결된 건 여전히 2종뿐</b>이고, <code>MergeFxNode</code>·<code>RailCardNode</code> 도 풀만 있고 TS 호출부가 0이라 주황으로 뒀습니다. 오른쪽 주황 점선은 <b>계획대로면 이미 했어야 할 분할</b>입니다 — 판정이 다 들어오면서 <code>IngameVM</code> 이 <strong>1,384줄</strong>이 됐는데 기준으로 잡은 600줄에서 <code>BoardOps</code>·<code>OrderOps</code> 로 빼는 작업이 아직 안 됐습니다. 팝업도 «호출부 2종»이 끝이 아닙니다 — <code>PopupInventory</code> 는 열리기는 하지만 <code>InventoryModel</code> 이 안 붙어 <b>슬롯이 빈 채로 뜹니다.</b></p>
+            <p>위에서 아래로 <b>view → fx → vm → rules → data</b>, 올라오는 화살표는 이벤트(<code>bus.emit(scope)</code>)입니다. <strong>rules 층은 순수 계산이라 <code>cc</code> 참조가 0건이고 <code>Math.random</code> 도 없습니다</strong> — 무작위는 <code>PickFn</code> 으로 주입받기 때문에 Node 러너 16종 1,033 PASS 가 엔진 없이 돌아갑니다. rules 는 8종 2,541줄에서 <b>9종 2,927줄</b>로 커졌고(보관함 판정 <code>InventoryRules</code> 232줄이 별도 파일로 섰습니다), 생산 판정은 473 → 608줄입니다.</p>
+            <p><b>이번 판본의 새 칸은 주황 <code>fx</code> 띠입니다.</b> 값 테이블(<code>MergeFxConfig</code>) 하나와 재생기 넷으로 1,285줄입니다. 이 층을 <code>rules</code> 아래가 아니라 <b>view 바로 밑</b>에 그린 건 성격이 반대이기 때문입니다 — <code>rules</code> 는 <code>cc</code> 가 0건이라 러너로 검증되는데, <code>fx</code> 는 <b>5파일 전부 <code>cc</code> 를 씁니다.</b> 즉 연출은 러너 1,033 PASS 밖에 있고 눈으로만 확인됩니다.</p>
+            <p>직전 판본에서 지적한 두 칸은 해소됐습니다 — <code>MergeFxNode</code> 는 <code>BoardInputNode</code> 에 호출부가 생겨 초록이 됐고, <code>PopupInventory</code> 는 <code>IngameVM.inventoryCapacity()</code> 로 칸 수를 받아 슬롯을 채웁니다. 팝업 9종은 <b>전부 <code>ViewCreator</code> 에 배선</b>됐습니다. 남은 주황은 <code>RailCardNode</code> 하나인데, 이건 코드가 없는 게 아니라 <strong><code>refreshMeta()</code> 의 <code>wanted</code> 가 0으로 박혀</strong> 한 장도 안 꺼내는 상태입니다 — 주간 태스크·패스·이벤트의 산식이 없어 그릴 근거가 없습니다.</p>
+            <p>오른쪽 칸은 <b>주황에서 빨강으로 내렸습니다.</b> 계획대로면 이미 했어야 할 분할인데, <code>IngameVM</code> 이 1,384줄에서 <strong>2,188줄</strong>로 더 커져 기준 600줄에서 오히려 멀어졌습니다. <code>BoardOps</code>·<code>OrderOps</code> 로 빼는 작업은 미룰수록 뜯을 면이 넓어집니다.</p>
           </div>
         </div>
       </section>
@@ -564,7 +594,7 @@
       <section class="doc-section" id="steps">
         <h2 class="doc-h2">
           12단계가 여는 것
-          <span class="doc-h2-sub">지금 12번 «마감»에 서 있다</span>
+          <span class="doc-h2-sub">12번 «마감» 세 칸 중 사운드만 남았다</span>
         </h2>
 <div class="dg">
 <svg viewBox="0 0 940 300" class="dgsvg" role="img" aria-label="12단계 마일스톤">
@@ -628,17 +658,27 @@
 <text x="336" y="256" text-anchor="middle" font-size="11" fill="var(--d-ink2)">헤더는 뷰 전환과 무관해지고, 아웃게임이 같은 층을 그대로 쓴다</text>
 
 <path d="M844,82 L844,196" stroke="var(--d-warn)" stroke-width="2" stroke-dasharray="5 4"/>
-<rect x="608" y="198" width="312" height="64" rx="8" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="1.5"/>
-<text x="764" y="222" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--d-warn)">지금 하려는 지점</text>
-<text x="764" y="242" text-anchor="middle" font-size="11" fill="var(--d-ink2)">11단계 완료 — 레일이 화면에 떴고 카드 탭으로 납품된다</text>
-<text x="764" y="256" text-anchor="middle" font-size="11" fill="var(--d-ink2)">남은 건 실패 UX·토스트·사운드 — MergeFxNode 호출부는 아직 0</text>
+<rect x="600" y="198" width="320" height="86" rx="8" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="1.5"/>
+<text x="760" y="218" text-anchor="middle" font-size="12" font-weight="700" fill="var(--d-warn)">12번 «마감» — 세 칸 중 둘이 닫혔다</text>
+<g class="m" font-size="10">
+  <rect x="610" y="228" width="98" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="1.8"/>
+  <text x="659" y="243" text-anchor="middle" font-weight="700" fill="var(--d-ok)">실패 UX</text>
+  <text x="659" y="256" text-anchor="middle" font-size="9" fill="var(--d-ink2)">ToastNode 5곳</text>
+  <rect x="713" y="228" width="98" height="34" rx="5" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="1.8"/>
+  <text x="762" y="243" text-anchor="middle" font-weight="700" fill="var(--d-ok)">연출</text>
+  <text x="762" y="256" text-anchor="middle" font-size="9" fill="var(--d-ink2)">fx 5종 1,285줄</text>
+  <rect x="816" y="228" width="94" height="34" rx="5" fill="var(--d-surf)" stroke="var(--d-bad)" stroke-width="2" stroke-dasharray="5 3"/>
+  <text x="863" y="243" text-anchor="middle" font-weight="700" fill="var(--d-bad)">사운드</text>
+  <text x="863" y="256" text-anchor="middle" font-size="9" fill="var(--d-bad)">CCaudio 0건</text>
+</g>
+<text x="760" y="277" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">연출도 보관함 이동 한 갈래만 비었다 — 남은 건 사실상 사운드 하나다</text>
 </svg>
 </div>
-<div class="dg-cap">초록 = 끝난 단계. <strong>1~11이 닫혔고 12(마감)만 남았다</strong> — 토스트·플로팅 문구는 배선됐고 병합 연출(<code>MergeFxNode</code>)만 호출부가 없다</div>
+<div class="dg-cap">초록 = 끝난 단계. <strong>1~11이 닫혔고 12(마감) 안에서도 실패 UX·연출이 닫혔다</strong> — 인게임 전체에 <code>CCaudio</code> 참조가 <strong>0건</strong>이라 사운드 한 칸만 남았다</div>
         <div class="notes">
           <div class="note">
             <div class="note-title">순서를 이렇게 잡은 이유</div>
-            <p>가로 12칸이 작업 단계고, 아래 띠가 <b>그 구간을 끝내면 플레이어에게 무엇이 열리는지</b>입니다. <strong>PlayerVM 과 계정·세션 저장 분리를 1번으로 끌어올린 게 이 순서의 핵심</strong>입니다 — 먼저 갈라 두면 헤더가 뷰 전환과 무관해지고, 나중에 아웃게임이 같은 층을 그대로 씁니다. 나중에 가르면 이미 붙은 화면을 다 뜯어야 합니다. <b>직전 판본에서 11번(오더)이 «지금 하려는 지점»이었고, 지금은 그게 닫혀 12번 «마감»에 서 있습니다</b> — 토스트(<code>ToastNode</code>)와 셀 위 문구(<code>FloatingLabelNode</code>)는 배선이 끝났고, 병합 연출 <code>MergeFxNode</code> 만 아직 호출부가 0입니다. 다만 1~4 구간의 «더미 사라짐»은 아직 완전하지 않습니다 — 지갑·레벨·에너지 잔량은 <code>PlayerVM</code> 실값을 읽지만, <b>에너지 구매 가격(<code>DUMMY_ENERGY_PRICE_GEMS</code> = 10)과 손님 초상(<code>OrderAvatarLoader</code> 폴백 4장)은 여전히 더미</b>입니다. 소유권(<code>EnergyModel</code>·<code>product</code> 계단)과 아트 경로가 안 정해져서 남은 자리입니다.</p>
+            <p>가로 12칸이 작업 단계고, 아래 띠가 <b>그 구간을 끝내면 플레이어에게 무엇이 열리는지</b>입니다. <strong>PlayerVM 과 계정·세션 저장 분리를 1번으로 끌어올린 게 이 순서의 핵심</strong>입니다 — 먼저 갈라 두면 헤더가 뷰 전환과 무관해지고, 나중에 아웃게임이 같은 층을 그대로 씁니다. 나중에 가르면 이미 붙은 화면을 다 뜯어야 합니다. <b>직전 판본에서는 12번을 한 칸으로 그리고 «병합 연출 <code>MergeFxNode</code> 만 호출부가 0»이라고 적었습니다. 그게 해소돼 이번엔 12번을 세 칸으로 쪼갰습니다</b> — 실패 UX(<code>ToastNode</code> 호출 5곳)와 연출(<code>fx</code> 5종 · 병합·생산 스폰·납품·판매·플로팅 문구 전부 호출부 확인)은 닫혔고, <strong>사운드는 인게임 전체에서 <code>CCaudio</code> 참조가 0건</strong>이라 손도 안 댄 상태입니다. 연출 쪽에서 유일하게 빈 갈래는 보관함 이동(<code>RewardBoxNode</code> 139줄에 tween·fx 호출 0)입니다. 다만 1~4 구간의 «더미 사라짐»은 아직 완전하지 않습니다 — 지갑·레벨·에너지 잔량은 <code>PlayerVM</code> 실값을 읽지만, <b>에너지 구매 가격(<code>DUMMY_ENERGY_PRICE_GEMS</code> = 10)과 손님 초상(<code>OrderAvatarLoader</code> 폴백 4장)은 여전히 더미</b>입니다. 소유권(<code>EnergyModel</code>·<code>product</code> 계단)과 아트 경로가 안 정해져서 남은 자리입니다.</p>
           </div>
         </div>
       </section>
@@ -698,13 +738,21 @@
 <rect x="16" y="182" width="420" height="46" rx="7" fill="var(--d-surf2)" stroke="var(--d-line2)"/>
 <text x="226" y="202" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--d-ink2)">타이머는 VM 이 들지 않는다</text>
 <text x="226" y="219" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">View.update(dt) → IngameVM.tick() · PlayerVM.tick() — cc 없는 층이라 schedule 이 없다</text>
+
+<!-- fx 갈래 — 렌더와 나란히 간다 -->
+<path d="M872,110 L872,150 L847,150 L847,178" fill="none" stroke="var(--d-warn)" stroke-width="1.6" marker-end="url(#fl)"/>
+<rect x="770" y="182" width="154" height="46" rx="7" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="1.8"/>
+<text x="847" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="var(--d-warn)">fx 는 렌더 옆 갈래다</text>
+<text x="847" y="215" text-anchor="middle" font-size="9.5" fill="var(--d-ink2)">MergeFxNode · FloatingLabel</text>
+<text x="847" y="225" text-anchor="middle" font-size="9" fill="var(--d-ink3)">상태를 안 바꾼다 · 풀에서 대여</text>
 </svg>
 </div>
-<div class="dg-cap">판정(<code>xxxCheckAt</code>)과 적용(<code>xxx</code>)이 2메서드로 갈려 있다 — 확인 팝업을 취소해도 되돌릴 게 없다</div>
+<div class="dg-cap">판정(<code>xxxCheckAt</code>)과 적용(<code>xxx</code>)이 <strong>7쌍 전부 2메서드로</strong> 갈려 있다 — 확인 팝업을 취소해도 되돌릴 게 없다</div>
         <div class="notes">
           <div class="note">
             <div class="note-title">판정과 적용을 왜 갈랐나</div>
-            <p><code>xxxCheckAt()</code>(판정)과 <code>xxx()</code>(적용)이 <strong>서로 다른 메서드로 갈려 있습니다</strong>. 판정은 상태를 건드리지 않으므로 확인 팝업을 띄웠다가 취소해도 되돌릴 게 없습니다 — 되돌리기 스택이 필요 없어지는 지점입니다. 저장은 매 머지마다 하지 않고 <code>markDirty()</code> 로 표시만 해 두고 tick 에서 0.5초에 한 번 flush 합니다. 동기 <code>localStorage</code> 쓰기가 머지마다 들어가면 프레임이 떨어지기 때문입니다. 타이머도 VM 이 들지 않습니다 — rules/vm 은 <code>cc</code> 가 없는 층이라 <code>schedule</code> 자체가 없고, <code>ViewIngame.update(dt)</code> 가 <code>IngameVM.tick()</code> 과 <code>PlayerVM.tick()</code> 을 직접 밉니다.</p>
+            <p><code>xxxCheckAt()</code>(판정)과 <code>xxx()</code>(적용)이 <strong>서로 다른 메서드로 갈려 있습니다</strong> — 실측 <b>7쌍</b>입니다(<code>merge</code> · <code>sell</code> · <code>produce</code> · <code>boxOpen</code>→<code>startBoxOpen</code> · <code>store</code> · <code>take</code> · <code>serve</code>). 판정은 상태를 건드리지 않으므로 확인 팝업을 띄웠다가 취소해도 되돌릴 게 없습니다 — 되돌리기 스택이 필요 없어지는 지점입니다. 저장은 매 머지마다 하지 않고 <code>markDirty()</code> 로 표시만 해 두고 tick 에서 0.5초에 한 번 flush 합니다. 동기 <code>localStorage</code> 쓰기가 머지마다 들어가면 프레임이 떨어지기 때문입니다. 타이머도 VM 이 들지 않습니다 — rules/vm 은 <code>cc</code> 가 없는 층이라 <code>schedule</code> 자체가 없고, <code>ViewIngame.update(dt)</code> 가 <code>IngameVM.tick()</code> 과 <code>PlayerVM.tick()</code> 을 직접 밉니다.</p>
+            <p>오른쪽 주황 갈래가 이번에 들어온 <code>fx</code> 입니다. <b>렌더 뒤에 붙은 단계가 아니라 렌더와 나란히 가는 갈래</b>로 그렸습니다 — 연출은 <code>cells</code> 를 읽기만 하고 상태를 바꾸지 않으므로, 연출을 통째로 빼도 판정·저장·렌더는 그대로 돕니다. 연출 노드는 전부 <code>PoolManager</code> 에서 빌리고 재생이 끝나면 스스로 반납합니다(<code>MergeFxNode</code> 는 <code>play()</code> 의 <code>scheduleOnce</code> 종료 시점).</p>
           </div>
         </div>
       </section>
@@ -715,7 +763,7 @@
           <span class="doc-h2-sub">나가도 살아 있어야 하는가</span>
         </h2>
 <div class="dg">
-<svg viewBox="0 0 940 360" class="dgsvg" role="img" aria-label="상태 소유 분기">
+<svg viewBox="0 0 940 440" class="dgsvg" role="img" aria-label="상태 소유 분기">
 <defs>
   <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
     <path d="M0,0 L10,5 L0,10 z" fill="var(--d-ink2)"/></marker>
@@ -729,8 +777,8 @@
 <text x="252" y="78" font-size="12" font-weight="700" fill="var(--d-ok)">예</text>
 <text x="670" y="78" font-size="12" font-weight="700" fill="var(--d-blue)">아니오</text>
 
-<rect x="20" y="90" width="360" height="176" rx="9" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="2"/>
-<text x="200" y="116" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--d-ok)">PlayerVM · 계정</text>
+<rect x="20" y="90" width="360" height="194" rx="9" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="2"/>
+<text x="200" y="116" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--d-ok)">PlayerVM · 계정 · 640줄</text>
 <line x1="44" y1="128" x2="356" y2="128" stroke="var(--d-ok)" stroke-dasharray="3 3"/>
 <g class="m" font-size="11.5" fill="var(--d-ink2)">
   <text x="44" y="150">wallet { coin, gem }</text>
@@ -739,35 +787,44 @@
   <text x="44" y="216">inventory · discovered*</text>
   <text x="44" y="238">chainRepeat · rewardBox</text>
 </g>
-<text x="200" y="258" text-anchor="middle" font-size="10.5" fill="var(--d-ok)">reset() 대상 아님</text>
+<text x="200" y="258" text-anchor="middle" font-size="10.5" fill="var(--d-ok)">reset() 이 아예 없다</text>
+<text x="200" y="274" text-anchor="middle" font-size="10.5" class="m" fill="var(--d-ink3)">저장 키 playerState · v1</text>
 
-<rect x="560" y="90" width="360" height="176" rx="9" fill="var(--d-blue-s)" stroke="var(--d-blue)" stroke-width="2"/>
-<text x="740" y="116" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--d-blue)">IngameVM · 세션</text>
+<rect x="560" y="90" width="360" height="194" rx="9" fill="var(--d-blue-s)" stroke="var(--d-blue)" stroke-width="2"/>
+<text x="740" y="116" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--d-blue)">IngameVM · 세션 · 2,188줄</text>
 <line x1="584" y1="128" x2="896" y2="128" stroke="var(--d-blue)" stroke-dasharray="3 3"/>
 <g class="m" font-size="11.5" fill="var(--d-ink2)">
   <text x="584" y="150">cells[63] · selected</text>
   <text x="584" y="172">orders[] · 레일 슬롯</text>
-  <text x="584" y="194">produce · bags · pities</text>
-  <text x="584" y="216">openingCell · pendingUndo</text>
+  <text x="584" y="194">produce · bags · bagHashes · pities</text>
+  <text x="584" y="216">openingCell · pendingUndo · produceRng</text>
   <text x="584" y="238">genState · orderRng · balance(캐시)</text>
 </g>
 <text x="740" y="258" text-anchor="middle" font-size="10.5" fill="var(--d-blue)">onHideStart() 에서 reset()</text>
+<text x="740" y="274" text-anchor="middle" font-size="10.5" class="m" fill="var(--d-ink3)">저장 키 boardState v2 · orderGenState v2</text>
 
-<rect x="20" y="292" width="360" height="52" rx="8" fill="var(--d-acc-s)" stroke="var(--d-acc)" stroke-width="1.5"/>
-<text x="200" y="314" text-anchor="middle" font-size="12" font-weight="600" fill="var(--d-acc)">HeaderLayer · 아웃게임 · 상점 · 앨범</text>
-<text x="200" y="332" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">여기만 구독하면 뷰 전환과 무관해진다</text>
-<line x1="200" y1="270" x2="200" y2="288" stroke="var(--d-ok)" stroke-width="2" marker-end="url(#d2)"/>
+<rect x="20" y="310" width="360" height="52" rx="8" fill="var(--d-acc-s)" stroke="var(--d-acc)" stroke-width="1.5"/>
+<text x="200" y="332" text-anchor="middle" font-size="12" font-weight="600" fill="var(--d-acc)">HeaderLayer · 아웃게임 · 상점 · 앨범</text>
+<text x="200" y="350" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">여기만 구독하면 뷰 전환과 무관해진다</text>
+<line x1="200" y1="288" x2="200" y2="306" stroke="var(--d-ok)" stroke-width="2" marker-end="url(#d2)"/>
 
-<path d="M740,270 L740,318 L390,318" fill="none" stroke="var(--d-blue)" stroke-width="1.6"
+<path d="M740,288 L740,336 L390,336" fill="none" stroke="var(--d-blue)" stroke-width="1.6"
       stroke-dasharray="5 4" marker-end="url(#d2)"/>
-<text x="565" y="310" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">IngameVM → PlayerVM 단방향</text>
+<text x="565" y="328" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">IngameVM → PlayerVM 단방향</text>
+
+<!-- 죽은 통지 축 -->
+<rect x="20" y="378" width="900" height="52" rx="8" fill="var(--d-bad-s)" stroke="var(--d-bad)" stroke-width="1.8" stroke-dasharray="6 4"/>
+<text x="470" y="400" text-anchor="middle" font-size="12" font-weight="700" fill="var(--d-bad)">구독해도 안 오는 축 — IngameScope.Inventory · IngameScope.Wallet</text>
+<text x="470" y="418" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">enum 에는 있는데 bus.emit 호출이 0건이다 · 실제로 도는 건 Board · Rail · Info · All 넷</text>
 </svg>
 </div>
-<div class="dg-cap">이 분리가 코드에 들어갔다 — <code>PlayerVM</code> 은 <code>reset()</code> 이 아예 없고, <code>IngameVM</code> 만 세션마다 접힌다. 저장 키도 축을 따라 갈렸다: <code>playerState</code>(계정) · <code>boardState</code>(세션) · <code>orderGenState</code>(발급 난수)</div>
+<div class="dg-cap">이 분리가 코드에 들어갔다 — <code>PlayerVM</code> 은 <code>reset()</code> 이 아예 없고, <code>IngameVM</code> 만 세션마다 접힌다. 저장 키도 축을 따라 갈렸다: <code>playerState</code> v1(계정) · <code>boardState</code> v2(세션) · <code>orderGenState</code> v2(발급 난수)</div>
         <div class="notes">
           <div class="note">
             <div class="note-title">이 분리가 지키는 것</div>
-            <p>판단 기준은 한 줄입니다. <b>인게임을 나가도 살아 있어야 하면 <code>PlayerVM</code>, 아니면 <code>IngameVM</code></b>. 그래서 <code>PlayerVM</code> 에는 <code>reset()</code> 이 아예 없고, <code>IngameVM</code> 만 <code>onHideStart()</code> 에서 접힙니다. <strong>헤더 · 상점 · 앨범 · 아웃게임은 <code>PlayerVM</code> 하나만 구독하면 되므로 뷰 전환과 무관해집니다.</strong> 참조는 <code>IngameVM → PlayerVM</code> 단방향이라 역방향 의존이 생기지 않습니다. 저장 키도 이 축을 그대로 따릅니다 — 계정 <code>playerState</code>, 세션 <code>boardState</code>, 그리고 오더 추첨이 들어오면서 <b>난수 상태를 담는 <code>orderGenState</code> 가 세 번째 키</b>로 붙었습니다. 난수기를 새로 만들면 같은 카드가 다시 나오므로 세이브와 한 몸이어야 하기 때문입니다.</p>
+            <p>판단 기준은 한 줄입니다. <b>인게임을 나가도 살아 있어야 하면 <code>PlayerVM</code>, 아니면 <code>IngameVM</code></b>. 그래서 <code>PlayerVM</code> 에는 <code>reset()</code> 이 아예 없고, <code>IngameVM</code> 만 <code>onHideStart()</code> 에서 접힙니다. <strong>헤더 · 상점 · 앨범 · 아웃게임은 <code>PlayerVM</code> 하나만 구독하면 되므로 뷰 전환과 무관해집니다.</strong> 참조는 <code>IngameVM → PlayerVM</code> 단방향이라 역방향 의존이 생기지 않습니다. 저장 키도 이 축을 그대로 따릅니다 — 계정 <code>playerState</code>, 세션 <code>boardState</code>, 그리고 오더 추첨이 들어오면서 <b>난수 상태를 담는 <code>orderGenState</code> 가 세 번째 키</b>로 붙었습니다. 난수기를 새로 만들면 같은 카드가 다시 나오므로 세이브와 한 몸이어야 하기 때문입니다. <code>reset()</code> 은 <b>인메모리 필드만 접습니다</b> — 먼저 <code>flush()</code> 로 마지막 변경을 저장한 뒤 접으므로 디스크 내용은 그대로 남습니다.</p>
+            <p>세 키에 <b>판본이 따로 붙어 있습니다</b> — <code>boardState</code> 와 <code>orderGenState</code> 는 v2(각각 v1→v2 마이그레이션 경로 보유), <code>playerState</code> 는 v1 이지만 옛 <code>number[]</code> 슬롯 모양을 <code>normalizeSlots()</code> 가 무손실로 흡수합니다.</p>
+            <p>아래 빨간 점선은 <b>이 그림이 지금 지키지 못하는 자리</b>입니다. 통지 축 <code>IngameScope</code> 에는 <code>Inventory</code> 와 <code>Wallet</code> 이 선언돼 있는데 <strong><code>bus.emit</code> 호출이 한 곳도 없습니다.</strong> 즉 보관함·지갑 변화를 구독해도 아무것도 오지 않고, 실제로 도는 축은 <code>Board</code> · <code>Rail</code> · <code>Info</code> · <code>All</code> 넷뿐입니다. 헤더가 지금 갱신되는 건 <code>PlayerVM</code> 자체 리스너를 타기 때문이라, 이 축을 믿고 새 구독자를 붙이면 조용히 안 뜹니다.</p>
           </div>
         </div>
       </section>
@@ -775,7 +832,7 @@
       <section class="doc-section" id="order">
         <h2 class="doc-h2">
           오더 한 장
-          <span class="doc-h2-sub">가운데 두 칸이 이어졌다</span>
+          <span class="doc-h2-sub">추첨 · 레일 · 연출까지 이어졌다</span>
         </h2>
 <div class="dg">
 <svg viewBox="0 0 940 250" class="dgsvg" role="img" aria-label="오더 파이프라인">
@@ -804,8 +861,8 @@
   <text x="477" y="110" text-anchor="middle" font-size="10" fill="var(--d-ink2)">genState 저장(3번째 키)</text>
 
   <rect x="592" y="34" width="166" height="84" rx="7" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="2"/>
-  <text x="675" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--d-ok)">OrderRailNode 177줄</text>
-  <text x="675" y="78" text-anchor="middle" font-size="10" fill="var(--d-ink2)">railRoot 에 카드 배치</text>
+  <text x="675" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--d-ok)">OrderRailNode 575줄</text>
+  <text x="675" y="78" text-anchor="middle" font-size="10" fill="var(--d-ink2)">railRoot 에 카드 배치 · 정렬</text>
   <text x="675" y="94" text-anchor="middle" font-size="10" fill="var(--d-ink2)">IngameBus 직접 구독</text>
   <text x="675" y="110" text-anchor="middle" font-size="10" fill="var(--d-ink2)">카드 탭 → 그 자리 납품</text>
 
@@ -816,36 +873,47 @@
   <text x="858" y="110" text-anchor="middle" font-size="10" fill="var(--d-ink2)">납품 팝업 없음</text>
 </g>
 
+<!-- 납품 연출 -->
+<rect x="592" y="126" width="334" height="34" rx="6" fill="var(--d-warn-s)" stroke="var(--d-warn)" stroke-width="1.8"/>
+<text x="759" y="140" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--d-warn)">OrderServeFx — 비행(FlightPath) → 요구 칩 펀치 → 완료 문구</text>
+<text x="759" y="153" text-anchor="middle" font-size="9" fill="var(--d-bad)">"Order Complete!" 는 Localization 키 없이 영문 하드코딩</text>
+<line x1="675" y1="122" x2="675" y2="124" stroke="var(--d-warn)" stroke-width="1.6"/>
+
 <line x1="176" y1="76" x2="192" y2="76" stroke="var(--d-ink3)" stroke-width="1.6" marker-end="url(#o1)"/>
 <line x1="366" y1="76" x2="390" y2="76" stroke="var(--d-ink3)" stroke-width="1.6" marker-end="url(#o1)"/>
 <line x1="564" y1="76" x2="588" y2="76" stroke="var(--d-ink3)" stroke-width="1.6" marker-end="url(#o1)"/>
 <line x1="762" y1="76" x2="786" y2="76" stroke="var(--d-ink3)" stroke-width="1.6" marker-end="url(#o1)"/>
 
-<rect x="216" y="142" width="508" height="42" rx="8" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="2"/>
-<text x="470" y="160" text-anchor="middle" font-size="12" font-weight="700" fill="var(--d-ok)">비어 있던 가운데 두 칸이 이어졌다 — 추첨과 레일이 같이 들어왔다</text>
-<text x="470" y="176" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">납품 팝업(PopupOrderServe)은 만들지 않고 지웠다 — 카드에서 바로 낸다</text>
+<rect x="14" y="170" width="560" height="42" rx="8" fill="var(--d-ok-s)" stroke="var(--d-ok)" stroke-width="2"/>
+<text x="294" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="var(--d-ok)">양 끝뿐이던 파이프에 추첨 · 레일 · 연출이 다 들어왔다</text>
+<text x="294" y="204" text-anchor="middle" font-size="10.5" fill="var(--d-ink2)">납품 팝업(PopupOrderServe)은 만들지 않고 지웠다 — 카드에서 바로 낸다</text>
 
-<text x="150" y="206" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">보상 = order_price 합(코인)</text>
-<text x="150" y="221" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">+ diff_score · 경험치는 0</text>
-<text x="790" y="206" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">요구 칸 2 고정 · 중복 코드 허용</text>
-<text x="790" y="221" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">레일 자리 6 · RailCardNode 는 TS 호출부 0</text>
+<text x="150" y="234" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">보상 = order_price 합(코인) + diff_score · 경험치는 0</text>
+<text x="759" y="180" text-anchor="middle" font-size="10.5" fill="var(--d-ink3)">요구 칸 2 고정 · 중복 코드 허용 · 레일 자리 6</text>
+<text x="759" y="198" text-anchor="middle" font-size="10.5" fill="var(--d-warn)">RailCardNode 는 refreshMeta() 의 wanted = 0 고정</text>
+<text x="759" y="214" text-anchor="middle" font-size="10" fill="var(--d-ink3)">메타 루프(주간 태스크 · 패스 · 이벤트) 산식 대기</text>
 </svg>
 </div>
 <div class="dg-cap">고정(<code>order_fixed</code> 16행)이 먼저, 빈 자리는 <strong>8단계 추첨</strong>이 채운다 — 난수기는 세이브와 한 몸이라 <code>orderGenState</code> 가 세 번째 저장 키로 생겼다</div>
         <div class="notes">
           <div class="note">
-            <div class="note-title">'양 끝만 있다'의 뜻</div>
-            <p>직전 판본에서 <b>가운데 두 칸(추첨 · 레일 뷰)이 비어</b> 있던 구간이 이어졌습니다. <code>OrderDraw</code> 876줄이 정본 8단계 추첨을 옮겼고 — 단계마다 <code>export</code> 하는 건 카드가 깨졌을 때 <strong>8단계 중 어디서 갈렸는지 러너가 짚을 수 있게</strong> 하려는 것입니다 — <code>OrderRailNode</code> 177줄이 <code>railRoot</code> 를 채웁니다. <b>납품 팝업은 만들지 않고 지웠습니다</b>: <code>PopupOrderServe</code> 를 삭제하고 레일 카드 탭에서 바로 <code>serveCheckAt</code> → <code>serveOrder</code> 로 갑니다. 요구 칸은 2개 고정에 중복 코드 허용이고 — 시트가 2칸을 다 안 채운 행이 있어도 상수 쪽을 지우면 안 되는 이유입니다 — 보상은 <code>order_price</code> 합(코인) + <code>diff_score</code> 이며 <b>경험치는 0</b>(<code>ORDER_EXP_REWARD</code>)입니다. <code>RailCardNode</code> 는 프리팹에 배치돼 있고 풀에도 올라와 있지만 <b>TS 호출부가 0</b>이라, 레일이 실제로 꺼내 쓰는 건 <code>OrderCardNode</code> 쪽입니다.</p>
+            <div class="note-title">파이프가 끝까지 이어졌다</div>
+            <p><code>OrderDraw</code> 876줄이 정본 8단계 추첨을 옮겼고 — 단계마다 <code>export</code> 하는 건 카드가 깨졌을 때 <strong>8단계 중 어디서 갈렸는지 러너가 짚을 수 있게</strong> 하려는 것입니다 — <code>OrderRailNode</code> 가 <code>railRoot</code> 를 채웁니다. <b>납품 팝업은 만들지 않고 지웠습니다</b>: <code>PopupOrderServe</code> 를 삭제하고 레일 카드 탭에서 바로 <code>serveCheckAt</code> → <code>serveOrder</code> 로 갑니다. 요구 칸은 2개 고정에 중복 코드 허용이고 — 시트가 2칸을 다 안 채운 행이 있어도 상수 쪽을 지우면 안 되는 이유입니다 — 보상은 <code>order_price</code> 합(코인) + <code>diff_score</code> 이며 <b>경험치는 0</b>(<code>ORDER_EXP_REWARD</code>)입니다.</p>
+            <p>이번 판본에서 <code>OrderRailNode</code> 는 177줄에서 <strong>575줄</strong>이 됐습니다. 늘어난 몫이 <b>납품 연출과 카드 정렬</b>입니다 — 아이템이 곡선으로 날아가 요구 칩을 때리고(<code>OrderServeFx</code> → <code>FlightPath</code>), 납품 가능한 카드가 레일 왼쪽으로 당겨집니다. 완료 문구 <code>"Order Complete!"</code> 는 아직 <strong><code>Localization</code> 키 없이 영문 하드코딩</strong>이라 로컬라이징 대상으로 남아 있습니다.</p>
+            <p><code>RailCardNode</code>(메타 루프 카드)에 대한 서술은 <b>바뀌었습니다.</b> 직전 판본에 «TS 호출부가 0»이라고 적었는데, 지금은 <code>OrderRailNode.refreshMeta()</code> 라는 자리가 생겼고 <code>metaCards</code> 배열·반납·정렬까지 다 있습니다. 다만 그 함수의 <code>wanted</code> 가 <strong>0으로 박혀 있어</strong> 한 장도 꺼내지 않습니다 — 주간 태스크·패스·이벤트의 데이터와 산식이 없어 그릴 근거가 없기 때문입니다. 프리팹에 박힌 <code>0/11</code> · <code>5</code> · <code>8h 20m</code> 은 에디터 확인용 더미입니다. 메타 루프가 붙을 때 고칠 자리는 <b>이 한 줄</b>입니다.</p>
           </div>
         </div>
       </section>
 
       <div class="foot">
-        <b>확인 범위</b> story-merge-proto-client 2026-09-16 15:40 작업 트리 재실측입니다
-        (<code>main</code> HEAD <code>496f3a1</code> + 미커밋 변경 포함 — 이번 판본의 변화 대부분이 아직 커밋 전입니다).
+        <b>확인 범위</b> story-merge-proto-client 2026-09-18 09:33 작업 트리 재실측입니다
+        (<code>main</code> HEAD <code>b5ea365</code> + 미커밋 12파일 포함).
+        <b>측정 중에 트리가 움직였습니다</b> — 실측 도중 <code>ProduceRules.ts</code> 와 <code>IngameVM.ts</code> 가
+        다른 세션에서 갱신돼 인게임 총 줄수가 14,295 → 14,467 로 바뀌었습니다. 이 문서의 수치는
+        <b>09:33 스냅샷</b>이며, 그 이후 커밋은 반영돼 있지 않습니다.
         줄 수는 <code>assets/script/game/ingame/</code> 하위 <code>.ts</code> 기준이고, 계정층은
         <code>assets/script/game/player/</code> 별도 집계입니다. PASS 수치는
-        <code>_ignore/tools/runners/</code> 의 러너 15종을 <code>node-verify.sh</code> 로 전부 돌려 합산했습니다.
+        <code>_ignore/tools/runners/</code> 의 러너 16종을 <code>node-verify.sh</code> 로 전부 돌려 합산했습니다.
         시트 탭 수는 번들 <code>rosewood-balance.json</code> 의 <code>_meta.source</code> 표기를 따랐습니다.
         아웃게임 화면 번호(58 · 81 · 78 · 61 · 32)와 규모 수치는 <b>정본 화면 기획서 4.5절</b>에서
         가져왔습니다 — 코드 실측이 아니라 기획 확정값입니다.
