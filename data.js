@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-18 09:52",
+  updated: "2026-09-18 18:52",
 };
 
 /* --------------------------------------------------------------------------
@@ -401,6 +401,18 @@ const SECTIONS = [
         updated: "2026-08-28 09:11",
         pinned: false,
         tags: ["프리팹 실측", "도구"],
+        share: false,
+      },
+      {
+        title: "심부름 등장 순서",
+        desc: "심부름 331건이 day 1부터 day 33까지 뜨는 순서 그대로 한 줄기로 세워져 있습니다. 칩 색이 유형이고 아래 채움이 사용 코인이라, 어느 날에 무엇이 몰리는지 글을 읽지 않고 봅니다.",
+        url: "docs/chore-order-story-merge.html",
+        project: "smg",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-09-18 18:52",
+        pinned: false,
+        tags: ["기획 범위", "머지", "인터랙티브"],
         share: false,
       },
     ],
