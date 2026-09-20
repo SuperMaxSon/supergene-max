@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-21 08:55",
+  updated: "2026-09-21 08:56",
 };
 
 /* --------------------------------------------------------------------------
@@ -466,7 +466,7 @@ const SECTIONS = [
         title: "데코 등장 연출",
         desc: "빈 데코 영역에서 미션을 눌러 오브젝트를 하나씩 등장시켜 본다. 등장 연출 9종에 키값(DROP_IN · POP_UP · FILL_FROM_LEFT …)이 붙어 있고, 키값마다 값 · 이징을 표에서 맞춰 저장하고 주고받는다 — 맞춘 값이 그대로 Cocos 코드로 나온다.",
         url: "docs/deco-tween-iso.html",
-        status: "진행중",
+        status: "초안",
         version: "v4.0",
         updated: "2026-09-03 17:39",
         pinned: false,
