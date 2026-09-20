@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-18 18:52",
+  updated: "2026-09-21 08:55",
 };
 
 /* --------------------------------------------------------------------------
@@ -83,6 +83,7 @@ const SECTIONS = [
         updated: "2026-09-04 10:30",
         pinned: false,
         tags: ["BigQuery", "로딩", "도구"],
+        share: false,
       },
       {
         title: "483 전후 벤치 대조",
@@ -527,6 +528,7 @@ const SECTIONS = [
         updated: "2026-09-15 18:20",
         pinned: false,
         tags: ["머지", "인터랙티브"],
+        share: false,
       },
       {
         title: "초기 보드",
@@ -590,6 +592,7 @@ const SECTIONS = [
         updated: "2026-09-16 15:09",
         pinned: false,
         tags: ["CP", "롤아웃", "BigQuery", "KPI"],
+        share: false,
       },
       {
         title: "토너 클리어 생성 지면 A/B",
@@ -601,6 +604,7 @@ const SECTIONS = [
         updated: "2026-09-16 13:48",
         pinned: false,
         tags: ["A/B", "토너먼트", "배너광고", "BigQuery"],
+        share: false,
       },
       {
         title: "토너 거절 차단 A/B",
