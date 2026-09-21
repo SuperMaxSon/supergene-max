@@ -101,6 +101,64 @@
       .cr-cell .s em { font-style: normal; color: var(--text-dim); font-weight: 700; }
       /* NPC 칸은 아바타가 커야 「그림 들어올 자리」가 보인다 */
       .cr-cell .cr-face { width: 44px; height: 44px; font-size: 14px; }
+
+      /* ── 대화 흐름 ───────────────────────────────────────────────────────
+         퀘스트 하나가 패널 하나. 노드를 세로 체인으로 세운다 —
+         story_node.node_order 가 곧 재생 순서라, 가로로 눕히면 「대화 → 심부름 → 대화」의
+         앞뒤가 흐려진다. 심부름 뒤에 무엇이 오는지가 이 섹션의 전부다. */
+      .cr-q { border: 1px solid var(--border); border-radius: var(--radius);
+              background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+      .cr-qh { display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+               padding: 9px 13px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+      .cr-qh h3 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -0.01em; }
+      .cr-qh code { font-size: 11.5px; }
+      .cr-qh .sub { margin-left: auto; font-size: 11.5px; color: var(--text-faint);
+                    font-family: ui-monospace, Menlo, monospace; }
+      .cr-qb { padding: 11px 13px 13px; }
+
+      /* 노드 체인 — 왼쪽 세로선이 재생 순서다 */
+      .cr-node { position: relative; padding: 0 0 10px 20px; }
+      .cr-node::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: -4px;
+                         width: 2px; background: var(--border-soft); }
+      .cr-node:last-child::before { bottom: auto; height: 0; }
+      .cr-node::after { content: ""; position: absolute; left: 0; top: 4px; width: 10px; height: 10px;
+                        border-radius: 50%; background: var(--surface); border: 2px solid var(--border); }
+      /* 심부름 노드만 점을 채운다 — 이 섹션에서 「기준점」이 심부름이기 때문이다.
+         대화는 그 앞뒤에 붙는 것이라는 게 점 모양만으로 읽혀야 한다. */
+      .cr-node.is-task::after { background: var(--balance); border-color: var(--balance); }
+      .cr-nt { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
+               font-size: 12.5px; color: var(--text-dim); }
+      .cr-nt b { color: var(--text); font-weight: 700; }
+      .cr-kind { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10.5px;
+                 font-weight: 800; letter-spacing: 0.01em; text-transform: uppercase;
+                 background: var(--surface-2); border: 1px solid var(--border); color: var(--text-faint); }
+      .cr-node.is-task .cr-kind { background: color-mix(in srgb, var(--balance) 14%, transparent);
+                                  border-color: color-mix(in srgb, var(--balance) 34%, transparent);
+                                  color: var(--balance); }
+
+      /* 대화 블록 — 접힌 상태가 기본. 37줄을 다 펴 두면 심부름 체인이 안 보인다. */
+      details.cr-talk { margin-top: 5px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+                        background: var(--surface); }
+      details.cr-talk > summary { cursor: pointer; list-style: none; padding: 6px 11px;
+                                  font-size: 12px; color: var(--text-dim); display: flex;
+                                  align-items: center; gap: 8px; }
+      details.cr-talk > summary::-webkit-details-marker { display: none; }
+      /* ▸/▾ 를 직접 그린다 — 브라우저 기본 마커는 OS 마다 모양이 달라 줄맞춤이 흔들린다 */
+      details.cr-talk > summary::before { content: "▸"; font-size: 10px; color: var(--text-faint); }
+      details.cr-talk[open] > summary::before { content: "▾"; }
+      details.cr-talk > summary b { color: var(--text); font-weight: 700; }
+      details.cr-talk > summary .who { color: var(--text-faint);
+                                       font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+      .cr-lines { padding: 3px 11px 10px; border-top: 1px solid var(--border-soft); }
+      .cr-line { display: flex; gap: 9px; align-items: flex-start; padding: 6px 0; }
+      .cr-line + .cr-line { border-top: 1px solid var(--border-soft); }
+      .cr-line .cr-face { width: 26px; height: 26px; font-size: 10px; margin-top: 1px; }
+      .cr-said { min-width: 0; }
+      .cr-said .hd { font-size: 11px; color: var(--text-faint); margin-bottom: 1px; }
+      .cr-said .hd b { color: var(--text-dim); font-weight: 700; font-size: 11.5px; }
+      /* 감정은 대사보다 약하게 — 연출 지시값이지 대사가 아니다 */
+      .cr-said .emo { font-family: ui-monospace, Menlo, monospace; }
+      .cr-said .tx { font-size: 13px; line-height: 1.5; }
     </style>
   </head>
 
@@ -109,6 +167,7 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#sheet">보상 시트</a>
+        <a class="nav-back" href="#talk">오가는 대화</a>
         <a class="nav-back" href="#items">아이템 33종</a>
         <a class="nav-back" href="#npc">NPC 11종</a>
         <span class="nav-spacer"></span>
@@ -198,6 +257,68 @@
               로컬라이제이션 정본에 실제로 있는 건 <b>3개뿐</b>입니다(실측).
               나머지는 팝업이 <code>Task 1-1</code> 형태로 떨어뜨립니다 &mdash; 지금 화면에서
               심부름끼리 구별되는 건 <b>번호와 보상 아이콘뿐</b>입니다. 그래서 이 표도 이름 열을 두지 않았습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="talk">
+        <h2 class="doc-h2">
+          심부름 앞뒤로 오가는 대화
+          <span class="doc-h2-sub">퀘스트 6개 · 대사 37줄 &mdash; 레포에 들어온 전량입니다</span>
+        </h2>
+
+        <div class="cr-bar">
+          <button class="cr-btn" id="crTalkAll" type="button">대화 전부 펼치기</button>
+          <span class="cr-count" id="crTalkCount"></span>
+        </div>
+
+        <div id="crQuests"></div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">먼저 &mdash; 188건에 각각 붙는 대화는 <b>없습니다</b></div>
+            <p>
+              레포에 들어온 대화 데이터는 <code>story_dialogue</code> <b>37줄 · 6 scene</b>,
+              재생 순서를 정하는 <code>story_node</code> 는 <b>22행</b>이 전부입니다.
+              범위가 <b>day 0~1</b> 뿐이라, <b>day 2~20 의 181건에는 대화가 한 줄도 없습니다.</b>
+              위 보상 시트가 188건을 다 덮는 것과 달리 이 섹션은 <b>초반 6퀘스트만</b> 덮습니다 &mdash;
+              둘을 같은 완성도로 읽으면 안 됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 흐름을 읽는 법</div>
+            <p>
+              세로선이 <code>node_order</code>, 즉 <b>실제 재생 순서</b>입니다.
+              <b>채워진 점이 심부름</b>이고 그 위아래가 앞뒤 대화입니다 &mdash;
+              심부름 <b>뒤</b>에 대화가 붙는 건 <b>4곳</b>(<code>q3_1_2</code> ·
+              <code>q4_signboard</code> · <code>q5_fence</code> · <code>q6_extra</code>)입니다.
+              <code>stillcut</code> 은 정지 삽화, <code>gate</code> 는 진행 조건입니다.
+              <code>q3_1_2</code> 처럼 <b>대화 → 삽화 → 대화 → 심부름 → 대화 → 삽화 → 대화</b>로
+              감싸인 게 완성형이고, 나머지는 아직 그만큼 안 채워져 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--deploy)">
+            <div class="note-title">대화 scene 이 <b>돌려쓰기</b> 상태입니다</div>
+            <p>
+              <code>1_2_begin p1</code> 이 <code>q3_1_2</code> 의 <b>심부름 앞</b>과
+              <code>q4_signboard</code> 의 <b>심부름 뒤</b>에 같이 걸려 있고,
+              <code>1_2_end p1</code> 도 <code>q3</code>·<code>q6</code> 두 곳에 걸려 있습니다.
+              <b>이름이 <code>begin</code> 인데 완료 후에 나오는 자리</b>라 내용이 맞을 수 없습니다 &mdash;
+              프로토 단계의 임시 배치로 보입니다. 대사를 쓰기 전에 <b>이 배치부터</b> 정해야 합니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">심부름 시트와 <b>일대일로 잇지 못합니다</b></div>
+            <p>
+              <code>story_node.task_ref</code> 는 <code>casinio_task_1_2</code> 처럼
+              <b><code>day_seq</code> 꼴 이름</b>인데, 붙어 있는 <code>task_cost</code> 가
+              위 시트의 <code>cost_coin</code> 과 <b>어긋납니다</b> &mdash;
+              <code>1_4</code> 는 16 인데 시트의 <code>1 Day - 4</code> 는 46,
+              <code>1_5</code> 는 26 인데 시트는 25, <code>1_6</code> 은 26 인데 시트는 24 입니다.
+              맞는 건 <code>1_2</code>(16) 한 건뿐입니다.
+              <b>두 데이터가 다른 판본</b>이라는 뜻이라, 이름만 보고 시트 행에 갖다 붙이면 틀립니다.
+              보상(<code>exp 15</code>)은 네 건 모두 일치합니다.
             </p>
           </div>
         </div>
@@ -360,6 +481,15 @@
         [20,10,110,"Rosie",15,[]]
       ];
 
+      /* ======================================================================
+         대화 — story_dialogue 37줄 + story_node 22행(레포 실측, 전량).
+         TALK: "scene_id|part" → [[step, 화자, 감정, 영문 대사], …]
+         NODES: story_node 를 node_order 순으로. t 가 dialogue|task|stillcut|gate.
+         ====================================================================== */
+      const TALK = {"tutorial_0|1": [[1, "Rosie", "worried", "I can't believe it. The whole village has gone wild."], [2, "Rosie", "sad", "No one cared for Rosewood after she passed?"], [3, "Rosie", "confident", "First I need to know why this place was left behind."], [4, "Poppy", "neutral", "Mama!"], [5, "Rosie", "neutral", "Yes, sweetie?"], [6, "Poppy", "neutral", "I'm sooo hungry!"], [7, "Rosie", "neutral", "Let's see what I can find for you."], [8, "Rosie", "happy", "How about some fresh bread?"], [9, "Poppy", "excited", "Yeah! I love bread!"], [10, "Rosie", "neutral", "I'll tidy Grandma Rosa's kitchen so I can bake."]], "1_1_begin|1": [[1, "Rosie", "angry", "Brett! You can't just walk into my mother's workshop."], [2, "Rosie", "angry", "Go back to your tea house and your perfect menu."], [3, "Brett", "awkward", "Rosie, wait. You've got this all wrong."], [4, "Rosie", "angry", "I heard what you told Diane about my plans."], [5, "Brett", "neutral", "That was business talk. People asked, I answered."], [6, "Rosie", "angry", "Right. Told them I'd be closed by autumn, I bet."], [7, "Brett", "surprised", "Rosie, why won't you listen?"], [8, "Rosie", "sad", "I don't want to fight. You always have an answer."], [9, "Brett", "sad", "I just wanted to see the old workshop. Is it—"], [10, "Rosie", "angry", "It's mine now, Brett. Mom left it to me."], [11, "Rosie", "angry", "Now go. I have work to do."], [12, "Brett", "neutral", "All right. See you around, Rosie."], [13, "Poppy", "excited", "Mama! Was that Daddy? Why did he go?"], [14, "Rosie", "sad", "He had to get back to the shop."]], "1_2_begin|1": [[1, "Rosie", "happy", "Rafa! So glad you're here — with tools!"], [2, "Rafa", "happy", "A few boarded-up windows won't stop me."]], "1_2_begin|2": [[4, "Rafa", "worried", "Why is the whole town boarded up? What happened?"], [5, "Rosie", "sad", "People just left. After the market closed."], [6, "Rafa", "neutral", "Don't worry, Rosie. I'll fix it up."]], "1_2_end|1": [[1, "Rafa", "worried", "That market closing wasn't just bad luck, was it?"], [2, "Rosie", "worried", "No. Something doesn't add up, and I'll find out."], [3, "Rafa", "serious", "Maybe your mother crossed someone?"], [4, "Rosie", "sad", "Maybe. But my mother lived here her whole life."], [5, "Rosie", "sad", "And she was kind to everyone."], [6, "Rafa", "neutral", "I know! People still talk about her."], [7, "Rosie", "confident", "Time to pick up my old hobby. Solving mysteries."]], "1_2_end|2": [[9, "Rosie", "confident", "I'll find out what happened here!"]]};
+
+      const NODES = [{"o": 1, "q": "q1_tutorial", "day": 0, "t": "dialogue", "scene": "tutorial_0", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 2, "q": "q1_tutorial", "day": 0, "t": "gate", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 3, "q": "q1_tutorial", "day": 0, "t": "task", "scene": "none", "part": 0, "ref": "tutorial_clean_kitchen", "cost": 0, "rw": "none", "rwa": 0}, {"o": 4, "q": "q2_1_1", "day": 1, "t": "dialogue", "scene": "1_1_begin", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 5, "q": "q2_1_1", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 6, "q": "q3_1_2", "day": 1, "t": "dialogue", "scene": "1_2_begin", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 7, "q": "q3_1_2", "day": 1, "t": "stillcut", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 8, "q": "q3_1_2", "day": 1, "t": "dialogue", "scene": "1_2_begin", "part": 2, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 9, "q": "q3_1_2", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "casinio_task_1_2", "cost": 16, "rw": "exp", "rwa": 15}, {"o": 10, "q": "q3_1_2", "day": 1, "t": "dialogue", "scene": "1_2_end", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 11, "q": "q3_1_2", "day": 1, "t": "stillcut", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 12, "q": "q3_1_2", "day": 1, "t": "dialogue", "scene": "1_2_end", "part": 2, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 13, "q": "q4_signboard", "day": 1, "t": "gate", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 14, "q": "q4_signboard", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "casinio_task_1_4", "cost": 16, "rw": "exp", "rwa": 15}, {"o": 15, "q": "q4_signboard", "day": 1, "t": "dialogue", "scene": "1_2_begin", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 16, "q": "q4_signboard", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 17, "q": "q5_fence", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "casinio_task_1_5", "cost": 26, "rw": "exp", "rwa": 15}, {"o": 18, "q": "q5_fence", "day": 1, "t": "dialogue", "scene": "1_1_begin", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 19, "q": "q5_fence", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 20, "q": "q6_extra", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "casinio_task_1_6", "cost": 26, "rw": "exp", "rwa": 15}, {"o": 21, "q": "q6_extra", "day": 1, "t": "dialogue", "scene": "1_2_end", "part": 1, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}, {"o": 22, "q": "q6_extra", "day": 1, "t": "task", "scene": "none", "part": 0, "ref": "none", "cost": 0, "rw": "none", "rwa": 0}];
+
       /* 아바타 아트가 들어온 NPC 이름만 여기 추가한다 — 파일은 docs/img/npc/<이름>.png.
          비어 있으면 전원 이니셜 원형으로 떨어진다(404 를 유발하지 않는다). */
       const NPC_ART = [];
@@ -463,6 +593,71 @@
         }).join("");
       }
 
+      /* ── 대화 흐름 ─────────────────────────────────────────────────────── */
+      const KIND_LABEL = { dialogue: "대화", task: "심부름", stillcut: "삽화", gate: "조건" };
+
+      function linesHtml(key) {
+        const rows = TALK[key] || [];
+        return `<div class="cr-lines">` + rows.map(([step, who, emo, tx]) =>
+          `<div class="cr-line">${faceHtml(who)}<div class="cr-said">`
+          + `<div class="hd"><b>${esc(who)}</b> · <span class="emo">${esc(emo)}</span> · step ${step}</div>`
+          + `<div class="tx">${esc(tx)}</div></div></div>`).join("") + `</div>`;
+      }
+
+      function nodeHtml(n, prev) {
+        const kind = `<span class="cr-kind">${KIND_LABEL[n.t] || n.t}</span>`;
+
+        if (n.t === "dialogue") {
+          const key = `${n.scene}|${n.part}`;
+          const rows = TALK[key] || [];
+          const who = [...new Set(rows.map((r) => r[1]))].join(" · ");
+          /* 심부름 바로 뒤에 붙은 대화인지 표시한다 — 이 섹션이 답해야 할 질문이 그것이다 */
+          const after = prev && prev.t === "task" ? ` <b>← 심부름 직후</b>` : "";
+          return `<div class="cr-node">`
+            + `<div class="cr-nt">${kind} <code>${esc(n.scene)}</code> part ${n.part}${after}</div>`
+            + `<details class="cr-talk"><summary><b>${rows.length}줄</b>`
+            + `<span class="who">${esc(who)}</span></summary>${linesHtml(key)}</details></div>`;
+        }
+
+        if (n.t === "task") {
+          const ref = n.ref === "none"
+            ? `<span class="cr-none">task_ref 없음 &mdash; 꾸미기 전용</span>`
+            : `<code>${esc(n.ref)}</code>`;
+          const cost = n.cost > 0
+            ? `<span class="cr-chip"><img src="${COIN_ART}" alt="코인"><b>${n.cost}</b></span>` : "";
+          const rw = n.rw === "exp"
+            ? `<span class="cr-chip"><img src="${EXP_ART}" alt="경험치"><b>${n.rwa}</b></span>` : "";
+          return `<div class="cr-node is-task"><div class="cr-nt">${kind} ${ref} ${cost} ${rw}</div></div>`;
+        }
+
+        const desc = n.t === "stillcut" ? "정지 삽화 한 장" : "진행 조건 &mdash; 통과해야 다음으로 간다";
+        return `<div class="cr-node"><div class="cr-nt">${kind} ${desc}</div></div>`;
+      }
+
+      function renderQuests() {
+        const quests = [];
+        for (const n of NODES) {
+          const last = quests[quests.length - 1];
+          if (!last || last.id !== n.q) quests.push({ id: n.q, day: n.day, nodes: [n] });
+          else last.nodes.push(n);
+        }
+
+        $("#crQuests").innerHTML = quests.map((q) => {
+          const talks = q.nodes.filter((n) => n.t === "dialogue");
+          const lines = talks.reduce((a, n) => a + (TALK[`${n.scene}|${n.part}`] || []).length, 0);
+          return `<div class="cr-q"><div class="cr-qh">`
+            + `<h3><code>${esc(q.id)}</code></h3>`
+            + `<span class="tag">day ${q.day}</span>`
+            + `<span class="sub">노드 ${q.nodes.length} · 대화 ${talks.length} · ${lines}줄</span>`
+            + `</div><div class="cr-qb">`
+            + q.nodes.map((n, i) => nodeHtml(n, q.nodes[i - 1])).join("")
+            + `</div></div>`;
+        }).join("");
+
+        const total = Object.values(TALK).reduce((a, r) => a + r.length, 0);
+        $("#crTalkCount").textContent = `퀘스트 ${quests.length} · scene ${Object.keys(TALK).length} · 대사 ${total}줄`;
+      }
+
       /* ── NPC 인덱스 ────────────────────────────────────────────────────── */
       function renderNpcs() {
         const count = {};
@@ -488,8 +683,20 @@
           renderSheet();
         });
 
+        /* 대화 일괄 접기 / 펼치기 — 버튼 하나가 양쪽을 다 한다.
+           「전부 펼침」 상태에서만 접기로 바뀌므로, 하나라도 접혀 있으면 펼치기가 먼저다. */
+        const all = $("#crTalkAll");
+        all.addEventListener("click", () => {
+          const list = document.querySelectorAll("details.cr-talk");
+          const open = Array.prototype.every.call(list, (d) => d.open);
+          list.forEach((d) => { d.open = !open; });
+          all.classList.toggle("is-on", !open);
+          all.textContent = open ? "대화 전부 펼치기" : "대화 전부 접기";
+        });
+
         renderKpi();
         renderSheet();
+        renderQuests();
         renderItems();
         renderNpcs();
       }
