@@ -95,14 +95,56 @@
          표 행 밑에 딸린 행으로 붙인다. 별도 패널로 띄우면 어느 심부름 것인지가 흐려진다.
          숨김은 hidden 속성으로 — display 를 CSS 로 다투면 일괄 토글이 개별 토글과 엇갈린다. */
       .cr-tb tr.cr-det > td { padding: 0 12px; border-top: 0; }
-      .cr-detbox { padding: 2px 0 12px 12px; border-left: 2px solid var(--balance);
+      /* 상세는 그 심부름이 속한 구역 색을 왼쪽에 띠로 두른다 — 표를 펼쳐 놓고 스크롤할 때
+         「지금 어느 구역을 보고 있나」가 색만으로 잡힌다. 색은 --zc 로 행마다 꽂는다. */
+      .cr-detbox { padding: 2px 0 12px 13px; border-left: 3px solid var(--zc, var(--balance));
                    margin: 0 0 8px 6px; }
-      .cr-dl { display: grid; grid-template-columns: 82px 1fr; gap: 5px 12px; align-items: baseline; }
-      .cr-dl dt { font-size: 11.5px; color: var(--text-faint); font-weight: 700;
-                  font-family: ui-monospace, Menlo, monospace; }
-      .cr-dl dd { margin: 0; font-size: 13px; line-height: 1.55; }
-      /* 비포 → 애프터는 한 줄에 화살표로 — 두 줄로 떼면 짝이라는 게 안 보인다 */
-      .cr-ba { display: flex; gap: 7px; align-items: baseline; flex-wrap: wrap; }
+
+      /* ── 구역 배지 ───────────────────────────────────────────────────────
+         색은 dataviz 카테고리 슬롯 1~6(검증 통과). 다만 <b>글자에는 그 색을 쓰지 않는다</b> —
+         6색 중 3색이 흰 바탕에서 3:1 미만이라, 색은 점과 옅은 배경에만 얹고
+         구역 이름은 본문 잉크로 쓴다. 이름이 늘 함께 보이므로 색만으로 구분하지 않아도 된다. */
+      .cr-zone { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+                 padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+                 color: var(--text-dim);
+                 background: color-mix(in srgb, var(--zc) 12%, transparent);
+                 box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zc) 30%, transparent); }
+      .cr-zone::before { content: ""; width: 7px; height: 7px; border-radius: 50%;
+                         background: var(--zc); flex: none; }
+
+      /* ── 채팅 화면 ───────────────────────────────────────────────────────
+         정본 화면 74·75 규격을 그대로 따른다 — <b>주인공(로지) 왼쪽 · 상대 화자 오른쪽</b>,
+         발화마다 좌우를 뒤집지 않는다. 표의 한 줄로 적으면 「누가 누구에게」가 사라지는데,
+         이 섹션이 답해야 할 질문이 바로 그것이라 화면 모양 그대로 세운다. */
+      .cr-chat { max-width: 640px; }
+      .cr-msg { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
+      .cr-msg.is-right { flex-direction: row-reverse; }
+      .cr-msg .cr-face { width: 30px; height: 30px; font-size: 10.5px; flex: none; }
+      .cr-bub { position: relative; max-width: 78%; padding: 7px 12px; border-radius: 14px;
+                background: var(--surface-2); border: 1px solid var(--border); }
+      .cr-msg.is-right .cr-bub { background: color-mix(in srgb, var(--zc, var(--balance)) 10%, var(--surface));
+                                 border-color: color-mix(in srgb, var(--zc, var(--balance)) 28%, transparent); }
+      .cr-bub .who { font-size: 10.5px; font-weight: 800; color: var(--text-faint); margin-bottom: 1px; }
+      .cr-bub .who .emo { font-weight: 600; font-family: ui-monospace, Menlo, monospace; }
+      .cr-bub .tx { font-size: 13px; line-height: 1.5; }
+      /* 대사가 아직 없는 자리 — 점선으로 <b>비어 있음</b>을 그림 자체로 알린다.
+         실선 버블로 두면 「짧은 대사가 있다」로 읽힌다. */
+      .cr-bub.is-empty { background: transparent; border-style: dashed; }
+      .cr-bub.is-empty .tx { color: var(--text-faint); font-size: 12px; }
+
+      /* 대화 중에 끼는 그림·서류 카드. 버블이 아니라 가운데 정렬 — 정본상 삽화는
+         「대화 중 그림 카드」라 말풍선과 계열이 다르다. */
+      .cr-card { margin: 0 0 8px; padding: 8px 11px; border-radius: var(--radius-sm);
+                 background: var(--surface); border: 1px dashed var(--border);
+                 font-size: 12.5px; line-height: 1.5; }
+      .cr-card b { display: inline-block; margin-right: 7px; font-size: 10.5px; font-weight: 800;
+                   letter-spacing: 0.02em; color: var(--deploy); }
+
+      /* 대화가 끝난 뒤 실제로 바뀌는 것 — 채팅 밑에 결과로 붙인다 */
+      .cr-res { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border-soft); }
+      .cr-res .lb { font-size: 10.5px; font-weight: 800; color: var(--text-faint);
+                    letter-spacing: 0.02em; margin-bottom: 4px; }
+      .cr-ba { display: flex; gap: 7px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
       .cr-ba i { font-style: normal; color: var(--text-faint); }
       .cr-pick { display: flex; gap: 6px; flex-wrap: wrap; }
       .cr-pick span { padding: 2px 9px; border-radius: 999px; background: var(--surface-2);
@@ -188,15 +230,8 @@
       details.cr-talk > summary .who { color: var(--text-faint);
                                        font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
       .cr-lines { padding: 3px 11px 10px; border-top: 1px solid var(--border-soft); }
-      .cr-line { display: flex; gap: 9px; align-items: flex-start; padding: 6px 0; }
-      .cr-line + .cr-line { border-top: 1px solid var(--border-soft); }
-      .cr-line .cr-face { width: 26px; height: 26px; font-size: 10px; margin-top: 1px; }
-      .cr-said { min-width: 0; }
-      .cr-said .hd { font-size: 11px; color: var(--text-faint); margin-bottom: 1px; }
-      .cr-said .hd b { color: var(--text-dim); font-weight: 700; font-size: 11.5px; }
-      /* 감정은 대사보다 약하게 — 연출 지시값이지 대사가 아니다 */
-      .cr-said .emo { font-family: ui-monospace, Menlo, monospace; }
-      .cr-said .tx { font-size: 13px; line-height: 1.5; }
+      /* 버블 목록은 위 시트의 .cr-chat 를 그대로 쓴다 — 여백만 여기서 준다 */
+      .cr-lines .cr-chat { padding-top: 2px; }
     </style>
   </head>
 
@@ -259,6 +294,7 @@
             <thead>
               <tr>
                 <th style="width: 92px">심부름</th>
+                <th style="width: 130px">구역</th>
                 <th>클리어하면 오가는 것</th>
                 <th style="width: 140px">의뢰 NPC</th>
                 <th style="width: 88px; text-align: right">코스트</th>
@@ -292,26 +328,38 @@
               완료 연출의 경험치 별이 <b>경험치 카드 자리에서</b> 출발하므로, 이 3건만 별이 2번 카드에서 날아갑니다.
             </p>
           </div>
-          <div class="note" style="--acc: var(--plan)">
-            <div class="note-title">「클리어하면 오가는 것」 &mdash; 유형 셋이 전부 다릅니다</div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">말풍선이 비어 있는 건 <b>대사가 정본에 없기 때문</b>입니다</div>
             <p>
-              심부름은 <b>대화 58 · 수선 76 · 택1 54</b> 로 나뉘고, 클리어했을 때 벌어지는 일이 셋 다 다릅니다.
-              <b>대화</b>는 대사만 오가고 꾸미기가 없습니다(자리가 「대화만 진행」).
-              <b>수선</b>은 <b>비포 → 애프터</b>로 그 자리가 바뀝니다.
-              <b>택1</b>은 <b>디자인 A·B·C 중 하나를 고릅니다</b>.
-              행을 누르면 그 심부름에 정본이 달아 둔 <b>자리 · 변화 · 선택지 · 삽화 · 컷씬 · 편지</b>가 펼쳐집니다.
-              위 버튼으로 <b>한 번에 펼치고 접을</b> 수 있습니다.
+              행을 누르면 정본 <b>화면 74·75</b> 규격 그대로 채팅 화면이 펼쳐집니다 &mdash;
+              <b>주인공(로지) 왼쪽 · 상대 화자 오른쪽</b>, 발화마다 좌우를 뒤집지 않습니다.
+              그런데 화면 기획서의 chore 스키마에 들어 있는 건 <b>제목 · 화자 · 유형 · 연출 지시</b>까지이고,
+              「무슨 대사를 주고받는가」는 <b>188건 어디에도 쓰여 있지 않습니다</b>.
+              그래서 말풍선을 <b>점선으로 비워 뒀습니다</b> &mdash; 심부름 제목을 대사 자리에 넣으면
+              쓰지도 않은 대사를 지어낸 것처럼 읽힙니다.
+              <b>누가 누구와 이야기하는지까지가 지금 확정된 전부</b>이고, 빈 칸이 곧 <b>대사 작업이 들어갈 자리</b>입니다.
+              실제 대사가 쓰인 구간은 <a href="#talk">아래 섹션</a>에 37줄이 <b>같은 모양으로</b> 채워져 있습니다.
             </p>
           </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">대사 원문은 <b>정본에도 아직 없습니다</b></div>
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">대사가 없어도 <b>무엇을 다루는지</b>는 나옵니다</div>
             <p>
-              화면 기획서의 chore 스키마에 들어 있는 건 <b>제목 · 화자 · 유형 · 연출 지시</b>까지입니다 &mdash;
-              「무슨 대사를 주고받는가」는 <b>188건 어디에도 쓰여 있지 않습니다</b>.
-              실제 대사가 쓰인 구간은 레포의 <code>story_dialogue</code> <b>37줄(day 0~1)</b> 뿐이고,
-              그건 <a href="#talk">아래 섹션</a>에 전문이 있습니다.
-              그래서 이 표의 「오가는 것」은 <b>대사가 아니라 그 심부름이 무엇을 다루는지</b>입니다.
-              <b>삽화 · 편지 · 컷씬</b>이 달린 건은 대사만으로 끝나지 않는 건이라 특히 눈여겨볼 자리입니다.
+              심부름은 <b>대화 58 · 수선 76 · 택1 54</b> 로 나뉘고 클리어 결과가 셋 다 다릅니다.
+              <b>대화</b>는 대사만 오가고, <b>수선</b>은 <b>비포 → 애프터</b>로 그 자리가 바뀌고,
+              <b>택1</b>은 <b>디자인 A·B·C 중 하나를 고릅니다</b>. 채팅 아래에 그 결과를 붙였습니다.
+              대화 중간에 끼는 <b>삽화 10 · 편지 8 · 컷씬 7</b>은 정본에 <b>내용이 실제로 쓰여 있어</b>
+              점선 카드로 그대로 실었습니다 &mdash; 지금 단계에서 <b>스토리가 가장 구체적인 자리</b>입니다.
+              위 버튼으로 188건을 <b>한 번에 펼치고 접을</b> 수 있습니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">구역 색은 곧 진행 구간입니다</div>
+            <p>
+              구역 6개가 <b>day 구간과 1:1</b>이라 색이 그대로 진행 순서입니다 &mdash;
+              <b>공방 앞마당</b>(day 1) → <b>공방 작업장</b>(2~3) → <b>로자의 뒷방</b>(4~7) →
+              <b>공방 앞 골목</b>(8~11) → <b>옛 광장</b>(12~16) → <b>역 앞 광장</b>(17~20).
+              앞 다섯은 로즈우드 마을이고 <b>마지막 하나만 역전 읍내</b>로 무대가 바뀝니다.
+              색은 <b>구역 이름과 항상 같이</b> 나옵니다 &mdash; 색만으로 구분하게 두지 않았습니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--deploy)">
@@ -709,35 +757,72 @@
       /* 유형 → 배지 클래스. 「대화」만 대사로 끝나고 나머지 둘은 꾸미기까지 간다. */
       const TYPE_CLASS = { "대화": "t-talk", "수선": "t-fix", "택1": "t-pick" };
 
-      /* 상세 칸 — 정본이 그 심부름에 달아 둔 것을 순서대로 편다.
-         라벨을 정본 표기 그대로 쓴다(「삽화」·「컷씬」·「편지」). 우리말로 옮기면
-         정본에서 그 항목을 찾을 때 검색이 안 걸린다. */
+      /* 구역 색 — dataviz 카테고리 슬롯 1~6(light). 구역은 day 구간과 1:1이라
+         색이 곧 진행 구간이다. 순서를 섞지 않는다(슬롯 순서가 CVD 안전장치다). */
+      const ZONE_COLOR = {
+        "공방 앞마당": "#2a78d6",
+        "공방 작업장": "#eb6834",
+        "로자의 뒷방": "#1baf7a",
+        "공방 앞 골목": "#eda100",
+        "옛 광장": "#e87ba4",
+        "역 앞 광장": "#008300",
+      };
+      const zoneColor = (area) => ZONE_COLOR[area] || "var(--text-faint)";
+
+      /* 주인공. 정본 화면 75 — 「주인공 좌측 · 상대 화자 우측, 발화마다 좌우를 뒤집지 않는다」 */
+      const HERO = "Rosie";
+
+      function bubbleHtml(who, emo, text, right) {
+        const empty = !text;
+        return `<div class="cr-msg${right ? " is-right" : ""}">${faceHtml(who)}`
+          + `<div class="cr-bub${empty ? " is-empty" : ""}">`
+          + `<div class="who">${esc(who)}${emo ? ` · <span class="emo">${esc(emo)}</span>` : ""}</div>`
+          + `<div class="tx">${empty ? "대사 미작성 — 정본에 없음" : esc(text)}</div></div></div>`;
+      }
+
+      /* 심부름 하나의 「클리어하면 오가는 것」을 채팅 화면으로 세운다.
+         ⚠ 대사 원문은 정본에 없다(제목·화자·연출까지만 있다). 그래서 말풍선은
+         <b>비워 둔 채로</b> 두 사람만 세운다 — 제목을 대사 자리에 넣으면 쓰지도 않은 대사를
+         지어낸 것처럼 읽힌다. 삽화·컷씬·편지는 실제 내용이 있으므로 카드로 그대로 싣는다. */
       function detailHtml(row) {
-        const [, , , , , , title, type, seat, area, f] = row;
-        const dl = [];
+        const [, , , npc, , , , type, , area, f] = row;
+        const zc = zoneColor(area);
 
-        dl.push(["자리", type === "대화" ? `<span class="cr-none">대화만 진행 — 꾸미기 없음</span>` : esc(seat)]);
-        if (area) dl.push(["구역", esc(area)]);
-
-        /* 수선은 비포→애프터가 곧 「클리어하면 무엇이 바뀌는가」다 */
-        if (f["비포"] || f["애프터"]) {
-          dl.push(["변화", `<span class="cr-ba">${esc(f["비포"] || "?")}<i>→</i><b>${esc(f["애프터"] || "?")}</b></span>`]);
+        let chat = "";
+        /* 의뢰인이 로지면 상대가 없다 — 혼자 말하는 자리라 한 쪽만 세운다 */
+        if (npc === HERO) {
+          chat += bubbleHtml(HERO, "", "", false);
+        } else {
+          chat += bubbleHtml(HERO, "", "", false);
+          chat += bubbleHtml(npc, "", "", true);
         }
-        /* 택1 은 A·B·C 중 고른다 — 셋을 한 줄에 세워 선택지라는 게 보이게 한다 */
+
+        /* 대화 중에 끼는 것 — 있는 건이 「대사만 오가지 않는」 건이다.
+           라벨은 정본 표기 그대로 둔다(우리말로 옮기면 정본에서 검색이 안 걸린다). */
+        let cards = "";
+        for (const k of ["삽화", "컷씬", "편지", "특수오더", "글자 표현"]) {
+          if (f[k]) cards += `<div class="cr-card"><b>${esc(k)}</b>${esc(f[k])}</div>`;
+        }
+
+        /* 대화가 끝난 뒤 실제로 바뀌는 것 */
+        let res = "";
+        if (f["비포"] || f["애프터"]) {
+          res += `<div class="cr-res"><div class="lb">수선 결과</div>`
+            + `<span class="cr-ba">${esc(f["비포"] || "?")}<i>→</i><b>${esc(f["애프터"] || "?")}</b></span></div>`;
+        }
         if (f["디자인 A"]) {
-          dl.push(["택1", `<span class="cr-pick">`
+          res += `<div class="cr-res"><div class="lb">디자인 택1</div><span class="cr-pick">`
             + ["A", "B", "C"].map((x) => f[`디자인 ${x}`]
               ? `<span><b>${x}</b>${esc(f[`디자인 ${x}`])}</span>` : "").join("")
-            + `</span>`]);
+            + `</span></div>`;
         }
-        /* 대화 중에 끼는 연출 — 이게 있는 건이 「대사만 오가지 않는」 건이다 */
-        for (const k of ["삽화", "컷씬", "편지", "특수오더", "글자 표현", "아트"]) {
-          if (f[k]) dl.push([k, esc(f[k])]);
+        if (type === "대화" && !cards) {
+          res += `<div class="cr-res"><div class="lb">클리어 결과</div>`
+            + `<span class="cr-none">대사만 오간다 — 꾸미기도 삽화도 없다</span></div>`;
         }
 
-        return `<div class="cr-detbox"><dl class="cr-dl">`
-          + dl.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")
-          + `</dl></div>`;
+        return `<div class="cr-detbox" style="--zc: ${zc}">`
+          + `<div class="cr-chat">${chat}${cards}</div>${res}</div>`;
       }
 
       function renderSheet() {
@@ -752,8 +837,10 @@
           const cls = ["cr-row", first ? "cr-d0" : "", items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
           const id = `d-${day}-${seq}`;
 
+          const area = row[9];
           html += `<tr class="${cls}" data-det="${id}">`
             + `<td class="cr-key"><span class="cr-ar">▶</span> ${keyOf(day, seq)}</td>`
+            + `<td><span class="cr-zone" style="--zc: ${zoneColor(area)}">${esc(area)}</span></td>`
             + `<td><span class="cr-type ${TYPE_CLASS[type] || ""}">${esc(type)}</span>`
             + `<span class="cr-ttl">${esc(title)}</span></td>`
             + `<td><span class="cr-npc">${faceHtml(npc)}<span class="nm">${esc(npc)}</span></span></td>`
@@ -764,7 +851,7 @@
             + `<td>${items.length ? `<span class="cr-items">${items.map((p) => itemHtml(p[0], p[1])).join("")}</span>`
                                   : `<span class="cr-none">—</span>`}</td>`
             + `</tr>`
-            + `<tr class="cr-det" id="${id}" hidden><td colspan="6">${detailHtml(row)}</td></tr>`;
+            + `<tr class="cr-det" id="${id}" hidden><td colspan="7">${detailHtml(row)}</td></tr>`;
         }
         $("#crBody").innerHTML = html;
 
@@ -841,12 +928,13 @@
       /* ── 대화 흐름 ─────────────────────────────────────────────────────── */
       const KIND_LABEL = { dialogue: "대화", task: "심부름", stillcut: "삽화", gate: "조건" };
 
+      /* 실제 대사가 있는 구간 — 위 시트와 **같은 채팅 모양**으로 그린다.
+         두 곳의 모양이 다르면 「저긴 비어 있고 여긴 차 있다」가 한눈에 안 들어온다. */
       function linesHtml(key) {
         const rows = TALK[key] || [];
-        return `<div class="cr-lines">` + rows.map(([step, who, emo, tx]) =>
-          `<div class="cr-line">${faceHtml(who)}<div class="cr-said">`
-          + `<div class="hd"><b>${esc(who)}</b> · <span class="emo">${esc(emo)}</span> · step ${step}</div>`
-          + `<div class="tx">${esc(tx)}</div></div></div>`).join("") + `</div>`;
+        return `<div class="cr-lines"><div class="cr-chat">`
+          + rows.map(([, who, emo, tx]) => bubbleHtml(who, emo, tx, who !== HERO)).join("")
+          + `</div></div>`;
       }
 
       function nodeHtml(n, prev) {
