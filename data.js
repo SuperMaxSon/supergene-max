@@ -425,7 +425,7 @@ const SECTIONS = [
         // ⚠ version 은 이 표가 읽어온 **소스 판본**이다 — 클라 rosewood-balance.json 의
         //    _meta.spec = 「개발 기획서 v1.6 · 밸런스시트 기획서 v1.6」(2026-09-15 export).
         //    문서를 고쳤다고 올리는 개정 번호가 아니다. 시트를 다시 받을 때만 움직인다.
-        version: "v3.0",
+        version: "v1.6",
         updated: "2026-09-21 15:10",
         pinned: false,
         tags: ["시트 실측", "머지", "스토리"],
