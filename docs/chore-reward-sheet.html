@@ -719,6 +719,9 @@
       /* ── 시트 ──────────────────────────────────────────────────────────── */
       let onlyItem = false;
       let dayFilter = 0; /* 0 = 전체 */
+      /* 대화는 **펼친 채로 시작한다.** 이 문서를 여는 이유가 대사를 읽는 것이라,
+         접어 두면 표만 보이고 「대화 데이터가 없다」로 읽힌다. 접기는 버튼으로 한다. */
+      let detOpen = true;
 
       /* 유형 → 배지 클래스. 「대화」만 대사로 끝나고 나머지 둘은 꾸미기까지 간다. */
       const TYPE_CLASS = { "대화": "t-talk", "수선": "t-fix", "택1": "t-pick" };
@@ -808,7 +811,8 @@
           const [day, seq, cost, npc, exp, items, title, type] = row;
           const first = day !== prevDay;
           prevDay = day;
-          const cls = ["cr-row", first ? "cr-d0" : "", items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
+          const cls = ["cr-row", detOpen ? "is-open" : "", first ? "cr-d0" : "",
+                       items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
           const id = `d-${day}-${seq}`;
 
           const area = row[8];
@@ -825,7 +829,7 @@
             + `<td>${items.length ? `<span class="cr-items">${items.map((p) => itemHtml(p[0], p[1])).join("")}</span>`
                                   : `<span class="cr-none">—</span>`}</td>`
             + `</tr>`
-            + `<tr class="cr-det" id="${id}" hidden><td colspan="7">${detailHtml(row)}</td></tr>`;
+            + `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="7">${detailHtml(row)}</td></tr>`;
         }
         $("#crBody").innerHTML = html;
 
@@ -930,6 +934,8 @@
         $("#crAllDet").addEventListener("click", () => {
           const dets = document.querySelectorAll("#crBody tr.cr-det");
           const open = Array.prototype.every.call(dets, (d) => !d.hidden);
+          /* 상태에 남겨 둔다 — 안 그러면 Day 필터를 건드리는 순간 기본값으로 되돌아간다 */
+          detOpen = !open;
           dets.forEach((d) => {
             d.hidden = open;
             const tr = document.querySelector(`tr.cr-row[data-det="${d.id}"]`);
