@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>심부름 보상 시트</title>
+    <meta
+      name="description"
+      content="스토리 머지 런칭분 심부름 188건(day 1~20)의 보상을 그림째 편 시트. 건마다 드는 코인, 경험치, 그리고 추가로 붙는 머지 아이템 33종을 실제 게임 아트로 세웠다."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css?v=light1" />
+    <style>
+      /* ==========================================================================
+         심부름 보상 시트 — 페이지 전용 스타일
+         허브 토큰(--surface / --border / --text / --acc …)만 쓴다. 새 토큰은 만들지 않는다.
+         클래스는 전부 cr- 접두 — style.css 와 이름이 겹치지 않게.
+         오더 문서(rosewood-order-fixed)와 아이템 아트 경로는 같지만 파일을 공유하지 않는다:
+         저쪽은 카드 레일이고 여기는 표다. 한 파일로 묶으면 표의 셀 규칙이 카드를 망가뜨린다.
+         ========================================================================== */
+
+      /* ── 보상 칩 ────────────────────────────────────────────────────────
+         코인 · 경험치 · 아이템을 전부 「그림 + 숫자」 한 모양으로 세운다.
+         팝업(PopupChore)이 보상 카드 3장을 같은 규칙으로 그리기 때문이다 —
+         화면에서 셋이 같은 급으로 보이는데 문서에서만 글자로 적으면 비중이 어긋난다. */
+      .cr-chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+                 font-variant-numeric: tabular-nums; }
+      .cr-chip img { display: block; width: 20px; height: 20px; object-fit: contain;
+                     pointer-events: none; -webkit-user-drag: none;
+                     filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.18)); }
+      .cr-chip b { font-weight: 700; font-size: 13px; }
+
+      /* 아이템 칩은 이름까지 달고 다닌다 — 코드(2501)만으로는 무엇이 나오는지 모른다.
+         한 심부름에 최대 2종이 붙으므로 줄바꿈을 허용한다. */
+      .cr-items { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+      .cr-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px;
+                 border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2);
+                 white-space: nowrap; }
+      .cr-item img { display: block; width: 26px; height: 26px; object-fit: contain;
+                     pointer-events: none; -webkit-user-drag: none; }
+      .cr-item .nm { font-size: 12px; font-weight: 600; letter-spacing: -0.01em; }
+      .cr-item .qt { font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+                     font-weight: 700; color: var(--text-faint); }
+      .cr-none { color: var(--text-faint); font-size: 12px; }
+
+      /* ── NPC 아바타 ──────────────────────────────────────────────────────
+         아트가 아직 없다(main_task.detail_icon 에 11종이 188행 전부 채워져 있는데
+         그림이 안 들어왔다 — PopupChore.ts 의 questIcon 도 프리팹 고정값이 그대로 보인다).
+         그래서 이니셜 원형으로 **자리를 미리 잡아 둔다.** 그림이 들어오면
+         아래 NPC_ART 에 이름만 추가하면 <img> 로 바뀐다 — 레이아웃은 그대로다.
+         자리를 안 잡아 두면 아트 반입 때 표 폭이 전부 흔들린다. */
+      .cr-npc { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+      .cr-face { flex: none; width: 30px; height: 30px; border-radius: 50%; overflow: hidden;
+                 background: var(--surface-2); border: 1px solid var(--border);
+                 display: grid; place-items: center;
+                 font-size: 11px; font-weight: 800; color: var(--text-dim); letter-spacing: -0.02em; }
+      .cr-face img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      /* 아트가 없는 동안이라는 걸 그림 자체로 알린다 — 점선이면 「비어 있는 자리」로 읽힌다.
+         실선 원이면 완성된 아바타로 오해한다. */
+      .cr-face.is-empty { border-style: dashed; }
+      .cr-npc .nm { font-size: 13px; font-weight: 600; }
+
+      /* ── 표 ──────────────────────────────────────────────────────────────
+         188행이라 헤더가 스크롤에 묻힌다. 허브 nav 가 top:0 에 고정돼 있으니 그 밑에 붙인다. */
+      .cr-tb th { position: sticky; top: var(--nav-h); z-index: 2; background: var(--surface-2); }
+      .cr-tb td { vertical-align: middle; }
+      /* 날짜가 바뀌는 첫 행에 선을 넣어 하루 단위를 눈으로 끊는다.
+         day 열을 병합하지 않는 이유: 병합하면 정렬·필터로 행이 빠질 때 칸이 깨진다. */
+      .cr-tb tr.cr-d0 td { border-top: 2px solid var(--border); }
+      .cr-tb tr.cr-has td { background: color-mix(in srgb, var(--balance) 5%, transparent); }
+      .cr-key { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 700;
+                white-space: nowrap; }
+
+      /* ── 조작 바 ─────────────────────────────────────────────────────── */
+      .cr-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+      .cr-btn { border: 1px solid var(--border); background: var(--surface);
+                border-radius: var(--radius-sm); padding: 5px 11px; cursor: pointer; font: inherit;
+                font-size: 12.5px; font-weight: 600; color: var(--text);
+                transition: border-color 0.14s, color 0.14s; }
+      .cr-btn:hover { border-color: var(--balance); color: var(--balance); }
+      .cr-btn.is-on { background: var(--balance); border-color: var(--balance); color: #fff; }
+      .cr-btn:focus-visible, select:focus-visible { outline: 2px solid var(--balance); outline-offset: 2px; }
+      .cr-sel { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+                border-radius: var(--radius-sm); padding: 5px 9px; font: inherit; font-size: 12.5px; }
+      .cr-count { margin-left: auto; font-size: 12px; color: var(--text-faint);
+                  font-family: ui-monospace, Menlo, monospace; }
+
+      /* ── 아이템 · NPC 인덱스 그리드 ───────────────────────────────────── */
+      .cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+                 gap: 10px; }
+      .cr-cell { border: 1px solid var(--border); border-radius: var(--radius);
+                 background: var(--surface); padding: 10px 11px;
+                 display: flex; align-items: center; gap: 10px; }
+      .cr-cell img.art { flex: none; width: 44px; height: 44px; object-fit: contain;
+                         pointer-events: none; -webkit-user-drag: none; }
+      .cr-cell .meta { min-width: 0; }
+      .cr-cell .t { font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+                    overflow: hidden; text-overflow: ellipsis; }
+      .cr-cell .s { font-size: 11.5px; color: var(--text-faint);
+                    font-family: ui-monospace, Menlo, monospace; margin-top: 2px; }
+      .cr-cell .s em { font-style: normal; color: var(--text-dim); font-weight: 700; }
+      /* NPC 칸은 아바타가 커야 「그림 들어올 자리」가 보인다 */
+      .cr-cell .cr-face { width: 44px; height: 44px; font-size: 14px; }
+    </style>
+  </head>
+
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#sheet">보상 시트</a>
+        <a class="nav-back" href="#items">아이템 33종</a>
+        <a class="nav-back" href="#npc">NPC 11종</a>
+        <span class="nav-spacer"></span>
+        <a class="nav-back" href="chore-order-story-merge.html">등장 순서 ↗</a>
+      </div>
+    </nav>
+
+    <header class="doc-header wrap wrap--wide">
+      <div class="doc-eyebrow">스토리 머지 · 심부름</div>
+      <h1 class="doc-title">심부름 보상 시트</h1>
+      <p class="doc-lede">
+        런칭분 심부름 <b>188건</b>(day 1~20)이 <b>무엇을 받고 무엇을 무는지</b>를 그림째 폅니다.
+        <b>188건 전건이 경험치 15 고정</b>이고, 그 위에 머지 아이템이 더 붙는 건이 <b>57건</b>입니다.
+        코인·젬·에너지를 주는 심부름은 <b>하나도 없습니다</b> &mdash; 심부름은 오히려
+        <code>cost_coin</code> 으로 코인을 <b>씁니다</b>.
+        <a href="chore-order-story-merge.html">심부름 등장 순서</a>가 「언제 뜨는가」를 본다면,
+        이 문서는 같은 데이터를 <b>「무엇을 주는가」</b>로 세운 것입니다.
+      </p>
+      <div class="doc-meta">
+        <span class="pill" style="--acc: var(--balance)">스토리 머지 · Rosewood</span>
+        <span class="tag">시트 export 2026-09-15 · <code>main_task</code> 188행</span>
+        <span class="tag">클라 레포 <code>main</code> 실측</span>
+        <span class="tag">아이템 아트 33종 실물</span>
+        <span class="tag">2026-09-21</span>
+      </div>
+    </header>
+
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="sheet">
+        <h2 class="doc-h2">
+          보상 시트
+          <span class="doc-h2-sub">188건 전부 · 표시 순서는 팝업이 그리는 순서 그대로</span>
+        </h2>
+
+        <div class="stat-row" id="crKpi"></div>
+
+        <div class="cr-bar">
+          <label class="cr-btn" style="cursor: default; background: var(--surface-2)">
+            Day
+            <select class="cr-sel" id="crDay" style="margin-left: 6px; border: 0; padding: 2px 4px"></select>
+          </label>
+          <button class="cr-btn" id="crOnlyItem" type="button">추가 아이템 있는 건만</button>
+          <span class="cr-count" id="crCount"></span>
+        </div>
+
+        <div class="table-scroll">
+          <table class="cr-tb">
+            <thead>
+              <tr>
+                <th style="width: 92px">심부름</th>
+                <th style="width: 150px">의뢰 NPC</th>
+                <th style="width: 92px; text-align: right">코스트</th>
+                <th style="width: 92px; text-align: right">경험치</th>
+                <th>추가 아이템</th>
+              </tr>
+            </thead>
+            <tbody id="crBody"></tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>
+              한 행이 심부름 한 건이고 <code>1 Day - 1</code> 은 <b>day 1 의 1번째 건</b>입니다.
+              코스트는 <b>시작할 때 내는 코인</b>이고, 경험치와 아이템은 <b>완료 시 받는 것</b>입니다.
+              팝업은 이 둘을 <b>버튼 하나</b>로 잇습니다 &mdash; 정본 흐름은
+              <code>start</code>(코인 차감) → 요구 충족 판정 → <code>claim</code>(보상 지급) 인데,
+              <code>main_task</code> 에 <b>요구 아이템 열이 아예 없어</b> 가운데 판정이 코인 지불뿐이기 때문입니다.
+              「아이템을 모아야 완료된다」로 읽으면 시트에 없는 규칙을 발명하게 됩니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--balance)">
+            <div class="note-title">아이템 칸 순서는 시트 칸 순서 그대로입니다</div>
+            <p>
+              팝업의 보상 카드 3장은 <code>reward_item_key_1~3</code> 을 <b>앞에서부터</b> 채우고
+              남는 칸은 카드째 끕니다. 그래서 보상이 1개면 카드도 1장만 뜹니다.
+              다만 <b>3건</b>(<code>1 Day - 7</code> · <code>2 Day - 7</code> · <code>3 Day - 7</code>)만
+              1번 칸이 상자고 경험치가 2번 칸이라, 그 3건은 <b>상자가 왼쪽</b>에 섭니다.
+              완료 연출의 경험치 별이 <b>경험치 카드 자리에서</b> 출발하므로, 이 3건만 별이 2번 카드에서 날아갑니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">심부름 이름은 아직 화면에 안 나옵니다</div>
+            <p>
+              <code>main_task.name_key</code>(<code>T_TASK_{day}_{seq}</code>) 188개 중
+              로컬라이제이션 정본에 실제로 있는 건 <b>3개뿐</b>입니다(실측).
+              나머지는 팝업이 <code>Task 1-1</code> 형태로 떨어뜨립니다 &mdash; 지금 화면에서
+              심부름끼리 구별되는 건 <b>번호와 보상 아이콘뿐</b>입니다. 그래서 이 표도 이름 열을 두지 않았습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="items">
+        <h2 class="doc-h2">
+          추가 아이템 33종
+          <span class="doc-h2-sub">57건에 붙는 보상의 전체 목록 · 수량은 전건 ×1</span>
+        </h2>
+        <div class="cr-grid" id="crItems"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">상자 2종이 3분의 1을 넘습니다</div>
+            <p>
+              <b>Small Reward Box(2501) 13건 · Small Gift Box(2601) 8건</b>으로 둘이 57건 중 21건입니다.
+              날마다 마지막 근처에 하나씩 놓이는 <b>하루치 마무리 보상</b>입니다.
+              다만 <b>단순 승급이 아닙니다</b> &mdash; 2501 은 day 1~9 에 매일 나오고 day 11 부터 2601 이 등장하는데,
+              그 뒤로도 <b>day 15 · 17 · 18 은 다시 2501</b> 입니다. <b>day 10 에는 상자가 아예 없습니다.</b>
+              나머지 31종은 대부분 1~3건짜리로, <b>그 시점에 새로 열리는 체인의 1단계</b>를 쥐여 주는 성격입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">그림은 실제 게임 아트입니다 &mdash; 다만 임시입니다</div>
+            <p>
+              <code>assets/bundle/board/items/&lt;item_code&gt;.png</code> 원본 그대로입니다.
+              로즈우드 아트는 현재 전량 <b>임시 플레이스홀더</b>라 <b>그림과 이름이 안 맞는 건이 정상</b>입니다.
+              버그로 보고 고치지 마세요. 코드(괄호 안 숫자)가 정본 축입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="npc">
+        <h2 class="doc-h2">
+          의뢰 NPC 11종
+          <span class="doc-h2-sub">아트 반입 전 &mdash; 자리만 잡아 둡니다</span>
+        </h2>
+        <div class="cr-grid" id="crNpcs"></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">점선 원은 「그림이 들어올 자리」입니다</div>
+            <p>
+              <code>main_task.detail_icon</code> 에 NPC 이름 11종이 <b>188행 전부</b> 채워져 있고
+              원소표도 「NPC마다 아바타 교체」를 요구하는데, <b>NPC별 아트가 아직 없습니다</b>.
+              그래서 팝업의 의뢰인 아바타도 지금은 프리팹 고정 그림이 그대로 보입니다.
+              이 페이지는 <code>docs/img/npc/&lt;이름&gt;.png</code> 를 미리 보고 있어서,
+              그림이 들어오면 <b>파일만 놓고 페이지 상단 <code>NPC_ART</code> 에 이름을 추가</b>하면
+              레이아웃 변경 없이 사진으로 바뀝니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">Theo · Rosie 둘이 전체의 절반을 넘습니다</div>
+            <p>
+              담당 건수가 <b>Theo 50 · Rosie 48</b>로 둘이 188건 중 <b>98건</b>입니다.
+              반대편에는 <b>Diane 4 · Wren 4</b> 처럼 몇 건뿐인 NPC 도 있어, 아바타 아트 반입 순서를 정할 때
+              <b>등장 빈도 순</b>이 그대로 우선순위가 됩니다. 아래 칸도 그 순서로 세웠습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div class="foot">
+        <b>확인 범위</b>
+        값은 클라 레포 <code>main</code> 의 <code>assets/bundle/data/rosewood-balance.json</code>
+        (<code>main_task</code> 188행 · <code>reward_key</code> · <code>item_display</code>) 실측입니다.
+        아이템 이름은 <code>assets/localization/en.json</code> 기준이고, 한국어 이름은 시트 export 에
+        들어오지 않아 <b>영문 그대로</b>입니다.
+        화면 동작은 <code>PopupChore.ts</code> 실측입니다.
+        <b>day 21~33 은 이 표에 없습니다</b> &mdash; 화면 기획서에는 331건까지 있지만
+        레포 시트에 들어온 런칭분은 day 1~20 · 188건입니다(<a href="chore-order-story-merge.html">등장 순서 문서</a> 참고).
+      </div>
+    </main>
+
+    <script>
+      /* ======================================================================
+         데이터 — 자동 생성(레포 rosewood-balance.json + en.json).
+         fetch 를 쓰지 않고 인라인으로 박는다: 이 표는 값이 고정된 정적 스냅샷이라
+         파일을 갈라 두면 「문서는 갱신됐는데 데이터는 옛 판본」이 조용히 생긴다.
+         ROWS 한 줄 = [day, seq, cost_coin, npc, exp, [[item_code, 수량], …]]
+         ====================================================================== */
+      const NPCS = ["Brett", "Diane", "Gus", "Hazel", "Hollis", "Poppy", "Rafa", "Rosie", "Tess", "Theo", "Wren"];
+
+      /* ITEMS: item_code → [영문명, category, chain_id, step] */
+      const ITEMS = {"102":["Wooden Toolbox","container",1,2],"203":["Hand Hammer","tool",2,3],"206":["Hand Saw","tool",2,6],"303":["Paint Brush","tool",3,3],"401":["Clay Teapot","craft",4,1],"503":["Tea Bag","drink",5,3],"505":["Herbal Tea","drink",5,5],"603":["Painted Teacup","tableware",6,3],"701":["Clay Stove","craft",7,1],"806":["Cinnamon Bun","food",8,6],"808":["Cupcake","food",8,8],"1001":["Seed Pouch","grow",10,1],"1002":["Seed Packet","grow",10,2],"1101":["Sprout","plant",11,1],"1201":["Straw Basket","container",12,1],"1303":["Linen Sheet","furniture",13,3],"1305":["Bath Towel","furniture",13,5],"1501":["Wild Hive","grow",15,1],"1502":["Straw Skep","grow",15,2],"1601":["Honeycomb Bit","food",16,1],"1603":["Honey Drop","food",16,3],"1604":["Honey Spoon","food",16,4],"1605":["Honey Pot","food",16,5],"1703":["Beeswax Block","wellness",17,3],"1801":["Straw Cat Bed","grow",18,1],"1802":["Woven Cat Basket","grow",18,2],"1803":["Cushioned Cat Basket","grow",18,3],"1902":["Tabby Kitten","animal",19,2],"2001":["Thread Spool Box","container",20,1],"2002":["Sewing Tin","container",20,2],"2501":["Small Reward Box","box",25,1],"2601":["Small Gift Box","box",26,1],"2702":["Coin Stack","currency",27,2]};
+
+      const ROWS = [
+        [1,1,26,"Brett",15,[]],[1,2,16,"Theo",15,[]],[1,3,24,"Hollis",15,[]],
+        [1,4,46,"Gus",15,[[1601,1]]],[1,5,25,"Gus",15,[]],[1,6,24,"Theo",15,[]],
+        [1,7,24,"Brett",15,[[2501,1],[1801,1]]],
+        [2,1,26,"Rafa",15,[[503,1]]],[2,2,54,"Rafa",15,[]],[2,3,26,"Poppy",15,[[1802,1]]],
+        [2,4,26,"Hazel",15,[]],[2,5,54,"Hazel",15,[[701,1]]],[2,6,26,"Diane",15,[[303,1]]],
+        [2,7,54,"Theo",15,[[2501,1],[1803,1]]],[2,8,26,"Brett",15,[]],
+        [3,1,26,"Rosie",15,[]],[3,2,54,"Gus",15,[]],[3,3,26,"Gus",15,[[203,1]]],
+        [3,4,26,"Hazel",15,[[603,1]]],[3,5,26,"Tess",15,[]],[3,6,54,"Poppy",15,[]],
+        [3,7,26,"Poppy",15,[[2501,1]]],[3,8,26,"Brett",15,[]],
+        [4,1,54,"Theo",15,[]],[4,2,54,"Theo",15,[]],[4,3,54,"Theo",15,[[303,1]]],
+        [4,4,26,"Poppy",15,[]],[4,5,80,"Rosie",15,[[1902,1]]],[4,6,54,"Rosie",15,[]],
+        [4,7,54,"Rosie",15,[[2501,1]]],[4,8,30,"Tess",15,[[1001,1]]],[4,9,60,"Tess",15,[]],
+        [5,1,90,"Rosie",15,[[1101,1]]],[5,2,60,"Brett",15,[]],[5,3,30,"Rosie",15,[[806,1]]],
+        [5,4,30,"Hollis",15,[[2702,1]]],[5,5,90,"Hollis",15,[]],[5,6,60,"Theo",15,[[2501,1]]],
+        [5,7,60,"Theo",15,[]],[5,8,60,"Brett",15,[]],
+        [6,1,60,"Rosie",15,[]],[6,2,30,"Rosie",15,[]],[6,3,90,"Brett",15,[[1001,1]]],
+        [6,4,60,"Rafa",15,[]],[6,5,90,"Rosie",15,[[2501,1]]],[6,6,30,"Rosie",15,[]],
+        [6,7,60,"Hazel",15,[]],[6,8,90,"Hazel",15,[]],
+        [7,1,60,"Rosie",15,[]],[7,2,60,"Tess",15,[[1101,1]]],[7,3,90,"Diane",15,[]],
+        [7,4,60,"Tess",15,[]],[7,5,100,"Theo",15,[]],[7,6,60,"Theo",15,[[2501,1]]],
+        [7,7,30,"Theo",15,[]],[7,8,60,"Theo",15,[]],
+        [8,1,30,"Theo",15,[]],[8,2,150,"Theo",15,[]],[8,3,60,"Rosie",15,[]],
+        [8,4,30,"Theo",15,[]],[8,5,60,"Theo",15,[[1603,1]]],[8,6,90,"Rafa",15,[]],
+        [8,7,120,"Gus",15,[[1303,1]]],[8,8,150,"Gus",15,[[2501,1]]],[8,9,30,"Rafa",15,[]],
+        [8,10,76,"Theo",15,[]],[8,11,60,"Theo",15,[]],
+        [9,1,90,"Rosie",15,[[503,1]]],[9,2,120,"Rosie",15,[]],[9,3,60,"Poppy",15,[[808,1]]],
+        [9,4,120,"Hazel",15,[]],[9,5,30,"Hazel",15,[]],[9,6,90,"Theo",15,[]],
+        [9,7,150,"Theo",15,[[2501,1]]],[9,8,60,"Rosie",15,[]],[9,9,90,"Hollis",15,[]],
+        [9,10,120,"Theo",15,[]],[9,11,150,"Theo",15,[[2001,1]]],
+        [10,1,90,"Theo",15,[]],[10,2,60,"Hazel",15,[]],[10,3,90,"Hazel",15,[]],
+        [10,4,150,"Theo",15,[[2001,1]]],[10,5,60,"Poppy",15,[[1002,1]]],[10,6,120,"Brett",15,[]],
+        [10,7,150,"Brett",15,[]],[10,8,72,"Rosie",15,[]],[10,9,90,"Brett",15,[]],
+        [10,10,144,"Tess",15,[]],
+        [11,1,180,"Rosie",15,[]],[11,2,72,"Poppy",15,[]],[11,3,108,"Rosie",15,[[2002,1]]],
+        [11,4,36,"Rosie",15,[]],[11,5,108,"Diane",15,[]],[11,6,144,"Theo",15,[]],
+        [11,7,180,"Rafa",15,[[2601,1]]],[11,8,36,"Theo",15,[]],[11,9,180,"Rafa",15,[]],
+        [11,10,72,"Theo",15,[]],
+        [12,1,144,"Theo",15,[]],[12,2,180,"Rosie",15,[]],[12,3,72,"Gus",15,[[102,1],[206,1]]],
+        [12,4,90,"Gus",15,[]],[12,5,144,"Theo",15,[]],[12,6,90,"Theo",15,[]],
+        [12,7,144,"Theo",15,[]],[12,8,180,"Rosie",15,[[2601,1]]],[12,9,72,"Rosie",15,[]],
+        [12,10,108,"Theo",15,[]],
+        [13,1,90,"Rosie",15,[]],[13,2,144,"Theo",15,[]],[13,3,90,"Tess",15,[]],
+        [13,4,180,"Theo",15,[[401,1],[505,1]]],[13,5,72,"Rafa",15,[]],[13,6,144,"Rafa",15,[]],
+        [13,7,108,"Rosie",15,[]],[13,8,180,"Theo",15,[[2601,1]]],[13,9,72,"Rafa",15,[]],
+        [13,10,108,"Rosie",15,[]],
+        [14,1,144,"Wren",15,[]],[14,2,180,"Wren",15,[]],[14,3,90,"Rosie",15,[]],
+        [14,4,72,"Rafa",15,[[1001,1]]],[14,5,108,"Rosie",15,[]],[14,6,144,"Hazel",15,[]],
+        [14,7,72,"Rosie",15,[]],[14,8,180,"Theo",15,[[2601,1]]],[14,9,72,"Poppy",15,[]],
+        [14,10,108,"Rafa",15,[]],
+        [15,1,90,"Wren",15,[]],[15,2,36,"Wren",15,[]],[15,3,72,"Tess",15,[]],
+        [15,4,144,"Poppy",15,[[2501,1]]],[15,5,90,"Poppy",15,[]],[15,6,79,"Rosie",15,[]],
+        [15,7,119,"Theo",15,[[1703,1]]],[15,8,158,"Theo",15,[]],[15,9,198,"Rafa",15,[[2501,1]]],
+        [15,10,79,"Theo",15,[]],
+        [16,1,198,"Brett",15,[]],[16,2,79,"Brett",15,[[1604,1]]],[16,3,119,"Rosie",15,[]],
+        [16,4,198,"Gus",15,[]],[16,5,79,"Rosie",15,[[1501,1],[1605,1]]],[16,6,99,"Tess",15,[]],
+        [16,7,119,"Tess",15,[]],[16,8,158,"Tess",15,[]],[16,9,79,"Rafa",15,[]],
+        [16,10,198,"Rosie",15,[[2601,1]]],
+        [17,1,119,"Rosie",15,[]],[17,2,158,"Rosie",15,[]],[17,3,119,"Tess",15,[]],
+        [17,4,198,"Rosie",15,[]],[17,5,40,"Tess",15,[]],[17,6,79,"Poppy",15,[[1201,1],[1305,1]]],
+        [17,7,119,"Rosie",15,[]],[17,8,158,"Tess",15,[]],[17,9,198,"Rosie",15,[[2501,1]]],
+        [17,10,79,"Rosie",15,[]],
+        [18,1,198,"Rosie",15,[]],[18,2,99,"Rosie",15,[]],[18,3,119,"Rosie",15,[[1603,1]]],
+        [18,4,40,"Rosie",15,[]],[18,5,79,"Hollis",15,[[701,1],[806,1]]],[18,6,119,"Theo",15,[]],
+        [18,7,158,"Brett",15,[]],[18,8,198,"Hollis",15,[[2501,1]]],[18,9,119,"Rosie",15,[]],
+        [18,10,158,"Hazel",15,[]],
+        [19,1,198,"Theo",15,[[1501,1]]],[19,2,99,"Theo",15,[]],[19,3,158,"Theo",15,[[102,1],[206,1]]],
+        [19,4,99,"Gus",15,[]],[19,5,119,"Theo",15,[[1603,1]]],[19,6,198,"Brett",15,[]],
+        [19,7,119,"Rosie",15,[[2601,1]]],[19,8,80,"Brett",15,[]],[19,9,175,"Theo",15,[]],
+        [19,10,90,"Theo",15,[]],
+        [20,1,220,"Theo",15,[[1502,1]]],[20,2,130,"Theo",15,[]],[20,3,130,"Brett",15,[]],
+        [20,4,90,"Rosie",15,[]],[20,5,220,"Theo",15,[[2601,1]]],[20,6,90,"Rosie",15,[]],
+        [20,7,130,"Theo",15,[]],[20,8,220,"Rosie",15,[[2601,1]]],[20,9,45,"Diane",15,[]],
+        [20,10,110,"Rosie",15,[]]
+      ];
+
+      /* 아바타 아트가 들어온 NPC 이름만 여기 추가한다 — 파일은 docs/img/npc/<이름>.png.
+         비어 있으면 전원 이니셜 원형으로 떨어진다(404 를 유발하지 않는다). */
+      const NPC_ART = [];
+
+      const ITEM_ART = "img/items/"; /* <item_code>.png — 클라 assets/bundle/board/items 와 같은 파일 */
+      const COIN_ART = "img/ui/coin.png";
+      /* 경험치 아이콘은 PopupChore.prefab 의 expIcon 바인딩 실물이다
+         (assets/art/texture/common/UI_Icon_play_Item01.png). 정본 문구는 「경험치 별」인데
+         프리팹이 물고 있는 건 별이 아니다 — 화면에 실제로 뜨는 그림을 그대로 쓴다. */
+      const EXP_ART = "img/ui/exp.png";
+
+      const $ = (s) => document.querySelector(s);
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+      /* 심부름 키 — 사용자 요청 포맷. day 를 앞에 세워 「몇째 날 몇 번째」로 읽힌다. */
+      const keyOf = (day, seq) => `${day} Day - ${seq}`;
+
+      function faceHtml(name, cls) {
+        const has = NPC_ART.indexOf(name) >= 0;
+        const initial = name.slice(0, 2);
+        if (has) return `<span class="cr-face ${cls || ""}"><img src="img/npc/${esc(name)}.png" alt="${esc(name)}"></span>`;
+        return `<span class="cr-face is-empty ${cls || ""}" title="아바타 아트 반입 전 — 자리만 잡아 둔 상태">${esc(initial)}</span>`;
+      }
+
+      function itemHtml(code, qty) {
+        const it = ITEMS[code];
+        const nm = it ? it[0] : `item_${code}`;
+        return `<span class="cr-item" title="${esc(nm)} · item_code ${code}${it ? ` · chain ${it[2]} step ${it[3]}` : ""}">`
+          + `<img src="${ITEM_ART}${code}.png" alt="${esc(nm)}" loading="lazy" decoding="async">`
+          + `<span class="nm">${esc(nm)}</span><span class="qt">×${qty}</span></span>`;
+      }
+
+      /* ── 시트 ──────────────────────────────────────────────────────────── */
+      let onlyItem = false;
+      let dayFilter = 0; /* 0 = 전체 */
+
+      function renderSheet() {
+        const rows = ROWS.filter((r) => (dayFilter === 0 || r[0] === dayFilter) && (!onlyItem || r[5].length > 0));
+
+        let html = "";
+        let prevDay = -1;
+        for (const [day, seq, cost, npc, exp, items] of rows) {
+          const first = day !== prevDay;
+          prevDay = day;
+          const cls = [first ? "cr-d0" : "", items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
+          html += `<tr class="${cls}">`
+            + `<td class="cr-key">${keyOf(day, seq)}</td>`
+            + `<td><span class="cr-npc">${faceHtml(npc)}<span class="nm">${esc(npc)}</span></span></td>`
+            + `<td style="text-align: right"><span class="cr-chip" style="justify-content: flex-end">`
+            + `<img src="${COIN_ART}" alt="코인"><b>${cost.toLocaleString()}</b></span></td>`
+            + `<td style="text-align: right"><span class="cr-chip" style="justify-content: flex-end">`
+            + `<img src="${EXP_ART}" alt="경험치"><b>${exp}</b></span></td>`
+            + `<td>${items.length ? `<span class="cr-items">${items.map((p) => itemHtml(p[0], p[1])).join("")}</span>`
+                                  : `<span class="cr-none">—</span>`}</td>`
+            + `</tr>`;
+        }
+        $("#crBody").innerHTML = html;
+
+        const withItem = rows.filter((r) => r[5].length > 0).length;
+        $("#crCount").textContent = `${rows.length}건 표시 · 아이템 보상 ${withItem}건`;
+      }
+
+      /* ── 요약 ──────────────────────────────────────────────────────────── */
+      function renderKpi() {
+        const withItem = ROWS.filter((r) => r[5].length > 0).length;
+        const coin = ROWS.reduce((a, r) => a + r[2], 0);
+        const exp = ROWS.reduce((a, r) => a + r[4], 0);
+        const kinds = Object.keys(ITEMS).length;
+
+        const cards = [
+          ["--balance", ROWS.length, "건", "심부름 총 건수", "day 1~20 · 런칭분"],
+          ["--analysis", exp.toLocaleString(), "", "받는 경험치 합", "전건 15 고정 · 예외 없음"],
+          ["--plan", coin.toLocaleString(), "", "무는 코인 합", "보상이 아니라 비용이다"],
+          ["--validate", `${withItem}`, `/ ${ROWS.length}`, "아이템이 더 붙는 건", `${kinds}종 · 전건 ×1`],
+        ];
+        $("#crKpi").innerHTML = cards.map(([acc, num, unit, name, sub]) =>
+          `<div class="stat" style="--acc: var(${acc})">`
+          + `<div class="stat-num">${num}<span class="stat-unit">${unit}</span></div>`
+          + `<div class="stat-name">${name}</div><div class="stat-sub">${sub}</div></div>`).join("");
+      }
+
+      /* ── 아이템 인덱스 ─────────────────────────────────────────────────── */
+      function renderItems() {
+        const count = {};
+        const where = {};
+        for (const [day, seq, , , , items] of ROWS) {
+          for (const [code] of items) {
+            count[code] = (count[code] || 0) + 1;
+            (where[code] = where[code] || []).push(keyOf(day, seq));
+          }
+        }
+        /* 등장 잦은 순 → 같으면 코드 순. 상자 2종이 위로 올라와 「마무리 보상」이 먼저 눈에 든다. */
+        const codes = Object.keys(count).sort((a, b) => count[b] - count[a] || a - b);
+
+        $("#crItems").innerHTML = codes.map((code) => {
+          const it = ITEMS[code] || [`item_${code}`, "", 0, 0];
+          return `<div class="cr-cell" title="${esc(where[code].join(" · "))}">`
+            + `<img class="art" src="${ITEM_ART}${code}.png" alt="${esc(it[0])}" loading="lazy" decoding="async">`
+            + `<div class="meta"><div class="t">${esc(it[0])}</div>`
+            + `<div class="s">${code} · <em>${count[code]}건</em></div></div></div>`;
+        }).join("");
+      }
+
+      /* ── NPC 인덱스 ────────────────────────────────────────────────────── */
+      function renderNpcs() {
+        const count = {};
+        for (const r of ROWS) count[r[3]] = (count[r[3]] || 0) + 1;
+        const names = NPCS.slice().sort((a, b) => (count[b] || 0) - (count[a] || 0) || a.localeCompare(b));
+
+        $("#crNpcs").innerHTML = names.map((n) =>
+          `<div class="cr-cell">${faceHtml(n)}`
+          + `<div class="meta"><div class="t">${esc(n)}</div>`
+          + `<div class="s"><em>${count[n] || 0}건</em> 담당</div></div></div>`).join("");
+      }
+
+      function boot() {
+        const sel = $("#crDay");
+        sel.innerHTML = `<option value="0">전체</option>`
+          + Array.from({ length: 20 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+        sel.addEventListener("change", () => { dayFilter = Number(sel.value); renderSheet(); });
+
+        const btn = $("#crOnlyItem");
+        btn.addEventListener("click", () => {
+          onlyItem = !onlyItem;
+          btn.classList.toggle("is-on", onlyItem);
+          renderSheet();
+        });
+
+        renderKpi();
+        renderSheet();
+        renderItems();
+        renderNpcs();
+      }
+      boot();
+    </script>
+    <script src="../app.js?v=light1"></script>
+  </body>
+</html>
