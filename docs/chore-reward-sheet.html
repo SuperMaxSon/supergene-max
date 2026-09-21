@@ -88,8 +88,15 @@
       .cr-type.t-pick { --tc: var(--plan); }
 
       /* 펼침 표시 — 행 전체가 버튼이라 커서와 화살표로 알린다 */
-      .cr-tb tr.cr-row { cursor: pointer; }
-      .cr-tb tr.cr-row:hover td { background: var(--surface-3); }
+      /* 펼칠 게 있는 행만 눌리는 것처럼 보이게 한다 — 상세가 없는 행은 커서도 안 바뀐다 */
+      .cr-tb tr.cr-row:has(+ tr.cr-det) { cursor: pointer; }
+      .cr-tb tr.cr-row:has(+ tr.cr-det):hover td { background: var(--surface-3); }
+
+      /* 대사가 붙은 심부름 표시. 유형 배지와 색·모양을 일부러 다르게 둔다 —
+         같은 계열로 만들면 「대화 유형」과 헷갈린다. 둘은 다른 축이다. */
+      .cr-talk-tag { display: inline-block; margin-left: 7px; padding: 1px 8px; border-radius: var(--radius-sm);
+                     font-size: 10.5px; font-weight: 800; letter-spacing: 0.01em; white-space: nowrap;
+                     color: #fff; background: var(--text-dim); }
       .cr-ar { display: inline-block; width: 11px; color: var(--text-faint); font-size: 10px;
                transition: transform 0.12s; }
       .cr-tb tr.is-open .cr-ar { transform: rotate(90deg); }
@@ -243,7 +250,8 @@
         이 문서는 같은 데이터를 <b>「무엇을 주는가」</b>로 세운 것입니다.
         <b>행을 누르면 그 심부름에서 오가는 대화</b>가 채팅 화면으로 펼쳐집니다 &mdash;
         시트에 쓰인 한글 대사 <b>2,062줄</b>을 그대로 실었습니다.
-        ⚠ <b>지금 대사가 21건에만 몰려 있는 건 시트 판본이 구판이기 때문</b>입니다 &mdash;
+        대사가 걸린 건에는 <b>「대화」 칩</b>이 달려 있습니다.
+        ⚠ <b>지금 그게 21건에만 몰려 있는 건 시트 판본이 구판이기 때문</b>입니다 &mdash;
         정본은 이 묶음을 풀어 <b>151개 scene 을 심부름마다</b> 붙입니다(아래 주의 참고).
       </p>
       <div class="doc-meta">
@@ -324,7 +332,9 @@
               로컬 export(2026-09-15)의 <code>story</code> 탭은 <b>그 개정 이전</b>이라
               챕터 하나가 통째로 <b>첫 심부름 한 건</b>에 걸려 있습니다.
               그래서 <code>1 Day - 1</code> 에 챕터 1 이 48줄 통으로 붙고
-              <code>1 Day - 2</code>~<code>1 Day - 6</code> 이 비어 보입니다 &mdash; <b>실제로는 거기에도 대화가 있습니다.</b>
+              <code>1 Day - 2</code>~<code>1 Day - 6</code> 에는 아무것도 안 붙습니다 &mdash; <b>실제로는 거기에도 대화가 있습니다.</b>
+              표에서 <b>「대화」 칩</b>이 달린 <b>21건</b>이 지금 대사가 걸린 자리이고,
+              정본대로 풀리면 그 칩이 훨씬 넓게 퍼집니다.
             </p>
           </div>
           <div class="note" style="--acc: var(--validate)">
@@ -782,12 +792,9 @@
               + (st.scenes.length > 1 ? `<div class="cr-sch"><b>scene ${i + 1}</b> <code>${esc(sid)}</code> · ${lines.length}줄</div>` : "")
               + `<div class="cr-chat">${chat}</div></div>`;
           }).join("");
-        } else {
-          body += `<div class="cr-chat">${bubbleHtml(npc, "", "", npc !== HERO)}</div>`
-            + `<div class="cr-sch">이 판본에서는 <b>이 심부름에 직접 걸린 scene 이 없다</b>`
-            + ` — 대사가 <b>챕터 첫 심부름에 통째로 묶여</b> 있다. 정본은 이 묶음을 풀어`
-            + ` 151개 scene 을 심부름마다 나눠 붙인다(아래 주의 참고)</div>`;
         }
+        /* 대사가 안 걸린 건은 **아무것도 그리지 않는다.** 빈 말풍선과 사유 설명을 167번
+           반복하면 그게 화면의 대부분이 된다 — 판본 사정은 위 주의 한 곳에만 적는다. */
 
         /* 대화가 끝난 뒤 실제로 바뀌는 것 */
         let res = "";
@@ -801,6 +808,8 @@
               ? `<span><b>${x}</b>${esc(f[`디자인 ${x}`])}</span>` : "").join("")
             + `</span></div>`;
         }
+
+        if (!body && !res) return "";
 
         return `<div class="cr-detbox" style="--zc: ${zc}">${body}${res}</div>`;
       }
@@ -819,11 +828,19 @@
           const id = `d-${day}-${seq}`;
 
           const area = row[8];
+          const det = detailHtml(row);
+          const st = STORY[`${day}-${seq}`];
+          /* 대사가 붙은 건만 「대화」 칩을 단다 — 접어 놓고도 어디에 대사가 있는지 세어진다.
+             유형 배지(대화·수선·택1)와는 다른 축이다: 유형이 「수선」인데 대사가 붙는 건이 있다. */
+          const talkTag = st
+            ? `<span class="cr-talk-tag" title="${esc(st.story)} · ${st.scenes.reduce((a, x) => a + x[1].length, 0)}줄">대화</span>`
+            : "";
+
           html += `<tr class="${cls}" data-det="${id}">`
-            + `<td class="cr-key"><span class="cr-ar">▶</span> ${keyOf(day, seq)}</td>`
+            + `<td class="cr-key">${det ? `<span class="cr-ar">▶</span> ` : `<span class="cr-ar"></span> `}${keyOf(day, seq)}</td>`
             + `<td><span class="cr-zone" style="--zc: ${zoneColor(area)}">${esc(area)}</span></td>`
             + `<td><span class="cr-type ${TYPE_CLASS[type] || ""}">${esc(type)}</span>`
-            + `<span class="cr-ttl">${esc(title)}</span></td>`
+            + `<span class="cr-ttl">${esc(title)}</span>${talkTag}</td>`
             + `<td><span class="cr-npc">${faceHtml(npc)}<span class="nm">${esc(npc)}</span></span></td>`
             + `<td style="text-align: right"><span class="cr-chip" style="justify-content: flex-end">`
             + `<img src="${COIN_ART}" alt="코인"><b>${cost.toLocaleString()}</b></span></td>`
@@ -832,7 +849,7 @@
             + `<td>${items.length ? `<span class="cr-items">${items.map((p) => itemHtml(p[0], p[1])).join("")}</span>`
                                   : `<span class="cr-none">—</span>`}</td>`
             + `</tr>`
-            + `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="7">${detailHtml(row)}</td></tr>`;
+            + (det ? `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="7">${det}</td></tr>` : "");
         }
         $("#crBody").innerHTML = html;
 
