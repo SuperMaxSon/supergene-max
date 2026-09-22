@@ -76,7 +76,6 @@
       .cr-tb td { vertical-align: middle; }
       /* 날짜가 바뀌는 첫 행에 선을 넣어 하루 단위를 눈으로 끊는다.
          day 열을 병합하지 않는 이유: 병합하면 정렬·필터로 행이 빠질 때 칸이 깨진다. */
-      .cr-tb tr.cr-d0 td { border-top: 2px solid var(--border); }
       .cr-tb tr.cr-has td { background: color-mix(in srgb, var(--balance) 5%, transparent); }
       .cr-key { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 700;
                 white-space: nowrap; }
@@ -94,6 +93,41 @@
       .cr-type.t-talk { --tc: var(--analysis); }
       .cr-type.t-fix { --tc: var(--validate); }
       .cr-type.t-pick { --tc: var(--plan); }
+      /* ── 타임라인 레일 ───────────────────────────────────────────────────
+         414행을 표로만 두면 「목록」으로 읽힌다. 왼쪽에 끊기지 않는 세로선을 긋고
+         행마다 노드를 찍어야 **위에서 아래로 흐른다**는 게 보인다.
+         선은 상세 행(cr-det)에도 이어 그린다 — 펼쳤을 때 줄기가 끊기면 흐름이 깨진다. */
+      .cr-tb tbody td:first-child { position: relative; }
+      .cr-tb tbody tr.cr-row td:first-child::before,
+      .cr-tb tbody tr.cr-det td:first-child::before {
+        content: ""; position: absolute; left: 15px; top: 0; bottom: 0;
+        width: 2px; background: var(--border); }
+      /* day 의 첫 행은 위쪽 줄기를 지운다 — 밴드에서 새로 시작하는 것처럼 보이게 */
+      .cr-tb tbody tr.is-daystart td:first-child::before { top: 50%; }
+      /* 노드 — 심부름은 채운 큰 점, 대사는 빈 작은 점. 굵기 차이로 「하는 일」이 먼저 읽힌다. */
+      .cr-node { position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+                 width: 12px; height: 12px; border-radius: 50%; background: var(--surface);
+                 box-shadow: inset 0 0 0 2px var(--border); }
+      .cr-row.is-task .cr-node { width: 14px; height: 14px; left: 9px;
+                                 background: var(--text-dim); box-shadow: 0 0 0 3px var(--surface); }
+      /* 완료·구역 완료는 색으로 갈라 둔다 — 드물게 나오는 자리라 눈에 걸려야 한다 */
+      .cr-node.is-f { box-shadow: inset 0 0 0 3px var(--validate); }
+      .cr-node.is-a { box-shadow: inset 0 0 0 3px var(--deploy); }
+      /* 레일이 생긴 만큼 키·배지를 오른쪽으로 민다 */
+      .cr-tb tbody .cr-key { padding-left: 34px; }
+      .cr-tb tr.is-talk .cr-key { padding-left: 34px; }
+
+      /* ── day 밴드 ────────────────────────────────────────────────────────
+         day 경계를 선 하나로 두면 20일이 한 덩어리로 흐른다. 구역이 day 구간과
+         1:1(검증 완료)이라 구역명까지 한 줄에 실어 「어디서 무엇을」이 같이 읽힌다. */
+      .cr-tb tr.cr-band td { background: var(--surface-3); border-top: 2px solid var(--text-faint);
+                             padding: 9px 12px; }
+      .cr-band-in { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .cr-band .d { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+      .cr-band .z { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+                    color: #fff; background: var(--zc); }
+      .cr-band .c { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
       /* ── 타임라인 두 종류 행 ─────────────────────────────────────────────
          대사 행은 **한 단계 들여쓴 것처럼** 보이게 한다. 심부름 행이 표의 뼈대고
          대사는 그 사이에 흐르는 것이라, 같은 무게로 그리면 어느 게 「하는 일」인지 안 보인다. */
@@ -368,10 +402,9 @@
           <table class="cr-tb">
             <thead>
               <tr>
-                <th style="width: 128px">시점</th>
-                <th style="width: 118px">구역</th>
+                <th style="width: 150px">시점</th>
                 <th>일어나는 일</th>
-                <th style="width: 134px">화자 · 의뢰 NPC</th>
+                <th style="width: 120px">화자 · 의뢰 NPC</th>
                 <th style="width: 76px; text-align: right">코스트</th>
                 <th style="width: 76px; text-align: right">경험치</th>
                 <th style="width: 230px">추가 아이템</th>
@@ -385,8 +418,13 @@
           <div class="note" style="--acc: var(--validate)">
             <div class="note-title">이 표를 읽는 법</div>
             <p>
-              <b>행이 두 종류입니다.</b> <b>진한 키</b>(<code>1 Day - 1</code>)가 <b>심부름 행</b>이고,
-              <b>들여쓴 회색 행</b>이 <b>대사 행</b>입니다. 위에서 아래로 읽으면 그게 곧 <b>플레이 순서</b>입니다.
+              <b>행이 두 종류입니다.</b> 왼쪽 줄기에 찍힌 점으로 가릅니다 &mdash;
+              <b>채운 큰 점</b>이 <b>심부름 행</b>(<code>1 Day - 1</code>),
+              <b>빈 작은 점</b>이 <b>대사 행</b>입니다.
+              <span class="cr-slot is-f">완료</span>·<span class="cr-slot is-a">구역 완료</span>
+              대사는 점에 <b>색 테두리</b>가 붙습니다 &mdash; 드물게 나오는 자리라 눈에 걸리게 했습니다.
+              줄기는 <b>day 밴드에서 시작해 끊기지 않고</b> 이어집니다.
+              위에서 아래로 읽으면 그게 곧 <b>플레이 순서</b>입니다.
               대사 행에는 코인·경험치·아이템이 <b>없습니다</b>(<code>—</code>) &mdash; 대사가 오가는 동안은
               무는 것도 받는 것도 없기 때문입니다. 표 아래 건수와 위 카드는 <b>심부름 행만</b> 셉니다.
               코스트는 <b>시작할 때 내는 코인</b>이고, 경험치와 아이템은 <b>완료 시 받는 것</b>입니다.
@@ -564,6 +602,7 @@
               <b>공방 앞마당</b>(day 1) → <b>공방 작업장</b>(2~3) → <b>로자의 뒷방</b>(4~7) →
               <b>공방 앞 골목</b>(8~11) → <b>옛 광장</b>(12~16) → <b>역 앞 광장</b>(17~20).
               앞 다섯은 로즈우드 마을이고 <b>마지막 하나만 역전 읍내</b>로 무대가 바뀝니다.
+              <b>1:1 이라서 구역을 행마다 적지 않습니다</b> &mdash; day 밴드에 한 번만 답니다.
               색은 <b>구역 이름과 항상 같이</b> 나옵니다 &mdash; 색만으로 구분하게 두지 않았습니다.
             </p>
           </div>
@@ -1253,7 +1292,6 @@
          0 을 그리면 「0 코인이 든다」로 읽히고, 대사가 오가는 동안은 무는 것도 받는 것도 없다. */
       function talkRowHtml(ev, id) {
         const [lb, desc] = SLOT_LABEL[ev.slot];
-        const area = ev.row[8];
         const head = ev.lines.length ? ev.lines[0] : null;
         /* 그 씬에 실제로 말하는 사람. 첫 화자를 얼굴로 세우고 나머지는 수로만 알린다 —
            11명이 섞이는 씬이 있어 전부 그리면 칸이 무너진다. */
@@ -1261,9 +1299,9 @@
         const others = new Set(ev.lines.map((l) => l[1]));
         others.delete(who);
         return `<tr class="cr-row is-talk${detOpen ? " is-open" : ""}" data-det="${id}">`
-          + `<td class="cr-key"><span class="cr-ar">▶</span> `
+          + `<td class="cr-key"><span class="cr-node is-${ev.slot}"></span>`
+          + `<span class="cr-ar">▶</span> `
           + `<span class="cr-slot is-${ev.slot}">${lb}</span></td>`
-          + `<td><span class="cr-zone is-dim" style="--zc: ${zoneColor(area)}">${esc(area)}</span></td>`
           + `<td><code class="cr-sid">${esc(ev.sid)}</code>`
           + `<span class="cr-talk-tag" title="${desc.replace(/<[^>]+>/g, "")}">${ev.lines.length}줄</span>`
           + (head ? `<div class="cr-peek">${esc(head[3])}</div>` : "")
@@ -1277,15 +1315,15 @@
       }
 
       /* 심부름 행. 이 행이 「플레이어가 실제로 보드를 미는 구간」이다. */
-      function taskRowHtml(ev, id, first) {
-        const [day, seq, cost, npc, exp, items, title, type, area] = ev.row;
-        const cls = ["cr-row", "is-task", detOpen ? "is-open" : "", first ? "cr-d0" : "",
+      function taskRowHtml(ev, id) {
+        const [day, seq, cost, npc, exp, items, title, type] = ev.row;
+        const cls = ["cr-row", "is-task", detOpen ? "is-open" : "",
                      items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
         const det = resultHtml(ev.row);
         return `<tr class="${cls}" data-det="${det ? id : ""}">`
-          + `<td class="cr-key">${det ? `<span class="cr-ar">▶</span> ` : `<span class="cr-ar"></span> `}`
+          + `<td class="cr-key"><span class="cr-node"></span>`
+          + `${det ? `<span class="cr-ar">▶</span> ` : `<span class="cr-ar"></span> `}`
           + `<b>${keyOf(day, seq)}</b></td>`
-          + `<td><span class="cr-zone" style="--zc: ${zoneColor(area)}">${esc(area)}</span></td>`
           + `<td><span class="cr-type ${TYPE_CLASS[type] || ""}">${esc(type)}</span>`
           + `<span class="cr-ttl">${esc(title)}</span></td>`
           + `<td><span class="cr-npc">${faceHtml(npc)}<span class="nm">${esc(npc)}</span></span></td>`
@@ -1304,23 +1342,41 @@
         const ev = onlyItem ? rows.map((row) => ({ t: "task", key: `${row[0]}-${row[1]}`, row }))
                             : buildTimeline(rows);
 
+        /* day 별 집계 — 밴드에 실을 값. 구역은 day 구간과 1:1이라 하나로 떨어진다. */
+        const stat = {};
+        for (const e of ev) {
+          const d = (stat[e.row[0]] = stat[e.row[0]] || { area: e.row[8], task: 0, talk: 0, line: 0 });
+          if (e.t === "task") d.task++;
+          else { d.talk++; d.line += e.lines.length; }
+        }
+
         let html = "";
         let prevDay = -1;
         let n = 0;
         for (const e of ev) {
           const day = e.row[0];
-          const first = e.t === "task" && day !== prevDay;
-          if (e.t === "task") prevDay = day;
+          let daystart = "";
+          if (day !== prevDay) {
+            prevDay = day;
+            const d = stat[day];
+            html += `<tr class="cr-band"><td colspan="6"><div class="cr-band-in">`
+              + `<span class="d">Day ${day}</span>`
+              + `<span class="z" style="--zc: ${zoneColor(d.area)}">${esc(d.area)}</span>`
+              + `<span class="c">심부름 ${d.task}건`
+              + (d.talk ? ` · 대사 ${d.talk}장면 ${d.line.toLocaleString()}줄` : "")
+              + `</span></div></td></tr>`;
+            daystart = " is-daystart";
+          }
           const id = `d-${e.key}-${n++}`;
 
           if (e.t === "talk") {
-            html += talkRowHtml(e, id)
-              + `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="7">${chatHtml(e)}</td></tr>`;
+            html += talkRowHtml(e, id).replace('class="cr-row is-talk', `class="cr-row is-talk${daystart}`)
+              + `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="6">${chatHtml(e)}</td></tr>`;
             continue;
           }
           const det = resultHtml(e.row);
-          html += taskRowHtml(e, id, first)
-            + (det ? `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="7">${det}</td></tr>` : "");
+          html += taskRowHtml(e, id).replace('class="cr-row is-task', `class="cr-row is-task${daystart}`)
+            + (det ? `<tr class="cr-det" id="${id}"${detOpen ? "" : " hidden"}><td colspan="6">${det}</td></tr>` : "");
         }
         $("#crBody").innerHTML = html;
 
