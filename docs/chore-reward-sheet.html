@@ -104,15 +104,17 @@
         width: 2px; background: var(--border); }
       /* day 의 첫 행은 위쪽 줄기를 지운다 — 밴드에서 새로 시작하는 것처럼 보이게 */
       .cr-tb tbody tr.is-daystart td:first-child::before { top: 50%; }
-      /* 노드 — 심부름은 채운 큰 점, 대사는 빈 작은 점. 굵기 차이로 「하는 일」이 먼저 읽힌다. */
-      .cr-node { position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-                 width: 12px; height: 12px; border-radius: 50%; background: var(--surface);
-                 box-shadow: inset 0 0 0 2px var(--border); }
-      .cr-row.is-task .cr-node { width: 14px; height: 14px; left: 9px;
-                                 background: var(--text-dim); box-shadow: 0 0 0 3px var(--surface); }
+      /* 레일 점 — 심부름은 채운 큰 점, 대사는 빈 작은 점. 굵기 차이로 「하는 일」이 먼저 읽힌다.
+         ⚠ 이름을 cr-dot 으로 둔다. cr-node 는 #deco 표가 **스토리 노드 이름 칩**으로 이미 쓰고 있어
+         같은 이름을 쓰면 그 칩들이 position:absolute 12px 원이 되어 화면 구석으로 튄다. */
+      .cr-dot { position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+                width: 12px; height: 12px; border-radius: 50%; background: var(--surface);
+                box-shadow: inset 0 0 0 2px var(--border); }
+      .cr-row.is-task .cr-dot { width: 14px; height: 14px; left: 9px;
+                                background: var(--text-dim); box-shadow: 0 0 0 3px var(--surface); }
       /* 완료·구역 완료는 색으로 갈라 둔다 — 드물게 나오는 자리라 눈에 걸려야 한다 */
-      .cr-node.is-f { box-shadow: inset 0 0 0 3px var(--validate); }
-      .cr-node.is-a { box-shadow: inset 0 0 0 3px var(--deploy); }
+      .cr-dot.is-f { box-shadow: inset 0 0 0 3px var(--validate); }
+      .cr-dot.is-a { box-shadow: inset 0 0 0 3px var(--deploy); }
       /* 레일이 생긴 만큼 키·배지를 오른쪽으로 민다 */
       .cr-tb tbody .cr-key { padding-left: 34px; }
       .cr-tb tr.is-talk .cr-key { padding-left: 34px; }
@@ -414,200 +416,8 @@
           </table>
         </div>
 
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">이 표를 읽는 법</div>
-            <p>
-              <b>행이 두 종류입니다.</b> 왼쪽 줄기에 찍힌 점으로 가릅니다 &mdash;
-              <b>채운 큰 점</b>이 <b>심부름 행</b>(<code>1 Day - 1</code>),
-              <b>빈 작은 점</b>이 <b>대사 행</b>입니다.
-              <span class="cr-slot is-f">완료</span>·<span class="cr-slot is-a">구역 완료</span>
-              대사는 점에 <b>색 테두리</b>가 붙습니다 &mdash; 드물게 나오는 자리라 눈에 걸리게 했습니다.
-              줄기는 <b>day 밴드에서 시작해 끊기지 않고</b> 이어집니다.
-              위에서 아래로 읽으면 그게 곧 <b>플레이 순서</b>입니다.
-              대사 행에는 코인·경험치·아이템이 <b>없습니다</b>(<code>—</code>) &mdash; 대사가 오가는 동안은
-              무는 것도 받는 것도 없기 때문입니다. 표 아래 건수와 위 카드는 <b>심부름 행만</b> 셉니다.
-              코스트는 <b>시작할 때 내는 코인</b>이고, 경험치와 아이템은 <b>완료 시 받는 것</b>입니다.
-              팝업은 이 둘을 <b>버튼 하나</b>로 잇습니다 &mdash; 정본 흐름은
-              <code>start</code>(코인 차감) → 요구 충족 판정 → <code>claim</code>(보상 지급) 인데,
-              <code>main_task</code> 에 <b>요구 아이템 열이 아예 없어</b> 가운데 판정이 코인 지불뿐이기 때문입니다.
-              「아이템을 모아야 완료된다」로 읽으면 시트에 없는 규칙을 발명하게 됩니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--balance)">
-            <div class="note-title">아이템 칸 순서는 시트 칸 순서 그대로입니다</div>
-            <p>
-              팝업의 보상 카드 3장은 <code>reward_item_key_1~3</code> 을 <b>앞에서부터</b> 채우고
-              남는 칸은 카드째 끕니다. 그래서 보상이 1개면 카드도 1장만 뜹니다.
-              다만 <b>3건</b>(<code>1 Day - 7</code> · <code>2 Day - 5</code> · <code>3 Day - 4</code>)만
-              1번 칸이 상자고 경험치가 2번 칸이라, 그 3건은 <b>상자가 왼쪽</b>에 섭니다.
-              완료 연출의 경험치 별이 <b>경험치 카드 자리에서</b> 출발하므로, 이 3건만 별이 2번 카드에서 날아갑니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">대사는 거의 전부 <b>심부름을 하기 전에</b> 나옵니다</div>
-            <p>
-              시트 <code>story</code>(235행)가 scene 을 심부름마다 걸어 두었고,
-              <code>story_dialog</code>(2,812행)에 그 문장이 들어 있습니다.
-              <b>197건 전건</b>에 <code>task_start</code> 가 걸려 있어 <b>대사 0줄인 심부름이 없습니다</b>.
-              그런데 재생 시점이 한쪽으로 쏠려 있습니다:
-            </p>
-            <p>
-              <span class="cr-slot is-s">시작 전</span> <code>task_start</code> &mdash; <b>2,568줄</b>.
-              Start 를 누른 직후, <b>그 심부름을 수행하기 전</b>에 재생됩니다.
-              <span class="cr-slot is-f">완료</span> <code>task_finish</code> &mdash; <b>94줄</b>. 9건에만 붙습니다.
-              <span class="cr-slot is-a">구역 완료</span> <code>area_finish</code> &mdash; <b>100줄</b>. 6건에 16~17줄씩.
-            </p>
-            <p>
-              <b>본편 2,762줄의 93.0% 가 「시작 전」</b>입니다. 그래서 이 표는
-              심부름 한 건을 한 행에 묶지 않고 <b>이벤트마다 행을 나눕니다</b> &mdash;
-              묶어 두면 접힌 대사가 <b>「클리어하면 받는 것」처럼</b> 읽히기 때문입니다.
-              실제로는 <b>보상이 아니라 그 심부름을 시키는 말</b>입니다.
-              <code>1 Day - 1</code> 앞에 서는 12줄이 「먼저 덱의 덤불을 치우고 벤치를 닦자」로 끝나는 게
-              그 성격을 그대로 보여 줍니다.
-            </p>
-            <p>
-              <b><code>story.story</code> 는 <code>scene_id</code> 와 항상 같지 않습니다.</b>
-              본편은 그대로 맞아떨어지지만, 구역 완료는 <code>story</code> 가 <code>area_01</code> 인데
-              실제 씬은 <b><code>area_01_finish</code></b> 로 <b>접미사가 붙습니다</b>.
-              특수 오더도 <code>sorder_01</code> 하나가
-              <code>sorder_01_begin</code> · <code>sorder_01_finish_begin</code> ·
-              <code>sorder_01_finish_end</code> <b>셋으로 쪼개집니다</b>.
-              <code>scene_id</code> 를 정확 일치로만 찾으면 <b>이 대사들이 통째로 빠집니다</b> &mdash;
-              <code>{story}_</code> 로 시작하는 씬까지 잡아야 합니다.
-              구역 완료 6건은 각 구역 마지막 심부름(<code>1-9</code> · <code>3-9</code> · <code>7-9</code> ·
-              <code>11-10</code> · <code>16-10</code> · <code>20-10</code>)에 걸려 <b>16~17줄씩 실려 있습니다</b>.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--plan)">
-            <div class="note-title">한 심부름이 <b>어떻게 풀리는가</b></div>
-            <p>
-              심부름 하나는 표에서 <b>최대 네 행</b>으로 풀립니다. 순서가 곧 플레이 순서입니다:
-            </p>
-            <p>
-              <span class="cr-slot is-s">시작 전</span> Start 를 누르면 대사가 먼저 재생됩니다 &mdash;
-              <b>197건 전건</b>에 있습니다. →
-              <b>심부름 행</b> 여기서 보드를 밀어 요구를 채웁니다. 코인·경험치·아이템이 이 행에 붙습니다. →
-              <span class="cr-slot is-f">완료</span> 끝냈을 때. <b>9건에만</b> 있습니다. →
-              <span class="cr-slot is-a">구역 완료</span> 그 구역의 마지막 심부름이면 한 번 더. <b>6건</b>.
-            </p>
-            <p>
-              그래서 <b>대부분의 심부름은 「대사 → 심부름」 두 행</b>이고, 끝나고 나서는 조용합니다 &mdash;
-              다음 이야기는 <b>다음 심부름을 시작할 때</b> 나옵니다. 예를 들어 <code>1 Day - 1</code> 을
-              끝냈을 때 나오는 대사는 <b>없고</b>, 이어지는 <code>main_ch01_60_begin</code>(「앞마당 바닥은
-              정리됐어. 이제 외벽을 보자」)은 <b><code>1 Day - 2</code> 의 대사</b>입니다.
-            </p>
-            <p>
-              <b>씬 번호는 재생 순서가 아닙니다.</b> day 1 만 봐도
-              <code>01</code> → <code>60</code> → <code>02</code> → <code>03</code> · <code>04</code> →
-              <code>50</code> → <code>53</code> → <code>51</code> → <code>61</code> → <code>52</code> 순입니다.
-              번호는 <b>작성 시점</b>이고(<code>01~04</code> 구판 · <code>50~53</code> 1차 추가 ·
-              <code>60~61</code> 2차 추가), 내용은 이어집니다 &mdash;
-              <code>50</code> 의 마지막 줄 「그게 대체 누군데요?」를
-              <code>53</code> 의 첫 줄 「거스, 얘기해 줘요. 대체 뭐가 그렇게 수상하다는 거예요?」가 받습니다.
-              <b>번호순으로 읽으면 이야기가 깨집니다</b> &mdash; 이 표의 순서가 맞습니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">길이가 크게 갈립니다 &mdash; <b>4줄짜리와 42줄짜리</b></div>
-            <p>
-              본편에 실린 대사는 <b>2,762줄</b>입니다. 한 심부름이 <b>4줄</b>만 받기도 하고
-              (<code>16 Day - 1</code> · <code>16 Day - 5</code>) <b>45줄</b>이 되기도 합니다
-              (<code>1 Day - 9</code> · <code>11 Day - 10</code> &mdash; 둘 다 구역 완료 대사가 겹치는 자리입니다). 짧은 쪽은 <b>곁대사</b>고, 긴 쪽이 이야기를 미는 자리입니다.
-              <b>착수 씬이 2개 붙은 심부름이 5건</b> 있습니다 &mdash;
-              <code>12-6</code> · <code>13-3</code> · <code>13-4</code> · <code>13-5</code> · <code>16-6</code>.
-              두 씬이 연달아 재생되는 자리라 길이가 그만큼 늘어납니다.
-              말풍선 배치는 정본 <b>화면 74·75</b> 규격 그대로 &mdash;
-              <b>주인공(로지) 왼쪽 · 상대 화자 오른쪽</b>, 발화마다 좌우를 뒤집지 않습니다.
-              작은 글씨는 <code>animation</code> 값(표정·동작 지시)입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">영문은 <b>전 줄이 비어 있습니다</b></div>
-            <p>
-              <code>line_en</code> 이 2,812행 <b>전부</b> <code>none</code> 입니다 &mdash;
-              한국어만 쓰여 있고 <b>번역이 통째로 남은 일</b>입니다.
-              컬럼 설명도 <code>line_ko</code> 를 「런칭 클라가 읽는 칸」,
-              <code>line_en</code> 을 「병행 발주분」으로 적고 있습니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">구판 묶음은 꺼져 있고, <b>클라는 아직입니다</b></div>
-            <p>
-              신판 <code>story</code> 에서 <code>main_ch01</code>~<code>main_ch15</code> 15개 챕터 묶음은
-              <b><code>in_use=false</code></b> 입니다 &mdash; 챕터 전체를 첫 심부름에 묶던 구판 방식이고,
-              이 문서도 한때 그 꺼진 행을 그렸습니다. 지금은 신판 연결로 다시 그렸습니다.
-              조인 키도 바뀌었습니다: 본편은 <code>story_dialog.story</code> 가
-              <b><code>scene_id</code> 와 같은 값</b>입니다(구판은 챕터 묶음 키였습니다).
-              클라 쪽은 아직입니다 &mdash; <code>story</code> · <code>story_dialog</code> ·
-              <code>story_speaker</code> 세 탭이 번들로 들어와야 합니다.
-              <code>main_task</code> 쪽 <code>task_kind</code> · <code>illustration_key</code> ·
-              <code>transition_key</code> 는 <b>이번 export 에 들어왔습니다</b>(19컬럼).
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">⚠ 이 표는 <b>두 소스를 섞습니다</b> &mdash; 그리고 시트 안에서도 한쪽이 덜 따라왔습니다</div>
-            <p>
-              한 행의 값이 어디서 오는지 갈립니다. <b>코인 · 경험치 · 보상 아이템 · 건수 · 대사</b>는
-              <b>밸런스 시트</b>(2026-09-21 15:39 export)에서, <b>제목 · 구역 · 비포애프터 · 디자인 A·B·C</b>는
-              <b>화면 기획서</b>(2026-09-22 배포)에서 옵니다. 시트에 그 열이 아예 없기 때문입니다.
-            </p>
-            <p>
-              두 소스는 <b>심부름 집합에서는 정확히 맞물립니다</b> &mdash; 197건 · day 구획 · 유형(<code>task_kind</code> ↔
-              「수선/택1/대화」)이 <b>전건 일치</b>합니다(불일치 0). 그런데 <b>코인 값이 197건 중 162건 어긋납니다</b>.
-              화면 기획서 쪽이 <code>1-1</code> 을 「코인 13 · 경험치 8」로 적는데 시트는 「26 · 15」입니다.
-              <b>이 표는 시트 값을 씁니다.</b>
-            </p>
-            <p>
-              시트 <b>내부</b>도 한 박자 어긋나 있습니다. <code>main_task</code> 는 <b>197행</b>인데
-              <code>string_code</code> 의 <code>T_TASK_*</code> 키는 <b>188개</b>뿐입니다 &mdash;
-              <b>9건에 영문 제목이 없습니다</b>:
-              <code>1-8</code> · <code>1-9</code> · <code>2-9</code> · <code>3-9</code> ·
-              <code>4-10</code> · <code>4-11</code> · <code>4-12</code> · <code>5-9</code> · <code>7-9</code>.
-              이 9건이 곧 <b>188 → 197 로 늘어난 신규 심부름</b>이고, <code>story</code>(대사)는 이미 197건 기준인데
-              <code>string_code</code>(제목)만 구판입니다. 표에서는 한글 제목만 보입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--plan)">
-            <div class="note-title">대사와 별개로 <b>클리어 결과</b>가 있습니다</div>
-            <p>
-              심부름은 <b>대화 58 · 수선 78 · 택1 61</b> 로 나뉩니다.
-              <b>대화</b>는 대사만 오가고, <b>수선</b>은 <b>비포 → 애프터</b>로 그 자리가 바뀌고,
-              <b>택1</b>은 <b>디자인 A·B·C 중 하나를 고릅니다</b>. 채팅 아래에 그 결과를 붙였습니다.
-              유형은 <b>대사 재생 여부와 무관</b>합니다 &mdash; 「대화」 유형인데 대사가 없는 건도,
-              「수선」인데 챕터 대사가 붙는 건도 있습니다. 두 축이 따로 놉니다.
-            </p>
-            <p>
-              <b>한 건이 두 유형을 겸하지 않습니다</b> &mdash; 78 + 61 + 58 이 정확히 197이고 겹치는 행이 없습니다.
-              산출물도 완전히 갈립니다: 수선 78건은 <b>전부</b> 비포·애프터를 갖고 디자인 칸이 하나도 없으며,
-              택1 61건은 <b>전부</b> A·B·C 를 갖고 비포·애프터가 없습니다.
-              그래서 <b>「택1 을 하고 나서 그 자리에서 수선까지」 같은 건은 없습니다.</b>
-              정본도 v1.10 에서 이 축을 <code>main_task.task_kind</code> <b>열로 못박았습니다</b>
-              (<code>repair</code> · <code>choice</code> · <code>story</code> &mdash; 「이 chore의 <b>종류</b>」).
-            </p>
-            <p>
-              다만 <b>컷씬은 심부름이 아니라 <u>날</u>에 붙습니다.</b>
-              <code>transition_key</code> 가 붙은 <b>7건</b>이 <b>예외 없이 그 day 의 첫 심부름</b>
-              (<code>2-1</code> · <code>4-1</code> · <code>8-1</code> · <code>10-1</code> ·
-              <code>12-1</code> · <code>14-1</code> · <code>17-1</code>)에 걸려 있고,
-              붙은 건의 유형은 수선 5 · 대화 1 · 택1 1 로 제각각입니다.
-              정본의 <code>transition_key</code> 설명이 <b>「해당 day 진입 때 먼저 재생할 전환 영상」</b>이라
-              축이 같습니다 &mdash; 표에서 컷씬이 유형과 무관하게 흩어져 보이는 건 그 때문입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">구역 색은 곧 진행 구간입니다</div>
-            <p>
-              구역 6개가 <b>day 구간과 1:1</b>이라 색이 그대로 진행 순서입니다 &mdash;
-              <b>공방 앞마당</b>(day 1) → <b>공방 작업장</b>(2~3) → <b>로자의 뒷방</b>(4~7) →
-              <b>공방 앞 골목</b>(8~11) → <b>옛 광장</b>(12~16) → <b>역 앞 광장</b>(17~20).
-              앞 다섯은 로즈우드 마을이고 <b>마지막 하나만 역전 읍내</b>로 무대가 바뀝니다.
-              <b>1:1 이라서 구역을 행마다 적지 않습니다</b> &mdash; day 밴드에 한 번만 답니다.
-              색은 <b>구역 이름과 항상 같이</b> 나옵니다 &mdash; 색만으로 구분하게 두지 않았습니다.
-            </p>
-          </div>
-        </div>
-      </section>
+        
+</section>
 
       <section class="doc-section" id="deco">
         <h2 class="doc-h2">
@@ -781,70 +591,8 @@
           </table>
         </div>
 
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">수선 키는 꽉 찼고, <b>택1 키에 17자리가 빕니다</b></div>
-            <p>
-              <code>main_task.sprite_key</code> 가 <code>none</code> 이 아닌 행이 <b>정확히 78행</b>이고,
-              화면 기획서의 <b>「수선」 78건과 불일치 0건으로 1:1</b>입니다 (197건 전건 교차검증).
-              파일명 계약은 키 하나에 <b><code>{키}_old</code> · <code>{키}_rest</code> 두 장</b>입니다.
-            </p>
-            <p>
-              <b>택1 쪽은 다릅니다.</b> <code>skin_deco</code> 는 <b>162행 · 고유 키 54개</b>인데,
-              그 54개 중 <b>지금 택1인 자리를 가리키는 건 44개</b>뿐입니다.
-              나머지 10개는 <b>지금 수선(5) · 대화(5) 가 된 자리</b>를 가리킵니다 &mdash;
-              <b>이 탭이 심부름 재편 전 기준</b>이라는 뜻입니다.
-              그래서 택1 61자리 중 <b>17자리에 A·B·C 가 없습니다</b>:
-              <code>1-3</code> · <code>1-5</code> · <code>1-8</code> · <code>1-9</code> · <code>2-6</code> ·
-              <code>2-8</code> · <code>3-6</code> · <code>3-8</code> · <code>4-2</code> · <code>4-8</code> ·
-              <code>4-12</code> · <code>5-2</code> · <code>5-4</code> · <code>5-8</code> · <code>7-3</code> ·
-              <code>7-6</code> · <code>7-8</code>.
-            </p>
-            <p>
-              <code>main_task</code> · <code>story</code> 는 197건 신판인데
-              <code>string_code</code> · <code>skin_deco</code> 는 구판입니다 &mdash;
-              <b>같은 시트 안에서 탭마다 갱신 시점이 다릅니다.</b>
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--deploy)">
-            <div class="note-title">day 2~20 은 클라 노드가 <b>0건</b>입니다</div>
-            <p>
-              위 대조표를 day 1 만 실은 이유입니다. <code>story_node.json</code> 은 <b>22노드</b>
-              (dialogue 9 · task 9 · gate 2 · stillcut 2)뿐이고 <b>튜토리얼 + day 1</b> 에서 끝납니다.
-              day 2~20 의 <b>125자리</b>는 전부 같은 답(「클라 노드 없음」)이라 180행을 그리면
-              그 사실이 오히려 묻힙니다. 코스트가 어긋난 3건(<code>1_4</code> 16↔46 ·
-              <code>1_5</code> 26↔25 · <code>1_6</code> 26↔24)은 <b>값 정본이 시트</b>라
-              <code>StoryNodeRunner.ts</code> 가 <b>읽지 않고 버립니다</b>.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--plan)">
-            <div class="note-title">시트를 다 받아도 <b>「어디에 놓나」는 안 나옵니다</b></div>
-            <p>
-              <code>main_task</code> 16열 · <code>skin_deco</code> 8열 <b>어디에도 위치 열이 없습니다.</b>
-              화면 기획서의 chore 스키마에 있는 <code>자리</code> 도 이름(문자열)이지 좌표가 아닙니다.
-              그래서 <b>130자리의 배치는 전부 프리팹에 손으로 박는 일</b>이고,
-              탭 export 가 들어와도 이 몫은 줄지 않습니다 &mdash; 지금 day 1 다섯 개가 그렇게 돼 있습니다.
-              택1 아트가 <b>자리당 4장</b>인 것도 같은 이유로 놓치기 쉽습니다:
-              A·B·C 셋이 아니라 <b>기본형 + A·B·C</b> 입니다(화면 기획서 4.4).
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">막힌 순서 &mdash; 아트보다 <b>export 가 먼저</b>입니다</div>
-            <p>
-              ① <code>skin_deco</code> · <code>story</code> · <code>story_dialog</code> ·
-              <code>story_speaker</code> <b>4탭 export 누락</b> →
-              ② 데코 아트 <b>400장</b> 반입(수선 156 + 택1 244) →
-              ③ <b>화자 테마 4/11</b> (<code>StoryCharacterTheme.ts</code> 가 Rosie · Poppy · Brett · Rafa
-              넷만 알고, 없는 화자는 <code>throw</code> 합니다 &mdash; 시트 대사를 그대로 부으면
-              나머지 7명에서 <b>멈춥니다</b>). 표정도 같이 빕니다 &mdash; 시트 2,762줄이 요구하는
-              <b>(화자 × animation) 조합이 148개</b>인데(Rosie 16 · Theo 15 · Tess 15 ·
-              Poppy · Gus · Rafa 각 14 …) 클라 애니 클립은 <b>13개</b>(idle 11 + rosie 3)입니다 →
-              ④ <b>머지 완료 판정 공백</b>. 지금 <code>StoryNodeRunner.presentTask()</code> 는
-              머지 단계가 비어 있어, 데코가 <b>머지 클리어와 무관하게</b> 재생됩니다.
-            </p>
-          </div>
-        </div>
-      </section>
+        
+</section>
 
       <section class="doc-section" id="items">
         <h2 class="doc-h2">
@@ -852,28 +600,8 @@
           <span class="doc-h2-sub">58건에 붙는 보상의 전체 목록 · 수량은 전건 ×1</span>
         </h2>
         <div class="cr-grid" id="crItems"></div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">상자 2종이 3분의 1을 넘습니다</div>
-            <p>
-              <b>Small Reward Box(2501) 13건 · Small Gift Box(2601) 8건</b>으로 둘이 58건 중 21건입니다.
-              날마다 마지막 근처에 하나씩 놓이는 <b>하루치 마무리 보상</b>입니다.
-              다만 <b>단순 승급이 아닙니다</b> &mdash; 2501 은 day 1~8 에 매일 나오고 day 10 부터 2601 이 등장하는데,
-              그 뒤로도 <b>day 14 · 16 · 17 은 다시 2501</b> 입니다.
-              <b>day 9 · 15 · 20 에는 상자가 아예 없고</b>, day 4 · 14 · 19 는 <b>두 개</b>가 놓입니다.
-              나머지 31종은 대부분 1~3건짜리로, <b>그 시점에 새로 열리는 체인의 1단계</b>를 쥐여 주는 성격입니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">그림은 실제 게임 아트입니다 &mdash; 다만 임시입니다</div>
-            <p>
-              <code>assets/bundle/board/items/&lt;item_code&gt;.png</code> 원본 그대로입니다.
-              로즈우드 아트는 현재 전량 <b>임시 플레이스홀더</b>라 <b>그림과 이름이 안 맞는 건이 정상</b>입니다.
-              버그로 보고 고치지 마세요. 코드(괄호 안 숫자)가 정본 축입니다.
-            </p>
-          </div>
-        </div>
-      </section>
+        
+</section>
 
       <section class="doc-section" id="npc">
         <h2 class="doc-h2">
@@ -881,28 +609,8 @@
           <span class="doc-h2-sub">아트 반입 전 &mdash; 자리만 잡아 둡니다</span>
         </h2>
         <div class="cr-grid" id="crNpcs"></div>
-        <div class="notes">
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">점선 원은 「그림이 들어올 자리」입니다</div>
-            <p>
-              <code>main_task.detail_icon</code> 에 NPC 이름 11종이 <b>197행 전부</b> 채워져 있고
-              원소표도 「NPC마다 아바타 교체」를 요구하는데, <b>NPC별 아트가 아직 없습니다</b>.
-              그래서 팝업의 의뢰인 아바타도 지금은 프리팹 고정 그림이 그대로 보입니다.
-              이 페이지는 <code>docs/img/npc/&lt;이름&gt;.png</code> 를 미리 보고 있어서,
-              그림이 들어오면 <b>파일만 놓고 페이지 상단 <code>NPC_ART</code> 에 이름을 추가</b>하면
-              레이아웃 변경 없이 사진으로 바뀝니다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--analysis)">
-            <div class="note-title">Theo · Rosie 둘이 전체의 절반을 넘습니다</div>
-            <p>
-              담당 건수가 <b>Rosie 51 · Theo 51</b>로 둘이 197건 중 <b>102건</b>입니다.
-              반대편에는 <b>Diane 4 · Wren 4</b> 처럼 몇 건뿐인 NPC 도 있어, 아바타 아트 반입 순서를 정할 때
-              <b>등장 빈도 순</b>이 그대로 우선순위가 됩니다. 아래 칸도 그 순서로 세웠습니다.
-            </p>
-          </div>
-        </div>
-      </section>
+        
+</section>
 
       <div class="foot">
         <b>확인 범위</b>
@@ -1299,7 +1007,7 @@
         const others = new Set(ev.lines.map((l) => l[1]));
         others.delete(who);
         return `<tr class="cr-row is-talk${detOpen ? " is-open" : ""}" data-det="${id}">`
-          + `<td class="cr-key"><span class="cr-node is-${ev.slot}"></span>`
+          + `<td class="cr-key"><span class="cr-dot is-${ev.slot}"></span>`
           + `<span class="cr-ar">▶</span> `
           + `<span class="cr-slot is-${ev.slot}">${lb}</span></td>`
           + `<td><code class="cr-sid">${esc(ev.sid)}</code>`
@@ -1321,7 +1029,7 @@
                      items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
         const det = resultHtml(ev.row);
         return `<tr class="${cls}" data-det="${det ? id : ""}">`
-          + `<td class="cr-key"><span class="cr-node"></span>`
+          + `<td class="cr-key"><span class="cr-dot"></span>`
           + `${det ? `<span class="cr-ar">▶</span> ` : `<span class="cr-ar"></span> `}`
           + `<b>${keyOf(day, seq)}</b></td>`
           + `<td><span class="cr-type ${TYPE_CLASS[type] || ""}">${esc(type)}</span>`
