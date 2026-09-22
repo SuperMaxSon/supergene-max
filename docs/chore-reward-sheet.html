@@ -93,6 +93,42 @@
       .cr-type.t-talk { --tc: var(--analysis); }
       .cr-type.t-fix { --tc: var(--validate); }
       .cr-type.t-pick { --tc: var(--plan); }
+      /* ── 플로우 도식 ─────────────────────────────────────────────────────
+         414행 표는 「전부」를 보여 주지만 **골격**은 안 보인다. 한 건이 어떤 차례로
+         풀리는지를 먼저 세우고, 표는 그 골격에 값을 채운 것으로 읽히게 한다.
+         세로 한 줄기로 그린다 — 가로로 놓으면 좁은 화면에서 접히면서 순서가 흐려진다. */
+      .fl { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 6px 0 4px; }
+      .fl-step { width: 100%; max-width: 660px; border: 1px solid var(--border); border-radius: var(--radius);
+                 background: var(--surface); padding: 12px 14px; position: relative; }
+      /* 조건부 단계는 점선 — 「항상 일어나는 것」과 한눈에 갈라야 골격이 왜곡되지 않는다 */
+      .fl-step.is-opt { border-style: dashed; background: var(--surface-2); }
+      .fl-step.is-main { box-shadow: inset 4px 0 0 var(--acc, var(--balance)); }
+      .fl-hd { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+      .fl-hd .t { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+      .fl-hd code { font-size: 11.5px; color: var(--text-faint); }
+      .fl-cnt { margin-left: auto; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+                padding: 2px 9px; border-radius: 999px; color: #fff; background: var(--acc, var(--text-dim)); }
+      .fl-cnt.is-part { background: transparent; color: var(--text-dim);
+                        box-shadow: inset 0 0 0 1px var(--border); }
+      .fl-body { margin-top: 6px; font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+      .fl-body b { color: var(--text); }
+      /* 잇는 선 — 화살표 머리까지 CSS 로. 이미지를 안 쓰면 다크/라이트 양쪽에서 색이 따라온다. */
+      .fl-arrow { width: 2px; height: 22px; background: var(--border); position: relative; flex: none; }
+      .fl-arrow::after { content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+                         border: 5px solid transparent; border-top-color: var(--border); }
+      .fl-arrow.is-loop { height: 30px; }
+      /* 되돌아가는 꼬리 — 「다음 건의 대화로」를 글자로 적어 준다 */
+      .fl-loop { max-width: 660px; width: 100%; text-align: center; font-size: 12.5px; font-weight: 700;
+                 color: var(--text-dim); padding: 9px 12px; border: 1px dashed var(--border);
+                 border-radius: 999px; background: var(--surface-2); }
+      /* 한 건의 실제 예시 — 도식 옆에 값을 붙여야 「그래서 뭐가 다른데」가 풀린다 */
+      .fl-ex { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 4px; }
+      .fl-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px;
+                 background: var(--surface); box-shadow: inset 0 2px 0 var(--acc); }
+      .fl-card .k { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 700; }
+      .fl-card .d { margin-top: 5px; font-size: 12.5px; color: var(--text-dim); line-height: 1.55; }
+      .fl-card .d b { color: var(--text); }
+
       /* ── 타임라인 레일 ───────────────────────────────────────────────────
          414행을 표로만 두면 「목록」으로 읽힌다. 왼쪽에 끊기지 않는 세로선을 긋고
          행마다 노드를 찍어야 **위에서 아래로 흐른다**는 게 보인다.
@@ -324,6 +360,7 @@
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#flow">플로우</a>
         <a class="nav-back" href="#sheet">보상 시트</a>
         <a class="nav-back" href="#deco">데코 반영</a>
         <a class="nav-back" href="#items">아이템 33종</a>
@@ -380,6 +417,145 @@
     </header>
 
     <main class="wrap wrap--wide">
+      <section class="doc-section" id="flow">
+        <h2 class="doc-h2">
+          한 건이 풀리는 순서
+          <span class="doc-h2-sub">심부름 197건이 전부 이 골격을 탑니다 &mdash; 점선은 조건부입니다</span>
+        </h2>
+
+        <p class="doc-lede" style="margin-top: 0">
+          아래 표는 이 골격에 <b>값을 채운 것</b>입니다. 굵은 선 셋이 <b>197건 전건</b>에서 일어나고,
+          점선 셋은 <b>조건이 맞을 때만</b> 끼어듭니다. 끝나면 <b>다음 건의 대화로 곧장 이어집니다</b> &mdash;
+          그래서 플레이어에게는 대화가 끊기지 않는 것처럼 보이지만,
+          <b>데이터상 그 대사는 이미 다음 심부름의 것</b>입니다.
+        </p>
+
+        <div class="fl">
+          <div class="fl-step is-opt">
+            <div class="fl-hd"><span class="t">day 진입 컷씬</span>
+              <code>main_task.transition_key</code>
+              <span class="fl-cnt is-part">7건</span></div>
+            <div class="fl-body">
+              심부름이 아니라 <b>날</b>에 붙습니다. 예외 없이 그 day 의 <b>첫 심부름 앞</b>입니다 &mdash;
+              <code>2-1</code> · <code>4-1</code> · <code>8-1</code> · <code>10-1</code> ·
+              <code>12-1</code> · <code>14-1</code> · <code>17-1</code>.
+            </div>
+          </div>
+
+          <div class="fl-arrow"></div>
+
+          <div class="fl-step is-main" style="--acc: var(--analysis)">
+            <div class="fl-hd"><span class="t">① 대화</span>
+              <code>story.trigger_type = task_start</code>
+              <span class="fl-cnt" style="--acc: var(--analysis)">197 / 197</span></div>
+            <div class="fl-body">
+              Start 를 누르면 <b>먼저 대사가 재생됩니다</b>. <b>202 장면 · 2,568줄</b>로
+              전체 대사의 <b>93%</b> 가 여기 몰려 있습니다.
+              보상을 알리는 말이 아니라 <b>그 심부름을 시키는 말</b>입니다 &mdash;
+              <code>1-1</code> 의 12줄이 「먼저 덱의 덤불을 치우고 벤치를 닦자」로 끝나는 게 그 성격입니다.
+              <b>대사가 0줄인 건은 없습니다.</b>
+            </div>
+          </div>
+
+          <div class="fl-arrow"></div>
+
+          <div class="fl-step is-main" style="--acc: var(--balance)">
+            <div class="fl-hd"><span class="t">② 심부름</span>
+              <code>main_task</code>
+              <span class="fl-cnt" style="--acc: var(--balance)">197</span></div>
+            <div class="fl-body">
+              <b>코인 16~220</b>을 내고 들어갑니다(합 <b>19,137</b>). 끝내면 <b>경험치 15</b>가
+              <b>전건 예외 없이</b> 나오고, <b>58건</b>은 머지 아이템이 하나 더 붙습니다.
+              <b>다만 「무엇을 얼마나 모아야 하는지」는 시트에 없습니다</b> &mdash;
+              <code>main_task</code> 에 요구 아이템 열이 <b>아예 없어서</b>,
+              데이터상 진입 판정은 <b>코인 지불 하나뿐</b>입니다.
+            </div>
+          </div>
+
+          <div class="fl-arrow"></div>
+
+          <div class="fl-step is-main" style="--acc: var(--validate)">
+            <div class="fl-hd"><span class="t">③ 자리 변화 연출</span>
+              <code>task_kind</code>
+              <span class="fl-cnt" style="--acc: var(--validate)">139 / 197</span></div>
+            <div class="fl-body">
+              <b>수선 78건</b>은 그 자리가 <b>비포 → 애프터</b>로 바뀌고,
+              <b>택1 61건</b>은 <b>디자인 A·B·C 중 하나를 고릅니다</b>.
+              <b>대화형 58건에는 이 단계가 없습니다</b> &mdash; <code>sprite_key</code> 가 <code>none</code> 이고
+              <code>skin_deco</code> 에도 없습니다. 화면 기획서도 대화형의 「자리」를
+              <b>"대화만 진행"</b> 으로 적습니다. <b>한 건이 두 유형을 겸하지 않습니다</b>(78 + 61 + 58 = 197).
+            </div>
+          </div>
+
+          <div class="fl-arrow"></div>
+
+          <div class="fl-step is-opt">
+            <div class="fl-hd"><span class="t">완료 대사</span>
+              <code>trigger_type = task_finish</code>
+              <span class="fl-cnt is-part">9건 · 94줄</span></div>
+            <div class="fl-body">
+              끝내고 나서 한 번 더 도는 건 <b>197건 중 9건뿐</b>입니다.
+              <code>1-4</code> 하나와 <b>day 17~20 의 8건</b>에 몰려 있고, 그 8건은 씬 이름도
+              <code>_end</code> 로 따로 붙습니다 &mdash; <b>「끝내고 나서」 연출은 사실상 후반부 전용</b>입니다.
+            </div>
+          </div>
+
+          <div class="fl-arrow"></div>
+
+          <div class="fl-step is-opt">
+            <div class="fl-hd"><span class="t">구역 완료 대사</span>
+              <code>trigger_type = area_finish</code>
+              <span class="fl-cnt is-part">6건 · 100줄</span></div>
+            <div class="fl-body">
+              그 구역의 <b>마지막 심부름</b>이면 16~17줄이 더 붙습니다 &mdash;
+              <code>1-9</code> · <code>3-9</code> · <code>7-9</code> · <code>11-10</code> ·
+              <code>16-10</code> · <code>20-10</code>.
+              <b>씬 이름에 접미사가 붙습니다</b>(<code>area_01</code> → <code>area_01_finish</code>) &mdash;
+              정확히 일치하는 이름으로만 찾으면 <b>이 100줄이 통째로 빠집니다</b>.
+            </div>
+          </div>
+
+          <div class="fl-arrow is-loop"></div>
+          <div class="fl-loop">↻ 다음 심부름의 <b>① 대화</b>로 &mdash; 끝난 자리에서 바로 이어집니다</div>
+        </div>
+
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">그래서 <b>「끝내고 받는 이야기」는 거의 없습니다</b></div>
+            <p>
+              <code>1 Day - 1</code> 을 끝냈을 때 나오는 대사는 <b>없습니다</b>.
+              이어서 뜨는 <code>main_ch01_60_begin</code>(「앞마당 바닥은 정리됐어. 이제 외벽을 보자」)은
+              <b><code>1 Day - 2</code> 의 대사</b>입니다 &mdash; 1-2 를 <b>시작할 때</b> 재생됩니다.
+              체감으로는 「1-1 을 끝내니 다음 이야기가 나온다」지만, <b>데이터의 귀속은 다음 건</b>입니다.
+              이 차이 때문에 보상 표를 심부름 단위로 묶으면 대사가 <b>보상처럼</b> 읽힙니다 &mdash;
+              아래 표를 <b>이벤트마다 행을 나눈</b> 이유입니다.
+            </p>
+          </div>
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">세 유형은 <b>③ 단계에서만</b> 갈립니다</div>
+            <div class="fl-ex">
+              <div class="fl-card" style="--acc: var(--validate)">
+                <div class="k">수선 · 78건</div>
+                <div class="d"><b>비포 → 애프터</b>. <code>main_task.sprite_key</code> 78종이
+                  수선 78건과 <b>1:1</b>로 맞물립니다. 파일은 키당
+                  <code>_old</code> · <code>_rest</code> 두 장.</div>
+              </div>
+              <div class="fl-card" style="--acc: var(--plan)">
+                <div class="k">택1 · 61건</div>
+                <div class="d"><b>디자인 A·B·C 중 하나</b>. 다만 <code>skin_deco</code> 는
+                  54키뿐이고 그중 44키만 지금 택1 자리를 가리킵니다 &mdash;
+                  <b>17자리에 A·B·C 가 없습니다</b>.</div>
+              </div>
+              <div class="fl-card" style="--acc: var(--analysis)">
+                <div class="k">대화 · 58건</div>
+                <div class="d"><b>③ 단계가 통째로 없습니다.</b> 화면은 그대로고 대사만 오갑니다.
+                  그래도 코인은 <b>24~220</b>으로 싸지 않고, <b>16건</b>은 아이템까지 줍니다.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="doc-section" id="sheet">
         <h2 class="doc-h2">
           보상 시트
@@ -480,25 +656,14 @@
             </p>
           </div>
           <div class="note" style="--acc: var(--plan)">
-            <div class="note-title">한 심부름이 <b>어떻게 풀리는가</b></div>
+            <div class="note-title">표에서 <b>씬 번호는 재생 순서가 아닙니다</b></div>
             <p>
-              심부름 하나는 표에서 <b>최대 네 행</b>으로 풀립니다. 순서가 곧 플레이 순서입니다:
+              한 건이 풀리는 골격은 위 <a href="#flow">한 건이 풀리는 순서</a>에 있습니다.
+              표는 그 골격을 <b>행으로 펼친 것</b>이라 &mdash; 대부분은 「대사 → 심부름」 두 행이고,
+              9건에만 완료 대사가, 6건에만 구역 완료 대사가 더 붙습니다.
             </p>
             <p>
-              <span class="cr-slot is-s">시작 전</span> Start 를 누르면 대사가 먼저 재생됩니다 &mdash;
-              <b>197건 전건</b>에 있습니다. →
-              <b>심부름 행</b> 여기서 보드를 밀어 요구를 채웁니다. 코인·경험치·아이템이 이 행에 붙습니다. →
-              <span class="cr-slot is-f">완료</span> 끝냈을 때. <b>9건에만</b> 있습니다. →
-              <span class="cr-slot is-a">구역 완료</span> 그 구역의 마지막 심부름이면 한 번 더. <b>6건</b>.
-            </p>
-            <p>
-              그래서 <b>대부분의 심부름은 「대사 → 심부름」 두 행</b>이고, 끝나고 나서는 조용합니다 &mdash;
-              다음 이야기는 <b>다음 심부름을 시작할 때</b> 나옵니다. 예를 들어 <code>1 Day - 1</code> 을
-              끝냈을 때 나오는 대사는 <b>없고</b>, 이어지는 <code>main_ch01_60_begin</code>(「앞마당 바닥은
-              정리됐어. 이제 외벽을 보자」)은 <b><code>1 Day - 2</code> 의 대사</b>입니다.
-            </p>
-            <p>
-              <b>씬 번호는 재생 순서가 아닙니다.</b> day 1 만 봐도
+              표를 읽을 때 걸리는 건 <b>씬 번호</b>입니다. day 1 만 봐도
               <code>01</code> → <code>60</code> → <code>02</code> → <code>03</code> · <code>04</code> →
               <code>50</code> → <code>53</code> → <code>51</code> → <code>61</code> → <code>52</code> 순입니다.
               번호는 <b>작성 시점</b>이고(<code>01~04</code> 구판 · <code>50~53</code> 1차 추가 ·
