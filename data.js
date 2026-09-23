@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-23 14:53",
+  updated: "2026-09-23 15:00",
 };
 
 /* --------------------------------------------------------------------------
@@ -298,6 +298,18 @@ const SECTIONS = [
         updated: "2026-09-01 15:54",
         pinned: false,
         tags: ["머지", "리소스 실측"],
+        share: false,
+      },
+      {
+        title: "로딩 타임라인",
+        desc: "NRU·RU 가 실행해서 첫 입력까지, 그리고 인게임↔아웃게임 전환마다 무엇을 얼마나 몇 초 받는지 간트로 그렸습니다. 회선(WiFi·4G·3G) 토글. NRU 는 첫 채팅 전에 180MB 가 올라가고, 해제·머지 중 프리로드는 0건입니다.",
+        url: "docs/story-merge-load-timeline.html",
+        project: "smg",
+        status: "완료",
+        version: "v1.0",
+        updated: "2026-09-23 15:00",
+        pinned: false,
+        tags: ["코드 실측", "리소스", "타임라인"],
         share: false,
       },
     ],
