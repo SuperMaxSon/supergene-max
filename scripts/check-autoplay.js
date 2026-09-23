@@ -501,6 +501,7 @@ async function part2() {
   let stepsRun = 0;
   const finalStats = {};
   const invariantFails = [];
+  let report = null;
 
   try {
     if (!fs.existsSync(chromeBin)) throw new Error('Chrome binary not found at ' + chromeBin);
@@ -544,21 +545,25 @@ async function part2() {
     if (!rwbReady) throw new Error('window.__RWB.step did not appear within 10s');
 
     /* 전체 러너를 페이지 안에서 한 번에 돌린다(라운드트립 5000회를 피한다).
-       분류 규칙은 docs/js/rosewood-board.js 실제 소스를 읽고 그대로 뽑았다:
-         - merge  : LOG 엔트리에 .popped 배열이 있다 (applyMerge, board.js:191)
-         - produce: LOG 엔트리에 .to·.cost·.stock 이 있다 (applyProduce, board.js:325)
-         - recharge(에너지 충전, D8): kind==='energy' && .html===undefined (board.js:317)
-         - 그 외는 logPush(kind, html) 로 만든 {kind, html} 모양이고 html 문자열로 다시 가른다:
-             '빨리 감기' 포함 → fastforward(시계만 감음, board.js:743) — 보드/보관함 안 건드림
-             '새 오더' 포함   → refill 알림(board.js:401) — 레일만 바뀐다, 보드/보관함 무관
-             '납품' 포함      → 진짜 오더 납품(runServe, board.js:791)
-             '보관함 →' 포함 → dropReward, 보관함→보드 (board.js:416) : board+1/box-1
-             '수확' 포함      → findCollect/runCollect(board.js:797-806) : board-1/box+0
-               (dropReward·collect 둘 다 kind==='reward' 를 쓰므로 html 로 갈라야 한다 — 실측 필요했다)
-             나머지은 kind 그대로: chore/level/day/sell
-       한 번의 step() 호출 안에 [railDue 리필 알림?] + [reward 드랍?] + [주 액션 하나] 가
-       같이 쌓일 수 있어(board.js:710-752 우선순위 그대로), 위 분류로 뽑은 태그 집합을 보고
-       기대 델타를 검사한다. */
+       분류는 엔트리 하나마다 {tag, dBoard, dBox} 기여분을 매기고 합산해서 검사한다
+       (부록 C 가 들어오며 한 수 안에 [sweepSpentChests 여러 건?] + [railDue 리필 알림?] +
+       [reward 드랍?] + [주 액션 하나] 가 같이 쌓일 수 있어, kind 로만 가르는 if/else 버킷은
+       더 이상 안전하지 않다 — docs/js/rosewood-board.js 최신 소스 실측대로 뽑았다):
+         merge         : .popped 배열 있음 (board.js applyMerge)                    board-1
+         produce       : .to·.cost·.stock 있음, .emptied 없음 (applyProduce)         board+1
+         produce-emptied: 위 + .emptied===true (C1 — 산출과 동시에 상자 칸도 비움)     board 0 (=+1-1)
+         sweep-empty   : kind 'prod' && .emptied===true 인데 .to 가 없음(sweepSpentChests) board-1
+         recharge-energy: kind 'energy' && .html===undefined (D8)                    board/box 0
+         gem-recharge  : kind 'gem' (C2 — 젬 결제, board/box 0. 코스트는 별도 대조)
+         rail-idle-skip: html 에 '오더 대기' 포함(railIdleSkip)                       board/box 0
+         fastforward   : html 에 '빨리 감기' 포함(waitPlan, C2 이후 오더 타이머만 남는다) board/box 0
+         refill-notice : html 에 '새 오더' 포함(refill 알림)                          board/box 0
+         serve         : html 에 '납품' 포함, 소비 칸 수는 html 의 'cellN' 개수로 센다  board -consume
+         reward-drop   : html 에 '보관함 →' 포함(dropReward)                          board+1 / box-1
+         collect       : html 에 '수확' 포함(runCollect) — dropReward 와 같은 kind:'reward' 라 html 로 갈라야 한다
+         sell          : kind 'sell'                                                board-1
+         chore/level/day: kind 그대로 — board 는 안 건드리고, box 는 미확정(아이템 보상 발행 가능,
+                          음수는 안 된다)이라 상한 없이 늘어나는 것만 허용한다. */
     const maxSteps = 5000;
     const runnerExpr = `(() => {
       const RWB = window.__RWB, RwEconRef = window.RwEcon;
@@ -566,63 +571,92 @@ async function part2() {
       const A = () => RWB.acc;
       const boardCount = () => RWB.cells.filter(c => c && c.code).length;
       const boxCount = () => (A().rewardBox || []).length;
-      const classify = (e) => {
-        if (e.popped !== undefined) return 'merge';
-        if (e.to !== undefined && e.cost !== undefined && e.stock !== undefined) return 'produce';
-        if (e.kind === 'energy' && e.html === undefined) return 'recharge';
+      const codeAt = (cells, i) => (cells[i] ? cells[i].code : null);
+      const classify = (e, cellsBefore) => {
+        if (e.popped !== undefined) return { tag: 'merge', dBoard: -1, dBox: 0 };
+        if (e.to !== undefined && e.cost !== undefined && e.stock !== undefined) {
+          return { tag: e.emptied ? 'produce-emptied' : 'produce', dBoard: e.emptied ? 0 : 1, dBox: 0,
+                   emptiedFrom: e.emptied ? e.from : null };
+        }
+        if (e.kind === 'energy' && e.html === undefined) return { tag: 'recharge-energy', dBoard: 0, dBox: 0 };
+        if (e.kind === 'prod' && e.emptied) return { tag: 'sweep-empty', dBoard: -1, dBox: 0, emptiedFrom: e.from };
         const html = typeof e.html === 'string' ? e.html : '';
-        if (html.indexOf('빨리 감기') >= 0) return 'fastforward';
-        if (html.indexOf('새 오더') >= 0) return 'refill-notice';
-        if (html.indexOf('납품') >= 0) return 'serve';
-        if (html.indexOf('보관함 →') >= 0) return 'reward-drop';
-        if (html.indexOf('수확') >= 0) return 'collect';
-        return e.kind; // chore / level / day / sell
+        if (e.kind === 'gem') {
+          const m = html.match(/cell(\\d+).*?[-−](\\d+)\\s*젬/); // '젬' 앞 숫자 = 결제 코스트
+          return { tag: 'gem-recharge', dBoard: 0, dBox: 0,
+                   gemCell: m ? Number(m[1]) : null, gemCost: m ? Number(m[2]) : null,
+                   gemCode: m ? codeAt(cellsBefore, Number(m[1])) : null };
+        }
+        if (html.indexOf('오더 대기') >= 0) return { tag: 'rail-idle-skip', dBoard: 0, dBox: 0 }; // '오더 대기'
+        if (html.indexOf('빨리 감기') >= 0) return { tag: 'fastforward', dBoard: 0, dBox: 0, html }; // '빨리 감기'
+        if (html.indexOf('새 오더') >= 0) return { tag: 'refill-notice', dBoard: 0, dBox: 0 }; // '새 오더'
+        if (html.indexOf('납품') >= 0) { // '납품'
+          const n = (html.match(/cell\\d+/g) || []).length;
+          return { tag: 'serve', dBoard: -n, dBox: 0 };
+        }
+        if (html.indexOf('보관함 →') >= 0) return { tag: 'reward-drop', dBoard: 1, dBox: -1 }; // '보관함 →'
+        if (html.indexOf('수확') >= 0) return { tag: 'collect', dBoard: -1, dBox: 0 }; // '수확'
+        if (e.kind === 'sell') return { tag: 'sell', dBoard: -1, dBox: 0 };
+        if (e.kind === 'chore' || e.kind === 'level' || e.kind === 'day') return { tag: e.kind, dBoard: 0, dBox: null };
+        return { tag: 'unknown:' + e.kind, dBoard: null, dBox: null, raw: e };
       };
       const MAX_STEPS = ${maxSteps};
       const milestones = { day: {}, level: {} };
       const fails = [];
       let prevLevel = A().level, prevDay = A().day;
       let steps = 0, stopReason = 'loop_limit';
+      let gemChecked = 0, gemMismatch = 0;
       for (let i = 1; i <= MAX_STEPS; i++) {
         let choreOk = null;
         try { choreOk = !!(RwEconRef && RwEconRef.choreCheck(A()).ok); } catch (e) { choreOk = null; }
-        const bBefore = boardCount(), xBefore = boxCount();
+        const cellsBefore = RWB.cells.slice();
+        const bBefore = boardCount(), xBefore = boxCount(), gBefore = A().gem;
         const logBefore = RWB.log.length;
         RWB.step();
         steps = i;
         const bAfter = boardCount(), xAfter = boxCount();
         const newEntries = RWB.log.slice(logBefore);
         if (!newEntries.length) { stopReason = 'no new log entry (engine stopped)'; steps = i - 1; break; }
-        const kinds = newEntries.map(classify);
-        const dropped = kinds.includes('reward-drop') ? 1 : 0;
+        const parts = newEntries.map((e) => classify(e, cellsBefore));
+        const tags = parts.map((p) => p.tag);
         const dBoard = bAfter - bBefore, dBox = xAfter - xBefore;
-        const tag = (msg) => fails.push('step ' + i + ': ' + msg + ' (kinds=' + JSON.stringify(kinds) + ' dBoard=' + dBoard + ' dBox=' + dBox + ')');
-        if (kinds.includes('merge')) {
-          if (dBoard - dropped !== -1) tag('merge expected boardDelta-drop=-1');
-          if (dBox + dropped !== 0) tag('merge expected boxDelta+drop=0');
-        } else if (kinds.includes('produce')) {
-          if (dBoard - dropped !== 1) tag('produce expected boardDelta-drop=1');
-          if (dBox + dropped !== 0) tag('produce expected boxDelta+drop=0');
-        } else if (kinds.includes('serve')) {
-          const d = dBoard - dropped;
-          if (d !== -1 && d !== -2) tag('serve expected boardDelta-drop in {-1,-2}, got ' + d);
-          if (dBox + dropped !== 0) tag('serve expected boxDelta+drop=0');
-        } else if (kinds.includes('collect')) {
-          if (dBoard - dropped !== -1) tag('collect expected boardDelta-drop=-1');
-          if (dBox + dropped !== 0) tag('collect expected boxDelta+drop=0');
-        } else if (kinds.includes('sell')) {
-          if (dBoard - dropped !== -1) tag('sell expected boardDelta-drop=-1');
-          if (dBox + dropped !== 0) tag('sell expected boxDelta+drop=0');
-        } else if (kinds.includes('chore') || kinds.includes('level') || kinds.includes('day')) {
-          if (dBoard - dropped !== 0) tag('chore/level/day must not move board beyond the reward-drop');
-        } else if (kinds.length && kinds.every((k) => k === 'reward-drop' || k === 'refill-notice' || k === 'recharge')) {
-          if (kinds.includes('reward-drop')) { if (dBoard !== 1 || dBox !== -1) tag('reward-drop-only expected board+1/box-1'); }
-          else if (dBoard !== 0 || dBox !== 0) tag('refill-notice/recharge-only must not move board/box');
-        } else if (kinds.every((k) => k === 'fastforward' || k === 'refill-notice' || k === 'recharge')) {
-          if (dBoard !== 0 || dBox !== 0) tag('fastforward-only must not move board/box');
+        const tagFail = (msg) => fails.push('step ' + i + ': ' + msg + ' (tags=' + JSON.stringify(tags) + ' dBoard=' + dBoard + ' dBox=' + dBox + ')');
+        if (parts.some((p) => p.dBoard === null)) {
+          tagFail('unclassified log kind, cannot verify board delta: ' + JSON.stringify(parts.filter((p) => p.dBoard === null).map((p) => p.raw)));
+        } else {
+          const expectBoard = parts.reduce((a, p) => a + p.dBoard, 0);
+          if (dBoard !== expectBoard) tagFail('board delta mismatch: expected ' + expectBoard + ', got ' + dBoard);
+          const hasMint = parts.some((p) => p.dBox === null);
+          if (hasMint) {
+            const knownBox = parts.reduce((a, p) => a + (p.dBox || 0), 0);
+            if (dBox < knownBox) tagFail('box delta below known component (mint should only add): known=' + knownBox + ', got ' + dBox);
+          } else {
+            const expectBox = parts.reduce((a, p) => a + p.dBox, 0);
+            if (dBox !== expectBox) tagFail('box delta mismatch: expected ' + expectBox + ', got ' + dBox);
+          }
         }
-        if (A().coin < 0) tag('coin negative: ' + A().coin);
-        if (choreOk === true && !kinds.includes('chore')) tag('choreCheck was ok before step but no chore action happened (priority violation)');
+        // C1 — 산출·소진과 동시에 비운 칸은 그 수가 끝난 뒤 실제로 비어 있어야 한다.
+        parts.forEach((p) => {
+          if (p.emptiedFrom != null && RWB.cells[p.emptiedFrom] !== null)
+            tagFail('emptied cell ' + p.emptiedFrom + ' still occupied after the step (' + p.tag + ')');
+        });
+        // C2 — 젬 충전 코스트가 item_spec.spread_item_speedup_cost(없거나 0이면 1)와 맞는지.
+        parts.forEach((p) => {
+          if (p.tag !== 'gem-recharge') return;
+          gemChecked++;
+          const spec = p.gemCode != null && RwEconRef ? RwEconRef.spec(p.gemCode) : null;
+          const expectCost = spec && Number(spec.spread_item_speedup_cost) > 0 ? Number(spec.spread_item_speedup_cost) : 1;
+          if (p.gemCost == null || spec == null) { gemMismatch++; tagFail('gem-recharge: could not parse cell/cost or spec for code ' + p.gemCode); }
+          else if (p.gemCost !== expectCost) { gemMismatch++; tagFail('gem-recharge cost mismatch: code ' + p.gemCode + ' cell ' + p.gemCell + ' got ' + p.gemCost + ' expected ' + expectCost + ' (spread_item_speedup_cost)'); }
+        });
+        // C2 — 생성기 재고 회복 대기로 인한 빨리 감기는 더 이상 없어야 한다(오더 타이머만 남는다).
+        parts.forEach((p) => {
+          if (p.tag === 'fastforward' && p.html.indexOf('생성기 재고 회복') >= 0) // '생성기 재고 회복'
+            tagFail('fastforward caused by generator recharge (should be impossible after C2): ' + p.html);
+        });
+        // C3 — 젬은 음수 허용, 플래그하지 않는다. 코인만 음수 금지.
+        if (A().coin < 0) tagFail('coin negative: ' + A().coin);
+        if (choreOk === true && !tags.includes('chore')) tagFail('choreCheck was ok before step but no chore action happened (priority violation)');
         const cur = A();
         if (cur.day > prevDay && milestones.day[cur.day] === undefined) milestones.day[cur.day] = i;
         if (cur.level > prevLevel && milestones.level[cur.level] === undefined) milestones.level[cur.level] = i;
@@ -633,11 +667,12 @@ async function part2() {
         steps, stopReason, milestones,
         finalStats: { level: F.level, day: F.day, coin: F.coin, gem: F.gem, energy: RWB.energy,
                       stats: F.stats, boardCount: boardCount(), boxCount: boxCount(), logLen: RWB.log.length },
+        gemChecked, gemMismatch,
         fails: fails.slice(0, 30), failCount: fails.length,
       });
     })()`;
 
-    const report = JSON.parse(await cdp.evalExpr(runnerExpr));
+    report = JSON.parse(await cdp.evalExpr(runnerExpr));
     stepsRun = report.steps;
     stopReason = report.stopReason + (report.steps < maxSteps ? ` (stopped at step ${report.steps} of ${maxSteps})` : '');
     Object.assign(milestones, report.milestones);
@@ -659,6 +694,7 @@ async function part2() {
   console.log('  Day: ' + Object.entries(milestones.day || {}).map(([d, s]) => `D${d}@${s}`).join(' '));
   console.log('  Lv : ' + Object.entries(milestones.level || {}).map(([l, s]) => `Lv${l}@${s}`).join(' '));
   console.log('final stats: ' + JSON.stringify(finalStats));
+  if (report) console.log(`gem-recharge cost checks: ${report.gemChecked} checked, ${report.gemMismatch} mismatched`);
   if (invariantFails.length) {
     console.log(`invariant FAILS (${invariantFails.length}, showing up to 30):`);
     invariantFails.slice(0, 30).forEach((m) => console.log('  ' + m));

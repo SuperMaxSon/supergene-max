@@ -96,7 +96,8 @@
       coin: Number(C.nru_start_coin) || 0,
       gem: Number(C.nru_start_gem) || 0,
       day: 1, doneKeys: [], rewardBox: [],
-      stats: { merges: 0, energySpent: 0, orders: 0, chores: 0, recharges: 0, sells: 0, collects: 0 },
+      stats: { merges: 0, energySpent: 0, orders: 0, chores: 0, recharges: 0, sells: 0, collects: 0,
+               gemRecharges: 0, gemSpent: 0, chestsEmptied: 0 },
     };
   }
 

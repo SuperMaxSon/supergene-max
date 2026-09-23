@@ -72,6 +72,7 @@
     lastKey.acc = key;
 
     var pct = expNeed > 0 ? Math.max(0, Math.min(100, (exp / expNeed) * 100)) : 0;
+    var gemNeg = gem < 0;
 
     el.innerHTML =
       '<div class="rwb-akpi lvl">' +
@@ -83,8 +84,8 @@
         '<div class="rwb-akpi-n">' + fmt(coin) + "</div>" +
         '<div class="rwb-akpi-l">코인</div>' +
       "</div>" +
-      '<div class="rwb-akpi gem">' +
-        '<div class="rwb-akpi-n">' + fmt(gem) + "</div>" +
+      '<div class="rwb-akpi gem' + (gemNeg ? " neg" : "") + '">' +
+        '<div class="rwb-akpi-n">' + fmt(gem) + (gemNeg ? ' <span class="rwb-akpi-negtag">부족</span>' : "") + "</div>" +
         '<div class="rwb-akpi-l">젬</div>' +
       "</div>" +
       '<div class="rwb-akpi day">' +
@@ -97,7 +98,7 @@
       "</div>";
   }
 
-  // ---- 2) 누적 통계: 병합 · 에너지 소모 · 오더 클리어 · 심부름 클리어 · 충전 · 판매 · 수집 ----
+  // ---- 2) 누적 통계: 병합 · 에너지 소모 · 오더 클리어 · 심부름 클리어 · 충전 · 판매 · 수집 · 젬 충전/소모 · 소진 상자 ----
   function renderStatsRow(snap, el) {
     var st = snap.stats || {};
     var merges = st.merges || 0;
@@ -108,8 +109,12 @@
     var recharges = st.recharges || 0;
     var sells = st.sells || 0;
     var collects = st.collects || 0;
+    var gemRecharges = st.gemRecharges || 0;
+    var gemSpent = st.gemSpent || 0;
+    var chestsEmptied = st.chestsEmptied || 0;
 
-    var key = [merges, energySpent, orders, chores, choreTotal, recharges, sells, collects].join("|");
+    var key = [merges, energySpent, orders, chores, choreTotal, recharges, sells, collects,
+               gemRecharges, gemSpent, chestsEmptied].join("|");
     if (lastKey.stats === key) return;
     lastKey.stats = key;
 
@@ -120,7 +125,10 @@
       "<span>심부름 클리어 <b>" + fmt(chores) + "/" + fmt(choreTotal) + "</b></span>" +
       "<span>에너지 충전 횟수 <b>" + fmt(recharges) + "</b></span>" +
       "<span>판매 <b>" + fmt(sells) + "</b></span>" +
-      "<span>수집 <b>" + fmt(collects) + "</b></span>";
+      "<span>수집 <b>" + fmt(collects) + "</b></span>" +
+      "<span>젬 충전 횟수 <b>" + fmt(gemRecharges) + "</b></span>" +
+      "<span>젬 소모 <b>" + fmt(gemSpent) + "</b></span>" +
+      "<span>소진 상자 <b>" + fmt(chestsEmptied) + "</b></span>";
   }
 
   // ---- 3) 심부름 카드 ----
