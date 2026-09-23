@@ -528,7 +528,8 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
     });
   }
-  function codeTag(code) { return "<code>" + code + "</code> " + esc(nameOf(code)); }
+  function lvOfCode(code) { var s = spec(code); return s && s.step ? s.step : 0; }
+  function codeTag(code) { return "<code>" + code + "</code> " + esc(nameOf(code)) + " <b>Lv" + lvOfCode(code) + "</b>"; }
   var KIND_KO = { exp: "경험치", coin: "코인", gem: "젬", energy: "에너지" };
   function fmtGrants(list) {
     if (!list || !list.length) return '<span class="rwb-dim">없음</span>';
@@ -771,7 +772,7 @@
       var src = c ? imgOf(c.code) : "";
       el.innerHTML = '<span class="bc-c">' + i + "</span>"
         + (c ? (src ? '<img src="' + src + '" alt="" loading="lazy" draggable="false" />' : "")
-             + '<span class="bc-code">' + c.code + "</span>"
+             + '<span class="bc-code">Lv ' + (s.step || 0) + ' · ' + c.code + "</span>"
              + '<span class="bc-nm">' + (s.name || nameOf(c.code)) + "</span>" + badge
            : "");
     }
@@ -808,7 +809,7 @@
         }
         return { slot: s.slot, type: s.type, locked: !RwEcon.slotOpen(ACC, s), unlockLevel: s.unlockLevel, card: card };
       }),
-      img: imgOf, name: nameOf,
+      img: imgOf, name: nameOf, lv: lvOfCode,
     };
   }
 

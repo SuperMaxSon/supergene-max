@@ -53,6 +53,15 @@
     return n || code;
   }
 
+  function safeLv(snap, code) {
+    try { return snap && typeof snap.lv === "function" ? (snap.lv(code) || 0) : 0; } catch (e) { return 0; }
+  }
+  function nameLv(snap, code) {
+    var lv = safeLv(snap, code);
+    return '<span class="rwb-nmlv"><span class="rwb-nmlv-n">' + esc(safeName(snap, code)) + "</span>" +
+      (lv ? '<span class="rwb-nmlv-l">Lv' + lv + "</span>" : "") + "</span>";
+  }
+
   function iconTag(snap, code, cls) {
     var src = safeImg(snap, code);
     var nm = esc(safeName(snap, code));
@@ -175,7 +184,7 @@
       var rewards = chore.rewards || [];
       var chipsHtml = rewards.map(function (r) {
         if (r.kind === "item") {
-          return '<span class="rwb-chip">' + iconTag(snap, r.code) + "×" + fmt(r.amount) + "</span>";
+          return '<span class="rwb-chip">' + iconTag(snap, r.code) + nameLv(snap, r.code) + " ×" + fmt(r.amount) + "</span>";
         }
         var label = REWARD_LABEL[r.kind] || r.kind;
         return '<span class="rwb-chip">' + esc(label) + " +" + fmt(r.amount) + "</span>";
@@ -227,7 +236,7 @@
     var items = shown.map(function (code, i) {
       var isNext = i === 0;
       return '<div class="rwb-rewardbox-item' + (isNext ? " next" : "") + '">' +
-        '<div class="rwb-rewardbox-icon">' + iconTag(snap, code) + "</div>" +
+        '<div class="rwb-rewardbox-icon">' + iconTag(snap, code) + "</div>" + nameLv(snap, code) +
         (isNext ? '<span class="rwb-rewardbox-tag">다음</span>' : "") +
       "</div>";
     }).join("");
@@ -278,9 +287,9 @@
       var have = card.have || [];
       var reqHtml = req.map(function (code, i) {
         var ok = !!have[i];
-        return '<div class="rwb-railcard-req">' + iconTag(snap, code) +
+        return '<div class="rwb-railcard-reqwrap"><div class="rwb-railcard-req">' + iconTag(snap, code) +
           '<span class="rwb-mark ' + (ok ? "ok" : "x") + '">' + (ok ? "✓" : "×") + "</span>" +
-        "</div>";
+        "</div>" + nameLv(snap, code) + "</div>";
       }).join("");
 
       return '<div class="rwb-railcard">' +
