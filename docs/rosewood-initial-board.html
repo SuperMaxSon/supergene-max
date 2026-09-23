@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>로즈우드 초기 보드</title>
+    <title>로즈우드 자동 플레이</title>
     <meta
       name="description"
       content="initial_board 63칸을 실제 더미 아이템으로 깔고, 클라 판정 그대로 머지를 자동 재생해 보는 판."
@@ -119,6 +119,124 @@
       .rwb-pop { color: #b45309; font-weight: 700; }
       .rwb-dim { color: var(--text-faint); }
       .rwb-empty { margin: 0; padding: 14px 12px; font-size: 12px; color: var(--text-faint); }
+
+      /* ---- 계정 진행 KPI (레벨·코인·젬·Day·보상함) ---- */
+      .rwb-acckpis { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+      .rwb-akpi {
+        min-width: 108px; flex: 1 1 108px; padding: 8px 14px 9px;
+        border: 1px solid var(--border); border-left: 4px solid var(--tool);
+        border-radius: var(--radius); background: var(--surface);
+      }
+      .rwb-akpi.coin { border-left-color: #b45309; }
+      .rwb-akpi.gem { border-left-color: #9d4fc0; }
+      .rwb-akpi.day { border-left-color: var(--ok); }
+      .rwb-akpi.rwd { border-left-color: var(--text-faint); }
+      .rwb-akpi-n {
+        font: 800 22px/1.1 system-ui, sans-serif; letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums; color: var(--text);
+      }
+      .rwb-akpi-l { margin-top: 3px; font: 700 11px/1 system-ui, sans-serif; color: var(--text-dim); }
+      .rwb-akpi-s { margin-left: 3px; font-weight: 700; color: var(--text-faint); }
+      .rwb-expbar { margin-top: 6px; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+      .rwb-expbar-fill { height: 100%; background: var(--tool); border-radius: 3px; }
+
+      /* ---- 누적 통계 (병합·에너지 소모·오더·심부름·충전·판매) ---- */
+      .rwb-statrow { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11.5px; color: var(--text-dim); }
+      .rwb-statrow span { display: inline-flex; align-items: baseline; gap: 4px; }
+      .rwb-statrow b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+      /* ---- 심부름 카드 ---- */
+      .rwb-chore {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        margin-bottom: 10px; padding: 9px 13px;
+        border: 1px solid var(--border); border-left: 4px solid var(--tool);
+        border-radius: var(--radius); background: var(--surface);
+      }
+      .rwb-chore.blocked { border-left-color: var(--text-faint); }
+      .rwb-chore-key { font: 800 11px/1 system-ui, sans-serif; color: var(--text-faint); }
+      .rwb-chore-name { font: 700 13px/1.2 system-ui, sans-serif; color: var(--text); }
+      .rwb-chore-cost { font-size: 12px; color: var(--text-dim); }
+      .rwb-chore-cost b { color: #b45309; font-variant-numeric: tabular-nums; }
+      .rwb-chore-state { margin-left: auto; font: 700 11.5px/1 system-ui, sans-serif; padding: 4px 9px; border-radius: 999px; }
+      .rwb-chore-state.ok { background: #eef6ef; color: #2f6b45; }
+      .rwb-chore-state.blocked { background: var(--surface-2); color: var(--text-dim); }
+      .rwb-chore-rewards { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
+      .rwb-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 8px; border-radius: 999px; background: var(--surface-2);
+        font: 700 11px/1.4 system-ui, sans-serif; color: var(--text-dim);
+      }
+      .rwb-chip img { width: 15px; height: 15px; object-fit: contain; }
+      .rwb-empty2 { padding: 9px 13px; font-size: 12px; color: var(--text-faint);
+                    border: 1px dashed var(--border); border-radius: var(--radius); margin-bottom: 10px; }
+
+      /* ---- 보상 보관함 띠 ---- */
+      .rwb-rewardbox { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+                        margin-bottom: 10px; padding: 8px 10px;
+                        border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+      .rwb-rewardbox-l { font: 700 11px/1 system-ui, sans-serif; color: var(--text-faint); margin-right: 4px; }
+      .rwb-rewardbox-l b { color: var(--text); font-variant-numeric: tabular-nums; }
+      .rwb-rewardbox-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .rwb-rewardbox-icon {
+        position: relative; width: 30px; height: 30px; display: grid; place-items: center; overflow: hidden;
+        border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+      }
+      .rwb-rewardbox-icon img { width: 78%; height: 78%; object-fit: contain; }
+      .rwb-rewardbox-icon span {
+        font: 700 8px/1 system-ui, sans-serif; color: var(--text-faint); max-width: 100%;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px;
+      }
+      .rwb-rewardbox-item.next .rwb-rewardbox-icon { border-color: var(--tool); box-shadow: inset 0 0 0 1px var(--tool); }
+      .rwb-rewardbox-tag { font: 800 8px/1 system-ui, sans-serif; color: var(--tool); }
+      .rwb-rewardbox-more {
+        width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--radius-sm);
+        font: 800 10px/1 system-ui, sans-serif; color: var(--text-dim); background: var(--surface-3);
+      }
+      .rwb-rewardbox-empty { font-size: 12px; color: var(--text-faint); }
+
+      /* ---- 오더 레일 (6칸) ---- */
+      .rwb-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 10px; }
+      .rwb-railcard {
+        position: relative; padding: 17px 10px 8px; border: 1px solid var(--border); border-radius: var(--radius);
+        background: var(--surface); min-height: 62px; display: flex; flex-direction: column; gap: 5px; justify-content: center;
+      }
+      .rwb-railcard.locked { background: var(--surface-2); color: var(--text-faint); align-items: center; justify-content: center; text-align: center; }
+      .rwb-railcard-lock { font: 700 12px/1.3 system-ui, sans-serif; color: var(--text-faint); }
+      .rwb-railcard-slot { position: absolute; top: 4px; left: 6px; font: 800 9px/1 system-ui, sans-serif; color: var(--text-faint); }
+      .rwb-railcard-type {
+        position: absolute; top: 4px; left: 18px; right: 30px;
+        font: 700 8px/1 system-ui, sans-serif; color: var(--text-faint);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .rwb-railcard-reqs { display: flex; gap: 6px; }
+      .rwb-railcard-req { position: relative; width: 36px; height: 36px; }
+      .rwb-railcard-req img { width: 100%; height: 100%; object-fit: contain; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); }
+      .rwb-railcard-req > span:not(.rwb-mark) {
+        display: grid; place-items: center; width: 100%; height: 100%;
+        border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2);
+        font: 700 8px/1 system-ui, sans-serif; color: var(--text-faint); overflow: hidden;
+      }
+      .rwb-mark { position: absolute; right: -4px; bottom: -4px; width: 13px; height: 13px; border-radius: 50%;
+                  display: grid; place-items: center; font: 800 9px/1 system-ui, sans-serif; color: #fff; }
+      .rwb-mark.ok { background: var(--ok); }
+      .rwb-mark.x { background: var(--bad); }
+      .rwb-railcard-coin { font: 800 12px/1 system-ui, sans-serif; color: #b45309; font-variant-numeric: tabular-nums; }
+      .rwb-tag-fixed { position: absolute; top: 4px; right: 6px; font: 800 9px/1 system-ui, sans-serif;
+                       color: #7a5a1e; background: #f7f2e8; border-radius: 4px; padding: 1px 4px; }
+
+      .rwb-note { margin: 2px 0 12px; font-size: 11px; color: var(--text-faint); }
+
+      /* ---- 로그 종류 칩 (저채도 구분색) ---- */
+      .rwb-k { display: inline-block; padding: 1px 6px; border-radius: 999px; font: 800 10px/1.5 system-ui, sans-serif; margin-right: 6px; }
+      .rwb-k.k-chore  { background: #eef2f6; color: #35506b; }
+      .rwb-k.k-order  { background: #f5eef2; color: #6b3554; }
+      .rwb-k.k-level  { background: #f7f2e8; color: #7a5a1e; }
+      .rwb-k.k-reward { background: #eef6ef; color: #2f6b45; }
+      .rwb-k.k-sell   { background: #f6f0ea; color: #7a4e2b; }
+      .rwb-k.k-energy { background: #fbf3e6; color: #b45309; }
+      .rwb-k.k-day    { background: #eef4f6; color: #256373; }
+      .rwb-k.k-merge  { background: #f0f0f5; color: #4a4a63; }
+      .rwb-k.k-prod   { background: #eef6f2; color: #1f6b52; }
     </style>
   </head>
   <body>
@@ -131,8 +249,8 @@
 
     <div class="wrap wrap--wide">
       <div class="rwb-head">
-        <h1>로즈우드 초기 보드</h1>
-        <span class="rwb-sub"><code>initial_board</code> 63칸 · 7×7이 아니라 7열 × 9행</span>
+        <h1>로즈우드 자동 플레이</h1>
+        <span class="rwb-sub"><b>개발 기획서 v1.11 · 시트 2026-09-21 export</b> · <code>initial_board</code> 63칸 · 7열 × 9행</span>
       </div>
 
       <div class="rwb-bar">
@@ -141,6 +259,10 @@
         <button type="button" class="rwb-btn" id="rwbSpeed">⏩ 1배속</button>
         <button type="button" class="rwb-btn" id="rwbReset">↺ 보드 초기화</button>
       </div>
+
+      <div class="rwb-acckpis" id="rwbAccKpis"></div>
+
+      <div class="rwb-statrow" id="rwbStatsRow"></div>
 
       <div class="rwb-kpis">
         <div class="rwb-kpi">
@@ -159,6 +281,12 @@
         </div>
       </div>
 
+      <div id="rwbChoreCard"></div>
+
+      <div id="rwbRewardBox"></div>
+
+      <div class="rwb-rail" id="rwbRail"></div>
+
       <p class="rwb-status" id="rwbStatus"></p>
 
       <div class="bgrid" id="rwbBoard"></div>
@@ -170,9 +298,14 @@
         <span>⚡ 생성기 재고 · ⏱ 자동 산출(탭 불가)</span>
       </div>
 
+      <p class="rwb-note">클라와 다른 점: 레벨업 보상 지급 · 하루 끝나면 자동 다음 날 · 오더 추첨은 허브 엔진(생성기 체인 해금 거름)</p>
+
       <div class="rwb-log" id="rwbLog"></div>
     </div>
 
-    <script src="js/rosewood-board.js?v=6"></script>
+    <script src="js/rosewood-order-engine.js?v=16"></script>
+    <script src="js/rosewood-econ.js?v=1"></script>
+    <script src="js/rosewood-autoplay-view.js?v=1"></script>
+    <script src="js/rosewood-board.js?v=7"></script>
   </body>
 </html>
