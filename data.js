@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-23 09:40",
+  updated: "2026-09-23 14:53",
 };
 
 /* --------------------------------------------------------------------------
@@ -241,7 +241,7 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "역기획 구현 범위",
+        title: "투머지 게임 문서",
         desc: "목표는 Gossip Harbor 급. 레퍼런스 위키를 정본으로 시스템 20종을 세우고, 붙이기 전에 형태를 확정해야 하는 게이트 6개와 L0 보드 · L1 재화 · L2 진행까지 층을 갈랐습니다.",
         url: "docs/story-merge-kickoff-slim.html",
         project: "smg",
