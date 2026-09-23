@@ -23,6 +23,8 @@
      [2.5] 수확 — 짝이 없거나 빈 칸이 1개 이하인 재화 아이템(코인·젬·에너지)
      [3] 머지(D6 요구품 보호) → 생성기 탭(D8 에너지 모자라면 충전 +100 · C2 재고 0이면 젬 충전)
      [4] 보드가 꽉 찼으면 판매 1건(D4). 막힌 게 오더 예산 타이머뿐이면 시계를 감는다.
+   부록 D: 16배속 · 옵션 4개(window.RWB_OPTS — 매 수 새로 읽는다) · 상자 개봉(BoxRules.ts 이식).
+   부록 E: [3] 안 순서 = 머지 → 개봉 시작 → 상자 꺼내기 → 생성기 탭 · 코인·젬은 최대 단계에서만 수확.
    부록 C: C1 소모형 상자는 마지막 산출과 함께 칸을 비운다(클라는 안 지운다) ·
            C2 재고 회복을 기다리지 않고 젬(spread_item_speedup_cost)으로 채운다 · C3 젬은 음수 허용.
    후보를 인덱스 오름차순으로 고르면 같은 보드에서 늘 같은 순서가 나온다.
@@ -34,7 +36,7 @@
   var COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
   var STEP_MS = 420;                               // 한 수와 다음 수 사이 (1배속 기준)
   var FLY_MS = 240;                                // 칩이 날아가는 시간 (1배속 기준)
-  var SPEEDS = [1, 2, 4, 8];
+  var SPEEDS = [1, 2, 4, 8, 16];                   // D-1
   var SPEED = 1;                                   // 간격·연출을 **같은 배수**로 줄인다.
                                                    // 한쪽만 줄이면 8배속에서 칩이 도착하기 전에 다음 수가 들어온다.
   function stepMs() { return Math.max(24, STEP_MS / SPEED); }
@@ -57,6 +59,16 @@
   var STEP_N = 0;                                  // step() 호출 번호
   var LAST_PROD = null;                            // { code, n } — 직전 수에 뽑은 코드(판매 헛돌기 방지)
   var INSTANT = false;                             // 검증용 — 연출(날기·깜빡임)을 건너뛴다
+  var OPENING = null;                              // { cell, code, endAt } — 지금 열리는 상자(보드에 하나뿐)
+  var OPENED = null;                               // Set(칸) — 개봉이 끝난 상자 칸
+
+  /* D-2 옵션 — W3 가 window.RWB_OPTS 를 늘 최신값으로 둔다. 규칙이 갈리는 자리마다 새로 읽는다. */
+  var OPT_DEFAULT = { energyRefill: true, gemUnlimited: true, genNoCooldown: false, chestNoTimer: false };
+  function opts() {
+    var o = window.RWB_OPTS || OPT_DEFAULT, out = {};
+    for (var k in OPT_DEFAULT) out[k] = o[k] === undefined ? OPT_DEFAULT[k] : !!o[k];
+    return out;
+  }
   var $ = function (s, r) { return (r || document).querySelector(s); };
 
   /* 회복은 **게임 시각**으로 잰다. 배속을 올리면 연출만 빨라지고 재고·에너지 회복은
@@ -106,7 +118,11 @@
     var t = S[to];
     // 덮개 칸은 대상이 될 수 없다. 거미줄 칸은 대상이 된다 — 여기가 규칙의 핵심이다.
     if (t && t.box) return { ok: false, reason: "not_same_pair" };
-    return mergeCheck(S[from], t);
+    var r = mergeCheck(S[from], t);
+    // IngameVM.ts:605-609 — 개봉 중인 상자는 합칠 수 없다(이동은 된다)
+    if (r.ok && r.kind === "merge" && OPENING && (OPENING.cell === from || OPENING.cell === to))
+      return { ok: false, reason: "not_same_pair" };
+    return r;
   }
 
   /* 4방향 인접 충격. 반응하는 건 종이상자뿐이고, 드러난 칸이 움직일 수 있으면 연쇄한다.
@@ -199,6 +215,8 @@
   function dropCellState(i) {
     PROD.delete(i);
     BAGS.delete("c" + i);
+    OPENED.delete(i);                              // 개봉 상태도 칸에 붙는다 — 새 개체는 닫힌 상자다
+    if (OPENING && OPENING.cell === i) OPENING = null;   // IngameVM.ts:2449 clearOpeningAt
   }
 
   function applyMerge(from, to) {
@@ -271,22 +289,40 @@
   }
   function bagTotal(remain) { return remain.reduce(function (a, b) { return a + b; }, 0); }
 
+  /* BoxRules.ts:55-58 isOpenableBox — 산출이 있고 spread_open_duration_sec > 0 인 상자. */
+  function openDurOf(code) {
+    var r = RwEcon.spec(code);
+    return r && Number(r.spread_open_duration_sec) > 0 ? Number(r.spread_open_duration_sec) : 0;
+  }
+  function isOpenable(code) { return !!(spec(code) || {}).p && openDurOf(code) > 0; }
+
+  /* D-2 genNoCooldown — 회복이 있는 생성기(rec > 0)는 재고가 0 이 되는 즉시 상한까지 찬다.
+     rec = 0(회복 없음 = 소진)에는 걸지 않는다. */
+  function noCooldownFill(st, p) {
+    if (opts().genNoCooldown && p.rec > 0 && st.stock <= 0) { st.stock = p.max; st.lastAt = now(); }
+  }
+
   /* 탭 가능 여부 — 재고 → 빈칸 → 에너지 → 산출 순서(정본). 어느 단계에서 막히든 아무것도 깎지 않는다.
-     에너지는 D8 로 막지 않는다 — 모자라면 탭하는 순간 충전한다(applyProduce). */
+     에너지는 energyRefill 이 켜져 있으면 막지 않는다(D8 — 탭하는 순간 충전). 꺼져 있으면 모자랄 때 막힌다.
+     개봉 대기 상자는 개봉이 끝나야 꺼낼 수 있다(BoxRules — 개봉 시작이 먼저). */
   function produceCheckAt(i) {
     var c = S[i];
     if (!c || c.box || c.web) return { ok: false, reason: "no_produce" };
     var p = (spec(c.code) || {}).p;
     if (!p) return { ok: false, reason: "no_produce" };
     if (p.auto) return { ok: false, reason: "auto_only" };   // 자동 산출은 탭을 받지 않는다
+    if (isOpenable(c.code) && !OPENED.has(i))
+      return { ok: false, reason: OPENING && OPENING.cell === i ? "opening" : "not_opened" };
     var st = prodAt(i, p);
     recharge(st, p);
+    noCooldownFill(st, p);
     // ProduceRules.ts:134 · 317 isExhausted — 회복이 없는데 재고가 0 이거나, 소모형 주머니가 비었으면 끝이다
     if ((st.stock <= 0 && p.rec <= 0) || (p.wt === 2 && bagTotal(bagOf(i, c.code, p)) <= 0))
       return { ok: false, reason: "exhausted" };
     if (st.stock <= 0) return { ok: false, reason: "recharging", wait: Math.max(0, p.rec - (now() - st.lastAt)) };
     var dest = firstEmpty();
     if (dest < 0) return { ok: false, reason: "board_full" };
+    if (!opts().energyRefill && ENERGY < p.cost) return { ok: false, reason: "energy_short", wait: energyWait(), need: p.cost };
     return { ok: true, dest: dest, p: p, st: st };
   }
 
@@ -319,22 +355,33 @@
      시연 정책: 재고 있는 생성기가 젬 충전보다 먼저고, 같은 쪽 안에서는
      ① 레일이 모자란 코드의 체인을 낳는 것 ② 거미줄 칸 아이템 체인을 낳는 것 ③ 인덱스 오름차순
      (판정은 produceCheckAt 그대로). */
-  function findProduce() {
+  function gemCostOf(code) {
+    var row = RwEcon.spec(code) || {};
+    return Number(row.spread_item_speedup_cost) > 0 ? Number(row.spread_item_speedup_cost) : 1;
+  }
+
+  /* E1 — kind "chest": 생성기가 아닌 산출 상자(열렸거나 개봉이 필요 없는 것)만 · "gen": 생성기만. */
+  function findProduce(kind) {
     rechargeEnergy();
+    var o = opts();
     var why = null, dest = firstEmpty(), chains = webChains(), rail = shortChains();
     var pick = [null, null, null, null, null, null];   // 재고 있음(오더·거미줄·그 밖) → 젬 충전(오더·거미줄·그 밖)
     function rank(p) { return feedsWeb(p, rail) ? 0 : feedsWeb(p, chains) ? 1 : 2; }
     for (var i = 0; i < CELLS; i++) {
+      if (!S[i]) continue;
+      var isGen = !!(spec(S[i].code) || {}).gen;
+      if (kind && (kind === "gen") !== isGen) continue;
       var r = produceCheckAt(i);
       if (r.ok) {
         var k = rank(r.p);
         if (!pick[k]) pick[k] = { index: i, check: r };
         continue;
       }
-      if (r.reason === "no_produce" || r.reason === "auto_only" || r.reason === "exhausted") continue;
+      if (r.reason === "no_produce" || r.reason === "auto_only" || r.reason === "exhausted"
+          || r.reason === "not_opened" || r.reason === "opening") continue;
       /* C2 — 재고 0 · 회복 대기면 젬으로 채우고 누를 수 있다. 재고가 있는 생성기가 우선이고,
          그다음 같은 거미줄 선호. 빈 칸이 없으면 채워 봐야 못 누르니 후보가 아니다. */
-      if (r.reason === "recharging" && dest >= 0) {
+      if (r.reason === "recharging" && dest >= 0 && (o.gemUnlimited || ACC.gem >= gemCostOf(S[i].code))) {
         var p = spec(S[i].code).p, kg = 3 + rank(p);
         if (!pick[kg]) pick[kg] = { index: i, gem: true, check: { ok: true, dest: dest, p: p, st: PROD.get(i) } };
       }
@@ -345,10 +392,10 @@
     return { index: -1, why: why };
   }
 
-  /* C2 — 젬 충전. 비용 = item_spec.spread_item_speedup_cost(없거나 0이면 1). C3 — 모자라도 막지 않는다. */
+  /* C2 — 젬 충전. 비용 = item_spec.spread_item_speedup_cost(없거나 0이면 1).
+     C3 — gemUnlimited 가 켜져 있으면 모자라도 막지 않는다(음수). 꺼져 있으면 findProduce 가 후보에서 뺀다. */
   function gemRecharge(i, check) {
-    var row = RwEcon.spec(S[i].code) || {};
-    var cost = Number(row.spread_item_speedup_cost) > 0 ? Number(row.spread_item_speedup_cost) : 1;
+    var cost = gemCostOf(S[i].code);
     ACC.gem -= cost;
     check.st.stock = check.p.max;
     check.st.lastAt = now();
@@ -413,13 +460,13 @@
 
   /* 기다리면 풀리는 사유. 보드가 가득하거나 생성기가 없는 것과 달리 시간이 해결한다.
      에너지는 D8 로 기다리지 않으므로 재고 회복만 남는다. */
-  function isWait(r) { return r && r.reason === "recharging"; }
+  function isWait(r) { return r && (r.reason === "recharging" || r.reason === "energy_short"); }
 
   function applyProduce(i, check) {
     var draw = drawFromBag(i, S[i].code, check.p);
     if (!draw) return null;
     var cost = check.p.cost;
-    if (ENERGY - cost < 0) {                       // D8 — 기다리지 않고 충전한 뒤 그 탭을 진행한다
+    if (ENERGY - cost < 0 && opts().energyRefill) {   // D8 — 기다리지 않고 충전한 뒤 그 탭을 진행한다
       ACC.stats.recharges++;
       ENERGY += RECHARGE_AMOUNT;
       LOG.push({ kind: "energy", amount: RECHARGE_AMOUNT, energy: ENERGY, n: ACC.stats.recharges });
@@ -429,6 +476,7 @@
     ACC.stats.energySpent += cost;
     check.st.stock -= 1;
     check.st.lastAt = now();
+    noCooldownFill(check.st, check.p);
     S[check.dest] = { code: draw.code, box: false, web: false };
     LAST_PROD = { code: draw.code, n: STEP_N };
     var entry = { kind: "prod", from: i, to: check.dest, code: draw.code, cost: cost,
@@ -528,6 +576,10 @@
        짝이 없거나(합칠 게 없으면 들고 있을 이유가 없다) · 빈 칸이 1개 이하(자리가 급하다).
      짝이 있으면 [3] 이 먼저 합친다 — 합친 뒤 수확하는 쪽이 보상이 크다(2701 ×2 = 4 < 2702 = 6).
      레일 요구품이면 건드리지 않는다(재화 아이템은 order_item 에 없어 실제로는 걸리지 않는다). */
+  /* E2 — 코인(currency_coin)·젬(currency_gem) 아이템은 체인 마지막 단계(next == 0)에서만 수확한다.
+     그 전에는 머지 대상으로만 둔다. 에너지는 종전 규칙(짝 없음 또는 빈 칸 ≤ 1). */
+  function isMaxOnly(c) { return c.key === "currency_coin" || c.key === "currency_gem"; }
+
   function findCollect() {
     var counts = boardCounts(), need = railNeed(), free = 0;
     for (var k = 0; k < CELLS; k++) if (!S[k]) free++;
@@ -535,9 +587,27 @@
       if (!canPick(i)) continue;
       var code = S[i].code, c = RwEcon.collectOf(code);
       if (!c || need.has(code)) continue;
+      if (isMaxOnly(c)) {
+        if (!(spec(code) || {}).next) return { index: i, code: code, reward: c, max: true };
+        continue;
+      }
       if (free <= 1 || !hasPartner(i, counts)) return { index: i, code: code, reward: c };
     }
     return null;
+  }
+
+  /* E2 막힘 해소 — 보드가 꽉 차 머지·개봉·꺼내기·탭이 다 막혔으면, 판매보다 먼저
+     가장 높은 단계의 코인·젬 하나를 수확한다(낮은 코인이 짝 없이 칸을 영원히 차지하지 않게). */
+  function findUnjamCollect() {
+    var need = railNeed(), best = null;
+    for (var i = 0; i < CELLS; i++) {
+      if (!canPick(i)) continue;
+      var code = S[i].code, c = RwEcon.collectOf(code);
+      if (!c || !isMaxOnly(c) || need.has(code)) continue;
+      var st = (spec(code) || {}).step || 0;
+      if (!best || st > best.step) best = { index: i, code: code, reward: c, step: st, unjam: true };
+    }
+    return best;
   }
 
   /* [4] D4 — 오더 요구가 아니고 생성기·산출 상자·희귀·판매 금지(-1)가 아닌 것 중 판매가가 가장 낮은 것.
@@ -563,13 +633,52 @@
     return best;
   }
 
-  /* 막힌 게 기다림뿐이면 얼마나 감을지 — 빈 오더 칸의 예산 타이머. */
-  /* C2 이후 재고 회복은 젬으로 풀리므로 시계를 감는 건 오더 추첨 타이머 대기뿐이다. */
-  function waitPlan() {
+  /* ── 상자 개봉 (BoxRules.ts · IngameVM.ts:940-1000) ─────────────────── */
+  /* 개봉이 끝났으면 점유를 풀고 그 칸을 열린 상자로 둔다(finishBoxOpen). */
+  function tickOpening() {
+    if (!OPENING || now() < OPENING.endAt) return false;
+    OPENED.add(OPENING.cell);
+    logPush("prod", "cell" + OPENING.cell + " " + codeTag(OPENING.code) + " 상자 개봉 완료");
+    OPENING = null;
+    return true;
+  }
+
+  /* BoxRules.ts:84-102 boxOpenCheck — 잠김 → 자기 자신 → 점유(Busy) 순서. 개봉 안 된 첫 상자. */
+  function findOpen() {
+    if (OPENING) return null;                      // Busy — 동시에 하나만
+    for (var i = 0; i < CELLS; i++) {
+      if (!canPick(i)) continue;                   // 덮개·거미줄은 개봉도 막는다(IngameVM.ts:951)
+      if (!isOpenable(S[i].code) || OPENED.has(i)) continue;
+      return i;
+    }
+    return null;
+  }
+
+  /* 막힌 게 기다림뿐이면 얼마나 감을지 — D-3 사유 넷 중 가장 이른 것.
+     오더 타이머 · 에너지 회복(energyRefill 꺼짐) · 생성기 회복(젬 부족 · gemUnlimited 꺼짐) · 상자 개봉. */
+  function waitPlan(boardFull) {
     var t = now(), best = null;
+    function cand(sec, kind, what) { if (sec > 0 && (!best || sec < best.sec)) best = { sec: sec, kind: kind, what: what }; }
     var at = RwEcon.railNextAt(ACC, RAIL);
-    if (at > 0 && (!best || at - t < best.sec)) best = { sec: Math.max(0, at - t), kind: "order", what: "오더 예산 대기" };
+    if (at > 0) cand(at - t, "order", "오더 대기");
+    if (OPENING) cand(OPENING.endAt - t, "prod", "상자 개봉");
+    if (!boardFull) {
+      for (var i = 0; i < CELLS; i++) {
+        if (!S[i]) continue;
+        var r = produceCheckAt(i);
+        if (r.reason === "recharging") cand(r.wait, "prod", "생성기 회복");
+        else if (r.reason === "energy_short")
+          cand(energyWait() + Math.max(0, r.need - ENERGY - 1) * ENERGY_REC, "energy", "에너지 회복");
+      }
+    }
     return best;
+  }
+
+  /* 시계를 감는다 — 로그 html 「시간 경과 · 사유 · +Ns」, stats.waitSec 에 더한다. */
+  function skipTime(sec, kind, what) {
+    CLOCK.t += sec;
+    ACC.stats.waitSec = (ACC.stats.waitSec || 0) + sec;
+    logPush(kind, "시간 경과 · " + what + " · +" + sec + "s");
   }
 
   /* 열린 칸이 전부 비어 있고 오더 추첨 타이머가 걸려 있으면 그 시각까지 시계를 감는다.
@@ -579,9 +688,7 @@
     for (var k = 0; k < RAIL.length; k++) if (RAIL[k].card && RwEcon.slotOpen(ACC, RAIL[k])) return false;
     var t = now(), at = RwEcon.railNextAt(ACC, RAIL);
     if (!(at > t)) return false;
-    var sec = Math.ceil(at - t);
-    CLOCK.t += sec;
-    logPush("order", "오더 대기 → +" + sec + "s 경과");
+    skipTime(Math.ceil(at - t), "order", "오더 대기");
     refill("예산 회복");
     return true;
   }
@@ -622,7 +729,11 @@
       el.title = titleOf(i, c);
       var s = c ? (spec(c.code) || {}) : null;
       var badge = "";
-      if (c && s.p && !s.p.auto) {
+      if (c && OPENING && OPENING.cell === i) {
+        badge = '<span class="bc-gen" title="개봉 중">⏳' + Math.ceil(Math.max(0, OPENING.endAt - now())) + "</span>";
+      } else if (c && s.p && isOpenable(c.code) && !OPENED.has(i)) {
+        badge = '<span class="bc-gen" title="개봉 전 상자">📦</span>';
+      } else if (c && s.p && !s.p.auto) {
         var st = PROD.get(i);
         badge = '<span class="bc-gen" title="생성기 재고">⚡' + (st ? st.stock : s.p.max) + "</span>";
       } else if (c && s.p && s.p.auto) {
@@ -650,7 +761,10 @@
       coin: ACC.coin, gem: ACC.gem, energy: ENERGY, energyMax: ENERGY_MAX,
       stats: { merges: st.merges, energySpent: st.energySpent, orders: st.orders,
                chores: st.chores, recharges: st.recharges, sells: st.sells, collects: st.collects || 0,
-               gemRecharges: st.gemRecharges || 0, gemSpent: st.gemSpent || 0, chestsEmptied: st.chestsEmptied || 0 },
+               gemRecharges: st.gemRecharges || 0, gemSpent: st.gemSpent || 0, chestsEmptied: st.chestsEmptied || 0,
+               chestOpens: st.chestOpens || 0, waitSec: st.waitSec || 0 },
+      opts: opts(),
+      opening: OPENING ? { cell: OPENING.cell, code: OPENING.code, remainSec: Math.max(0, Math.ceil(OPENING.endAt - now())) } : null,
       choreTotal: RwEcon.choreTotal(),
       day: ACC.day, lastDay: RwEcon.lastDay(),
       dayDone: RwEcon.dayDone(ACC, ACC.day), dayTotal: RwEcon.dayRows(ACC.day).length,
@@ -794,6 +908,7 @@
   function step(then) {
     if (BUSY) return;
     STEP_N++;
+    tickOpening();                                 // 개봉 끝났으면 열린 상자로
     railIdleSkip();                                // 레일이 통째로 비었으면 오더 타이머까지 감는다
     if (RwEcon.railDue(ACC, RAIL, now())) refill("예산 회복");
     sweepSpentChests();                            // C1 — [0] 보다 먼저
@@ -808,25 +923,31 @@
     var cl = findCollect();                                             // [2.5]
     if (cl) { runCollect(cl, then); return; }
 
-    var mv = findMerge();                                               // [3]
+    // [3] E1 — 머지 → 개봉 시작 → 상자 꺼내기 → 생성기 탭
+    var mv = findMerge();
     if (mv) { runMerge(mv, then); return; }
-    var pr = findProduce();
+    var op = findOpen();
+    if (op != null) { runOpen(op, then); return; }
+    var cp = findProduce("chest");
+    if (cp.index >= 0) { cp.chest = true; runProduce(cp, then); return; }
+    var pr = findProduce("gen");
     if (pr.index >= 0) { runProduce(pr, then); return; }
 
     var full = firstEmpty() < 0;                                        // [4]
     if (full) {
+      var uj = findUnjamCollect();                                      // E2 막힘 해소 — 판매보다 먼저
+      if (uj) { runCollect(uj, then); return; }
       var sl = findSell();
       if (sl) { runSell(sl, then); return; }
     }
     if (dropped >= 0) { FF_RUN = 0; finish("보상 보관함 → cell" + dropped, [dropped], then); return; }
 
-    // 막힌 게 오더 예산뿐이면 정지하지 않고 게임 시계를 감는다(에너지는 D8, 재고는 C2 로 기다리지 않는다).
-    var w = waitPlan();
+    // 막힌 게 기다림뿐이면 정지하지 않고 게임 시계를 감는다(D-3 사유 넷).
+    var w = waitPlan(full);
     if (w && FF_RUN < FF_MAX) {
       FF_RUN++;
-      var sec = Math.ceil(w.sec) + 1;
-      CLOCK.t += sec;
-      logPush(w.kind, "시계 +" + sec + "초 빨리 감기 — " + w.what);
+      var sec = Math.max(1, Math.ceil(w.sec));
+      skipTime(sec, w.kind, w.what);
       render();
       status("수 " + LOG.length + " · " + w.what + " " + sec + "초를 건너뜀");
       if (then) then();
@@ -887,7 +1008,10 @@
     var g = RwEcon.collect(ACC, cl.code);
     if (g) applyEnergyGrants([g]);                 // 에너지는 상한을 넘겨 받는다(PlayerVM.addEnergy)
     logPush("reward", "수확 cell" + cl.index + " " + codeTag(cl.code) + " · " + fmtGrants(g ? [g] : [])
+      + (cl.unjam ? ' <span class="rwb-pop">막힘 해소</span>' : cl.max ? ' <span class="rwb-dim">최대 단계</span>' : "")
       + ' <span class="rwb-dim">(collect — 클라 미구현 열)</span>');
+    var e = LOG[LOG.length - 1];
+    e.collect = cl.code; e.unjam = !!cl.unjam; e.maxStep = !!cl.max;
     finish("수확 cell" + cl.index + " · " + nameOf(cl.code) + (g ? " · " + (KIND_KO[g.kind] || g.kind) + " +" + g.amount : ""),
       [cl.index], then);
   }
@@ -918,12 +1042,27 @@
     });
   }
 
+  /* 개봉 시작 — BoxRules.boxOpenCheck 통과 뒤 점유를 세운다(IngameVM.ts:962-976 startBoxOpen).
+     chestNoTimer 면 개봉 시간을 0 으로 본다(다음 수에 열린다). 젬 즉시 개봉은 하지 않는다. */
+  function runOpen(i, then) {
+    FF_RUN = 0;
+    var preempt = findProduce("gen").index >= 0;   // 검증용 — 이 수에 생성기 탭도 가능했나
+    var dur = opts().chestNoTimer ? 0 : openDurOf(S[i].code);
+    OPENING = { cell: i, code: S[i].code, endAt: now() + dur };
+    ACC.stats.chestOpens++;
+    LOG.push({ kind: "prod", html: "cell" + i + " " + codeTag(S[i].code) + " · 상자 개봉 시작 · " + dur + "초",
+               open: true, from: i, code: S[i].code, preempt: preempt });
+    finish("상자 개봉 시작 cell" + i + " · " + nameOf(S[i].code) + " · " + dur + "초", [i], then);
+  }
+
   function runProduce(pr, then) {
     BUSY = true; FF_RUN = 0;
+    var preempt = pr.chest ? findProduce("gen").index >= 0 : false;
     markBoard([{ i: pr.index, c: "is-src" }, { i: pr.check.dest, c: "is-dst" }]);
     if (pr.gem) gemRecharge(pr.index, pr.check);   // C2 — 채운 뒤 같은 수에서 누른다
     var out = applyProduce(pr.index, pr.check);
     if (!out) { BUSY = false; stop(); status("주머니가 비어 더 뽑을 수 없습니다"); return; }
+    if (pr.chest) { var e = LOG[LOG.length - 1]; e.chest = true; e.preempt = preempt; }
     fly(pr.index, out.dest, out.code, function () {
       render();
       flash([out.dest], "fx-pop");
@@ -962,6 +1101,8 @@
     S = DB.board.map(function (c) { return c ? { code: c.code, box: c.box, web: c.web } : null; });
     PROD = new Map();
     BAGS = new Map();
+    OPENED = new Set();
+    OPENING = null;
     ENERGY = ENERGY_MAX = DB._meta.energy;
     ENERGY_REC = DB._meta.energyRec || 0;
     CLOCK = { t: 0, wall: Date.now() / 1000 };     // 게임 시각도 같이 되감는다

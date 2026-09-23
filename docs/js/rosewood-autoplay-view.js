@@ -28,6 +28,19 @@
     return neg ? "-" + s : s;
   }
 
+  // 시계 넘기기로 흐른 누적 초 — "1h 20m 5s" 식으로. 0시간이면 시는 생략한다.
+  function fmtHMS(sec) {
+    sec = Math.max(0, Math.round(Number(sec) || 0));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    var parts = [];
+    if (h > 0) parts.push(h + "h");
+    parts.push(m + "m");
+    parts.push(s + "s");
+    return parts.join(" ");
+  }
+
   function safeImg(snap, code) {
     if (!code || typeof snap.img !== "function") return "";
     var u = snap.img(code);
@@ -112,9 +125,11 @@
     var gemRecharges = st.gemRecharges || 0;
     var gemSpent = st.gemSpent || 0;
     var chestsEmptied = st.chestsEmptied || 0;
+    var chestOpens = st.chestOpens || 0;
+    var waitSec = st.waitSec || 0;
 
     var key = [merges, energySpent, orders, chores, choreTotal, recharges, sells, collects,
-               gemRecharges, gemSpent, chestsEmptied].join("|");
+               gemRecharges, gemSpent, chestsEmptied, chestOpens, waitSec].join("|");
     if (lastKey.stats === key) return;
     lastKey.stats = key;
 
@@ -128,7 +143,9 @@
       "<span>수집 <b>" + fmt(collects) + "</b></span>" +
       "<span>젬 충전 횟수 <b>" + fmt(gemRecharges) + "</b></span>" +
       "<span>젬 소모 <b>" + fmt(gemSpent) + "</b></span>" +
-      "<span>소진 상자 <b>" + fmt(chestsEmptied) + "</b></span>";
+      "<span>소진 상자 <b>" + fmt(chestsEmptied) + "</b></span>" +
+      "<span>상자 개봉 <b>" + fmt(chestOpens) + "</b></span>" +
+      "<span>대기 시간 <b>" + fmtHMS(waitSec) + "</b></span>";
   }
 
   // ---- 3) 심부름 카드 ----
@@ -137,37 +154,55 @@
 
   function renderChoreCard(snap, el) {
     var chore = snap.chore || null;
-    var key = chore
+    var opening = snap.opening || null;
+    var choreKey = chore
       ? [chore.key, chore.name, chore.cost, chore.canStart, chore.reason,
          (chore.rewards || []).map(function (r) { return r.kind + ":" + (r.code || "") + ":" + r.amount; }).join(",")].join("|")
       : "null";
+    var openKey = opening
+      ? [opening.cell, opening.code, Math.ceil(Number(opening.remainSec) || 0)].join(",")
+      : "null";
+    var key = choreKey + "||" + openKey;
     if (lastKey.chore === key) return;
     lastKey.chore = key;
 
+    var choreHtml;
     if (!chore) {
-      el.innerHTML = '<p class="rwb-empty2">오늘 심부름 없음</p>';
-      return;
+      choreHtml = '<p class="rwb-empty2">오늘 심부름 없음</p>';
+    } else {
+      var canStart = !!chore.canStart;
+      var reasonLabel = REASON_LABEL[chore.reason] || chore.reason || "";
+      var rewards = chore.rewards || [];
+      var chipsHtml = rewards.map(function (r) {
+        if (r.kind === "item") {
+          return '<span class="rwb-chip">' + iconTag(snap, r.code) + "×" + fmt(r.amount) + "</span>";
+        }
+        var label = REWARD_LABEL[r.kind] || r.kind;
+        return '<span class="rwb-chip">' + esc(label) + " +" + fmt(r.amount) + "</span>";
+      }).join("");
+
+      choreHtml =
+        '<div class="rwb-chore' + (canStart ? "" : " blocked") + '">' +
+          '<span class="rwb-chore-key">' + esc(chore.key || "") + "</span>" +
+          '<span class="rwb-chore-name">' + esc(chore.name || "") + "</span>" +
+          '<span class="rwb-chore-cost">비용 <b>' + fmt(chore.cost) + "</b></span>" +
+          '<span class="rwb-chore-state' + (canStart ? " ok" : " blocked") + '">' + esc(reasonLabel) + "</span>" +
+          '<div class="rwb-chore-rewards">' + (chipsHtml || '<span class="rwb-dim">보상 없음</span>') + "</div>" +
+        "</div>";
     }
 
-    var canStart = !!chore.canStart;
-    var reasonLabel = REASON_LABEL[chore.reason] || chore.reason || "";
-    var rewards = chore.rewards || [];
-    var chipsHtml = rewards.map(function (r) {
-      if (r.kind === "item") {
-        return '<span class="rwb-chip">' + iconTag(snap, r.code) + "×" + fmt(r.amount) + "</span>";
-      }
-      var label = REWARD_LABEL[r.kind] || r.kind;
-      return '<span class="rwb-chip">' + esc(label) + " +" + fmt(r.amount) + "</span>";
-    }).join("");
+    var openingHtml = "";
+    if (opening) {
+      var remain = Math.max(0, Math.ceil(Number(opening.remainSec) || 0));
+      openingHtml =
+        '<div class="rwb-opening">' +
+          '<span class="rwb-k k-prod">개봉 중</span>' +
+          '<span class="rwb-opening-icon">' + iconTag(snap, opening.code) + "</span>" +
+          "<b>" + fmt(remain) + "s 남음</b>" +
+        "</div>";
+    }
 
-    el.innerHTML =
-      '<div class="rwb-chore' + (canStart ? "" : " blocked") + '">' +
-        '<span class="rwb-chore-key">' + esc(chore.key || "") + "</span>" +
-        '<span class="rwb-chore-name">' + esc(chore.name || "") + "</span>" +
-        '<span class="rwb-chore-cost">비용 <b>' + fmt(chore.cost) + "</b></span>" +
-        '<span class="rwb-chore-state' + (canStart ? " ok" : " blocked") + '">' + esc(reasonLabel) + "</span>" +
-        '<div class="rwb-chore-rewards">' + (chipsHtml || '<span class="rwb-dim">보상 없음</span>') + "</div>" +
-      "</div>";
+    el.innerHTML = choreHtml + openingHtml;
   }
 
   // ---- 4) 보상 보관함 띠 (FIFO — 맨 앞이 다음에 내려갈 것). 한 줄로 wrap, 24개까지만 아이콘, 나머지는 +N ----
@@ -264,6 +299,62 @@
     renderChoreCard(snap, document.getElementById("rwbChoreCard"));
     renderRewardBox(snap, document.getElementById("rwbRewardBox"));
     renderRail(snap, document.getElementById("rwbRail"));
+  }
+
+  // ---- 옵션 4개 (부록 D) — window.RWB_OPTS 는 board.js 가 매 수 읽는 살아있는 객체다.
+  // 초기화는 스크립트가 로드되는 즉시(동기) 끝내 둔다 — DOMContentLoaded 를 기다리면
+  // board.js 가 더 먼저 읽어버릴 수 있다. 이후로는 참조를 바꾸지 않고 속성만 고친다. ----
+  var OPT_STORAGE_KEY = "rwb-opts";
+  var OPT_DEFAULTS = { energyRefill: true, gemUnlimited: true, genNoCooldown: false, chestNoTimer: false };
+  var OPT_IDS = {
+    energyRefill: "optEnergyRefill", gemUnlimited: "optGemUnlimited",
+    genNoCooldown: "optGenNoCooldown", chestNoTimer: "optChestNoTimer",
+  };
+
+  function loadOpts() {
+    var out = {};
+    var k;
+    for (k in OPT_DEFAULTS) out[k] = OPT_DEFAULTS[k];
+    try {
+      var raw = window.localStorage && localStorage.getItem(OPT_STORAGE_KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        for (k in OPT_DEFAULTS) {
+          if (saved && typeof saved[k] === "boolean") out[k] = saved[k];
+        }
+      }
+    } catch (e) { /* localStorage 막힌 환경(사생활 모드 등) — 기본값으로 진행 */ }
+    return out;
+  }
+
+  function saveOpts(opts) {
+    try {
+      if (window.localStorage) localStorage.setItem(OPT_STORAGE_KEY, JSON.stringify(opts));
+    } catch (e) { /* 저장 실패는 무시 — 다음 로드에 기본값을 쓴다 */ }
+  }
+
+  // board.js(스크립트 순서상 이 뒤에 온다)가 즉시 읽을 수 있도록, 참조를 여기서 한 번만 만든다.
+  window.RWB_OPTS = loadOpts();
+
+  function wireOpts() {
+    var key;
+    for (key in OPT_IDS) {
+      (function (key, id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.checked = !!window.RWB_OPTS[key];
+        el.addEventListener("change", function () {
+          window.RWB_OPTS[key] = el.checked;   // 참조 교체 금지 — 속성만 갱신
+          saveOpts(window.RWB_OPTS);
+        });
+      })(key, OPT_IDS[key]);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wireOpts);
+  } else {
+    wireOpts();
   }
 
   window.RwView = { render: render };
