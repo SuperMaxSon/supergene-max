@@ -493,10 +493,14 @@ const OPT_CONFIGS = [
 ];
 
 /* 러너는 config 마다 같은 코드를 쓴다 — window.RWB_OPTS 는 페이지 로드 전에 이미 박혀 있으므로
-   브라우저 쪽 코드가 그 값을 직접 읽어 옵션별 검사를 분기한다(Node 에서 따로 안 넘긴다). */
-function buildRunnerExpr(maxSteps) {
+   브라우저 쪽 코드가 그 값을 직접 읽어 옵션별 검사를 분기한다(Node 에서 따로 안 넘긴다).
+   itemsJson 은 docs/data/rosewood-board.json 의 `items`(체인·단계·next·gen·산출 규격) 그대로다 —
+   board.js 의 local spec() 과 같은 데이터라, F1(생성기 우선순위)·F2(머지 우선순위) 를 검사하려면
+   이 표가 있어야 chain/step/next/produce-slots 를 board.js 밖에서도 재현할 수 있다. */
+function buildRunnerExpr(maxSteps, itemsJson) {
   return `(() => {
     const RWB = window.__RWB, RwEconRef = window.RwEcon, OPTS = window.RWB_OPTS || {};
+    const ITEMS = ${itemsJson};
     RWB.instant = true;
     const A = () => RWB.acc;
     const boardCount = () => RWB.cells.filter(c => c && c.code).length;
@@ -508,11 +512,28 @@ function buildRunnerExpr(maxSteps) {
       const sp = RwEconRef.spec(code);
       return !!(sp && Number(sp.spread_open_duration_sec) > 0);
     };
+    const gemCostOfC = (code) => {
+      const sp = code != null && RwEconRef ? RwEconRef.spec(code) : null;
+      const c = sp && Number(sp.spread_item_speedup_cost);
+      return c > 0 ? c : 1;
+    };
+    // F1/F2 재현용 — ITEMS[code] = {name,chain,step,next,gen,img,p?}. board.js 의 spec() 과 같은 표다.
+    const canPickC = (c) => !!c && !c.box && !c.web;
+    const feedsShortReq = (resultCode, shortReqCodes) => {
+      const s = ITEMS[resultCode];
+      if (!s) return false;
+      for (let k = 0; k < shortReqCodes.length; k++) {
+        const rc = shortReqCodes[k], q = ITEMS[rc];
+        if (rc === resultCode || (q && q.chain === s.chain && s.step <= q.step)) return true;
+      }
+      return false;
+    };
+    const producesFeedChains = (p, chainSet) => !!(p && p.slots && p.slots.some(([c]) => { const it = ITEMS[c]; return it && chainSet[it.chain]; }));
     /* 엔트리 하나마다 {tag, dBoard, dBox} 기여분을 매기고 합산해서 검사한다 — 부록 C/D/E 가
        들어오며 한 수 안에 [완료?]+[개봉시작?]+[reward드랍?]+[주 액션] 이 같이 쌓일 수 있어
        kind 로만 가르는 if/else 버킷은 안전하지 않다. docs/js/rosewood-board.js 실측 그대로: */
     const classify = (e, cellsBefore) => {
-      if (e.popped !== undefined) return { tag: 'merge', dBoard: -1, dBox: 0, from: e.from, to: e.to };
+      if (e.popped !== undefined) return { tag: 'merge', dBoard: -1, dBox: 0, from: e.from, to: e.to, code: e.code };
       if (e.open === true) return { tag: 'chest-open-start', dBoard: 0, dBox: 0, cell: e.from,
         dur: (() => { const m = (e.html || '').match(/·\\s*(\\d+)초/); return m ? Number(m[1]) : null; })() };
       if (e.to !== undefined && e.cost !== undefined && e.stock !== undefined) {
@@ -559,8 +580,25 @@ function buildRunnerExpr(maxSteps) {
     for (let i = 1; i <= MAX_STEPS; i++) {
       let choreOk = null;
       try { choreOk = !!(RwEconRef && RwEconRef.choreCheck(A()).ok); } catch (e) { choreOk = null; }
-      const cellsBefore = RWB.cells.slice();
+      // 얕은 slice() 는 안 된다 — applyMerge()의 shock() 이 인접 칸의 .box 를 **그 칸 객체를 그대로 둔 채**
+      // true→false 로 고쳐 쓴다(board.js:245-250 popped 배열이 그 증거). slice() 는 배열만 복사하고
+      // 각 칸 객체 참조는 공유하므로, 이번 step() 호출 자체가 만든 shock 부작용이 "이번 수 시작 전" 스냅샷을
+      // 조용히 오염시킨다 — F2 검사에서 실측: 머지 직후 그 도착지에 상자 충격으로 열린 칸을 "이미 열려 있던
+      // 후보"로 잘못 보고 존재하지도 않았던 tier-0 후보를 만들어 냈다(가짜 FAIL). 칸마다 얕은 객체를 새로 떠서 막는다.
+      const cellsBefore = RWB.cells.map((c) => (c ? { code: c.code, box: c.box, web: c.web } : null));
       const bBefore = boardCount(), xBefore = boxCount(), gBefore = A().gem;
+      const statsBefore = Object.assign({}, A().stats);
+      // F1/F2 재현에 필요한 '이 수 시작 시점' 상태 — 머지·생성기 탭 둘 다 레일을 안 건드리므로
+      // step() 전에 한 번만 계산해도 그 수 안에서는 유효하다.
+      const needBefore = new Map();
+      (RWB.rail || []).forEach((s) => { if (!s.card) return; (RwEconRef.reqCodes(s.card) || []).forEach((c) => needBefore.set(c, (needBefore.get(c) || 0) + 1)); });
+      const countsBefore = new Map();
+      cellsBefore.forEach((c) => { if (canPickC(c)) countsBefore.set(c.code, (countsBefore.get(c.code) || 0) + 1); });
+      const shortReqCodesBefore = [];
+      needBefore.forEach((q, code) => { if ((countsBefore.get(code) || 0) < q) shortReqCodesBefore.push(code); });
+      const shortChainsBefore = {};
+      shortReqCodesBefore.forEach((code) => { const it = ITEMS[code]; if (it) shortChainsBefore[it.chain] = true; });
+      const destBefore = cellsBefore.findIndex((c) => !c);
       const logBefore = RWB.log.length;
       RWB.step();
       steps = i;
@@ -574,8 +612,8 @@ function buildRunnerExpr(maxSteps) {
 
       // -- 부록 E addendum(2): 생성기 탭이 있었으면, 그 직전에 시작 가능한 개봉/꺼낼 수 있는 상자가 없어야 한다.
       //    (openedMirror/openingNow 는 이 스텝의 액션을 반영하기 *전* 상태 — cellsBefore 기준으로 판정한다)
-      const genTapped = parts.some((p) => p.tag === 'produce-gen' || p.tag === 'produce-gen-emptied');
-      if (genTapped) {
+      const genTapEntry = parts.find((p) => p.tag === 'produce-gen' || p.tag === 'produce-gen-emptied');
+      if (genTapEntry) {
         for (let ci = 0; ci < cellsBefore.length; ci++) {
           const c = cellsBefore[ci];
           if (!c || c.box || c.web) continue;
@@ -583,6 +621,63 @@ function buildRunnerExpr(maxSteps) {
           if (!openedMirror.has(ci) && openingNow === null) { startableButTapped++; tagFail('generator tapped while cell ' + ci + ' had a startable chest opening'); }
           else if (openedMirror.has(ci)) drawableOpenedButTapped++; // 소진·회복 여부를 여기서 못 봐서 참고용 집계만
         }
+        // -- F1: 오더에 모자란 체인을 낳는(rail-feeding), '지금 누를 수 있는'(재고 있거나 젬 충전 가능) 생성기가
+        //    있었으면, 이번에 탭한 생성기도 rail-feeding 이어야 한다.
+        //    '지금 누를 수 있나'는 PROD 재고를 못 보는 대신 rec>0(회복형이라 절대 소진되지 않는다)인 생성기만
+        //    정직하게 스캔한다 — rec<=0(소모형) 생성기는 내부 재고를 몰라 판정에서 뺀다(과소검출 쪽으로 치우친다).
+        let f1CandidateExists = false;
+        for (let ci = 0; ci < cellsBefore.length && !f1CandidateExists; ci++) {
+          const c = cellsBefore[ci];
+          if (!c || c.box || c.web) continue;
+          const it = ITEMS[c.code];
+          if (!it || !it.gen || !it.p || !(it.p.rec > 0)) continue;
+          if (isOpenableCode(c.code) && !openedMirror.has(ci)) continue;
+          if (destBefore < 0) continue;
+          if (OPTS.energyRefill === false && RWB.energy < it.p.cost) continue;
+          if (OPTS.gemUnlimited !== true && gBefore - gemCostOfC(c.code) < 0) continue;
+          if (producesFeedChains(it.p, shortChainsBefore)) f1CandidateExists = true;
+        }
+        if (f1CandidateExists) {
+          const tappedCode = codeAt(cellsBefore, genTapEntry.from);
+          const tappedItem = ITEMS[tappedCode];
+          const tappedFeeds = tappedItem && producesFeedChains(tappedItem.p, shortChainsBefore);
+          if (!tappedFeeds) tagFail('F1: a tappable rail-feeding generator existed but the tapped generator at cell ' + genTapEntry.from + ' (code ' + tappedCode + ') does not feed the rail');
+        }
+      }
+
+      // -- F2: 오더에 모자란 요구로 가는 머지(또는 그 체인의 더 낮은 단계)가 가능했으면, 이번 머지도 그래야 한다.
+      const mergeEntry = parts.find((p) => p.tag === 'merge');
+      if (mergeEntry) {
+        let f2CandidateExists = false;
+        outer: for (let from = 0; from < cellsBefore.length; from++) {
+          if (!canPickC(cellsBefore[from])) continue;
+          for (let to = 0; to < cellsBefore.length; to++) {
+            if (to === from) continue;
+            const a = cellsBefore[from], t = cellsBefore[to];
+            if (t && t.box) continue;
+            if (!t) continue; // move, not merge — findMerge 도 move 는 후보로 안 본다
+            const sa = ITEMS[a.code], sb = ITEMS[t.code];
+            if (!sa || !sb || sa.chain !== sb.chain || sa.step !== sb.step || !sa.next) continue;
+            if (openingNow && (openingNow.cell === from || openingNow.cell === to)) continue;
+            const q = needBefore.get(a.code) || 0;
+            if (q) {
+              const after = (countsBefore.get(a.code) || 0) - 1 - (canPickC(t) ? 1 : 0);
+              if (after < q) continue; // D6 보호
+            }
+            if (feedsShortReq(sa.next, shortReqCodesBefore)) { f2CandidateExists = true; break outer; }
+          }
+        }
+        if (f2CandidateExists && !feedsShortReq(mergeEntry.code, shortReqCodesBefore))
+          tagFail('F2: a rail-feeding merge existed but the chosen merge cell' + mergeEntry.from + '->cell' + mergeEntry.to + ' (code ' + mergeEntry.code + ') does not feed it');
+      }
+
+      // -- F3 젬 원장: 이번 수의 젬 변화 = 이번 수 gemGained 증가분 − gemSpent 증가분 (모든 config).
+      {
+        const statsAfterLedger = A().stats || {};
+        const dGem = A().gem - gBefore;
+        const dGained = (statsAfterLedger.gemGained || 0) - (statsBefore.gemGained || 0);
+        const dSpent = (statsAfterLedger.gemSpent || 0) - (statsBefore.gemSpent || 0);
+        if (dGem !== dGained - dSpent) tagFail('gem ledger mismatch: dGem=' + dGem + ' expected(gained-spent)=' + (dGained - dSpent) + ' (gained+' + dGained + ' spent+' + dSpent + ')');
       }
 
       if (parts.some((p) => p.dBoard === null)) {
@@ -707,9 +802,10 @@ async function part2() {
     return;
   }
 
-  // E2 검증용 — 코인(27xx)·젬(28xx) 수확이 진짜 체인 마지막 단계였는지는 Node 쪽 items 맵으로 대조한다.
+  // E2(코인·젬 수확이 진짜 체인 마지막 단계인지) + F1/F2(체인·단계·next·생산규격 재현)에 쓴다.
   let items = {};
   try { items = JSON.parse(fs.readFileSync(BOARD_JSON_PATH, 'utf8')).items || {}; } catch (e) { /* Part1 이 이미 존재를 확인했다 */ }
+  const itemsJson = JSON.stringify(items);
 
   const httpPort = await findFreePort();
   const cdpPort = await findFreePort();
@@ -771,7 +867,7 @@ async function part2() {
           if (seenOpts[k] !== cfg.opts[k]) throw new Error(`window.RWB_OPTS.${k} did not take effect: wanted ${cfg.opts[k]}, page has ${seenOpts[k]}`);
         }
 
-        const report = JSON.parse(await cdp.evalExpr(buildRunnerExpr(cfg.steps)));
+        const report = JSON.parse(await cdp.evalExpr(buildRunnerExpr(cfg.steps, itemsJson)));
         row.stepsRun = report.steps;
         row.stopReason = report.stopReason + (report.steps < cfg.steps ? ` (of ${cfg.steps})` : '');
         row.milestones = report.milestones;

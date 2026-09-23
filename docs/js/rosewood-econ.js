@@ -98,7 +98,7 @@
       day: 1, doneKeys: [], rewardBox: [],
       stats: { merges: 0, energySpent: 0, orders: 0, chores: 0, recharges: 0, sells: 0, collects: 0,
                gemRecharges: 0, gemSpent: 0, chestsEmptied: 0,
-               chestOpens: 0, waitSec: 0 },
+               chestOpens: 0, waitSec: 0, gemGained: 0 },
     };
   }
 
@@ -183,7 +183,11 @@
     if (row == null) return null;
     var kind = Object.prototype.hasOwnProperty.call(KIND_OF, rewardKey) ? KIND_OF[rewardKey] : null;
     if (kind === "coin") { acc.coin += amount; return { kind: kind, amount: amount }; }
-    if (kind === "gem") { acc.gem += amount; return { kind: kind, amount: amount }; }
+    if (kind === "gem") {                          // F3 — 젬 원장: 모든 젬 수입(수집·심부름·레벨 보상)이 여기를 지난다
+      acc.gem += amount;
+      if (acc.stats) acc.stats.gemGained = (acc.stats.gemGained || 0) + amount;
+      return { kind: kind, amount: amount };
+    }
     if (kind === "energy") return { kind: kind, amount: amount };
     if (kind === "exp") return { kind: kind, amount: amount, levelUps: addExp(acc, amount) };
     if (isItemReward(row)) {

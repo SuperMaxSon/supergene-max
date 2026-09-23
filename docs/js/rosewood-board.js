@@ -192,10 +192,24 @@
   /* 둘 수 있는 머지 한 수. 이동(`move`)은 후보로 보지 않는다 — 빈 칸으로 옮겨 봐야
      보드 상태가 제자리를 돈다.
      고르는 순서(시연 정책 — 판정은 mergeCheckAt · mergeAllowed 그대로):
-       ① 도착지가 거미줄 칸(합치면 풀린다)  ② 도착지 옆에 종이상자(shock 로 걷힌다)  ③ 나머지.
+       ⓪ 결과가 레일의 모자란 요구로 간다(F2)  ① 도착지가 거미줄 칸(합치면 풀린다)
+       ② 도착지 옆에 종이상자(shock 로 걷힌다)  ③ 나머지.
      같은 등급 안에서는 인덱스 오름차순이라 같은 보드에서 늘 같은 수가 나온다. */
+  /* F2 — 결과가 레일의 모자란 요구 코드이거나, 같은 체인에서 그 코드로 가는 낮은 단계(결과 step ≤ 요구 step)인가. */
+  function feedsShortReq(code, shortReq) {
+    var s = spec(code);
+    if (!s) return false;
+    for (var k = 0; k < shortReq.length; k++) {
+      var q = spec(shortReq[k]);
+      if (shortReq[k] === code || (q && q.chain === s.chain && s.step <= q.step)) return true;
+    }
+    return false;
+  }
+
   function findMerge() {
-    var need = railNeed(), counts = boardCounts(), best = null, bestTier = 3;
+    var need = railNeed(), counts = boardCounts(), best = null, bestTier = 4;
+    var shortReq = [];
+    need.forEach(function (q, code) { if ((counts.get(code) || 0) < q) shortReq.push(code); });
     for (var from = 0; from < CELLS && bestTier > 0; from++) {
       if (!canPick(from)) continue;
       for (var to = 0; to < CELLS; to++) {
@@ -203,7 +217,8 @@
         var r = mergeCheckAt(from, to);
         if (!r.ok || r.kind !== "merge") continue;
         if (!mergeAllowed(from, to, need, counts)) continue;
-        var tier = S[to].web ? 0 : boxNear(to) ? 1 : 2;
+        // F2 ① 오더로 가는 머지 → ② 거미줄 도착지 → ③ 상자 옆 → ④ 나머지
+        var tier = feedsShortReq(r.code, shortReq) ? 0 : S[to].web ? 1 : boxNear(to) ? 2 : 3;
         if (tier < bestTier) { best = { from: from, to: to, code: r.code }; bestTier = tier; }
         if (tier === 0) break;
       }
@@ -365,15 +380,17 @@
     rechargeEnergy();
     var o = opts();
     var why = null, dest = firstEmpty(), chains = webChains(), rail = shortChains();
-    var pick = [null, null, null, null, null, null];   // 재고 있음(오더·거미줄·그 밖) → 젬 충전(오더·거미줄·그 밖)
-    function rank(p) { return feedsWeb(p, rail) ? 0 : feedsWeb(p, chains) ? 1 : 2; }
+    /* F1 — 순위 = (오더에 모자란 체인을 낳나) → (재고 있음 / 젬 충전) → 거미줄 → 칸 번호.
+       오더용 생성기가 재고 0이면(F3 로 젬을 쓸 수 있을 때) 재고 있는 무관한 생성기보다 먼저 충전해 누른다. */
+    var pick = [null, null, null, null, null, null, null, null];
+    function rank(p, gem) { return (feedsWeb(p, rail) ? 0 : 4) + (gem ? 2 : 0) + (feedsWeb(p, chains) ? 0 : 1); }
     for (var i = 0; i < CELLS; i++) {
       if (!S[i]) continue;
       var isGen = !!(spec(S[i].code) || {}).gen;
       if (kind && (kind === "gen") !== isGen) continue;
       var r = produceCheckAt(i);
       if (r.ok) {
-        var k = rank(r.p);
+        var k = rank(r.p, false);
         if (!pick[k]) pick[k] = { index: i, check: r };
         continue;
       }
@@ -381,8 +398,8 @@
           || r.reason === "not_opened" || r.reason === "opening") continue;
       /* C2 — 재고 0 · 회복 대기면 젬으로 채우고 누를 수 있다. 재고가 있는 생성기가 우선이고,
          그다음 같은 거미줄 선호. 빈 칸이 없으면 채워 봐야 못 누르니 후보가 아니다. */
-      if (r.reason === "recharging" && dest >= 0 && (o.gemUnlimited || ACC.gem >= gemCostOf(S[i].code))) {
-        var p = spec(S[i].code).p, kg = 3 + rank(p);
+      if (r.reason === "recharging" && dest >= 0 && canSpendGem(gemCostOf(S[i].code), o)) {
+        var p = spec(S[i].code).p, kg = rank(p, true);
         if (!pick[kg]) pick[kg] = { index: i, gem: true, check: { ok: true, dest: dest, p: p, st: PROD.get(i) } };
       }
       // 막힌 사유는 「생성기가 아예 없다」와 구분해야 해서 남긴다. 기다리면 풀리는 사유가 가장 약하다.
@@ -394,15 +411,27 @@
 
   /* C2 — 젬 충전. 비용 = item_spec.spread_item_speedup_cost(없거나 0이면 1).
      C3 — gemUnlimited 가 켜져 있으면 모자라도 막지 않는다(음수). 꺼져 있으면 findProduce 가 후보에서 뺀다. */
+  /* F3 — 젬을 쓸 수 있나. gemUnlimited 꺼짐이면 쓴 뒤에도 0 이상이어야 한다(젬은 절대 음수가 안 된다). */
+  function canSpendGem(cost, o) {
+    return (o || opts()).gemUnlimited || ACC.gem - cost >= 0;
+  }
+
+  /* F3 — 젬을 쓰는 **유일한** 자리. 못 쓰면 false 를 돌려주고 아무것도 바꾸지 않는다. */
+  function spendGem(cost) {
+    if (!canSpendGem(cost)) return false;
+    ACC.gem -= cost;
+    ACC.stats.gemSpent += cost;
+    return true;
+  }
+
   function gemRecharge(i, check) {
     var cost = gemCostOf(S[i].code);
-    ACC.gem -= cost;
+    if (!spendGem(cost)) return 0;
     check.st.stock = check.p.max;
     check.st.lastAt = now();
     ACC.stats.gemRecharges++;
-    ACC.stats.gemSpent += cost;
-    logPush("gem", "cell" + i + " " + esc(nameOf(S[i].code)) + " · −" + cost + " 젬 · 재고 " + check.p.max
-      + ' <span class="rwb-dim">→ 젬 ' + ACC.gem + "</span>");
+    logPush("gem", "cell" + i + " " + esc(nameOf(S[i].code)) + " · −" + cost + " 젬 → 젬 " + ACC.gem
+      + ' <span class="rwb-dim">· 재고 ' + check.p.max + "</span>");
     return cost;
   }
 
@@ -762,7 +791,7 @@
       stats: { merges: st.merges, energySpent: st.energySpent, orders: st.orders,
                chores: st.chores, recharges: st.recharges, sells: st.sells, collects: st.collects || 0,
                gemRecharges: st.gemRecharges || 0, gemSpent: st.gemSpent || 0, chestsEmptied: st.chestsEmptied || 0,
-               chestOpens: st.chestOpens || 0, waitSec: st.waitSec || 0 },
+               chestOpens: st.chestOpens || 0, waitSec: st.waitSec || 0, gemGained: st.gemGained || 0 },
       opts: opts(),
       opening: OPENING ? { cell: OPENING.cell, code: OPENING.code, remainSec: Math.max(0, Math.ceil(OPENING.endAt - now())) } : null,
       choreTotal: RwEcon.choreTotal(),
@@ -1059,7 +1088,9 @@
     BUSY = true; FF_RUN = 0;
     var preempt = pr.chest ? findProduce("gen").index >= 0 : false;
     markBoard([{ i: pr.index, c: "is-src" }, { i: pr.check.dest, c: "is-dst" }]);
-    if (pr.gem) gemRecharge(pr.index, pr.check);   // C2 — 채운 뒤 같은 수에서 누른다
+    if (pr.gem && !gemRecharge(pr.index, pr.check)) {   // C2 — 채운 뒤 같은 수에서 누른다 · F3 못 쓰면 탭 안 함
+      BUSY = false; finish("젬이 모자라 충전하지 않습니다", [], then); return;
+    }
     var out = applyProduce(pr.index, pr.check);
     if (!out) { BUSY = false; stop(); status("주머니가 비어 더 뽑을 수 없습니다"); return; }
     if (pr.chest) { var e = LOG[LOG.length - 1]; e.chest = true; e.preempt = preempt; }
