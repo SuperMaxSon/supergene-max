@@ -6,12 +6,11 @@
 
 담는 것은 세 가지.
   board — initial_board 63행을 cell 번호로 접은 것 (코드 · 상자 · 거미줄)
-  items — 보드 + 오더 요구 아이템 + main_task/level_curve 보상 아이템에서
-          **머지·생산으로 도달할 수 있는** 코드 전부의 이름 · 체인 · 단계 ·
-          다음 단계, 그리고 생성기면 산출 규격(`p`)까지
-          (보드에 깔린 것만 담으면 오더·보상이 요구하는 코드를 모른다)
+  items — item_spec **전 코드**의 이름 · 체인 · 단계 · 다음 단계, 그리고 생성기면 산출 규격(`p`)까지.
+          예전에는 보드·오더·보상에서 머지·생산으로 닿는 코드만 담아 11종(2201 · 23xx · 24xx ·
+          31xx · 32xx)이 빠졌다 — 시뮬은 클라와 같은 표를 들어야 한다(2026-09-28).
   bal   — 자동 플레이 엔진(§B2)이 쓰는 밸런스 원본 조각(심부름 · 레벨 곡선 ·
-          보상 키 · 오더 룰 7종 · 아이템 스펙 · 상수). 열은 지우지 않고
+          보상 키 · 오더 룰 7종 · 아이템 스펙 · 럭키 산출 · 상수). 열은 지우지 않고
           `main_task`/`item_spec` 에만 `name`(en 로컬라이즈)을 얹는다.
 
 사용:  python3 scripts/board2web.py
@@ -123,6 +122,8 @@ while queue:
     if p:
         queue.extend(slot[0] for slot in p["slots"])
 
+codes |= set(spec)                                  # 닫힘 밖 코드도 전부 — 클라와 같은 표
+
 items = {}
 for c in sorted(codes):
     s = spec[c]
@@ -153,6 +154,7 @@ bal_out = {
     "const": const_dict,
     "main_task": main_task_out,
     "item_spec": item_spec_out,
+    "lucky_produce": bal["lucky_produce"],           # 럭키 산출·천장(ProduceRules.luckyRowFor) — in_use 는 시뮬이 거른다
     "level_curve": bal["level_curve"],
     "reward_key": bal["reward_key"],
     "order_rule": bal["order_rule"],

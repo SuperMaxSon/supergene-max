@@ -8,14 +8,16 @@
      mergeCheck     같은 체인·같은 단계 + 다음 단계가 있을 것
      shock          4방향 · 상자만 반응 · 드러난 칸이 움직일 수 있으면 연쇄
      produceCheck   재고 → 빈칸 → 에너지 → 산출 순서. 자동 산출 생성기는 탭을 안 받는다
-     drawFromBag    `produce_weight_N` 은 확률이 아니라 **개수**. 비면 재충전(방식 1)
+     produceRoll    럭키(lucky_produce · 개체별 천장)를 주머니보다 먼저 굴린다. 당첨은 에너지만 쓰고 재고·주머니 보존
+     drawFromBag    `produce_weight_N` 은 확률이 아니라 **개수**. 비면 재충전(방식 1). 주머니는 방식 1·2 모두 개체별
+     nearestEmpty   산출은 생성기에서 나선(12시 · 시계방향)으로 가장 가까운 빈 칸에 놓인다(BoardGeometry.spiralOrderFrom)
+     tickGenerators 자동 생산기는 1초마다 주변 8칸(상하좌우 → 대각선) 빈 칸에 재고가 남는 만큼 스스로 놓는다
+     mergeCheckAt   한 번이라도 산출한 소모형 상자는 못 합친다. 개봉 중이어도 안 쓴 상자는 합친다
      ProduceRecord  재고(보드)와 창고(예비)를 따로 든다. 타이머는 재고 < 상한일 때만, 돌고 있지 않을 때만
                     시작하고 종류는 그때 정한다(창고 > 0 보드 회복 · 0 창고 회복). 완료는 한 번에 상한까지
      speedupCost    `max(1, ceil(기본 × 남은초 ÷ 회복초))` · 기본은 타이머 종류별 item/storage 비용
      exhausted      회복이 없는 소모 상자는 다 쓰면 끝이다(ProduceRules.ts:134 Exhausted)
-   옮기지 않은 것: 럭키 산출(`lucky_produce`)·천장·판매 체인 보호(`protect_level`).
-   수확(collect)은 정본 데이터 열이지만 클라에 구현이 없다(BalanceTypes.ts:70-84) — 여기서는 옮겨 둔다.
-   소모형(방식 2) 상자는 보상으로 보드에 들어오므로 **개체별 주머니**로 둔다(칸 번호에 붙는다).
+   옮기지 않은 것(범위 밖 · 2026-09-28): 배수 부스터 · 도구 · 인벤토리 · 판매 체인 보호(`protect_level`) · 되돌리기.
 
    계정 축(레벨·경험치·코인·심부름·보상 보관함·오더 레일)은 `rosewood-econ.js`(RwEcon)가 쥐고,
    이 파일은 한 수의 **우선순위**만 정한다(_ignore/plan-rosewood-autoplay.md §1).
@@ -28,7 +30,7 @@
    부록 D: 64배속(16배속부터는 연출 없이 한 프레임에 여러 수 · 그림은 한 번) · 옵션 4개(window.RWB_OPTS —
            매 수 새로 읽는다. 재생 중에 바꿔도 다음 수부터 먹는다) · 상자 개봉(BoxRules.ts 이식).
    부록 E: [3] 안 순서 = 머지 → 개봉 시작 → 상자 꺼내기 → 생성기 탭 · 코인·젬은 최대 단계에서만 수확.
-   부록 C: C1 소모형 상자는 마지막 산출과 함께 칸을 비운다(클라는 안 지운다) ·
+   부록 C: C1 소모형 상자는 마지막 산출과 함께 칸을 비운다(클라와 같다) ·
            C2 재고 회복을 기다리지 않고 젬(speedupCost — 결제 시점 재계산)으로 끝낸다 · C3 젬은 음수 허용.
    후보를 인덱스 오름차순으로 고르면 같은 보드에서 늘 같은 순서가 나온다.
    ========================================================================== */
@@ -53,8 +55,8 @@
 
   var DB = null;     // { board, items, bal, _meta }
   var S = null;      // 현재 보드 — [{code,box,web}|null] × 63
-  var PROD = null;   // 칸 번호 → { code, stock, reserve, timer, timerAt } — 생성기 재고는 칸에 붙는다
-  var BAGS = null;   // 방식 1: 아이템 코드 → 잔량 배열(종류별 공유) · 방식 2: "c"+칸 → 잔량 배열(개체별)
+  var PROD = null;   // 칸 번호 → { code, stock, reserve, timer, timerAt, pity, used } — 생성기 기록은 칸에 붙는다
+  var BAGS = null;   // "c"+칸 → 주머니 잔량 배열 — 방식 1·2 모두 개체별
   var ACC = null;    // RwEcon 계정
   var RAIL = null;   // 오더 레일 6칸
   var ENERGY = 0, ENERGY_MAX = 0, ENERGY_REC = 0, ENERGY_AT = 0;
@@ -69,6 +71,7 @@
   var RAF = 0, RAF_AT = 0, RAF_ACC = 0;            // 배치 재생 프레임 · 직전 프레임 시각 · 적립된 벽시계 ms
   var OPENING = null;                              // { cell, code, endAt } — 지금 열리는 상자(보드에 하나뿐)
   var OPENED = null;                               // Set(칸) — 개봉이 끝난 상자 칸
+  var AUTO_AT = -Infinity;                         // 자동 생산기 직전 틱의 게임 시각
 
   /* D-2 옵션 — W3 가 window.RWB_OPTS 를 늘 최신값으로 둔다. 규칙이 갈리는 자리마다 새로 읽는다. */
   var OPT_DEFAULT = { energyRefill: true, gemUnlimited: true, genNoCooldown: false, chestNoTimer: false };
@@ -127,10 +130,21 @@
     // 덮개 칸은 대상이 될 수 없다. 거미줄 칸은 대상이 된다 — 여기가 규칙의 핵심이다.
     if (t && t.box) return { ok: false, reason: "not_same_pair" };
     var r = mergeCheck(S[from], t);
-    // IngameVM.ts:605-609 — 개봉 중인 상자는 합칠 수 없다(이동은 된다)
-    if (r.ok && r.kind === "merge" && OPENING && (OPENING.cell === from || OPENING.cell === to))
+    // IngameVM.mergeCheckAt — 소모형 상자는 타이머가 아니라 **산출 사용 여부**로 가른다. 닫힘·개봉 중·개봉 완료라도
+    // 한 번도 안 썼으면 합치고(개봉 점유는 dropCellState 가 푼다), 한 번이라도 산출했으면 못 합친다.
+    if (r.ok && r.kind === "merge" && (isBoxUsedAt(from) || isBoxUsedAt(to)))
       return { ok: false, reason: "not_same_pair" };
     return r;
+  }
+
+  /* IngameVM.isBoxUsedAt — 읽기 전용. 기록이 없거나 코드가 다르면 안 쓴 상자다. 럭키도 산출이라 used 가 켜진다. */
+  function isBoxUsedAt(i) {
+    var c = S[i];
+    if (!c) return false;
+    var row = RwEcon.spec(c.code);
+    if (!row || row.is_generator !== false || !(Number(row.spread_item_max) > 0)) return false;
+    var st = PROD.get(i);
+    return !!st && st.code === c.code && st.used === true;
   }
 
   /* 4방향 인접 충격. 반응하는 건 종이상자뿐이고, 드러난 칸이 움직일 수 있으면 연쇄한다.
@@ -318,7 +332,8 @@
 
   /* newProduceRecord — 재고·창고 상한, 타이머 없음. 저장본 없는 첫 진입의 동작이다. */
   function newRec(code, g) {
-    return { code: code, stock: g.max, reserve: g.recover ? g.storeMax : 0, timer: T_NONE, timerAt: 0 };
+    return { code: code, stock: g.max, reserve: g.recover ? g.storeMax : 0, timer: T_NONE, timerAt: 0,
+             pity: { remainTotal: 0, remainLucky: 0 }, used: false };
   }
 
   /* consumeRecord — 타이머는 **돌고 있지 않을 때만** 시작한다. 탭마다 기준점을 당기면 진행 중이던 회복이 버려진다. */
@@ -378,10 +393,10 @@
     return st;
   }
 
-  /* 방식 1은 종류별 하나, 방식 2(소모형)는 개체별 — 소모형 상자는 칸마다 자기 구성을 들고 있다. */
-  function bagKey(i, code, p) { return p.wt === 2 ? "c" + i : code; }
+  /* 주머니는 방식 1·2 모두 **개체별**이다(IngameVM — ProduceRecord.bag). 칸이 비거나 합쳐지면 dropCellState 가 지운다. */
+  function bagKey(i) { return "c" + i; }
   function bagOf(i, code, p) {
-    var remain = BAGS.get(bagKey(i, code, p));
+    var remain = BAGS.get(bagKey(i));
     if (!remain || remain.length !== p.slots.length) remain = p.slots.map(function (s) { return s[1]; });
     return remain;
   }
@@ -419,7 +434,7 @@
     if ((st.stock <= 0 && p.rec <= 0) || (p.wt === 2 && bagTotal(bagOf(i, c.code, p)) <= 0))
       return { ok: false, reason: "exhausted" };
     if (st.stock <= 0) return { ok: false, reason: "recharging", wait: waitSec(g, st, t) };
-    var dest = firstEmpty();
+    var dest = nearestEmpty(i);                    // IngameVM.nearestEmptyIndex — 나선으로 가장 가까운 빈 칸
     if (dest < 0) return { ok: false, reason: "board_full" };
     if (!opts().energyRefill && ENERGY < p.cost) return { ok: false, reason: "energy_short", wait: energyWait(), need: p.cost };
     return { ok: true, dest: dest, p: p, st: st };
@@ -483,10 +498,11 @@
           || r.reason === "not_opened" || r.reason === "opening") continue;
       /* C2 — 재고 0 · 회복 대기면 젬으로 채우고 누를 수 있다. 재고가 있는 생성기가 우선이고,
          그다음 같은 거미줄 선호. 빈 칸이 없으면 채워 봐야 못 누르니 후보가 아니다. */
-      var gc = r.reason === "recharging" && dest >= 0 ? gemCostAt(i) : 0;
+      var gdest = dest >= 0 ? nearestEmpty(i) : -1;
+      var gc = r.reason === "recharging" && gdest >= 0 ? gemCostAt(i) : 0;
       if (gc > 0 && canSpendGem(gc, o)) {
         var p = spec(S[i].code).p, kg = rank(p, true);
-        if (!pick[kg]) pick[kg] = { index: i, gem: true, check: { ok: true, dest: dest, p: p, st: PROD.get(i) } };
+        if (!pick[kg]) pick[kg] = { index: i, gem: true, check: { ok: true, dest: gdest, p: p, st: PROD.get(i) } };
       }
       // 막힌 사유는 「생성기가 아예 없다」와 구분해야 해서 남긴다. 기다리면 풀리는 사유가 가장 약하다.
       if (!why || !isWait(why)) why = r;
@@ -570,15 +586,171 @@
       total = bagTotal(remain);
       refilled = true;
     }
-    var r = Math.floor(Math.random() * total);
+    var r = pick(total);
     for (var k = 0; k < remain.length; k++) {
       r -= remain[k];
       if (r >= 0) continue;
       remain[k] -= 1;
-      BAGS.set(bagKey(i, code, p), remain);
+      BAGS.set(bagKey(i), remain);
       return { code: p.slots[k][0], refilled: refilled };
     }
     return null;
+  }
+
+  /* 클라 pick(n) — [0, n) 정수. 시드 재현은 범위 밖이라 Math.random 이다. */
+  function pick(n) { return Math.floor(Math.random() * n); }
+
+  /* ── 럭키 산출 (ProduceRules.luckyRowFor · rollLucky · pickLuckyItem 이식) ──────────
+     lucky_produce 한 행이 generator_1..5 에 걸린다. 그 생성기·플레이어 레벨에서 in_use 인 첫 행이 쓰인다.
+     천장은 **개체별**이다 — 레코드의 pity 가 칸을 따라다닌다. */
+  var LUCKY = null;
+  function luckyRowFor(code, level) {
+    if (!LUCKY) {
+      LUCKY = new Map();
+      (DB.bal.lucky_produce || []).forEach(function (row) {
+        for (var n = 1; n <= 5; n++) {
+          var gcode = Number(row["generator_" + n]) || 0;
+          if (!gcode) continue;
+          if (!LUCKY.has(gcode)) LUCKY.set(gcode, []);
+          LUCKY.get(gcode).push(row);
+        }
+      });
+    }
+    var rows = LUCKY.get(Number(code));
+    if (!rows) return null;
+    for (var k = 0; k < rows.length; k++) {
+      var row = rows[k];
+      if (row.in_use !== true) continue;
+      if (level < row.level_min || level > row.level_max) continue;
+      return row;
+    }
+    return null;
+  }
+
+  /* lucky_weight_N 은 **가중치**다(개수 해석은 produce_weight_N 에만). */
+  function pickLuckyItem(row, pk) {
+    var codes = [], weights = [], total = 0;
+    for (var n = 1; n <= 6; n++) {
+      var c = Number(row["lucky_item_" + n]) || 0, w = Number(row["lucky_weight_" + n]) || 0;
+      if (c <= 0 || w <= 0) continue;
+      codes.push(c); weights.push(w); total += w;
+    }
+    if (!codes.length) return 0;
+    if (total <= 0) return codes[0];
+    var r = pk(total);
+    for (var k = 0; k < codes.length; k++) { r -= weights[k]; if (r < 0) return codes[k]; }
+    return codes[codes.length - 1];
+  }
+
+  /* 남은총탭 0 → pity_total·pity_lucky 로 되감기 · r = 1..남은총탭 · 남은총탭 −1 · r <= 남은럭키 → 당첨, 남은럭키 −1 */
+  function rollLucky(row, pity, pk) {
+    pk = pk || pick;
+    var miss = { hit: false, code: 0, pity: { remainTotal: pity.remainTotal, remainLucky: pity.remainLucky } };
+    if (!row) return miss;
+    var total = pity.remainTotal, lucky = pity.remainLucky;
+    if (total === 0) { total = row.pity_total; lucky = row.pity_lucky; }
+    if (total <= 0) return miss;
+    var r = pk(total) + 1;
+    total -= 1;
+    if (r > lucky) return { hit: false, code: 0, pity: { remainTotal: total, remainLucky: lucky } };
+    var code = pickLuckyItem(row, pk);
+    if (code <= 0) return { hit: false, code: 0, pity: { remainTotal: total, remainLucky: lucky } };
+    return { hit: true, code: code, pity: { remainTotal: total, remainLucky: lucky - 1 } };
+  }
+
+  /* ProduceRules.produceRoll — 럭키를 **먼저** 굴린다. 당첨이면 주머니를 안 건드린다.
+     실패(주머니 결손)면 null 이고 천장도 저장하지 않는다 — 호출부가 성공일 때만 pity 를 굳힌다. */
+  function produceRoll(i, code, p, st) {
+    var lucky = rollLucky(luckyRowFor(code, ACC.level), st.pity || { remainTotal: 0, remainLucky: 0 });
+    if (lucky.hit) return { code: lucky.code, lucky: true, refilled: false, pity: lucky.pity };
+    var draw = drawFromBag(i, code, p);
+    if (!draw) return null;
+    return { code: draw.code, lucky: false, refilled: draw.refilled, pity: lucky.pity };
+  }
+
+  /* 산출 한 건을 레코드에 굳힌다 — 럭키는 재고를 안 깎는다. 럭키도 산출이라 used 는 늘 켠다(P1 M8). */
+  function commitRoll(g, st, roll, t) {
+    st.pity = roll.pity;
+    if (!roll.lucky) consume(g, st, 1, t);
+    st.used = true;
+  }
+
+  /* ── 산출 칸 (BoardGeometry.spiralOrderFrom 이식) ───────────────────────────
+     자기 칸 → 링 1..8, 링마다 12시에서 시계방향. 덮개·거미줄 칸은 이 보드에서 비어 있지 않으니 자연히 빠진다. */
+  var SPIRAL = [];
+  function spiralOrderFrom(from) {
+    if (SPIRAL[from]) return SPIRAL[from];
+    var order = [from], col = from % COLS, row = Math.floor(from / COLS);
+    function push(r, c) { if (r >= 0 && r < ROWS && c >= 0 && c < COLS) order.push(r * COLS + c); }
+    var maxRing = Math.max(COLS, ROWS) - 1;
+    for (var ring = 1; ring <= maxRing; ring++) {
+      var dc, dr;
+      for (dc = 0; dc <= ring; dc++) push(row - ring, col + dc);
+      for (dr = -ring + 1; dr <= ring; dr++) push(row + dr, col + ring);
+      for (dc = ring - 1; dc >= -ring; dc--) push(row + ring, col + dc);
+      for (dr = ring - 1; dr >= -ring; dr--) push(row + dr, col - ring);
+      for (dc = -ring + 1; dc <= -1; dc++) push(row - ring, col + dc);
+    }
+    SPIRAL[from] = order;
+    return order;
+  }
+
+  /* ── 자동 생산기 (IngameVM.tickGenerators 이식) ──────────────────────────────
+     spread_auto 생성기는 탭을 안 받고, 1초(AUTO_TICK_SEC) 틱마다 회복을 한 번 반영한 뒤 재고가 남는 동안
+     주변 8칸의 첫 빈 칸에 계속 놓는다. 에너지 0 · 배수 1 · 럭키·주머니·천장은 탭과 같은 규칙이다.
+     클라의 게이트(끌기 · 되돌리기 · 입력 막힘)는 이 시뮬에 없어 늘 열려 있다. */
+  var AUTO_TICK_SEC = 1;
+  var AUTO_NB = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];   // [열, 행] — 상하좌우 먼저
+
+  function autoNeighbor(i) {
+    var col = i % COLS, row = Math.floor(i / COLS);
+    for (var k = 0; k < AUTO_NB.length; k++) {
+      var c = col + AUTO_NB[k][0], r = row + AUTO_NB[k][1];
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      if (!S[r * COLS + c]) return r * COLS + c;
+    }
+    return -1;
+  }
+
+  function isAutoAt(i) {
+    var c = S[i];
+    if (!c || c.box || c.web) return false;
+    var p = (spec(c.code) || {}).p;
+    if (!p || !p.auto) return false;
+    return !(isOpenable(c.code) && !OPENED.has(i));   // 열기 전 상자는 산출하지 않는다(b1)
+  }
+
+  function tickGenerators() {
+    var t = now();
+    if (t - AUTO_AT < AUTO_TICK_SEC) return 0;
+    AUTO_AT = t;
+    var placed = 0;
+    for (var i = 0; i < CELLS; i++) {
+      if (!isAutoAt(i)) continue;
+      var code = S[i].code, p = spec(code).p, g = genRow(code), st = prodAt(i);
+      project(g, st, t);
+      noCooldownFill(g, st);
+      for (var to = autoNeighbor(i); to >= 0 && st.stock > 0; to = autoNeighbor(i)) {
+        var roll = produceRoll(i, code, p, st);
+        if (!roll) break;
+        commitRoll(g, st, roll, t);
+        noCooldownFill(g, st);
+        S[to] = { code: roll.code, box: false, web: false };
+        placed++;
+        LOG.push({ kind: "prod", auto: true, from: i, to: to, code: roll.code, lucky: roll.lucky,
+                   html: "cell" + i + " " + codeTag(code) + " → cell" + to + " " + codeTag(roll.code)
+                     + ' <span class="rwb-pop">자동 생산' + (roll.lucky ? " · 럭키" : "") + "</span>"
+                     + ' <span class="rwb-dim">재고 ' + st.stock + "</span>" });
+      }
+    }
+    return placed;
+  }
+
+  /* IngameVM.nearestEmptyIndex — 생성기에서 가장 가까운 빈 칸. 없으면 -1. */
+  function nearestEmpty(from) {
+    var order = spiralOrderFrom(from);
+    for (var k = 0; k < order.length; k++) if (!S[order[k]]) return order[k];
+    return -1;
   }
 
   /* 기다리면 풀리는 사유. 보드가 가득하거나 생성기가 없는 것과 달리 시간이 해결한다.
@@ -586,7 +758,7 @@
   function isWait(r) { return r && (r.reason === "recharging" || r.reason === "energy_short"); }
 
   function applyProduce(i, check) {
-    var draw = drawFromBag(i, S[i].code, check.p);
+    var draw = produceRoll(i, S[i].code, check.p, check.st);
     if (!draw) return null;
     var cost = check.p.cost;
     if (ENERGY - cost < 0 && opts().energyRefill) {   // D8 — 기다리지 않고 충전한 뒤 그 탭을 진행한다
@@ -598,12 +770,12 @@
     ENERGY -= cost;                                // 에너지가 먼저, 그 다음 재고
     ACC.stats.energySpent += cost;
     var g = genRow(S[i].code);
-    consume(g, check.st, 1, now());
+    commitRoll(g, check.st, draw, now());
     noCooldownFill(g, check.st);
     S[check.dest] = { code: draw.code, box: false, web: false };
     LAST_PROD = { code: draw.code, n: STEP_N };
     var entry = { kind: "prod", from: i, to: check.dest, code: draw.code, cost: cost,
-                  stock: check.st.stock, refilled: draw.refilled };
+                  stock: check.st.stock, refilled: draw.refilled, lucky: draw.lucky };
     if (isSpentChest(i, check.p, check.st)) {      // C1 — 마지막 산출과 함께 상자 칸을 비운다
       S[i] = null;
       dropCellState(i);
@@ -788,6 +960,13 @@
     var at = RwEcon.railNextAt(ACC, RAIL);
     if (at > 0) cand(at - t, "order", "오더 대기");
     if (OPENING) cand(OPENING.endAt - t, "prod", "상자 개봉");
+    // 자동 생산기는 회복이 끝나면 스스로 놓는다 — 그것만으로 풀리는 판이 멈추지 않게 대기 후보에 넣는다
+    for (var ai = 0; ai < CELLS; ai++) {
+      if (!isAutoAt(ai) || autoNeighbor(ai) < 0) continue;
+      var ast = prodAt(ai), ag = genRow(S[ai].code);
+      project(ag, ast, t);
+      if (ast.stock <= 0 && ast.timer !== T_NONE) cand(Math.max(AUTO_TICK_SEC, waitSec(ag, ast, t)), "prod", "생성기 회복(자동)");
+    }
     if (!boardFull) {
       for (var i = 0; i < CELLS; i++) {
         if (!S[i]) continue;
@@ -961,6 +1140,7 @@
     if (m.kind === "prod" && m.html == null) {
       return chip + head + "cell" + m.from + " → cell" + m.to + " <code>" + m.code + "</code> " + esc(nameOf(m.code))
         + ' <span class="rwb-dim">에너지 −' + m.cost + " · 재고 " + m.stock + "</span>"
+        + (m.lucky ? ' <span class="rwb-pop">럭키</span>' : "")
         + (m.refilled ? ' <span class="rwb-pop">주머니 재충전</span>' : "")
         + (m.emptied ? ' <span class="rwb-pop">상자 소진 — 칸 비움</span>' : "");
     }
@@ -1043,6 +1223,7 @@
     if (BUSY) return;
     STEP_N++;
     tickOpening();                                 // 개봉 끝났으면 열린 상자로
+    tickGenerators();                              // 자동 생산기 1초 틱
     railIdleSkip();                                // 레일이 통째로 비었으면 오더 타이머까지 감는다
     if (RwEcon.railDue(ACC, RAIL, now())) refill("예산 회복");
     sweepSpentChests();                            // C1 — [0] 보다 먼저
@@ -1143,7 +1324,7 @@
     if (g) applyEnergyGrants([g]);                 // 에너지는 상한을 넘겨 받는다(PlayerVM.addEnergy)
     logPush("reward", "수확 cell" + cl.index + " " + codeTag(cl.code) + " · " + fmtGrants(g ? [g] : [])
       + (cl.unjam ? ' <span class="rwb-pop">막힘 해소</span>' : cl.max ? ' <span class="rwb-dim">최대 단계</span>' : "")
-      + ' <span class="rwb-dim">(collect — 클라 미구현 열)</span>');
+      + ' <span class="rwb-dim">(collect)</span>');
     var e = LOG[LOG.length - 1];
     e.collect = cl.code; e.unjam = !!cl.unjam; e.maxStep = !!cl.max;
     finish("수확 cell" + cl.index + " · " + nameOf(cl.code) + (g ? " · " + (KIND_KO[g.kind] || g.kind) + " +" + g.amount : ""),
@@ -1269,6 +1450,7 @@
     BAGS = new Map();
     OPENED = new Set();
     OPENING = null;
+    AUTO_AT = -Infinity;
     ENERGY = ENERGY_MAX = DB._meta.energy;
     ENERGY_REC = DB._meta.energyRec || 0;
     CLOCK = { t: 0, wall: Date.now() / 1000 };     // 게임 시각도 같이 되감는다
@@ -1292,7 +1474,10 @@
     get prod() { return PROD; },
     // 재고 레코드 순수 함수 — 검사기가 가짜 시각으로 클라 규칙을 직접 대조한다
     produce: { genRow: genRow, newRec: newRec, consume: consume, project: project, complete: complete,
-               waitSec: waitSec, speedupCost: speedupCost, gemCostAt: gemCostAt },
+               waitSec: waitSec, speedupCost: speedupCost, gemCostAt: gemCostAt,
+               luckyRowFor: luckyRowFor, rollLucky: rollLucky, spiralOrderFrom: spiralOrderFrom,
+               autoNeighbor: autoNeighbor, isBoxUsedAt: isBoxUsedAt, mergeCheckAt: mergeCheckAt,
+               bagKey: bagKey, commitRoll: commitRoll },
     get snap() { return snap(); },
     get instant() { return INSTANT; },
     set instant(v) { INSTANT = !!v; },

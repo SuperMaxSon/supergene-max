@@ -421,8 +421,7 @@
 
   /* ── 수확(collect) ─────────────────────────────────────────────────── */
   /* 탭하면 칸을 비우고 재화를 준다 — item_spec.collect_reward_key / collect_reward_amount.
-     ⚠ **정본 데이터 열이지만 클라에는 아직 구현이 없다**(data/BalanceTypes.ts:70-84 에 열 정의만 있다 ·
-     정본 v1.6 「누락된 코인·젬·에너지 수확 보상 복원」). 실측 14행(2701~2705 · 2801~2804 · 2901~2905),
+     클라 `CollectRules.collectPlan` 과 같은 열을 읽는다(정본 v1.6 「누락된 코인·젬·에너지 수확 보상 복원」). 실측 14행(2701~2705 · 2801~2804 · 2901~2905),
      전부 selling_price -1 이라 판매로는 못 치운다. 지급은 grant() 한 길로 — 재화 해석이 두 벌이 되지 않게. */
   function collectOf(code) {
     var r = SPEC.get(Number(code));

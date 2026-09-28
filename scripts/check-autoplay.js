@@ -553,6 +553,62 @@ function buildProduceUnitExpr() {
       const f = P.newRec(105, g); eq(P.speedupCost(g, f, 0), 0, 'full stock -> nothing to buy');
       return 'board ' + g.itemCost + '->' + Math.ceil(g.itemCost / 2) + '->1 · storage ' + g.storeCost + '->' + Math.ceil(g.storeCost / 2);
     });
+    t('lucky: row lookup = in_use + level band (ProduceRules.luckyRowFor)', () => {
+      const r = P.luckyRowFor(105, 1);
+      if (!r || r.generator_1 !== 105 || r.in_use !== true) throw new Error('105 row missing: ' + JSON.stringify(r && r.key_number));
+      eq(P.luckyRowFor(405, 1), null, '405 row is in_use=false');
+      eq(P.luckyRowFor(101, 1), null, 'no row for 101');
+      return '105 -> ' + r.key_number + ' pity ' + r.pity_total + '/' + r.pity_lucky;
+    });
+    t('lucky: pity reset, hit, miss sequence with injected pick (ProduceRules.rollLucky)', () => {
+      const row = P.luckyRowFor(105, 1), zero = () => 0;
+      const a = P.rollLucky(row, { remainTotal: 0, remainLucky: 0 }, zero);
+      eq(a.hit, true, 'first roll r=1 <= lucky'); eq(a.code, 204, 'lucky_item_1 at weight pick 0');
+      eq(a.pity.remainTotal, row.pity_total - 1, 'remainTotal'); eq(a.pity.remainLucky, row.pity_lucky - 1, 'remainLucky');
+      const b = P.rollLucky(row, a.pity, zero);
+      eq(b.hit, false, 'no lucky left in cycle'); eq(b.pity.remainTotal, row.pity_total - 2, 'remainTotal after miss');
+      let hits = 0, pity = { remainTotal: 0, remainLucky: 0 };
+      for (let k = 0; k < row.pity_total * 10; k++) { const r = P.rollLucky(row, pity); if (r.hit) hits++; pity = r.pity; }
+      eq(hits, row.pity_lucky * 10, 'exactly pity_lucky hits per pity_total rolls (random pick)');
+      eq(P.rollLucky(null, pity).hit, false, 'no row -> miss');
+    });
+    t('lucky: hit keeps stock, miss consumes 1, both mark used', () => {
+      const r = P.newRec(105, g);
+      P.commitRoll(g, r, { lucky: true, pity: { remainTotal: 5, remainLucky: 0 } }, 0);
+      eq(r.stock, g.max, 'stock on lucky'); eq(r.used, true, 'used on lucky'); eq(r.pity.remainTotal, 5, 'pity stored');
+      P.commitRoll(g, r, { lucky: false, pity: { remainTotal: 4, remainLucky: 0 } }, 0);
+      eq(r.stock, g.max - 1, 'stock on normal draw');
+    });
+    t('destination: spiral order = BoardGeometry.spiralOrderFrom', () => {
+      eq(JSON.stringify(P.spiralOrderFrom(31).slice(0, 9)), JSON.stringify([31, 24, 25, 32, 39, 38, 37, 30, 23]), 'centre ring 1');
+      eq(JSON.stringify(P.spiralOrderFrom(0).slice(0, 4)), JSON.stringify([0, 1, 8, 7]), 'corner ring 1');
+      for (let f = 0; f < 63; f++) { const o = P.spiralOrderFrom(f); if (o.length !== 63 || new Set(o).size !== 63) throw new Error('order from ' + f + ' not a permutation'); }
+    });
+    t('bag: per instance key for weight type 1 and 2', () => { eq(P.bagKey(3), 'c3', 'key'); });
+    t('auto: neighbour order orthogonal then diagonal (IngameVM AUTO_NEIGHBOR_OFFSETS)', () => {
+      const S = window.__RWB.cells, keep = S.slice();
+      try {
+        for (let k = 0; k < 63; k++) S[k] = { code: 101, box: false, web: false };
+        S[31] = { code: 1006, box: false, web: false };
+        eq(P.autoNeighbor(31), -1, 'all full');
+        S[23] = null; eq(P.autoNeighbor(31), 23, 'only diagonal up-left');
+        S[30] = null; eq(P.autoNeighbor(31), 30, 'left beats diagonal');
+        S[38] = null; eq(P.autoNeighbor(31), 38, 'down beats left');
+        S[24] = null; eq(P.autoNeighbor(31), 24, 'up first');
+      } finally { for (let k = 0; k < 63; k++) S[k] = keep[k]; }
+    });
+    t('merge: used consumable box refused, unused allowed (IngameVM.isBoxUsedAt)', () => {
+      const R = window.__RWB, S = R.cells, keep = S.slice();
+      try {
+        for (let k = 0; k < 63; k++) S[k] = null;
+        S[0] = { code: 2501, box: false, web: false }; S[1] = { code: 2501, box: false, web: false };
+        R.prod.delete(0); R.prod.delete(1);
+        eq(P.mergeCheckAt(0, 1).ok, true, 'two unused boxes merge');
+        const rec = P.newRec(2501, P.genRow(2501)); rec.used = true; R.prod.set(0, rec);
+        eq(P.isBoxUsedAt(0), true, 'isBoxUsedAt'); eq(P.mergeCheckAt(0, 1).ok, false, 'used box refused');
+        eq(P.mergeCheckAt(1, 0).ok, false, 'either side');
+      } finally { for (let k = 0; k < 63; k++) S[k] = keep[k]; R.prod.delete(0); R.prod.delete(1); }
+    });
     t('produce: consumable box never recovers and has no reserve', () => {
       const row = window.RwEcon.spec(605) || {};
       if (row.is_generator !== false) return 'SKIP - 605 is not a consumable box in this data';
@@ -602,6 +658,8 @@ function buildRunnerExpr(maxSteps, itemsJson) {
        들어오며 한 수 안에 [완료?]+[개봉시작?]+[reward드랍?]+[주 액션] 이 같이 쌓일 수 있어
        kind 로만 가르는 if/else 버킷은 안전하지 않다. docs/js/rosewood-board.js 실측 그대로: */
     const classify = (e, cellsBefore) => {
+      // 자동 생산기 산출(tickGenerators) — 생성기 탭이 아니다(F1 제외). 보드 +1.
+      if (e.kind === 'prod' && e.auto === true) return { tag: 'produce-auto', dBoard: 1, dBox: 0, from: e.from, to: e.to };
       if (e.popped !== undefined) return { tag: 'merge', dBoard: -1, dBox: 0, from: e.from, to: e.to, code: e.code };
       if (e.open === true) return { tag: 'chest-open-start', dBoard: 0, dBox: 0, cell: e.from,
         dur: (() => { const m = (e.html || '').match(/·\\s*(\\d+)초/); return m ? Number(m[1]) : null; })() };
