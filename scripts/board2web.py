@@ -22,14 +22,18 @@ import os
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME = os.path.expanduser("~/Projects/story-merge-proto-client")
 BAL = os.path.join(GAME, "assets/bundle/data/rosewood-balance.json")
-LOC = os.path.join(GAME, "assets/localization/en.json")
+# 이름은 클라 로컬라이제이션(en.json — 다른 세션이 편집 중이라 낡을 수 있다)이 아니라
+# 시트 export 원본 string_code 에서 읽는다(정본은 시트, 클라 번들은 읽기 전용 사본).
+# export 판본이 바뀌면 이 경로도 같이 옮긴다.
+STR = os.path.join(GAME, "_ignore/item-sheets/2026-09-23-export/string_code.json")
 OUT = os.path.join(HERE, "docs", "data", "rosewood-board.json")
 IMG = os.path.join(HERE, "docs", "img", "items")
 
 COLS, ROWS = 7, 9
 
 bal = json.load(open(BAL, encoding="utf-8"))
-loc = json.load(open(LOC, encoding="utf-8"))
+strd = json.load(open(STR, encoding="utf-8"))
+strings = {r["Key"]: r.get("en", "") for r in strd}
 spec = {r["item_code"]: r for r in bal["item_spec"]}
 disp = {r["item_code"]: r for r in bal["item_display"]}
 
@@ -66,10 +70,10 @@ def nxt(code):
 
 
 def item_name(code):
-    """`item_display.name_key` 를 en 로컬라이즈. 못 찾으면 키 그대로(정본 B1)."""
+    """`item_display.name_key` 를 string_code export en 으로 로컬라이즈. 못 찾으면 키 그대로(정본 B1)."""
     d = disp.get(code, {})
     key = d.get("name_key", "")
-    return loc.get(key, key or str(code))
+    return strings.get(key, key or str(code))
 
 
 # reward_key(문자열) → item_code. "머지 아이템" 분류만 실제 아이템이고
@@ -138,7 +142,7 @@ for c in sorted(codes):
 const_dict = {r["const_name"]: r["const_value"] for r in bal["const"]}
 
 main_task_out = [
-    {**r, "name": loc.get(r["name_key"], r["name_key"])}
+    {**r, "name": strings.get(r["name_key"], r["name_key"])}
     for r in bal["main_task"] if r.get("in_use", True)
 ]
 main_task_out.sort(key=lambda r: (r["day"], r["task_seq"]))

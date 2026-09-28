@@ -9,10 +9,14 @@
   2) xlsx (구형) — 1행 한글 설명 · 2행 컬럼명 · 3행부터 데이터. stdlib 로 직접 읽는다.
 
 이름 칸에 대하여
-  신판 클라 JSON 에는 `name_ko` 가 없다(에디터 전용 열). 대신
+  클라 JSON 에는 `name_ko` 열이 없다(에디터 전용 열). 대신 이름 키로 조립한다.
     영문  item_display.name_key → string_code.en
-    한글  직전 출력본에서 item_code 로 넘겨받는다(있으면). 없으면 영문으로 떨어진다.
+    한글  item_display.name_key → string_code.ko
+  2026-09-23 export 부터 string_code 가 ko 를 싣고 온다(239종 전부) — 시트가 정본이다.
+  그래서 직전 출력본 이월과 손으로 적던 이름 표(SPEC_NAMES 류)는 걷었다.
+  ko 가 비는 코드는 영문으로 떨어지고 경고를 남긴다.
   벤치·드로우 페이지가 사람 눈으로 읽는 표라서 이름을 버리지 않는다.
+  이름이 아이템 그림과 안 맞을 수 있다 — 아트가 임시 플레이스홀더라서다. 맞추지 않는다.
 
 판본 판정
   `schema_hash` 는 **열 구조 해시**다. 행 내용이 바뀌어도 안 움직인다
@@ -35,7 +39,7 @@ RNS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_SRC = os.path.expanduser(
-    "~/Projects/story-merge-proto-client/_ignore/item-sheets/2026-09-15-export")
+    "~/Projects/story-merge-proto-client/_ignore/item-sheets/2026-09-23-export")
 DEFAULT_OUT = os.path.join(HERE, "docs", "data", "rosewood-balance.json")
 
 PRODUCE = [c for i in range(1, 21) for c in (f"produce_item_{i}", f"produce_weight_{i}")]
@@ -208,81 +212,36 @@ def table(book, tab, key_col, cols):
     return out, missing
 
 
-# 정본 v1.5 §13 「T14 이름 확정」이 직접 적어 준 10종. export 에는 name_ko 가
-# 없고 직전 출력본에도 없던(= 신판에서 새로 생긴) 아이템이라 이월로는 못 채운다.
-# 새 export 가 name_ko 를 싣고 오면 이 표는 지운다 — 그때는 시트가 정본이다.
-SPEC_NAMES = {
-    211: "정밀 공구 세트", 212: "전문가 공구 캐비닛", 213: "복원 장비 카트",
-    214: "장인 공구 컬렉션", 813: "축하 케이크", 814: "디저트 카트",
-    815: "연회 디저트 테이블", 1312: "로즈우드 리넨 컬렉션",
-    3201: "심플 상자", 3202: "팬시 상자",
-}
-
-# 위 SPEC_NAMES 와 출처가 다르다 — 정본이 확정해 준 이름이 아니라, 09-15 export 에
-# 새로 생긴 상자류(생성기 아님·order_item 후보 아님) 5종을 영문 name_key 뜻 그대로
-# 옮긴 임시값이다. 정본이 이 코드들의 이름을 확정하면 이 표에서 지우고 SPEC_NAMES
-# (또는 이월)로 옮긴다.
-SPEC_NAMES_TRANSLATED = {
-    3203: "대형 무료 선물 상자",  # Large Free Gift Chest (chain 32 step3)
-    3301: "스타터 에너지 상자",   # Starter Energy Chest
-    3401: "소형 에너지 상자",     # Small Energy Chest
-    3501: "스타터 젬 상자",       # Starter Gem Chest
-    3601: "스타터 보급 상자",     # Starter Supply Chest
-}
-
-
-def build_names(book, legacy_path):
+def build_names(book):
     """item_code → {name_ko, name_en}.
 
-    영문은 item_display.name_key → string_code.en 으로 조립한다.
-    한글은 시트에 없다(에디터 전용) — 직전 출력본에서 넘겨받는다."""
-    names = {}
+    영문·한글 모두 item_display.name_key → string_code 의 en·ko 로 조립한다.
+    ko 가 비면 영문으로 떨어진다 — 떨어진 코드 목록을 함께 돌려준다."""
+    names, fallback = {}, []
     disp = book.find_tab("item_display")
     strs = book.find_tab("string_code")
-    if disp and strs:
-        en = {}
-        for r in book.records(strs):
-            k = r.get("Key") or r.get("key")
-            if k:
-                en[k] = r.get("en")
-        for r in book.records(disp):
-            code = cast(r.get("item_code"))
-            key = r.get("name_key")
-            if code is None:
-                continue
-            v = en.get(key)
-            names[code] = {"name_en": v if v and v != "none" else None}
-    legacy = {}
-    if legacy_path and os.path.exists(legacy_path):
-        try:
-            with open(legacy_path, encoding="utf-8") as f:
-                old = json.load(f)
-            for r in old.get("item_spec", []):
-                if r.get("name_ko") or r.get("name"):
-                    legacy[r["item_code"]] = r.get("name_ko") or r.get("name")
-        except (ValueError, KeyError):
-            pass
-    # 우선순위: 정본 확정 > 영문 임시 번역 > 직전 출력본 이월 > 영문 그대로. 정본/임시
-    # 번역 두 표는 사람이 이번에 직접 적어 넣은 값이라 이월(직전 산출물을 그대로 베낀
-    # 값, 지난 판이 정답이라는 보장이 없다)보다 세다. SPEC_NAMES_TRANSLATED 는 legacy_path
-    # 가 곧 이번 출력 파일이라 직전 실행에서 새로 생긴 코드에 영문을 그대로 흘려보낸
-    # 경우(이월 자체가 영문)를 다시 영문으로 확정해버리는 것을 막기 위해 이월보다 위에 둔다.
-    for code, rec in names.items():
-        rec["name_ko"] = (
-            SPEC_NAMES.get(code)
-            or SPEC_NAMES_TRANSLATED.get(code)
-            or legacy.get(code)
-            or rec.get("name_en")
-        )
-    for code, ko in legacy.items():
-        names.setdefault(code, {"name_en": None, "name_ko": ko})
-    for code, ko in SPEC_NAMES_TRANSLATED.items():
-        names.setdefault(code, {"name_en": None, "name_ko": ko})
-        names[code]["name_ko"] = ko
-    for code, ko in SPEC_NAMES.items():
-        names.setdefault(code, {"name_en": None, "name_ko": ko})
-        names[code]["name_ko"] = ko
-    return names, len(legacy)
+    if not (disp and strs):
+        return names, fallback
+    lang = {}
+    for r in book.records(strs):
+        k = r.get("Key") or r.get("key")
+        if k:
+            lang[k] = r
+
+    def pick(key, col):
+        v = (lang.get(key) or {}).get(col)
+        return v if v and v != "none" else None
+
+    for r in book.records(disp):
+        code = cast(r.get("item_code"))
+        if code is None:
+            continue
+        key = r.get("name_key")
+        en, ko = pick(key, "en"), pick(key, "ko")
+        if not ko:
+            fallback.append(code)
+        names[code] = {"name_en": en, "name_ko": ko or en}
+    return names, fallback
 
 
 def main():
@@ -310,7 +269,10 @@ def main():
     if const_off:
         warn.append(f"const 비활성 {len(const_off)}개 제외: {', '.join(const_off[:6])}")
 
-    names, carried = build_names(book, out)
+    names, name_fallback = build_names(book)
+    if name_fallback:
+        warn.append(f"string_code.ko 없음 {len(name_fallback)}종 — 영문으로 대신함: "
+                    f"{', '.join(map(str, name_fallback[:10]))}")
 
     for tab, (key_col, cols) in TABS.items():
         real = book.find_tab(tab)
@@ -374,12 +336,10 @@ def main():
                 .astimezone().isoformat(timespec="seconds"),
             "converted_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "converter": "scripts/xlsx2balance.py",
-            "name_ko_carried": carried,
-            "name_source": "시트 export 엔 name_ko 가 없다(에디터 전용 열이라 클라 JSON 에서 빠진다). "
-                "그래서 이름은 직전 출력본 이월 + SPEC_NAMES 로 채운다 — 정본이 "
-                "「변환기는 이 이름을 item_code 로 연결한다」고 이 경로를 인정했다. "
-                "SPEC_NAMES_TRANSLATED 5종(3203/3301/3401/3501/3601)은 정본 확정이 아니라 "
-                "우리가 영문에서 옮긴 임시값이다.",
+            "name_ko_fallback_en": len(name_fallback),
+            "name_source": "이름은 item_display.name_key → string_code 의 ko·en 으로 조립한다 "
+                "(시트가 정본). 2026-09-23 export 부터 ko 를 싣고 와서 직전 출력본 이월과 "
+                "SPEC_NAMES 표는 걷었다. ko 가 빈 코드는 영문으로 떨어진다(name_ko_fallback_en).",
             "version_check": "판본은 tabs[].records 로 본다. schema_hash 는 열 구조라 내용 변화에 안 움직인다",
             "tabs": meta_tabs,
             "warnings": warn,
@@ -396,7 +356,7 @@ def main():
     for t in ["const"] + list(TABS):
         n = len(data[t]) if isinstance(data[t], list) else len(data[t])
         print(f"   {t:20s} {n:>4d}")
-    print(f"   (한글 이름 {carried}종 이월)")
+    print(f"   (한글 이름 시트 ko {len(names) - len(name_fallback)}종 · 영문 대체 {len(name_fallback)}종)")
     if warn:
         print("\n경고:")
         for w in warn:
