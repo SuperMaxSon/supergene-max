@@ -25,7 +25,8 @@
      [2.5] 수확 — 짝이 없거나 빈 칸이 1개 이하인 재화 아이템(코인·젬·에너지)
      [3] 머지(D6 요구품 보호) → 생성기 탭(D8 에너지 모자라면 충전 +100 · C2 재고 0이면 젬 충전)
      [4] 보드가 꽉 찼으면 판매 1건(D4). 막힌 게 오더 예산 타이머뿐이면 시계를 감는다.
-   부록 D: 16배속 · 옵션 4개(window.RWB_OPTS — 매 수 새로 읽는다) · 상자 개봉(BoxRules.ts 이식).
+   부록 D: 64배속(16배속부터는 연출 없이 한 프레임에 여러 수 · 그림은 한 번) · 옵션 4개(window.RWB_OPTS —
+           매 수 새로 읽는다. 재생 중에 바꿔도 다음 수부터 먹는다) · 상자 개봉(BoxRules.ts 이식).
    부록 E: [3] 안 순서 = 머지 → 개봉 시작 → 상자 꺼내기 → 생성기 탭 · 코인·젬은 최대 단계에서만 수확.
    부록 C: C1 소모형 상자는 마지막 산출과 함께 칸을 비운다(클라는 안 지운다) ·
            C2 재고 회복을 기다리지 않고 젬(speedupCost — 결제 시점 재계산)으로 끝낸다 · C3 젬은 음수 허용.
@@ -38,7 +39,9 @@
   var COLS = 7, ROWS = 9, CELLS = COLS * ROWS;
   var STEP_MS = 420;                               // 한 수와 다음 수 사이 (1배속 기준)
   var FLY_MS = 240;                                // 칩이 날아가는 시간 (1배속 기준)
-  var SPEEDS = [1, 2, 4, 8, 16];                   // D-1
+  var SPEEDS = [1, 2, 4, 8, 16, 32, 64];           // D-1 · 버튼 하나에 배속 하나
+  var BATCH_FROM = 16;                             // 이 배속부터 배치 재생 — 8배속에서 연출 바닥(날기 40ms)에 닿는다
+  var BATCH_CAP = 12;                              // 한 프레임에 두는 수 상한 (탭 복귀 직후 몰아치기 방지)
   var SPEED = 1;                                   // 간격·연출을 **같은 배수**로 줄인다.
                                                    // 한쪽만 줄이면 8배속에서 칩이 도착하기 전에 다음 수가 들어온다.
   function stepMs() { return Math.max(24, STEP_MS / SPEED); }
@@ -61,6 +64,9 @@
   var STEP_N = 0;                                  // step() 호출 번호
   var LAST_PROD = null;                            // { code, n } — 직전 수에 뽑은 코드(판매 헛돌기 방지)
   var INSTANT = false;                             // 검증용 — 연출(날기·깜빡임)을 건너뛴다
+  var TURBO = false;                               // 배치 재생 중 — 연출을 건너뛰고 render 는 프레임 끝에 한 번
+  var DIRTY = false;                               // 배치 중에 render 가 불렸나
+  var RAF = 0, RAF_AT = 0, RAF_ACC = 0;            // 배치 재생 프레임 · 직전 프레임 시각 · 적립된 벽시계 ms
   var OPENING = null;                              // { cell, code, endAt } — 지금 열리는 상자(보드에 하나뿐)
   var OPENED = null;                               // Set(칸) — 개봉이 끝난 상자 칸
 
@@ -752,9 +758,11 @@
   }
 
   /* ── 상자 개봉 (BoxRules.ts · IngameVM.ts:940-1000) ─────────────────── */
-  /* 개봉이 끝났으면 점유를 풀고 그 칸을 열린 상자로 둔다(finishBoxOpen). */
+  /* 개봉이 끝났으면 점유를 풀고 그 칸을 열린 상자로 둔다(finishBoxOpen).
+     chestNoTimer 를 재생 도중에 켜면 이미 열리는 중인 상자도 다음 수에 끝낸다 — 시작 시점에만 읽으면 안 먹는다. */
   function tickOpening() {
-    if (!OPENING || now() < OPENING.endAt) return false;
+    if (!OPENING) return false;
+    if (!opts().chestNoTimer && now() < OPENING.endAt) return false;
     OPENED.add(OPENING.cell);
     logPush("prod", "cell" + OPENING.cell + " " + codeTag(OPENING.code) + " 상자 개봉 완료");
     OPENING = null;
@@ -842,6 +850,7 @@
   }
 
   function render() {
+    if (TURBO) { DIRTY = true; return; }
     var b = $("#rwbBoard");
     if (b.children.length !== CELLS) build();
     for (var i = 0; i < CELLS; i++) {
@@ -924,12 +933,16 @@
 
   function applySpeed() {
     $("#rwbBoard").style.setProperty("--sp", String(SPEED));
-    $("#rwbSpeed").textContent = "⏩ " + SPEED + "배속";
+    var btns = document.querySelectorAll("#rwbSpeeds [data-sp]");
+    for (var k = 0; k < btns.length; k++)
+      btns[k].setAttribute("aria-pressed", Number(btns[k].getAttribute("data-sp")) === SPEED ? "true" : "false");
   }
 
-  function cycleSpeed() {
+  /* 재생 중에 바꿔도 된다 — 다음 수부터 새 배속이고, 연출/배치 재생은 루프가 알아서 갈아탄다. */
+  function setSpeed(n) {
+    if (SPEEDS.indexOf(n) < 0 || n === SPEED) return;
     now();                                         // 배속을 바꾸기 **전에** 지금까지 흐른 시간을 적립한다
-    SPEED = SPEEDS[(SPEEDS.indexOf(SPEED) + 1) % SPEEDS.length];
+    SPEED = n;
     applySpeed();
   }
 
@@ -979,7 +992,7 @@
   }
 
   function flash(list, cls) {
-    if (INSTANT) return;
+    if (INSTANT || TURBO) return;
     var b = $("#rwbBoard");
     list.forEach(function (i) {
       var el = b.children[i];
@@ -993,7 +1006,7 @@
 
   /* 출발 칸의 그림이 도착 칸으로 날아간다. 판정과 무관한 연출이라 상태를 만지지 않는다. */
   function fly(from, to, code, done) {
-    if (INSTANT) { done(); return; }
+    if (INSTANT || TURBO) { done(); return; }
     var b = $("#rwbBoard");
     var a = b.children[from].getBoundingClientRect();
     var z = b.children[to].getBoundingClientRect();
@@ -1013,7 +1026,7 @@
   }
 
   function markBoard(list) {
-    if (INSTANT) return;
+    if (INSTANT || TURBO) return;
     var b = $("#rwbBoard");
     list.forEach(function (x) { if (b.children[x.i]) b.children[x.i].classList.add(x.c); });
   }
@@ -1198,10 +1211,39 @@
 
   /* ── 재생 ────────────────────────────────────────────────────────────── */
   function tick() {
+    if (SPEED >= BATCH_FROM) { batchStart(); return; }
     step(function () {
       if (!PLAYING) return;
       TIMER = setTimeout(tick, Math.max(16, stepMs() - flyMs()));
     });
+  }
+
+  /* 배치 재생(16배속부터) — 한 수 간격 420/배속 ms 를 벽시계로 적립해 이번 프레임에 둘 수를 정하고,
+     그림은 프레임 끝에 한 번 그린다. 규칙 계산은 한 수 0.05ms, render 가 8ms 라(헤드리스 실측)
+     그리는 횟수만 줄이면 64배속도 버틴다. 연출 재생은 8배속에서 날기 바닥(40ms)에 닿아 더 못 빨라진다. */
+  function batchStart() {
+    RAF_AT = performance.now();
+    RAF_ACC = 0;
+    RAF = requestAnimationFrame(batchFrame);
+  }
+
+  function batchFrame(ts) {
+    RAF = 0;
+    if (!PLAYING) return;
+    if (SPEED < BATCH_FROM) { tick(); return; }    // 재생 중에 8배속 이하로 내리면 연출 재생으로 돌아간다
+    var gap = STEP_MS / SPEED;
+    RAF_ACC += Math.max(0, ts - RAF_AT);
+    RAF_AT = ts;
+    var n = Math.min(BATCH_CAP, Math.floor(RAF_ACC / gap));
+    RAF_ACC = n >= BATCH_CAP ? 0 : RAF_ACC - n * gap;   // 상한에 걸리면 밀린 몫은 버린다(탭 복귀 직후)
+    if (n > 0) {
+      TURBO = true;
+      DIRTY = false;
+      try { for (var k = 0; k < n && PLAYING; k++) step(); }
+      finally { TURBO = false; }
+      if (DIRTY) render();
+    }
+    if (PLAYING) RAF = requestAnimationFrame(batchFrame);
   }
 
   function play() {
@@ -1214,6 +1256,7 @@
   function stop() {
     PLAYING = false;
     clearTimeout(TIMER);
+    if (RAF) { cancelAnimationFrame(RAF); RAF = 0; }
     var e = $("#rwbPlay");
     if (e) e.textContent = "▶ 재생";
   }
@@ -1268,7 +1311,10 @@
       $("#rwbPlay").addEventListener("click", function () { PLAYING ? stop() : play(); });
       $("#rwbStep").addEventListener("click", function () { stop(); step(); });
       $("#rwbReset").addEventListener("click", reset);
-      $("#rwbSpeed").addEventListener("click", cycleSpeed);
+      $("#rwbSpeeds").addEventListener("click", function (ev) {
+        var b = ev.target.closest ? ev.target.closest("[data-sp]") : null;
+        if (b) setSpeed(Number(b.getAttribute("data-sp")));
+      });
       applySpeed();
     })
     .catch(function (e) {
