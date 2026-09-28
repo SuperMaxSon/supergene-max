@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-28 17:21",
+  updated: "2026-09-28 17:34",
 };
 
 /* --------------------------------------------------------------------------
@@ -853,12 +853,12 @@ const SECTIONS = [
       },
       {
         title: "스토리머지 커밋 히스토리",
-        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 틀만 세워 둔 상태 — 수록 0건, 첫 커밋부터 채운다.",
+        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 08-19~09-28 커밋 115건 diff 전량 실측 · 작성자 5명.",
         url: "docs/commit-history-story-merge.html",
         project: "smg",
-        status: "초안",
-        version: "v0.1",
-        updated: "2026-08-31 17:49",
+        status: "진행중",
+        version: "v1.0",
+        updated: "2026-09-28 17:34",
         pinned: false,
         tags: ["커밋 히스토리", "상시"],
       },
