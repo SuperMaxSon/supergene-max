@@ -497,6 +497,73 @@ const OPT_CONFIGS = [
    itemsJson 은 docs/data/rosewood-board.json 의 `items`(체인·단계·next·gen·산출 규격) 그대로다 —
    board.js 의 local spec() 과 같은 데이터라, F1(생성기 우선순위)·F2(머지 우선순위) 를 검사하려면
    이 표가 있어야 chain/step/next/produce-slots 를 board.js 밖에서도 재현할 수 있다. */
+/* 재고 레코드 단위 검사 — window.__RWB.produce 순수 함수를 가짜 시각으로 돌려 클라 ProduceRules.ts 와 대조한다.
+   기대값은 item_spec 원본 행에서 다시 읽는다(105 작업대 = 보드 80·창고 240·180s/300s·3/5젬). */
+function buildProduceUnitExpr() {
+  return `(() => {
+    const P = window.__RWB.produce, out = [];
+    const t = (name, fn) => { try { out.push({ name, pass: true, detail: fn() || '' }); } catch (e) { out.push({ name, pass: false, detail: e.message }); } };
+    const eq = (a, b, label) => { if (a !== b) throw new Error(label + ': expected ' + JSON.stringify(b) + ', got ' + JSON.stringify(a)); };
+    const g = P.genRow(105), sp = window.RwEcon.spec(105);
+    t('produce: 105 row = item_spec', () => {
+      eq(g.max, sp.spread_item_max, 'max'); eq(g.storeMax, sp.spread_storage_max, 'storeMax');
+      eq(g.itemSec, sp.spread_item_recovery_sec, 'itemSec'); eq(g.storeSec, sp.spread_storage_recovery_sec, 'storeSec');
+      eq(g.itemCost, sp.spread_item_speedup_cost, 'itemCost'); eq(g.storeCost, sp.spread_storage_speedup_cost, 'storeCost');
+      eq(g.recover, true, 'recover');
+      return 'max ' + g.max + ' · store ' + g.storeMax + ' · ' + g.itemSec + 's/' + g.storeSec + 's · ' + g.itemCost + '/' + g.storeCost + ' gem';
+    });
+    t('produce: new record = stock max, reserve storage max, no timer', () => {
+      const r = P.newRec(105, g);
+      eq(r.stock, g.max, 'stock'); eq(r.reserve, g.storeMax, 'reserve'); eq(r.timer, 'none', 'timer');
+    });
+    t('produce: board completion refills stock at once and deducts the deficit from reserve', () => {
+      const r = P.newRec(105, g);
+      P.consume(g, r, 10, 0);
+      eq(r.timer, 'board', 'timer kind');
+      P.project(g, r, g.itemSec - 1); eq(r.stock, g.max - 10, 'stock before completion (no per-period drip)');
+      P.project(g, r, g.itemSec); eq(r.stock, g.max, 'stock after'); eq(r.reserve, g.storeMax - 10, 'reserve after'); eq(r.timer, 'none', 'timer after');
+    });
+    t('produce: tapping during a running timer does not restart it', () => {
+      const r = P.newRec(105, g);
+      P.consume(g, r, 1, 0); P.consume(g, r, 1, 100);
+      eq(r.timerAt, 0, 'timerAt'); P.project(g, r, g.itemSec); eq(r.stock, g.max, 'completes at the first tap + itemSec');
+    });
+    t('produce: at most one completion per projection', () => {
+      const r = P.newRec(105, g);
+      P.consume(g, r, 30, 0); P.project(g, r, 100000);
+      eq(r.stock, g.max, 'stock'); eq(r.reserve, g.storeMax - 30, 'reserve (one deficit only)');
+    });
+    t('produce: reserve 0 -> storage timer, completion restores both', () => {
+      const r = P.newRec(105, g); r.reserve = 5;
+      P.consume(g, r, g.max, 0); P.project(g, r, g.itemSec);
+      eq(r.reserve, 0, 'reserve clamps at 0'); eq(r.stock, g.max, 'stock refilled');
+      P.consume(g, r, 1, 200); eq(r.timer, 'storage', 'timer kind');
+      P.project(g, r, 200 + g.storeSec - 1); eq(r.stock, g.max - 1, 'stock before storage completion');
+      P.project(g, r, 200 + g.storeSec); eq(r.stock, g.max, 'stock'); eq(r.reserve, g.storeMax, 'reserve');
+    });
+    t('produce: gem cost is proportional to remaining time (dev spec 1.1.1)', () => {
+      const r = P.newRec(105, g);
+      P.consume(g, r, 1, 0);
+      eq(P.speedupCost(g, r, 0), g.itemCost, 'board, full wait');
+      eq(P.speedupCost(g, r, g.itemSec / 2), Math.max(1, Math.ceil(g.itemCost / 2)), 'board, half way');
+      eq(P.speedupCost(g, r, g.itemSec - 0.5), 1, 'board, almost done');
+      const s = P.newRec(105, g); s.reserve = 0; P.consume(g, s, 1, 0);
+      eq(P.speedupCost(g, s, 0), g.storeCost, 'storage, full wait');
+      eq(P.speedupCost(g, s, g.storeSec / 2), Math.max(1, Math.ceil(g.storeCost / 2)), 'storage, half way');
+      const f = P.newRec(105, g); eq(P.speedupCost(g, f, 0), 0, 'full stock -> nothing to buy');
+      return 'board ' + g.itemCost + '->' + Math.ceil(g.itemCost / 2) + '->1 · storage ' + g.storeCost + '->' + Math.ceil(g.storeCost / 2);
+    });
+    t('produce: consumable box never recovers and has no reserve', () => {
+      const row = window.RwEcon.spec(605) || {};
+      if (row.is_generator !== false) return 'SKIP - 605 is not a consumable box in this data';
+      const cg = P.genRow(605), r = P.newRec(605, cg);
+      eq(cg.recover, false, 'recover'); eq(r.reserve, 0, 'reserve');
+      P.consume(cg, r, 1, 0); eq(r.timer, 'none', 'no timer after consume');
+    });
+    return JSON.stringify(out);
+  })()`;
+}
+
 function buildRunnerExpr(maxSteps, itemsJson) {
   return `(() => {
     const RWB = window.__RWB, RwEconRef = window.RwEcon, OPTS = window.RWB_OPTS || {};
@@ -512,9 +579,11 @@ function buildRunnerExpr(maxSteps, itemsJson) {
       const sp = RwEconRef.spec(code);
       return !!(sp && Number(sp.spread_open_duration_sec) > 0);
     };
+    // 젬 충전 비용의 **상한** — 실제 비용은 남은 시간 비례라 기본값을 넘지 않는다. 보드·창고 중 큰 쪽.
+    // F1 후보 판정에만 쓴다(과소검출 쪽으로 치우친다). 결제 검증은 로그의 entry.gem 으로 다시 계산한다.
     const gemCostOfC = (code) => {
       const sp = code != null && RwEconRef ? RwEconRef.spec(code) : null;
-      const c = sp && Number(sp.spread_item_speedup_cost);
+      const c = sp ? Math.max(Number(sp.spread_item_speedup_cost) || 0, Number(sp.spread_storage_speedup_cost) || 0) : 0;
       return c > 0 ? c : 1;
     };
     // F1/F2 재현용 — ITEMS[code] = {name,chain,step,next,gen,img,p?}. board.js 의 spec() 과 같은 표다.
@@ -550,7 +619,7 @@ function buildRunnerExpr(maxSteps, itemsJson) {
         const m = html.match(/cell(\\d+).*?[-−](\\d+)\\s*젬/); // '젬' 앞 숫자 = 결제 코스트
         return { tag: 'gem-recharge', dBoard: 0, dBox: 0,
                  gemCell: m ? Number(m[1]) : null, gemCost: m ? Number(m[2]) : null,
-                 gemCode: m ? codeAt(cellsBefore, Number(m[1])) : null };
+                 gemCode: m ? codeAt(cellsBefore, Number(m[1])) : null, gemMeta: e.gem || null };
       }
       if (html.indexOf('시간 경과') >= 0) { // skipTime — 사유별로 더 가른다(오더 대기/생성기 회복/에너지 회복/상자 개봉)
         const m = html.match(/시간 경과 · (.+?) · \\+(\\d+)s/);
@@ -574,7 +643,7 @@ function buildRunnerExpr(maxSteps, itemsJson) {
     const collectEvents = [];
     let prevLevel = A().level, prevDay = A().day;
     let steps = 0, stopReason = 'loop_limit';
-    let gemChecked = 0, gemMismatch = 0;
+    let gemChecked = 0, gemMismatch = 0, gemStorage = 0;
     let openedMirror = new Set(), openingNow = null;   // OPENED / OPENING 를 로그로 재구성한다
     let startableButTapped = 0, drawableOpenedButTapped = 0; // 부록 E addendum(2)
     for (let i = 1; i <= MAX_STEPS; i++) {
@@ -699,14 +768,23 @@ function buildRunnerExpr(maxSteps, itemsJson) {
         if (p.emptiedFrom != null && RWB.cells[p.emptiedFrom] !== null)
           tagFail('emptied cell ' + p.emptiedFrom + ' still occupied after the step (' + p.tag + ')');
       });
-      // C2 — 젬 충전 코스트가 item_spec.spread_item_speedup_cost(없거나 0이면 1)와 맞는지.
+      // C2 — 젬 충전 코스트 = max(1, ceil(기본 × 남은초 ÷ 회복초)) (개발 기획서 1.1.1 「급속 회복 비용」).
+      //      기본·회복초는 로그가 아니라 item_spec 에서 타이머 종류별로 다시 읽는다. 남은초만 로그 값을 쓴다.
       parts.forEach((p) => {
         if (p.tag !== 'gem-recharge') return;
         gemChecked++;
         const spec = p.gemCode != null && RwEconRef ? RwEconRef.spec(p.gemCode) : null;
-        const expectCost = spec && Number(spec.spread_item_speedup_cost) > 0 ? Number(spec.spread_item_speedup_cost) : 1;
-        if (p.gemCost == null || spec == null) { gemMismatch++; tagFail('gem-recharge: could not parse cell/cost or spec for code ' + p.gemCode); }
-        else if (p.gemCost !== expectCost) { gemMismatch++; tagFail('gem-recharge cost mismatch: code ' + p.gemCode + ' cell ' + p.gemCell + ' got ' + p.gemCost + ' expected ' + expectCost + ' (spread_item_speedup_cost)'); }
+        const gm = p.gemMeta;
+        if (p.gemCost == null || spec == null || gm == null) { gemMismatch++; tagFail('gem-recharge: could not parse cell/cost/meta or spec for code ' + p.gemCode); return; }
+        const isStore = gm.kind === 'storage';
+        const base = Number(isStore ? spec.spread_storage_speedup_cost : spec.spread_item_speedup_cost) || 0;
+        const storeSec = Number(spec.spread_storage_recovery_sec) || 0, itemSec = Number(spec.spread_item_recovery_sec) || 0;
+        const dur = isStore ? (storeSec > 0 ? storeSec : itemSec) : itemSec;
+        const expectCost = Math.max(1, Math.ceil(base * gm.remain / dur));
+        if (gm.kind !== 'board' && gm.kind !== 'storage') { gemMismatch++; tagFail('gem-recharge with no running timer: kind=' + gm.kind); }
+        else if (gm.dur !== dur || gm.remain <= 0 || gm.remain > dur) { gemMismatch++; tagFail('gem-recharge timer mismatch: code ' + p.gemCode + ' kind ' + gm.kind + ' dur ' + gm.dur + ' (sheet ' + dur + ') remain ' + gm.remain); }
+        else if (p.gemCost !== expectCost) { gemMismatch++; tagFail('gem-recharge cost mismatch: code ' + p.gemCode + ' cell ' + p.gemCell + ' got ' + p.gemCost + ' expected ' + expectCost + ' (' + gm.kind + ' base ' + base + ' × ' + gm.remain + '/' + dur + ')'); }
+        if (isStore) gemStorage++;
         // G off — 결제 전에 충분했어야 한다(모자라면 애초에 후보가 아니다).
         if (OPTS.gemUnlimited === false && gBefore < p.gemCost)
           tagFail('gem-recharge happened with insufficient gem while gemUnlimited=false: had ' + gBefore + ', cost ' + p.gemCost);
@@ -774,7 +852,7 @@ function buildRunnerExpr(maxSteps, itemsJson) {
       steps, stopReason, milestones,
       finalStats: { level: F.level, day: F.day, coin: F.coin, gem: F.gem, energy: RWB.energy,
                     stats: F.stats, boardCount: boardCount(), boxCount: boxCount(), logLen: RWB.log.length },
-      gemChecked, gemMismatch, startableButTapped, drawableOpenedButTapped,
+      gemChecked, gemMismatch, gemStorage, startableButTapped, drawableOpenedButTapped,
       collectEvents,
       fails: fails.slice(0, 30), failCount: fails.length,
     });
@@ -857,6 +935,10 @@ async function part2() {
     })();
     if (!rwbReady0) throw new Error('window.__RWB.step/.acc / window.RWB_OPTS / #rwbReset did not appear within 10s');
 
+    const unit = JSON.parse(await cdp.evalExpr(buildProduceUnitExpr()));
+    console.log('Produce-record unit checks (vs client ProduceRules.ts):');
+    unit.forEach((u) => console.log(`${u.pass ? 'PASS' : 'FAIL'} - ${u.name}${u.detail ? ' :: ' + u.detail : ''}`));
+
     for (const cfg of OPT_CONFIGS) {
       const row = { config: cfg.name, opts: cfg.opts, steps: cfg.steps };
       try {
@@ -872,7 +954,7 @@ async function part2() {
         row.stopReason = report.stopReason + (report.steps < cfg.steps ? ` (of ${cfg.steps})` : '');
         row.milestones = report.milestones;
         row.finalStats = report.finalStats;
-        row.gemChecked = report.gemChecked; row.gemMismatch = report.gemMismatch;
+        row.gemChecked = report.gemChecked; row.gemMismatch = report.gemMismatch; row.gemStorage = report.gemStorage;
         row.startableButTapped = report.startableButTapped;
         row.drawableOpenedButTapped = report.drawableOpenedButTapped;
         row.fails = report.fails; row.failCount = report.failCount;
@@ -912,7 +994,7 @@ async function part2() {
     console.log(`    milestones: Day[${dayM}] Lv[${lvM}]`);
     console.log(`    final: level=${fs_.level} day=${fs_.day} coin=${fs_.coin} gem=${fs_.gem} energy=${fs_.energy}`);
     console.log(`    stats: recharges=${st.recharges} gemRecharges=${st.gemRecharges} chestOpens=${st.chestOpens} waitSec=${st.waitSec} chestsEmptied=${st.chestsEmptied} sells=${st.sells} collects=${st.collects}`);
-    console.log(`    gem-cost checks: ${r.gemChecked} checked / ${r.gemMismatch} mismatched · E2 collect checks: ${(r.e2ViolationCount === undefined ? 'n/a' : r.e2ViolationCount + ' bad')} · gen-tap-while-startable-chest: ${r.startableButTapped} · gen-tap-while-opened-chest(informational): ${r.drawableOpenedButTapped}`);
+    console.log(`    gem-cost checks: ${r.gemChecked} checked (${r.gemStorage} storage) / ${r.gemMismatch} mismatched · E2 collect checks: ${(r.e2ViolationCount === undefined ? 'n/a' : r.e2ViolationCount + ' bad')} · gen-tap-while-startable-chest: ${r.startableButTapped} · gen-tap-while-opened-chest(informational): ${r.drawableOpenedButTapped}`);
     console.log(`    violations: ${r.failCount}${r.failCount ? ' (showing up to 10)' : ''}`);
     (r.fails || []).slice(0, 10).forEach((m) => console.log('      ' + m));
   });

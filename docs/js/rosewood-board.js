@@ -9,7 +9,9 @@
      shock          4방향 · 상자만 반응 · 드러난 칸이 움직일 수 있으면 연쇄
      produceCheck   재고 → 빈칸 → 에너지 → 산출 순서. 자동 산출 생성기는 탭을 안 받는다
      drawFromBag    `produce_weight_N` 은 확률이 아니라 **개수**. 비면 재충전(방식 1)
-     rechargeStock  `경과 ÷ 회복초` 만큼 채우고 나머지 초는 버리지 않는다
+     ProduceRecord  재고(보드)와 창고(예비)를 따로 든다. 타이머는 재고 < 상한일 때만, 돌고 있지 않을 때만
+                    시작하고 종류는 그때 정한다(창고 > 0 보드 회복 · 0 창고 회복). 완료는 한 번에 상한까지
+     speedupCost    `max(1, ceil(기본 × 남은초 ÷ 회복초))` · 기본은 타이머 종류별 item/storage 비용
      exhausted      회복이 없는 소모 상자는 다 쓰면 끝이다(ProduceRules.ts:134 Exhausted)
    옮기지 않은 것: 럭키 산출(`lucky_produce`)·천장·판매 체인 보호(`protect_level`).
    수확(collect)은 정본 데이터 열이지만 클라에 구현이 없다(BalanceTypes.ts:70-84) — 여기서는 옮겨 둔다.
@@ -26,7 +28,7 @@
    부록 D: 16배속 · 옵션 4개(window.RWB_OPTS — 매 수 새로 읽는다) · 상자 개봉(BoxRules.ts 이식).
    부록 E: [3] 안 순서 = 머지 → 개봉 시작 → 상자 꺼내기 → 생성기 탭 · 코인·젬은 최대 단계에서만 수확.
    부록 C: C1 소모형 상자는 마지막 산출과 함께 칸을 비운다(클라는 안 지운다) ·
-           C2 재고 회복을 기다리지 않고 젬(spread_item_speedup_cost)으로 채운다 · C3 젬은 음수 허용.
+           C2 재고 회복을 기다리지 않고 젬(speedupCost — 결제 시점 재계산)으로 끝낸다 · C3 젬은 음수 허용.
    후보를 인덱스 오름차순으로 고르면 같은 보드에서 늘 같은 순서가 나온다.
    ========================================================================== */
 (function () {
@@ -48,7 +50,7 @@
 
   var DB = null;     // { board, items, bal, _meta }
   var S = null;      // 현재 보드 — [{code,box,web}|null] × 63
-  var PROD = null;   // 칸 번호 → { code, stock, lastAt } — 생성기 재고는 칸에 붙는다
+  var PROD = null;   // 칸 번호 → { code, stock, reserve, timer, timerAt } — 생성기 재고는 칸에 붙는다
   var BAGS = null;   // 방식 1: 아이템 코드 → 잔량 배열(종류별 공유) · 방식 2: "c"+칸 → 잔량 배열(개체별)
   var ACC = null;    // RwEcon 계정
   var RAIL = null;   // 오더 레일 6칸
@@ -273,26 +275,101 @@
     return -1;
   }
 
-  /* 재고 기록은 칸에 붙는다. 코드가 바뀌었으면(합쳐졌으면) 다른 개체라 새로 만든다.
-     기록이 없을 때 만땅으로 시작하는 것도 클라와 같다 — 저장본 없는 첫 진입의 동작이다. */
-  function prodAt(i, p) {
+  /* ── 생성기 재고 레코드 (ProduceRules.ts 이식) ──────────────────────────
+     재고(보드)와 창고(예비)는 다른 개념이다 — 탭은 재고만 깎고, 창고는 보드 회복이 끝날 때 부족분만큼 줄어든다.
+     타이머는 재고 < 상한일 때만 돈다. 종류는 **시작 시점**에 정한다 — 창고 > 0 이면 보드 회복, 0 이면 창고 회복.
+     창고 회복이 끝나면 재고·창고 **둘 다** 상한이다. 완료는 투영 한 번에 많아야 한 번(밀린 주기를 재생하지 않는다).
+     규칙 값은 item_spec 원본 행(RwEcon.spec)에서 읽는다 — board.json 의 p 에는 창고 열이 없다. */
+  var T_NONE = "none", T_BOARD = "board", T_STORAGE = "storage";
+  var GEN_ROWS = new Map();
+
+  /* 소모 상자(is_generator=false)는 회복 값이 있어도 회복·창고를 갖지 않는다(ProduceRules.canRecover). */
+  function genRow(code) {
+    var g = GEN_ROWS.get(code);
+    if (g) return g;
+    var r = RwEcon.spec(code) || {};
+    g = {
+      max: Number(r.spread_item_max) || 0,
+      storeMax: Number(r.spread_storage_max) || 0,
+      itemSec: Number(r.spread_item_recovery_sec) || 0,
+      storeSec: Number(r.spread_storage_recovery_sec) || 0,
+      itemCost: Number(r.spread_item_speedup_cost) || 0,
+      storeCost: Number(r.spread_storage_speedup_cost) || 0,
+    };
+    g.recover = g.itemSec > 0 && r.is_generator !== false;
+    GEN_ROWS.set(code, g);
+    return g;
+  }
+
+  /* timerDurationSec — 창고 회복 열이 0 이하면 보드 회복 값으로 떨어진다. */
+  function timerDur(g, kind) {
+    if (kind === T_BOARD) return g.itemSec;
+    if (kind !== T_STORAGE) return 0;
+    return g.storeSec > 0 ? g.storeSec : g.itemSec;
+  }
+
+  function timerKindFor(st) { return st.reserve > 0 ? T_BOARD : T_STORAGE; }
+
+  /* newProduceRecord — 재고·창고 상한, 타이머 없음. 저장본 없는 첫 진입의 동작이다. */
+  function newRec(code, g) {
+    return { code: code, stock: g.max, reserve: g.recover ? g.storeMax : 0, timer: T_NONE, timerAt: 0 };
+  }
+
+  /* consumeRecord — 타이머는 **돌고 있지 않을 때만** 시작한다. 탭마다 기준점을 당기면 진행 중이던 회복이 버려진다. */
+  function consume(g, st, n, t) {
+    st.stock = Math.max(0, st.stock - n);
+    if (st.timer !== T_NONE) return;
+    if (st.stock >= g.max) return;
+    if (!g.recover) return;
+    st.timer = timerKindFor(st);
+    st.timerAt = t;
+  }
+
+  /* applyCompletion — 보드 회복: 창고에서 부족분을 빼고(0 미만은 0) 재고 상한 · 창고 회복: 둘 다 상한. */
+  function complete(g, st) {
+    if (st.timer === T_BOARD) st.reserve = Math.max(0, st.reserve - Math.max(0, g.max - st.stock));
+    else if (st.timer === T_STORAGE) st.reserve = g.storeMax;
+    st.stock = g.max;
+    st.timer = T_NONE;
+    st.timerAt = 0;
+  }
+
+  /* projectRecord — t 까지 흐른 시간을 반영한다. 완료는 많아야 한 번이다. */
+  function project(g, st, t) {
+    if (!g.recover) { st.stock = Math.min(g.max, st.stock); st.reserve = 0; st.timer = T_NONE; st.timerAt = 0; return; }
+    if (st.stock >= g.max) { st.stock = g.max; st.timer = T_NONE; st.timerAt = 0; return; }
+    if (st.timer === T_NONE) { st.timer = timerKindFor(st); st.timerAt = t; return; }
+    if (st.timerAt > t) st.timerAt = t;                    // 시계가 뒤로 갔으면 기준점만 당긴다
+    if (t < st.timerAt + timerDur(g, st.timer)) return;
+    complete(g, st);
+  }
+
+  /* recordWaitSec — 회복까지 남은 초. 한 회분 길이를 넘기지 않는다. */
+  function waitSec(g, st, t) {
+    if (st.timer === T_NONE) return 0;
+    var dur = timerDur(g, st.timer);
+    return Math.max(0, Math.min(dur, st.timerAt + dur - t));
+  }
+
+  /* recordSpeedupCost — 남은 시간에 비례해 줄어든다. 회복이 없거나 이미 끝났으면 0(살 게 없다). */
+  function speedupCost(g, st, t) {
+    if (st.timer === T_NONE) return 0;
+    var dur = timerDur(g, st.timer);
+    if (dur <= 0) return 0;
+    var remain = waitSec(g, st, t);
+    if (remain <= 0) return 0;
+    var base = st.timer === T_STORAGE ? g.storeCost : g.itemCost;
+    return Math.max(1, Math.ceil((base * remain) / dur));
+  }
+
+  /* 재고 기록은 칸에 붙는다. 코드가 바뀌었으면(합쳐졌으면) 다른 개체라 새로 만든다. */
+  function prodAt(i) {
     var st = PROD.get(i);
     if (!st || st.code !== S[i].code) {
-      st = { code: S[i].code, stock: p.max, lastAt: now() };
+      st = newRec(S[i].code, genRow(S[i].code));
       PROD.set(i, st);
     }
     return st;
-  }
-
-  /* IngameVM.rechargeStock — 나머지 초를 버리지 않으려고 lastAt 을 간격 배수로만 민다. */
-  function recharge(st, p) {
-    if (p.rec <= 0 || st.stock >= p.max) return;
-    var elapsed = now() - st.lastAt;
-    if (elapsed < 0) { st.lastAt = now(); return; }
-    if (elapsed < p.rec) return;
-    var gained = Math.floor(elapsed / p.rec);
-    st.stock = Math.min(p.max, st.stock + gained);
-    st.lastAt = st.stock >= p.max ? now() : st.lastAt + gained * p.rec;
   }
 
   /* 방식 1은 종류별 하나, 방식 2(소모형)는 개체별 — 소모형 상자는 칸마다 자기 구성을 들고 있다. */
@@ -311,10 +388,11 @@
   }
   function isOpenable(code) { return !!(spec(code) || {}).p && openDurOf(code) > 0; }
 
-  /* D-2 genNoCooldown — 회복이 있는 생성기(rec > 0)는 재고가 0 이 되는 즉시 상한까지 찬다.
-     rec = 0(회복 없음 = 소진)에는 걸지 않는다. */
-  function noCooldownFill(st, p) {
-    if (opts().genNoCooldown && p.rec > 0 && st.stock <= 0) { st.stock = p.max; st.lastAt = now(); }
+  /* D-2 genNoCooldown(시뮬 전용) — 회복하는 생성기는 재고가 0 이 되는 즉시 도는 회복을 끝낸다.
+     공짜 완료일 뿐 완료 규칙은 같다 — 보드 회복이면 창고에서 부족분을 빼고, 창고 회복이면 둘 다 상한.
+     회복이 없는 것(소진)에는 걸지 않는다. */
+  function noCooldownFill(g, st) {
+    if (opts().genNoCooldown && g.recover && st.stock <= 0 && st.timer !== T_NONE) complete(g, st);
   }
 
   /* 탭 가능 여부 — 재고 → 빈칸 → 에너지 → 산출 순서(정본). 어느 단계에서 막히든 아무것도 깎지 않는다.
@@ -328,13 +406,13 @@
     if (p.auto) return { ok: false, reason: "auto_only" };   // 자동 산출은 탭을 받지 않는다
     if (isOpenable(c.code) && !OPENED.has(i))
       return { ok: false, reason: OPENING && OPENING.cell === i ? "opening" : "not_opened" };
-    var st = prodAt(i, p);
-    recharge(st, p);
-    noCooldownFill(st, p);
-    // ProduceRules.ts:134 · 317 isExhausted — 회복이 없는데 재고가 0 이거나, 소모형 주머니가 비었으면 끝이다
+    var st = prodAt(i), g = genRow(c.code), t = now();
+    project(g, st, t);
+    noCooldownFill(g, st);
+    // ProduceRules.ts isExhausted — 회복이 없는데 재고가 0 이거나, 소모형 주머니가 비었으면 끝이다
     if ((st.stock <= 0 && p.rec <= 0) || (p.wt === 2 && bagTotal(bagOf(i, c.code, p)) <= 0))
       return { ok: false, reason: "exhausted" };
-    if (st.stock <= 0) return { ok: false, reason: "recharging", wait: Math.max(0, p.rec - (now() - st.lastAt)) };
+    if (st.stock <= 0) return { ok: false, reason: "recharging", wait: waitSec(g, st, t) };
     var dest = firstEmpty();
     if (dest < 0) return { ok: false, reason: "board_full" };
     if (!opts().energyRefill && ENERGY < p.cost) return { ok: false, reason: "energy_short", wait: energyWait(), need: p.cost };
@@ -370,9 +448,10 @@
      시연 정책: 재고 있는 생성기가 젬 충전보다 먼저고, 같은 쪽 안에서는
      ① 레일이 모자란 코드의 체인을 낳는 것 ② 거미줄 칸 아이템 체인을 낳는 것 ③ 인덱스 오름차순
      (판정은 produceCheckAt 그대로). */
-  function gemCostOf(code) {
-    var row = RwEcon.spec(code) || {};
-    return Number(row.spread_item_speedup_cost) > 0 ? Number(row.spread_item_speedup_cost) : 1;
+  /* 지금 젬으로 끝내면 얼마인가 — 투영이 끝난 레코드 기준. 0 이면 살 게 없다. */
+  function gemCostAt(i) {
+    var st = PROD.get(i);
+    return st && st.code === S[i].code ? speedupCost(genRow(st.code), st, now()) : 0;
   }
 
   /* E1 — kind "chest": 생성기가 아닌 산출 상자(열렸거나 개봉이 필요 없는 것)만 · "gen": 생성기만. */
@@ -398,7 +477,8 @@
           || r.reason === "not_opened" || r.reason === "opening") continue;
       /* C2 — 재고 0 · 회복 대기면 젬으로 채우고 누를 수 있다. 재고가 있는 생성기가 우선이고,
          그다음 같은 거미줄 선호. 빈 칸이 없으면 채워 봐야 못 누르니 후보가 아니다. */
-      if (r.reason === "recharging" && dest >= 0 && canSpendGem(gemCostOf(S[i].code), o)) {
+      var gc = r.reason === "recharging" && dest >= 0 ? gemCostAt(i) : 0;
+      if (gc > 0 && canSpendGem(gc, o)) {
         var p = spec(S[i].code).p, kg = rank(p, true);
         if (!pick[kg]) pick[kg] = { index: i, gem: true, check: { ok: true, dest: dest, p: p, st: PROD.get(i) } };
       }
@@ -409,7 +489,7 @@
     return { index: -1, why: why };
   }
 
-  /* C2 — 젬 충전. 비용 = item_spec.spread_item_speedup_cost(없거나 0이면 1).
+  /* C2 — 젬 충전 = IngameVM.speedupGenerator. 비용은 결제 시점에 다시 잰다(speedupCost).
      C3 — gemUnlimited 가 켜져 있으면 모자라도 막지 않는다(음수). 꺼져 있으면 findProduce 가 후보에서 뺀다. */
   /* F3 — 젬을 쓸 수 있나. gemUnlimited 꺼짐이면 쓴 뒤에도 0 이상이어야 한다(젬은 절대 음수가 안 된다). */
   function canSpendGem(cost, o) {
@@ -424,15 +504,23 @@
     return true;
   }
 
+  /* 투영 → 비용 → 결제 → 완료(completeRecordNow). 그사이 회복이 끝났으면 살 게 없으니 그대로 누른다.
+     로그 entry.gem 에 결제 근거(종류·남은초·회복초·기본 비용)를 남긴다 — 검사기가 비용을 다시 계산한다. */
   function gemRecharge(i, check) {
-    var cost = gemCostOf(S[i].code);
-    if (!spendGem(cost)) return 0;
-    check.st.stock = check.p.max;
-    check.st.lastAt = now();
+    var g = genRow(S[i].code), st = check.st, t = now();
+    project(g, st, t);
+    var cost = speedupCost(g, st, t);
+    if (cost <= 0) return st.stock > 0;
+    if (!spendGem(cost)) return false;
+    var kind = st.timer, remain = waitSec(g, st, t), dur = timerDur(g, kind);
+    complete(g, st);
     ACC.stats.gemRecharges++;
-    logPush("gem", "cell" + i + " " + esc(nameOf(S[i].code)) + " · −" + cost + " 젬 → 젬 " + ACC.gem
-      + ' <span class="rwb-dim">· 재고 ' + check.p.max + "</span>");
-    return cost;
+    LOG.push({ kind: "gem",
+      html: "cell" + i + " " + esc(nameOf(S[i].code)) + " · −" + cost + " 젬 → 젬 " + ACC.gem
+        + ' <span class="rwb-dim">· ' + (kind === T_STORAGE ? "창고" : "보드") + " 회복 남은 " + Math.ceil(remain) + "s/" + dur + "s"
+        + " · 재고 " + st.stock + " · 창고 " + st.reserve + "</span>",
+      gem: { kind: kind, remain: remain, dur: dur, base: kind === T_STORAGE ? g.storeCost : g.itemCost, cost: cost } });
+    return true;
   }
 
   /* C1 — 생성기가 아닌 소모 상자가 더 뽑을 게 없나(방식 2 주머니가 비었거나, 회복 없이 재고 0). */
@@ -503,9 +591,9 @@
     if (ENERGY >= ENERGY_MAX) ENERGY_AT = now();   // 만땅에서 처음 쓰는 순간부터 회복 시계가 돈다
     ENERGY -= cost;                                // 에너지가 먼저, 그 다음 재고
     ACC.stats.energySpent += cost;
-    check.st.stock -= 1;
-    check.st.lastAt = now();
-    noCooldownFill(check.st, check.p);
+    var g = genRow(S[i].code);
+    consume(g, check.st, 1, now());
+    noCooldownFill(g, check.st);
     S[check.dest] = { code: draw.code, box: false, web: false };
     LAST_PROD = { code: draw.code, n: STEP_N };
     var entry = { kind: "prod", from: i, to: check.dest, code: draw.code, cost: cost,
@@ -740,7 +828,10 @@
     var lock = c.box && c.web ? "상자+거미줄" : c.box ? "상자" : c.web ? "거미줄" : "잠금 없음";
     var t = "cell " + i + " · " + xy + " · " + c.code + " " + (s.name || "")
       + " · 체인 " + s.chain + "-" + s.step + " · " + lock;
-    if (s.p && PROD.has(i)) t += " · 재고 " + PROD.get(i).stock + "/" + s.p.max;
+    if (s.p && PROD.has(i)) {
+      var st = PROD.get(i), g = genRow(c.code);
+      t += " · 재고 " + st.stock + "/" + s.p.max + (g.recover ? " · 창고 " + st.reserve + "/" + g.storeMax : "");
+    }
     return t;
   }
 
@@ -1155,6 +1246,10 @@
     get energy() { return ENERGY; },
     get log() { return LOG; },
     get clock() { return CLOCK; },
+    get prod() { return PROD; },
+    // 재고 레코드 순수 함수 — 검사기가 가짜 시각으로 클라 규칙을 직접 대조한다
+    produce: { genRow: genRow, newRec: newRec, consume: consume, project: project, complete: complete,
+               waitSec: waitSec, speedupCost: speedupCost, gemCostAt: gemCostAt },
     get snap() { return snap(); },
     get instant() { return INSTANT; },
     set instant(v) { INSTANT = !!v; },
