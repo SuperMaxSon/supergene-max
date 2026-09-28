@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-28 17:20",
+  updated: "2026-09-28 17:21",
 };
 
 /* --------------------------------------------------------------------------
@@ -509,6 +509,7 @@ const SECTIONS = [
         pinned: false,
         project: "smg",
         tags: ["데코", "도구"],
+        share: false,
       },
       {
         title: "채팅 애니 용량 계산기",
