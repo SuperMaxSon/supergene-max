@@ -123,7 +123,9 @@
       /* ── day 밴드 ────────────────────────────────────────────────────────
          day 경계를 선 하나로 두면 20일이 한 덩어리로 흐른다. 구역이 day 구간과
          1:1(검증 완료)이라 구역명까지 한 줄에 실어 「어디서 무엇을」이 같이 읽힌다. */
-      .cr-tb tr.cr-band td { background: var(--surface-3); border-top: 2px solid var(--text-faint);
+      /* 밴드 바탕은 그 구역 색을 옅게 깐다 — 흰 바탕이면 day 경계가 안 보인다 */
+      .cr-tb tr.cr-band td { background: color-mix(in srgb, var(--zc, var(--text-faint)) 13%, var(--surface));
+                             border-top: 2px solid color-mix(in srgb, var(--zc, var(--text-faint)) 60%, transparent);
                              padding: 9px 12px; }
       .cr-band-in { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .cr-band .d { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
@@ -136,6 +138,8 @@
          대사는 그 사이에 흐르는 것이라, 같은 무게로 그리면 어느 게 「하는 일」인지 안 보인다. */
       .cr-tb tr.is-talk > td { background: var(--surface-2); }
       .cr-tb tr.is-talk .cr-key { padding-left: 22px; }
+      /* 심부름 행은 그 구역 색을 연하게 깐다 — 흰 바탕이면 회색 대사·꾸미기 행 사이에서 묻힌다 */
+      .cr-tb tr.is-task > td { background: color-mix(in srgb, var(--zc, var(--text-faint)) 8%, var(--surface)); }
       /* 심부름 행의 키는 굵게 — 표를 빠르게 훑을 때 이 줄만 세면 진행이 읽힌다 */
       .cr-tb tr.is-task .cr-key b { font-weight: 800; }
       /* 대사 행의 구역 칩은 한 톤 죽인다 — 구역을 정하는 건 심부름 쪽이다 */
@@ -1242,7 +1246,7 @@
       function taskRowHtml(ev) {
         const [day, seq, cost, npc, exp, items, title, type] = ev.row;
         const cls = ["cr-row", "is-task", items.length > 0 ? "cr-has" : ""].filter(Boolean).join(" ");
-        return `<tr class="${cls}" data-det="">`
+        return `<tr class="${cls}" data-det="" style="--zc: ${zoneColor(ev.row[8])}">`
           + `<td class="cr-key"><span class="cr-dot"></span>`
           + `<span class="cr-ar"></span> `
           + `<b>${keyOf(day, seq)}</b></td>`
@@ -1291,7 +1295,7 @@
           if (day !== prevDay) {
             prevDay = day;
             const d = stat[day];
-            html += `<tr class="cr-band"><td colspan="6"><div class="cr-band-in">`
+            html += `<tr class="cr-band" style="--zc: ${zoneColor(d.area)}"><td colspan="6"><div class="cr-band-in">`
               + `<span class="d">Day ${day}</span>`
               + `<span class="z" style="--zc: ${zoneColor(d.area)}">${esc(d.area)}</span>`
               + `<span class="c">심부름 ${d.task}건`
