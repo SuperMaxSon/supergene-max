@@ -22,6 +22,7 @@
         <a class="nav-back" href="#econ">L1 재화</a>
         <a class="nav-back" href="#prog">L2 진행</a>
         <a class="nav-back" href="#howto">구현 규칙</a>
+        <a class="nav-back" href="#play">게임 플레이</a>
         <a class="nav-back" href="story-merge-resource-budget.html">리소스 예산 ↗</a>
         <span class="nav-spacer"></span>
       </div>
@@ -44,6 +45,7 @@
           <span class="tag">우리 코드 = main 커밋 002df73 · SimpleMergeBoardModel.ts 실측</span>
           <span class="tag">우리 데이터 = story_node.json 11 · story_dialogue.json 37</span>
           <span class="tag">v5.1 정본 · 2026-09-01</span>
+          <span class="tag">게임 플레이 = 개발 기획서 v1.19 · 화면 기획서 v1.11 · 시트 09-23 export</span>
         </div>
       </div>
     </header>
@@ -603,6 +605,143 @@
           </div>
         </div>
       </section>
+      <!-- 게임 플레이 — 사람이 잘 두는 법이자 QA 봇(QA-Auto-test/games/SMG)이 따르는 판단 순서.
+           봇 수 선택(policy.py)을 바꾸면 이 섹션을 같이 고친다. 규칙 근거는 개발 기획서 v1.19 · 화면 기획서 v1.11 · 시트 2026-09-23 export. -->
+      <section class="doc-section" id="play">
+        <h2 class="doc-h2">게임 플레이 <span class="doc-h2-sub">잘 두는 법 · QA 봇이 따르는 판단 순서</span></h2>
+
+        <h3 class="doc-h2-sub">1. 게임 이해 — 두기 전에 알아야 하는 규칙</h3>
+        <div class="table-scroll" style="--acc: var(--plan)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 15%">개념</th><th>규칙</th><th style="width: 22%">근거</th></tr></thead>
+            <tbody>
+              <tr><td><b>코어 루프</b></td>
+                <td>생산·합치기 → 오더 납품 → <b>코인</b> → 심부름 착수 → 마을 복원 · 대화. <b>경험치는 심부름 완료로만</b> 오른다(오더·합치기는 0). 레벨은 기능 해금(보관함 Lv2 · 상점·일반 오더 Lv3 · random 오더 Lv4·5)과 상자 보상을 연다.</td>
+                <td>개발 4.1.1 · 1.2.2 · 3.4.2 / 시트 unlock</td></tr>
+              <tr><td><b>보드</b></td>
+                <td>7×9 = 63칸. 초기 판은 거의 전부 <b>종이상자+거미줄</b>. 상자는 <b>옆 4칸에서 합치면</b> 걷히고, 거미줄은 <b>같은 아이템을 그 칸에 합치면</b> 풀린다. 둘 다면 상자가 먼저. 드러난 아이템이 움직일 수 있으면 충격이 이어진다.</td>
+                <td>개발 5.1.1 (원작 ShockNeighborItems)</td></tr>
+              <tr><td><b>빈칸</b></td>
+                <td>생산물은 생성기 중심 나선의 첫 빈칸에 놓인다. <b>빈칸이 없으면 생산·상자·보상 수령·가위가 전부 막힌다</b>(차감 없이 Board Full).</td>
+                <td>개발 1.1.1 · 1.5.1</td></tr>
+              <tr><td><b>생성기</b></td>
+                <td>탭 1회 = 에너지 1 = 1개. 재고가 0이면 회복을 기다리거나 젬으로 급속(남은 시간 비례). 산출은 주머니 방식이고 오더와 무관하다.</td>
+                <td>개발 1.1.1</td></tr>
+              <tr><td><b>소모형 상자</b></td>
+                <td><code>is_generator = false</code> 이고 산출이 있는 상자. <b>에너지 없이</b> 자원을 주고 <b>다 쏟으면 사라진다.</b> 타이머 상자(2501 · 2601 · 3601 …)는 개봉을 기다리거나 젬으로 즉시 연다. 개봉은 동시에 하나. 한 번도 안 쏟은 상자끼리는 합칠 수 있다.</td>
+                <td>개발 1.1.1 · 1.1 E-2 / 시트 item_spec</td></tr>
+              <tr><td><b>재화 아이템</b></td>
+                <td>코인 · 젬 · 에너지. 탭하면 수확(칸이 빈다). <b>합쳐서 올린 뒤 수확</b>할수록 많이 받는다 — 코인 2 → 6 → 14 → 30 → 62.</td>
+                <td>개발 1.1.2</td></tr>
+              <tr><td><b>판매 · 버리기</b></td>
+                <td><b>체인 보호를 판매가보다 먼저</b> 본다. 체인 첫 행 <code>protect_level</code> 이하까지만 발견했으면 체인 전체 판매 금지(1·4·7·12·15 = 4, 18 = 3, 20 = 2). 판매가 −1 금지 · 0 휴지통 · 양수 코인. <code>rare = 1</code> 은 확인창.</td>
+                <td>개발 1.1.2 / SellRules.ts</td></tr>
+              <tr><td><b>보관함</b></td>
+                <td>기본 5칸, <b>젬으로 확장</b>(6번째 50 → 55 → 65 → 80 → 100 …). 도구 · 개봉 중 상자는 못 넣는다. <b>오더는 보드+보관함을 합쳐</b> 판정하고, 보관함에서 꺼내 쓰면 확인창이 뜬다.</td>
+                <td>개발 1.6.1 · 1.2.2 / 시트 inventory_unlock</td></tr>
+              <tr><td><b>보상함</b></td>
+                <td>보관함과 다른 칸. 심부름 · 레벨업 보상은 <b>보드가 차도 여기에 쌓여 잃지 않는다.</b> 꺼내면 첫 빈칸에 놓인다.</td>
+                <td>개발 1.6.1 · 2.2.1</td></tr>
+              <tr><td><b>심부름</b></td>
+                <td>197건 · 20일. 조건은 <b>코인 지불뿐</b>(<code>cost_coin</code> 12~220, 합계 18,042). 코인이 모자라면 오더를 더 채우는 게 정답 경로다.</td>
+                <td>개발 2.2.1 / 시트 main_task</td></tr>
+              <tr><td><b>에너지 · 젬</b></td>
+                <td>에너지 자연 회복 상한 100(120초당 1), 보상·구매분은 100을 넘겨도 된다. 젬 쓰는 곳: 에너지 · 생성기 급속 · 상자 즉시 개봉 · <b>보관함 확장</b> · 상점.</td>
+                <td>개발 3.2.3 · 4.1.2</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h2-sub">2. 판단 원칙 — 칸 예산</h3>
+        <div class="table-scroll" style="--acc: var(--bad)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 30%">원칙</th><th>왜 · 어떻게</th></tr></thead>
+            <tbody>
+              <tr><td><b>빈칸을 늘 남겨 둔다</b></td><td>빈칸이 0이면 생산 · 상자 · 보상 · 가위가 모두 멈춘다. 새로 채우기 전에 칸을 차지하는 것부터 없앤다.</td></tr>
+              <tr><td><b>보상은 칸이 넉넉할 때 받는다</b></td><td>보상함은 잃지 않으니 미뤄도 된다. 빈칸 3칸 이상 · 보드에 털 상자가 없을 때만 꺼낸다. 한두 칸 남았을 때 받으면 상자가 칸을 먹고 판이 막힌다.</td></tr>
+              <tr><td><b>상자를 받으면 먼저 턴다</b></td><td>소모형 상자는 에너지 없이 자원을 주고, 다 쏟으면 사라져 칸이 빈다. 생성기보다 먼저 쏟는다.</td></tr>
+              <tr><td><b>빠듯하면 소비부터</b> (빈칸 ≤ 2)</td><td>합치기 → 재화 아이템 수확(단계 무관) → 상자 개봉 시작 · 털기 → 판매가 0 버리기.</td></tr>
+              <tr><td><b>꽉 차면 칸을 만든다</b> (빈칸 0)</td><td>보관함에 넣기 → 보관함이 차면 <b>젬으로 칸 구매</b> → 그다음 판매. 넣을 게 없으면 가치를 안 따지고 넣는다(판매가 0 · 체인 보호 아이템 → 상자 순).</td></tr>
+              <tr><td><b>심부름은 시트 비용이 모이면</b></td><td>코인 1개마다 심부름을 하면 보드를 거의 안 두고 레벨만 올라 판이 잠긴 채 찬다. 시트 <code>cost_coin</code> 만큼 모일 때까지 보드를 둔다.</td></tr>
+              <tr><td><b>2초 넘게 쉬지 않는다</b></td><td>이 게임은 늘 할 게 있는 게 정상이다. 기다려야 할 때도 2초마다 판을 다시 본다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h2-sub">3. 한 수 고르는 순서</h3>
+        <div class="table-scroll" style="--acc: var(--validate)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 7%">순서</th><th style="width: 22%">수</th><th>조건 · 고르는 기준</th></tr></thead>
+            <tbody>
+              <tr><td>0</td><td>보상함 꺼내기</td><td>빈칸 ≥ 3 · 털 상자 없음</td></tr>
+              <tr><td>1</td><td>심부름</td><td>버튼이 켜져 있고 시트 비용만큼 코인이 모임</td></tr>
+              <tr><td>2</td><td>오더 납품</td><td>채워진 슬롯 중 번호가 낮은 것</td></tr>
+              <tr><td>2.5</td><td>재화 수확</td><td>코인·젬은 체인 끝 단계만(합칠수록 이득). 에너지는 짝이 없거나 빈칸 ≤ 1</td></tr>
+              <tr><td>3</td><td>합치기</td><td>결과가 오더에 모자란 요구품 → 도착지가 거미줄 → 도착지 옆에 상자 → 나머지. 오더 요구품은 합친 뒤에도 요구 수 이상 남을 때만</td></tr>
+              <tr><td>4</td><td>(빈칸 ≤ 2) 칸 비우기</td><td>재화 아무 단계 수확 → 상자 개봉 시작 → 상자 털기 → 판매가 0 버리기</td></tr>
+              <tr><td>5</td><td>(빈칸 0) 칸 만들기</td><td>최고 단계 코인·젬 수확 → 보관(오더 요구품 → 짝 없음 → 높은 단계) → 판매 → 가치 안 따지는 보관 → 젬으로 보관함 칸 구매</td></tr>
+              <tr><td>6</td><td>상자 개봉 · 털기 · 생성기</td><td>생성기는 오더에 모자란 체인 → 재고 있음 → 거미줄 칸 체인. 재고 0이면 급속 비용을 낼 수 있을 때</td></tr>
+              <tr><td>7</td><td>에너지 · 젬 구매</td><td>에너지가 막혔을 때 · 급속 비용이 모자랄 때(상점 Lv3 뒤)</td></tr>
+              <tr><td>8</td><td>기다리기</td><td>생성기 회복 · 상자 개봉 · 오더 추첨. 2초마다 다시 본다</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h2-sub">4. 조작 사전 — 어떻게 누르고, 됐는지 어떻게 아나</h3>
+        <p class="legend">경로 약칭 <code>VI</code> = <code>PersistRootNode/ViewManager/Parent/ViewIngame</code>, <code>PP</code> = <code>PersistRootNode/ViewManager/Parent</code>, <code>DC</code> = <code>VI/BottomBar/descContainer/normalLayout</code>. 미리 확인은 전부 <b>읽기 전용</b> 함수다. 실기 = QA 봇으로 실제 눌러서 확인한 날.</p>
+        <div class="table-scroll" style="--acc: var(--deploy)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 13%">조작</th><th style="width: 24%">제스처 · 노드</th><th style="width: 19%">미리 확인</th><th style="width: 16%">성공 신호</th><th>주의</th><th style="width: 8%">실기</th></tr></thead>
+            <tbody>
+              <tr><td><b>합치기 · 이동</b></td><td>드래그 칸 → 칸(10px 이상 움직인 뒤 뗌)</td><td><code>mergeCheckAt(from,to)</code></td><td>출발 칸 빔 · 도착 코드 상승</td><td>뗀 좌표로 판정. 최고 단계끼리는 거부</td><td>✅ 09-29</td></tr>
+              <tr><td><b>생성기 탭</b></td><td>같은 칸 2탭(선택+무장 → 실행)</td><td><code>generatorStatusAt(i)</code> · 에너지 · 빈칸</td><td>빈칸에 산출 · 에너지 −1</td><td>사이에 다른 칸을 누르면 무장이 풀린다. 재고 0이면 충전 팝업이 뜬다</td><td>✅ 09-29</td></tr>
+              <tr><td><b>상자 개봉 시작</b></td><td>상자 칸 2탭 또는 <code>DC/actionSlot/timed/btn</code></td><td><code>boxStatusAt(i)</code> · <code>boxOpenCheckAt(i)</code></td><td><code>getOpeningCell() === i</code></td><td>동시에 하나. 대기 0초 상자(3001 등)는 생성기처럼 바로 쏟는다</td><td>✅ 09-29</td></tr>
+              <tr><td><b>수확</b></td><td>재화 칸 2탭</td><td><code>collectCheckAt(i)</code></td><td>칸 빔 · 지갑 증가</td><td>헤더 숫자는 약 0.6초 늦게 바뀐다</td><td>—</td></tr>
+              <tr><td><b>판매</b></td><td>칸 선택 → <code>DC/actionSlot/sell/sellBtn</code></td><td><code>sellCheckAt(i)</code> → <code>kind: "sell"</code></td><td>칸 빔 · 코인 증가</td><td>희귀는 <code>PopupSellConfirm</code> 확인. 판매가 0이면 이 버튼이 없다</td><td>✅ 09-29</td></tr>
+              <tr><td><b>버리기</b></td><td>칸 선택 → <code>DC/actionSlot/discard/discardBtn</code></td><td><code>sellCheckAt(i)</code> → <code>kind: "trash"</code></td><td>칸 빔</td><td>판매 버튼을 누르면 안 먹는다(1628번 헛돈 원인)</td><td>✅ 09-29</td></tr>
+              <tr><td><b>보관</b></td><td>드래그 칸 → <code>VI/BottomBar/invBtn</code> 위에서 뗌</td><td><code>storeCheckAt(i)</code></td><td>칸 빔 · 보관함 +1</td><td>보드 밖에서 떼면 TOUCH_CANCEL 로 들어온다. 보관함 버튼은 Lv2 해금 뒤</td><td>✅ 09-29</td></tr>
+              <tr><td><b>보관함 칸 구매</b></td><td><code>invBtn</code> 탭 → <code>PP/PopupInventory/…/slotRoot/expandSlot</code> 탭 → <code>closeBtn</code></td><td><code>nextSlotCost()</code> · 젬</td><td>젬 감소 · <code>inventoryCapacity()</code> +1</td><td><b>등장 연출(0.37초)이 끝난 뒤</b> 누른다. 스크롤 안이라 16칸 넘으면 스크롤 필요</td><td>✅ 09-29</td></tr>
+              <tr><td><b>보관함에서 꺼내기</b></td><td>팝업 슬롯 탭 · <code>dumpAllBtn</code></td><td><code>takeCheckAt(i)</code></td><td>보드 빈칸에 놓임</td><td>꺼내도 팝업이 안 닫힌다. 슬롯이 앞으로 당겨지니 매번 다시 읽는다</td><td>—</td></tr>
+              <tr><td><b>보상함 꺼내기</b></td><td><code>VI/IngameRoot/railRow/leftDock/rewardBtn</code></td><td><code>canClaimRewardNow()</code></td><td>보상함 −1 · 빈칸에 놓임</td><td>빈칸이 없으면 토스트만 뜨고 그대로 — 무한 반복 원인이었다</td><td>✅ 09-29</td></tr>
+              <tr><td><b>오더 납품</b></td><td>카드의 <code>serveBtn</code>(가로 스크롤 레일 안)</td><td><code>serveCheckAt(slot)</code> · <code>serveSourcesAt(slot)</code></td><td>요구품 소모 · 코인 증가 · 카드 교체</td><td>보관함 아이템을 쓰면 <code>PopupOrderServe</code> 확인</td><td>✅ 09-29</td></tr>
+              <tr><td><b>심부름</b></td><td><code>choreBtn</code> → <code>PopupChore</code> Start → 마을 → 다시 Start</td><td>버튼 active · 코인</td><td>코인 차감 · 대화 · 보상</td><td>첫 Start 는 이동뿐, 두 번째가 실제 착수. 클라는 지금 1코인(TEST)</td><td>✅ 09-29</td></tr>
+              <tr><td><b>생성기 급속</b></td><td>재고 0 생성기 2탭 → <code>PopupGeneratorRecharge/rechargeBtn</code>, 또는 정보바 Skip</td><td><code>generatorStatusAt(i).speedupCost</code></td><td>젬 감소 · 재고 회복</td><td>젬 부족이면 상점으로 간다</td><td>—</td></tr>
+              <tr><td><b>에너지 구매</b></td><td>헤더 <code>energyPlusBtn</code> → <code>PopupEnergyBuy/priceBtn</code></td><td>에너지 · 젬</td><td>젬 감소 · 에너지 +100</td><td>에너지 부족으로 생성기를 누르면 자동으로 뜬다</td><td>—</td></tr>
+              <tr><td><b>도구</b></td><td>드래그 도구 → 대상 칸</td><td><code>toolDropCheckAt(from,to)</code></td><td>대상 단계 변화 · 사용 횟수 감소</td><td>첫 사용만 <code>PopupToolConfirm</code>. 가위는 빈칸 1개 필요. 봇은 아직 쓰지 않는다</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="legend"><b>판정용으로 부르면 안 되는 함수</b> — <code>produceCheckAt</code> 는 이름과 달리 재고 기록을 <b>저장</b>한다(닫힌 상자가 몰래 열린다). 대신 <code>generatorStatusAt</code> · <code>boxStatusAt</code> · <code>isRechargingAt</code> 를 쓴다. 그 밖의 쓰기 함수(<code>merge</code> · <code>sell</code> · <code>storeItem</code> · <code>unlockSlot</code> · <code>serveOrder</code> …)는 조작으로만 일으킨다.</p>
+
+        <h3 class="doc-h2-sub">5. 막힌 사례와 푼 방법</h3>
+        <div class="table-scroll" style="--acc: var(--sol)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 22%">증상</th><th style="width: 34%">원인</th><th>푸는 법</th></tr></thead>
+            <tbody>
+              <tr><td>Lv7에 보드 63칸이 꽉 차고 한 수도 못 둠</td><td>빈칸이 없는데 남은 일반 아이템(1801 · 1802)은 판매가 0이라 보관 대상에서 빠졌고, 18번 체인 보호(3)로 판매도 막힘</td><td>가치 안 따지고 보관 → 빈칸 1칸으로 스타터 상자부터 털기 → 보관함이 차면 젬으로 칸 구매</td></tr>
+              <tr><td>보드는 안 넓어지고 레벨만 오름 (잠긴 칸 61 → 53)</td><td>클라 심부름 비용이 TEST 1코인이라 코인 1개마다 심부름 → 보상 상자가 칸을 채움</td><td>시트 비용만큼 모일 때까지 보드를 둔다. 허브 자동 플레이는 같은 판에서 잠긴 칸을 61 → 23 까지 연다</td></tr>
+              <tr><td>보상함 꺼내기 수천 번</td><td>빈칸 0에서 꺼내기 시도</td><td>빈칸 ≥ 3 일 때만</td></tr>
+              <tr><td>한 칸 판매 1,628번</td><td>판매가 0 은 휴지통 버튼</td><td><code>discardBtn</code> + 안 먹힌 수 30초 제외</td></tr>
+              <tr><td>보관함 칸 구매 17번 헛탭</td><td>팝업 등장 연출 중 탭</td><td>연출이 끝난 뒤 탭</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h2-sub">6. 클라가 기획서와 일부러 다른 점 (두는 법에 영향)</h3>
+        <div class="table-scroll" style="--acc: var(--balance)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 24%">항목</th><th style="width: 34%">클라 지금</th><th>정본</th></tr></thead>
+            <tbody>
+              <tr><td>심부름 비용</td><td><code>const cost = 1; // TEST</code> (ChoreRules.ts:163 · PopupChore.ts:505 · 636)</td><td><code>main_task.cost_coin</code> 12~220 — 원복 필요</td></tr>
+              <tr><td>배수 부스터 x2·x4·x8</td><td>켜짐(09-21 결정). 산출 단계를 올리고 에너지·재고를 배수만큼 쓴다</td><td>런칭 범위 밖</td></tr>
+              <tr><td>자동 생산기 배치</td><td>주변 8칸(상하좌우 먼저)</td><td>가까운 빈칸</td></tr>
+              <tr><td>판매 되돌리기</td><td>시간 제한 없이 다음 조작에서 닫힘</td><td>로컬 5초</td></tr>
+              <tr><td>상자 즉시 개봉 비용</td><td><code>max(1,…)</code> 하한 없음</td><td>생성기 급속과 같은 하한</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
 <section class="doc-section" id="scope">
         <div class="foot">
           <b>확인 범위</b>
