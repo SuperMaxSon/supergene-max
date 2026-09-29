@@ -219,7 +219,16 @@
       .cr-msg.is-right .cr-bub { background: color-mix(in srgb, var(--zc, var(--balance)) 10%, var(--surface));
                                  border-color: color-mix(in srgb, var(--zc, var(--balance)) 28%, transparent); }
       .cr-bub .who { font-size: 10.5px; font-weight: 800; color: var(--text-faint); margin-bottom: 1px; }
-      .cr-bub .who .emo { font-weight: 600; font-family: ui-monospace, Menlo, monospace; }
+      .cr-bub .who { display: flex; align-items: center; gap: 6px; }
+      /* 감정 태그 — 구역 배지와 같은 어법: 색은 점과 옅은 배경에만, 글자는 본문 잉크.
+         색은 감정 계열 7개(EMO_FAMILY)로만 가른다 — 16색이면 서로 구분이 안 된다. */
+      .cr-emo { display: inline-flex; align-items: center; gap: 4px; padding: 0 7px 0 6px; border-radius: 999px;
+                font-size: 10.5px; font-weight: 700; color: var(--text-dim); line-height: 17px;
+                background: color-mix(in srgb, var(--ec) 14%, transparent);
+                box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec) 34%, transparent); }
+      .cr-emo::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ec); flex: none; }
+      .cr-emo i { font-style: normal; font-weight: 500; font-family: ui-monospace, Menlo, monospace;
+                  font-size: 10px; color: var(--text-faint); }
       .cr-bub .tx { font-size: 13px; line-height: 1.5; }
       /* 대사가 아직 없는 자리 — 점선으로 <b>비어 있음</b>을 그림 자체로 알린다.
          실선 버블로 두면 「짧은 대사가 있다」로 읽힌다. */
@@ -923,6 +932,26 @@
         tender: ["happy"], squint: ["serious", "worried"], flare: ["angry", "serious"],
         sly: ["confident", "happy"], tuck: ["awkward", "worried"], flinch: ["fear", "surprised", "worried"],
       };
+      /* 감정 태그 — 시트 어휘 16종을 7계열로 묶어 색을 준다. 이름(한글)은 문서가 붙인 풀이다. */
+      const EMO_FAMILY = {
+        calm:  "#8a94a6", joy: "#e0a000", sad: "#2a78d6", anger: "#d64545",
+        shock: "#8e5bd6", uneasy: "#eb6834", think: "#1baf7a",
+      };
+      const EMO_TAG = {
+        plain: ["평이", "calm"], steady: ["차분", "calm"],
+        glow: ["밝음", "joy"], beam: ["활짝", "joy"], tender: ["다정", "joy"], sly: ["능청", "joy"],
+        ache: ["서글픔", "sad"], droop: ["풀 죽음", "sad"],
+        flare: ["발끈", "anger"],
+        startle: ["놀람", "shock"], flinch: ["움찔", "shock"],
+        muddle: ["혼란", "uneasy"], stall: ["머뭇", "uneasy"], tuck: ["움츠림", "uneasy"],
+        ponder: ["생각", "think"], squint: ["의심", "think"],
+      };
+      function emoTagHtml(anim) {
+        if (!anim || anim === "none") return "";
+        const [ko, fam] = EMO_TAG[anim] || [anim, "calm"];
+        return `<span class="cr-emo" style="--ec: ${EMO_FAMILY[fam]}">${esc(ko)} <i>${esc(anim)}</i></span>`;
+      }
+
       function avaHtml(name, anim) {
         const have = EMO_ART[name];
         if (!have) return `<span class="cr-ava">${faceHtml(name)}</span>`;
@@ -1032,7 +1061,7 @@
         const empty = !text;
         return `<div class="cr-msg${right ? " is-right" : ""}">${avaHtml(who, emo)}`
           + `<div class="cr-bub${empty ? " is-empty" : ""}">`
-          + `<div class="who">${esc(who)}${emo ? ` · <span class="emo">${esc(emo)}</span>` : ""}</div>`
+          + `<div class="who">${esc(who)}${emoTagHtml(emo)}</div>`
           + `<div class="tx">${empty ? "대사 미작성 — 정본에 없음" : esc(text)}</div></div></div>`;
       }
 
