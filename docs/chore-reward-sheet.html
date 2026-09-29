@@ -115,6 +115,7 @@
       /* 완료·구역 완료는 색으로 갈라 둔다 — 드물게 나오는 자리라 눈에 걸려야 한다 */
       .cr-dot.is-f { box-shadow: inset 0 0 0 3px var(--validate); }
       .cr-dot.is-a { box-shadow: inset 0 0 0 3px var(--deploy); }
+      .cr-dot.is-c { box-shadow: inset 0 0 0 3px var(--validate); }
       /* 레일이 생긴 만큼 키·배지를 오른쪽으로 민다 */
       .cr-tb tbody .cr-key { padding-left: 34px; }
       .cr-tb tr.is-talk .cr-key { padding-left: 34px; }
@@ -165,6 +166,7 @@
       .cr-slot.is-s { background: var(--analysis); }
       .cr-slot.is-f { background: var(--validate); }
       .cr-slot.is-a { background: var(--deploy); }
+      .cr-slot.is-c { background: var(--validate); }
       .cr-slotdesc { color: var(--text-faint); font-family: inherit; font-size: 11px; }
       .cr-ar { display: inline-block; width: 11px; color: var(--text-faint); font-size: 10px;
                transition: transform 0.12s; }
@@ -199,6 +201,17 @@
       .cr-msg { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
       .cr-msg.is-right { flex-direction: row-reverse; }
       .cr-msg .cr-face { width: 30px; height: 30px; font-size: 10.5px; flex: none; }
+      /* 채팅 얼굴은 **원본 첫 프레임을 자르지 않고** 크기만 맞춘다 — 흉상(원형 링)과 전신이 섞여
+         있어 칸은 정사각으로 두고 contain + 아래 정렬로 앉힌다. 감정은 그 줄의 animation 값을 따른다. */
+      .cr-ava { flex: none; width: 52px; height: 52px; display: flex; align-items: flex-end; justify-content: center; }
+      .cr-ava img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+      /* 한 채팅 안의 씬 경계 — 클리어 채팅은 완료 · 구역 완료 · 다음 시작 씬을 이어 붙인다 */
+      .cr-seg { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px;
+                font-size: 11px; font-weight: 700; color: var(--text-faint); }
+      .cr-seg:first-child { margin-top: 0; }
+      .cr-seg::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+      .cr-seg code { font-weight: 500; }
+      .cr-segs { margin-top: 3px; font-size: 11px; color: var(--text-faint); }
       .cr-bub { position: relative; max-width: 78%; padding: 7px 12px; border-radius: 14px;
                 background: var(--surface-2); border: 1px solid var(--border); }
       .cr-msg.is-right .cr-bub { background: color-mix(in srgb, var(--zc, var(--balance)) 10%, var(--surface));
@@ -359,13 +372,14 @@
         <a href="chore-order-story-merge.html">심부름 등장 순서</a>가 「언제 뜨는가」를 본다면,
         이 문서는 같은 데이터를 <b>「무엇을 주는가」</b>로 세운 것입니다.
         <b>행을 누르면 그 심부름에서 오가는 대화</b>가 채팅 화면으로 펼쳐집니다 &mdash;
-        <b>197건 전부</b>에 대화가 붙습니다. 다만 재생 시점이 한쪽으로 쏠려 있습니다 &mdash;
-        <b>2,762줄 중 2,568줄(93.0%)이 「시작 전」</b>, 즉 그 심부름을 <b>하기 전에</b> 나옵니다.
-        완료 시점은 94줄, 구역 완료는 100줄뿐입니다.
-        그래서 이 표는 <b>심부름 단위가 아니라 <u>이벤트 단위</u></b>로 섭니다 &mdash;
-        <b>대사 행 → 심부름 행 → 대사 행</b> 이 실제 플레이 순서 그대로 번갈아 놓입니다.
-        맨 첫 행이 <code>main_ch01_01_begin</code> 12줄인 것도 그래서입니다:
-        <b>게임을 켜고 1-1 을 시작하기 전에 보는 장면</b>이 먼저 오는 게 맞습니다.
+        <b>197건 전부</b>에 대화가 붙습니다. 채팅은 <b>첫 진입에 한 번</b>, 그 뒤로는
+        <b><u>심부름 1건 클리어 = 채팅 1회</u></b>입니다 &mdash; 표에서 심부름 행 바로 아래 채팅 행이 그 짝입니다.
+        클리어 채팅 한 번은 <b>그 심부름의 완료 대사 → (구역 마지막이면) 구역 완료 대사 → 다음 심부름의 시작 대사</b>를
+        이어서 틉니다. 시트 기준으로는 <b>2,762줄 중 2,568줄(93.0%)이 다음 심부름의 「시작 전」 대사</b>라,
+        클리어 채팅의 대부분은 <b>방금 깬 것의 마무리가 아니라 다음 할 일을 여는 말</b>입니다
+        (완료 94줄 · 구역 완료 100줄).
+        맨 첫 행이 <code>main_ch01_01_begin</code> 12줄인 건 <b>게임을 켜고 1-1 을 시작하기 전에 보는 장면</b>이라서입니다.
+        말풍선 얼굴은 그 줄의 감정(<code>animation</code>)을 따라 바뀝니다.
         <b>대사가 비어 있는 심부름은 하나도 없습니다</b>.
         다만 <b>그것이 게임에 들어와 있다는 뜻은 아닙니다</b> &mdash;
         이 표가 그리는 건 <b>시트와 기획서</b>이고, 클라이언트에 실제로 반입된 몫은
@@ -385,7 +399,7 @@
       <section class="doc-section" id="sheet">
         <h2 class="doc-h2">
           보상 시트
-          <span class="doc-h2-sub">플레이 순서 그대로 &mdash; 대사 행과 심부름 행이 번갈아 섭니다. 눌러서 펼칩니다</span>
+          <span class="doc-h2-sub">1클리어 1채팅 &mdash; 심부름 행 바로 아래 채팅 행이 그 클리어에 열리는 채팅입니다. 눌러서 펼칩니다</span>
         </h2>
 
         <div class="stat-row" id="crKpi"></div>
@@ -645,6 +659,11 @@
         <br />삽화 큐 10줄 제외 (speaker <code>none</code> · animation <code>illustration</code>) &mdash; 대사가 아니라
         그 자리에 <code>story/illustration/{key_number}</code> 삽화를 띄우라는 <code>story_dialog</code> 행입니다.
         <br />화자 얼굴은 클라 <code>assets/bundle/character/sprite/</code> 임시 원화에서 잘라 냈습니다. Wren 은 아트가 없습니다.
+        채팅 말풍선 얼굴은 클라 스프라이트 애니메이션(<code>bundle/chat/animation</code> 흉상 · <code>bundle/character/sprite</code> 전신)의
+        <b>첫 프레임 원본</b>을 크기만 줄여 썼습니다. 시트 감정 16종 → 아트 감정 대응은 정본에 표가 없어 이 문서가 정한 것이고,
+        없는 감정은 그 캐릭터의 기본 얼굴로 대신합니다.
+        <br />클리어 채팅 순서(완료 → 구역 완료 → 다음 시작)는 시트 연결 그대로입니다. 클라 <code>StorySchedule.ts</code> 는
+        아직 <b>구역 완료 대사를 틀지 않습니다</b>.
       </div>
     </main>
 
@@ -883,6 +902,35 @@
          없는 이름은 이니셜 원형으로 떨어진다(404 를 유발하지 않는다). Wren 은 아트가 없어 뺐다. */
       const NPC_ART = ["Brett", "Diane", "Gus", "Hazel", "Hollis", "Poppy", "Rafa", "Rosie", "Tess", "Theo"];
 
+      /* 채팅 감정 얼굴 — docs/img/npc/emo/{Name}_{emotion}.png. 클라 스프라이트 애니메이션의 **첫 프레임**을
+         자르지 않고 크기만 줄였다: Rosie·Brett·Rafa·Poppy 는 bundle/chat/animation 흉상(304×288 → 104),
+         나머지와 Poppy sad 는 bundle/character/sprite 전신(82×198) 그대로. Wren 은 아트가 없다. */
+      const EMO_ART = {
+        Rosie: ["neutral", "happy", "sad", "angry", "worried", "confident"],
+        Brett: ["neutral", "sad", "awkward", "surprised"],
+        Rafa: ["neutral", "happy", "serious", "worried"],
+        Poppy: ["neutral", "excited", "sad"],
+        Theo: ["neutral", "happy", "serious"],
+        Gus: ["neutral", "fear"],
+        Diane: ["neutral"], Hazel: ["neutral"], Hollis: ["neutral"], Tess: ["neutral"],
+      };
+      /* 시트 story_dialog.animation 16종 → 아트 감정 우선순위. 정본에 이 표가 없어 문서가 세운 것이다
+         (2026-09-29 합의). 그 캐릭터에게 없으면 다음 후보, 다 없으면 neutral. */
+      const EMO_MAP = {
+        plain: ["neutral"], steady: ["serious", "confident"], glow: ["happy", "excited"], ache: ["sad"],
+        startle: ["surprised", "fear", "worried"], droop: ["sad", "worried"], ponder: ["serious"],
+        stall: ["awkward", "worried"], muddle: ["worried", "awkward"], beam: ["happy", "excited"],
+        tender: ["happy"], squint: ["serious", "worried"], flare: ["angry", "serious"],
+        sly: ["confident", "happy"], tuck: ["awkward", "worried"], flinch: ["fear", "surprised", "worried"],
+      };
+      function avaHtml(name, anim) {
+        const have = EMO_ART[name];
+        if (!have) return faceHtml(name);
+        const emo = (EMO_MAP[anim] || []).find((e) => have.indexOf(e) >= 0) || "neutral";
+        return `<span class="cr-ava" title="${esc(anim)} → ${emo}">`
+          + `<img src="img/npc/emo/${esc(name)}_${emo}.png" alt="${esc(name)} ${emo}" loading="lazy" decoding="async"></span>`;
+      }
+
       const ITEM_ART = "img/items/"; /* <item_code>.png — 클라 assets/bundle/board/items 와 같은 파일 */
       const COIN_ART = "img/ui/coin.png";
       /* 경험치 아이콘은 PopupChore.prefab 의 expIcon 바인딩 실물이다
@@ -922,26 +970,48 @@
       const TYPE_CLASS = { "대화": "t-talk", "수선": "t-fix", "택1": "t-pick" };
 
       /* ── 타임라인 ───────────────────────────────────────────────────────
-         표의 행은 **심부름이 아니라 이벤트**다. 대사의 93% 가 `task_start`(그 심부름을 하기 전)라
-         심부름 단위로 묶으면 접힌 대사가 「클리어하면 받는 것」처럼 읽힌다.
-         한 심부름이 풀리는 순서 그대로 쪼갠다:
+         **1클리어 1채팅.** 채팅은 첫 진입 한 번, 그 뒤로는 심부름을 깰 때마다 한 번 열린다
+         (클라 StorySchedule.ts 와 같은 규칙). 한 번의 클리어 채팅은 씬 여러 개를 이어 붙인다:
 
-             [대사] N 시작 전  →  [심부름] N  →  ([대사] N 완료)  →  ([대사] 구역 완료)
+             [채팅] 첫 진입         = start(1-1)
+             [심부름] N
+             [채팅] N 클리어 후     = finish(N) → 구역 완료(N 이 구역 마지막일 때) → start(N+1)
 
-         그래서 1-1 의 착수 대사가 **표의 첫 행**이 된다 — 예전처럼 `0 Day - 1` 같은
-         정본에 없는 키를 만들 이유가 없어졌다. 집계(KPI·건수)는 **심부름 행만** 센다. */
-      function buildTimeline(rows) {
+         시트 슬롯(s/f/a)으로 행을 쪼개면 start(N+1) 이 N+1 쪽에 붙어 「어느 클리어가 어느 채팅을
+         부르나」가 흩어진다. 그래서 채팅 행은 **깬 심부름 바로 아래 한 줄**로 둔다.
+         집계(KPI·건수)는 **심부름 행만** 센다. */
+      const ORDER = ROWS.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const keyOfRow = (row) => `${row[0]}-${row[1]}`;
+
+      function segsOf(key, slots, label) {
+        const st = STORY[key];
+        const out = [];
+        if (!st) return out;
+        for (const slot of slots)
+          for (const [sid, lines] of st[slot]) out.push({ slot, sid, lines, label: label(slot) });
+        return out;
+      }
+      function talkEv(kind, key, row, segs) {
+        return { t: "talk", kind, key, row, segs, lines: segs.flatMap((g) => g.lines) };
+      }
+
+      function buildTimeline() {
         const ev = [];
-        for (const row of rows) {
-          const key = `${row[0]}-${row[1]}`;
-          const st = STORY[key];
-          if (st) for (const [sid, lines] of st.s) ev.push({ t: "talk", slot: "s", key, sid, lines, row });
+        ORDER.forEach((row, i) => {
+          const key = keyOfRow(row);
+          const next = ORDER[i + 1];
+          if (i === 0) ev.push(talkEv("first", key, row, segsOf(key, ["s"], () => `${key} 시작 전`)));
           ev.push({ t: "task", key, row });
-          if (st) for (const slot of ["f", "a"])
-            for (const [sid, lines] of st[slot]) ev.push({ t: "talk", slot, key, sid, lines, row });
-        }
+          const segs = segsOf(key, ["f", "a"], (sl) => (sl === "f" ? `${key} 완료` : "구역 완료"));
+          if (next) {
+            const nk = keyOfRow(next);
+            segs.push(...segsOf(nk, ["s"], () => `${nk} 시작 전`));
+          }
+          ev.push(talkEv("clear", key, row, segs));
+        });
         return ev;
       }
+      const TIMELINE = buildTimeline();
 
       /* 구역 색 — dataviz 카테고리 슬롯 1~6(light). 구역은 day 구간과 1:1이라
          색이 곧 진행 구간이다. 순서를 섞지 않는다(슬롯 순서가 CVD 안전장치다). */
@@ -960,7 +1030,7 @@
 
       function bubbleHtml(who, emo, text, right) {
         const empty = !text;
-        return `<div class="cr-msg${right ? " is-right" : ""}">${faceHtml(who)}`
+        return `<div class="cr-msg${right ? " is-right" : ""}">${avaHtml(who, emo)}`
           + `<div class="cr-bub${empty ? " is-empty" : ""}">`
           + `<div class="who">${esc(who)}${emo ? ` · <span class="emo">${esc(emo)}</span>` : ""}</div>`
           + `<div class="tx">${empty ? "대사 미작성 — 정본에 없음" : esc(text)}</div></div></div>`;
@@ -974,26 +1044,20 @@
          한 심부름이 착수 때 한 번, 완료 때 한 번 열릴 수 있고 구역 마지막 건이면 구역 대화까지 붙는다.
          ⚠ 여기서 연출(삽화·컷씬·편지·글자 표현)은 그리지 않는다 — 화면 기획서의 아트 지시라
          대사와 계열이 다르고, 섞어 두면 「대화 중에 나오는 것」으로 잘못 읽힌다. */
-      const SLOT_LABEL = {
-        s: ["시작 전", "Start 를 누른 직후 — 이 심부름을 <b>하기 전에</b> 재생된다"],
-        f: ["완료", "심부름을 끝냈을 때"],
-        a: ["구역 완료", "이 구역의 마지막 심부름이라 구역 대화까지 이어진다"],
+      const KIND_LABEL = {
+        first: ["첫 진입", "마을에 처음 들어올 때 — 1-1 을 하기 전에 한 번"],
+        clear: ["클리어 후", "이 심부름을 깬 직후 한 번 — 완료 · 구역 완료 · 다음 심부름 시작 대사를 이어서"],
       };
 
-      /* 그 심부름에 실제로 쓰인 대사가 있나 (scene 만 걸리고 문장이 빈 경우와 가른다) */
-      function talkLineCount(st) {
-        if (!st) return 0;
-        return ["s", "f", "a"].reduce((a, k) =>
-          a + st[k].reduce((b, [, lines]) => b + lines.length, 0), 0);
-      }
-
-      /* 대사 한 씬의 채팅. 행이 이미 시점을 말하므로 여기서는 **말풍선만** 그린다. */
+      /* 채팅 한 번. 씬이 여럿이면 경계에 얇은 구분선을 넣고 말풍선을 이어 붙인다. */
       function chatHtml(ev) {
         if (!ev.lines.length) return "";
         const zc = zoneColor(ev.row[8]);
+        const many = ev.segs.length > 1;
         return `<div class="cr-detbox" style="--zc: ${zc}">`
           + `<div class="cr-chat">`
-          + ev.lines.map(([, who, anim, tx]) => bubbleHtml(who, anim, tx, who !== HERO)).join("")
+          + ev.segs.map((g) => (many ? `<div class="cr-seg">${esc(g.label)} <code>${esc(g.sid)}</code></div>` : "")
+            + g.lines.map(([, who, anim, tx]) => bubbleHtml(who, anim, tx, who !== HERO)).join("")).join("")
           + `</div></div>`;
       }
 
@@ -1018,7 +1082,8 @@
       /* 대사 행. 코인·경험치·아이템 칸은 **칩을 그리지 않는다** —
          0 을 그리면 「0 코인이 든다」로 읽히고, 대사가 오가는 동안은 무는 것도 받는 것도 없다. */
       function talkRowHtml(ev, id) {
-        const [lb, desc] = SLOT_LABEL[ev.slot];
+        const [lb, desc] = KIND_LABEL[ev.kind];
+        const dot = ev.kind === "first" ? "s" : "c";
         const head = ev.lines.length ? ev.lines[0] : null;
         /* 그 씬에 실제로 말하는 사람. 첫 화자를 얼굴로 세우고 나머지는 수로만 알린다 —
            11명이 섞이는 씬이 있어 전부 그리면 칸이 무너진다. */
@@ -1026,11 +1091,12 @@
         const others = new Set(ev.lines.map((l) => l[1]));
         others.delete(who);
         return `<tr class="cr-row is-talk${detOpen ? " is-open" : ""}" data-det="${id}">`
-          + `<td class="cr-key"><span class="cr-dot is-${ev.slot}"></span>`
-          + `<span class="cr-ar">▶</span> `
-          + `<span class="cr-slot is-${ev.slot}">${lb}</span></td>`
-          + `<td><code class="cr-sid">${esc(ev.sid)}</code>`
-          + `<span class="cr-talk-tag" title="${desc.replace(/<[^>]+>/g, "")}">${ev.lines.length}줄</span>`
+          + `<td class="cr-key"><span class="cr-dot is-${dot}"></span>`
+          + `<span class="cr-ar">${ev.lines.length ? "▶" : ""}</span> `
+          + `<span class="cr-slot is-${dot}">${ev.kind === "clear" ? `${esc(ev.key)} ` : ""}${lb}</span></td>`
+          + `<td><b style="font-size: 12.5px">채팅 1회</b>`
+          + `<span class="cr-talk-tag${ev.lines.length ? "" : " is-wait"}" title="${desc}">${ev.lines.length ? `${ev.lines.length}줄` : "채팅 없음"}</span>`
+          + (ev.segs.length ? `<div class="cr-segs">${ev.segs.map((g) => esc(g.label)).join(" → ")}</div>` : "")
           + (head ? `<div class="cr-peek">${esc(head[3])}</div>` : "")
           + `</td>`
           + `<td><span class="cr-npc">${faceHtml(who)}<span class="nm">${esc(who)}`
@@ -1064,15 +1130,25 @@
       }
 
       function renderSheet() {
-        const rows = ROWS.filter((r) => (dayFilter === 0 || r[0] === dayFilter) && (!onlyItem || r[5].length > 0));
+        const rows = ORDER.filter((r) => (dayFilter === 0 || r[0] === dayFilter) && (!onlyItem || r[5].length > 0));
         /* 「아이템 있는 건만」은 보상을 훑는 눈이다 — 대사 행을 끼우면 그 줄이 끊긴다. */
-        const ev = onlyItem ? rows.map((row) => ({ t: "task", key: `${row[0]}-${row[1]}`, row }))
-                            : buildTimeline(rows);
+        let ev;
+        if (onlyItem) ev = rows.map((row) => ({ t: "task", key: keyOfRow(row), row }));
+        else if (dayFilter === 0) ev = TIMELINE;
+        else {
+          /* 그날 첫 심부름의 시작 대사는 **전날 마지막 클리어 채팅**에 들어 있다 — 그 행을 맨 위에 같이 세운다 */
+          const at = TIMELINE.findIndex((e) => e.t === "task" && e.row[0] === dayFilter);
+          ev = TIMELINE.filter((e, i) => e.row[0] === dayFilter || i === at - 1);
+        }
 
         /* day 별 집계 — 밴드에 실을 값. 구역은 day 구간과 1:1이라 하나로 떨어진다. */
         const stat = {};
+        /* 밴드는 보이는 day 로 묶는다 — 전날에서 끌어온 채팅 행도 그날 밴드 아래에 선다 */
+        const bandDay = (e) => (dayFilter === 0 || onlyItem ? e.row[0] : dayFilter);
         for (const e of ev) {
-          const d = (stat[e.row[0]] = stat[e.row[0]] || { area: e.row[8], task: 0, talk: 0, line: 0 });
+          const bd = bandDay(e);
+          const d = (stat[bd] = stat[bd] || { area: null, task: 0, talk: 0, line: 0 });
+          if (e.t === "task" && !d.area) d.area = e.row[8];
           if (e.t === "task") d.task++;
           else { d.talk++; d.line += e.lines.length; }
         }
@@ -1081,7 +1157,7 @@
         let prevDay = -1;
         let n = 0;
         for (const e of ev) {
-          const day = e.row[0];
+          const day = bandDay(e);
           let daystart = "";
           if (day !== prevDay) {
             prevDay = day;
@@ -1090,7 +1166,7 @@
               + `<span class="d">Day ${day}</span>`
               + `<span class="z" style="--zc: ${zoneColor(d.area)}">${esc(d.area)}</span>`
               + `<span class="c">심부름 ${d.task}건`
-              + (d.talk ? ` · 대사 ${d.talk}장면 ${d.line.toLocaleString()}줄` : "")
+              + (d.talk ? ` · 채팅 ${d.talk}회 ${d.line.toLocaleString()}줄` : "")
               + `</span></div></td></tr>`;
             daystart = " is-daystart";
           }
