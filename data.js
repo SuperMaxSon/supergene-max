@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-29 15:59",
+  updated: "2026-09-29 17:20",
 };
 
 /* --------------------------------------------------------------------------
@@ -322,6 +322,18 @@ const SECTIONS = [
         pinned: false,
         tags: ["코드 실측", "리소스", "타임라인"],
         share: false,
+      },
+      {
+        title: "질문 보관함",
+        desc: "정본에 답이 없어 기획자 확인이 필요한 질문을 배경·선택지와 함께 쌓아 둡니다. 답변이 오면 같은 카드에 채웁니다.",
+        url: "docs/planner-questions.html",
+        project: "smg",
+        status: "진행중",
+        // ⚠ version 은 소스 판본이다 — 질문을 추가할 때마다 올리는 개정 번호가 아니다.
+        version: "개발 기획서 v1.19",
+        updated: "2026-09-29 17:20",
+        pinned: false,
+        tags: ["정본 대조", "머지", "상시"],
       },
     ],
   },
