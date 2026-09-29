@@ -205,6 +205,8 @@
          있어 칸은 정사각으로 두고 contain + 아래 정렬로 앉힌다. 감정은 그 줄의 animation 값을 따른다. */
       .cr-ava { flex: none; width: 52px; height: 52px; display: flex; align-items: flex-end; justify-content: center; }
       .cr-ava img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+      /* 흉상이 없는 화자는 기본 얼굴 원형 — 흉상 링과 비슷한 크기로 칸 가운데 아래에 앉힌다 */
+      .cr-ava .cr-face { width: 38px; height: 38px; font-size: 12px; margin-bottom: 4px; }
       /* 한 채팅 안의 씬 경계 — 클리어 채팅은 완료 · 구역 완료 · 다음 시작 씬을 이어 붙인다 */
       .cr-seg { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px;
                 font-size: 11px; font-weight: 700; color: var(--text-faint); }
@@ -659,8 +661,8 @@
         <br />삽화 큐 10줄 제외 (speaker <code>none</code> · animation <code>illustration</code>) &mdash; 대사가 아니라
         그 자리에 <code>story/illustration/{key_number}</code> 삽화를 띄우라는 <code>story_dialog</code> 행입니다.
         <br />화자 얼굴은 클라 <code>assets/bundle/character/sprite/</code> 임시 원화에서 잘라 냈습니다. Wren 은 아트가 없습니다.
-        채팅 말풍선 얼굴은 클라 스프라이트 애니메이션(<code>bundle/chat/animation</code> 흉상 · <code>bundle/character/sprite</code> 전신)의
-        <b>첫 프레임 원본</b>을 크기만 줄여 썼습니다. 시트 감정 16종 → 아트 감정 대응은 정본에 표가 없어 이 문서가 정한 것이고,
+        채팅 말풍선 얼굴은 클라 스프라이트 애니메이션(<code>bundle/chat/animation</code> 흉상)의
+        <b>첫 프레임 원본</b>을 크기만 줄여 썼습니다. 흉상은 Rosie · Brett · Rafa · Poppy 4명뿐이라 나머지는 기본 얼굴만 나옵니다. 시트 감정 16종 → 아트 감정 대응은 정본에 표가 없어 이 문서가 정한 것이고,
         없는 감정은 그 캐릭터의 기본 얼굴로 대신합니다.
         <br />클리어 채팅 순서(완료 → 구역 완료 → 다음 시작)는 시트 연결 그대로입니다. 클라 <code>StorySchedule.ts</code> 는
         아직 <b>구역 완료 대사를 틀지 않습니다</b>.
@@ -902,17 +904,15 @@
          없는 이름은 이니셜 원형으로 떨어진다(404 를 유발하지 않는다). Wren 은 아트가 없어 뺐다. */
       const NPC_ART = ["Brett", "Diane", "Gus", "Hazel", "Hollis", "Poppy", "Rafa", "Rosie", "Tess", "Theo"];
 
-      /* 채팅 감정 얼굴 — docs/img/npc/emo/{Name}_{emotion}.png. 클라 스프라이트 애니메이션의 **첫 프레임**을
-         자르지 않고 크기만 줄였다: Rosie·Brett·Rafa·Poppy 는 bundle/chat/animation 흉상(304×288 → 104),
-         나머지와 Poppy sad 는 bundle/character/sprite 전신(82×198) 그대로. Wren 은 아트가 없다. */
+      /* 채팅 감정 얼굴 — docs/img/npc/emo/{Name}_{emotion}.png. 클라 bundle/chat/animation 흉상(304×288)의
+         **첫 프레임**을 자르지 않고 크기만 줄였다(→ 104). 흉상이 있는 건 Rosie·Brett·Rafa·Poppy 4명뿐이다.
+         나머지는 **기본 얼굴(표와 같은 원형)만** 쓴다 — character/sprite 에 감정 프레임이 있어도 전신이라
+         쓰지 않는다(2026-09-29 사용자: 「전신은 안 돼」). Wren 은 아트가 없어 이니셜. */
       const EMO_ART = {
         Rosie: ["neutral", "happy", "sad", "angry", "worried", "confident"],
         Brett: ["neutral", "sad", "awkward", "surprised"],
         Rafa: ["neutral", "happy", "serious", "worried"],
-        Poppy: ["neutral", "excited", "sad"],
-        Theo: ["neutral", "happy", "serious"],
-        Gus: ["neutral", "fear"],
-        Diane: ["neutral"], Hazel: ["neutral"], Hollis: ["neutral"], Tess: ["neutral"],
+        Poppy: ["neutral", "excited"],
       };
       /* 시트 story_dialog.animation 16종 → 아트 감정 우선순위. 정본에 이 표가 없어 문서가 세운 것이다
          (2026-09-29 합의). 그 캐릭터에게 없으면 다음 후보, 다 없으면 neutral. */
@@ -925,7 +925,7 @@
       };
       function avaHtml(name, anim) {
         const have = EMO_ART[name];
-        if (!have) return faceHtml(name);
+        if (!have) return `<span class="cr-ava">${faceHtml(name)}</span>`;
         const emo = (EMO_MAP[anim] || []).find((e) => have.indexOf(e) >= 0) || "neutral";
         return `<span class="cr-ava" title="${esc(anim)} → ${emo}">`
           + `<img src="img/npc/emo/${esc(name)}_${emo}.png" alt="${esc(name)} ${emo}" loading="lazy" decoding="async"></span>`;
