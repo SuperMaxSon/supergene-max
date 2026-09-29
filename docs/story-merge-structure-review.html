@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>스토리머지 구조 점검</title>
+    <meta name="description" content="인게임·아웃게임 구조 점검 — 점수·의존 역방향·발견 항목." />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#score">점수</a>
+        <a class="nav-back" href="#deps">의존 방향</a>
+        <a class="nav-back" href="#findings">발견 항목</a>
+        <a class="nav-back" href="#excluded">범위 제외</a>
+        <a class="nav-back" href="#steps">리팩토링 단계</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 스토리 머지</div>
+        <h1 class="doc-title">스토리머지 구조 점검</h1>
+        <p class="doc-lede">인게임·아웃게임의 레이어, 의존 방향, 중복을 점검한 결과입니다. 의도된 임시 코드와 템플릿 소관은 발견 항목에서 뺐습니다.</p>
+        <div class="doc-meta">
+          <span class="tag">main 4725df2 코드 실측</span>
+          <span class="tag">2026-09-30</span>
+          <span class="tag">인게임 50파일/21.0k줄 · 아웃게임 81파일/24.0k줄</span>
+        </div>
+      </div>
+    </header>
+    <main class="wrap wrap--wide">
+      <section class="doc-section" id="score">
+        <h2 class="doc-h2">점수 <span class="doc-h2-sub">영역별 평균 · 분류별 10점 만점</span></h2>
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--analysis)"><div class="stat-num">7.3<span class="stat-unit">/10</span></div><div class="stat-name">인게임 평균</div><div class="stat-sub">high 1 · med 4 · low 11</div></div>
+          <div class="stat" style="--acc: var(--analysis)"><div class="stat-num">6.0<span class="stat-unit">/10</span></div><div class="stat-name">아웃게임 평균</div><div class="stat-sub">high 1 · med 11 · low 2</div></div>
+          <div class="stat" style="--acc: var(--warn)"><div class="stat-num">2</div><div class="stat-name">공통 발견</div><div class="stat-sub">high 0 · med 2 · low 0</div></div>
+          <div class="stat" style="--acc: var(--bad)"><div class="stat-num">32</div><div class="stat-name">전체 발견</div><div class="stat-sub">high 2 · med 17 · low 13</div></div>
+        </div>
+        <div class="table-scroll" style="margin-top: 14px">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 140px" /><col style="width: 60px" /><col style="width: 798px" /></colgroup>
+            <thead><tr><th>인게임 분류</th><th style="text-align: right">점수</th><th>게이지 <span class="tag">game/ingame/**</span></th></tr></thead>
+            <tbody>
+              <tr><td>레이어</td><td style="text-align: right">6</td><td><div class="bar" style="margin-top: 0"><i style="width: 60%; background: var(--warn)"></i></div></td></tr>
+              <tr><td>이벤트</td><td style="text-align: right">8</td><td><div class="bar" style="margin-top: 0"><i style="width: 80%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>팝업</td><td style="text-align: right">9</td><td><div class="bar" style="margin-top: 0"><i style="width: 90%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>풀링</td><td style="text-align: right">9</td><td><div class="bar" style="margin-top: 0"><i style="width: 90%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>스타일</td><td style="text-align: right">8</td><td><div class="bar" style="margin-top: 0"><i style="width: 80%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>중복</td><td style="text-align: right">6</td><td><div class="bar" style="margin-top: 0"><i style="width: 60%; background: var(--warn)"></i></div></td></tr>
+              <tr><td>결합</td><td style="text-align: right">5</td><td><div class="bar" style="margin-top: 0"><i style="width: 50%; background: var(--bad)"></i></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-scroll" style="margin-top: 14px">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 140px" /><col style="width: 60px" /><col style="width: 798px" /></colgroup>
+            <thead><tr><th>아웃게임 분류</th><th style="text-align: right">점수</th><th>게이지 <span class="tag">story · popup · player · shop · Base</span></th></tr></thead>
+            <tbody>
+              <tr><td>MVC</td><td style="text-align: right">5</td><td><div class="bar" style="margin-top: 0"><i style="width: 50%; background: var(--bad)"></i></div></td></tr>
+              <tr><td>라우팅</td><td style="text-align: right">7</td><td><div class="bar" style="margin-top: 0"><i style="width: 70%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>상태</td><td style="text-align: right">4</td><td><div class="bar" style="margin-top: 0"><i style="width: 40%; background: var(--bad)"></i></div></td></tr>
+              <tr><td>흐름</td><td style="text-align: right">5</td><td><div class="bar" style="margin-top: 0"><i style="width: 50%; background: var(--bad)"></i></div></td></tr>
+              <tr><td>플랫폼</td><td style="text-align: right">8</td><td><div class="bar" style="margin-top: 0"><i style="width: 80%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>스타일</td><td style="text-align: right">8</td><td><div class="bar" style="margin-top: 0"><i style="width: 80%; background: var(--analysis)"></i></div></td></tr>
+              <tr><td>중복</td><td style="text-align: right">5</td><td><div class="bar" style="margin-top: 0"><i style="width: 50%; background: var(--bad)"></i></div></td></tr>
+              <tr><td>결합</td><td style="text-align: right">6</td><td><div class="bar" style="margin-top: 0"><i style="width: 60%; background: var(--warn)"></i></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>막대가 짧고 붉을수록 구조가 약한 분류입니다(5 이하 붉은색, 6 노랑). 분류는 영역마다 달라 두 영역의 같은 이름끼리 직접 비교하지 않습니다.</p>
+          </div>
+        </div>
+        <div class="table-scroll" style="margin-top: 14px">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 90px" /><col style="width: 400px" /><col style="width: 500px" /></colgroup>
+            <thead><tr><th>영역</th><th>큰 파일 (줄)</th><th>잘된 점</th></tr></thead>
+            <tbody>
+              <tr><td>인게임</td><td><code>IngameVM.ts</code> 3,676<br /><code>ViewIngame.ts</code> 2,535<br /><code>BoardInputNode.ts</code> 2,476</td><td>✓ rules·data·이벤트에 cc 사용 0건<br />✓ 팝업 8종 전부 PopupBase·prefab·ViewCreator<br />✓ 풀 대상 7종 등록, cc.instantiate 0건<br />✓ 구독 on/off 대칭 + teardown 가드</td></tr>
+              <tr><td>아웃게임</td><td><code>FaceBookPlatform.ts</code> 1,798<br /><code>TikTokPlatform.ts</code> 1,253<br /><code>PopupChore.ts</code> 1,074</td><td>✓ View/Popup 전부 ViewCreator 경유<br />✓ PlayerVM·ShopService·ChoreRules 순수 로직<br />✓ 플랫폼 호출 BasePlatform 추상화<br />✓ check-architecture ERROR 0 · WARN 2</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>큰 파일은 분할 후보의 출발점이고, 잘된 점은 리팩토링 중에도 깨지 않아야 할 기준선입니다.</p>
+          </div>
+        </div>
+      </section>
+      <section class="doc-section" id="deps">
+        <h2 class="doc-h2">의존 방향 <span class="doc-h2-sub">거꾸로 가거나 순환하는 5곳</span></h2>
+        <div class="table-scroll">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 44px" /><col style="width: 170px" /><col style="width: 300px" /><col style="width: 300px" /><col style="width: 184px" /></colgroup>
+            <thead><tr><th>번호</th><th>어긋난 방향</th><th>경로</th><th>이유</th><th>정리</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill" style="--acc: var(--bad)">①</span></td><td><b>data → view</b></td><td><code>game/ingame/data/BoardState.ts:1 → view/BoardGeometry</code></td><td>보드 치수 상수 원본이 view 에 있음</td><td>상수를 data/rules 로</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--bad)">②</span></td><td><b>아웃게임 popup → ingame/view</b></td><td><code>PopupChore.ts:7·8 · LevelUp · Shop · PopupPurchaseSuccess.ts:3 → TopBarNode·HudChipLocator·ItemIconLoader</code></td><td>TopBarNode 는 무의존이 아님 — IngameVM.expCostOf · PopupEnergyBuy · MERGE_FX 를 import</td><td>3개 의존을 끊고 game/hud 로 이동</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--bad)">③</span></td><td><b>ingame view → 아웃게임</b></td><td><code>ViewIngame.ts:736 → ViewOutgame.warmupChatResources</code></td><td>인게임이 아웃게임 static 을 직접 호출</td><td>워밍업 서비스 추출</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--bad)">④</span></td><td><b>player → ingame/rules</b></td><td><code>game/player/PlayerState.ts:12 · PlayerVM → InventoryRules·ProduceRules (InvSlot·isGenTimer)</code></td><td>player 가 ingame 규칙을 앎 (양방향)</td><td>공용 모델로 추출</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--bad)">⑤</span></td><td><b>story ↔ popup 순환</b></td><td><code>game/story/ViewOutgame.ts:17 → LevelUpFlow → NewDayFlow, PopupChore → ViewOutgame</code></td><td>Flow 가 popup 폴더에 있어 순환. NewDayFlow 는 문자열 뷰명으로 우회 중</td><td>Flow 들을 game/flow 로</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--bad)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>정상 방향은 인게임 view·popup → vm → rules → data, 아웃게임 popup → story → player → shop·data 입니다. 위 5곳만 이 방향을 거스르며, 번호는 발견 항목 표의 ①~⑤ 와 같습니다. rules(인게임)와 player(아웃게임)는 cc 무의존 순수 층입니다.</p>
+          </div>
+        </div>
+      </section>
+      <section class="doc-section" id="findings">
+        <h2 class="doc-h2">발견 항목 <span class="doc-h2-sub">공통 · 인게임 · 아웃게임, 심각도 순</span></h2>
+        <h3 style="margin: 22px 0 10px; font-size: 15px">공통 <span class="tag">high 0 · med 2 · low 0</span></h3>
+        <div class="table-scroll">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 60px" /><col style="width: 60px" /><col style="width: 290px" /><col style="width: 290px" /><col style="width: 290px" /></colgroup>
+            <thead><tr><th>심각도</th><th>분류</th><th>항목</th><th>이유</th><th>수정</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>결합</td><td><b>공용 HUD·아이콘 로더가 ingame 폴더에</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/popup/PopupChore.ts:7 · :8 · PopupPurchaseSuccess.ts:3</code></td><td style="overflow-wrap: anywhere">아웃게임 PopupChore·LevelUp·Shop·PurchaseSuccess 가 ingame 을 import. TopBarNode 는 IngameVM·PopupEnergyBuy·MERGE_FX 를 import</td><td style="overflow-wrap: anywhere">3개 의존을 끊고 game/hud·game/ui 로 이동 ②</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>결합</td><td><b>player ↔ ingame/rules 양방향 import</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/player/PlayerState.ts:12</code></td><td style="overflow-wrap: anywhere">PlayerState·PlayerVM 이 InventoryRules·ProduceRules 를 앎</td><td style="overflow-wrap: anywhere">InvSlot·isGenTimer 를 공용 모델로 추출 ④</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 style="margin: 22px 0 10px; font-size: 15px">인게임 <span class="tag">high 1 · med 4 · low 11</span></h3>
+        <div class="table-scroll">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 60px" /><col style="width: 60px" /><col style="width: 290px" /><col style="width: 290px" /><col style="width: 290px" /></colgroup>
+            <thead><tr><th>심각도</th><th>분류</th><th>항목</th><th>이유</th><th>수정</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill" style="--acc: var(--bad)">high</span></td><td>레이어</td><td><b>IngameVM god object</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/vm/IngameVM.ts:318</code></td><td style="overflow-wrap: anywhere">3676줄 · 메서드 150개 · 책임 13구역</td><td style="overflow-wrap: anywhere">파사드 유지, Order/Inventory/BoxOpen/Auto/IdleHint 모듈 분리</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>레이어</td><td><b>ViewIngame 컨트롤러 비대</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/view/ViewIngame.ts:185</code></td><td style="overflow-wrap: anywhere">2535줄 · 메서드 87개 · 팝업 8종·판매·도구·충전·상점 흐름 한 클래스</td><td style="overflow-wrap: anywhere">판매/도구/충전 흐름 컨트롤러 분리</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>레이어</td><td><b>data → view 역참조</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/data/BoardState.ts:1</code></td><td style="overflow-wrap: anywhere">BOARD_COLS/ROWS 원본이 view/BoardGeometry 에 있음</td><td style="overflow-wrap: anywhere">보드 치수 상수를 rules/BoardDims 로 ①</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>레이어</td><td><b>OrderGenState 저장이 Store 우회</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/vm/IngameVM.ts:2346 · :2529</code></td><td style="overflow-wrap: anywhere">보드는 BoardStore, 오더는 VM 이 CCstorage 직접 입출력</td><td style="overflow-wrap: anywhere">OrderGenStore 로 이관</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>중복</td><td><b>팝업이 공개 단계를 직접 판정</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/popup/PopupGeneratorInfo.ts:230</code></td><td style="overflow-wrap: anywhere">보드·보관함 순회 규칙이 팝업에. PlayerVM 도감 축과 따로 놂</td><td style="overflow-wrap: anywhere">IngameVM 판정 메서드로 이동</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>결합</td><td><b>인게임 뷰 → ViewOutgame static</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/view/ViewIngame.ts:736</code></td><td style="overflow-wrap: anywhere">warmupChatResources 직접 호출</td><td style="overflow-wrap: anywhere">ChatWarmup 서비스 추출 ③</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>이벤트</td><td><b>IngameScope 4개 미발행</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/IngameEvents.ts:16</code></td><td style="overflow-wrap: anywhere">Energy·Inventory·Wallet 참조 0, Meta 는 수신만 (OrderRailNode.ts:226)</td><td style="overflow-wrap: anywhere">삭제 또는 Meta 발행 연결</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>이벤트</td><td><b>reset 의 bus.clear 가 누수 은폐</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/vm/IngameVM.ts:3216</code></td><td style="overflow-wrap: anywhere">구독 팝업이 현재 0개인데 조용히 비움</td><td style="overflow-wrap: anywhere">clear 전 잔존 리스너 경고 로그</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>스타일</td><td><b>에너지 팝업 문구·수량 하드코딩</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/popup/PopupEnergyBuy.ts:102 · :112</code></td><td style="overflow-wrap: anywhere">'⚡ +100'·'FREE' 가 Localization·보상값 미사용</td><td style="overflow-wrap: anywhere">보상 행 + 로컬라이즈 키</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>풀링</td><td><b>수확마다 앵커 노드 new/destroy</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/view/BoardInputNode.ts:1644</code></td><td style="overflow-wrap: anywhere">연출마다 cc.Node 생성·파괴 (:1651)</td><td style="overflow-wrap: anywhere">재사용 앵커 하나</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>중복</td><td><b>분신 칩 대여·반납 가드 3벌</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/fx/ProduceSpawnFx.ts:175</code></td><td style="overflow-wrap: anywhere">OrderServeFx:326 · BoardInputNode:747 동일</td><td style="overflow-wrap: anywhere">fx/GhostChip 헬퍼</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>중복</td><td><b>죽은 export</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/rules/InventoryRules.ts:184</code></td><td style="overflow-wrap: anywhere">usedCount·MERGE_FX_LABEL·MAX_OUTPUT_TILES 참조 0</td><td style="overflow-wrap: anywhere">삭제 또는 러너 전용 모듈</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>중복</td><td><b>name_key 조회 5회 반복</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/view/ViewIngame.ts:1498</code></td><td style="overflow-wrap: anywhere">ViewIngame 4곳(:1498·1969·2232·2257) + PopupGeneratorInfo:193</td><td style="overflow-wrap: anywhere">IngameVM.nameKeyOf(code)</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>중복</td><td><b>TopBarNode 시간 포맷 별도 구현</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/view/TopBarNode.ts:519</code></td><td style="overflow-wrap: anywhere">TimeFormat 과 mm:ss 중복</td><td style="overflow-wrap: anywhere">TimeFormat.formatClock</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>레이어</td><td><b>연출 튜닝값이 rules/ 에</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/rules/IdleHintConfig.ts:46</code></td><td style="overflow-wrap: anywhere">bounceScale·pullPx 같은 표현값</td><td style="overflow-wrap: anywhere">fx/ 로 이동</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>레이어</td><td><b>View 가 저장 커밋 시점 결정</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/ingame/view/ViewIngame.ts:1914</code></td><td style="overflow-wrap: anywhere">IngameVM.flush + PlayerVM.flush 쌍이 View 3곳 (:1914·2030·2134)</td><td style="overflow-wrap: anywhere">VM 트랜잭션 안에서 커밋</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 style="margin: 22px 0 10px; font-size: 15px">아웃게임 <span class="tag">high 1 · med 11 · low 2</span></h3>
+        <div class="table-scroll">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 60px" /><col style="width: 60px" /><col style="width: 290px" /><col style="width: 290px" /><col style="width: 290px" /></colgroup>
+            <thead><tr><th>심각도</th><th>분류</th><th>항목</th><th>이유</th><th>수정</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill" style="--acc: var(--bad)">high</span></td><td>흐름</td><td><b>onClickStart 가 클리어 트랜잭션 전부</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/popup/PopupChore.ts:591</code></td><td style="overflow-wrap: anywhere">차감·보상·완료 + 채팅→꾸미기→레벨업 사슬 + ViewOutgame 메서드 8개 직접 조작</td><td style="overflow-wrap: anywhere">ChoreClearFlow 서비스 분리</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>흐름</td><td><b>클리어 후 시퀀스 6파일 분산</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/popup/LevelUpFlow.ts:61</code></td><td style="overflow-wrap: anywhere">Chore→Chat→playDecorate→LevelUp→FeatureUnlock→NewDay 암묵 사슬</td><td style="overflow-wrap: anywhere">PostChoreFlow 단일 큐</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>흐름</td><td><b>새날 진행이 팝업 표시에 종속</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/story/NewDayFlow.ts:71</code></td><td style="overflow-wrap: anywhere">팝업 안 뜨면 advanceDay 안 됨, 300ms 폴링(상한 120초)</td><td style="overflow-wrap: anywhere">상태 전진·연출 분리, 닫힘 구독</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>결합</td><td><b>story ↔ popup 순환</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/story/ViewOutgame.ts:17</code></td><td style="overflow-wrap: anywhere">ViewOutgame→LevelUpFlow→NewDayFlow, PopupChore→ViewOutgame. NewDayFlow 는 문자열 뷰명으로 우회 중</td><td style="overflow-wrap: anywhere">Flow 들을 game/flow 로 ⑤</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>상태</td><td><b>DataManager 스텁이 가짜 값</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/DataManager.ts:143</code></td><td style="overflow-wrap: anywhere">isNewPlayer=false·coin=0 을 BaseIntro:421 이 사용, NRU 판정 2벌</td><td style="overflow-wrap: anywhere">스텁 제거, NRU 한 곳</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>상태</td><td><b>PlayerVM 우회 raw 로드 반복</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/story/StoryDecorateSchedule.ts:84</code></td><td style="overflow-wrap: anywhere">ViewOutgame:664 · BaseIntro:222·590 도 PlayerStore.load()</td><td style="overflow-wrap: anywhere">부팅 1회 init / hasSave 캐시</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>상태</td><td><b>PlayerVM 초기화 3곳 분산</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/story/ViewOutgame.ts:764</code></td><td style="overflow-wrap: anywhere">ViewIngame:800 · IngameVM:566 도 bootstrap</td><td style="overflow-wrap: anywhere">부팅 단계 1회</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>상태</td><td><b>시계 소스 혼재</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/shop/ShopService.ts:129</code></td><td style="overflow-wrap: anywhere">상점은 Date.now 10곳, PlayerVM 은 DataManager.getTime 주입</td><td style="overflow-wrap: anywhere">주입 시계로 통일</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>라우팅</td><td><b>show* 대부분 null 가드 없음</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">common/view/ViewCreator.ts:142</code></td><td style="overflow-wrap: anywhere">ViewManager.load 가 null resolve 가능, show* 약 27개 중 3곳만 검사</td><td style="overflow-wrap: anywhere">공통 로드 헬퍼</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>라우팅</td><td><b>프리팹 없는 show·죽은 팝업</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">common/view/ViewCreator.ts:474</code></td><td style="overflow-wrap: anywhere">SwitchContext·CrossPromotion 호출 0 · 프리팹 없음, ScreenShotTarget 스크립트만</td><td style="overflow-wrap: anywhere">삭제 또는 템플릿 격리</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>중복</td><td><b>재화 아이콘 리졸버 4벌</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/popup/PopupChore.ts:475</code></td><td style="overflow-wrap: anywhere">LevelUp:237 · Shop:437 · PurchaseSuccess:133</td><td style="overflow-wrap: anywhere">공용 리졸버 1개</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--warn)">med</span></td><td>중복</td><td><b>보상 비행·티켓 헬퍼 중복</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/popup/PopupLevelUp.ts:336</code></td><td style="overflow-wrap: anywhere">flyIcon·topBar·holdWallet 이 Chore·LevelUp·Shop 에 반복</td><td style="overflow-wrap: anywhere">RewardFx 유틸</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>중복</td><td><b>꾸미기 부착 로직 재구현</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/popup/PopupDecorate.ts:192</code></td><td style="overflow-wrap: anywhere">DecorateStageUtil.attachPending(:84) 과 동일 + 남의 무대 노드 조작</td><td style="overflow-wrap: anywhere">DecorateStageUtil 재사용</td></tr>
+              <tr><td><span class="pill" style="--acc: var(--text-faint)">low</span></td><td>중복</td><td><b>죽은 메서드·키·템플릿 잔재</b><br /><code style="font-size: 11px; overflow-wrap: anywhere">game/player/PlayerVM.ts:433</code></td><td style="overflow-wrap: anywhere">isDiscovered·takeReward·pushFrontReward 호출 0, 미사용 DataKey 10개</td><td style="overflow-wrap: anywhere">미사용 코드 제거</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>high 는 성능·구조 위험이 실제로 확인된 것, med 는 이어 붙이면 커지는 결합, low 는 정리 수준입니다. 수정 칸 끝의 ①~⑤ 는 의존 방향 표의 번호입니다. 범위 제외 항목은 아래 표로 옮겼습니다.</p>
+          </div>
+        </div>
+      </section>
+      <section class="doc-section" id="excluded">
+        <h2 class="doc-h2">범위 제외 <span class="doc-h2-sub">발견으로 세지 않은 것</span></h2>
+        <div class="table-scroll">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 400px" /><col style="width: 598px" /></colgroup>
+            <thead><tr><th>항목</th><th>제외 이유</th></tr></thead>
+            <tbody>
+              <tr><td><b>더미 IAP (SHOP_DUMMY_IAP)</b></td><td>결제 미구현 — 더미가 정상</td></tr>
+              <tr><td><b>구간 보상 문턱 = 노드 위치</b></td><td>심부름 구간 보상은 기획에 아직 없음 — 임시 코드</td></tr>
+              <tr><td><b>심부름 비용 1 하드코딩</b></td><td>의도된 TEST 값</td></tr>
+              <tr><td><b>FB setPlatformStorage no-op</b></td><td>템플릿 소관 TODO</td></tr>
+              <tr><td><b>node.angle 직접 대입</b></td><td>2.4 권장 API</td></tr>
+              <tr><td><b>PopupInventory 코드 TOUCH_END</b></td><td>풀 슬롯이라 의도적</td></tr>
+              <tr><td><b>PopupChat/Decorate 빈 onShowEnd override</b></td><td>ViewBase 구조 변경 = 템플릿 계약</td></tr>
+              <tr><td><b>템플릿 파일 규칙 위반 · PopupSettingInGame 이름</b></td><td>템플릿 원본 (6개 레포 공통)</td></tr>
+              <tr><td><b>LogType 이벤트 등록</b></td><td>이벤트 정의가 필요한 별도 작업</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>규약 위반처럼 보여도 의도된 값이거나 기획이 아직 없거나 템플릿 소관인 것입니다. 고치지 않으며 심각도 집계에도 넣지 않았습니다.</p>
+          </div>
+        </div>
+      </section>
+      <section class="doc-section" id="steps">
+        <h2 class="doc-h2">리팩토링 단계 <span class="doc-h2-sub">계획 · 커밋 정리 후 착수</span></h2>
+        <div class="table-scroll">
+          <table style="table-layout: fixed; width: 100%">
+            <colgroup><col style="width: 50px" /><col style="width: 400px" /><col style="width: 300px" /><col style="width: 240px" /></colgroup>
+            <thead><tr><th>단계</th><th>내용</th><th>실행</th><th>상태</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td><b>작은 위험 수정</b></td><td>Sonnet × 3 병렬</td><td><span class="pill" style="--acc: var(--ok)">완료 (4725df2)</span></td></tr>
+              <tr><td>2</td><td><b>공용층 추출</b> <code>game/ui</code> · <code>game/hud</code></td><td>Opus × 1 순차</td><td><span class="pill" style="--acc: var(--text-faint)">계획</span></td></tr>
+              <tr><td>3</td><td><b>IngameVM · 심부름 흐름 · ViewIngame 분할</b></td><td>Opus × 3 병렬, worktree</td><td><span class="pill" style="--acc: var(--text-faint)">계획</span></td></tr>
+              <tr><td>4</td><td><b>중복·죽은 코드 정리</b></td><td>Sonnet 순차</td><td><span class="pill" style="--acc: var(--text-faint)">계획</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">이 표를 읽는 법</div>
+            <p>번호 순서가 곧 의존 순서입니다. 2단계에서 공용층을 먼저 빼야 3단계의 세 분할이 서로 부딪히지 않고, 4단계는 분할이 끝난 뒤의 잔재만 지웁니다. 모든 단계는 커밋 정리 후 착수합니다.</p>
+          </div>
+        </div>
+      </section>
+      <div class="foot">
+        <b>확인 범위</b> main 4725df2 코드 실측 (2026-09-30). high 2건은 코드 원문을 직접 열어 확인했습니다. 실행해 본 것은 아닙니다.
+      </div>
+    </main>
+    <script src="../app.js"></script>
+  </body>
+</html>

@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-09-30 08:47",
+  updated: "2026-09-30 08:54",
 };
 
 /* --------------------------------------------------------------------------
@@ -73,6 +73,17 @@ const SECTIONS = [
     accent: "analysis",
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
+      {
+        title: "스토리머지 구조 점검",
+        desc: "인게임·아웃게임 구조 점검 — 점수·의존 역방향·발견 항목",
+        url: "docs/story-merge-structure-review.html",
+        project: "smg",
+        status: "완료",
+        version: "v1.1",
+        updated: "2026-09-30",
+        pinned: false,
+        tags: ["story-merge", "구조", "리팩토링"],
+      },
       {
         title: "부팅 로딩 빌드 대조",
         desc: "압축·3D 모듈 조합이 다른 485·483·477 세 빌드군의 부팅 24단계 곡선. 3D가 붙인 +1,361ms를 압축이 88% 되돌렸다. 압축은 485에서 처음 켜져, 477도 최적 기준선이 아니다.",
