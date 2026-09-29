@@ -853,7 +853,7 @@ const SECTIONS = [
       },
       {
         title: "스토리머지 커밋 히스토리",
-        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 08-19~09-28 커밋 115건 diff 전량 실측 · 작성자 5명.",
+        desc: "커밋 문구로 훑고 필요한 것만 펼치는 목록. 08-19~09-29 커밋 138건 diff 전량 실측 · 작성자 5명.",
         url: "docs/commit-history-story-merge.html",
         project: "smg",
         status: "진행중",
