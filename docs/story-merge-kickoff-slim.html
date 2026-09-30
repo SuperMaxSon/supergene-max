@@ -203,6 +203,37 @@
         </div>
         <p class="legend"><b>판정용으로 부르면 안 되는 함수</b> — <code>produceCheckAt</code> 는 이름과 달리 재고 기록을 <b>저장</b>한다(닫힌 상자가 몰래 열린다). 대신 <code>generatorStatusAt</code> · <code>boxStatusAt</code> · <code>isRechargingAt</code> 를 쓴다. 그 밖의 쓰기 함수(<code>merge</code> · <code>sell</code> · <code>storeItem</code> · <code>unlockSlot</code> · <code>serveOrder</code> …)는 조작으로만 일으킨다.</p>
 
+        <h3 class="doc-h2-sub">4-1. 플레이 중 뜨는 팝업 — 어떻게 넘기나</h3>
+        <p class="legend">노드는 <code>PP/&lt;팝업 이름&gt;/</code> 아래 경로다. 팝업이 최상단이면 이 표대로 누르고, 상태는 읽기만 한다. 「—」는 봇 코드가 언제 뜨는지 적지 않은 칸이다.</p>
+        <div class="table-scroll" style="--acc: var(--deploy)">
+          <table style="table-layout: fixed; width: 100%">
+            <thead><tr><th style="width: 15%">팝업</th><th style="width: 15%">언제 뜨나</th><th style="width: 34%">넘기는 법(노드)</th><th>주의</th></tr></thead>
+            <tbody>
+              <tr><td><b>PopupSellConfirm</b></td><td>—</td><td><code>Contents/okBtn</code> 탭. 안 되면 <code>Contents/cancelBtn</code></td><td>확인이 기본이다</td></tr>
+              <tr><td><b>PopupToolConfirm</b></td><td>—</td><td><code>Contents/cancelBtn</code> 만 탭한다</td><td>항상 취소 — 봇은 도구를 실제로 쓰지 않는다</td></tr>
+              <tr><td><b>PopupLevelUp</b></td><td>—</td><td><code>Contents/claimBtn</code> 탭</td><td>닫기 버튼 경로는 없다</td></tr>
+              <tr><td><b>PopupGeneratorInfo</b></td><td>—</td><td><code>Contents/closeBtn</code> 탭</td><td>—</td></tr>
+              <tr><td><b>PopupGeneratorMulti</b></td><td>—</td><td><code>Contents/closeBtn</code> 탭</td><td>—</td></tr>
+              <tr><td><b>PopupProfile</b></td><td>—</td><td><code>Contents/closeBtn</code> 탭</td><td>—</td></tr>
+              <tr><td><b>PopupSetting</b></td><td>—</td><td><code>Contents/btn_close</code> 탭</td><td>—</td></tr>
+              <tr><td><b>PopupInventory</b></td><td>—</td><td><code>Contents/closeBtn</code> 탭</td><td>—</td></tr>
+              <tr><td><b>PopupError</b></td><td>—</td><td><code>Contents/btn/btn</code> 탭. 안 되면 <code>Contents/btn_close/btn</code></td><td>—</td></tr>
+              <tr><td><b>PopupOrderServe</b></td><td>인벤토리 아이템을 쓰는 납품 확인</td><td><code>Contents/okBtn</code> 탭(납품). 안 되면 <code>Contents/cancelBtn</code></td><td>보관함에 넣어 둔 요구품으로 납품할 때 뜬다. 뜨면 납품한다 — 수 직후엔 오더가 그대로라 변화 없음으로 세지 않는다</td></tr>
+              <tr><td><b>PopupFeatureUnlock</b></td><td>기능 해금 안내</td><td><code>Contents/bot/btn_later</code>(Later) 탭. 안 되면 <code>Contents/btn_close</code></td><td>Check it out(<code>btn_goto</code>)은 화면을 옮기고 남은 안내를 멈추므로 누르지 않는다</td></tr>
+              <tr><td><b>PopupPurchaseSuccess</b></td><td>젬 팩 구매 뒤(결제 성공)</td><td><code>dim</code> 탭 — 닫기 버튼이 없다</td><td>리본이 도착하기 전 탭은 게임이 무시한다. 다음 루프에 다시 누른다</td></tr>
+              <tr><td><b>PopupNewDay</b></td><td>—</td><td>누르지 않고 기다린다(스스로 닫힘). 루프마다 0.5초 대기</td><td>최상단에 10초 넘게 남으면 <code>popup_stuck</code> 이슈를 한 번 낸다. 다음 한도까지 다시 센다</td></tr>
+              <tr><td><b>PopupConnectionLost</b></td><td>—</td><td>재시도 <code>Contents/btn</code> 탭</td><td>떴다는 것 자체가 이슈다(로컬 프리뷰는 오프라인이 아니면 안 뜬다). 마지막으로 본 지 10초가 지나야 새 끊김으로 세어 한 번에 이슈 하나만 낸다</td></tr>
+              <tr><td><b>PopupEnergyBuy</b></td><td>—</td><td><code>Contents/priceBtn</code> 탭 → 1.5초 뒤에도 같은 팝업이 최상단이면 <code>Contents/closeBtn</code> 탭</td><td>최상단이 그대로면 젬 부족(<code>gem_short</code>)으로 본다. 젬은 스스로 계산하지 않고 게임 판정을 따른다</td></tr>
+              <tr><td><b>PopupGeneratorRecharge</b></td><td>—</td><td><code>Contents/rechargeBtn</code> 탭 → 1.5초 뒤에도 열려 있으면 <code>Contents/closeBtn</code> 탭</td><td>에너지 구매와 같은 규칙. 젬 부족이면 <code>gem_short</code></td></tr>
+              <tr><td><b>PopupShop</b></td><td>—</td><td>의도가 젬 구매(<code>buy_gems</code>)면 <code>Contents/tabBar/tab_gems</code> → 가장 싼 팩의 <code>btn_price</code> 좌표 탭 → 결제 성공 팝업 처리 → <code>Contents/btn_close</code>. 그 외 의도는 <code>Contents/btn_close</code> 만 탭</td><td>가격 버튼을 못 찾으면 <code>shop_no_price_node</code> 로 닫는다. 결제 성공 팝업은 상점을 닫기 <b>전에</b> 처리한다(먼저 닫으면 게임이 안 연다). 젬이 늘었는데 팝업이 5초 안에 안 뜨면 <code>purchase_success_missing</code> 봇은 지금 젬 구매 수를 꺼 둬서 평소엔 닫기만 한다.</td></tr>
+              <tr><td><b>PopupChore</b></td><td>심부름 버튼(인게임 · 마을)</td><td>심부름을 켠 상태면 <code>Contents/quest/btn_start</code> 탭 · 아니면 완료 화면 <code>Contents/cleared/btn_ok</code> · 그것도 없으면 <code>Contents/btn_close</code></td><td><b>Start 는 두 번</b> 누른다. 인게임에서 연 첫 Start = 마을로 이동(15초 안에 못 가면 <code>village_timeout</code>), 마을에서 다시 뜬 창의 두 번째 Start = 실제 착수. 첫 Start 전에 버튼의 비용 라벨을 읽어 둔다</td></tr>
+              <tr><td><b>PopupChat</b></td><td>심부름 착수 뒤 대사</td><td><code>Contents/ChatLayer</code> 를 0.35초마다 탭. <code>ChatLayer/ContinueButton</code> 이 보이면 그걸 탭</td><td>ChatLayer 탭은 타이핑 스킵 · 다음 줄뿐이라 <b>마지막 줄은 ContinueButton 이 필요</b>하다. 창이 아직 뜨는 중(딤만 있음)이면 0.3초 기다린다. 180초 넘게 안 닫히면 <code>chat_stuck</code></td></tr>
+              <tr><td><b>PopupDecorate</b></td><td>대사 뒤 꾸미기</td><td><code>Contents/ContinueButton</code> 이 보이면 탭, 아니면 택1 <code>Contents/ChoiceRoot/ButtonA</code> 탭(0.4초마다 화면을 다시 본다)</td><td>수리(repair)는 누를 곳 없이 연출이 스스로 끝난다. ChoiceRoot 는 미리보기 로딩이 끝나야 켜진다. 60초 넘게 안 닫히면 <code>decorate_stuck</code></td></tr>
+              <tr><td><b>그 밖의 Popup*</b></td><td>—</td><td><code>Contents/closeBtn</code> → <code>Contents/btn_close</code> → <code>closeBtn</code> → <code>btn_close</code> 순으로 먼저 눌리는 것을 탭</td><td><code>unknown_popup</code> 이슈로 남긴다. 넷 다 없으면 닫기 실패 경고만 남기고 같은 태그를 낸다</td></tr>
+            </tbody>
+          </table>
+        </div>
+
         <h3 class="doc-h2-sub">5. 막힌 사례와 푼 방법</h3>
         <div class="table-scroll" style="--acc: var(--sol)">
           <table style="table-layout: fixed; width: 100%">
@@ -249,9 +280,13 @@
               <tr><td>없는 기능</td><td>배수 부스터 · 도구 · 보관함 · 체인 보호 · 되돌리기 · 상자 즉시 개봉</td><td>전부 있음</td></tr>
               <tr><td>심부름</td><td>비용 = 시트 <code>cost_coin</code> · 그날 다 하면 다음 날로 자동</td><td>비용 1코인(TEST)</td></tr>
               <tr><td>에너지 · 젬</td><td>에너지가 0 아래로 가면 +100 · 젬 음수 허용(옵션, 기본 켜짐)</td><td>구매로만</td></tr>
+              <tr><td>한 수에 걸리는 시간</td><td>약 0.024초(<code>STEP_MS</code>/<code>SPEED</code> 하한 24ms, 연출 없음)</td><td>약 1.2초(탭 → 연출 대기 → 판 다시 읽기, 09-30 3분 판 100수 기준)</td></tr>
+              <tr><td>기다림</td><td>게임 시계를 감는다(생성기 회복 · 상자 개봉 · 오더 추첨)</td><td>실시간. 2초마다 판을 다시 본다</td></tr>
+              <tr><td>심부름 한 번</td><td>즉시</td><td>마을 이동 · 대화 · 꾸미기로 약 20초(09-30 3분 판에서 3번이 약 65초)</td></tr>
             </tbody>
           </table>
         </div>
+        <p class="legend">그래서 봇의 수가 적은 것은 막힌 게 아니다 — 페이지의 24,600수(Lv8)를 봇은 실시간으로 몇 시간에 걸쳐 둔다. 막혔는지는 이슈와 정지 사유로 본다.</p>
       </section>
 
       <!-- 레퍼런스의 Game Mechanics 디렉터리를 그대로 옮겨 우리 상태를 얹는다.
