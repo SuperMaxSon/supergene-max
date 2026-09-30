@@ -135,7 +135,7 @@
             <thead><tr><th style="width: 30%">원칙</th><th>왜 · 어떻게</th></tr></thead>
             <tbody>
               <tr><td><b>보상은 빈칸이 있을 때만, 한 수에 하나</b></td><td>보상함은 빈칸이 하나라도 있으면 첫 빈칸에 하나를 꺼낸다. 꺼낸 수는 그대로 이어서 다른 수를 고른다. 빈칸이 없으면 꺼내지 않는다.</td></tr>
-              <tr><td><b>심부름은 시트 비용이 모이면</b></td><td>시트 <code>cost_coin</code> 만큼 코인이 모였을 때만 한다. 코인 1개마다 하면 보드를 거의 안 두고 레벨만 올라 판이 잠긴 채 찬다.</td></tr>
+              <tr><td><b>심부름은 시트 비용이 모이면</b></td><td>시트 <code>cost_coin</code> 만큼 코인이 모였을 때만 한다. 코인 1개마다 하면 보드를 거의 안 두고 레벨만 올라 판이 잠긴 채 찬다. 클라가 TEST 로 1코인만 떼는 동안은 봇이 덜 뗀 차액을 장부에 적어 가진 코인에서 뺀다 — 안 빼면 심부름만 연달아 한다.</td></tr>
               <tr><td><b>납품이 합치기보다 먼저</b></td><td>오더에 낼 수 있는 아이템이 있으면 합치기 전에 낸다.</td></tr>
               <tr><td><b>재화 수확은 체인 끝에서만</b></td><td>코인·젬은 체인 끝 단계만 수확한다(합칠수록 이득). 에너지는 짝이 없거나 빈칸 ≤ 1일 때 수확한다.</td></tr>
               <tr><td><b>합치기 → 상자 개봉 → 상자 털기 → 생성기</b></td><td>한 칸도 안 늘리는 수부터, 칸을 쓰는 생산은 마지막이다.</td></tr>
@@ -193,7 +193,7 @@
               <tr><td><b>오더 납품</b></td><td>카드의 <code>serveBtn</code>(가로 스크롤 레일 안)</td><td><code>serveCheckAt(slot)</code> · <code>serveSourcesAt(slot)</code></td><td>요구품 소모 · 코인 증가 · 카드 교체</td><td>보관함 아이템을 쓰면 <code>PopupOrderServe</code> 확인</td><td>✅ 09-29</td></tr>
               <tr><td><b>심부름</b></td><td><code>choreBtn</code> → <code>PopupChore</code> Start → 마을 → 다시 Start</td><td>버튼 active · 코인</td><td>코인 차감 · 대화 · 보상</td><td>첫 Start 는 이동뿐, 두 번째가 실제 착수. 클라는 지금 1코인(TEST)</td><td>✅ 09-29</td></tr>
               <tr><td><b>생성기 급속</b></td><td>재고 0 생성기 2탭 → <code>PopupGeneratorRecharge/rechargeBtn</code>, 또는 정보바 Skip</td><td><code>generatorStatusAt(i).speedupCost</code></td><td>젬 감소 · 재고 회복</td><td>Skip 은 <b>재고 0</b>일 때만 선다(비용 0 이면 살 게 없다). 비용 = <code>ceil(기본 × 남은 ÷ 전체)</code> — 2003 은 55젬. 젬 부족이면 상점으로 간다. 확인은 충전 팝업 경로로 했다</td><td>✅ 09-30</td></tr>
-              <tr><td><b>에너지 구매</b></td><td>에너지 부족 생성기 2탭 → <code>PopupEnergyBuy/priceBtn</code> (헤더 <code>energyPlusBtn</code> 도 같은 팝업)</td><td>에너지 · 젬</td><td>젬 감소(오늘 단 가격, 첫 단 10) · 에너지 +100</td><td><b>인게임에서 헤더 버튼(에너지 ＋ · 상점)은 지금 안 눌린다</b> — 아래 「막힌 사례」 참고. 생성기 경로로 산다</td><td>✅ 09-30</td></tr>
+              <tr><td><b>에너지 구매</b></td><td>에너지 부족 생성기 2탭 → <code>PopupEnergyBuy/priceBtn</code> (헤더 <code>energyPlusBtn</code> 도 같은 팝업)</td><td>에너지 · 젬</td><td>젬 감소(오늘 단 가격, 첫 단 10) · 에너지 +100</td><td>09-30 전 빌드는 인게임 헤더 버튼이 안 눌렸다 — 아래 「막힌 사례」. 봇은 생성기 경로로 산다</td><td>✅ 09-30</td></tr>
               <tr><td><b>도구</b></td><td>드래그 도구 → 대상 칸</td><td><code>toolDropCheckAt(from,to)</code></td><td>대상 단계 변화 · 사용 횟수 감소</td><td>첫 사용만 <code>PopupToolConfirm/…/useBtn</code>. 가위는 빈칸 1개 필요. 빈칸 위에 놓으면 <b>이동</b>만 된다 — <code>toolDropCheckAt</code> 의 <code>kind</code> 가 <code>"use"</code> 인 칸에 놓는다. 봇은 아직 쓰지 않는다</td><td>✅ 09-30</td></tr>
             </tbody>
           </table>
@@ -210,7 +210,7 @@
               <tr><td>보상함 꺼내기 수천 번</td><td>빈칸 0에서 꺼내기 시도</td><td>빈칸 ≥ 3 일 때만</td></tr>
               <tr><td>한 칸 판매 1,628번</td><td>판매가 0 은 휴지통 버튼</td><td><code>discardBtn</code> + 안 먹힌 수 30초 제외</td></tr>
               <tr><td>보관함 칸 구매 17번 헛탭</td><td>팝업 등장 연출 중 탭</td><td>연출이 끝난 뒤 탭</td></tr>
-              <tr><td>인게임에서 헤더 에너지 ＋ · 상점 버튼이 안 열림 (09-30)</td><td>엔진 멀티터치가 꺼져 있어(<code>cc.macro.ENABLE_MULTI_TOUCH = false</code>) 먼저 터치를 잡은 리스너가 독점한다(CCEventManager.js:498). 방치 힌트가 <code>ViewIngame</code> 루트에 터치를 걸었고(f2ad97a), 헤더는 같은 부모에서 이 화면보다 아래라 터치가 버튼까지 안 간다 — <code>setSwallowTouches(false)</code> 로는 안 풀린다</td><td>클라 수정 대기. 그동안 에너지는 생성기 에너지 부족 경로로 산다. 젬 구매(상점)는 인게임에서 못 들어간다</td></tr>
+              <tr><td>인게임에서 헤더 에너지 ＋ · 상점 버튼이 안 열림 (09-30)</td><td>엔진 멀티터치가 꺼져 있어(<code>cc.macro.ENABLE_MULTI_TOUCH = false</code>) 먼저 터치를 잡은 리스너가 독점한다(CCEventManager.js:498). 방치 힌트가 <code>ViewIngame</code> 루트에 터치를 걸었고(f2ad97a), 헤더는 같은 부모에서 이 화면보다 아래라 터치가 버튼까지 안 간다 — <code>setSwallowTouches(false)</code> 로는 안 풀린다</td><td>방치 힌트 입력을 노드가 아닌 <b>음수 고정 우선순위 리스너</b>(<code>onTouchBegan</code> 이 거짓 — 터치를 안 가져감)로 바꿔 고쳤다(09-30, <code>ViewIngame.ts</code>). 인게임 · 마을 헤더 ＋ · 상점 실기 확인</td></tr>
             </tbody>
           </table>
         </div>
