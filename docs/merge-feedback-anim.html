@@ -36,7 +36,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.1 · 2026-09-03 09:39</span>
+          <span class="tag" id="mfx-ver">v4.1 · 2026-10-01 14:38</span>
         </div>
       </div>
     </header>
@@ -487,11 +487,6 @@
           var fn = FLOAT_FN[style] || floatRise;
           return fn(st, text, at, V[STYLE_PARAM[style]] || {}, good);
         }
-        /* 판때기가 없으므로 "옆면 두께" 는 접지 그림자의 오프셋으로 표현한다. */
-        function plateEdge(s, px) {
-          var t = s.el.querySelector(".mfx-tile");
-          if (t) t.style.filter = "drop-shadow(0 " + px + "px 0 rgba(122,78,43,.34))";
-        }
         function sparks(st, at, n, color, sec, radius, ease) {
           n = Math.max(0, Math.round(n == null ? 7 : n));
           sec = sec || 0.34; radius = radius || 40;
@@ -586,7 +581,8 @@
           return Promise.resolve(fn()).catch(function () {});
         }
 
-        /* 드래그 — 픽업 · 그림자 · 고스트 · 지연 추종 · 셀 스냅까지 한 곳에서 */
+        /* 드래그 — 픽업 · 지연 추종 · 셀 스냅까지 한 곳에서.
+           칩 그림자와 원래 자리 고스트는 클라에서 뺐다(2026-09-30) — 무대에도 두지 않는다. */
         function dragify(st, spr, cfg) {
           cfg = cfg || {};
           var P = cfg.P || {};
@@ -595,7 +591,7 @@
           hitStyle(spr.el, "grab");
           spr.home = { x: spr.x, y: spr.y };
           spr.cell = nearestCell(st, spr.home);
-          var dragging = false, off = { x: 0, y: 0 }, aim = { x: 0, y: 0 }, follow = null, ghost = null, hover = -1;
+          var dragging = false, off = { x: 0, y: 0 }, aim = { x: 0, y: 0 }, follow = null, hover = -1;
           var limX = ((st.cols - 1) * PITCH) / 2, limY = ((st.rows - 1) * PITCH) / 2;
 
           spr.el.addEventListener("pointerdown", function (e) {
@@ -609,12 +605,6 @@
             dragging = true;
             spr.el.style.zIndex = 20;
             spr.to(g("pickSec", 0.10), { sx: g("pickScale", 1.08), sy: g("pickScale", 1.08) }, P.pickEase || "backOut");
-            if (cfg.shadow) cfg.shadow.to(g("pickSec", 0.10), { sx: g("shadowScale", 1.3), sy: g("shadowScale", 1.3), a: g("shadowAlpha", 0.32) }, "quadOut");
-            if (cfg.ghost !== false) {
-              ghost = st.spr(tileHTML(cfg.ghostIcon || "mfx-product", 0, "is-ghost"));
-              ghost.set({ x: spr.home.x, y: spr.home.y, a: 0 });
-              ghost.to(g("pickSec", 0.10), { a: g("ghostAlpha", 0.55) }, "quadOut");
-            }
             /* 손가락에 정확히 붙이지 않는다 — 지연 추종이 무게를 만든다 */
             follow = function (dt) {
               var k = 1 - Math.pow(1 - g("follow", 0.40), dt * 60);
@@ -622,7 +612,6 @@
               spr.y += (aim.y + g("liftPx", 6) - spr.y) * k;
               spr.rot += ((aim.x - spr.x) * g("tilt", 0.16) - spr.rot) * k;
               spr.apply();
-              if (cfg.shadow && !cfg.pinned) cfg.shadow.set({ x: spr.x, y: spr.y - 36 });
             };
             addTick(follow);
           });
@@ -639,8 +628,6 @@
             if (!dragging) return;
             dragging = false;
             delTick(follow);
-            if (ghost) { var gh = ghost; ghost = null; gh.to(0.12, { a: 0 }, "quadIn").then(function () { gh.kill(); }); }
-            if (cfg.shadow) cfg.shadow.to(0.14, { sx: 1, sy: 1, a: 0.5 }, "quadOut");
             if (cfg.onHover) cfg.onHover(-1);
             var cell = nearestCell(st, aim);
             hover = -1;
@@ -707,12 +694,8 @@
         var PARAMS = {
           a1: [
             { k:"pressSec",   label:"눌림 시간",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressEase",  ease:"quadOut", cfg:"MERGE_BOARD_PRESS_DURATION_SEC", note:"실측값" },
-            { k:"dropPx",     label:"눌림 깊이",     v:3,    min:0,    max:20, step:1,   unit:"px",                                    cfg:"MERGE_BOARD_PRESS_OFFSET",       note:"실측값" },
             { k:"pressSX",    label:"눌림 가로",     v:1.06, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_PRESS_SQUASH_X" },
             { k:"pressSY",    label:"눌림 세로",     v:0.94, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_PRESS_SQUASH_Y" },
-            { k:"edgeDownPx", label:"눌림 그림자",   v:1,    min:0,    max:10, step:1,   unit:"px",                                    cfg:"MERGE_BOARD_PRESS_EDGE_DOWN",    note:"판때기 대신 접지 그림자" },
-            { k:"edgeUpPx",   label:"평상 그림자",   v:3,    min:0,    max:10, step:1,   unit:"px",                                    cfg:"MERGE_BOARD_PRESS_EDGE_NORMAL" },
-            { k:"releaseSec", label:"릴리즈 복귀",   v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"releaseEase",ease:"quadOut", cfg:"MERGE_RELEASE_SEC" },
             { k:"overInSec",  label:"오버슛 진입",   v:0.08, min:0.01, max:1, step:0.01, unit:"s", easeK:"overInEase", ease:"quadOut", cfg:"MERGE_OVERSHOOT_IN_SEC",         note:"뗄 때 반대로 한 번" },
             { k:"overSX",     label:"오버슛 가로",   v:0.95, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_OVERSHOOT_X" },
             { k:"overSY",     label:"오버슛 세로",   v:1.07, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_OVERSHOOT_Y" },
@@ -737,9 +720,6 @@
             { k:"pickSec",    label:"픽업 시간",     v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pickEase",   ease:"backOut", cfg:"MERGE_PICKUP_DURATION_SEC" },
             { k:"pickScale",  label:"픽업 크기",     v:1.08, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
             { k:"liftPx",     label:"들림 높이",     v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_PICKUP_LIFT" },
-            { k:"shadowScale",label:"그림자 배율",   v:1.3,  min:1,    max:2.5,step:0.05,unit:"×",                                     cfg:"MERGE_DRAG_SHADOW_SCALE" },
-            { k:"shadowAlpha",label:"그림자 투명도", v:0.32, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_DRAG_SHADOW_ALPHA" },
-            { k:"ghostAlpha", label:"고스트 투명도", v:0.55, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_DRAG_GHOST_ALPHA" },
             { k:"follow",     label:"지연 추종 계수",v:0.40, min:0.05, max:1,  step:0.01,unit:"",                                      cfg:"MERGE_DRAG_FOLLOW_RATIO",        note:"1 이면 손가락에 딱 붙는다" },
             { k:"tilt",       label:"기울기 계수",   v:0.16, min:0,    max:0.6,step:0.01,unit:"",                                      cfg:"MERGE_DRAG_TILT_RATIO" },
             { k:"snapSec",    label:"셀 스냅",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"snapEase",   ease:"quadOut", cfg:"MERGE_DRAG_SNAP_SEC" },
@@ -790,7 +770,6 @@
             { k:"boxInSec",   label:"상자 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"boxInEase",  ease:"quadOut", cfg:"MERGE_COIN_BOX_IN_SEC" },
             { k:"boxSX",      label:"상자 가로",     v:1.14, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_COIN_BOX_X" },
             { k:"boxSY",      label:"상자 세로",     v:0.88, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_COIN_BOX_Y" },
-            { k:"boxOutSec",  label:"상자 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"boxOutEase", ease:"backOut", cfg:"MERGE_COIN_BOX_OUT_SEC" },
             { k:"hudGap",     label:"HUD 거리",      v:96,   min:0,    max:260,step:4,   unit:"px",                                    cfg:"(문서 전용)",                    note:"비행 거리를 만든다" },
             { k:"coinCount",  label:"코인 개수",     v:6,    min:1,    max:12, step:1,   unit:"개",                                    cfg:"COIN_SPRITE_LIMIT",              note:"실제 수량과 분리" },
             { k:"stagger",    label:"STAGGER",       v:0.04, min:0,    max:0.4,step:0.01, unit:"s",                                     cfg:"MERGE_STAGGER_SEC" },
@@ -884,9 +863,6 @@
           ],
           c1: [
             { k:"snapSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"snapEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
-            { k:"markHold",   label:"대상 셀 표시",  v:0.18, min:0,    max:1.5,step:0.01, unit:"s",                                     cfg:"MERGE_REJECT_MARK_SEC",          note:"붉은 아웃라인" },
-            { k:"shakeSec",   label:"흔들림 시간",   v:0.24, min:0.05, max:1.5,step:0.01, unit:"s",                                     cfg:"MERGE_REJECT_SHAKE_SEC" },
-            { k:"shakeAmp",   label:"흔들림 진폭",   v:5,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_REJECT_SHAKE_AMPLITUDE" },
             { k:"pickSec",    label:"픽업 시간",     v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pickEase",   ease:"backOut", cfg:"MERGE_PICKUP_DURATION_SEC" },
             { k:"pickScale",  label:"픽업 크기",     v:1.08, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
           ],
@@ -906,8 +882,7 @@
             { k:"popSX",      label:"완료 가로",     v:1.18, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_X" },
             { k:"popSY",      label:"완료 세로",     v:0.84, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_Y" },
             { k:"popOutSec",  label:"완료 복귀",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"popOutEase", ease:"backOut", cfg:"MERGE_READY_POP_OUT_SEC" },
-            { k:"badgeSec",   label:"느낌표 등장",   v:0.20, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"badgeEase",  ease:"backOut", cfg:"MERGE_READY_BADGE_SEC" },
-            { k:"bobSec",     label:"뱃지 까딱임",   v:0.42, min:0.1,  max:2, step:0.01, unit:"s", easeK:"bobEase",    ease:"sineInOut",cfg:"MERGE_READY_BADGE_BOB_SEC" },
+            { k:"bobSec",     label:"뱃지 까딱임",   v:0.42, min:0.1,  max:2, step:0.01, unit:"s", easeK:"bobEase",    ease:"sineInOut",cfg:"MERGE_READY_BADGE_BOB_SEC",      note:"닫힌 상자의 「!」 — 무대 왼쪽 칸" },
             { k:"bobPx",      label:"까딱임 높이",   v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_READY_BADGE_BOB_PX",       note:"대기 상태보다 크게" },
             { k:"sparkCount", label:"스파크 개수",   v:8,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
           ],
@@ -918,7 +893,7 @@
             { k:"hitSY",      label:"대상 세로",     v:0.90, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_Y" },
             { k:"hitOutSec",  label:"대상 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"hitOutEase", ease:"backOut", cfg:"MERGE_MAX_HIT_OUT_SEC" },
             { k:"shakeSec",   label:"흔들림 시간",   v:0.22, min:0.02, max:1.5,step:0.01, unit:"s",                                     cfg:"MERGE_MAX_SHAKE_SEC" },
-            { k:"shakeAmp",   label:"흔들림 진폭",   v:4,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_MAX_SHAKE_AMPLITUDE",      note:"거부(5)보다 약하게" },
+            { k:"shakeAmp",   label:"흔들림 진폭",   v:4,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_MAX_SHAKE_AMPLITUDE",      note:"흔들림은 여기만 — 드롭 거부는 안 흔든다" },
           ],
           c6: [
             { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
@@ -1023,23 +998,16 @@
             gen = st.tile("mfx-producer");
             var p = st.cellPos(4);
             gen.set({ x: p.x, y: p.y });
-            plateEdge(gen, P.edgeUpPx);
             tappify(st, gen, { onPress: press, onRelease: release });
           }
+          /* 클라 칩은 아이콘 한 장이라 얼굴·옆면이 따로 내려가지 않는다 — 배율만 눌린다 */
           function press() {
-            plateEdge(gen, P.edgeDownPx);
-            return Promise.all([
-              gen.to(P.pressSec, { y: gen.home.y - P.dropPx }, P.pressEase),
-              gen.to(P.pressSec, { sx: P.pressSX, sy: P.pressSY }, P.pressEase),
-            ]);
+            return gen.to(P.pressSec, { sx: P.pressSX, sy: P.pressSY }, P.pressEase);
           }
+          /* 원위치 복귀 구간 없이 오버슛 한 벌로 돌아온다 — 끝값은 같고 탭 반응이 안 늘어진다 */
           function release() {
-            plateEdge(gen, P.edgeUpPx);
-            return Promise.all([
-              gen.to(P.releaseSec, { y: gen.home.y }, P.releaseEase),
-              gen.to(P.overInSec, { sx: P.overSX, sy: P.overSY }, P.overInEase)
-                .then(function () { return gen.to(P.overOutSec, { sx: 1, sy: 1 }, P.overOutEase); }),
-            ]);
+            return gen.to(P.overInSec, { sx: P.overSX, sy: P.overSY }, P.overInEase)
+              .then(function () { return gen.to(P.overOutSec, { sx: 1, sy: 1 }, P.overOutEase); });
           }
           function play() { reset(); return press().then(function () { return wait(0.08); }).then(release); }
           return { st: st, reset: reset, play: play, hint: "양동이를 눌러 보세요" };
@@ -1101,7 +1069,7 @@
 
         /* A3 · 드래그 ------------------------------------------------------- */
         DEMOS.a3 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.a3, tile, shadow, pin = null, occupied = [1, 7], SI = 5;
+          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.a3, tile, occupied = [1, 7], SI = 5;
           function reset() {
             st.clear();
             occupied.forEach(function (i) {
@@ -1109,18 +1077,10 @@
               st.tile("mfx-product", 3).set({ x: q.x, y: q.y });
             });
             var p = st.cellPos(SI);
-            shadow = st.spr('<div class="mfx-shadow"></div>');
-            shadow.set({ x: p.x, y: p.y - 30, a: 0.5 });
             tile = st.tile("mfx-product", 2);
             tile.set({ x: p.x, y: p.y });
-            /* 그림자는 드래그 중에만 따라오면 안 된다 — 놓는 순간 타일은 셀로 날아가는데
-               그림자가 제자리에 남으면 한 박자 늦게 따라붙는 것처럼 보인다.
-               상시 tick 으로 매 프레임 타일 밑에 붙여 둔다. */
-            if (pin) delTick(pin);
-            pin = function () { shadow.set({ x: tile.x, y: tile.y - (tile.sy > 1.02 ? 36 : 30) }); };
-            addTick(pin);
             dragify(st, tile, {
-              P: P, shadow: shadow, pinned: true,
+              P: P,
               onDrop: function (cell) {
                 if (cell < 0 || occupied.indexOf(cell) >= 0 || cell === tile.cell) return snapBack(st, tile, P);
                 return settle(st, tile, cell, P);
@@ -1130,15 +1090,11 @@
           function play() {
             reset();
             var from = st.cellPos(SI), to = st.cellPos(10);
-            var ghost = st.spr(tileHTML("mfx-product", 0, "is-ghost"));
-            ghost.set({ x: from.x, y: from.y, a: 0 });
             var finger = st.spr('<div class="mfx-finger"></div>');
             finger.set({ x: from.x, y: from.y, a: 0 });
             tile.el.style.zIndex = 6;
             return Promise.all([
               tile.to(P.pickSec, { sx: P.pickScale, sy: P.pickScale, y: from.y + P.liftPx }, P.pickEase),
-              shadow.to(P.pickSec, { sx: P.shadowScale, sy: P.shadowScale, a: P.shadowAlpha }, "quadOut"),
-              ghost.to(P.pickSec, { a: P.ghostAlpha }, "quadOut"),
               finger.to(P.pickSec, { a: 1 }, "quadOut"),
             ]).then(function () {
               var follow = function (dt) {
@@ -1160,9 +1116,7 @@
               return p.then(function () { return wait(0.12); }).then(function () {
                 delTick(follow);
                 finger.to(0.12, { a: 0 }, "quadIn").then(function () { finger.kill(); });
-                ghost.to(0.12, { a: 0 }, "quadIn").then(function () { ghost.kill(); });
                 tile.el.style.zIndex = "";
-                shadow.to(P.snapSec, { sx: 1, sy: 1, a: 0.5 }, "quadOut");
                 return tile.to(P.snapSec, { x: to.x, y: to.y, sx: 1, sy: 1, rot: 0 }, P.snapEase);
               }).then(function () {
                 tile.home = { x: to.x, y: to.y };
@@ -1364,10 +1318,11 @@
 
         /* A6 · 재화 획득 ----------------------------------------------------- */
         DEMOS.a6 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), P = V.a6, chest, total = 1240;
+          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), P = V.a6, chest, total = 1240, busy = false;
           function reset() {
             st.clear();
             total = 1240;
+            busy = false;
             /* 코인이 날아가는 걸 보려면 거리가 있어야 한다 — HUD 를 보드에서 떼어 놓는다 */
             if (st.hudRow) st.hudRow.style.marginBottom = P.hudGap + "px";
             var p = st.cellPos(4);
@@ -1377,11 +1332,14 @@
             tappify(st, chest, { onTap: burst });
           }
           function burst() {
-            /* 겹쳐 눌러도 카운터는 마지막 목표값 하나로 수렴한다 —
-               표시 중인 숫자에서 이어 굴려야 값이 뒤로 튀지 않는다. */
+            /* 클라는 수확하면 칩이 그 자리에서 바로 걷힌다(재렌더) — 상자가 되돌아오는 구간이 없다.
+               그래서 눌린 직후 상자를 지우고, 코인이 다 닿으면 다시 세운다(재등장은 무대 전용). */
+            if (busy) return Promise.resolve();
+            busy = true;
             var src = st.cellPos(4), to = total + 300;
             total = to;
-            return squash(chest, P.boxInSec, P.boxSX, P.boxSY, P.boxOutSec, P.boxOutEase, P.boxInEase).then(function () {
+            return chest.to(P.boxInSec, { sx: P.boxSX, sy: P.boxSY }, P.boxInEase).then(function () {
+              chest.set({ a: 0, sx: 1, sy: 1 });
               var target = st.at(st.hud), N = Math.max(1, Math.round(P.coinCount)), all = [];
               for (var i = 0; i < N; i++) {
                 (function (i) {
@@ -1407,7 +1365,10 @@
                 })(i);
               }
               return Promise.all(all);
-            });
+            }).then(function () {
+              chest.set({ sx: 0.6, sy: 0.6 });
+              return chest.to(0.18, { a: 1, sx: 1, sy: 1 }, "backOut");
+            }).then(function () { busy = false; });
           }
           function play() { reset(); return burst(); }
           return { st: st, reset: reset, play: play, hint: "양동이를 눌러 코인을 받아 보세요" };
@@ -1503,27 +1464,20 @@
           var st = makeStage(host, { cols: 4, rows: 3 }), P = V.c1, tile, SI = 5, TI = 6;
           function reset() {
             st.clear();
+            /* 다른 아이템 위에 놓으면 클라는 자리를 바꾼다(2026-09-29). 거부되는 건 잠긴 칸·상자뿐이라
+               대상을 잠긴 칸으로 둔다. 거부는 X 도 흔들림도 없이 원래 칸으로 돌아가기만 한다(2026-09-18). */
             var t = st.cellPos(TI);
-            st.tile("mfx-product", 3).set({ x: t.x, y: t.y });
+            st.tile("mfx-lock", 0, "is-locked").set({ x: t.x, y: t.y });
             var p = st.cellPos(SI);
             tile = st.tile("mfx-product", 1);
             tile.set({ x: p.x, y: p.y });
             dragify(st, tile, {
               P: P,
               onDrop: function (cell) {
-                if (cell === TI) return reject();
-                if (cell < 0 || cell === tile.cell) return snapBack(st, tile, P);
+                if (cell < 0 || cell === TI || cell === tile.cell) return snapBack(st, tile, P);
                 return settle(st, tile, cell, null);
               },
             });
-          }
-          function reject() {
-            st.cellEls[TI].style.outline = "3px solid #E1503F";
-            st.cellEls[TI].style.outlineOffset = "-3px";
-            return Promise.all([
-              snapBack(st, tile, P),
-              wait(P.markHold).then(function () { st.cellEls[TI].style.outline = ""; }),
-            ]).then(function () { return shake(tile, P.shakeAmp, P.shakeSec); });
           }
           function play() {
             reset();
@@ -1531,10 +1485,10 @@
             tile.el.style.zIndex = 6;
             return tile.to(P.pickSec, { sx: P.pickScale, sy: P.pickScale }, P.pickEase)
               .then(function () { return tile.to(0.34, { x: to.x, y: to.y + 8 }, "quadInOut"); })
-              .then(reject)
+              .then(function () { return snapBack(st, tile, P); })
               .then(function () { tile.el.style.zIndex = ""; });
           }
-          return { st: st, reset: reset, play: play, hint: "레벨 1을 레벨 3 위로 끌어 보세요 · 거부됩니다" };
+          return { st: st, reset: reset, play: play, hint: "잠긴 칸 위로 끌어 보세요 · 원래 칸으로 돌아갑니다" };
         };
 
         /* C2 · 병합 가능 대상 하이라이트 ------------------------------------- */
@@ -1595,9 +1549,11 @@
 
         /* C3 · 충전 완료 ----------------------------------------------------- */
         DEMOS.c3 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2 }), P = V.c3, gen, gauge, fill, badge, alive = false;
+          var st = makeStage(host, { cols: 3, rows: 2 }), P = V.c3, gen, gauge, fill, badge, alive = false, done = false, era = 0;
           function reset() {
             alive = false;
+            done = false;
+            era++;
             st.clear();
             var p = st.cellPos(4);
             gen = st.tile("mfx-producer");
@@ -1606,33 +1562,40 @@
             gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
             fill.style.width = "78%";
-            badge = null;
+            /* 「!」는 닫힌 타이머 상자를 열라는 노티다 — 개봉이 끝난 상자에는 안 붙는다(2026-09-30).
+               까딱임 값은 그 노티 몫이라 왼쪽 칸의 닫힌 상자에 붙여 보여 준다. 등장 팝 없이 바로 선다. */
+            var q = st.cellPos(3);
+            st.tile("mfx-producer").set({ x: q.x, y: q.y });
+            badge = st.spr('<div class="mfx-badge">!</div>');
+            badge.set({ x: q.x + 26, y: q.y + 30 });
+            alive = true;
+            bob(badge, q.y + 30, era);
             tappify(st, gen, { press: false, onTap: complete });
           }
+          /* 무대를 다시 깔면 이전 루프는 era 가 달라져 스스로 멈춘다 — 새 배지에 두 벌이 붙지 않는다 */
+          function bob(b, restY, mine) {
+            function live() { return alive && mine === era; }
+            (function loop() {
+              if (!live()) return;
+              b.to(P.bobSec, { y: restY + P.bobPx }, P.bobEase)
+                .then(function () { return live() ? b.to(P.bobSec, { y: restY }, P.bobEase) : null; })
+                .then(function () { if (live()) loop(); });
+            })();
+          }
+          /* 순서: (게이지 소멸 ‖ 칩 팝) → (스파크 ‖ 숨쉬기). 배지 등장은 없다. */
           function complete() {
-            if (alive) return Promise.resolve();
+            if (done) return Promise.resolve();
+            done = true;
             var p = st.cellPos(4);
             return tw(P.fillSec, "linear", function (e) { fill.style.width = 78 + 22 * e + "%"; }).then(function () {
               gauge.to(P.gaugeOutSec, { a: 0, sy: 0.4 }, P.gaugeEase).then(function () { gauge.kill(); });
               gen.set({ a: 1 });
               return squash(gen, P.popInSec, P.popSX, P.popSY, P.popOutSec, P.popOutEase, P.popInEase);
             }).then(function () {
-              badge = st.spr('<div class="mfx-badge">!</div>');
-              badge.set({ x: p.x + 26, y: p.y + 30, sx: 0, sy: 0 });
-              alive = true;
-              return badge.to(P.badgeSec, { sx: 1, sy: 1 }, P.badgeEase).then(function () {
-                /* 수확 가능 상태의 대기는 충전중보다 확실히 크게 — 시선을 부른다 */
-                (function bob() {
-                  if (!alive) return;
-                  badge.to(P.bobSec, { y: p.y + 30 + P.bobPx }, P.bobEase)
-                    .then(function () { return alive ? badge.to(P.bobSec, { y: p.y + 30 }, P.bobEase) : null; })
-                    .then(function () { if (alive) bob(); });
-                })();
-                return Promise.all([
-                  sparks(st, p, P.sparkCount, "#7FC9BA", 0.34, 40, "quadOut"),
-                  gen.to(0.5, { sy: 1.05, sx: 1.05 }, "sineInOut").then(function () { return gen.to(0.5, { sy: 1, sx: 1 }, "sineInOut"); }),
-                ]);
-              });
+              return Promise.all([
+                sparks(st, p, P.sparkCount, "#7FC9BA", 0.34, 40, "quadOut"),
+                gen.to(0.5, { sy: 1.05, sx: 1.05 }, "sineInOut").then(function () { return gen.to(0.5, { sy: 1, sx: 1 }, "sineInOut"); }),
+              ]);
             });
           }
           function play() { reset(); return complete(); }
@@ -1809,6 +1772,7 @@
            ====================================================================== */
         var CATALOG = [
           { group: "action", id: "a1", no: "A1", title: "클릭", state: "part", label: "부분 구현",
+            dropped: "얼굴·옆면 내림(눌림 깊이 · 그림자)과 원위치 복귀 — 클라 칩은 아이콘 한 장이고, 복귀까지 태우면 탭 반응이 늘어진다. 뗄 때는 오버슛만 남겼다.",
             why: "눌림은 이미 <b>MergeBoardPressFeedback</b> 에 있습니다 — 얼굴이 3px 내려가고 옆면 두께가 4→1px 로 줄죠. 없는 건 <b>떼는 순간</b>입니다. 지금은 그냥 제자리로 돌아옵니다. 통통 튀는 감각은 누를 때가 아니라 <b>뗄 때의 오버슛</b>에서 나옵니다.",
             code:
 "// MergeBoardPressFeedback.ts — setPressed() 에 릴리즈 오버슛을 얹는다.\n" +
@@ -1875,6 +1839,7 @@
 "}" },
 
           { group: "action", id: "a3", no: "A3", title: "드래그", state: "part", label: "부분 구현",
+            dropped: "칩 그림자 · 원래 자리 고스트 (2026-09-30 결정).",
             why: "지금은 <b>setScale(1.08)</b> 한 줄이고, 타일이 손가락에 <b>정확히</b> 붙습니다. 정확히 붙으면 무게가 사라져 종이를 미는 느낌이 납니다. 지연 추종 + 그림자 + 원래 자리 고스트, 세 가지가 같이 있어야 \"들어 올렸다\"가 됩니다.",
             code:
 "// MergeBoardDragItem 은 터치 좌표만 넘기고, 추종은 update(dt) 에서 돈다.\n" +
@@ -1890,7 +1855,6 @@
 "        current.y + (target.y - current.y) * k,\n" +
 "    );\n" +
 "    node.angle += ((target.x - current.x) * 0.16 - node.angle) * k;\n" +
-"    this.dragShadowNode.setPosition(node.x, node.y - 36);\n" +
 "}\n" +
 "\n" +
 "public beginItemDrag(item: MergeBoardDragItem, localTouchPosition: cc.Vec2): boolean {\n" +
@@ -1901,7 +1865,6 @@
 "    cc.tween(item.node)\n" +
 "        .to(MERGE_PICKUP_DURATION_SEC, { scale: MERGE_PICKUP_SCALE }, { easing: \"backOut\" })\n" +
 "        .start();\n" +
-"    this.showDragGhost(this.getCellPosition(item.getCellIndex()));\n" +
 "    GameSound.play(\"FX_TILE_SELECT\", item.node);\n" +
 "    return true;\n" +
 "}" },
@@ -1982,6 +1945,7 @@
 "}" },
 
           { group: "action", id: "a6", no: "A6", title: "재화 먹을 때", state: "part", label: "부분 구현",
+            dropped: "상자 복귀 — 수확하면 칩이 그 자리에서 바로 걷혀 돌아올 칩이 없다.",
             why: "코인이 날아가는 <b>ItemGatheringAnimation</b> 은 이미 있고 잘 돕니다. 빠진 건 <b>도착지</b>입니다 — 코인이 HUD 에 닿는데 HUD 는 아무 반응이 없습니다. 숫자가 굴러가고 카운터가 한 번 튀어야 \"내 것이 됐다\"가 완성됩니다. 카운터는 <b>첫 코인이 닿는 순간</b> 시작해야 합니다. 마지막 코인을 기다리면 늦습니다.",
             code:
 "// 기존 ItemGatheringAnimation 을 그대로 쓰고, 콜백 두 개만 채운다.\n" +
@@ -2101,6 +2065,7 @@
 "}" },
 
           { group: "gap", id: "c1", no: "C1", title: "드롭 거부 · 병합 실패", state: "none", label: "없음 · 우선순위 1",
+            dropped: "X 표시 · 흔들림 — 원래 칸으로 돌아가기만 한다 (2026-09-18 결정). 다른 아이템 위에 놓으면 자리를 바꾸므로(2026-09-29) 거부는 잠긴 칸 · 상자뿐이다.",
             why: "지금 <b>endItemDrag()</b> 의 else 분기는 <b>item.node.setPosition(원위치)</b> 한 줄입니다. 머지 보드에서 가장 자주 일어나는 입력 결과가 <b>순간이동</b>으로 처리되고 있습니다. 유저는 자기가 뭘 잘못했는지 모른 채 같은 실수를 반복합니다. <b>여섯 개 중 이것부터 넣어야 합니다.</b>",
             code:
 "// endItemDrag() 의 else 분기를 교체한다.\n" +
@@ -2115,8 +2080,6 @@
 "        }, { easing: \"backOut\" }),\n" +
 "        node,\n" +
 "    );\n" +
-"    if (!node.isValid) return;\n" +
-"    this.playShake(node, 5, 0.24);\n" +
 "}" },
 
           { group: "gap", id: "c2", no: "C2", title: "드래그 중 병합 가능 대상 하이라이트", state: "none", label: "없음 · 우선순위 2",
@@ -2152,6 +2115,7 @@
 "}" },
 
           { group: "gap", id: "c3", no: "C3", title: "충전 완료 (대기 → 수확 가능)", state: "none", label: "없음 · 우선순위 3",
+            dropped: "완료 순간의 「!」 등장 — 「!」는 닫힌 타이머 상자를 열라는 노티라 열린 상자에는 안 붙는다 (2026-09-30 결정).",
             why: "요청 목록에 \"충전중\"은 있는데 <b>충전 완료</b>가 없습니다. 그런데 유저를 게임으로 다시 부르는 건 충전중이 아니라 <b>완료되는 순간</b>입니다. 게이지가 사라지고, 감광이 풀리고, 한 번 크게 튀고, 느낌표가 붙어 계속 까딱거려야 합니다 — 이 까딱거림이 B2 의 조용한 숨쉬기와 대비돼서 상태가 구분됩니다.",
             code:
 "private playChargeComplete(): void {\n" +
@@ -2166,17 +2130,6 @@
 "        .to(0.08, { scaleX: 1.18, scaleY: 0.84 }, { easing: \"quadOut\" })\n" +
 "        .to(0.22, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
 "        .call(() => this.playGeneratorIdle())              // 기존 bob 으로 복귀\n" +
-"        .start();\n" +
-"\n" +
-"    const badge = this.readyBadgeNode;\n" +
-"    badge.active = true;\n" +
-"    badge.setScale(0);\n" +
-"    const restY = badge.getPosition().y;\n" +
-"    cc.tween(badge)\n" +
-"        .to(0.20, { scale: 1 }, { easing: \"backOut\" })\n" +
-"        .repeatForever(cc.tween()\n" +
-"            .to(0.42, { y: restY + 6 }, { easing: \"sineInOut\" })\n" +
-"            .to(0.42, { y: restY }, { easing: \"sineInOut\" }))\n" +
 "        .start();\n" +
 "}" },
 
@@ -2511,6 +2464,16 @@
           table.appendChild(tb);
           scroll.appendChild(table);
           detail.appendChild(scroll);
+          /* 클라에서 일부러 뺀 연출은 표에서 걷고 한 줄로만 남긴다 — 대조하다 「빠졌다」로 되살리지 않게 */
+          if (spec.dropped) {
+            var dropEl = elm("p", "mfx-why");
+            dropEl.style.marginTop = "8px";
+            var dropB = document.createElement("b");
+            dropB.textContent = "클라에서 뺌";
+            dropEl.appendChild(dropB);
+            dropEl.appendChild(document.createTextNode(" · " + spec.dropped));
+            detail.appendChild(dropEl);
+          }
 
           /* 문구 스타일을 가리키는 카드는 그 스타일의 값도 여기서 바로 만진다.
              섹션을 따로 두지 않는다 — enum 을 바꾸면 아래 표가 그 스타일 것으로 바뀐다.
