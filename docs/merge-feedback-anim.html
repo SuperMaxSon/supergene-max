@@ -36,7 +36,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.1 · 2026-10-01 15:11</span>
+          <span class="tag" id="mfx-ver">v4.1 · 2026-10-01 15:23</span>
         </div>
       </div>
     </header>
@@ -751,6 +751,7 @@
             { k:"boxInSec",   label:"상자 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"boxInEase",  ease:"quadOut", cfg:"MERGE_COIN_BOX_IN_SEC" },
             { k:"boxSX",      label:"상자 가로",     v:1.14, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_COIN_BOX_X" },
             { k:"boxSY",      label:"상자 세로",     v:0.88, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_COIN_BOX_Y" },
+            { k:"coinCount",  label:"코인 개수",     v:6,    min:1,    max:10, step:1,   unit:"개",                                    cfg:"COIN_SPRITE_MIN",                note:"최소 닢 수 — 금액이 크면 10까지" },
             { k:"stagger",    label:"STAGGER",       v:0.04, min:0,    max:0.4,step:0.01, unit:"s",                                     cfg:"MERGE_STAGGER_SEC" },
             { k:"spreadSec",  label:"산개 시간",     v:0.26, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"spreadEase", ease:"circOut", cfg:"MERGE_COIN_SPREAD_SEC" },
             { k:"spreadR",    label:"산개 반경",     v:52,   min:10,   max:200,step:2,   unit:"px",                                    cfg:"MERGE_COIN_SPREAD_RADIUS" },
@@ -1293,8 +1294,7 @@
         /* A6 · 재화 획득 ----------------------------------------------------- */
         DEMOS.a6 = function (host) {
           var st = makeStage(host, { cols: 3, rows: 2, hud: true }), P = V.a6, chest, total = 1240, busy = false;
-          /* 무대 전용 — HUD 를 보드에서 떼는 거리와 닢 수. 클라 닢 수는 지급 규칙이 정한다 */
-          var HUD_GAP = 96, COIN_COUNT = 6;
+          var HUD_GAP = 96;   // 무대 전용 — HUD 를 보드에서 떼어 비행 거리를 만든다
           function reset() {
             st.clear();
             total = 1240;
@@ -1316,7 +1316,7 @@
             total = to;
             return chest.to(P.boxInSec, { sx: P.boxSX, sy: P.boxSY }, P.boxInEase).then(function () {
               chest.set({ a: 0, sx: 1, sy: 1 });
-              var target = st.at(st.hud), N = COIN_COUNT, all = [];
+              var target = st.at(st.hud), N = Math.max(1, Math.round(P.coinCount)), all = [];
               for (var i = 0; i < N; i++) {
                 (function (i) {
                   all.push(wait(i * P.stagger).then(function () {
@@ -1925,7 +1925,7 @@
 "}" },
 
           { group: "action", id: "a6", no: "A6", title: "재화 먹을 때", state: "ok", label: "클라 구현",
-            dropped: "상자 복귀 — 수확하면 칩이 그 자리에서 바로 걷혀 돌아올 칩이 없다. 코인 개수 — 닢 수는 지급 규칙이 정한다.",
+            dropped: "상자 복귀 — 수확하면 칩이 그 자리에서 바로 걷혀 돌아올 칩이 없다.",
             why: "코인이 날아가는 <b>ItemGatheringAnimation</b> 은 이미 있고 잘 돕니다. 빠진 건 <b>도착지</b>입니다 — 코인이 HUD 에 닿는데 HUD 는 아무 반응이 없습니다. 숫자가 굴러가고 카운터가 한 번 튀어야 \"내 것이 됐다\"가 완성됩니다. 카운터는 <b>첫 코인이 닿는 순간</b> 시작해야 합니다. 마지막 코인을 기다리면 늦습니다.",
             code:
 "// 기존 ItemGatheringAnimation 을 그대로 쓰고, 콜백 두 개만 채운다.\n" +

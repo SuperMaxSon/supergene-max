@@ -482,7 +482,7 @@ const SECTIONS = [
         project: "smg",
         status: "진행중",
         version: "v4.1",
-        updated: "2026-10-01 15:11",
+        updated: "2026-10-01 15:23",
         pinned: false,
         tags: ["연출", "도구"],
       },
