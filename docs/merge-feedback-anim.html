@@ -32,6 +32,11 @@
           맞춘 값은 카드 머리의 <b>[설정 복사]</b> 로 <code>cc.tween</code> 상수째 가져가고,
           받은 텍스트나 <code>.json</code> 은 툴바의 <b>[설정 주고받기]</b> 로 도로 무대에 먹입니다.
         </p>
+        <p class="doc-lede" style="margin-top: 10px; padding: 10px 14px; border-left: 4px solid #B57F4E; background: rgba(181, 127, 78, 0.10); border-radius: 6px">
+          <b>정본 = 클라 코드.</b> 이 연출집은 클라 동작을 그대로 미리 보여 준다.
+          기본값은 <code>scripts/mfx-sync.js</code> 로 클라 값과 맞춘다.
+          클라 연출 코드를 바꾸면 이 문서도 같이 고친다.
+        </p>
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
@@ -156,9 +161,11 @@
         <div class="foot">
           <b>확인 범위</b>
           카드 머리의 구현 상태는 <code>story-merge-proto-client</code> main(<code>14fbd59</code>, 2026-10-01) 실측입니다.
-          클라 값은 이 문서에서 맞춰 내보낸 값(<code>@mfx-data</code>)이 그대로
-          <code>assets/script/game/data/MergeFxConfig.ts</code> 의 <code>MERGE_FX</code> 한 표에 들어가 있고,
-          표의 기본값과는 다를 수 있습니다. 표에는 <b>클라가 실제로 읽는 값만</b> 둡니다 — 클라에서 뺀 연출은 카드마다 한 줄로 남겼고,
+          동작과 값의 기준은 클라입니다 — 표의 기본값은 <code>assets/script/game/data/MergeFxConfig.ts</code> 의
+          <code>MERGE_FX</code> 한 표와 같고, <code>scripts/mfx-sync.js</code> 가 클라 값으로 다시 써서 맞춥니다.
+          무대에서 맞춘 값은 [설정 복사] 로 가져가 클라에 넣고, 넣은 뒤 mfx-sync 로 기본값을 다시 맞춥니다.
+          무대 칸 간격은 77px, 클라는 95px 라 px 값(높이 · 간격 · 반경 · 진폭 · 문구 글자 크기)은 무대에서 77/95 비율로 줄여 보입니다 — 표에는 클라 값 그대로 둡니다.
+          표에는 <b>클라가 실제로 읽는 값만</b> 둡니다 — 클라에서 뺀 연출은 카드마다 한 줄로 남겼고,
           무대에만 필요한 값(시작 칩 수 · 잔존 시간 · 게이지 표시량 등)은 무대 코드 안 상수로 옮겼습니다.
           「Cocos 구현」 코드는 웹 프로토타입 시절 초안이라 클래스 이름이 현행과 다릅니다 — 값과 재생 순서만 보세요.
           무대의 트윈 엔진은 Cocos <code>cc.easing</code> 과 같은 수식을 다시 구현한 것이라
@@ -258,23 +265,32 @@
         Spr.prototype.kill = function () { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); };
 
         /* 공통 조각 — 모든 인자를 밖에서 받는다. 수치는 표에서 온다. ------- */
-        function squash(s, dIn, sx, sy, dOut, easeOut, easeIn) {
-          return s.to(dIn, { sx: sx, sy: sy }, easeIn || "quadOut").then(function () {
-            return s.to(dOut, { sx: 1, sy: 1 }, easeOut || "backOut");
-          });
+        /* 흔들림은 감쇠가 있어야 "거부" 로 읽힌다. 등폭 왕복은 그냥 진동이다.
+           클라와 같은 식이다 — 감쇠표 앞에서 cycles 칸만 밟고, 한 칸 = dur / (cycles + 2),
+           복귀만 2칸 길이 backOut. cycles 를 안 주면 4(= 예전 dur/6 4회)라 기존 호출은 그대로다. */
+        var SHAKE_DAMPING = [1, -0.7, 0.45, -0.25];   // 클라 BoardDragController.ts:30
+        function shake(s, amp, dur, cycles) {
+          var x0 = s.x;
+          amp = px(amp);                                 // 진폭은 클라 px — 무대 칸 비율로 옮긴다(PX_K)
+          // 클라 BoardDragController.ts:462-463 — cycles 는 감쇠표 길이로 자르고 step = sec / (cycles + 2)
+          var n = Math.min(cycles == null ? SHAKE_DAMPING.length : cycles, SHAKE_DAMPING.length);
+          var step = dur / (n + 2);
+          var p = Promise.resolve();
+          for (var i = 0; i < n; i++) {
+            (function (d) {
+              // 클라 BoardDragController.ts:469 — 구간마다 quadOut, 절대 좌표로 밟는다
+              p = p.then(function () { return s.to(step, { x: x0 + amp * d }, "quadOut"); });
+            })(SHAKE_DAMPING[i]);
+          }
+          // 클라 BoardDragController.ts:477 — 복귀는 step * 2 · backOut
+          return p.then(function () { return s.to(step * 2, { x: x0 }, "backOut"); });
         }
-        /* 흔들림은 감쇠가 있어야 "거부" 로 읽힌다. 등폭 왕복은 그냥 진동이다. */
-        function shake(s, amp, dur) {
-          var x0 = s.x, st = dur / 6;
-          return s.to(st, { x: x0 + amp }, "quadOut")
-            .then(function () { return s.to(st, { x: x0 - amp * 0.7 }, "quadOut"); })
-            .then(function () { return s.to(st, { x: x0 + amp * 0.45 }, "quadOut"); })
-            .then(function () { return s.to(st, { x: x0 - amp * 0.25 }, "quadOut"); })
-            .then(function () { return s.to(st * 2, { x: x0 }, "backOut"); });
+        /* 곡선 높이 — 거리(무대 px)에 비율을 곱하고, 최소 높이(클라 px)는 무대 칸 비율로 옮겨 비교한다 */
+        function flyLift(from, to, liftRatio, minLift) {
+          return Math.max(px(minLift), Math.hypot(to.x - from.x, to.y - from.y) * liftRatio);
         }
         function flyBezier(s, from, to, dur, liftRatio, minLift, ease) {
-          var dist = Math.hypot(to.x - from.x, to.y - from.y);
-          var lift = Math.max(minLift, dist * liftRatio);
+          var lift = flyLift(from, to, liftRatio, minLift);
           var c1 = { x: from.x, y: from.y + lift };
           var c2 = { x: to.x, y: to.y + lift * 0.6 };
           return tw(dur, ease || "quadInOut", function (e) {
@@ -284,9 +300,15 @@
         }
 
         /* ============================================================
-           무대 — 셀 72 / 간격 5 / 타일 66 은 MergeBoardPresentationConfig 실제 값
+           무대 — 셀 72 / 간격 5 / 타일 66 은 웹 무대 크기다. 클라 격자는 셀 91 · 간격 4 · 칸 간격 95
+           (클라 ingame/view/BoardGeometry.ts:25-27 CELL_SIZE · CELL_GAP).
            ============================================================ */
         var CELL = 72, GAP = 5, PITCH = CELL + GAP;
+        /* 클라 px → 무대 px 비율. 칸 간격 대 칸 간격(77 / 95)이라 표의 px 값(unit "px")과 옮겨 온
+           클라 px 상수는 무대에서 칸에 대해 클라와 같은 비율로 보인다. 표에는 클라 값을 그대로 두고
+           무대 거리로 쓰는 자리에서만 곱한다 — 비율·초·배율·각도·알파·개수에는 쓰지 않는다. */
+        var PX_K = PITCH / 95;                   // 클라 BoardGeometry.ts:25-27 — 91 + 4
+        function px(v) { return v * PX_K; }
         var TINT = ["none", "hue-rotate(-28deg) saturate(1.15)", "hue-rotate(-62deg) saturate(1.25)", "hue-rotate(155deg) saturate(1.1)"];
 
         function elm(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
@@ -340,6 +362,7 @@
             wrap: wrap, board: board, layer: layer, cellEls: cellEls, hud: hud, hudNum: hudNum, buy: buy,
             hudRow: wrap.hudRow || null, shelf: shelf, shelfSlots: shelfSlots,
             cols: spec.cols, rows: spec.rows, pool: [],
+            gen: 0, wallet: null,             // gen: clear() 마다 올라 앞 회차의 코인·롤을 끊는다 · wallet: 지갑 목표값
             cellPos: function (i) {
               var col = i % spec.cols, row = Math.floor(i / spec.cols);
               return { x: (col - (spec.cols - 1) / 2) * PITCH, y: ((spec.rows - 1) / 2 - row) * PITCH };
@@ -359,7 +382,9 @@
               st.pool = [];
               for (var k = 0; k < cellEls.length; k++) { cellEls[k].classList.remove("is-hl"); cellEls[k].style.outline = ""; }
               board.style.transform = "";
-              if (hud) hud.style.transform = "";
+              st.gen++;
+              st.wallet = null;
+              if (hud) { hud.__punchTok = (hud.__punchTok || 0) + 1; hud.style.transform = ""; }
               if (buy) buy.style.transform = "";
             },
           };
@@ -382,38 +407,53 @@
           ["wave",  "F5 라벨 웨이브"],
         ];
         var STYLE_PARAM = { rise: "f1", arc: "f2", punch: "f3", slide: "f4", wave: "f5" };
+        /* 메모 — f1 rise · f2 arc 는 아직 어느 클라 장면도 고르지 않는다(클라 MergeFxConfig.ts textStyle:
+           b1·c4 = punch, b2·b3 = slide, c6 = wave). 값은 클라에 있지만 실제 플레이에서는 재생되지 않는다. */
 
         /* 연타로 겹칠 때만 시작 높이를 계단처럼 올린다. 다 사라지면 다시 0 단이다.
            좌우로 흩뿌리지 않는다 — 산개는 전투처럼 초당 수십 개가 뜨는 판의 변형이다. */
         /* 문구는 늘 같은 자리에서 뜬다. 연타해도 어긋나게 쌓지 않는다 —
            누른 칩 바로 위, 수직으로만. */
         function floatDone(st, t) { t.kill(); }
-        function floatNode(st, text, good) {
-          var t = st.spr('<div class="mfx-float' + (good ? " is-good" : "") + '">' + text + "</div>");
+        /* 색은 클라 프리팹 값 그대로: 흰 글자 · 외곽선 #4A2C18 2px · 그림자 rgba(0,0,0,.47)
+           (클라 FloatingLabelNode.prefab text 노드 · LabelOutline · LabelShadow). 클라 문구에는 색 갈래가 없다
+           (클라 OrderServeFx.ts:243 play(style, text)). style.css 는 안 건드리고 인라인으로 덮는다.
+           글자 크기도 클라 값을 칸 비율로 옮긴다 — 클라 라벨 32px(FloatingLabelNode.prefab _fontSize) ×
+           PX_K ≈ 26px. 문구는 무대 레이어 위 절대 배치라 카드 배치에는 영향이 없다. */
+        var FLOAT_FONT_PX = 32;                  // 클라 FloatingLabelNode.prefab text cc.Label _fontSize
+        function inkPx(v) { return Math.round(px(v) * 100) / 100 + "px"; }
+        var FLOAT_INK = "font-size:" + inkPx(FLOAT_FONT_PX) + ";line-height:1.1;color:#fff;text-shadow:" +
+          [[2, 0], [-2, 0], [0, 2], [0, -2], [1.5, 1.5], [-1.5, 1.5], [1.5, -1.5], [-1.5, -1.5]].map(function (o) {
+            return inkPx(o[0]) + " " + inkPx(o[1]) + " 0 #4A2C18";
+          }).join(",") + ",0 " + inkPx(4) + " " + inkPx(2) + " rgba(0,0,0,.47)";
+        function floatNode(st, text) {
+          var t = st.spr('<div class="mfx-float" style="' + FLOAT_INK + '">' + text + "</div>");
           t.el.style.zIndex = 30;
           return t;
         }
+        /* 문구 값 읽기. 높이·간격처럼 px 단위 키는 gp 로 읽어 무대 칸 비율(PX_K)로 옮긴다 */
         function gv(S, k, d) { return S && S[k] != null ? S[k] : d; }
+        function gp(S, k, d) { return px(gv(S, k, d)); }
 
         /* F1 · 상승 페이드 — 기본형. 팝인 → 유지 → 떠오르며 소멸. */
-        function floatRise(st, text, at, S, good) {
-          var t = floatNode(st, text, good);
-          var y0 = at.y + gv(S, "gap", 34);
-          var rise = gv(S, "rise", 16);
+        function floatRise(st, text, at, S) {
+          var t = floatNode(st, text);
+          var y0 = at.y + gp(S, "gap", 34);
+          var rise = gp(S, "rise", 16);
           t.set({ x: at.x, y: y0, a: 0, sx: 0.6, sy: 0.6 });
           return t.to(gv(S, "inSec", 0.22), { y: y0 + rise, a: 1, sx: 1, sy: 1 }, gv(S, "inEase", "backOut"))
             .then(function () { return wait(gv(S, "hold", 0.45)); })
-            .then(function () { return t.to(gv(S, "outSec", 0.45), { y: y0 + rise + gv(S, "drift", 34), a: 0 }, gv(S, "outEase", "quadOut")); })
+            .then(function () { return t.to(gv(S, "outSec", 0.45), { y: y0 + rise + gp(S, "drift", 34), a: 0 }, gv(S, "outEase", "quadOut")); })
             .then(function () { floatDone(st, t); });
         }
 
         /* F2 · 포물선 튐 — 위로 던져 올렸다가 중력에 지는 곡선.
            상승은 감속(quadOut), 하강은 가속(quadIn) 이어야 무게가 생긴다.
            x 는 전 구간 등속으로 조금 흐른다 — 그래야 던진 방향이 읽힌다. */
-        function floatArc(st, text, at, S, good) {
-          var t = floatNode(st, text, good);
-          var y0 = at.y + gv(S, "gap", 30);
-          var side = gv(S, "sideX", 14), up = gv(S, "upRise", 46), drop = gv(S, "fallDrop", 22);
+        function floatArc(st, text, at, S) {
+          var t = floatNode(st, text);
+          var y0 = at.y + gp(S, "gap", 30);
+          var side = gp(S, "sideX", 14), up = gp(S, "upRise", 46), drop = gp(S, "fallDrop", 22);
           var upSec = gv(S, "upSec", 0.30), fallSec = gv(S, "fallSec", 0.42);
           var total = upSec + fallSec, sp = gv(S, "startScale", 0.5);
           t.set({ x: at.x, y: y0, a: 0, sx: sp, sy: sp });
@@ -431,17 +471,18 @@
 
         /* F3 · 임팩트 스탬프 — 큰 데서 확 조여 꽂힌다. 거부·경고처럼
            "지금 이걸 읽어라" 가 목적일 때. 이동이 거의 없어야 무게가 산다. */
-        function floatPunch(st, text, at, S, good) {
-          var t = floatNode(st, text, good);
-          var y0 = at.y + gv(S, "gap", 38);
+        function floatPunch(st, text, at, S) {
+          var t = floatNode(st, text);
+          // 비상용 기본값만 클라 값으로 맞춘다(클라 MergeFxConfig.ts f3: gap 34 · rise 0 · outScale 1) — 평소엔 V.f3 가 들어온다
+          var y0 = at.y + gp(S, "gap", 34);
           var big = gv(S, "startScale", 1.9);
-          var rise = gv(S, "rise", 10), drift = gv(S, "drift", 26);
+          var rise = gp(S, "rise", 0), drift = gp(S, "drift", 26);
           t.set({ x: at.x, y: y0, a: 0, sx: big, sy: big });
           return t.to(gv(S, "inSec", 0.12), { y: y0 + rise, sx: gv(S, "dipScale", 0.92), sy: gv(S, "dipScale", 0.92), a: 1 }, gv(S, "inEase", "quadOut"))
             .then(function () { return t.to(gv(S, "settleSec", 0.14), { sx: 1, sy: 1 }, gv(S, "settleEase", "backOut")); })
             .then(function () { return wait(gv(S, "hold", 0.6)); })
             .then(function () {
-              var out = gv(S, "outScale", 1.18);
+              var out = gv(S, "outScale", 1);
               return t.to(gv(S, "outSec", 0.24), { y: y0 + rise + drift, sx: out, sy: out, a: 0 }, gv(S, "outEase", "quadIn"));
             })
             .then(function () { floatDone(st, t); });
@@ -449,14 +490,14 @@
 
         /* F4 · 슬라이드 인 — 오버슛도 스케일도 없다. 아래에서 조용히 올라와
            조용히 사라진다. 자주 뜨는 상태 고지용 — 튀면 그게 소음이 된다. */
-        function floatSlide(st, text, at, S, good) {
-          var t = floatNode(st, text, good);
-          var y0 = at.y + gv(S, "gap", 34);
-          var from = gv(S, "fromY", 20);
+        function floatSlide(st, text, at, S) {
+          var t = floatNode(st, text);
+          var y0 = at.y + gp(S, "gap", 34);
+          var from = gp(S, "fromY", 20);
           t.set({ x: at.x, y: y0 - from, a: 0, sx: 1, sy: 1 });
           return t.to(gv(S, "inSec", 0.24), { y: y0, a: 1 }, gv(S, "inEase", "quadOut"))
             .then(function () { return wait(gv(S, "hold", 0.7)); })
-            .then(function () { return t.to(gv(S, "outSec", 0.36), { y: y0 + gv(S, "drift", 14), a: 0 }, gv(S, "outEase", "quadIn")); })
+            .then(function () { return t.to(gv(S, "outSec", 0.36), { y: y0 + gp(S, "drift", 14), a: 0 }, gv(S, "outEase", "quadIn")); })
             .then(function () { floatDone(st, t); });
         }
 
@@ -465,38 +506,49 @@
 
            글자를 쪼개지 않는다. cc.Label 은 글자 단위로 나눌 수 없어서 글자마다
            노드를 새로 세워야 하는데, 그건 이 연출 하나를 위해 노드 수를 글자 수만큼
-           늘리는 일이다. 라벨 하나를 글자 하나처럼 움직이는 것이 정본이다
-           (클라이언트 FloatingLabelNode 와 같은 궤적). */
-        function floatWave(st, text, at, S, good) {
-          var t = floatNode(st, text, good);
-          var y0 = at.y + gv(S, "gap", 34);
-          var rise = gv(S, "charRise", 14);
+           늘리는 일이다. 클라 FloatingLabelNode 도 라벨 하나를 글자 하나처럼 움직인다 —
+           무대는 그 궤적을 그대로 따른다. */
+        function floatWave(st, text, at, S) {
+          var t = floatNode(st, text);
+          var y0 = at.y + gp(S, "gap", 34);
+          var rise = gp(S, "charRise", 14);
           t.set({ x: at.x, y: y0, a: 0, sx: 1, sy: 1 });
           return t.to(gv(S, "charInSec", 0.16), { y: y0 + rise, a: 1 }, gv(S, "charInEase", "quadOut"))
             .then(function () { return t.to(gv(S, "settleSec", 0.18), { y: y0 }, gv(S, "settleEase", "backOut")); })
             .then(function () { return wait(gv(S, "hold", 0.5)); })
-            .then(function () { return t.to(gv(S, "outSec", 0.40), { y: y0 + gv(S, "drift", 30), a: 0 }, gv(S, "outEase", "quadOut")); })
+            .then(function () { return t.to(gv(S, "outSec", 0.40), { y: y0 + gp(S, "drift", 30), a: 0 }, gv(S, "outEase", "quadOut")); })
             .then(function () { floatDone(st, t); });
         }
 
         var FLOAT_FN = { rise: floatRise, arc: floatArc, punch: floatPunch, slide: floatSlide, wave: floatWave };
 
         /* 텍스트 연출 3종이 부르는 입구. 스타일만 고르면 값은 그 스타일 카드에서 온다. */
-        function floatText(st, text, at, P, good) {
-          var style = (P && P.textStyle) || "rise";
-          var fn = FLOAT_FN[style] || floatRise;
-          return fn(st, text, at, V[STYLE_PARAM[style]] || {}, good);
+        function floatText(st, text, at, P) {
+          // 클라 BoardChipFx.ts:253 — 스타일을 안 고르면 slide 다
+          var style = (P && P.textStyle) || "slide";
+          var fn = FLOAT_FN[style] || floatSlide;
+          return fn(st, text, at, V[STYLE_PARAM[style]] || {});
         }
+        /* 스파크 점 — 클라는 프리팹 점 8개(상한) · 반경 6px 원 · 기본 금색이다.
+           반경(radius)·홀수 덧반경·점 크기는 클라 px 라 무대 칸 비율(PX_K)로 옮겨 쓴다. */
+        var SPARK_MAX = 8;                       // 클라 MergeFxNode.ts:144 · BoardItemFx.ts:227 (프리팹 spark 자식 수)
+        var SPARK_DOT_PX = 12;                   // 클라 MergeFxNode.ts:7 SPARK_DOT_RADIUS 6 → 지름 12
+        var SPARK_ODD_PX = 12;                   // 클라 MergeFxNode.ts:16 SPARK_RADIUS_ODD_OFFSET
+        var SPARK_COLOR = "rgb(255,224,130)";    // 클라 MergeFxNode.ts:29 SPARK_COLOR_A4
         function sparks(st, at, n, color, sec, radius, ease) {
-          n = Math.max(0, Math.round(n == null ? 7 : n));
+          n = Math.max(0, Math.min(SPARK_MAX, Math.round(n == null ? 7 : n)));   // 클라 MergeFxNode.ts:144
           sec = sec || 0.34; radius = radius || 40;
           var list = [];
           for (var i = 0; i < n; i++) {
             (function (i) {
               var sp = st.spr('<div class="mfx-spark"></div>');
-              if (color) sp.el.firstChild.style.background = color;
+              // 클라 MergeFxNode.ts:7,29 — 점 크기·색은 문서 안에서 덮는다(style.css 는 안 건드림)
+              sp.el.firstChild.style.width = px(SPARK_DOT_PX) + "px";
+              sp.el.firstChild.style.height = px(SPARK_DOT_PX) + "px";
+              sp.el.firstChild.style.background = color || SPARK_COLOR;
               sp.set({ x: at.x, y: at.y, sx: 0.4, sy: 0.4 });
-              var ang = (Math.PI * 2 * i) / n - Math.PI / 2, r = radius + (i % 2) * 12;
+              // 클라 MergeFxNode.ts:150 — dist = radius + (i % 2) * 12
+              var ang = (Math.PI * 2 * i) / n - Math.PI / 2, r = px(radius + (i % 2) * SPARK_ODD_PX);
               list.push(sp.to(sec, {
                 x: at.x + Math.cos(ang) * r, y: at.y + Math.sin(ang) * r, sx: 0.1, sy: 0.1, a: 0,
               }, ease || "quadOut").then(function () { sp.kill(); }));
@@ -518,14 +570,88 @@
           s.el.style.opacity = 0;
           return s;
         }
-        function nodePunch(node, dIn, sc, dOut, easeOut, easeIn) {
+        /* restart=true 면 클라 ItemGatheringAnimation.punch 를 따른다: 앞 펀치를 멈추고
+           지금 크기에서 base(1)×sc 로 갔다가 1 로 돌아온다. 생략하면 예전 동작 그대로다. */
+        function nodePunch(node, dIn, sc, dOut, easeOut, easeIn, restart) {
+          if (restart) {
+            // 클라 ItemGatheringAnimation.ts:512-533 — 앞 트윈 stop() · 현재 크기 출발 · base 복귀
+            var tok = (node.__punchTok || 0) + 1;
+            node.__punchTok = tok;
+            var m = /scale\(([-\d.]+)/.exec(node.style.transform || ""), s0 = m ? parseFloat(m[1]) : 1;
+            var setS = function (v) { if (node.__punchTok === tok) node.style.transform = "scale(" + v + ")"; };
+            return tw(dIn, easeIn || "quadOut", function (e) { setS(s0 + (sc - s0) * e); })
+              .then(function () { return tw(dOut, easeOut || "backOut", function (e) { setS(sc + (1 - sc) * e); }); });
+          }
           return tw(dIn, easeIn || "quadOut", function (e) { node.style.transform = "scale(" + (1 + (sc - 1) * e) + ")"; })
             .then(function () {
               return tw(dOut, easeOut || "backOut", function (e) { node.style.transform = "scale(" + (sc + (1 - sc) * e) + ")"; });
             });
         }
-        function mix(a, b, e) { return "rgb(" + Math.round(a[0] + (b[0] - a[0]) * e) + "," + Math.round(a[1] + (b[1] - a[1]) * e) + "," + Math.round(a[2] + (b[2] - a[2]) * e) + ")"; }
-        var WOOD = [122, 78, 43], CORAL = [225, 80, 63];
+        /* ── A6 코인 부채꼴 — 수확(A6)과 납품 보상(C4)이 같이 쓴다 ─────────────────────────
+           클라 ItemGatheringAnimation.ts:385-509 playFan → traceFan · :512-533 punch, 지갑 숫자는 TopBarNode rollTo.
+           닢마다 stagger 뒤에 떠서 부채꼴로 흩어졌다가(spread) HUD 로 빨려 들고(trace), 닿을 때마다 HUD 가 튄다.
+           split 이 거짓이면 첫 닢 도착에 금액 전부를 굴린다(수확 — 클라 BoardTapFlow.ts:319-322 settle),
+           참이면 닢마다 올림 분할로 나눠 굴린다(납품 보상 — 클라 RailServeFx.ts:204-207 ticket.release). */
+        var A6_COIN_MAX = 10;                       // 클라 MergeFxConfig.ts:305
+        var FAN_STEP_RAD = 0.42;                    // 클라 ItemGatheringAnimation.ts:32
+        var FAN_ARC_MAX_RAD = FAN_STEP_RAD * 5;     // 클라 ItemGatheringAnimation.ts:38
+        var FAN_ARRIVAL_SCALE = 0.8;                // 클라 ItemGatheringAnimation.ts:41
+        var FAN_PUNCH_IN_SEC = 0.05;                // 클라 ItemGatheringAnimation.ts:44
+        // 클라 MergeFxConfig.ts:308-312 a6CoinCount — 최소 coinCount, 최대 A6_COIN_MAX
+        function a6CoinCount(amount) { return Math.max(V.a6.coinCount, Math.min(A6_COIN_MAX, Math.round(amount))); }
+        function hudShown(st) { return parseInt(st.hudNum.textContent.replace(/,/g, ""), 10) || 0; }
+        /* 지갑 숫자 굴리기 — 클라 TopBarNode.ts:467 rollTo(값, a6.rollSec, a6.rollEase). 지금 보이는 숫자에서 다시 출발한다 */
+        function walletRoll(st, to) {
+          if (!st.hudNum) return Promise.resolve();
+          var tok = st.rollTok = (st.rollTok || 0) + 1, g = st.gen, shown = hudShown(st), P = V.a6;
+          return tw(P.rollSec, P.rollEase, function (e) {
+            if (st.rollTok !== tok || st.gen !== g) return;
+            st.hudNum.textContent = Math.round(shown + (to - shown) * e).toLocaleString();
+          });
+        }
+        function a6CoinFan(st, from, count, amount, split) {
+          if (!st.hud) return Promise.resolve();
+          var P = V.a6, g = st.gen, N = Math.max(1, count), arrived = 0;
+          if (st.wallet == null) st.wallet = hudShown(st);
+          var base = st.wallet;
+          st.wallet += amount;
+          // 클라 ItemGatheringAnimation.ts:35-38,411 — 7닢부터 전체 부채각을 0.42×5 로 묶고 각폭을 좁힌다
+          var step = N <= 1 ? 0 : Math.min(FAN_STEP_RAD, FAN_ARC_MAX_RAD / (N - 1));
+          var all = [];
+          for (var i = 0; i < N; i++) {
+            (function (i) {
+              all.push(wait(i * P.stagger).then(function () {          // 클라 ItemGatheringAnimation.ts:468-472
+                if (st.gen !== g) return;
+                var c = st.spr('<div class="mfx-coin"></div>');
+                c.set({ x: from.x, y: from.y, sx: 1, sy: 1 });
+                // 클라 ItemGatheringAnimation.ts:457-460 — 중심 -90도, spreadUp 은 무더기 전체 오프셋(px → PX_K)
+                var ang = -Math.PI / 2 + (i - (N - 1) / 2) * step;
+                return c.to(P.spreadSec, {
+                  x: from.x + Math.cos(ang) * px(P.spreadR),
+                  y: from.y + Math.sin(ang) * px(P.spreadR) + px(P.spreadUp),
+                  sx: P.spreadScale, sy: P.spreadScale,
+                }, P.spreadEase)
+                  .then(function () {
+                    // 클라 ItemGatheringAnimation.ts:478-509 — 목적지는 매번 다시 잰다
+                    var target = st.at(st.hud);
+                    return c.to(P.traceSec, { x: target.x, y: target.y, sx: FAN_ARRIVAL_SCALE, sy: FAN_ARRIVAL_SCALE }, P.traceEase);
+                  })
+                  .then(function () {
+                    c.kill();
+                    if (st.gen !== g) return;
+                    arrived++;
+                    /* 카운터는 도착 순서로 굴린다(발사 순서가 아니다) */
+                    if (split) walletRoll(st, base + Math.ceil(amount * arrived / N));
+                    else if (arrived === 1) walletRoll(st, base + amount);
+                    // 클라 ItemGatheringAnimation.ts:512-533 — 앞 펀치를 멈추고 지금 크기 → 1×punchScale → 1, 진입 0.05 quadOut 고정
+                    return nodePunch(st.hud, FAN_PUNCH_IN_SEC, P.punchScale, P.punchOutSec, P.punchEase, "quadOut", true);
+                  });
+              }));
+            })(i);
+          }
+          return Promise.all(all);
+        }
+
 
         /* ======================================================================
            상호작용 — 무대 위 스프라이트를 실제로 누르고 끌 수 있게 한다.
@@ -555,22 +681,128 @@
           }
           return bestD <= DROP_LIMIT ? best : -1;
         }
-        function snapBack(st, spr, P) {
+        /* 무효 드롭 복귀. 값은 넘긴 P 에 없으면 V.c1 에서 읽는다 — 클라는 어느 복귀든 c1 하나로 돈다.
+           세 번째 인자 자리에 초(숫자)를 바로 넘겨도 된다: snapBack(st, spr, sec, ease). */
+        function snapBack(st, spr, P, ease) {
+          if (typeof P === "number") P = { snapSec: P, snapEase: ease };
           P = P || {};
-          return spr.to(P.snapSec != null ? P.snapSec : 0.26,
-            { x: spr.home.x, y: spr.home.y, sx: 1, sy: 1, rot: 0 }, P.snapEase || "backOut");
+          var C = V.c1 || {};
+          // 클라 BoardDragController.ts:454 — x/y 와 배율만 되돌린다(각도는 안 만진다)
+          return spr.to(P.snapSec != null ? P.snapSec : (C.snapSec != null ? C.snapSec : 0.26),
+            { x: spr.home.x, y: spr.home.y, sx: 1, sy: 1 }, P.snapEase || C.snapEase || "backOut");
         }
+
+        /* 칩 연출 장부 — 클라 BoardChipFx 의 beginChipFx / clearChipFx / endChipFx 와 cc.Tween.stopAllByTarget 대응.
+           Spr.to 는 끊을 수 없어서 칩 트윈은 fxTo 로 건다. 칩마다 세대 번호(fxGen)를 두고, 세대가 바뀌면
+           걸려 있던 fxTo 트윈은 그 프레임부터 손을 떼고 체인은 ok=false 를 받아 멈춘다.
+           칩 연출은 전부 fxBegin 으로 시작한다(클라는 연출마다 beginChipFx 를 먼저 탄다). */
+        function fxStop(spr) { spr.fxGen = (spr.fxGen || 0) + 1; }      // cc.Tween.stopAllByTarget — 배율은 그대로 둔다
+        function fxBegin(spr) {                                      // 클라 BoardChipFx.ts:318-333 beginChipFx · 353-366 clearChipFx
+          fxStop(spr);
+          spr.set({ sx: 1, sy: 1, rot: 0 });
+        }
+        function fxTo(spr, dur, props, ease) {
+          var gen = spr.fxGen || 0, from = {}, k;
+          for (k in props) from[k] = spr[k];
+          return tw(dur, ease, function (e) {
+            if ((spr.fxGen || 0) !== gen) return;
+            for (var q in props) spr[q] = from[q] + (props[q] - from[q]) * e;
+            spr.apply();
+          }).then(function () { return (spr.fxGen || 0) === gen; });
+        }
+        function fxEnd(spr, ok) {                                    // 클라 BoardChipFx.ts:380-384 endChipFx — 내 연출일 때만 닫는다
+          if (ok) fxBegin(spr);
+          return ok;
+        }
+        /* A1 누름 · 뗌 — 클라는 칩·생성기·상자·잠긴 칸 가리지 않고 모든 터치다운에 같은 한 벌을 건다(BoardInputNode.ts:269).
+           뗄 때 오버슛을 건 뒤 곧장 탭 응답(B1·B2·B3 등)이 fxBegin 으로 그 오버슛을 끊는다(BoardInputNode.ts:300-302). */
+        function chipPress(spr) {                                    // 클라 BoardChipFx.ts:407-418 playPressFx
+          var P = V.a1;
+          fxBegin(spr);                                              // 클라 BoardChipFx.ts:412 — 연타해도 1 에서 다시 출발
+          return fxTo(spr, P.pressSec, { sx: P.pressSX, sy: P.pressSY }, P.pressEase);
+        }
+        function chipRelease(spr) {                                  // 클라 BoardChipFx.ts:424-445 playReleaseFx
+          var P = V.a1;
+          fxStop(spr);                                               // 클라 BoardChipFx.ts:433 — 끊기만 하고 지금 배율에서 잇는다
+          return fxTo(spr, P.overInSec, { sx: P.overSX, sy: P.overSY }, P.overInEase)
+            .then(function (ok) { return ok && fxTo(spr, P.overOutSec, { sx: 1, sy: 1 }, P.overOutEase); })
+            .then(function (ok) { return fxEnd(spr, ok); });          // 클라 BoardChipFx.ts:441 .call(endChipFx)
+        }
+        /* 「재생」용 탭 한 번 — 누름(a1) → 손을 뗀다 → 오버슛이 그 프레임에 응답으로 끊긴다.
+           누른 시간은 a1 눌림 시간만큼으로 둔다. 손으로 누를 때(tappify)와 같은 순서다. */
+        function chipTapPlay(spr, respond) {
+          chipPress(spr);
+          return wait(V.a1.pressSec).then(function () { chipRelease(spr); return respond ? respond() : null; });
+        }
+
+        /* 무장 게이트 — 클라 BoardTapFlow.ts:169-171. 첫 탭은 고르기(무장)까지고, 고른 칩을 다시 탭해야 동작한다.
+           판정이 arm() 보다 먼저다: 이미 무장돼 있었는가 → 무장 → 아니면 끝. 무장은 칸이 비거나(수확) 빈 칸·덮개 칸을
+           탭할 때만 풀린다(BoardTapFlow.ts:141·154·289) — 그래서 생산·만석·충전중은 무장 뒤 탭마다 동작한다.
+           생산(A2) · 만석(B1) · 충전중(B2) · 수확(A6)이 이 게이트를 탄다(BoardTapFlow.ts:173-210 · 399-441).
+           덮개 칸 잠김(B3)은 첫 탭에서 바로 말한다(BoardTapFlow.ts:146-155) — 게이트 밖이다.
+
+           고른 칸 표시 — 클라는 누르는 순간 그 칸에 시안 브래킷을 켠다(BoardInputNode.ts:273 selectOnPress →
+           BoardCellLayer.ts:92 setFocused). 무장 자체는 화면에 따로 안 보이고, 브래킷이 「골랐다」를 대신 보여 준다.
+           클라 브래킷은 ㄱ자 모서리 그림이라 무대에선 칸 테두리로 대신한다. st.clear() 가 테두리를 걷는다. */
+        var BRACKET = "3px solid #2CB5C9";
+        var ARM_DEMO_GAP_SEC = 0.45;        // 무대 전용 — 「재생」에서 첫 탭(고르기)과 둘째 탭(동작) 사이
+        function selectCell(st, cell, on) {
+          var c = st.cellEls[cell];
+          c.style.outline = on ? BRACKET : "";
+          c.style.outlineOffset = on ? "-1px" : "";
+        }
+        /* can() 이 거짓이면 그 칸은 지금 빈 칸이다(수확 비행 중 등) — 빈 칸 탭은 무장을 풀고 끝난다(BoardTapFlow.ts:133-142) */
+        function armGate(st, cell, action, can) {
+          var g = { armed: false };
+          function ok() { return !can || can(); }
+          g.disarm = function () { g.armed = false; };
+          g.onDown = function () { if (ok()) selectCell(st, cell, true); };              // 클라 BoardInputNode.ts:273
+          g.onTap = function () {
+            if (!ok()) { g.armed = false; return null; }
+            var was = g.armed;
+            g.armed = true;                                         // 클라 BoardTapFlow.ts:170 arm
+            if (!was) return null;                                  // 클라 BoardTapFlow.ts:171
+            return action();
+          };
+          return g;
+        }
+        /* 「재생」 — 첫 탭(누름 · 브래킷 · 무장) → 잠깐 뒤 둘째 탭(누름 · 동작) */
+        function armedTapPlay(spr, g) {
+          g.onDown();
+          return chipTapPlay(spr, g.onTap)
+            .then(function () { return wait(ARM_DEMO_GAP_SEC); })
+            .then(function () { g.onDown(); return chipTapPlay(spr, g.onTap); });
+        }
+        /* 착지 — 클라 BoardChipFx.ts:475-526 playDropSettle. 값을 안 넘기면 A3 값이다(클라는 어느 드래그든 a3 하나로 돈다).
+           출발점은 손 뗀 손가락 자리(dragify 가 spr.dropAt 에 적는다)이고 배율은 pickScale 에서 시작한다. */
         function settle(st, spr, cell, P) {
           P = P || {};
-          var p = st.cellPos(cell);
+          function g(k) { return P[k] != null ? P[k] : V.a3[k]; }
+          var p = st.cellPos(cell), at = spr.dropAt;
           spr.home = { x: p.x, y: p.y };
           spr.cell = cell;
-          return spr.to(P.snapSec != null ? P.snapSec : 0.14, { x: p.x, y: p.y, sx: 1, sy: 1, rot: 0 }, P.snapEase || "quadOut")
-            .then(function () {
-              return squash(spr, P.landInSec != null ? P.landInSec : 0.06,
-                P.landSX != null ? P.landSX : 1.14, P.landSY != null ? P.landSY : 0.88,
-                P.landOutSec != null ? P.landOutSec : 0.16, P.landOutEase, P.landInEase);
-            });
+          spr.dropAt = null;
+          fxBegin(spr);                                              // 클라 BoardChipFx.ts:485 beginChipFx
+          if (at) spr.set({ x: at.x, y: at.y });                     // 클라 BoardChipFx.ts:487 손가락 자리로 순간이동
+          spr.set({ sx: g("pickScale"), sy: g("pickScale") });       // 클라 BoardChipFx.ts:488
+          return fxTo(spr, g("snapSec"), { x: p.x, y: p.y, sx: 1, sy: 1 }, g("snapEase"))
+            .then(function (ok) { return ok && fxTo(spr, g("landInSec"), { sx: g("landSX"), sy: g("landSY") }, g("landInEase")); })
+            .then(function (ok) { return ok && fxTo(spr, g("landOutSec"), { sx: 1, sy: 1 }, g("landOutEase")); })
+            .then(function (ok) { if (fxEnd(spr, ok)) spr.set({ x: p.x, y: p.y }); return spr; });  // 클라 BoardChipFx.ts:523 endChipFx(칸 복귀까지)
+        }
+        /* 자리 교환에서 밀려난 칩 — 클라 BoardDropFlow.ts:200-206 playSwapDisplaced.
+           제 칸에서 끌어 온 칩의 출발 칸으로 snapEase 하나로 미끄러지기만 한다. 착지 눌림이 없고,
+           길이는 끌어 온 칩의 착지 한 벌(snap + landIn + landOut)과 같아 두 칩이 같이 앉는다. */
+        function swapGlide(st, spr, cell, P) {
+          P = P || {};
+          function g(k) { return P[k] != null ? P[k] : V.a3[k]; }
+          var p = st.cellPos(cell), sec = g("snapSec") + g("landInSec") + g("landOutSec");
+          fxBegin(spr);                                              // 클라 BoardDropFlow.ts:445 분신은 배율 1 에서 출발
+          if (spr.cell != null && spr.cell >= 0) { var q = st.cellPos(spr.cell); spr.set({ x: q.x, y: q.y }); }  // 클라 BoardDropFlow.ts:186 제 칸에서 출발
+          spr.home = { x: p.x, y: p.y };
+          spr.cell = cell;
+          return fxTo(spr, sec, { x: p.x, y: p.y }, g("snapEase"))   // 클라 BoardDropFlow.ts:203-206
+            .then(function (ok) { if (fxEnd(spr, ok)) spr.set({ x: p.x, y: p.y }); return spr; });
         }
         /* 조작은 직렬화하지 않는다. 연달아 눌러야 "연출이 겹칠 때 어떻게 보이는지" 를
            볼 수 있고, 그게 실제 게임에서 벌어지는 상황이다.
@@ -581,106 +813,126 @@
           return Promise.resolve(fn()).catch(function () {});
         }
 
-        /* 드래그 — 픽업 · 지연 추종 · 셀 스냅까지 한 곳에서.
+        /* A3 집기 — 클라 BoardDragController.ts:210-220. 누름(a1)을 끊고 배율 1 에서 pickScale 로 간다.
+           위치·들림은 건드리지 않는다 — 들림은 추종의 liftPx 몫이다. */
+        function dragPick(spr) {
+          var a3 = V.a3;
+          fxBegin(spr);                                              // 클라 BoardDragController.ts:210 clearChipFx
+          spr.el.style.zIndex = 20;
+          return fxTo(spr, a3.pickSec, { sx: a3.pickScale, sy: a3.pickScale }, a3.pickEase);
+        }
+        /* 「재생」용 집기 앞머리 — 손으로 끌 때(dragify)와 같다: 터치다운 누름(a1) → 임계를 넘으면 누름을 끊고 1 에서 집기 */
+        function playPick(spr) {
+          chipPress(spr);                                            // 클라 BoardInputNode.ts:269
+          return wait(V.a1.pressSec).then(function () { return dragPick(spr); });   // 클라 BoardDragController.ts:210-220
+        }
+        /* 지연 추종 — 클라 BoardDragController.ts:156-170. 목적지는 손가락 자리 + liftPx(클라 px → PX_K), 계수는 60fps 기준 환산.
+           aim 은 x/y 를 가진 아무 객체(손가락 좌표). 보드 밖 제한은 없다 — 클라에도 없다. */
+        function dragFollow(spr, aim) {
+          return function (dt) {
+            var a3 = V.a3, k = 1 - Math.pow(1 - a3.follow, dt * 60);
+            spr.x += (aim.x - spr.x) * k;
+            spr.y += (aim.y + px(a3.liftPx) - spr.y) * k;
+            spr.apply();
+          };
+        }
+        var DRAG_THRESHOLD_PX = px(10);   // 클라 BoardInputNode.ts:23 — 10px, 무대 칸 비율로 옮김
+
+        /* 드래그 — 누름 · 임계 · 픽업 · 지연 추종 · 셀 스냅까지 한 곳에서.
            칩 그림자와 원래 자리 고스트는 클라에서 뺐다(2026-09-30) — 무대에도 두지 않는다. */
         function dragify(st, spr, cfg) {
           cfg = cfg || {};
-          var P = cfg.P || {};
-          /* 픽업·추종 값은 장면마다 따로 두지 않는다 — 클라는 어느 드래그든 A3 값 하나로 돈다 */
-          function g(k, d) { return P[k] != null ? P[k] : (V.a3[k] != null ? V.a3[k] : d); }
           spr.el.classList.add("is-hit", "is-drag");
           hitStyle(spr.el, "grab");
           spr.home = { x: spr.x, y: spr.y };
           spr.cell = nearestCell(st, spr.home);
-          var dragging = false, off = { x: 0, y: 0 }, aim = { x: 0, y: 0 }, follow = null, hover = -1;
-          var limX = ((st.cols - 1) * PITCH) / 2, limY = ((st.rows - 1) * PITCH) / 2;
+          /* idle → pressed(누름만) → dragging(임계 넘음) → resolving(드롭 연출 중, 이 칩은 손을 안 받는다) */
+          var state = "idle", down = null, aim = { x: 0, y: 0 }, follow = null, hover = -1;
 
           spr.el.addEventListener("pointerdown", function (e) {
             st.userTook = true;                     // 손이 닿으면 반복 시연은 멈춘다
-            if (st.playing || dragging) return;
+            if (st.playing || state !== "idle") return;   // 클라 BoardInputNode.ts:244
             e.preventDefault();
             try { spr.el.setPointerCapture(e.pointerId); } catch (err) {}
-            var p = toLocal(st, e);
-            off = { x: spr.x - p.x, y: spr.y - p.y };
-            aim = { x: spr.x, y: spr.y };
-            dragging = true;
-            spr.el.style.zIndex = 20;
-            spr.to(g("pickSec", 0.10), { sx: g("pickScale", 1.08), sy: g("pickScale", 1.08) }, P.pickEase || V.a3.pickEase || "backOut");
-            /* 손가락에 정확히 붙이지 않는다 — 지연 추종이 무게를 만든다 */
-            follow = function (dt) {
-              var k = 1 - Math.pow(1 - g("follow", 0.40), dt * 60);
-              spr.x += (aim.x - spr.x) * k;
-              spr.y += (aim.y + g("liftPx", 6) - spr.y) * k;
-              spr.apply();
-            };
-            addTick(follow);
+            down = toLocal(st, e);
+            state = "pressed";
+            chipPress(spr);                         // 클라 BoardInputNode.ts:269 — 끌 칩도 터치다운에 먼저 눌린다
           });
 
           spr.el.addEventListener("pointermove", function (e) {
-            if (!dragging) return;
+            if (state !== "pressed" && state !== "dragging") return;
             var p = toLocal(st, e);
-            aim = { x: clampV(p.x + off.x, -limX, limX), y: clampV(p.y + off.y, -limY, limY) };
+            if (state === "pressed") {
+              if (Math.hypot(p.x - down.x, p.y - down.y) < DRAG_THRESHOLD_PX) return;   // 클라 BoardInputNode.ts:282
+              state = "dragging";
+              dragPick(spr);                        // 클라 BoardDragController.ts:210-220 — 누름 취소 후 1 에서 집기
+              follow = dragFollow(spr, aim);
+              addTick(follow);
+            }
+            /* 잡은 지점을 유지하지 않는다 — 목적지는 손가락 그 자체다 */
+            aim.x = p.x; aim.y = p.y;               // 클라 BoardInputNode.ts:288
             var cell = nearestCell(st, aim);
             if (cell !== hover) { hover = cell; if (cfg.onHover) cfg.onHover(cell); }
           });
 
-          function release() {
-            if (!dragging) return;
-            dragging = false;
+          function release(cancelled) {
+            if (state === "pressed") {
+              state = "idle";
+              /* 취소는 뗌이 아니다 — 오버슛 없이 누름만 되돌린다 */
+              if (cancelled) fxBegin(spr);          // 클라 BoardInputNode.ts:353
+              else chipRelease(spr);                // 클라 BoardInputNode.ts:300
+              return;
+            }
+            if (state !== "dragging") return;
+            state = "resolving";
             delTick(follow);
             if (cfg.onHover) cfg.onHover(-1);
-            var cell = nearestCell(st, aim);
+            var cell = cancelled ? -1 : nearestCell(st, aim);   // 클라 BoardInputNode.ts:343 — 취소는 무효 드롭
             hover = -1;
-            Promise.resolve(cfg.onDrop ? cfg.onDrop(cell) : snapBack(st, spr, P))
+            fxStop(spr);                            // 클라 BoardDragController.ts:448 · BoardChipFx.ts:331 — 집기 트윈을 끊는다
+            spr.dropAt = { x: aim.x, y: aim.y };    // 클라 BoardDropFlow.ts:68 — 착지는 손가락 자리에서 출발
+            Promise.resolve(cfg.onDrop ? cfg.onDrop(cell) : snapBack(st, spr, V.c1))   // 클라 BoardDragController.ts:438-454
               .catch(function () {})
-              .then(function () { spr.el.style.zIndex = ""; });
+              .then(function () { spr.dropAt = null; spr.el.style.zIndex = ""; state = "idle"; });
           }
-          spr.el.addEventListener("pointerup", release);
-          spr.el.addEventListener("pointercancel", release);
+          spr.el.addEventListener("pointerup", function () { release(false); });
+          spr.el.addEventListener("pointercancel", function () { release(true); });
         }
 
-        /* 탭 — onPress/onRelease 를 주면 눌림 연출을 직접 정의할 수 있다 */
+        /* 탭 — 터치다운마다 A1 누름, 떼면 A1 뗌 오버슛, 움직임이 임계 안이면 onTap(클라 BoardInputNode.ts:269·300-302).
+           응답 연출(onTap)은 fxBegin 으로 시작해 뗌 오버슛을 그 프레임에 끊는다 — 누름이 두 벌 겹치지 않는다.
+           press:false 는 보드 밖 노드(A5 보너스 슬롯)만 쓴다 — 클라 누름은 BoardInputNode 의 보드 칸에만 걸린다. */
         function tappify(st, spr, cfg) {
           cfg = cfg || {};
+          var press = cfg.press !== false;
           spr.el.classList.add("is-hit");
           hitStyle(spr.el, "pointer");
           spr.home = { x: spr.x, y: spr.y };
-          var down = null, lastTap = 0;
+          var down = null;
 
           spr.el.addEventListener("pointerdown", function (e) {
             if (st.playing) return;
             e.preventDefault();
             try { spr.el.setPointerCapture(e.pointerId); } catch (err) {}
             down = toLocal(st, e);
-            if (cfg.onPress) { cfg.onPress(); return; }
-            if (cfg.press === false) return;
-            spr.to(0.12, { y: spr.home.y - 3, sx: 1.06, sy: 0.94 }, "quadOut");
+            if (press) chipPress(spr);              // 클라 BoardInputNode.ts:269 — 생성기·상자·잠긴 칸 가리지 않는다
+            if (cfg.onDown) cfg.onDown();           // 클라 BoardInputNode.ts:273 selectOnPress
           });
 
-          function up(e) {
+          spr.el.addEventListener("pointerup", function (e) {
             if (!down) return;
             var p = toLocal(st, e), moved = Math.hypot(p.x - down.x, p.y - down.y);
             down = null;
-            if (cfg.onRelease) { cfg.onRelease(); }
-            else if (cfg.press !== false) {
-              spr.to(0.12, { y: spr.home.y }, "quadOut");
-              spr.to(0.08, { sx: 0.95, sy: 1.07 }, "quadOut")
-                .then(function () { return spr.to(0.18, { sx: 1, sy: 1 }, "backOut"); });
-            }
-            var limit = cfg.movePx ? cfg.movePx() : 5;
-            if (st.playing || moved >= limit) { lastTap = 0; return; }
-            var now = e.timeStamp || 0;
+            if (press) chipRelease(spr);            // 클라 BoardInputNode.ts:300 — 뗌은 A1 오버슛 한 벌
             /* 손가락이 끌렸으면 탭이 아니다 — 드래그 중 오발을 막는 유일한 방어선 */
-            if (cfg.onDoubleTap && lastTap && now - lastTap <= (cfg.windowMs ? cfg.windowMs() : 280)) {
-              lastTap = 0;
-              act(st, function () { return cfg.onDoubleTap(); });
-              return;
-            }
-            lastTap = now;
-            if (cfg.onTap) act(st, function () { return cfg.onTap(); });
-          }
-          spr.el.addEventListener("pointerup", up);
-          spr.el.addEventListener("pointercancel", function () { down = null; });
+            if (st.playing || moved >= DRAG_THRESHOLD_PX) return;   // 클라 BoardInputNode.ts:23
+            if (cfg.onTap) act(st, function () { return cfg.onTap(); });   // 클라 BoardInputNode.ts:302 handleTap
+          });
+          spr.el.addEventListener("pointercancel", function () {
+            if (!down) return;
+            down = null;
+            if (press) fxBegin(spr);                // 클라 BoardInputNode.ts:353 — 취소는 오버슛 없이 누름만 되돌린다
+          });
         }
 
         /* ======================================================================
@@ -780,7 +1032,7 @@
             { k:"punchOutSec",label:"게이지 펀치 복귀",v:0.16,min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_GAUGE_PUNCH_SEC" },
           ],
           b3: [
-            { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
+            { k:"textStyle",  label:"문구 스타일",   sv:"slide", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"pressInSec", label:"눌림",          v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_LOCK_PRESS_IN_SEC" },
             { k:"pressScale", label:"눌림 크기",     v:0.94, min:0.6,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_LOCK_PRESS_SCALE" },
             { k:"pressOutSec",label:"눌림 복귀",     v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"MERGE_LOCK_PRESS_OUT_SEC" },
@@ -810,15 +1062,15 @@
             { k:"fadeSec",    label:"소멸",          v:0.28, min:0.02, max:2,  step:0.01, unit:"s",                                     cfg:"MERGE_FLOAT_ARC_FADE_SEC",       note:"하강과 겹쳐 돈다" },
           ],
           f3: [
-            { k:"gap",        label:"칩과의 간격",   v:38,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_GAP" },
+            { k:"gap",        label:"칩과의 간격",   v:34,   min:0,    max:140,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_GAP" },
             { k:"startScale", label:"시작 크기",     v:1.9,  min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_START_SCALE",  note:"크게 시작해 조인다" },
             { k:"inSec",      label:"조임",          v:0.12, min:0.02, max:1,  step:0.01, unit:"s", easeK:"inEase",     ease:"quadOut", cfg:"MERGE_FLOAT_PUNCH_IN_SEC" },
-            { k:"rise",       label:"등장 상승",     v:10,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_RISE",         note:"꽂히면서 살짝 뜬다" },
+            { k:"rise",       label:"등장 상승",     v:0,   min:0,    max:80, step:1,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_RISE",         note:"꽂히면서 살짝 뜬다" },
             { k:"dipScale",   label:"언더슛 크기",   v:0.92, min:0.6,  max:1,  step:0.01,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_DIP",          note:"1 을 지나쳐야 꽂히는 맛이 난다" },
             { k:"settleSec",  label:"안착",          v:0.14, min:0.02, max:1,  step:0.01, unit:"s", easeK:"settleEase", ease:"backOut", cfg:"MERGE_FLOAT_PUNCH_SETTLE_SEC" },
             { k:"hold",       label:"유지",          v:0.60, min:0,    max:4,  step:0.05, unit:"s",                                     cfg:"MERGE_FLOAT_PUNCH_HOLD_SEC",     note:"읽히라고 띄우는 거라 길다" },
             { k:"outSec",     label:"퇴장",          v:0.24, min:0.02, max:2,  step:0.01, unit:"s", easeK:"outEase",    ease:"quadIn",  cfg:"MERGE_FLOAT_PUNCH_OUT_SEC" },
-            { k:"outScale",   label:"퇴장 크기",     v:1.18, min:0.5,  max:3,  step:0.02,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_OUT_SCALE",    note:"커지며 사라진다 — 흩어지는 느낌" },
+            { k:"outScale",   label:"퇴장 크기",     v:1, min:0.5,  max:3,  step:0.02,unit:"×",                                     cfg:"MERGE_FLOAT_PUNCH_OUT_SCALE",    note:"커지며 사라진다 — 흩어지는 느낌" },
             { k:"drift",      label:"퇴장 상승",     v:26,   min:0,    max:160,step:2,   unit:"px",                                    cfg:"MERGE_FLOAT_PUNCH_DRIFT",        note:"떠오르며 사라진다" },
           ],
           f4: [
@@ -933,7 +1185,23 @@
            맞추던 값이 새로고침 한 번에 날아가면 도구로 못 쓴다. 이 브라우저에만
            남는 개인 작업본이고, 팀에 넘길 때는 여전히 [설정 복사] 를 쓴다.
            사파리 프라이빗처럼 localStorage 가 던지는 환경이 있어 전부 try 로 감싼다. */
-        var STORE_KEY = "mfx.tune.v1";
+        /* 저장 키에 기본값 서명을 붙인다. mfx-sync 가 기본값을 클라 값으로 바꾸면 키가 달라져,
+           예전 브라우저에 남은 옛 튜닝이 새 기본값을 덮지 않는다(정본 = 클라). */
+        var STORE_KEY = (function () {
+          var src = JSON.stringify(Object.keys(PARAMS).map(function (id) {
+            return [id, PARAMS[id].map(function (d) { return [d.k, d.v, d.sv, d.easeK, d.ease]; })];
+          }));
+          var h = 0;
+          for (var i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) | 0;
+          return "mfx.tune.v2." + (h >>> 0).toString(36);
+        })();
+        // 서명 없는 옛 키와 다른 서명의 저장본은 지운다.
+        try {
+          for (var si = localStorage.length - 1; si >= 0; si--) {
+            var sk = localStorage.key(si);
+            if (sk && sk.indexOf("mfx.tune.") === 0 && sk !== STORE_KEY) localStorage.removeItem(sk);
+          }
+        } catch (e) {}
         var saveTimer = null;
         function saveNow() {
           try { localStorage.setItem(STORE_KEY, JSON.stringify(V)); } catch (e) {}
@@ -965,23 +1233,19 @@
 
         /* A1 · 클릭 --------------------------------------------------------- */
         DEMOS.a1 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2 }), P = V.a1, gen;
+          var st = makeStage(host, { cols: 3, rows: 2 }), gen;
           function reset() {
             st.clear();
             gen = st.tile("mfx-producer");
             var p = st.cellPos(4);
             gen.set({ x: p.x, y: p.y });
-            tappify(st, gen, { onPress: press, onRelease: release });
+            tappify(st, gen, {});                   // 기본 누름·뗌이 곧 A1 이다(chipPress/chipRelease)
           }
-          /* 클라 칩은 아이콘 한 장이라 얼굴·옆면이 따로 내려가지 않는다 — 배율만 눌린다 */
-          function press() {
-            return gen.to(P.pressSec, { sx: P.pressSX, sy: P.pressSY }, P.pressEase);
-          }
+          /* 클라 칩은 아이콘 한 장이라 얼굴·옆면이 따로 내려가지 않는다 — 배율만 눌린다.
+             누를 때마다 배율 1 · 각도 0 으로 굳히고 출발한다 — 연타하면 튕김이 1 로 리셋된다 */
+          function press() { return chipPress(gen); }          // 클라 BoardChipFx.ts:407-417 · 331-333
           /* 원위치 복귀 구간 없이 오버슛 한 벌로 돌아온다 — 끝값은 같고 탭 반응이 안 늘어진다 */
-          function release() {
-            return gen.to(P.overInSec, { sx: P.overSX, sy: P.overSY }, P.overInEase)
-              .then(function () { return gen.to(P.overOutSec, { sx: 1, sy: 1 }, P.overOutEase); });
-          }
+          function release() { return chipRelease(gen); }     // 클라 BoardChipFx.ts:424-443
           function play() { reset(); return press().then(function () { return wait(0.08); }).then(release); }
           return { st: st, reset: reset, play: play, hint: "양동이를 눌러 보세요" };
         };
@@ -991,7 +1255,7 @@
           /* 5×5 · 생산자는 정가운데(12번 칸). 생산물은 가까운 칸부터 채운다 —
              실제 게임도 생산자 옆부터 차므로 그 리듬으로 봐야 한다.
              안쪽 8칸을 시계 방향으로 돌고, 다 차면 바깥 16칸을 같은 방향으로 돈다. */
-          var st = makeStage(host, { cols: 5, rows: 5 }), P = V.a2, gen, used = [], GI = 12, era = 0;
+          var st = makeStage(host, { cols: 5, rows: 5 }), P = V.a2, gen, gate, used = [], GI = 12, era = 0;
           var LINGER_SEC = 2;   // 무대 전용 — 착지한 칩을 치우는 지연. 게임에는 없다
           var ORDER = [
             7, 8, 13, 18, 17, 16, 11, 6,                                  // 안쪽 한 겹
@@ -1004,7 +1268,8 @@
             gen = st.tile("mfx-producer");
             var p = st.cellPos(GI);
             gen.set({ x: p.x, y: p.y });
-            tappify(st, gen, { onTap: spawn });
+            gate = armGate(st, GI, spawn);                          // 클라 BoardTapFlow.ts:169-171 — 생산은 무장 뒤 탭
+            tappify(st, gen, { onDown: gate.onDown, onTap: gate.onTap });
           }
           function spawn() {
             var free = ORDER.filter(function (c) { return used.indexOf(c) < 0; });
@@ -1012,17 +1277,19 @@
             var cell = free[0];
             used.push(cell);
             var from = st.cellPos(GI), to = st.cellPos(cell), mine = era;
-            var lift = Math.max(P.minLift, Math.hypot(to.x - from.x, to.y - from.y) * P.liftRatio);
+            var lift = flyLift(from, to, P.liftRatio, P.minLift);   // flyBezier 와 같은 높이(minLift 는 PX_K)
             var g = guide(st, from, { x: from.x, y: from.y + lift }, { x: to.x, y: to.y + lift * 0.6 }, to);
             tw(0.15, "quadOut", function (e) { g.el.style.opacity = e * 0.9; });
 
             var item = st.tile("mfx-product", 1);
             item.set({ x: from.x, y: from.y, sx: P.spawnScale, sy: P.spawnScale });
             item.el.style.zIndex = 5;
-            item.to(P.popSec, { sx: P.popScale, sy: P.popScale }, P.popEase)
-              .then(function () { return item.to(P.shrinkSec, { sx: 1, sy: 1 }, P.shrinkEase); });
+            fxTo(item, P.popSec, { sx: P.popScale, sy: P.popScale }, P.popEase)
+              .then(function (ok) { return ok && fxTo(item, P.shrinkSec, { sx: 1, sy: 1 }, P.shrinkEase); });
 
             return flyBezier(item, from, to, P.flightSec, P.liftRatio, P.minLift, P.flightEase).then(function () {
+              /* 도착 순간 분신의 팝·축소가 남아 있으면 끊고 1 로 굳힌다 — 클라 ProduceSpawnFx.ts:209-210 release */
+              fxBegin(item);
               item.el.style.zIndex = "";
               tw(0.3, "quadIn", function (e) { g.el.style.opacity = 0.9 * (1 - e); }).then(function () { g.kill(); });
               /* 정리는 기다리지 않는다 — 다음 클릭이 묶이면 연달아 눌러 볼 수가 없다 */
@@ -1034,49 +1301,60 @@
                   if (at >= 0) used.splice(at, 1);
                 });
               });
-              return squash(item, P.landInSec, P.landSX, P.landSY, P.landOutSec, P.landOutEase, P.landInEase);
+              /* 착지 눌림은 진짜 칩에 배율 1 에서 건다 — 클라 ProduceSpawnFx.ts:117-127 playLandSquash */
+              return fxTo(item, P.landInSec, { sx: P.landSX, sy: P.landSY }, P.landInEase)
+                .then(function (ok) { return ok && fxTo(item, P.landOutSec, { sx: 1, sy: 1 }, P.landOutEase); });
             });
           }
-          function play() { reset(); return spawn(); }
-          return { st: st, reset: reset, play: play, hint: "양동이를 누를 때마다 하나씩 날아갑니다 · 착지 후 정리됩니다" };
+          function play() { reset(); return armedTapPlay(gen, gate); }
+          return { st: st, reset: reset, play: play, hint: "양동이를 한 번 눌러 고르고(테두리) 다시 누르면 그때부터 누를 때마다 하나씩 날아갑니다 · 착지 후 정리됩니다" };
         };
 
         /* A3 · 드래그 ------------------------------------------------------- */
         DEMOS.a3 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.a3, tile, occupied = [1, 7], SI = 5;
+          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.a3, tile, occupied = [1, 7], SI = 5, occ = {};
           function reset() {
             st.clear();
+            occ = {};
             occupied.forEach(function (i) {
               var q = st.cellPos(i);
-              st.tile("mfx-product", 3).set({ x: q.x, y: q.y });
+              var o = st.tile("mfx-product", 3).set({ x: q.x, y: q.y });
+              o.home = { x: q.x, y: q.y };
+              o.cell = i;
+              occ[i] = o;
             });
             var p = st.cellPos(SI);
             tile = st.tile("mfx-product", 2);
             tile.set({ x: p.x, y: p.y });
             dragify(st, tile, {
-              P: P,
               onDrop: function (cell) {
-                if (cell < 0 || occupied.indexOf(cell) >= 0 || cell === tile.cell) return snapBack(st, tile, P);
+                /* 무효 드롭 · 같은 칸은 C1 값으로 되돌아간다 — 클라 BoardDragController.ts:438-454 */
+                if (cell < 0 || cell === tile.cell) return snapBack(st, tile, V.c1);
+                /* 다른 레벨 위에 놓으면 자리를 바꾼다 — 클라 BoardDropFlow.ts:90 · 161-170 */
+                var o = occ[cell];
+                if (o) {
+                  var back = tile.cell;
+                  delete occ[cell];
+                  occ[back] = o;
+                  return Promise.all([swapGlide(st, o, back, P), settle(st, tile, cell, P)]);
+                }
                 return settle(st, tile, cell, P);
               },
             });
           }
+          /* 손으로 끌 때와 같은 길이다 — 터치다운 누름(a1) → 임계를 넘으면 누름을 끊고 1 에서 집기 →
+             지연 추종(+liftPx) → 손가락 자리로 순간이동한 뒤 셀 스냅 · 착지 눌림. 들림 트윈은 따로 없다. */
           function play() {
             reset();
             var from = st.cellPos(SI), to = st.cellPos(10);
             var finger = st.spr('<div class="mfx-finger"></div>');
             finger.set({ x: from.x, y: from.y, a: 0 });
-            tile.el.style.zIndex = 6;
             return Promise.all([
-              tile.to(P.pickSec, { sx: P.pickScale, sy: P.pickScale, y: from.y + P.liftPx }, P.pickEase),
+              chipPress(tile),                                   // 클라 BoardInputNode.ts:269
               finger.to(P.pickSec, { a: 1 }, "quadOut"),
             ]).then(function () {
-              var follow = function (dt) {
-                var k = 1 - Math.pow(1 - P.follow, dt * 60);
-                tile.x += (finger.x - tile.x) * k;
-                tile.y += (finger.y + P.liftPx - tile.y) * k;
-                tile.apply();
-              };
+              dragPick(tile);                                    // 클라 BoardDragController.ts:210-220 — y 트윈 없음
+              var follow = dragFollow(tile, finger);             // 클라 BoardDragController.ts:156-170
               addTick(follow);
               var path = [{ x: from.x + 40, y: from.y - 55 }, { x: to.x - 24, y: to.y + 34 }, { x: to.x, y: to.y }];
               var p = Promise.resolve();
@@ -1089,16 +1367,12 @@
               return p.then(function () { return wait(0.12); }).then(function () {
                 delTick(follow);
                 finger.to(0.12, { a: 0 }, "quadIn").then(function () { finger.kill(); });
-                tile.el.style.zIndex = "";
-                return tile.to(P.snapSec, { x: to.x, y: to.y, sx: 1, sy: 1, rot: 0 }, P.snapEase);
-              }).then(function () {
-                tile.home = { x: to.x, y: to.y };
-                tile.cell = 10;
-                return squash(tile, P.landInSec, P.landSX, P.landSY, P.landOutSec, P.landOutEase, P.landInEase);
-              });
+                tile.dropAt = { x: finger.x, y: finger.y };      // 클라 BoardDropFlow.ts:68
+                return settle(st, tile, 10, P);                  // 클라 BoardChipFx.ts:475-526
+              }).then(function () { tile.el.style.zIndex = ""; });
             });
           }
-          return { st: st, reset: reset, play: play, hint: "가운데 타일을 끌어 보세요 · 빈 칸에만 놓입니다" };
+          return { st: st, reset: reset, play: play, hint: "가운데 타일을 끌어 보세요 · 다른 레벨 위에 놓으면 자리를 바꿉니다" };
         };
 
         /* A4 · 병합 — 4×4 샌드박스. 칩이 계속 나오고, 합친 건 잠깐 뒤 사라진다 -- */
@@ -1120,7 +1394,6 @@
             t.set({ x: p.x, y: p.y });
             cells[cell] = t;
             dragify(st, t, {
-              P: P,
               onDrop: function (cell2) {
                 var from = t.cell;
                 if (cell2 < 0 || cell2 === from) return home(t);
@@ -1128,35 +1401,67 @@
                 if (!other) { cells[from] = null; cells[cell2] = t; return settle(st, t, cell2, V.a3); }
                 if (other.tier === t.tier && t.tier < 4) { cells[from] = null; return merge(t, other, cell2); }
                 if (other.tier === t.tier) return home(t);   // 최고 단계끼리는 합치지도 바꾸지도 않는다
-                /* 레벨이 다르면 자리를 바꾼다(클라 2026-09-29). 밀려난 칩도 같은 착지 한 벌로 앉아 둘이 같이 끝난다 */
+                /* 레벨이 다르면 자리를 바꾼다(클라 2026-09-29). 밀려난 칩은 착지 눌림 없이 snapEase 하나로 미끄러지고,
+                   길이가 착지 한 벌과 같아 둘이 같이 끝난다 — 클라 BoardDropFlow.ts:200-206 playSwapDisplaced */
                 cells[from] = other; cells[cell2] = t;
-                return Promise.all([settle(st, t, cell2, V.a3), settle(st, other, from, V.a3)]);
+                return Promise.all([swapGlide(st, other, from, V.a3), settle(st, t, cell2, V.a3)]);
               },
             });
             return t;
           }
 
           function merge(src, dst, cell) {
-            var b = st.cellPos(cell), mine = era;
-            /* 이식 주의 — 흡수(absorbSec/absorbScale)의 대상은 클라에서 이 src 가 아니라 드래그 분신이다.
-               커밋 직후 renderBoard() 가 원본 칩을 풀에 반납해 버려서 걸 데가 없고,
-               fxRoot 에 떠 있는 분신(BoardInputNode.spawnDragGhost)이 그 자리를 대신한다. */
-            return src.to(P.absorbSec, { x: b.x, y: b.y, sx: P.absorbScale, sy: P.absorbScale, a: 0 }, P.absorbEase).then(function () {
-              src.kill();
+            var b = st.cellPos(cell), mine = era, a3 = V.a3;
+            var from = { x: src.x, y: src.y };     // 손 뗀 자리
+            /* 흡수 대상은 원본이 아니라 손 뗀 자리에 새로 세운 분신이다(옛 단계 · 크기 1 · 알파 1).
+               원본은 커밋 재렌더로 바로 걷힌다. */
+            // 클라 BoardDropFlow.ts:108-109 · :427-454 spawnAbsorbChip — 분신은 setScale(1) · opacity 255
+            var ghost = st.tile("mfx-product", src.tier);
+            ghost.set({ x: from.x, y: from.y, sx: 1, sy: 1, a: 1 });
+            ghost.el.style.zIndex = 7;             // fxRoot 는 칩 층 위다
+            src.kill();
+            // 클라 BoardDropFlow.ts:321-345 playMergeAbsorb — 분신이 칸으로 빨려 들며 꺼진다
+            ghost.to(P.absorbSec, { x: b.x, y: b.y, sx: P.absorbScale, sy: P.absorbScale, a: 0 }, P.absorbEase)
+              .then(function () { ghost.kill(); });
+
+            /* 결과 칩은 첫 프레임부터 새 단계다. 손 뗀 자리에서 pickScale 로 시작해 칸으로 스냅한다 */
+            // 클라 BoardChipFx.ts:487-491 playDropSettle — setPosition(from) · setScale(a3.pickScale) → snap
+            dst.tier = Math.min(4, dst.tier + 1);
+            dst.el.querySelector(".lv").textContent = String(dst.tier);
+            dst.el.querySelector("svg").style.filter = TINT[dst.tier - 1];
+            fxBegin(dst);                                        // 클라 BoardChipFx.ts:485 beginChipFx
+            var gen = dst.fxGen;
+            dst.set({ x: from.x, y: from.y, sx: a3.pickScale, sy: a3.pickScale });
+
+            /* 링은 드롭 뒤 absorbSec 에, 스파크는 거기서 hitSec 뒤에 뜬다 */
+            // 클라 BoardDropFlow.ts:151 scheduleOnce(playMergeFx, absorbSec) · MergeFxNode.ts:88-91 sparks @hitSec
+            var fx = wait(P.absorbSec).then(function () {
+              if (mine !== era) return;
               var ring = st.spr('<div class="mfx-ring"></div>');
-              ring.set({ x: b.x, y: b.y, sx: 0.5, sy: 0.5 });
+              ring.set({ x: b.x, y: b.y, sx: 0.5, sy: 0.5 });   // 클라 MergeFxNode.ts:13 RING_START_SCALE
               ring.to(P.ringSec, { sx: P.ringMax, sy: P.ringMax, a: 0 }, P.ringEase).then(function () { ring.kill(); });
-              dst.tier = Math.min(4, dst.tier + 1);
-              dst.el.querySelector(".lv").textContent = String(dst.tier);
-              dst.el.querySelector("svg").style.filter = TINT[dst.tier - 1];
-              dst.set({ sx: 0.78, sy: 0.78 });
-              return dst.to(P.hitSec, { sx: P.hitSX, sy: P.hitSY }, P.hitEase);
-            }).then(function () {
-              return Promise.all([
-                dst.to(P.popSec, { sx: 1, sy: 1 }, P.popEase),
-                sparks(st, b, P.sparkCount, null, P.sparkSec, P.sparkRadius, P.sparkEase),
-              ]);
-            }).then(function () {
+              return wait(P.hitSec).then(function () {
+                if (mine !== era) return;
+                return sparks(st, b, P.sparkCount, null, P.sparkSec, P.sparkRadius, P.sparkEase);
+              });
+            });
+
+            var chain = fxTo(dst, a3.snapSec, { x: b.x, y: b.y, sx: 1, sy: 1 }, a3.snapEase)
+              // 클라 BoardChipFx.ts:502 — 스냅 뒤 max(0, absorbSec - a3.snapSec) 기다렸다 타격
+              .then(function (ok) {
+                var d = Math.max(0, P.absorbSec - a3.snapSec);
+                if (!ok || d <= 0) return ok;                       // 기다릴 게 없으면 같은 프레임에 친다
+                return wait(d).then(function () { return (dst.fxGen || 0) === gen; });
+              })
+              .then(function (ok) {
+                if (!ok) return false;
+                dst.set({ sx: 0.78, sy: 0.78 });   // 클라 BoardChipFx.ts:18,507 A4_PRE_HIT_SCALE
+                return fxTo(dst, P.hitSec, { sx: P.hitSX, sy: P.hitSY }, P.hitEase);
+              })
+              .then(function (ok) { return ok && fxTo(dst, P.popSec, { sx: 1, sy: 1 }, P.popEase); })
+              .then(function (ok) { if (fxEnd(dst, ok)) dst.set({ x: b.x, y: b.y }); });   // 클라 BoardChipFx.ts:523 endChipFx
+
+            return Promise.all([chain, fx]).then(function () {
               /* 합쳐진 칩은 잠깐 보여 주고 치운다 — 보드가 안 막혀야 계속 만져 볼 수 있다 */
               wait(MERGED_LINGER_SEC).then(function () {
                 if (mine !== era || !dst.el.parentNode) return;
@@ -1178,7 +1483,7 @@
                 var cell = f[spawnIdx++ % f.length];
                 var t = put(1, cell);
                 t.set({ sx: 0.5, sy: 0.5 });
-                t.to(SPAWN_POP_SEC, { sx: 1, sy: 1 }, "backOut");
+                fxTo(t, SPAWN_POP_SEC, { sx: 1, sy: 1 }, "backOut");   // 장부 트윈 — 누르면 누름이 끊는다
               }
               spawnLoop();
             });
@@ -1196,10 +1501,10 @@
             reset();
             var a = cells[0], b = cells[2], pb = st.cellPos(2);
             if (!a || !b) return Promise.resolve();
-            a.el.style.zIndex = 6;
-            return a.to(V.a3.pickSec, { sx: V.a3.pickScale, sy: V.a3.pickScale }, V.a3.pickEase)
+            // 손으로 끌 때와 같은 앞머리 — 터치다운 누름(a1) → 1 에서 집기(a3) → 손 뗀 자리에서 병합
+            return playPick(a)
               .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
-              .then(function () { cells[a.cell] = null; a.el.style.zIndex = ""; return merge(a, b, 2); });
+              .then(function () { fxStop(a); cells[a.cell] = null; a.el.style.zIndex = ""; return merge(a, b, 2); });
           }
           return { st: st, reset: reset, play: play, stop: function () { era++; },
             hint: "같은 레벨끼리 겹쳐 보세요 · 다른 레벨 위에 놓으면 자리를 바꿉니다 · 1초마다 새 칩이 나오고 합친 건 잠시 뒤 사라집니다" };
@@ -1220,9 +1525,11 @@
             var at = st.at(st.shelfSlots[i]);
             var t = st.tile("mfx-product", (i % 3) + 1);
             t.set({ x: at.x, y: at.y });
+            t.lv = (i % 3) + 1;                      // 착지 때 같은 단계의 진짜 칩을 세우려고 들고 있는다
             t.slotIndex = i;
             t.fromShelf = true;
-            /* 한 번 누르면 바로 올라간다. 눌림 연출은 없다 — 클라 비행에도 없다 */
+            /* 한 번 누르면 바로 올라간다. 눌림(a1)은 없다 — 보너스 슬롯은 보드 밖 버튼이라
+               BoardInputNode 의 터치다운 누름(BoardInputNode.ts:269)을 안 탄다(클라 RewardBoxNode.ts:118 onClickClaim) */
             tappify(st, t, {
               press: false,
               onTap: function () { return send(t); },
@@ -1270,14 +1577,23 @@
             var from = { x: t.x, y: t.y }, to = st.cellPos(cell);
             t.el.style.zIndex = 8;
             refill(t.slotIndex);                     // 슬롯이 빈 그 순간부터 센다
+            /* 날아가는 건 분신이다(t). 진짜 칩은 도착 칸에 감춰 두었다가 닿는 순간 켠다 */
+            // 클라 TakeFlightFlow.ts:20-25 — 분신 팝 1 → 1.1 backOut 0.12 → 1 quadIn 0.2 (하드코딩)
             t.to(0.12, { sx: 1.1, sy: 1.1 }, "backOut").then(function () { return t.to(0.2, { sx: 1, sy: 1 }, "quadIn"); });
+            // 클라 TakeFlightFlow.ts:27,130-147 — 비행 끝 30% 동안 분신 알파 255 → 0 (선형)
+            var fadeSec = P.hopSec * 0.3;
+            if (P.hopSec > 0) wait(P.hopSec - fadeSec).then(function () { return t.to(fadeSec, { a: 0 }, "linear"); });
             return flyBezier(t, from, to, P.hopSec, P.liftRatio, P.minLift, P.hopEase).then(function () {
               st.cellEls[cell].classList.remove("is-hl");
-              t.el.style.zIndex = "";
-              t.home = { x: to.x, y: to.y };
-              t.cell = cell;
-              vanish(t, cell);                       // 착지한 순간부터 센다
-              return squash(t, P.landInSec, P.landSX, P.landSY, P.landOutSec, P.landOutEase, P.landInEase);
+              t.kill();                              // 분신 반납
+              // 클라 TakeFlightFlow.ts:208-235 revealTaken → playTakeLanding — 진짜 칩을 켜고 크기 1 에서 착지 눌림
+              var real = st.tile("mfx-product", t.lv);
+              real.set({ x: to.x, y: to.y, sx: 1, sy: 1, a: 1 });
+              cells[cell] = real;
+              vanish(real, cell);                    // 착지한 순간부터 센다
+              fxBegin(real);                         // 클라 TakeFlightFlow.ts:228-229 stopAllByTarget · setScale(1)
+              return fxTo(real, P.landInSec, { sx: P.landSX, sy: P.landSY }, P.landInEase)
+                .then(function (ok) { return ok && fxTo(real, P.landOutSec, { sx: 1, sy: 1 }, P.landOutEase); });
             });
           }
 
@@ -1293,66 +1609,92 @@
 
         /* A6 · 재화 획득 ----------------------------------------------------- */
         DEMOS.a6 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), P = V.a6, chest, total = 1240, busy = false;
+          var st = makeStage(host, { cols: 3, rows: 2, hud: true }), P = V.a6, chest, sellChip, gate, busy = false, selling = false, era = 0;
           var HUD_GAP = 96;   // 무대 전용 — HUD 를 보드에서 떼어 비행 거리를 만든다
+          /* 무대 전용 표본 금액. 클라는 수확 금액으로 닢 수를 정한다 — 금액이 바뀌면 닢 수도 바뀐다 */
+          var SAMPLE_AMOUNT = 8;
+          var VANISH_SEC = 0.18, VANISH_EASE = "backIn";   // 클라 VanishFlow.ts:16-17
+          var SELL_RESPAWN_SEC = 0.6;         // 무대 전용 — 판 칩을 다시 세워 계속 눌러 보게 한다
+          var SELL_CELL = 0, CHEST_CELL = 4;
+
+          function putSellChip() {
+            var p = st.cellPos(SELL_CELL);
+            sellChip = st.tile("mfx-product", 2);
+            sellChip.set({ x: p.x, y: p.y });
+            return sellChip;
+          }
           function reset() {
+            era++;
             st.clear();
-            total = 1240;
             busy = false;
+            selling = false;
             /* 코인이 날아가는 걸 보려면 거리가 있어야 한다 — HUD 를 보드에서 떼어 놓는다 */
             if (st.hudRow) st.hudRow.style.marginBottom = HUD_GAP + "px";
-            var p = st.cellPos(4);
+            var p = st.cellPos(CHEST_CELL);
             chest = st.tile("mfx-producer");
             chest.set({ x: p.x, y: p.y });
+            putSellChip();
             if (st.hudNum) st.hudNum.textContent = "1,240";
-            tappify(st, chest, { onTap: burst });
+            // 클라 BoardTapFlow.ts:169-171 — 첫 탭은 고르기(무장)까지, 같은 칩을 한 번 더 탭해야 수확한다.
+            // 수확 비행 중(busy)엔 그 칸이 빈 칸이라 무장이 안 걸린다
+            gate = armGate(st, CHEST_CELL, burst, function () { return !busy; });
+            tappify(st, chest, { onDown: gate.onDown, onTap: gate.onTap });
           }
           function burst() {
-            /* 클라는 수확하면 칩이 그 자리에서 바로 걷힌다(재렌더) — 상자가 되돌아오는 구간이 없다.
-               그래서 눌린 직후 상자를 지우고, 코인이 다 닿으면 다시 세운다(재등장은 무대 전용). */
+            /* 수확에는 상자 눌림이 없다. 커밋 재렌더가 칩을 그 자리에서 바로 걷고, 코인은 t=0 에 뜬다.
+               코인이 다 닿으면 상자를 다시 세운다(재등장은 무대 전용). */
+            // 클라 BoardTapFlow.ts:273-333 playCollect → flyCollect — box* 를 안 쓴다
             if (busy) return Promise.resolve();
             busy = true;
-            var src = st.cellPos(4), to = total + 300;
-            total = to;
-            return chest.to(P.boxInSec, { sx: P.boxSX, sy: P.boxSY }, P.boxInEase).then(function () {
-              chest.set({ a: 0, sx: 1, sy: 1 });
-              var target = st.at(st.hud), N = Math.max(1, Math.round(P.coinCount)), all = [];
-              for (var i = 0; i < N; i++) {
-                (function (i) {
-                  all.push(wait(i * P.stagger).then(function () {
-                    var c = st.spr('<div class="mfx-coin"></div>');
-                    c.set({ x: src.x, y: src.y });
-                    var ang = -Math.PI / 2 + (i - (N - 1) / 2) * 0.42;
-                    return c.to(P.spreadSec, {
-                      x: src.x + Math.cos(ang) * P.spreadR,
-                      y: src.y + Math.sin(ang) * P.spreadR + P.spreadUp,
-                      sx: P.spreadScale, sy: P.spreadScale,
-                    }, P.spreadEase)
-                      .then(function () { return c.to(P.traceSec, { x: target.x, y: target.y, sx: 0.8, sy: 0.8 }, P.traceEase); })
-                      .then(function () {
-                        c.kill();
-                        if (i === 0 && st.hudNum) {
-                          var shown = parseInt(st.hudNum.textContent.replace(/,/g, ""), 10) || 0;
-                          tw(P.rollSec, P.rollEase, function (e) { st.hudNum.textContent = Math.round(shown + (total - shown) * e).toLocaleString(); });
-                        }
-                        return nodePunch(st.hud, 0.05, P.punchScale, P.punchOutSec, P.punchEase);
-                      });
-                  }));
-                })(i);
-              }
-              return Promise.all(all);
-            }).then(function () {
+            gate.disarm();                                        // 클라 BoardTapFlow.ts:289 disarm — 칸이 비었다
+            selectCell(st, CHEST_CELL, false);                    // 빈 칸에는 브래킷을 안 켠다(BoardInputNode.ts:481)
+            var mine = era, src = st.cellPos(CHEST_CELL);
+            fxBegin(chest);
+            chest.set({ a: 0 });
+            return a6CoinFan(st, src, a6CoinCount(SAMPLE_AMOUNT), SAMPLE_AMOUNT, false).then(function () {
+              if (mine !== era) return null;
+              fxBegin(chest);
               chest.set({ sx: 0.6, sy: 0.6 });
-              return chest.to(0.18, { a: 1, sx: 1, sy: 1 }, "backOut");
-            }).then(function () { busy = false; });
+              return fxTo(chest, 0.18, { a: 1, sx: 1, sy: 1 }, "backOut");   // 무대 전용 재등장
+            }).then(function () { if (mine === era) busy = false; });
           }
-          function play() { reset(); return burst(); }
-          return { st: st, reset: reset, play: play, hint: "양동이를 눌러 코인을 받아 보세요" };
+
+          /* 판매·제거 소멸 — box* 키는 수확이 아니라 여기서 쓰인다. 눌림(box*) → 0.18 backIn 으로 0 */
+          // 클라 VanishFlow.ts:71,89-95 detachForVanish(setScale 1) → playVanish
+          function sellVanish() {
+            if (st.playing || selling || !sellChip) return Promise.resolve();
+            selling = true;
+            var mine = era, c = sellChip;
+            fxBegin(c);
+            return fxTo(c, P.boxInSec, { sx: P.boxSX, sy: P.boxSY }, P.boxInEase)
+              .then(function () { return fxTo(c, VANISH_SEC, { sx: 0, sy: 0 }, VANISH_EASE); })
+              .then(function () {
+                c.kill();
+                return wait(SELL_RESPAWN_SEC);
+              })
+              .then(function () {
+                if (mine !== era) return null;
+                var n = putSellChip();
+                n.set({ sx: 0, sy: 0 });
+                return fxTo(n, VANISH_SEC, { sx: 1, sy: 1 }, "backOut");   // 무대 전용 재등장(클라 되돌리기 등장 이징)
+              })
+              .then(function () { if (mine === era) selling = false; });
+          }
+          var sellBtn = elm("button", "mfx-btn");
+          sellBtn.type = "button";
+          sellBtn.textContent = "판매·제거 소멸";
+          sellBtn.addEventListener("click", function () { sellVanish(); });
+          st.wrap.appendChild(sellBtn);
+
+          /* 첫 탭(누름 · 브래킷) → 잠깐 뒤 둘째 탭(누름 · 수확) */
+          function play() { reset(); return armedTapPlay(chest, gate); }
+          return { st: st, reset: reset, play: play,
+            hint: "양동이를 한 번 눌러 고르고(테두리) 한 번 더 눌러 코인을 받아 보세요 · 「판매·제거 소멸」은 왼쪽 위 칩을 팔 때의 소멸입니다" };
         };
 
         /* B1 · 보드가 꽉 참 -------------------------------------------------- */
         DEMOS.b1 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.b1, gen, GI = 4;
+          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.b1, gen, gate, GI = 4;
           function reset() {
             st.clear();
             for (var i = 0; i < 12; i++) {
@@ -1363,24 +1705,29 @@
             gen = st.tile("mfx-producer");
             var g = st.cellPos(GI);
             gen.set({ x: g.x, y: g.y });
-            tappify(st, gen, { onTap: deny });
+            // 클라 BoardInputNode.ts:269·300-302 — 터치다운 a1 누름, 뗌 오버슛은 거부 누름이 끊는다(겹침 없음)
+            // 클라 BoardTapFlow.ts:169-171 · 210 · 403-406 — 만석 안내는 무장 뒤 탭(재탭)에만 뜬다
+            gate = armGate(st, GI, deny);
+            tappify(st, gen, { onDown: gate.onDown, onTap: gate.onTap });
           }
           function deny() {
             /* 보드를 흔들지 않는다. 프레임이 흔들리면 "고장" 으로 읽히고,
                이건 고장이 아니라 상태 고지다 — 누른 칩 위에 문구만 띄운다. */
+            fxBegin(gen);                              // 클라 BoardChipFx.ts:207
             return Promise.all([
-              gen.to(P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
-                .then(function () { return gen.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
+              fxTo(gen, P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
+                .then(function (ok) { return ok && fxTo(gen, P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); })
+                .then(function (ok) { return fxEnd(gen, ok); }),   // 클라 BoardChipFx.ts:212
               floatText(st, "Board Full", { x: gen.x, y: gen.y }, P),
             ]);
           }
-          function play() { reset(); return deny(); }
-          return { st: st, reset: reset, play: play, hint: "빈 칸이 없는 상태에서 양동이를 눌러 보세요" };
+          function play() { reset(); return armedTapPlay(gen, gate); }
+          return { st: st, reset: reset, play: play, hint: "빈 칸이 없는 상태에서 양동이를 한 번 눌러 고르고(테두리) 한 번 더 눌러 보세요" };
         };
 
         /* B2 · 충전중 — 클릭했을 때 뜨는 텍스트 노티 ------------------------- */
         DEMOS.b2 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2 }), P = V.b2, gen, gauge, fill;
+          var st = makeStage(host, { cols: 3, rows: 2 }), P = V.b2, gen, gate, gauge, fill;
           var GAUGE_FILL = 38;   // 무대 표시용 — 클라는 실제 재고를 쓴다
           function reset() {
             st.clear();
@@ -1391,20 +1738,40 @@
             gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
             fill.style.width = GAUGE_FILL + "%";
-            tappify(st, gen, { press: false, onTap: notify });
+            fill.style.transformOrigin = "left center";   // 클라 BoardItemFx.ts:94-104 — 채움 바가 왼쪽 기준으로 오른쪽으로 커진다
+            // 클라 BoardInputNode.ts:269·300-302 — 터치다운 a1 누름이 먼저, 뗌 오버슛은 B2 응답이 끊는다
+            // 클라 BoardTapFlow.ts:169-171 · 210 · 420-441 — 충전중 응답은 무장 뒤 탭(재탭)에만 난다
+            gate = armGate(st, 4, notify);
+            tappify(st, gen, { onDown: gate.onDown, onTap: gate.onTap });
+          }
+          /* 클라는 문구 대신 젬 충전 팝업을 연다(BoardTapFlow.ts:432-441 · ViewIngame.ts:582).
+             팝업은 화면 단위라 무대에선 자리표시 상자로만 보여 준다. */
+          var popupStub = null;
+          function showRechargePopupStub() {
+            if (popupStub) popupStub.kill();
+            var s = popupStub = st.spr('<div style="padding:6px 12px;border-radius:10px;background:#fff;color:#212121;' +
+              'border:2px solid #B57F4E;font-size:13px;font-weight:800;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.18)">젬 충전 팝업</div>');
+            s.set({ x: 0, y: 0, a: 0, sx: 0.9, sy: 0.9 });
+            return s.to(0.16, { a: 1, sx: 1, sy: 1 }, "backOut")
+              .then(function () { return wait(0.9); })
+              .then(function () { return s.to(0.16, { a: 0 }, "quadIn"); })
+              .then(function () { s.kill(); if (popupStub === s) popupStub = null; });
           }
           function notify() {
             /* 상태가 아니라 "지금 못 쓴다" 를 알려 주는 클릭 응답이다.
                거부(B1)와 달리 흔들지 않는다 — 잘못한 게 아니라 기다리면 되는 일이라서. */
+            fxBegin(gen);                              // 클라 BoardChipFx.ts:233 · BoardItemFx.ts:86-92
             return Promise.all([
-              gen.to(P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
-                .then(function () { return gen.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
-              nodePunch(gauge.el.firstChild, 0.08, P.punchScale, P.punchOutSec, P.punchEase),
-              floatText(st, "Recharging", { x: gen.x, y: gen.y }, P),
+              fxTo(gen, P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
+                .then(function (ok) { return ok && fxTo(gen, P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); })
+                .then(function (ok) { return fxEnd(gen, ok); }),   // 클라 BoardChipFx.ts:241 endChipFxAfter
+              // 클라 BoardItemFx.ts:97-104 — 펀치 대상은 게이지 루트가 아니라 채움 바, 인 0.08 · quadOut 하드코딩
+              nodePunch(fill, 0.08, P.punchScale, P.punchOutSec, P.punchEase),
+              showRechargePopupStub(),
             ]);
           }
-          function play() { reset(); return notify(); }
-          return { st: st, reset: reset, play: play, hint: "충전중인(흐린) 양동이를 눌러 보세요" };
+          function play() { reset(); return armedTapPlay(gen, gate); }
+          return { st: st, reset: reset, play: play, hint: "충전중인(흐린) 양동이를 한 번 눌러 고르고(테두리) 한 번 더 눌러 보세요" };
         };
 
         /* B3 · 레벨 n 에 해금 ------------------------------------------------ */
@@ -1418,21 +1785,26 @@
             var p = st.cellPos(4);
             lock = st.tile("mfx-lock", 0, "is-locked");
             lock.set({ x: p.x, y: p.y });
-            tappify(st, lock, { press: false, onTap: deny });
+            // 클라 BoardInputNode.ts:269·300-302 — 터치다운 a1 누름이 먼저, 뗌 오버슛은 B3 응답이 끊는다
+            tappify(st, lock, { onTap: deny });
           }
           function deny() {
             /* 자물쇠는 흔드는 게 아니라 돌린다 — "안 열린다" 는 회전이 더 읽힌다 */
+            fxBegin(lock);                             // 클라 BoardChipFx.ts:582
             return Promise.all([
-              lock.to(P.pressInSec, { sx: P.pressScale, sy: P.pressScale }, P.pressInEase)
-                .then(function () { return lock.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
-              lock.to(P.stepSec, { rot: -P.angleA }, P.rotEase)
-                .then(function () { return lock.to(P.stepSec, { rot: P.angleA }, P.rotEase); })
-                .then(function () { return lock.to(P.stepSec, { rot: -P.angleB }, P.rotEase); })
-                .then(function () { return lock.to(P.backSec, { rot: 0 }, P.backEase); }),
+              fxTo(lock, P.pressInSec, { sx: P.pressScale, sy: P.pressScale }, P.pressInEase)
+                .then(function (ok) { return ok && fxTo(lock, P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
+              // 클라 BoardChipFx.ts:593-596 — Cocos angle 은 + 가 반시계, CSS rotate 는 + 가 시계라 부호를 뒤집는다
+              // (클라 -A, +A, -B, 0 → 화면에선 첫 칸이 시계 방향)
+              fxTo(lock, P.stepSec, { rot: P.angleA }, P.rotEase)
+                .then(function (ok) { return ok && fxTo(lock, P.stepSec, { rot: -P.angleA }, P.rotEase); })
+                .then(function (ok) { return ok && fxTo(lock, P.stepSec, { rot: P.angleB }, P.rotEase); })
+                .then(function (ok) { return ok && fxTo(lock, P.backSec, { rot: 0 }, P.backEase); })
+                .then(function (ok) { return fxEnd(lock, ok); }),   // 클라 BoardChipFx.ts:597 — 회전이 끝나면 눌림도 1 로 끊는다
               floatText(st, "Locked", { x: lock.x, y: lock.y }, P),
             ]);
           }
-          function play() { reset(); return deny(); }
+          function play() { reset(); return chipTapPlay(lock, deny); }
           return { st: st, reset: reset, play: play, hint: "가운데 자물쇠를 눌러 보세요" };
         };
 
@@ -1449,7 +1821,6 @@
             tile = st.tile("mfx-product", 1);
             tile.set({ x: p.x, y: p.y });
             dragify(st, tile, {
-              P: P,
               onDrop: function (cell) {
                 if (cell < 0 || cell === TI || cell === tile.cell) return snapBack(st, tile, P);
                 return settle(st, tile, cell, null);
@@ -1459,10 +1830,9 @@
           function play() {
             reset();
             var to = st.cellPos(TI);
-            tile.el.style.zIndex = 6;
-            return tile.to(V.a3.pickSec, { sx: V.a3.pickScale, sy: V.a3.pickScale }, V.a3.pickEase)
+            return playPick(tile)
               .then(function () { return tile.to(0.34, { x: to.x, y: to.y + 8 }, "quadInOut"); })
-              .then(function () { return snapBack(st, tile, P); })
+              .then(function () { fxStop(tile); return snapBack(st, tile, P); })
               .then(function () { tile.el.style.zIndex = ""; });
           }
           return { st: st, reset: reset, play: play, hint: "잠긴 칸 위로 끌어 보세요 · 원래 칸으로 돌아갑니다" };
@@ -1498,28 +1868,28 @@
             if (cell < 0 || rings[cell]) return;
             var p = st.cellPos(cell);
             var ring = st.spr('<div class="mfx-ring"></div>');
-            ring.set({ x: p.x, y: p.y, sx: 0.9, sy: 0.9, a: 0 });
+            ring.set({ x: p.x, y: p.y, sx: 1, sy: 1, a: 0 });   // 클라 BoardItemNode.ts:420·431 — 시작은 배율 1 · 알파 0
             rings[cell] = ring;
-            ring.to(P.inSec, { a: 1, sx: P.inScale, sy: P.inScale }, P.inEase);
-            (function pulse() {
+            function pulse() {
               if (ring.dead) return;
               ring.to(P.pulseSec, { sx: P.pulseMax, sy: P.pulseMax, a: P.pulseAlpha }, P.pulseEase)
                 .then(function () { return ring.dead ? null : ring.to(P.pulseSec, { sx: P.pulseMin, sy: P.pulseMin, a: 1 }, P.pulseEase); })
                 .then(function () { if (!ring.dead) pulse(); });
-            })();
+            }
+            // 클라 BoardItemNode.ts:432-439 — 등장 트윈을 끝까지 돈 뒤에 펄스 반복을 건다(같은 프레임에 덮지 않는다)
+            ring.to(P.inSec, { a: 1, sx: P.inScale, sy: P.inScale }, P.inEase).then(pulse);
           }
           function play() {
             reset();
             var m = st.cellPos(MI);
-            tile.el.style.zIndex = 6;
-            return tile.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut").then(function () {
+            return playPick(tile).then(function () {
               setRing(MI);
               return tile.to(0.5, { x: m.x, y: m.y + 10 }, "quadInOut");
             }).then(function () { return wait(0.9); }).then(function () {
               setRing(-1);
-              tile.el.style.zIndex = "";
+              fxStop(tile);
               return snapBack(st, tile, null);
-            });
+            }).then(function () { tile.el.style.zIndex = ""; });
           }
           return { st: st, reset: reset, play: play, hint: "아래 레벨 2를 끌면 같은 레벨 위에서만 링이 뜹니다" };
         };
@@ -1547,14 +1917,15 @@
             badge.set({ x: q.x + 26, y: q.y + 30 });
             alive = true;
             bob(badge, q.y + 30, era);
-            tappify(st, gen, { press: false, onTap: complete });
+            // 클라 BoardInputNode.ts:269 — 상자도 터치다운에 a1 누름을 받는다(무대에선 탭이 시간 경과 대신이다)
+            tappify(st, gen, { onTap: complete });
           }
           /* 무대를 다시 깔면 이전 루프는 era 가 달라져 스스로 멈춘다 — 새 배지에 두 벌이 붙지 않는다 */
           function bob(b, restY, mine) {
             function live() { return alive && mine === era; }
             (function loop() {
               if (!live()) return;
-              b.to(P.bobSec, { y: restY + P.bobPx }, P.bobEase)
+              b.to(P.bobSec, { y: restY + px(P.bobPx) }, P.bobEase)      // bobPx 는 클라 px → PX_K
                 .then(function () { return live() ? b.to(P.bobSec, { y: restY }, P.bobEase) : null; })
                 .then(function () { if (live()) loop(); });
             })();
@@ -1567,11 +1938,17 @@
             return tw(0.7, "linear", function (e) { fill.style.width = 78 + 22 * e + "%"; }).then(function () {
               gauge.to(P.gaugeOutSec, { a: 0, sy: 0.4 }, P.gaugeEase).then(function () { gauge.kill(); });
               gen.set({ a: 1 });
-              return squash(gen, P.popInSec, P.popSX, P.popSY, P.popOutSec, P.popOutEase, P.popInEase);
-            }).then(function () {
+              fxBegin(gen);                          // 클라 BoardItemFx.ts:149-150 stopAllByTarget · setScale(1)
+              return fxTo(gen, P.popInSec, { sx: P.popSX, sy: P.popSY }, P.popInEase)
+                .then(function (ok) { return ok && fxTo(gen, P.popOutSec, { sx: 1, sy: 1 }, P.popOutEase); });
+            }).then(function (ok) {
               return Promise.all([
-                sparks(st, p, P.sparkCount, "#7FC9BA", 0.34, 40, "quadOut"),
-                gen.to(0.5, { sy: 1.05, sx: 1.05 }, "sineInOut").then(function () { return gen.to(0.5, { sy: 1, sx: 1 }, "sineInOut"); }),
+                // 클라 BoardItemFx.ts:11·217·225-248 — 시간·반경·이징은 a4 값, 색은 SPARK_COLOR(255,224,130), 개수는 점 8개 상한(sparks 가 자른다)
+                sparks(st, p, P.sparkCount, SPARK_COLOR, V.a4.sparkSec, V.a4.sparkRadius, V.a4.sparkEase),
+                // 클라 BoardItemFx.ts:155 playReadyBreath — 팝이 끊기지 않았을 때만 숨쉰다
+                ok && fxTo(gen, 0.5, { sy: 1.05, sx: 1.05 }, "sineInOut")
+                  .then(function (ok2) { return ok2 && fxTo(gen, 0.5, { sy: 1, sx: 1 }, "sineInOut"); })
+                  .then(function (ok2) { return fxEnd(gen, ok2); }),
               ]);
             });
           }
@@ -1599,27 +1976,35 @@
             dragify(st, mover, {
               onDrop: function (cell) {
                 if (cell === other.cell) return maxed(mover, other);
-                if (cell < 0 || cell === mover.cell) return snapBack(st, mover, null);
+                // 클라 BoardDragController.ts:438,454 — 원위치 복귀는 어느 장면이든 V.c1(snapSec/snapEase)
+                if (cell < 0 || cell === mover.cell) return snapBack(st, mover, V.c1);
                 return settle(st, mover, cell, null);
               },
             });
           }
           function maxed(a, b) {
+            /* 클라 BoardDropFlow.ts:354-356 — 대상 타격 → 셀 문구 → 흔들림 복귀, 셋이 같은 순간에 시작한다 */
+            // 클라 BoardChipFx.ts:331-333 beginChipFx — 타격 전에 대상의 배율·기울기를 1·0 으로 굳힌다
+            fxBegin(b);
+            var hit = fxTo(b, P.hitInSec, { sx: P.hitSX, sy: P.hitSY }, P.hitEase)
+              .then(function (ok) { return ok && fxTo(b, P.hitOutSec, { sx: 1, sy: 1 }, P.hitOutEase); })
+              .then(function (ok) { return fxEnd(b, ok); });
             /* 도장이 아니라 단순 텍스트다 — 이 문서의 문구는 전부 같은 5종을 쓴다 */
             floatText(st, "Max Level!", { x: b.home.x, y: b.home.y }, P);
-            /* 부정이 아니라 상태 고지 — 흔들림을 거부(C1)보다 약하게 준다 */
+            /* 부정이 아니라 상태 고지 — 흔들림을 거부(C1)보다 약하게 준다.
+               클라 BoardDragController.ts:454 — 복귀는 V.c1 값, 흔들림은 같은 트윈 꼬리에 붙는다.
+               클라 BoardDropFlow.ts:41 — cycles 2: +1 · −0.7 두 칸, 한 칸 = shakeSec / 4, 복귀 2칸 backOut */
             return Promise.all([
-              snapBack(st, a, null).then(function () { return shake(a, P.shakeAmp, P.shakeSec); }),
-              squash(b, P.hitInSec, P.hitSX, P.hitSY, P.hitOutSec, P.hitOutEase, P.hitEase),
+              snapBack(st, a, V.c1).then(function () { return shake(a, P.shakeAmp, P.shakeSec, 2); }),
+              hit,
             ]);
           }
           function play() {
             reset();
             var pb = st.cellPos(BI);
-            a.el.style.zIndex = 6;
-            return a.to(0.1, { sx: 1.08, sy: 1.08 }, "backOut")
+            return playPick(a)
               .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
-              .then(function () { return maxed(a, b); })
+              .then(function () { fxStop(a); return maxed(a, b); })
               .then(function () { a.el.style.zIndex = ""; });
           }
           return { st: st, reset: reset, play: play, hint: "두 칩 다 끌 수 있습니다 · 하나를 다른 하나 위에 놓아 보세요" };
@@ -1631,9 +2016,11 @@
            (정본 확정값) 오더는 통째로 소모되므로 카운터("0 / 3")가 없다 —
            칩 두 개가 다 차면 카드 자체가 레일에서 빠진다. */
         DEMOS.c6 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.c6;
-          var rail = null, card = null, chips = [], done = 0, items = [], gen = 0;
+          /* 클라 RailServeFx.ts:185-209 — 보상 코인이 상단 지갑으로 간다. 그래서 무대에 HUD 를 둔다 */
+          var st = makeStage(host, { cols: 4, rows: 3, hud: true }), P = V.c6;
+          var rail = null, card = null, chips = [], items = [], gen = 0, serving = false;
           var SRC = [8, 10], NEED = 2;
+          var REWARD_COIN = 30;                    // 무대 전용 보상액 — 닢 수는 클라 규칙으로 정한다
 
           function ensureRail() {
             if (rail) return;
@@ -1672,76 +2059,116 @@
             ensureRail();
             st.clear();
             gen++;                                 // 이전 회차의 비행이 새 카드를 건드리지 못하게
-            done = 0;
+            serving = false;
             items = [];
             dressCard();
+            if (st.hudNum) st.hudNum.textContent = "1,240";
             SRC.forEach(function (i, n) {
               var p = st.cellPos(i);
               var t = st.tile("mfx-product", 3);
               t.set({ x: p.x, y: p.y });
               t.req = n;                           // 어느 요구 칩으로 갈지 — 출발 전에 굳힌다
               items.push(t);
-              /* 오더 카드는 보드 밖 노드라 셀 인덱스가 없다 — 위쪽으로 끌어 올리면 납품 */
+              /* 오더 카드는 보드 밖 노드라 셀 인덱스가 없다 — 위쪽으로 끌어 올리면 납품.
+                 클라는 Serve 한 번에 오더를 통째로 낸다 — 끌어 올린 게 하나여도 요구 칩 둘이 다 날아간다 */
               dragify(st, t, {
                 onDrop: function (cell) {
-                  if (t.y > st.layer.clientHeight / 2 - 24) return deliver(t);
-                  if (cell < 0 || cell === t.cell) return snapBack(st, t, null);
+                  if (t.y > st.layer.clientHeight / 2 - 24) return serve();
+                  // 클라 BoardDragController.ts:438,454 — 원위치 복귀는 V.c1
+                  if (cell < 0 || cell === t.cell) return snapBack(st, t, V.c1);
                   return settle(st, t, cell, null);
                 },
               });
             });
           }
 
-          function deliver(t) {
-            if (t.served) return null;             // 요구 칩 하나에 아이템 하나 — 두 번 날리지 않는다
-            t.served = true;
-            var chip = chips[t.req], mineGen = gen;
-            var from = { x: t.x, y: t.y }, to = st.at(chip), mine = 0;
-            t.el.style.zIndex = 5;
-            t.to(P.raiseSec, { sx: P.raiseScale, sy: P.raiseScale }, P.raiseEase)
-              .then(function () { return t.to(P.shrinkSec, { sx: P.shrinkScale, sy: P.shrinkScale }, P.shrinkEase); });
-            return flyBezier(t, from, to, P.flightSec, P.liftRatio, P.minLift, P.flightEase).then(function () {
-              t.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { t.kill(); });
-              if (mineGen !== gen) return null;    // 그 사이 리셋됐으면 남의 카드다
-              done++;
-              mine = done;                         // 내가 몇 번째로 도착했는지 그 자리에서 박아 둔다
-              chip.firstChild.style.opacity = "1";
-              /* 도착 반응(slotInSec/slotScale/slotOutSec)은 카드가 아니라 그 요구 칩에 걸린다 */
-              return nodePunch(chip, P.slotInSec, P.slotScale, P.slotOutSec, P.slotOutEase, P.slotEase);
-            }).then(function () {
-              /* done 을 여기서 읽으면 둘 다 2 를 본다 — 펀치가 끝날 즈음엔 이미 다 도착해 있다 */
-              if (mineGen !== gen || mine < NEED) return null;
-              return retire();
+          /* 납품 한 번 — 클라 OrderServeFlow.serve() → OrderServeFx.playOrderServeFlight() 순서 그대로 */
+          function serve() {
+            if (serving) return null;              // 오더 하나에 납품 한 번
+            serving = true;
+            var mineGen = gen;
+            // 클라 RailServeFx.ts:100 — 문구·코인이 뜰 카드 자리는 누를 때 굳힌다
+            var at = st.at(card);
+            // 클라 RailServeFx.ts:266 — 목적지(요구 칩 자리)도 누를 때 굳힌다
+            var plan = items.map(function (t, i) {
+              var p = st.cellPos(SRC[i]);
+              // 클라 RailServeFx.ts:323 — 출발은 소모된 칸 자리다(손에 든 위치가 아니다)
+              return { t: t, from: { x: p.x, y: p.y }, to: st.at(chips[t.req]), chip: chips[t.req] };
+            });
+            // 클라 OrderServeFlow.ts:281 — serveOrder() 가 소모 칸을 그 자리에서 한꺼번에 비운다
+            plan.forEach(function (f) {
+              f.t.served = true;
+              f.t.set({ a: 0 });
+              f.t.el.style.pointerEvents = "none";
+            });
+            // 클라 OrderServeFx.ts:179 · 309 — i * stagger 뒤에야 분신을 세운다. 지연 0 이면 곧바로
+            var flights = plan.map(function (f, i) {
+              var d = i * P.stagger;
+              return (d > 0 ? wait(d) : Promise.resolve()).then(function () { return flyOne(f, mineGen); });
+            });
+            // 클라 OrderServeFx.ts:215·227 — 착지만 다 기다리고(칩 펀치는 안 기다린다) 곧바로 퇴장
+            return Promise.all(flights).then(function () {
+              if (mineGen !== gen) return null;
+              return retire(mineGen, at);
             });
           }
 
-          /* 오더가 통째로 소모된다 — 마지막 칩이 차면 카드가 레일에서 빠진다.
+          /* 분신 한 장 — 클라 OrderServeFx.runFlight(). 무대에서는 그 칸의 타일을 분신으로 쓴다 */
+          function flyOne(f, mineGen) {
+            if (mineGen !== gen) return null;
+            var t = f.t;
+            // 클라 OrderServeFx.ts:334-335 — 출발 칸에서 배율 1 로 선다
+            fxBegin(t);
+            t.set({ x: f.from.x, y: f.from.y, a: 1 });
+            t.el.style.zIndex = 5;
+            fxTo(t, P.raiseSec, { sx: P.raiseScale, sy: P.raiseScale }, P.raiseEase)
+              .then(function (ok) { return ok && fxTo(t, P.shrinkSec, { sx: P.shrinkScale, sy: P.shrinkScale }, P.shrinkEase); });
+            return flyBezier(t, f.from, f.to, P.flightSec, P.liftRatio, P.minLift, P.flightEase).then(function () {
+              t.to(0.12, { a: 0, sx: 0.4, sy: 0.4 }, "quadIn").then(function () { t.kill(); });
+              if (mineGen !== gen) return null;    // 그 사이 리셋됐으면 남의 카드다
+              f.chip.firstChild.style.opacity = "1";
+              /* 도착 반응(slotInSec/slotScale/slotOutSec)은 카드가 아니라 그 요구 칩에 걸린다.
+                 클라 OrderServeFx.ts:400 — 착지 직후 걸고 기다리지 않는다 */
+              nodePunch(f.chip, P.slotInSec, P.slotScale, P.slotOutSec, P.slotOutEase, P.slotEase);
+              return null;
+            });
+          }
+
+          /* 오더가 통째로 소모된다 — 마지막 비행이 닿으면 카드가 레일에서 빠진다.
              완료 문구는 카드가 서 있던 자리에 띄운다. 레일 가운데에 띄우면
              어느 오더가 나갔는지 안 보인다. */
-          function retire() {
-            var mineGen = gen, to2 = st.at(card);
-            card.classList.add("is-done");
-            return tw(0.22, "quadIn", function (e) {
-              card.style.opacity = String(1 - e);
-              card.style.transform = "translateY(" + (-10 * e) + "px) scale(" + (1 - 0.3 * e) + ")";
+          function retire(mineGen, to2) {
+            // 클라 RailCardFx.ts:31-32 · 65-79 — 배율 1→0 · 0.18초 · backIn. 투명도·좌표·색은 안 만진다
+            return tw(0.18, "backIn", function (e) {
+              card.style.transform = "scale(" + (1 - e) + ")";
             }).then(function () {
               if (mineGen !== gen) return null;
+              // 클라 RailCardFx.ts:75-76 — 다 줄면 끄고 배율을 1 로 되돌린다
               card.style.visibility = "hidden";
-              /* 도장을 찍지 않는다 — 완료도 그냥 문구다 */
-              return Promise.all([
-                floatText(st, "Order Complete!", to2, P, true),
-                sparks(st, to2, 8, "#7FC9BA", 0.34, 40, "quadOut"),
-              ]).then(function () { if (mineGen === gen) reset(); });
+              card.style.transform = "";
+              /* 클라 RailServeFx.ts:112-116 — 퇴장이 끝나면(onRetired) 보상 코인(A6 부채꼴)이 카드 자리에서 먼저 나가고,
+                 클라 OrderServeFx.ts:227-243 — 이어서 같은 자리에 스파크 → 문구. 셋이 서로를 기다리지 않는다 */
+              var coins = rewardCoins(to2);
+              var burst = sparks(st, to2, 8, "#7FC9BA", 0.34, 40, "quadOut");
+              /* 도장을 찍지 않는다 — 완료도 그냥 문구다. 클라 OrderServeFx.ts:243 — 색 갈래 없음 */
+              var text = floatText(st, "Order Complete!", to2, P);
+              return Promise.all([coins, burst, text]).then(function () { if (mineGen === gen) reset(); });
             });
+          }
+
+          /* 보상 코인 — A6 코인 부채꼴(a6CoinFan)을 그대로 부른다(클라 RailServeFx.ts:185-209). 카드 자리에서 떠 HUD 로 간다.
+             닢 수는 클라 a6CoinCount(coin) = clamp(round(coin), a6.coinCount, 10) (클라 MergeFxConfig.ts:305-311),
+             숫자는 닢마다 올림 분할로 나눠 오른다(클라 RailServeFx.ts:204-207) */
+          function rewardCoins(from) {
+            if (REWARD_COIN <= 0 || !st.hud) return Promise.resolve();   // 클라 RailServeFx.ts:189 — 보상 0 이면 건너뛴다
+            return a6CoinFan(st, from, a6CoinCount(REWARD_COIN), REWARD_COIN, true);   // 클라 RailServeFx.ts:199-207
           }
 
           function play() {
             reset();
-            return Promise.all(items.map(function (t, i) {
-              return wait(i * P.stagger).then(function () { return deliver(t); });
-            }));
+            return serve();
           }
-          return { st: st, reset: reset, play: play, hint: "타일을 보드 위쪽 오더 카드의 요구 칩으로 끌어 올려 보세요" };
+          return { st: st, reset: reset, play: play, hint: "타일 하나를 위쪽 오더 카드로 끌어 올리면 오더가 통째로 납품됩니다" };
         };
 
         /* ======================================================================
@@ -1772,6 +2199,7 @@
 
           { group: "action", id: "a2", no: "A2", title: "생산물이 튀어나와 보드로 (베지어)", state: "ok", label: "클라 구현",
             dropped: "생산자 눌림 — 누르는 순간은 A1 값 하나가 모든 칩에 걸린다.",
+            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 고른 생산자를 다시 탭해야 생산한다(BoardTapFlow.ts:169-171). 무장은 칸이 비지 않는 한 남아 있어서 그 뒤로는 탭마다 한 발씩 난다.",
             why: "지금 <b>generateItem()</b> 은 빈 셀을 찾아 <b>setPosition</b> 후 그 자리에서 팝만 합니다. 생산자와 결과물 사이에 <b>인과가 화면에 없습니다.</b> 3차 베지어로 날리면 \"저 통에서 이게 나왔다\"가 눈으로 붙습니다. 점선과 붉은 점은 제어점 — 실제 게임에는 안 나옵니다.",
             code:
 "// ViewMergeBoard.ts — cc.bezierTo 는 cc.Action 이라 tween 체인과 안 섞인다.\n" +
@@ -1849,6 +2277,7 @@
 
           { group: "action", id: "a4", no: "A4", title: "병합", state: "ok", label: "클라 구현",
             dropped: "드래그 값(픽업 · 셀 스냅 · 원위치 복귀) — 클라는 A3 · C1 값을 쓴다. 다른 레벨 위에 놓으면 자리를 바꾼다(2026-09-29).",
+            memo: "결과 칩은 첫 프레임부터 새 단계로, 손 뗀 자리에서 A3 픽업 크기로 칸에 스냅한다. 흡수는 옛 단계 분신(크기 1)이 맡는다. 스파크는 최대 8개(프리팹 점 수). 흡수·링·스파크 키(absorbSec · ring* · spark*)는 클라에서 C3 충전 완료 · 잠금 해제 · 도구 겹치기/적용 연출도 같이 읽는다 — 여기를 바꾸면 그쪽도 바뀐다.",
             why: "지금은 스프라이트를 바꾸고 <b>0.78 → 1 backOut</b> 팝 하나가 전부입니다. 없는 건 <b>흡수</b>입니다 — 두 개가 하나가 됐다는 사실이 화면에 안 남고, 사라진 타일은 그냥 <b>active = false</b> 로 꺼집니다. 흡수 → 임팩트 → 팝, 세 박자로 끊어야 합쳐진 게 보입니다.<br><br>여기만 <b>4×4 샌드박스</b>입니다. 병합은 한 번 보고 끝나는 연출이 아니라 <b>계속 반복되는 리듬</b>이라, 칩이 자동으로 차오르는 상태에서 봐야 감이 잡힙니다. 자동 생성 주기와 병합 후 잔존 시간은 문서 전용 값이고, 나머지는 그대로 게임 값입니다.",
             code:
 "private async playMerge(source: MergeBoardDragItem, target: MergeBoardDragItem, resultTier: number): Promise<void> {\n" +
@@ -1884,7 +2313,8 @@
 "}" },
 
           { group: "action", id: "a5", no: "A5", title: "보너스 슬롯에서 보드로", state: "ok", label: "클라 구현",
-            dropped: "탭 눌림 — 클라 비행은 보너스 슬롯 수령에서만 돌고 거기엔 눌림이 없다. 보관함 꺼내기는 비행 없이 그 칸에 나타난다 (2026-09-30 결정).",
+            dropped: "탭 눌림 — 클라 비행은 보너스 슬롯 수령에서만 돌고 거기엔 눌림이 없다. 보관함 꺼내기는 비행 없이 그 칸에 나타난다 (2026-09-30 결정). 도구 보상은 비행 없이 착지만 한다(분신을 못 그린다).",
+            memo: "날아가는 건 분신이고 비행 끝 30% 동안 투명해진다. 닿으면 진짜 칩이 켜지고 크기 1 에서 착지 눌림을 받는다.",
             why: "창고에 쌓인 아이템을 두 번 누르면 <b>보드의 빈 칸으로 올라갑니다.</b> 끌어다 놓지 않아도 되게 해 주는 편의 동작이라, 목적지가 어디인지 <b>날아가기 전에</b> 보여야 합니다 — 그래서 대상 칸을 먼저 켜고 나서 띄웁니다.<br><br><b>MergeBoardDragItem</b> 은 지금 TOUCH_START/MOVE/END/CANCEL 만 듣습니다. 탭도 더블탭도 판정이 없습니다. 판정에서 중요한 건 <b>이동 거리</b>입니다 — 손가락이 조금이라도 끌렸으면 드래그로 봐야 드래그 도중 우발적 자동 이동이 안 납니다. 비행은 A2 와 같은 함수를 쓰되 <b>더 낮고 빠르게</b> 갑니다.",
             code:
 "// MergeBoardDragItem.ts\n" +
@@ -1925,7 +2355,8 @@
 "}" },
 
           { group: "action", id: "a6", no: "A6", title: "재화 먹을 때", state: "ok", label: "클라 구현",
-            dropped: "상자 복귀 — 수확하면 칩이 그 자리에서 바로 걷혀 돌아올 칩이 없다.",
+            dropped: "상자 눌림·복귀 — 수확하면 칩이 그 자리에서 바로 걷히고 코인이 곧장 뜬다.",
+            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 같은 칩을 한 번 더 탭해야 수확한다(BoardTapFlow.ts:169-171). 상자 눌림(box*) 키는 수확이 아니라 판매·제거 소멸이 쓴다(눌림 → 0.18초 backIn 으로 0) — 「판매·제거 소멸」 버튼으로 본다. 닢 수는 금액을 따른다(최소 coinCount · 최대 10). 무대는 표본 금액 8 고정이라 기본값에서 8닢이 뜬다. 7닢부터는 부채 전체 각도를 묶어 간격이 좁아진다.",
             why: "코인이 날아가는 <b>ItemGatheringAnimation</b> 은 이미 있고 잘 돕니다. 빠진 건 <b>도착지</b>입니다 — 코인이 HUD 에 닿는데 HUD 는 아무 반응이 없습니다. 숫자가 굴러가고 카운터가 한 번 튀어야 \"내 것이 됐다\"가 완성됩니다. 카운터는 <b>첫 코인이 닿는 순간</b> 시작해야 합니다. 마지막 코인을 기다리면 늦습니다.",
             code:
 "// 기존 ItemGatheringAnimation 을 그대로 쓰고, 콜백 두 개만 채운다.\n" +
@@ -1956,6 +2387,7 @@
 "}" },
 
           { group: "text", id: "b1", no: "B1", title: "보드가 꽉 참", state: "ok", label: "클라 구현",
+            memo: "만석 안내(눌림 + 문구)는 고른 생산자를 다시 탭했을 때만 뜬다 — 첫 탭은 고르기(무장 · 시안 브래킷)까지다(BoardTapFlow.ts:124-129 · 169-171 · 403-406). 무장 뒤로는 탭마다 뜬다.",
             why: "지금은 <b>instructionLabel.string</b> 이 조용히 바뀝니다. 화면 어딘가의 문구가 바뀌었다는 걸 유저는 못 봅니다.<br><br>고칠 때 <b>보드를 흔들지 않습니다.</b> 프레임이 흔들리면 \"고장\" 으로 읽히는데, 이건 고장이 아니라 상태 고지입니다. 대신 <b>누른 칩 바로 위</b>에 문구가 떠올랐다 사라집니다 — RPG 에서 아이템 먹을 때 뜨는 그 텍스트와 같은 문법입니다. 어디를 눌러서 나온 말인지가 위치로 붙고, <b>연달아 눌러도 문구가 겹쳐 뜹니다.</b>",
             code:
 "private playBoardFullFeedback(generatorNode: cc.Node): void {\n" +
@@ -1999,6 +2431,7 @@
 "}" },
 
           { group: "text", id: "b2", no: "B2", title: "충전중", state: "ok", label: "클라 구현",
+            memo: "충전중 응답(눌림 · 게이지 펀치 · 팝업)은 고른 생산자를 다시 탭했을 때만 난다 — 첫 탭은 고르기(무장 · 시안 브래킷)까지다(BoardTapFlow.ts:169-171 · 420-441). 문구는 실제 플레이에서 안 뜬다 — 클라는 재고 0 생성기를 탭하면 문구 대신 젬 충전 팝업을 연다(BoardTapFlow.ts:432-441 · ViewIngame.ts:582). 무대의 「젬 충전 팝업」 상자는 그 자리표시다. 문구(f4)는 팝업 연결이 없을 때의 폴백뿐이다. 게이지 펀치는 채움 바만 왼쪽 기준으로 커진다.",
             why: "충전중은 <b>클릭했을 때 뜨는 응답</b>입니다. 아직 못 쓰는 생산자를 눌렀을 때 왜 안 되는지를 그 자리에서 알려 줍니다. B1(보드 꽉참)과 결정적으로 다른 점이 하나 — <b>흔들지 않습니다.</b> 흔들림은 \"잘못했다\" 는 신호인데 충전중은 잘못한 게 아니라 <b>기다리면 되는 일</b>이라, 눌린 반응만 주고 문구로 남은 시간을 말합니다. 감광과 게이지는 누르기 전부터 켜 두는 배경 상태입니다.",
             code:
 "// 충전중인 생산자를 눌렀을 때 뜨는 응답. 거부(B1)와 달리 흔들지 않는다.\n" +
@@ -2063,6 +2496,7 @@
 "}" },
 
           { group: "gap", id: "c2", no: "C2", title: "드래그 중 병합 가능 대상 하이라이트", state: "ok", label: "클라 구현",
+            memo: "클라는 도구 칩을 끌 때도 쓸 수 있는 대상 위에서 같은 링을 켠다(BoardDragController.ts:378-385). 등장(in)이 끝난 뒤 펄스가 반복된다.",
             dropped: "링 해제 페이드 — 대상에서 벗어나면 링을 즉시 끈다.",
             why: "머지 장르의 핵심 가독성 장치입니다. 손가락 아래에서 <b>무엇과 합쳐지는지</b>가 보여야 합니다. 링은 <b>같은 레벨 타일에만</b> 뜹니다 — 아무 데나 뜨면 정보가 아니라 소음입니다. 이게 있으면 C1(거부)이 애초에 덜 발생합니다.",
             code:
@@ -2096,6 +2530,7 @@
 "}" },
 
           { group: "gap", id: "c3", no: "C3", title: "타이머 상자 개봉 완료", state: "ok", label: "클라 구현",
+            memo: "스파크의 시간·반경·이징은 A4 값을 빌린다(점 8개 상한). sparkCount 는 잠금 해제 버스트도 같이 쓴다(BoardItemFx.ts:129). 게이지 소멸은 클라 실경로에선 안 보임 — 상자 개봉에는 게이지가 없다(WakeFlow.ts:108). 무대에는 값 확인용으로 남겨 둔다.",
             dropped: "완료 순간의 「!」 등장 — 「!」는 닫힌 타이머 상자를 열라는 노티라 열린 상자에는 안 붙는다 (2026-09-30 결정).",
             why: "요청 목록에 \"충전중\"은 있는데 <b>충전 완료</b>가 없습니다. 그런데 유저를 게임으로 다시 부르는 건 충전중이 아니라 <b>완료되는 순간</b>입니다. 게이지가 사라지고, 감광이 풀리고, 한 번 크게 튀고, 느낌표가 붙어 계속 까딱거려야 합니다 — 이 까딱거림이 B2 의 조용한 숨쉬기와 대비돼서 상태가 구분됩니다.",
             code:
@@ -2115,7 +2550,7 @@
 "}" },
 
           { group: "gap", id: "c6", no: "C4", title: "오더 납품", state: "ok", label: "클라 구현",
-            why: "핵심은 <b>목적지가 보드 밖</b>이라는 겁니다. 오더 카드는 보드의 자식이 아니라 <b>별도 노드</b>고, 아이템은 보드를 <b>벗어나서</b> 그쪽으로 날아갑니다. 보드 안에서 끝나면 \"어디로 갔는지\"가 안 남습니다. 부모가 다르니 목적지 좌표는 <b>CCnode.getTargetPos</b> 로 변환해야 하고, 이건 <b>ItemGatheringAnimation</b> 이 코인을 HUD 로 보낼 때 이미 쓰는 방식입니다. 목적지는 카드 한 장이 아니라 <b>요구 칩 각각</b>입니다 — 요구는 <b>2칸 고정</b>이고, 도착 반응(슬롯 눌림)은 그 칩에 겁니다. 오더는 통째로 소모되므로 카운터가 오르는 게 아니라 <b>카드가 레일에서 빠집니다</b>. 비행 자체는 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다.",
+            why: "핵심은 <b>목적지가 보드 밖</b>이라는 겁니다. 오더 카드는 보드의 자식이 아니라 <b>별도 노드</b>고, 아이템은 보드를 <b>벗어나서</b> 그쪽으로 날아갑니다. 보드 안에서 끝나면 \"어디로 갔는지\"가 안 남습니다. 부모가 다르니 목적지 좌표는 <b>CCnode.getTargetPos</b> 로 변환해야 하고, 이건 <b>ItemGatheringAnimation</b> 이 코인을 HUD 로 보낼 때 이미 쓰는 방식입니다. 목적지는 카드 한 장이 아니라 <b>요구 칩 각각</b>입니다 — 요구는 <b>2칸 고정</b>이고, 도착 반응(슬롯 눌림)은 그 칩에 겁니다. 오더는 통째로 소모되므로 카운터가 오르는 게 아니라 <b>카드가 레일에서 빠집니다</b>. 비행 자체는 A2 와 같은 함수, <b>STAGGER 만 0.06</b> 으로 늘립니다 — 코인(0.04)보다 무거운 물건이라 조금 느려야 무게가 맞습니다. 순서는 클라 그대로입니다 — 누르는 순간 <b>소모 칸이 한꺼번에 비고</b>, 분신은 자기 stagger 가 지나야 섭니다. 비행이 <b>다 닿으면</b> 마지막 칩 펀치를 기다리지 않고 곧바로 카드가 <b>배율 1→0 · 0.18초 · backIn</b> 으로 빠지고, 그다음 카드 자리에서 <b>보상 코인(A6 부채꼴)</b> · 스파크 · 문구가 함께 나갑니다. 완료 문구에 따로 색은 없습니다(클라 문구는 한 색).",
             code:
 "// 요구 칩은 gridRoot 의 자식이 아니다 — 보드 밖 오더 카드에 붙어 있다.\n" +
 "// 그래서 목적지는 반드시 좌표계를 옮겨서 받는다. 보드 좌표로 쓰면 엉뚱한 데로 난다.\n" +
@@ -2146,7 +2581,7 @@
 "    this.showFloatText(Localization.getString(\"merge_order_complete\"), at);  // \"오더 완료!\" — 도장 아님\n" +
 "    GameSound.play(\"FX_GAME_CLEAR\", at);\n" +
 "}" },          { group: "gap", id: "c4", no: "C5", title: "최대 단계 도달", state: "ok", label: "클라 구현",
-            why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라, 붉은 거부음과 흔들림 대신 <b>문구</b>로 알립니다. 별도의 도장 프리팹을 만들지 않고 다른 문구와 같은 <b>F3 임팩트 스탬프</b> 를 씁니다 — 연출이 하나 늘면 만들 것도 튜닝할 것도 하나 늘어납니다.",
+            why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라, 붉은 거부음과 흔들림 대신 <b>문구</b>로 알립니다. 별도의 도장 프리팹을 만들지 않고 다른 문구와 같은 <b>F3 임팩트 스탬프</b> 를 씁니다 — 연출이 하나 늘면 만들 것도 튜닝할 것도 하나 늘어납니다. 클라 순서대로 <b>대상 타격 · 문구 · 복귀</b>가 같은 순간에 시작합니다. 타격 전에 대상 배율을 1 로 굳히고, 복귀는 <b>C1 값</b>(snapSec · snapEase)을 그대로 씁니다. 흔들림은 <b>+1 · −0.7 두 번</b>(한 칸 = shakeSec ÷ 4) 뒤 두 칸 길이 backOut 으로 앉습니다. 참고 — 문구 5종 중 <b>F1 상승 페이드 · F2 포물선 튐</b>은 아직 어느 클라 장면도 고르지 않습니다(B1·C5 = F3, B2·B3 = F4, C4 = F5).",
             code:
 "private async playMaxTierFeedback(item: MergeBoardDragItem, target: MergeBoardDragItem, sourceCell: number): Promise<void> {\n" +
 "    // 부정이 아니라 상태 고지 — FX_TILE_ERROR 를 쓰지 않는다\n" +
@@ -2446,7 +2881,7 @@
           scroll.appendChild(table);
           detail.appendChild(scroll);
           /* 클라에서 일부러 뺀 연출은 표에서 걷고 한 줄로만 남긴다 — 대조하다 「빠졌다」로 되살리지 않게 */
-          [["dropped", "클라에서 뺌"]].forEach(function (pair) {
+          [["dropped", "클라에서 뺌"], ["memo", "클라 메모"]].forEach(function (pair) {
             if (!spec[pair[0]]) return;
             var lineEl = elm("p", "mfx-why");
             lineEl.style.marginTop = "8px";
