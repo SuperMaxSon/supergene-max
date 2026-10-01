@@ -36,7 +36,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 14종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.1 · 2026-10-01 14:54</span>
+          <span class="tag" id="mfx-ver">v4.1 · 2026-10-01 15:05</span>
         </div>
       </div>
     </header>
@@ -158,7 +158,8 @@
           카드 머리의 구현 상태는 <code>story-merge-proto-client</code> main(<code>14fbd59</code>, 2026-10-01) 실측입니다.
           클라 값은 이 문서에서 맞춰 내보낸 값(<code>@mfx-data</code>)이 그대로
           <code>assets/script/game/data/MergeFxConfig.ts</code> 의 <code>MERGE_FX</code> 한 표에 들어가 있고,
-          표의 기본값과는 다를 수 있습니다. 클라에서 뺀 연출은 표에서 걷고 카드마다 한 줄로 남겼습니다.
+          표의 기본값과는 다를 수 있습니다. 표에는 <b>클라가 실제로 읽는 값만</b> 둡니다 — 클라에서 뺀 연출은 카드마다 한 줄로 남겼고,
+          무대에만 필요한 값(시작 칩 수 · 잔존 시간 · 게이지 표시량 등)은 무대 코드 안 상수로 옮겼습니다.
           「Cocos 구현」 코드는 웹 프로토타입 시절 초안이라 클래스 이름이 현행과 다릅니다 — 값과 재생 순서만 보세요.
           무대의 트윈 엔진은 Cocos <code>cc.easing</code> 과 같은 수식을 다시 구현한 것이라
           문서에서 보는 곡선이 엔진에서 나오는 곡선과 같습니다.
@@ -585,7 +586,8 @@
         function dragify(st, spr, cfg) {
           cfg = cfg || {};
           var P = cfg.P || {};
-          function g(k, d) { return P[k] != null ? P[k] : d; }
+          /* 픽업·추종 값은 장면마다 따로 두지 않는다 — 클라는 어느 드래그든 A3 값 하나로 돈다 */
+          function g(k, d) { return P[k] != null ? P[k] : (V.a3[k] != null ? V.a3[k] : d); }
           spr.el.classList.add("is-hit", "is-drag");
           hitStyle(spr.el, "grab");
           spr.home = { x: spr.x, y: spr.y };
@@ -603,13 +605,12 @@
             aim = { x: spr.x, y: spr.y };
             dragging = true;
             spr.el.style.zIndex = 20;
-            spr.to(g("pickSec", 0.10), { sx: g("pickScale", 1.08), sy: g("pickScale", 1.08) }, P.pickEase || "backOut");
+            spr.to(g("pickSec", 0.10), { sx: g("pickScale", 1.08), sy: g("pickScale", 1.08) }, P.pickEase || V.a3.pickEase || "backOut");
             /* 손가락에 정확히 붙이지 않는다 — 지연 추종이 무게를 만든다 */
             follow = function (dt) {
               var k = 1 - Math.pow(1 - g("follow", 0.40), dt * 60);
               spr.x += (aim.x - spr.x) * k;
               spr.y += (aim.y + g("liftPx", 6) - spr.y) * k;
-              spr.rot += ((aim.x - spr.x) * g("tilt", 0.16) - spr.rot) * k;
               spr.apply();
             };
             addTick(follow);
@@ -701,7 +702,6 @@
             { k:"overOutSec", label:"오버슛 복귀",   v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"overOutEase",ease:"backOut", cfg:"POP_IN_SEC",                     note:"실측값" },
           ],
           a2: [
-            { k:"pressSec",   label:"생산자 눌림",   v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressEase",  ease:"quadOut", cfg:"MERGE_BOARD_PRESS_DURATION_SEC" },
             { k:"spawnScale", label:"스폰 시작 크기",v:0.5,  min:0.05, max:1.5,step:0.05,unit:"×",                                     cfg:"MERGE_SPAWN_START_SCALE" },
             { k:"popSec",     label:"스폰 팝",       v:0.15, min:0.02, max:1, step:0.01, unit:"s", easeK:"popEase",    ease:"backOut", cfg:"MERGE_SPAWN_POP_SEC" },
             { k:"popScale",   label:"스폰 팝 크기",  v:1.14, min:0.8,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_SPAWN_POP_SCALE" },
@@ -713,14 +713,12 @@
             { k:"landSX",     label:"착지 가로",     v:1.18, min:0.6,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_LAND_SQUASH_X" },
             { k:"landSY",     label:"착지 세로",     v:0.84, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_LAND_SQUASH_Y" },
             { k:"landOutSec", label:"착지 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_SQUASH_OUT_SEC" },
-            { k:"lingerSec",  label:"문서용 정리 지연",v:2,  min:0.3,  max:10, step:0.1, unit:"s",                                      cfg:"(문서 전용)",                    note:"게임에는 없는 값" },
           ],
           a3: [
             { k:"pickSec",    label:"픽업 시간",     v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pickEase",   ease:"backOut", cfg:"MERGE_PICKUP_DURATION_SEC" },
             { k:"pickScale",  label:"픽업 크기",     v:1.08, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
             { k:"liftPx",     label:"들림 높이",     v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_PICKUP_LIFT" },
             { k:"follow",     label:"지연 추종 계수",v:0.40, min:0.05, max:1,  step:0.01,unit:"",                                      cfg:"MERGE_DRAG_FOLLOW_RATIO",        note:"1 이면 손가락에 딱 붙는다" },
-            { k:"tilt",       label:"기울기 계수",   v:0.16, min:0,    max:0.6,step:0.01,unit:"",                                      cfg:"MERGE_DRAG_TILT_RATIO" },
             { k:"snapSec",    label:"셀 스냅",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"snapEase",   ease:"quadOut", cfg:"MERGE_DRAG_SNAP_SEC" },
             { k:"landInSec",  label:"착지 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_SQUASH_IN_SEC" },
             { k:"landSX",     label:"착지 가로",     v:1.14, min:0.6,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_DRAG_LAND_X" },
@@ -728,10 +726,6 @@
             { k:"landOutSec", label:"착지 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_SQUASH_OUT_SEC" },
           ],
           a4: [
-            { k:"initialChips",label:"시작 칩 수",     v:6,    min:0,    max:16, step:1,   unit:"개",                                    cfg:"(문서 전용)",                    note:"4×4 · 16칸" },
-            { k:"spawnSec",   label:"자동 생성 주기",  v:1.0,  min:0.2,  max:10, step:0.1, unit:"s",                                     cfg:"(문서 전용)",                    note:"꽉 차면 생성 안 함" },
-            { k:"spawnPopSec",label:"생성 팝",        v:0.18, min:0.02, max:1, step:0.01, unit:"s", easeK:"spawnPopEase",ease:"backOut",cfg:"POP_IN_SEC" },
-            { k:"mergedLingerSec",label:"병합 후 잔존",v:2.0,  min:0.2,  max:10, step:0.1, unit:"s",                                     cfg:"(문서 전용)",                    note:"보드를 비워 계속 만지게" },
             { k:"absorbSec",  label:"흡수 시간",     v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"absorbEase", ease:"quadIn",  cfg:"MERGE_ABSORB_SEC",               note:"사라지는 쪽" },
             { k:"absorbScale",label:"흡수 끝 크기",  v:0.55, min:0,    max:1,  step:0.01,unit:"×",                                     cfg:"MERGE_ABSORB_END_SCALE" },
             { k:"ringSec",    label:"임팩트 링",     v:0.30, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"ringEase",   ease:"quadOut", cfg:"MERGE_RING_SEC" },
@@ -743,16 +737,8 @@
             { k:"sparkCount", label:"스파크 개수",   v:7,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_SPARK_COUNT" },
             { k:"sparkSec",   label:"스파크 시간",   v:0.34, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"sparkEase",  ease:"quadOut", cfg:"MERGE_SPARK_SEC" },
             { k:"sparkRadius",label:"스파크 반경",   v:40,   min:10,   max:160,step:2,   unit:"px",                                    cfg:"MERGE_SPARK_RADIUS" },
-            { k:"pickSec",    label:"픽업 시간",     v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pickEase",   ease:"backOut", cfg:"MERGE_PICKUP_DURATION_SEC" },
-            { k:"pickScale",  label:"픽업 크기",     v:1.08, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
-            { k:"snapSec",    label:"셀 스냅",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"snapEase",   ease:"quadOut", cfg:"MERGE_DRAG_SNAP_SEC" },
-            { k:"backSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"backEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
           ],
           a5: [
-            { k:"tapInSec",   label:"탭 눌림",       v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"tapInEase",  ease:"quadOut", cfg:"MERGE_TAP_IN_SEC" },
-            { k:"tapScale",   label:"탭 크기",       v:0.92, min:0.6,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_TAP_SCALE" },
-            { k:"tapOutSec",  label:"탭 복귀",       v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"tapOutEase", ease:"backOut", cfg:"MERGE_TAP_OUT_SEC" },
-            { k:"movePx",     label:"탭 허용 이동",  v:5,    min:1,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_TAP_MOVE_LIMIT",           note:"넘으면 드래그로 본다" },
             { k:"hopSec",     label:"이동 시간",     v:0.30, min:0.05, max:2, step:0.01, unit:"s", easeK:"hopEase",    ease:"quadInOut",cfg:"MERGE_HOP_DURATION_SEC" },
             { k:"liftRatio",  label:"곡선 높이 비율",v:0.22, min:0,    max:1.5,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LIFT_RATIO",           note:"비행(0.38)보다 낮게" },
             { k:"minLift",    label:"최소 곡선 높이",v:42,   min:0,    max:300,step:2,   unit:"px",                                    cfg:"MERGE_HOP_MIN_LIFT" },
@@ -760,17 +746,11 @@
             { k:"landSX",     label:"착지 가로",     v:1.16, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_X" },
             { k:"landSY",     label:"착지 세로",     v:0.86, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_Y" },
             { k:"landOutSec", label:"착지 복귀",     v:0.15, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_HOP_LAND_OUT_SEC" },
-            { k:"refillSec",  label:"창고 보충 대기",v:1.0,  min:0,    max:10, step:0.1,  unit:"s",                                     cfg:"MERGE_SHELF_REFILL_SEC",         note:"꺼낸 순간부터 센다" },
-            { k:"refillPopSec",label:"창고 보충 팝인",v:0.22,min:0.02, max:1.5,step:0.01, unit:"s", easeK:"refillPopEase",ease:"backOut",cfg:"MERGE_SHELF_REFILL_POP_SEC" },
-            { k:"lingerSec",  label:"보드 잔존",     v:2.0,  min:0,    max:10, step:0.1,  unit:"s",                                     cfg:"MERGE_HOP_LINGER_SEC",           note:"착지한 순간부터 센다 · 무대용" },
-            { k:"vanishSec",  label:"보드 소멸",     v:0.28, min:0.02, max:2,  step:0.01, unit:"s", easeK:"vanishEase", ease:"quadIn",  cfg:"MERGE_HOP_VANISH_SEC" },
           ],
           a6: [
             { k:"boxInSec",   label:"상자 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"boxInEase",  ease:"quadOut", cfg:"MERGE_COIN_BOX_IN_SEC" },
             { k:"boxSX",      label:"상자 가로",     v:1.14, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_COIN_BOX_X" },
             { k:"boxSY",      label:"상자 세로",     v:0.88, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_COIN_BOX_Y" },
-            { k:"hudGap",     label:"HUD 거리",      v:96,   min:0,    max:260,step:4,   unit:"px",                                    cfg:"(문서 전용)",                    note:"비행 거리를 만든다" },
-            { k:"coinCount",  label:"코인 개수",     v:6,    min:1,    max:12, step:1,   unit:"개",                                    cfg:"COIN_SPRITE_LIMIT",              note:"실제 수량과 분리" },
             { k:"stagger",    label:"STAGGER",       v:0.04, min:0,    max:0.4,step:0.01, unit:"s",                                     cfg:"MERGE_STAGGER_SEC" },
             { k:"spreadSec",  label:"산개 시간",     v:0.26, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"spreadEase", ease:"circOut", cfg:"MERGE_COIN_SPREAD_SEC" },
             { k:"spreadR",    label:"산개 반경",     v:52,   min:10,   max:200,step:2,   unit:"px",                                    cfg:"MERGE_COIN_SPREAD_RADIUS" },
@@ -791,18 +771,15 @@
           b2: [
             { k:"textStyle",  label:"문구 스타일",   sv:"slide", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"dimAlpha",   label:"감광 투명도",   v:0.45, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_CHARGING_DIM",             note:"코코스 opacity 115 ≈ 0.45" },
-            { k:"gaugeFill",  label:"게이지 표시량", v:38,   min:0,    max:100,step:1,   unit:"%",                                     cfg:"(무대 표시용)" },
             { k:"pressInSec", label:"클릭 응답",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_CHARGING_TAP_IN_SEC",      note:"흔들지 않는다" },
             { k:"pressSX",    label:"응답 가로",     v:1.05, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_CHARGING_TAP_X" },
             { k:"pressSY",    label:"응답 세로",     v:0.95, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_CHARGING_TAP_Y" },
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
             { k:"punchScale", label:"게이지 펀치",   v:1.12, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_GAUGE_PUNCH_SCALE" },
             { k:"punchOutSec",label:"게이지 펀치 복귀",v:0.16,min:0.02, max:1, step:0.01, unit:"s", easeK:"punchEase",  ease:"backOut", cfg:"MERGE_GAUGE_PUNCH_SEC" },
-            { k:"remainSec",  label:"남은 시간",     v:12,   min:1,    max:999,step:0.1, unit:"초",                                    cfg:"(런타임 값)",                    note:"문구에 들어가는 숫자" },
           ],
           b3: [
             { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
-            { k:"unlockLv",   label:"해금 레벨",     v:12,   min:1,    max:99, step:1,   unit:"",                                      cfg:"(런타임 값)",                    note:"문구에 들어가는 숫자" },
             { k:"pressInSec", label:"눌림",          v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_LOCK_PRESS_IN_SEC" },
             { k:"pressScale", label:"눌림 크기",     v:0.94, min:0.6,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_LOCK_PRESS_SCALE" },
             { k:"pressOutSec",label:"눌림 복귀",     v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"MERGE_LOCK_PRESS_OUT_SEC" },
@@ -862,8 +839,6 @@
           ],
           c1: [
             { k:"snapSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"snapEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
-            { k:"pickSec",    label:"픽업 시간",     v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pickEase",   ease:"backOut", cfg:"MERGE_PICKUP_DURATION_SEC" },
-            { k:"pickScale",  label:"픽업 크기",     v:1.08, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
           ],
           c2: [
             { k:"inSec",      label:"링 등장",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"inEase",     ease:"backOut", cfg:"MERGE_RING_IN_SEC" },
@@ -872,10 +847,8 @@
             { k:"pulseMax",   label:"펄스 최대",     v:1.14, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RING_PULSE_MAX" },
             { k:"pulseMin",   label:"펄스 최소",     v:0.98, min:0.5,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_RING_PULSE_MIN" },
             { k:"pulseAlpha", label:"펄스 최저 투명도",v:0.45,min:0,   max:1,  step:0.01,unit:"",                                      cfg:"MERGE_RING_PULSE_ALPHA" },
-            { k:"outSec",     label:"링 해제",       v:0.16, min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"MERGE_RING_OUT_SEC" },
           ],
           c3: [
-            { k:"fillSec",    label:"게이지 완주",   v:0.70, min:0.1,  max:5, step:0.05, unit:"s",                                     cfg:"(잔여 시간)",                    note:"무대 시연용" },
             { k:"gaugeOutSec",label:"게이지 소멸",   v:0.18, min:0.02, max:1, step:0.01, unit:"s", easeK:"gaugeEase",  ease:"quadIn",  cfg:"MERGE_GAUGE_OUT_SEC" },
             { k:"popInSec",   label:"완료 눌림",     v:0.08, min:0.01, max:1, step:0.01, unit:"s", easeK:"popInEase",  ease:"quadOut", cfg:"MERGE_READY_POP_IN_SEC" },
             { k:"popSX",      label:"완료 가로",     v:1.18, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_X" },
@@ -1018,6 +991,7 @@
              실제 게임도 생산자 옆부터 차므로 그 리듬으로 봐야 한다.
              안쪽 8칸을 시계 방향으로 돌고, 다 차면 바깥 16칸을 같은 방향으로 돈다. */
           var st = makeStage(host, { cols: 5, rows: 5 }), P = V.a2, gen, used = [], GI = 12, era = 0;
+          var LINGER_SEC = 2;   // 무대 전용 — 착지한 칩을 치우는 지연. 게임에는 없다
           var ORDER = [
             7, 8, 13, 18, 17, 16, 11, 6,                                  // 안쪽 한 겹
             2, 3, 4, 9, 14, 19, 24, 23, 22, 21, 20, 15, 10, 5, 0, 1,      // 바깥 한 겹
@@ -1051,7 +1025,7 @@
               item.el.style.zIndex = "";
               tw(0.3, "quadIn", function (e) { g.el.style.opacity = 0.9 * (1 - e); }).then(function () { g.kill(); });
               /* 정리는 기다리지 않는다 — 다음 클릭이 묶이면 연달아 눌러 볼 수가 없다 */
-              wait(P.lingerSec).then(function () {
+              wait(LINGER_SEC).then(function () {
                 if (mine !== era) return;
                 item.to(0.24, { a: 0, sx: 0.6, sy: 0.6 }, "quadIn").then(function () {
                   item.kill();
@@ -1100,7 +1074,6 @@
                 var k = 1 - Math.pow(1 - P.follow, dt * 60);
                 tile.x += (finger.x - tile.x) * k;
                 tile.y += (finger.y + P.liftPx - tile.y) * k;
-                tile.rot += ((finger.x - tile.x) * P.tilt - tile.rot) * k;
                 tile.apply();
               };
               addTick(follow);
@@ -1132,9 +1105,12 @@
           var st = makeStage(host, { cols: 4, rows: 4 }), P = V.a4;
           var N = 16, cells = new Array(N), era = 0, spawnIdx = 0;
           var START = [0, 2, 5, 7, 9, 12], TIERS = [1, 1, 2, 2, 1, 3];
+          /* 무대 전용 — 샌드박스가 계속 차오르게 하는 값. 게임에는 없다 */
+          var SPAWN_SEC = 1, SPAWN_POP_SEC = 0.18, MERGED_LINGER_SEC = 2;
 
           function freeCells() { var f = []; for (var i = 0; i < N; i++) if (!cells[i]) f.push(i); return f; }
-          function home(t) { return snapBack(st, t, { snapSec: P.backSec, snapEase: P.backEase }); }
+          /* 이동·교환 착지는 A3, 되돌아가기는 C1 값이다 — 클라가 그렇게 돈다 */
+          function home(t) { return snapBack(st, t, V.c1); }
 
           function put(tier, cell) {
             var p = st.cellPos(cell);
@@ -1148,12 +1124,12 @@
                 var from = t.cell;
                 if (cell2 < 0 || cell2 === from) return home(t);
                 var other = cells[cell2];
-                if (!other) { cells[from] = null; cells[cell2] = t; return settle(st, t, cell2, P); }
+                if (!other) { cells[from] = null; cells[cell2] = t; return settle(st, t, cell2, V.a3); }
                 if (other.tier === t.tier && t.tier < 4) { cells[from] = null; return merge(t, other, cell2); }
                 if (other.tier === t.tier) return home(t);   // 최고 단계끼리는 합치지도 바꾸지도 않는다
                 /* 레벨이 다르면 자리를 바꾼다(클라 2026-09-29). 밀려난 칩도 같은 착지 한 벌로 앉아 둘이 같이 끝난다 */
                 cells[from] = other; cells[cell2] = t;
-                return Promise.all([settle(st, t, cell2, P), settle(st, other, from, P)]);
+                return Promise.all([settle(st, t, cell2, V.a3), settle(st, other, from, V.a3)]);
               },
             });
             return t;
@@ -1181,7 +1157,7 @@
               ]);
             }).then(function () {
               /* 합쳐진 칩은 잠깐 보여 주고 치운다 — 보드가 안 막혀야 계속 만져 볼 수 있다 */
-              wait(P.mergedLingerSec).then(function () {
+              wait(MERGED_LINGER_SEC).then(function () {
                 if (mine !== era || !dst.el.parentNode) return;
                 dst.to(0.26, { a: 0, sx: 0.6, sy: 0.6 }, "quadIn").then(function () {
                   if (cells[dst.cell] === dst) cells[dst.cell] = null;
@@ -1194,14 +1170,14 @@
           /* 1초마다 레벨 1 칩이 하나씩. 보드가 꽉 차면 그 회차는 건너뛴다. */
           function spawnLoop() {
             var mine = era;
-            wait(P.spawnSec).then(function () {
+            wait(SPAWN_SEC).then(function () {
               if (mine !== era) return;
               var f = freeCells();
               if (f.length) {
                 var cell = f[spawnIdx++ % f.length];
                 var t = put(1, cell);
                 t.set({ sx: 0.5, sy: 0.5 });
-                t.to(P.spawnPopSec, { sx: 1, sy: 1 }, P.spawnPopEase);
+                t.to(SPAWN_POP_SEC, { sx: 1, sy: 1 }, "backOut");
               }
               spawnLoop();
             });
@@ -1212,8 +1188,7 @@
             st.clear();
             cells = new Array(N);
             spawnIdx = 0;
-            var n = Math.min(START.length, Math.max(0, Math.round(P.initialChips)));
-            for (var i = 0; i < n; i++) put(TIERS[i], START[i]);
+            for (var i = 0; i < START.length; i++) put(TIERS[i], START[i]);
             spawnLoop();
           }
           function play() {
@@ -1221,7 +1196,7 @@
             var a = cells[0], b = cells[2], pb = st.cellPos(2);
             if (!a || !b) return Promise.resolve();
             a.el.style.zIndex = 6;
-            return a.to(P.pickSec, { sx: P.pickScale, sy: P.pickScale }, P.pickEase)
+            return a.to(V.a3.pickSec, { sx: V.a3.pickScale, sy: V.a3.pickScale }, V.a3.pickEase)
               .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
               .then(function () { cells[a.cell] = null; a.el.style.zIndex = ""; return merge(a, b, 2); });
           }
@@ -1233,6 +1208,8 @@
         DEMOS.a5 = function (host) {
           var st = makeStage(host, { cols: 4, rows: 3, shelf: 3 }), P = V.a5;
           var N = 12, cells = new Array(N), era = 0;
+          /* 무대 전용 — 창고를 다시 채우고 보드를 비워 계속 눌러 보게 하는 값. 게임에는 없다 */
+          var REFILL_SEC = 1, REFILL_POP_SEC = 0.22, LINGER_SEC = 2, VANISH_SEC = 0.28;
 
           function freeCell() { for (var i = 0; i < N; i++) if (!cells[i]) return i; return -1; }
 
@@ -1244,14 +1221,10 @@
             t.set({ x: at.x, y: at.y });
             t.slotIndex = i;
             t.fromShelf = true;
-            /* 한 번 누르면 바로 올라간다. 손가락이 끌렸으면 탭이 아니라 드래그로 본다 */
+            /* 한 번 누르면 바로 올라간다. 눌림 연출은 없다 — 클라 비행에도 없다 */
             tappify(st, t, {
               press: false,
-              movePx: function () { return P.movePx; },
-              onTap: function () {
-                squash(t, P.tapInSec, P.tapScale, P.tapScale, P.tapOutSec, P.tapOutEase, P.tapInEase);
-                return send(t);
-              },
+              onTap: function () { return send(t); },
             });
             return t;
           }
@@ -1266,21 +1239,21 @@
           /* 꺼낸 자리는 비워 두지 않는다 — 창고가 비면 다음에 뭘 눌러야 할지 사라진다 */
           function refill(i) {
             var my = era;
-            return wait(P.refillSec).then(function () {
+            return wait(REFILL_SEC).then(function () {
               if (my !== era) return;
               var t = shelfItem(i);
               t.set({ sx: 0.4, sy: 0.4, a: 0 });
-              return t.to(P.refillPopSec, { sx: 1, sy: 1, a: 1 }, P.refillPopEase);
+              return t.to(REFILL_POP_SEC, { sx: 1, sy: 1, a: 1 }, "backOut");
             });
           }
 
           /* 보드에 올라간 것은 잠깐 있다 사라진다 — 무대를 비워야 계속 눌러 볼 수 있다 */
           function vanish(t, cell) {
             var my = era;
-            return wait(P.lingerSec).then(function () {
+            return wait(LINGER_SEC).then(function () {
               if (my !== era) return;
               if (cells[cell] === t) cells[cell] = null;
-              return t.to(P.vanishSec, { sx: 0.5, sy: 0.5, a: 0 }, P.vanishEase)
+              return t.to(VANISH_SEC, { sx: 0.5, sy: 0.5, a: 0 }, "quadIn")
                 .then(function () { t.kill(); });
             });
           }
@@ -1312,7 +1285,6 @@
             var first = null;
             st.pool.forEach(function (x) { if (!first && x.fromShelf) first = x; });
             if (!first) return Promise.resolve();
-            squash(first, P.tapInSec, P.tapScale, P.tapScale, P.tapOutSec, P.tapOutEase, P.tapInEase);
             return send(first);
           }
           return { st: st, reset: reset, play: play, hint: "창고의 아이템을 눌러 보세요 · 빈 보드로 올라갑니다" };
@@ -1321,12 +1293,14 @@
         /* A6 · 재화 획득 ----------------------------------------------------- */
         DEMOS.a6 = function (host) {
           var st = makeStage(host, { cols: 3, rows: 2, hud: true }), P = V.a6, chest, total = 1240, busy = false;
+          /* 무대 전용 — HUD 를 보드에서 떼는 거리와 닢 수. 클라 닢 수는 지급 규칙이 정한다 */
+          var HUD_GAP = 96, COIN_COUNT = 6;
           function reset() {
             st.clear();
             total = 1240;
             busy = false;
             /* 코인이 날아가는 걸 보려면 거리가 있어야 한다 — HUD 를 보드에서 떼어 놓는다 */
-            if (st.hudRow) st.hudRow.style.marginBottom = P.hudGap + "px";
+            if (st.hudRow) st.hudRow.style.marginBottom = HUD_GAP + "px";
             var p = st.cellPos(4);
             chest = st.tile("mfx-producer");
             chest.set({ x: p.x, y: p.y });
@@ -1342,7 +1316,7 @@
             total = to;
             return chest.to(P.boxInSec, { sx: P.boxSX, sy: P.boxSY }, P.boxInEase).then(function () {
               chest.set({ a: 0, sx: 1, sy: 1 });
-              var target = st.at(st.hud), N = Math.max(1, Math.round(P.coinCount)), all = [];
+              var target = st.at(st.hud), N = COIN_COUNT, all = [];
               for (var i = 0; i < N; i++) {
                 (function (i) {
                   all.push(wait(i * P.stagger).then(function () {
@@ -1407,6 +1381,7 @@
         /* B2 · 충전중 — 클릭했을 때 뜨는 텍스트 노티 ------------------------- */
         DEMOS.b2 = function (host) {
           var st = makeStage(host, { cols: 3, rows: 2 }), P = V.b2, gen, gauge, fill;
+          var GAUGE_FILL = 38, REMAIN_SEC = 12;   // 무대 표시용 — 클라는 실제 재고·남은 시간을 쓴다
           function reset() {
             st.clear();
             var p = st.cellPos(4);
@@ -1415,7 +1390,7 @@
             gauge = st.spr('<div class="mfx-gauge"><i></i></div>');
             gauge.set({ x: p.x, y: p.y + 46 });
             fill = gauge.el.querySelector("i");
-            fill.style.width = P.gaugeFill + "%";
+            fill.style.width = GAUGE_FILL + "%";
             tappify(st, gen, { press: false, onTap: notify });
           }
           function notify() {
@@ -1425,7 +1400,7 @@
               gen.to(P.pressInSec, { sx: P.pressSX, sy: P.pressSY }, P.pressInEase)
                 .then(function () { return gen.to(P.pressOutSec, { sx: 1, sy: 1 }, P.pressOutEase); }),
               nodePunch(gauge.el.firstChild, 0.08, P.punchScale, P.punchOutSec, P.punchEase),
-              floatText(st, "충전 중 " + fmtNum(P.remainSec) + "초", { x: gen.x, y: gen.y }, P),
+              floatText(st, "충전 중 " + fmtNum(REMAIN_SEC) + "초", { x: gen.x, y: gen.y }, P),
             ]);
           }
           function play() { reset(); return notify(); }
@@ -1454,7 +1429,7 @@
                 .then(function () { return lock.to(P.stepSec, { rot: P.angleA }, P.rotEase); })
                 .then(function () { return lock.to(P.stepSec, { rot: -P.angleB }, P.rotEase); })
                 .then(function () { return lock.to(P.backSec, { rot: 0 }, P.backEase); }),
-              floatText(st, "Lv." + fmtNum(P.unlockLv) + " 해금", { x: lock.x, y: lock.y }, P),
+              floatText(st, "Lv." + fmtNum(12) + " 해금", { x: lock.x, y: lock.y }, P),
             ]);
           }
           function play() { reset(); return deny(); }
@@ -1485,7 +1460,7 @@
             reset();
             var to = st.cellPos(TI);
             tile.el.style.zIndex = 6;
-            return tile.to(P.pickSec, { sx: P.pickScale, sy: P.pickScale }, P.pickEase)
+            return tile.to(V.a3.pickSec, { sx: V.a3.pickScale, sy: V.a3.pickScale }, V.a3.pickEase)
               .then(function () { return tile.to(0.34, { x: to.x, y: to.y + 8 }, "quadInOut"); })
               .then(function () { return snapBack(st, tile, P); })
               .then(function () { tile.el.style.zIndex = ""; });
@@ -1518,7 +1493,7 @@
               var r = rings[k];
               delete rings[k];
               r.dead = true;
-              r.to(P.outSec, { a: 0, sx: 1.3, sy: 1.3 }, P.outEase).then(function () { r.kill(); });
+              r.kill();                                // 클라는 링을 즉시 끈다 — 해제 페이드가 없다
             });
             if (cell < 0 || rings[cell]) return;
             var p = st.cellPos(cell);
@@ -1589,7 +1564,7 @@
             if (done) return Promise.resolve();
             done = true;
             var p = st.cellPos(4);
-            return tw(P.fillSec, "linear", function (e) { fill.style.width = 78 + 22 * e + "%"; }).then(function () {
+            return tw(0.7, "linear", function (e) { fill.style.width = 78 + 22 * e + "%"; }).then(function () {
               gauge.to(P.gaugeOutSec, { a: 0, sy: 0.4 }, P.gaugeEase).then(function () { gauge.kill(); });
               gen.set({ a: 1 });
               return squash(gen, P.popInSec, P.popSX, P.popSY, P.popOutSec, P.popOutEase, P.popInEase);
@@ -1796,6 +1771,7 @@
 "}" },
 
           { group: "action", id: "a2", no: "A2", title: "생산물이 튀어나와 보드로 (베지어)", state: "ok", label: "클라 구현",
+            dropped: "생산자 눌림 — 누르는 순간은 A1 값 하나가 모든 칩에 걸린다.",
             why: "지금 <b>generateItem()</b> 은 빈 셀을 찾아 <b>setPosition</b> 후 그 자리에서 팝만 합니다. 생산자와 결과물 사이에 <b>인과가 화면에 없습니다.</b> 3차 베지어로 날리면 \"저 통에서 이게 나왔다\"가 눈으로 붙습니다. 점선과 붉은 점은 제어점 — 실제 게임에는 안 나옵니다.",
             code:
 "// ViewMergeBoard.ts — cc.bezierTo 는 cc.Action 이라 tween 체인과 안 섞인다.\n" +
@@ -1840,9 +1816,8 @@
 "    );\n" +
 "}" },
 
-          { group: "action", id: "a3", no: "A3", title: "드래그", state: "part", label: "부분 구현 · 기울기 없음",
-            dropped: "칩 그림자 · 원래 자리 고스트 (2026-09-30 결정).",
-            pending: "기울기(기울기 계수) — 손에 든 칩 회전이 격자 복귀 원복과 엮여 미뤄 뒀다. 표 값은 아직 클라에 안 붙었다.",
+          { group: "action", id: "a3", no: "A3", title: "드래그", state: "ok", label: "클라 구현",
+            dropped: "칩 그림자 · 원래 자리 고스트 (2026-09-30 결정), 기울기 — 손에 든 칩은 돌지 않는다.",
             why: "지금은 <b>setScale(1.08)</b> 한 줄이고, 타일이 손가락에 <b>정확히</b> 붙습니다. 정확히 붙으면 무게가 사라져 종이를 미는 느낌이 납니다. 지연 추종 + 그림자 + 원래 자리 고스트, 세 가지가 같이 있어야 \"들어 올렸다\"가 됩니다.",
             code:
 "// MergeBoardDragItem 은 터치 좌표만 넘기고, 추종은 update(dt) 에서 돈다.\n" +
@@ -1873,6 +1848,7 @@
 "}" },
 
           { group: "action", id: "a4", no: "A4", title: "병합", state: "ok", label: "클라 구현",
+            dropped: "드래그 값(픽업 · 셀 스냅 · 원위치 복귀) — 클라는 A3 · C1 값을 쓴다. 다른 레벨 위에 놓으면 자리를 바꾼다(2026-09-29).",
             why: "지금은 스프라이트를 바꾸고 <b>0.78 → 1 backOut</b> 팝 하나가 전부입니다. 없는 건 <b>흡수</b>입니다 — 두 개가 하나가 됐다는 사실이 화면에 안 남고, 사라진 타일은 그냥 <b>active = false</b> 로 꺼집니다. 흡수 → 임팩트 → 팝, 세 박자로 끊어야 합쳐진 게 보입니다.<br><br>여기만 <b>4×4 샌드박스</b>입니다. 병합은 한 번 보고 끝나는 연출이 아니라 <b>계속 반복되는 리듬</b>이라, 칩이 자동으로 차오르는 상태에서 봐야 감이 잡힙니다. 자동 생성 주기와 병합 후 잔존 시간은 문서 전용 값이고, 나머지는 그대로 게임 값입니다.",
             code:
 "private async playMerge(source: MergeBoardDragItem, target: MergeBoardDragItem, resultTier: number): Promise<void> {\n" +
@@ -1907,8 +1883,8 @@
 "    CClog.log(\"ViewMergeBoard > merged into tier \" + resultTier);\n" +
 "}" },
 
-          { group: "action", id: "a5", no: "A5", title: "탭 — 창고에서 보드로", state: "part", label: "부분 구현 · 탭 눌림 없음",
-            pending: "탭 눌림(tapIn · tapScale · tapOut) — 클라 비행은 보상함 수령에서만 돌고 거기엔 눌림이 없다. 보관함 꺼내기는 비행 없이 그 칸에 나타난다(2026-09-30 결정).",
+          { group: "action", id: "a5", no: "A5", title: "탭 — 창고에서 보드로", state: "ok", label: "클라 구현",
+            dropped: "탭 눌림 — 클라 비행은 보상함 수령에서만 돌고 거기엔 눌림이 없다. 보관함 꺼내기는 비행 없이 그 칸에 나타난다 (2026-09-30 결정).",
             why: "창고에 쌓인 아이템을 두 번 누르면 <b>보드의 빈 칸으로 올라갑니다.</b> 끌어다 놓지 않아도 되게 해 주는 편의 동작이라, 목적지가 어디인지 <b>날아가기 전에</b> 보여야 합니다 — 그래서 대상 칸을 먼저 켜고 나서 띄웁니다.<br><br><b>MergeBoardDragItem</b> 은 지금 TOUCH_START/MOVE/END/CANCEL 만 듣습니다. 탭도 더블탭도 판정이 없습니다. 판정에서 중요한 건 <b>이동 거리</b>입니다 — 손가락이 조금이라도 끌렸으면 드래그로 봐야 드래그 도중 우발적 자동 이동이 안 납니다. 비행은 A2 와 같은 함수를 쓰되 <b>더 낮고 빠르게</b> 갑니다.",
             code:
 "// MergeBoardDragItem.ts\n" +
@@ -1949,7 +1925,7 @@
 "}" },
 
           { group: "action", id: "a6", no: "A6", title: "재화 먹을 때", state: "ok", label: "클라 구현",
-            dropped: "상자 복귀 — 수확하면 칩이 그 자리에서 바로 걷혀 돌아올 칩이 없다.",
+            dropped: "상자 복귀 — 수확하면 칩이 그 자리에서 바로 걷혀 돌아올 칩이 없다. 코인 개수 — 닢 수는 지급 규칙이 정한다.",
             why: "코인이 날아가는 <b>ItemGatheringAnimation</b> 은 이미 있고 잘 돕니다. 빠진 건 <b>도착지</b>입니다 — 코인이 HUD 에 닿는데 HUD 는 아무 반응이 없습니다. 숫자가 굴러가고 카운터가 한 번 튀어야 \"내 것이 됐다\"가 완성됩니다. 카운터는 <b>첫 코인이 닿는 순간</b> 시작해야 합니다. 마지막 코인을 기다리면 늦습니다.",
             code:
 "// 기존 ItemGatheringAnimation 을 그대로 쓰고, 콜백 두 개만 채운다.\n" +
@@ -2069,7 +2045,7 @@
 "}" },
 
           { group: "gap", id: "c1", no: "C1", title: "드롭 거부 · 병합 실패", state: "ok", label: "클라 구현",
-            dropped: "X 표시 · 흔들림 — 원래 칸으로 돌아가기만 한다 (2026-09-18 결정). 다른 아이템 위에 놓으면 자리를 바꾸므로(2026-09-29) 거부는 잠긴 칸 · 상자뿐이다.",
+            dropped: "X 표시 · 흔들림 — 원래 칸으로 돌아가기만 한다 (2026-09-18 결정). 다른 아이템 위에 놓으면 자리를 바꾸므로(2026-09-29) 거부는 잠긴 칸 · 상자뿐이다. 픽업은 A3 값을 쓴다.",
             why: "지금 <b>endItemDrag()</b> 의 else 분기는 <b>item.node.setPosition(원위치)</b> 한 줄입니다. 머지 보드에서 가장 자주 일어나는 입력 결과가 <b>순간이동</b>으로 처리되고 있습니다. 유저는 자기가 뭘 잘못했는지 모른 채 같은 실수를 반복합니다. <b>여섯 개 중 이것부터 넣어야 합니다.</b>",
             code:
 "// endItemDrag() 의 else 분기를 교체한다.\n" +
@@ -2087,6 +2063,7 @@
 "}" },
 
           { group: "gap", id: "c2", no: "C2", title: "드래그 중 병합 가능 대상 하이라이트", state: "ok", label: "클라 구현",
+            dropped: "링 해제 페이드 — 대상에서 벗어나면 링을 즉시 끈다.",
             why: "머지 장르의 핵심 가독성 장치입니다. 손가락 아래에서 <b>무엇과 합쳐지는지</b>가 보여야 합니다. 링은 <b>같은 레벨 타일에만</b> 뜹니다 — 아무 데나 뜨면 정보가 아니라 소음입니다. 이게 있으면 C1(거부)이 애초에 덜 발생합니다.",
             code:
 "// moveItemDrag() 안에서 매 이동마다 호출. 대상이 바뀔 때만 실제로 갱신한다.\n" +
@@ -2469,7 +2446,7 @@
           scroll.appendChild(table);
           detail.appendChild(scroll);
           /* 클라에서 일부러 뺀 연출은 표에서 걷고 한 줄로만 남긴다 — 대조하다 「빠졌다」로 되살리지 않게 */
-          [["dropped", "클라에서 뺌"], ["pending", "클라에 아직 없음"]].forEach(function (pair) {
+          [["dropped", "클라에서 뺌"]].forEach(function (pair) {
             if (!spec[pair[0]]) return;
             var lineEl = elm("p", "mfx-why");
             lineEl.style.marginTop = "8px";
