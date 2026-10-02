@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-02 17:57",
+  updated: "2026-10-02 17:59",
 };
 
 /* --------------------------------------------------------------------------
@@ -79,7 +79,7 @@ const SECTIONS = [
         url: "docs/story-merge-structure-review.html",
         project: "smg",
         status: "완료",
-        version: "4e651ce",
+        version: "a0e4a9d",
         updated: "2026-10-02",
         pinned: false,
         tags: ["story-merge", "구조", "리팩토링"],
