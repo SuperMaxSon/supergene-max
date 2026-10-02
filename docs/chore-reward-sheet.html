@@ -368,6 +368,9 @@
                font-size: 10.5px; font-weight: 800; white-space: nowrap; color: #fff; }
       .cr-vd.is-ok { background: var(--balance); }
       .cr-vd.is-bad { background: var(--deploy); }
+      /* 꾸미기 행의 클라 꾸미기 유무 — 프리팹이 있으면 녹색, 없으면 붉은색. 글자로도 「있음/없음」을 쓴다. */
+      .cr-vd.is-has { background: var(--ok); }
+      .cr-vd.is-none { background: var(--bad); }
       .cr-vd.is-na { background: transparent; color: var(--text-faint); font-weight: 700;
                      box-shadow: inset 0 0 0 1px var(--border); }
       /* 미연결 — 자산은 있는데 흐름에 안 걸린 자리. 노랑 계열은 흰 글자가 안 읽혀
@@ -1153,7 +1156,7 @@
         const fn = src.split("/").pop();
         return `<img class="cr-th" loading="lazy" src="${encodeURI(`img/deco-tmp/${pf}/${fn}`)}" alt="${esc(fn)}" title="${esc(src)}">`;
       };
-      const noClient = `<span class="k">클라</span><span class="no">미반입</span>`;
+      const noClient = `<span class="k">클라</span><span class="cr-vd is-none">꾸미기 없음</span>`;
       /* 번들에 프리팹은 있는데 StoryDecorateSchedule 에 안 걸린 자리 — 게임에서는 안 붙는다(extract-client-deco.py 출력). */
       const CLIENT_UNWIRED = new Set(["1-9", "2-1", "2-2", "2-4", "2-5", "2-6", "2-7", "2-8", "2-9", "3-1", "3-2", "3-3", "3-4", "3-5", "3-6", "3-7", "4-1", "4-2", "4-3"]);
       function resultHtml(row) {
@@ -1161,7 +1164,7 @@
         const key = keyOfRow(row);
         const sheet = DECO_RES[key] || [];
         const cl = CLIENT_DECO[key];
-        const pfTag = cl ? `<span class="k">클라</span><code title="assets/bundles/area_courtyard/${cl[0]}.prefab">${cl[0]}.prefab</code>`
+        const pfTag = cl ? `<span class="k">클라</span><span class="cr-vd is-has">꾸미기 있음</span> <code title="assets/bundles/area_courtyard/${cl[0]}.prefab">${cl[0]}.prefab</code>`
             + (CLIENT_UNWIRED.has(key) ? `<span class="no">미연결</span>` : `<span class="no">임시 텍스처</span>`)
           : noClient;
         let res = "";
@@ -1203,8 +1206,8 @@
           ? ["A", "B", "C"].filter((x) => f[`디자인 ${x}`]).map((x) => `${x} ${f[`디자인 ${x}`]}`).join(" · ")
           : `${f["비포"] || "?"} → ${f["애프터"] || "?"}`;
         const cl = CLIENT_DECO[key];
-        const client = !cl ? `<span class="cr-none">클라 미반입</span>`
-          : `<code>${cl[0]}.prefab</code>${CLIENT_UNWIRED.has(key) ? ` <span class="cr-none">미연결</span>` : ""}`;
+        const client = !cl ? `<span class="cr-vd is-none">꾸미기 없음</span>`
+          : `<span class="cr-vd is-has">꾸미기 있음</span> <code>${cl[0]}.prefab</code>${CLIENT_UNWIRED.has(key) ? ` <span class="cr-none">미연결</span>` : ""}`;
         return `<tr class="cr-row is-deco${detOpen ? " is-open" : ""}" data-det="${id}">`
           + `<td class="cr-key"><span class="cr-dot is-d"></span>`
           + `<span class="cr-ar">▶</span> `
