@@ -6,7 +6,7 @@
     <title>머지 피드백 연출집</title>
     <meta
       name="description"
-      content="머지 보드 연출 값을 직접 만지며 맞추는 튜닝 도구. 액션 6종 · 텍스트 3종 · 보완 5종, 카드마다 표에서 시간·이징·세기를 슬라이더나 숫자로 바꾸고 cc.tween 상수로 복사한다."
+      content="머지 보드 연출 값을 직접 만지며 맞추는 튜닝 도구. 액션 6종 · 텍스트 3종 · 보완 5종 · 힌트 2종, 카드마다 표에서 시간·이징·세기를 슬라이더나 숫자로 바꾸고 cc.tween 상수로 복사한다."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css?v=mfx11" />
@@ -18,6 +18,7 @@
         <a class="nav-back" href="#action">액션 6</a>
         <a class="nav-back" href="#text">텍스트 3</a>
         <a class="nav-back" href="#gap">보완 5</a>
+        <a class="nav-back" href="#hint">힌트 2</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -40,8 +41,8 @@
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
-          <span class="tag">연출 14종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.1 · 2026-10-01 15:23</span>
+          <span class="tag">연출 16종 · 값 저장 · 주고받기</span>
+          <span class="tag" id="mfx-ver">v4.2 · 2026-10-02 14:34</span>
         </div>
       </div>
     </header>
@@ -161,6 +162,7 @@
         <div class="foot">
           <b>확인 범위</b>
           카드 머리의 구현 상태는 <code>story-merge-proto-client</code> main(<code>14fbd59</code>, 2026-10-01) 실측입니다.
+          단 힌트 2종(H1 · H2)과 C3 숨쉬기 값은 2026-10-02 클라 워킹트리(미커밋) 기준입니다.
           동작과 값의 기준은 클라입니다 — 표의 기본값은 <code>assets/script/game/data/MergeFxConfig.ts</code> 의
           <code>MERGE_FX</code> 한 표와 같고, <code>scripts/mfx-sync.js</code> 가 클라 값으로 다시 써서 맞춥니다.
           무대에서 맞춘 값은 [설정 복사] 로 가져가 클라에 넣고, 넣은 뒤 mfx-sync 로 기본값을 다시 맞춥니다.
@@ -171,6 +173,14 @@
           무대의 트윈 엔진은 Cocos <code>cc.easing</code> 과 같은 수식을 다시 구현한 것이라
           문서에서 보는 곡선이 엔진에서 나오는 곡선과 같습니다.
         </div>
+      </section>
+
+      <section class="doc-section" id="hint">
+        <h2 class="doc-h2">
+          힌트·추천 2종
+          <span class="doc-h2-sub">한동안 손을 안 대면 다음에 할 일 하나를 튕겨 보인다 — 손 커서 없이 칩만 움직인다</span>
+        </h2>
+        <div id="mfx-hint-list"></div>
       </section>
 
     </main>
@@ -408,7 +418,7 @@
         ];
         var STYLE_PARAM = { rise: "f1", arc: "f2", punch: "f3", slide: "f4", wave: "f5" };
         /* 메모 — f1 rise · f2 arc 는 아직 어느 클라 장면도 고르지 않는다(클라 MergeFxConfig.ts textStyle:
-           b1·c4 = punch, b2·b3 = slide, c6 = wave). 값은 클라에 있지만 실제 플레이에서는 재생되지 않는다. */
+           b1·c4 = punch, b3 = slide, c6 = wave). 값은 클라에 있지만 실제 플레이에서는 재생되지 않는다. */
 
         /* 연타로 겹칠 때만 시작 높이를 계단처럼 올린다. 다 사라지면 다시 0 단이다.
            좌우로 흩뿌리지 않는다 — 산개는 전투처럼 초당 수십 개가 뜨는 판의 변형이다. */
@@ -1022,7 +1032,6 @@
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
           ],
           b2: [
-            { k:"textStyle",  label:"문구 스타일",   sv:"slide", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"dimAlpha",   label:"감광 투명도",   v:0.45, min:0,    max:1,  step:0.01,unit:"",                                      cfg:"MERGE_CHARGING_DIM",             note:"코코스 opacity 115 ≈ 0.45" },
             { k:"pressInSec", label:"클릭 응답",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_CHARGING_TAP_IN_SEC",      note:"흔들지 않는다" },
             { k:"pressSX",    label:"응답 가로",     v:1.05, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_CHARGING_TAP_X" },
@@ -1110,6 +1119,8 @@
             { k:"bobSec",     label:"뱃지 까딱임",   v:0.42, min:0.1,  max:2, step:0.01, unit:"s", easeK:"bobEase",    ease:"sineInOut",cfg:"MERGE_READY_BADGE_BOB_SEC",      note:"닫힌 상자의 「!」 — 무대 왼쪽 칸" },
             { k:"bobPx",      label:"까딱임 높이",   v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_READY_BADGE_BOB_PX",       note:"대기 상태보다 크게" },
             { k:"sparkCount", label:"스파크 개수",   v:8,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
+            { k:"breathSec",  label:"숨쉬기 반주기", v:0.5,  min:0.05, max:2, step:0.01, unit:"s", easeK:"breathEase", ease:"sineInOut",cfg:"C3_BREATH_SEC",                  note:"팝 뒤 한 번 부풀었다 돌아온다 — 오갈 때 같은 값" },
+            { k:"breathScale",label:"숨쉬기 크기",   v:1.05, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"C3_BREATH_SCALE" },
           ],
           c4: [
             { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
@@ -1133,6 +1144,20 @@
             { k:"slotInSec",  label:"슬롯 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"slotEase",   ease:"quadOut", cfg:"MERGE_SLOT_HIT_IN_SEC" },
             { k:"slotScale",  label:"슬롯 반응 크기",v:1.14, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_SLOT_HIT_SCALE" },
             { k:"slotOutSec", label:"슬롯 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"slotOutEase",ease:"backOut", cfg:"MERGE_SLOT_HIT_OUT_SEC" },
+          ],
+          h1: [
+            { k:"delaySec",   label:"입력 없음 대기",v:2,    min:1,    max:10, step:0.1, unit:"s",                                     cfg:"IDLE_HINT_DELAY_SEC",            note:"VM 스캔 주기도 겸함 · 1초 하한" },
+            { k:"repeatSec",  label:"반복 쉼",       v:2,    min:1,    max:10, step:0.1, unit:"s",                                     cfg:"IDLE_HINT_REPEAT_SEC",           note:"VM 스캔 주기도 겸함 · 1초 하한 · H2 도 이 값" },
+            { k:"motionCount",label:"튕김 횟수",     v:2,    min:1,    max:5,  step:1,   unit:"회",                                    cfg:"IDLE_HINT_COUNT" },
+            { k:"outSec",     label:"커짐",          v:0.1,  min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"IDLE_HINT_OUT_SEC" },
+            { k:"backSec",    label:"되돌아옴",      v:0.15, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"quadIn",  cfg:"IDLE_HINT_BACK_SEC" },
+            { k:"bounceScale",label:"튕김 크기",     v:1.15, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"IDLE_HINT_SCALE",                note:"지금 배율에 곱한다" },
+          ],
+          h2: [
+            { k:"pullPx",     label:"당김 거리",     v:14,   min:0,    max:40, step:1,   unit:"px",                                    cfg:"IDLE_PULL_PX",                   note:"두 칩이 서로 쪽으로 각자 이만큼" },
+            { k:"motionCount",label:"당김 횟수",     v:2,    min:1,    max:5,  step:1,   unit:"회",                                    cfg:"IDLE_PULL_COUNT" },
+            { k:"outSec",     label:"다가감",        v:0.1,  min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"IDLE_PULL_OUT_SEC" },
+            { k:"backSec",    label:"되돌아옴",      v:0.15, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"quadIn",  cfg:"IDLE_PULL_BACK_SEC" },
           ],
         };
 
@@ -1226,7 +1251,7 @@
         })();
 
         /* ======================================================================
-           데모 15종 — 모든 수치는 위 V[id] 에서 읽는다.
+           데모 16종 — 모든 수치는 위 V[id] 에서 읽는다.
            표의 입력을 바꾸면 다음 재생부터 그 값으로 논다.
            ====================================================================== */
         var DEMOS = {};
@@ -1945,9 +1970,9 @@
               return Promise.all([
                 // 클라 BoardItemFx.ts:11·217·225-248 — 시간·반경·이징은 a4 값, 색은 SPARK_COLOR(255,224,130), 개수는 점 8개 상한(sparks 가 자른다)
                 sparks(st, p, P.sparkCount, SPARK_COLOR, V.a4.sparkSec, V.a4.sparkRadius, V.a4.sparkEase),
-                // 클라 BoardItemFx.ts:155 playReadyBreath — 팝이 끊기지 않았을 때만 숨쉰다
-                ok && fxTo(gen, 0.5, { sy: 1.05, sx: 1.05 }, "sineInOut")
-                  .then(function (ok2) { return ok2 && fxTo(gen, 0.5, { sy: 1, sx: 1 }, "sineInOut"); })
+                // 클라 BoardItemFx.ts:179-180 playReadyBreath — 팝이 끊기지 않았을 때만 숨쉰다(오갈 때 같은 breathSec · breathEase)
+                ok && fxTo(gen, P.breathSec, { sy: P.breathScale, sx: P.breathScale }, P.breathEase)
+                  .then(function (ok2) { return ok2 && fxTo(gen, P.breathSec, { sy: 1, sx: 1 }, P.breathEase); })
                   .then(function (ok2) { return fxEnd(gen, ok2); }),
               ]);
             });
@@ -2169,6 +2194,146 @@
             return serve();
           }
           return { st: st, reset: reset, play: play, hint: "타일 하나를 위쪽 오더 카드로 끌어 올리면 오더가 통째로 납품됩니다" };
+        };
+
+        /* H1 · H2 공용 방치 루프 — 클라 IdleHintDirector 의 start · poke · onFire 대응.
+           입력 없이 h1.delaySec → 연출 한 벌(motion) → h1.repeatSec 쉼 → 다시, 를 IDLE_CYCLES 번 돌고 끝낸다
+           (클라는 입력이 올 때까지 끝없이 돈다 — 무대는 시연이 끝나야 해서 두 번에서 자른다).
+           무대를 누르면 클라 poke 처럼 연출을 끊고 자세를 되돌린 뒤 대기부터 다시 센다 — 시연 중에도 받는다.
+           era 가 바뀌면 앞 회차 체인은 스스로 멈춘다. play() 의 Promise 는 회차가 끝나거나 reset 되면 반드시 풀린다. */
+        var IDLE_CYCLES = 2;
+        function idleLoop(st, cfg) {
+          var lbl = elm("div");
+          lbl.style.cssText = "min-height:18px;font-size:13px;line-height:18px;color:var(--text-dim);font-variant-numeric:tabular-nums;text-align:center";
+          st.wrap.appendChild(lbl);
+          st.board.style.cursor = "pointer";        // 판 전체가 입력을 받는다(스크롤은 막지 않는다)
+          var era = 0, done = null;
+          function live(mine) { return mine === era; }
+          function finish() { var d = done; done = null; if (d) d(); }
+          function count(sec, label, mine) {
+            return tw(sec, "linear", function (e) {
+              if (live(mine)) lbl.textContent = label + " " + (sec * e).toFixed(1) + " / " + sec.toFixed(1) + "초";
+            }).then(function () { return live(mine); });
+          }
+          function cycle(mine, n) {
+            if (!live(mine)) return Promise.resolve(false);
+            lbl.textContent = "힌트 재생 " + (IDLE_CYCLES - n + 1) + " / " + IDLE_CYCLES;
+            return cfg.motion(mine, live).then(function (ok) {
+              if (!ok || !live(mine)) return false;
+              if (n <= 1) { lbl.textContent = "끝 · 무대를 누르면 대기부터 다시"; return true; }
+              // 클라 IdleHintDirector.onFire — 연출 길이 + repeatSec 뒤에 다시 고른다
+              return count(V.h1.repeatSec, "쉼", mine).then(function (ok2) { return ok2 && cycle(mine, n - 1); });
+            });
+          }
+          /* 클라 poke — 연출을 끊고(stopMotion) 자세를 되돌린 뒤 delaySec 부터 다시 센다 */
+          function poke() {
+            era++;
+            cfg.restore();
+            var mine = era;
+            count(V.h1.delaySec, "입력 없음", mine)
+              .then(function (ok) { return ok && cycle(mine, IDLE_CYCLES); })
+              .then(function () { if (live(mine)) finish(); });
+          }
+          st.board.addEventListener("pointerdown", function () {
+            st.userTook = true;                     // 손이 닿으면 반복 시연은 멈춘다
+            poke();
+          });
+          return {
+            reset: function () {
+              era++;
+              finish();
+              lbl.textContent = "무대를 누르면 입력 없음 대기가 시작됩니다";
+            },
+            /* 시연 버튼은 대기 없이 바로 연출부터 — delaySec 은 무대를 눌렀을 때(클라 poke) 센다 */
+            play: function () {
+              return new Promise(function (res) {
+                done = res;
+                era++;
+                cfg.restore();
+                var mine = era;
+                cycle(mine, IDLE_CYCLES).then(function () { if (live(mine)) finish(); });
+              });
+            },
+            stop: function () { era++; finish(); },
+          };
+        }
+
+        /* H1 · 방치 힌트 — 튕김 ------------------------------------------------
+           칩 레벨이 다 달라 병합 힌트(H2)는 성립하지 않는다 — 가운데 생성기가 튕긴다. */
+        DEMOS.h1 = function (host) {
+          var st = makeStage(host, { cols: 3, rows: 3 }), target = null, TI = 4;
+          var loop = idleLoop(st, {
+            restore: function () { if (target) fxBegin(target); },
+            // 클라 IdleHintDirector.play — motionCount × (×bounceScale 로 outSec · 제자리로 backSec)
+            motion: function (mine, live) {
+              var H = V.h1, k = H.bounceScale, t = target, p = Promise.resolve(true);
+              if (!t) return p;
+              // 클라 IdleHintDirector.play — 붙여 넣은 값이 소수일 수 있어 1 이상 정수로 맞춘다
+              for (var i = 0, n = Math.max(1, Math.round(H.motionCount)); i < n; i++) {
+                p = p.then(function (ok) { return ok && live(mine) && fxTo(t, H.outSec, { sx: k, sy: k }, H.outEase); })
+                  .then(function (ok) { return ok && live(mine) && fxTo(t, H.backSec, { sx: 1, sy: 1 }, H.backEase); });
+              }
+              return p;
+            },
+          });
+          function reset() {
+            loop.reset();
+            st.clear();
+            [[0, 1], [2, 3], [6, 2], [8, 4]].forEach(function (c) {
+              var q = st.cellPos(c[0]);
+              st.tile("mfx-product", c[1]).set({ x: q.x, y: q.y });
+            });
+            var p = st.cellPos(TI);
+            target = st.tile("mfx-producer");
+            target.set({ x: p.x, y: p.y });
+          }
+          function play() { reset(); return loop.play(); }
+          return { st: st, reset: reset, play: play, stop: loop.stop, hint: "시연 재생은 바로 튕깁니다 · 무대를 누르면 끊고 delay 대기부터" };
+        };
+
+        /* H2 · 방치 힌트 — 병합 당김 -------------------------------------------
+           같은 레벨 두 칩이 서로 쪽으로 pullPx 만큼 다가갔다 돌아온다. 대기·쉼은 H1 값이다. */
+        DEMOS.h2 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), a = null, b = null, AI = 5, BI = 6;
+          function home(s) { fxStop(s); s.set({ x: s.home.x, y: s.home.y, sx: 1, sy: 1 }); }
+          /* 클라 IdleHintDirector.pullPoint — 상대 쪽 단위 벡터 × pullPx(클라 px → PX_K) */
+          function pull(s, other, mine, live) {
+            var H = V.h2, dx = other.home.x - s.home.x, dy = other.home.y - s.home.y, d = Math.hypot(dx, dy) || 1;
+            var to = { x: s.home.x + dx / d * px(H.pullPx), y: s.home.y + dy / d * px(H.pullPx) };
+            var p = Promise.resolve(true);
+            for (var i = 0, n = Math.max(1, Math.round(H.motionCount)); i < n; i++) {
+              p = p.then(function (ok) { return ok && live(mine) && fxTo(s, H.outSec, to, H.outEase); })
+                .then(function (ok) { return ok && live(mine) && fxTo(s, H.backSec, { x: s.home.x, y: s.home.y }, H.backEase); });
+            }
+            return p;
+          }
+          var loop = idleLoop(st, {
+            restore: function () { if (a) home(a); if (b) home(b); },
+            motion: function (mine, live) {
+              if (!a || !b) return Promise.resolve(true);
+              return Promise.all([pull(a, b, mine, live), pull(b, a, mine, live)])
+                .then(function (r) { return r[0] && r[1]; });
+            },
+          });
+          function reset() {
+            loop.reset();
+            st.clear();
+            [[0, 1], [3, 3], [10, 4]].forEach(function (c) {
+              var q = st.cellPos(c[0]);
+              st.tile("mfx-product", c[1]).set({ x: q.x, y: q.y });
+            });
+            var g = st.cellPos(9);
+            st.tile("mfx-producer").set({ x: g.x, y: g.y });
+            var pa = st.cellPos(AI), pb = st.cellPos(BI);
+            a = st.tile("mfx-product", 2);
+            a.set({ x: pa.x, y: pa.y });
+            a.home = { x: pa.x, y: pa.y };
+            b = st.tile("mfx-product", 2);
+            b.set({ x: pb.x, y: pb.y });
+            b.home = { x: pb.x, y: pb.y };
+          }
+          function play() { reset(); return loop.play(); }
+          return { st: st, reset: reset, play: play, stop: loop.stop, hint: "가운데 레벨 2 두 칩이 서로 당깁니다 · 대기·쉼은 H1 값" };
         };
 
         /* ======================================================================
@@ -2431,34 +2596,25 @@
 "}" },
 
           { group: "text", id: "b2", no: "B2", title: "충전중", state: "ok", label: "클라 구현",
-            memo: "충전중 응답(눌림 · 게이지 펀치 · 팝업)은 고른 생산자를 다시 탭했을 때만 난다 — 첫 탭은 고르기(무장 · 시안 브래킷)까지다(BoardTapFlow.ts:169-171 · 420-441). 문구는 실제 플레이에서 안 뜬다 — 클라는 재고 0 생성기를 탭하면 문구 대신 젬 충전 팝업을 연다(BoardTapFlow.ts:432-441 · ViewIngame.ts:582). 무대의 「젬 충전 팝업」 상자는 그 자리표시다. 문구(f4)는 팝업 연결이 없을 때의 폴백뿐이다. 게이지 펀치는 채움 바만 왼쪽 기준으로 커진다.",
-            why: "충전중은 <b>클릭했을 때 뜨는 응답</b>입니다. 아직 못 쓰는 생산자를 눌렀을 때 왜 안 되는지를 그 자리에서 알려 줍니다. B1(보드 꽉참)과 결정적으로 다른 점이 하나 — <b>흔들지 않습니다.</b> 흔들림은 \"잘못했다\" 는 신호인데 충전중은 잘못한 게 아니라 <b>기다리면 되는 일</b>이라, 눌린 반응만 주고 문구로 남은 시간을 말합니다. 감광과 게이지는 누르기 전부터 켜 두는 배경 상태입니다.",
+            memo: "충전중 응답(눌림 · 게이지 펀치 · 팝업)은 고른 생산자를 다시 탭했을 때만 난다 — 첫 탭은 고르기(무장 · 시안 브래킷)까지다(BoardTapFlow.ts:169-171 · 420-441). 문구는 없다 — 몸짓 뒤 젬 충전 팝업이 그 말을 대신한다(BoardTapFlow.ts · ViewIngame.ts:574). 무대의 「젬 충전 팝업」 상자는 그 자리표시다. 게이지 펀치는 채움 바만 왼쪽 기준으로 커진다.",
+            why: "충전중은 <b>클릭했을 때 뜨는 응답</b>입니다. B1(보드 꽉참)과 결정적으로 다른 점이 하나 — <b>흔들지 않습니다.</b> 흔들림은 \"잘못했다\" 는 신호인데 충전중은 잘못한 게 아니라 <b>기다리면 되는 일</b>이라, 눌린 반응과 게이지 펀치만 주고 젬 충전 팝업을 엽니다. 감광과 게이지는 누르기 전부터 켜 두는 배경 상태입니다.",
             code:
-"// 충전중인 생산자를 눌렀을 때 뜨는 응답. 거부(B1)와 달리 흔들지 않는다.\n" +
-"public onClickChargingGenerator(remainSec: number): void {\n" +
-"    GameSound.play(\"FX_ITEM_HINT\", this.generatorNode);        // FX_TILE_ERROR 아님\n" +
-"    cc.Tween.stopAllByTarget(this.generatorNode);\n" +
-"    cc.tween(this.generatorNode)\n" +
-"        .to(0.12, { scaleX: 1.05, scaleY: 0.95 }, { easing: \"quadOut\" })\n" +
-"        .to(POP_IN_SEC, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
-"        .start();\n" +
+"// BoardTapFlow.reportProduceBlocked — 충전중. 거부(B1)와 달리 흔들지 않고, 문구 없이 팝업으로 잇는다.\n" +
+"this.showStockGauge(index);                 // 게이지를 먼저 켠다 — 꺼져 있으면 펀치가 스킵된다\n" +
+"this.host.playChargingBump(index);          // 칩 press 스쿼시 ∥ 게이지 채움 바 펀치 (병렬)\n" +
+"const onRechargeTap = this.host.getOnRechargeTap();\n" +
+"if (onRechargeTap != null) onRechargeTap(index);   // ViewIngame → 젬 충전 팝업\n" +
 "\n" +
-"    this.punch(this.chargeGaugeNode);                          // 남은 시간이 어디 있는지 눈으로 잇는다\n" +
-"    this.showFloatText(Localization.getFormatString(\"merge_charging\", Math.ceil(remainSec)), this.generatorNode);\n" +
-"    CClog.log(\"ViewMergeBoard > charging tapped, remain \" + Math.ceil(remainSec));\n" +
-"}\n" +
-"\n" +
-"// 감광과 게이지는 누르기 전부터 켜 두는 배경 상태다.\n" +
-"private applyChargingState(remainSec: number, totalSec: number): void {\n" +
-"    this.chargingRoot.active = true;\n" +
-"    this.generatorSprite.node.opacity = 115;\n" +
-"    this.chargeGaugeNode.width = GAUGE_FULL_WIDTH * (1 - remainSec / totalSec);\n" +
-"    cc.Tween.stopAllByTarget(this.chargeGaugeNode);\n" +
-"    cc.tween(this.chargeGaugeNode)\n" +
-"        .to(remainSec, { width: GAUGE_FULL_WIDTH }, { easing: \"linear\" })\n" +
-"        .call(() => this.playChargeComplete())\n" +
-"        .start();\n" +
-"}" },
+"// BoardItemFx.playChargingBump\n" +
+"const b2 = MERGE_FX.b2;\n" +
+"cc.tween(node)\n" +
+"    .to(b2.pressInSec, { scaleX: b2.pressSX, scaleY: b2.pressSY }, { easing: b2.pressInEase })\n" +
+"    .to(b2.pressOutSec, { scaleX: 1, scaleY: 1 }, { easing: b2.pressOutEase })\n" +
+"    .start();\n" +
+"cc.tween(bar)\n" +
+"    .to(0.08, { scaleX: b2.punchScale, scaleY: b2.punchScale }, { easing: \"quadOut\" })\n" +
+"    .to(b2.punchOutSec, { scaleX: 1, scaleY: 1 }, { easing: b2.punchEase })\n" +
+"    .start();" },
 
           { group: "text", id: "b3", no: "B3", title: "잠긴 칸 클릭", state: "ok", label: "클라 구현",
             why: "잠긴 것은 <b>흔드는</b> 게 아니라 <b>돌립니다</b>. 좌우로 미는 흔들림은 \"거부\"고, 자물쇠가 좌우로 돌아가는 건 \"안 열린다\"입니다 — 같은 거부여도 원인이 다르니 모양도 달라야 합니다. 문구에는 <b>몇 레벨</b>인지가 반드시 들어가야 하고, 그 숫자가 다음 목표가 됩니다.",
@@ -2593,6 +2749,38 @@
 "        .start();\n" +
 "    await this.playRejectDrop(item, sourceCell);           // 복귀는 C1 과 같은 함수\n" +
 "}" },
+
+          { group: "hint", id: "h1", no: "H1", title: "방치 힌트 — 튕김", state: "ok", label: "클라 구현",
+            memo: "입력 없이 delaySec 이 지나면 우선순위에서 처음 성립하는 대상 하나가 motionCount 번 튕기고, 연출 뒤 repeatSec 쉬었다가 다시 고른다 — 입력이 올 때까지 반복(무대는 두 번에서 자른다). 입력이 오면 연출을 끊고 자세를 되돌린 뒤 대기부터 다시 센다. 우선순위(위가 먼저 · 성립하는 하나만): 오더 납품 → 심부름 → 상자 개봉 → 상자 탭 → 병합 → 체인끝 수확 → 보상함 → 생성기 → 에너지 아이템 — 순서는 IdleHintConfig.ts 의 IDLE_HINT_PRIORITY 배열이라 표 밖이다.",
+            dropped: "손 커서 없음 (2026-09-28 결정).",
+            code:
+"// IdleHintDirector.ts — 튕김. 반복 주기는 onFire 가 arm(motionSec + MERGE_FX.h1.repeatSec) 로 잇는다.\n" +
+"const h1 = MERGE_FX.h1;\n" +
+"const count = Math.max(1, Math.round(h1.motionCount));\n" +
+"const k = h1.bounceScale;\n" +
+"cc.tween(node)\n" +
+"    .tag(IDLE_HINT_TWEEN_TAG)               // 버튼의 남의 트윈은 안 건드린다 — stopAllByTag 로만 끊는다\n" +
+"    .repeat(count, cc.tween()\n" +
+"        .to(h1.outSec, { scaleX: pose.scaleX * k, scaleY: pose.scaleY * k }, { easing: h1.outEase })\n" +
+"        .to(h1.backSec, { scaleX: pose.scaleX, scaleY: pose.scaleY }, { easing: h1.backEase }))\n" +
+"    .start();\n" +
+"return count * (h1.outSec + h1.backSec);    // motionSec" },
+
+          { group: "hint", id: "h2", no: "H2", title: "방치 힌트 — 병합 당김", state: "ok", label: "클라 구현",
+            memo: "병합이 성립하면 같은 레벨 두 칩이 서로 쪽으로 각자 pullPx 만큼 다가갔다 돌아온다(motionCount 번). 대기·반복 주기는 H1 값 하나 — 이 카드에는 박자와 거리만 있다. 우선순위(위가 먼저 · 성립하는 하나만): 오더 납품 → 심부름 → 상자 개봉 → 상자 탭 → 병합 → 체인끝 수확 → 보상함 → 생성기 → 에너지 아이템 — 순서는 IdleHintConfig.ts 의 IDLE_HINT_PRIORITY 배열이라 표 밖이다.",
+            dropped: "손 커서 없음 (2026-09-28 결정).",
+            code:
+"// IdleHintDirector.ts — 병합 당김. 두 칩 각각 상대 쪽으로 pullPx 다가갔다 돌아온다.\n" +
+"const h2 = MERGE_FX.h2;\n" +
+"const count = Math.max(1, Math.round(h2.motionCount));\n" +
+"const to = this.pullPoint(node, partner);   // 상대 쪽 단위 벡터 × h2.pullPx (부모 좌표계)\n" +
+"cc.tween(node)\n" +
+"    .tag(IDLE_HINT_TWEEN_TAG)\n" +
+"    .repeat(count, cc.tween()\n" +
+"        .to(h2.outSec, { x: to.x, y: to.y }, { easing: h2.outEase })\n" +
+"        .to(h2.backSec, { x: pose.x, y: pose.y }, { easing: h2.backEase }))\n" +
+"    .start();\n" +
+"return count * (h2.outSec + h2.backSec);    // 쉼은 MERGE_FX.h1.repeatSec" },
 
 
         ];
@@ -3013,6 +3201,7 @@
           action: document.getElementById("mfx-action-list"),
           text: document.getElementById("mfx-text-list"),
           gap: document.getElementById("mfx-gap-list"),
+          hint: document.getElementById("mfx-hint-list"),
         };
         CATALOG.forEach(function (spec) { lists[spec.group].appendChild(buildCard(spec)); });
         /* 문서에 다 붙고 레이아웃이 잡힌 다음에 첫 배치를 만든다 */
@@ -3020,7 +3209,7 @@
           running.forEach(function (e) { e.demo.reset(); });
         });
 
-        /* 전체 복사 — 15개 섹션을 한 덩어리로. 파일 하나에 그대로 붙일 수 있게 */
+        /* 전체 복사 — 16개 섹션을 한 덩어리로. 파일 하나에 그대로 붙일 수 있게 */
         function allText() {
           var head = [
             "// MergeBoardPresentationConfig.ts — 머지 피드백 연출값",
