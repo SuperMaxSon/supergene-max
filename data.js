@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-07 09:14",
+  updated: "2026-10-07 09:19",
 };
 
 /* --------------------------------------------------------------------------
@@ -75,12 +75,12 @@ const SECTIONS = [
     cards: [
       {
         title: "스토리머지 구조 점검",
-        desc: "10-02 감사 134건 기준 e61ff9f → HEAD 4e651ce: 발견 52건(−61%) · high 11→0 · 버그 11→0 · 역의존 3→0 · 800줄 초과 3→0 · 점수 인 7.1→8.4 / 아웃 5.9→7.8",
+        desc: "10-02 감사 134건 기준 e61ff9f → HEAD 7cfd236: 발견 51건(−62%) · high 11→0 · 버그 11→1 · 역의존 3→0 · 800줄 초과 3→0 · 점수 인 7.1→8.1 / 아웃 5.9→7.9",
         url: "docs/story-merge-structure-review.html",
         project: "smg",
         status: "완료",
-        version: "a0e4a9d",
-        updated: "2026-10-02",
+        version: "7cfd236",
+        updated: "2026-10-07",
         pinned: false,
         tags: ["story-merge", "구조", "리팩토링"],
       },
