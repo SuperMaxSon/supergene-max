@@ -869,7 +869,7 @@ const SECTIONS = [
         project: "smg",
         status: "진행중",
         version: "v1.0",
-        updated: "2026-10-07 09:14",
+        updated: "2026-10-07 09:19",
         pinned: false,
         tags: ["커밋 히스토리", "상시"],
       },
