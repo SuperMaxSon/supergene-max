@@ -7,11 +7,11 @@
      mergeCheckAt   놓기는 상자만 막는다 — 거미줄 칸은 도착지로 **연다**
      mergeCheck     같은 체인·같은 단계 + 다음 단계가 있을 것
      shock          4방향 · 상자만 반응 · 드러난 칸이 움직일 수 있으면 연쇄
-     produceCheck   재고 → 빈칸 → 에너지 → 산출 순서. 자동 산출 생성기는 탭을 안 받는다
+     produceCheck   재고 → 빈칸 → 에너지 → 산출 순서. 자동 산출 생성기는 주변 8칸에 빈칸이 있으면 탭을 안 받는다(막히면 받는다 · 에너지 0)
      produceRoll    럭키(lucky_produce · 개체별 천장)를 주머니보다 먼저 굴린다. 당첨은 에너지만 쓰고 재고·주머니 보존
      drawFromBag    `produce_weight_N` 은 확률이 아니라 **개수**. 비면 재충전(방식 1). 주머니는 방식 1·2 모두 개체별
      nearestEmpty   산출은 생성기에서 나선(12시 · 시계방향)으로 가장 가까운 빈 칸에 놓인다(BoardGeometry.spiralOrderFrom)
-     tickGenerators 자동 생산기는 1초마다 주변 8칸(상하좌우 → 대각선) 빈 칸에 재고가 남는 만큼 스스로 놓는다
+     autoStep       자동 생산기는 유저 액션 하나가 성공할 때마다 생산기당 1개를 주변 8칸(상하좌우 → 대각선) 빈 칸에 놓는다. 시간으로 돌지 않는다
      mergeCheckAt   한 번이라도 산출한 소모형 상자는 못 합친다. 개봉 중이어도 안 쓴 상자는 합친다
      ProduceRecord  재고(보드)와 창고(예비)를 따로 든다. 타이머는 재고 < 상한일 때만, 돌고 있지 않을 때만
                     시작하고 종류는 그때 정한다(창고 > 0 보드 회복 · 0 창고 회복). 완료는 한 번에 상한까지
@@ -71,7 +71,6 @@
   var RAF = 0, RAF_AT = 0, RAF_ACC = 0;            // 배치 재생 프레임 · 직전 프레임 시각 · 적립된 벽시계 ms
   var OPENING = null;                              // { cell, code, endAt } — 지금 열리는 상자(보드에 하나뿐)
   var OPENED = null;                               // Set(칸) — 개봉이 끝난 상자 칸
-  var AUTO_AT = -Infinity;                         // 자동 생산기 직전 틱의 게임 시각
 
   /* D-2 옵션 — W3 가 window.RWB_OPTS 를 늘 최신값으로 둔다. 규칙이 갈리는 자리마다 새로 읽는다. */
   var OPT_DEFAULT = { energyRefill: true, gemUnlimited: true, genNoCooldown: false, chestNoTimer: false };
@@ -419,12 +418,15 @@
   /* 탭 가능 여부 — 재고 → 빈칸 → 에너지 → 산출 순서(정본). 어느 단계에서 막히든 아무것도 깎지 않는다.
      에너지는 energyRefill 이 켜져 있으면 막지 않는다(D8 — 탭하는 순간 충전). 꺼져 있으면 모자랄 때 막힌다.
      개봉 대기 상자는 개봉이 끝나야 꺼낼 수 있다(BoxRules — 개봉 시작이 먼저). */
+  /* 탭 에너지 — 자동 생산기는 막혀서 탭으로 낼 때도 0 이다(ProduceRules.produceCheck). */
+  function tapCost(p) { return p.auto ? 0 : p.cost; }
+
   function produceCheckAt(i) {
     var c = S[i];
     if (!c || c.box || c.web) return { ok: false, reason: "no_produce" };
     var p = (spec(c.code) || {}).p;
     if (!p) return { ok: false, reason: "no_produce" };
-    if (p.auto) return { ok: false, reason: "auto_only" };   // 자동 산출은 탭을 받지 않는다
+    if (p.auto && autoNeighbor(i) >= 0) return { ok: false, reason: "auto_only" };   // 주변에 자리가 있으면 다음 액션에 스스로 낸다 — 막혔을 때만 탭(ProduceVM.produceCheckAt · 2026-10-12)
     if (isOpenable(c.code) && !OPENED.has(i))
       return { ok: false, reason: OPENING && OPENING.cell === i ? "opening" : "not_opened" };
     var st = prodAt(i), g = genRow(c.code), t = now();
@@ -436,7 +438,7 @@
     if (st.stock <= 0) return { ok: false, reason: "recharging", wait: waitSec(g, st, t) };
     var dest = nearestEmpty(i);                    // IngameVM.nearestEmptyIndex — 나선으로 가장 가까운 빈 칸
     if (dest < 0) return { ok: false, reason: "board_full" };
-    if (!opts().energyRefill && ENERGY < p.cost) return { ok: false, reason: "energy_short", wait: energyWait(), need: p.cost };
+    if (!opts().energyRefill && ENERGY < tapCost(p)) return { ok: false, reason: "energy_short", wait: energyWait(), need: tapCost(p) };
     return { ok: true, dest: dest, p: p, st: st };
   }
 
@@ -500,8 +502,10 @@
          그다음 같은 거미줄 선호. 빈 칸이 없으면 채워 봐야 못 누르니 후보가 아니다. */
       var gdest = dest >= 0 ? nearestEmpty(i) : -1;
       var gc = r.reason === "recharging" && gdest >= 0 ? gemCostAt(i) : 0;
-      if (gc > 0 && canSpendGem(gc, o)) {
-        var p = spec(S[i].code).p, kg = rank(p, true);
+      var gp = gc > 0 ? spec(S[i].code).p : null;
+      // 에너지 충전 옵션이 꺼져 있으면 채운 뒤에도 못 누른다 — 에너지가 모자란 채 젬만 쓰고 탭하면 음수가 된다
+      if (gp && canSpendGem(gc, o) && (opts().energyRefill || ENERGY >= tapCost(gp))) {
+        var p = gp, kg = rank(p, true);
         if (!pick[kg]) pick[kg] = { index: i, gem: true, check: { ok: true, dest: gdest, p: p, st: PROD.get(i) } };
       }
       // 막힌 사유는 「생성기가 아예 없다」와 구분해야 해서 남긴다. 기다리면 풀리는 사유가 가장 약하다.
@@ -695,11 +699,13 @@
     return order;
   }
 
-  /* ── 자동 생산기 (IngameVM.tickGenerators 이식) ──────────────────────────────
-     spread_auto 생성기는 탭을 안 받고, 1초(AUTO_TICK_SEC) 틱마다 회복을 한 번 반영한 뒤 재고가 남는 동안
-     주변 8칸의 첫 빈 칸에 계속 놓는다. 에너지 0 · 배수 1 · 럭키·주머니·천장은 탭과 같은 규칙이다.
-     클라의 게이트(끌기 · 되돌리기 · 입력 막힘)는 이 시뮬에 없어 늘 열려 있다. */
-  var AUTO_TICK_SEC = 1;
+  /* ── 자동 생산기 (AutoProducerVM.autoStepAfterAction 이식) ──────────────────
+     spread_auto 생성기는 시간으로 돌지 않는다. 유저 액션(합치기 · 탭 산출 · 수확 · 납품 · 보상 꺼내기)이 성공할
+     때마다 열린 생산기마다 **하나씩** 주변 8칸의 첫 빈 칸에 놓는다(2026-09-29 · 생산기당 1개). 자리를 비운 사이 쌓인
+     재고도 한꺼번에 안 나온다. 판매 · 개봉 시작 · 실패한 수는 부르지 않는다.
+     이번 액션이 새로 놓은 칸(fresh — 합치기 결과 · 탭 산출물 · 꺼낸 보상)은 이번엔 안 낸다. 다음 액션부터 낸다.
+     에너지 0 · 배수 1 · 럭키·주머니·천장은 탭과 같은 규칙이다. 8칸이 다 차면 멀리 놓지 않고 기다린다 —
+     그때는 탭이 열린다(produceCheckAt). 클라의 게이트(판매 되돌리기가 살아 있을 때 정지)는 되돌리기가 없어 늘 열려 있다. */
   var AUTO_NB = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];   // [열, 행] — 상하좌우 먼저
 
   function autoNeighbor(i) {
@@ -720,29 +726,27 @@
     return !(isOpenable(c.code) && !OPENED.has(i));   // 열기 전 상자는 산출하지 않는다(b1)
   }
 
-  function tickGenerators() {
-    var t = now();
-    if (t - AUTO_AT < AUTO_TICK_SEC) return 0;
-    AUTO_AT = t;
+  function autoStep(fresh) {
+    var t = now(), from = [];
+    for (var i = 0; i < CELLS; i++) if (fresh.indexOf(i) < 0 && isAutoAt(i)) from.push(i);   // 돌릴 생산기를 먼저 모은다
     var placed = 0;
-    for (var i = 0; i < CELLS; i++) {
-      if (!isAutoAt(i)) continue;
+    from.forEach(function (i) {
       var code = S[i].code, p = spec(code).p, g = genRow(code), st = prodAt(i);
       project(g, st, t);
       noCooldownFill(g, st);
-      for (var to = autoNeighbor(i); to >= 0 && st.stock > 0; to = autoNeighbor(i)) {
-        var roll = produceRoll(i, code, p, st);
-        if (!roll) break;
-        commitRoll(g, st, roll, t);
-        noCooldownFill(g, st);
-        S[to] = { code: roll.code, box: false, web: false };
-        placed++;
-        LOG.push({ kind: "prod", auto: true, from: i, to: to, code: roll.code, lucky: roll.lucky,
-                   html: "cell" + i + " " + codeTag(code) + " → cell" + to + " " + codeTag(roll.code)
-                     + ' <span class="rwb-pop">자동 생산' + (roll.lucky ? " · 럭키" : "") + "</span>"
-                     + ' <span class="rwb-dim">재고 ' + st.stock + "</span>" });
-      }
-    }
+      var to = autoNeighbor(i);
+      if (to < 0 || st.stock <= 0) return;
+      var roll = produceRoll(i, code, p, st);
+      if (!roll) return;
+      commitRoll(g, st, roll, t);
+      noCooldownFill(g, st);
+      S[to] = { code: roll.code, box: false, web: false };
+      placed++;
+      LOG.push({ kind: "prod", auto: true, from: i, to: to, code: roll.code, lucky: roll.lucky,
+                 html: "cell" + i + " " + codeTag(code) + " → cell" + to + " " + codeTag(roll.code)
+                   + ' <span class="rwb-pop">자동 생산' + (roll.lucky ? " · 럭키" : "") + "</span>"
+                   + ' <span class="rwb-dim">재고 ' + st.stock + "</span>" });
+    });
     return placed;
   }
 
@@ -760,7 +764,7 @@
   function applyProduce(i, check) {
     var draw = produceRoll(i, S[i].code, check.p, check.st);
     if (!draw) return null;
-    var cost = check.p.cost;
+    var cost = tapCost(check.p);
     if (ENERGY - cost < 0 && opts().energyRefill) {   // D8 — 기다리지 않고 충전한 뒤 그 탭을 진행한다
       ACC.stats.recharges++;
       ENERGY += RECHARGE_AMOUNT;
@@ -960,13 +964,7 @@
     var at = RwEcon.railNextAt(ACC, RAIL);
     if (at > 0) cand(at - t, "order", "오더 대기");
     if (OPENING) cand(OPENING.endAt - t, "prod", "상자 개봉");
-    // 자동 생산기는 회복이 끝나면 스스로 놓는다 — 그것만으로 풀리는 판이 멈추지 않게 대기 후보에 넣는다
-    for (var ai = 0; ai < CELLS; ai++) {
-      if (!isAutoAt(ai) || autoNeighbor(ai) < 0) continue;
-      var ast = prodAt(ai), ag = genRow(S[ai].code);
-      project(ag, ast, t);
-      if (ast.stock <= 0 && ast.timer !== T_NONE) cand(Math.max(AUTO_TICK_SEC, waitSec(ag, ast, t)), "prod", "생성기 회복(자동)");
-    }
+    // 자동 생산기는 시간으로 돌지 않는다 — 다음 액션에 놓으므로 기다릴 이유가 못 된다(주변이 막힌 것만 아래 탭 후보로 본다)
     if (!boardFull) {
       for (var i = 0; i < CELLS; i++) {
         if (!S[i]) continue;
@@ -1046,7 +1044,7 @@
         var st = PROD.get(i);
         badge = '<span class="bc-gen" title="생성기 재고">⚡' + (st ? st.stock : s.p.max) + "</span>";
       } else if (c && s.p && s.p.auto) {
-        badge = '<span class="bc-gen" title="자동 산출 생성기 — 탭을 받지 않습니다">⏱</span>';
+        badge = '<span class="bc-gen" title="자동 산출 생성기 — 다음 액션에 스스로 내놓고, 주변 8칸이 막히면 탭을 받습니다">⏱</span>';
       }
       var src = c ? imgOf(c.code) : "";
       el.innerHTML = '<span class="bc-c">' + i + "</span>"
@@ -1223,12 +1221,12 @@
     if (BUSY) return;
     STEP_N++;
     tickOpening();                                 // 개봉 끝났으면 열린 상자로
-    tickGenerators();                              // 자동 생산기 1초 틱
     railIdleSkip();                                // 레일이 통째로 비었으면 오더 타이머까지 감는다
     if (RwEcon.railDue(ACC, RAIL, now())) refill("예산 회복");
     sweepSpentChests();                            // C1 — [0] 보다 먼저
 
     var dropped = dropReward();                    // [0] 우선순위 단계가 아니라 매 수 맨 앞의 선처리
+    if (dropped >= 0) autoStep([dropped]);         // 보상 꺼내기도 유저 액션이다 — 꺼낸 칸은 다음 액션부터
 
     if (RwEcon.choreCheck(ACC).ok) { runChore(then); return; }          // [1]
 
@@ -1313,6 +1311,7 @@
     logPush("order", "슬롯 " + sv.slot + " 납품 — " + cardText(out.card) + " · cell" + cells.join("·cell")
       + " · 코인 +" + out.reward.coin + " → " + ACC.coin);
     refill("납품");
+    autoStep([]);
     finish("슬롯 " + sv.slot + " 납품 · 코인 +" + out.reward.coin, cells, then);
   }
 
@@ -1327,6 +1326,7 @@
       + ' <span class="rwb-dim">(collect)</span>');
     var e = LOG[LOG.length - 1];
     e.collect = cl.code; e.unjam = !!cl.unjam; e.maxStep = !!cl.max;
+    autoStep([]);
     finish("수확 cell" + cl.index + " · " + nameOf(cl.code) + (g ? " · " + (KIND_KO[g.kind] || g.kind) + " +" + g.amount : ""),
       [cl.index], then);
   }
@@ -1347,6 +1347,7 @@
     markBoard([{ i: mv.from, c: "is-src" }, { i: mv.to, c: "is-dst" }]);
     fly(mv.from, mv.to, S[mv.from].code, function () {
       var r = applyMerge(mv.from, mv.to);
+      autoStep([mv.to]);
       render();
       flash([mv.to], "fx-pop");
       if (r.popped.length) flash(r.popped, "fx-shock");
@@ -1381,6 +1382,7 @@
     if (!out) { BUSY = false; stop(); status("주머니가 비어 더 뽑을 수 없습니다"); return; }
     if (pr.chest) { var e = LOG[LOG.length - 1]; e.chest = true; e.preempt = preempt; }
     fly(pr.index, out.dest, out.code, function () {
+      autoStep([out.dest]);
       render();
       flash([out.dest], "fx-pop");
       status("수 " + LOG.length + " · 생산 cell" + pr.index + " → cell" + out.dest + " · " + nameOf(out.code)
@@ -1450,7 +1452,6 @@
     BAGS = new Map();
     OPENED = new Set();
     OPENING = null;
-    AUTO_AT = -Infinity;
     ENERGY = ENERGY_MAX = DB._meta.energy;
     ENERGY_REC = DB._meta.energyRec || 0;
     CLOCK = { t: 0, wall: Date.now() / 1000 };     // 게임 시각도 같이 되감는다
