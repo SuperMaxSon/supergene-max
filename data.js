@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-12 19:40",
+  updated: "2026-10-12 20:10",
 };
 
 /* --------------------------------------------------------------------------
@@ -335,12 +335,12 @@ const SECTIONS = [
       },
       {
         title: "로딩 타임라인",
-        desc: "NRU·RU 가 실행해서 첫 입력까지, 그리고 인게임↔아웃게임 전환마다 무엇을 얼마나 몇 초 받는지 간트로 그렸습니다. 회선(WiFi·4G·3G) 토글.",
+        desc: "NRU·RU 가 실행해서 첫 입력까지, 그리고 인게임↔아웃게임 전환마다 무엇을 얼마나 몇 초 받는지 간트로 그렸습니다. 회선(WiFi·4G·3G) 토글, 작은 항목(0.1MB·1MB 미만) 숨김 토글.",
         url: "docs/story-merge-load-timeline.html",
         project: "smg",
         status: "완료",
-        version: "v1.2",
-        updated: "2026-10-12 19:40",
+        version: "v1.3",
+        updated: "2026-10-12 20:10",
         pinned: false,
         tags: ["코드 실측", "리소스", "타임라인"],
         share: false,
