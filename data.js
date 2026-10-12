@@ -74,6 +74,17 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
+        title: "스토리머지 IAP 연결",
+        desc: "상점 젬 팩·패키지를 실결제로 바꾸는 데 필요한 것 — 요청 21건 · Meta 대시보드 5단계 · 결제 시퀀스 · 영수증 검증 · 타게임 6종 상품 · 우리 상품 18행 · 코드 수정 위치.",
+        url: "docs/story-merge-iap-connect.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.0",
+        updated: "2026-10-12",
+        pinned: false,
+        tags: ["story-merge", "IAP", "결제"],
+      },
+      {
         title: "팝업 아트 UI 필요 여부",
         desc: "팝업 프리팹 33종을 인게임 · 아웃게임 · 공용으로 나누고 스토리머지 아트 적용 여부를 캡처와 함께 본 표. 필요 28 · 적용 완료 4 · 불필요 1, 판정 필터 토글.",
         url: "docs/story-merge-popup-art-need.html",
