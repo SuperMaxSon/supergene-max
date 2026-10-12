@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-12 12:40",
+  updated: "2026-10-12 13:05",
 };
 
 /* --------------------------------------------------------------------------
@@ -346,15 +346,15 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "아이템 이미지 프리로드 순서",
-        desc: "아이템 이미지를 언제 · 무엇을 · 몇 장 미리 받는지 실행 순서대로 위에서 아래로 정리했습니다. 기다리는 것과 백그라운드로 받는 것을 가릅니다.",
-        url: "docs/story-merge-item-preload.html",
+        title: "프리로드 순서",
+        desc: "부팅부터 첫 입력까지 무엇을 언제 미리 받는지 NRU · RU 두 갈래로 위에서 아래 시간 순서로 정리했습니다. 아이템 이미지 선받기를 포함합니다.",
+        url: "docs/story-merge-preload-order.html",
         project: "smg",
         status: "완료",
         version: "v1.0",
-        updated: "2026-10-12 12:40",
+        updated: "2026-10-12 13:05",
         pinned: false,
-        tags: ["코드 실측", "리소스", "프리로드"],
+        tags: ["코드 실측", "리소스", "프리로드", "타임라인"],
         share: false,
       },
     ],
