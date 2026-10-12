@@ -482,7 +482,7 @@ const SECTIONS = [
         project: "smg",
         status: "완료",
         version: "v1.0",
-        updated: "2026-10-12 15:45",
+        updated: "2026-10-12 15:55",
         pinned: false,
         tags: ["프리팹 실측", "데코", "임시"],
       },
