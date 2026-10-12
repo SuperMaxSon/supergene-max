@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-12 16:30",
+  updated: "2026-10-12 17:30",
 };
 
 /* --------------------------------------------------------------------------
@@ -334,27 +334,15 @@ const SECTIONS = [
         share: false,
       },
       {
-        title: "로딩 타임라인",
-        desc: "NRU·RU 가 실행해서 첫 입력까지, 그리고 인게임↔아웃게임 전환마다 무엇을 얼마나 몇 초 받는지 간트로 그렸습니다. 회선(WiFi·4G·3G) 토글.",
-        url: "docs/story-merge-load-timeline.html",
-        project: "smg",
-        status: "완료",
-        version: "v1.2",
-        updated: "2026-10-12 16:30",
-        pinned: false,
-        tags: ["코드 실측", "리소스", "타임라인"],
-        share: false,
-      },
-      {
         title: "프리로드 순서",
-        desc: "부팅부터 첫 입력까지 무엇을 언제 미리 받는지 NRU · RU 두 갈래로 위에서 아래 시간 순서로 정리했습니다. 줄마다 받기·메모리 누적 막대가 붙고, 눌러서 펼치면 그 단계가 받는 것이 썸네일로 나옵니다.",
+        desc: "부팅 → 첫 입력, 화면 전환, 마을 안 팝업까지 무엇을 어떤 순서로 받고 메모리에 얼마나 올리는지 정리했습니다. NRU · RU 두 갈래, 단계마다 다운로드 · 메모리 누적 막대와 받는 것의 썸네일, 놓는 것, 변화 추이가 있습니다. 시간 · 회선은 뺐습니다.",
         url: "docs/story-merge-preload-order.html",
         project: "smg",
         status: "완료",
-        version: "v1.0",
-        updated: "2026-10-12 16:30",
+        version: "v2.0",
+        updated: "2026-10-12 17:30",
         pinned: false,
-        tags: ["코드 실측", "리소스", "프리로드", "타임라인"],
+        tags: ["코드 실측", "리소스", "프리로드"],
         share: false,
       },
     ],
