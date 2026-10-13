@@ -74,6 +74,17 @@ const SECTIONS = [
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
       {
+        title: "아이템 아트 ↔ 시트 이름",
+        desc: "새 아이템 아트 210장을 번역시트 이름과 코드별로 나란히 놓고 맞는지 본 표. 일치 183 · 애매 9 · 불일치 18, 안 맞는 항목은 주황색.",
+        url: "docs/item-art-match.html",
+        project: "smg",
+        status: "초안",
+        version: "v1.19",
+        updated: "2026-10-13 10:01",
+        pinned: false,
+        tags: ["story-merge", "아트", "번역시트"],
+      },
+      {
         title: "스토리머지 IAP 연결",
         desc: "상점 젬 팩·패키지를 실결제로 바꾸는 데 필요한 것 — 요청 25건 · 기획서 현황 대조 · Meta 대시보드 5단계 · 결제 시퀀스 · 영수증 검증 · 타게임 6종 상품 · 우리 상품 18행 · 코드 수정 위치.",
         url: "docs/story-merge-iap-connect.html",
