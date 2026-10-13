@@ -75,12 +75,12 @@ const SECTIONS = [
     cards: [
       {
         title: "아이템 아트 ↔ 시트 이름",
-        desc: "새 아이템 아트 210장을 시트(string_code) 영문·한글 이름과 레벨별로 나란히 놓고 맞는지 본 격자. 일치 198 · 불일치 12, 안 맞는 항목은 주황색. 테마·판정 필터.",
+        desc: "기획 아이템 239종을 시트(string_code) 영문·한글 이름과 레벨별로 새 아트와 나란히 놓은 격자. 일치 198 · 불일치 12(주황) · 이미지 없음 29(빨강). 테마(생산자→생산물)·판정 필터.",
         url: "docs/item-art-match.html",
         project: "smg",
         status: "초안",
         version: "v1.19",
-        updated: "2026-10-13 10:30",
+        updated: "2026-10-13 10:35",
         pinned: false,
         tags: ["story-merge", "아트", "번역시트"],
       },
