@@ -75,12 +75,12 @@ const SECTIONS = [
     cards: [
       {
         title: "아이템 아트 ↔ 시트 이름",
-        desc: "새 아이템 아트 210장을 번역시트 이름과 코드별로 나란히 놓고 맞는지 본 표. 일치 183 · 애매 9 · 불일치 18, 안 맞는 항목은 주황색.",
+        desc: "새 아이템 아트 210장을 번역시트 이름과 코드별로 나란히 놓고 맞는지 본 표. 일치 183 · 불일치 27, 안 맞는 항목은 주황색. 테마·판정 필터와 이슈 없음 체크.",
         url: "docs/item-art-match.html",
         project: "smg",
         status: "초안",
         version: "v1.19",
-        updated: "2026-10-13 10:01",
+        updated: "2026-10-13 10:16",
         pinned: false,
         tags: ["story-merge", "아트", "번역시트"],
       },
