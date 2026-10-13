@@ -7,6 +7,13 @@
     <meta name="description" content="새 아이템 아트 210장을 번역시트 이름과 나란히 놓고 일치 여부를 본 격자. 불일치 27." />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css" />
+    <!-- 체크(이슈 없음)는 로컬에서 여는 검수용이다. 서버(라이브)에서는 UI 와 동작을 모두 끈다 —
+         file:// 이거나 localhost 일 때만 icg-local 이 붙고, 체크 UI 는 CSS 에서 이 클래스가 있어야 보인다. -->
+    <script>
+      if (location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+        document.documentElement.classList.add("icg-local");
+      }
+    </script>
   </head>
   <body>
     <nav class="nav">
@@ -1591,6 +1598,7 @@
         var themes = {};
         var ck = "all";
         var done = {};
+        var local = document.documentElement.classList.contains("icg-local");
 
         function pressed(el) {
           return el.getAttribute("aria-pressed") === "true";
@@ -1601,12 +1609,14 @@
         }
 
         function load() {
+          if (!local) return;
           try {
             JSON.parse(localStorage.getItem(KEY) || "[]").forEach(function (k) { done[k] = true; });
           } catch (e) { /* 저장소가 막힌 환경 — 체크는 이번 방문에만 유지된다 */ }
         }
 
         function persist() {
+          if (!local) return;
           try {
             localStorage.setItem(KEY, JSON.stringify(Object.keys(done)));
           } catch (e) { /* 위와 같다 */ }
@@ -1703,7 +1713,7 @@
           }
           box.addEventListener("change", function () { set(box.checked); });
           c.addEventListener("click", function (e) {
-            if (e.target === box) return;
+            if (!local || e.target === box) return;
             set(!done[code(c)]);
           });
         });
