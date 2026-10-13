@@ -46,11 +46,11 @@
         <h2 class="doc-h2">요약 <span class="doc-h2-sub">210종</span></h2>
         <div class="stat-row">
           <div class="stat" style="--acc: var(--ok)">
-            <div class="stat-num">183</div>
+            <div class="stat-num" id="icg-s-ok">183</div>
             <div class="stat-name">일치</div>
           </div>
           <div class="stat" style="--acc: var(--warn)">
-            <div class="stat-num">27</div>
+            <div class="stat-num" id="icg-s-bad">27</div>
             <div class="stat-name">불일치</div>
             <div class="stat-sub">703~704 · 802~815 · 1705~1706 + 애매 9</div>
           </div>
@@ -76,8 +76,8 @@
         <h2 class="doc-h2">아이템 <span class="doc-h2-sub">코드 오름차순</span></h2>
         <div class="icg-bar" id="icg-main">
           <button type="button" class="icg-btn" data-f="all" aria-pressed="true">전체 210</button>
-          <button type="button" class="icg-btn" data-f="bad" aria-pressed="false">불일치 27</button>
-          <button type="button" class="icg-btn" data-f="ok" aria-pressed="false">일치 183</button>
+          <button type="button" class="icg-btn" data-f="bad" aria-pressed="false">불일치 <span id="icg-n-bad">27</span></button>
+          <button type="button" class="icg-btn" data-f="ok" aria-pressed="false">일치 <span id="icg-n-ok">183</span></button>
           <span class="icg-count" id="icg-count">표시 210</span>
         </div>
         <div class="icg-bar" id="icg-theme">
@@ -1585,7 +1585,8 @@
     <script>
       // 필터: 판정(전체/불일치/일치 단일 선택)과 테마(복수 선택, 없으면 전체),
       // 체크 상태(전체/미체크/이슈 없음)를 AND 로 건다. 순서는 DOM 순서(코드 오름차순)를 그대로 쓰고 보이기/숨기기만 바꾼다.
-      // 체크 = 사용자가 "이슈 없음"으로 본 칸. 내 판정(data-v)은 그대로 두고, 체크한 칸만 초록으로 덮어 그린다.
+      // 체크 = 사용자가 "이슈 없음"으로 본 칸. 내 판정(data-v)은 그대로 두되, 필터·개수는 체크한 칸을 일치로 셈한다.
+      // (서버에서는 체크가 없어서 개수가 정적 값과 같다.)
       (function () {
         var KEY = "item-art-match:ok";
         var cells = document.querySelectorAll("#icg .icg-cell");
@@ -1594,6 +1595,8 @@
         var checkBtns = document.querySelectorAll("#icg-check .icg-btn");
         var count = document.getElementById("icg-count");
         var doneEl = document.getElementById("icg-done");
+        var nBad = [document.getElementById("icg-n-bad"), document.getElementById("icg-s-bad")];
+        var nOk = [document.getElementById("icg-n-ok"), document.getElementById("icg-s-ok")];
         var mode = "all";
         var themes = {};
         var ck = "all";
@@ -1626,10 +1629,12 @@
           var shown = 0;
           var picked = Object.keys(themes).length;
           var n = 0;
+          var bad = 0;
           cells.forEach(function (c) {
-            var v = c.getAttribute("data-v");
             var isDone = !!done[code(c)];
+            var v = isDone ? "ok" : c.getAttribute("data-v");
             if (isDone) n++;
+            if (v === "bad") bad++;
             c.classList.toggle("is-ok", isDone);
             c.querySelector(".icg-chk").checked = isDone;
             var okStatus = mode === "all" || (mode === "ok" && v === "ok") || (mode === "bad" && v === "bad");
@@ -1640,6 +1645,8 @@
           });
           count.textContent = "표시 " + shown;
           doneEl.textContent = "✓ " + n + " / " + cells.length;
+          nBad.forEach(function (e) { e.textContent = bad; });
+          nOk.forEach(function (e) { e.textContent = cells.length - bad; });
         }
 
         function report() {
