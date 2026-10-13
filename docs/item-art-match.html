@@ -36,6 +36,7 @@
         <div class="doc-meta">
           <span class="tag">시트 string_code 2026-10-01 export 기준</span>
           <span class="tag">육안 판정</span>
+          <span class="tag">검수 반영 <span id="icg-rev">0</span>장</span>
           <span class="tag">2026-10-13</span>
         </div>
       </div>
@@ -52,7 +53,7 @@
           <div class="stat" style="--acc: var(--warn)">
             <div class="stat-num" id="icg-s-bad">12</div>
             <div class="stat-name">불일치</div>
-            <div class="stat-sub">703~704 · 808~809 · 1504 · 1701~1707</div>
+            <div class="stat-sub" id="icg-bad-list">703~704</div>
           </div>
           <div class="stat" style="--acc: var(--bad)">
             <div class="stat-num" id="icg-s-none">29</div>
@@ -65,9 +66,10 @@
             <div class="note-title">이 판정을 읽는 법</div>
             <p>
               <strong>사람 눈으로 본 판정</strong>이라 틀릴 수 있습니다. 영문·한글 이름과 레벨은 모두 시트(<code>string_code</code>·<code>item_spec.step</code>, 2026-10-01 export)의 값입니다.
-              불일치 12장은 그림이 이름과 안 맞는 것입니다 —
-              703~704는 모닥불·프라이팬(시트는 무쇠 팬·반죽 그릇), 1701~1707은 스킨케어 병·튜브·크림통(시트는 밀랍 부스러기~밀랍 상자),
-              808~809는 채소 샌드위치(시트는 과일 샌드위치), 1504는 작은 벌통(시트는 작은 벌집)입니다.
+              불일치는 그림이 이름과 안 맞는 것입니다 — 703~704는 모닥불·프라이팬(시트는 무쇠 팬·반죽 그릇),
+              1701~1707은 스킨케어 병·튜브·크림통(시트는 밀랍 부스러기~밀랍 상자), 808~809는 채소 샌드위치(시트는 과일 샌드위치),
+              1504는 작은 벌통(시트는 작은 벌집)입니다.
+              검수에서 이슈 없다고 확인된 <span id="icg-rev2">0</span>장은 일치로 셉니다(검수 결과는 <code>data/item-art-reviewed.json</code>).
               아트와 시트 중 어느 쪽이 맞는지는 이 격자만으로 가릴 수 없습니다.
               클라 <code>en.json</code>은 시트보다 오래돼 32개 이름이 다릅니다(801~815 빵 체인, 901~907 잼 체인 등). 이 격자는 시트 기준입니다.
             </p>
@@ -111,9 +113,8 @@
           <span class="icg-count" id="icg-done">✓ 0 / 210</span>
         </div>
         <div class="icg-bar" id="icg-act">
-          <button type="button" class="icg-btn" id="icg-copy">복사</button>
-          <button type="button" class="icg-btn" id="icg-save">파일 저장</button>
-          <button type="button" class="icg-btn" id="icg-reset">초기화</button>
+          <button type="button" class="icg-btn" id="icg-clear">체크 전부 해제</button>
+          <span class="icg-count" id="icg-sync">서버 반영 대기</span>
         </div>
         <div class="icg" id="icg">
           <div class="icg-th" data-t="tool">공구·페인트 <span>32</span></div>
@@ -2048,20 +2049,21 @@
     <script src="../app.js"></script>
     <script>
       // 필터: 판정(전체/불일치/일치/이미지 없음 단일 선택)과 테마(복수 선택, 없으면 전체), 체크 상태(전체/미체크/이슈 없음)를 AND 로 건다.
-      // 순서는 DOM 순서(테마 → 체인 → 레벨)를 그대로 쓰고 보이기/숨기기만 바꾼다. 체크가 없는 서버에서는 개수가 정적 값과 같다.
-      // 체크 = 사용자가 "이슈 없음"으로 본 칸. 내 판정(data-v)은 그대로 두되 필터·개수는 체크한 칸을 일치로 센다.
-      // 이미지 없음 칸은 검수 대상이 아니라 체크박스가 없고 체크 필터에도 안 걸린다.
+      // 순서는 DOM 순서(테마 → 체인 → 레벨)를 그대로 쓰고 보이기/숨기기만 바꾼다.
+      // 검수 결과(data/item-art-reviewed.json)의 코드는 "이슈 없음"으로 본 칸이라 일치로 센다(내 원래 판정은 data-v 에 그대로 둔다).
+      // 로컬 도우미(_ignore/item-art-match/server.py)로 열면 체크를 바꿀 때마다 그 JSON 을 커밋·푸시해 서버에 바로 반영한다.
+      // 서버(라이브)에서는 체크 UI 와 동기화가 없고 JSON 값만 읽는다. 이미지 없음 칸은 검수 대상이 아니라 체크박스가 없다.
       (function () {
-        var KEY = "item-art-match:ok";
         var cells = document.querySelectorAll("#icg .icg-cell");
         var heads = document.querySelectorAll("#icg .icg-th");
         var chHeads = document.querySelectorAll("#icg .icg-ch");
         var main = document.querySelectorAll("#icg-main .icg-btn");
         var themeBtns = document.querySelectorAll("#icg-theme .icg-btn");
         var checkBtns = document.querySelectorAll("#icg-check .icg-btn");
-        var count = document.getElementById("icg-count");
-        var doneEl = document.getElementById("icg-done");
         var el = function (id) { return document.getElementById(id); };
+        var count = el("icg-count");
+        var doneEl = el("icg-done");
+        var syncEl = el("icg-sync");
         var nums = {
           bad: [el("icg-n-bad"), el("icg-s-bad")],
           ok: [el("icg-n-ok"), el("icg-s-ok")],
@@ -2073,6 +2075,8 @@
         var themes = {};
         var ck = "all";
         var done = {};
+        var timer = null;
+        var seq = 0;
 
         function pressed(b) {
           return b.getAttribute("aria-pressed") === "true";
@@ -2082,34 +2086,45 @@
           return c.querySelector(".icg-code").textContent;
         }
 
-        function load() {
-          if (!local) return;
-          try {
-            JSON.parse(localStorage.getItem(KEY) || "[]").forEach(function (k) { done[k] = true; });
-          } catch (e) { /* 저장소가 막힌 환경 — 체크는 이번 방문에만 유지된다 */ }
+        // 연속한 코드는 범위로 줄인다: 703, 704, 1701…1707 → "703~704 · 1701~1707"
+        function ranges(list) {
+          var out = [];
+          var i = 0;
+          while (i < list.length) {
+            var j = i;
+            while (j + 1 < list.length && list[j + 1] === list[j] + 1) j++;
+            out.push(j > i ? list[i] + "~" + list[j] : String(list[i]));
+            i = j + 1;
+          }
+          return out.join(" · ");
         }
 
-        function persist() {
-          if (!local) return;
-          try {
-            localStorage.setItem(KEY, JSON.stringify(Object.keys(done)));
-          } catch (e) { /* 위와 같다 */ }
+        function setSync(text, bad) {
+          if (!syncEl) return;
+          syncEl.textContent = text;
+          syncEl.style.color = bad ? "var(--bad)" : "";
         }
 
         function apply() {
           var shown = 0;
           var picked = Object.keys(themes).length;
           var n = 0;
+          var rev = 0;
           var cnt = { bad: 0, ok: 0, none: 0 };
+          var badCodes = [];
           var visTheme = {};
           var visChain = {};
           cells.forEach(function (c) {
             var box = c.querySelector(".icg-chk");
+            var base = c.getAttribute("data-v");
             var isDone = !!box && !!done[code(c)];
-            var v = isDone ? "ok" : c.getAttribute("data-v");
+            var v = isDone ? "ok" : base;
             if (isDone) n++;
+            if (isDone && base === "bad") rev++;
             cnt[v]++;
-            c.classList.toggle("is-ok", isDone);
+            if (v === "bad") badCodes.push(+code(c));
+            c.classList.toggle("is-bad", v === "bad");
+            c.classList.toggle("is-ok", local && isDone);
             if (box) box.checked = isDone;
             var okStatus = mode === "all" || mode === v;
             var okCheck = ck === "all" || (!!box && (ck === "done" ? isDone : !isDone));
@@ -2122,7 +2137,6 @@
               visChain[t + "/" + c.getAttribute("data-ch")] = true;
             }
           });
-          // 머리글: 보이는 칸이 있는 테마·체인만 남기고, 테마 숫자는 지금 보이는 칸 수로 맞춘다.
           heads.forEach(function (h) {
             var k = visTheme[h.getAttribute("data-t")] || 0;
             h.hidden = k === 0;
@@ -2136,37 +2150,38 @@
           ["bad", "ok", "none"].forEach(function (k) {
             nums[k].forEach(function (e) { e.textContent = cnt[k]; });
           });
+          el("icg-bad-list").textContent = badCodes.length ? ranges(badCodes) : "없음";
+          el("icg-rev").textContent = rev;
+          el("icg-rev2").textContent = rev;
         }
 
-        function report() {
-          var codes = [];
-          var diff = [];
-          cells.forEach(function (c) {
-            var k = code(c);
-            if (!done[k]) return;
-            codes.push(k);
-            if (c.getAttribute("data-v") === "bad") diff.push(k + "(불일치)");
-          });
-          return { codes: codes, diff: diff };
+        // 체크가 바뀌면 잠깐(0.8초) 모아서 한 번에 서버에 보낸다. 응답이 늦게 온 옛 요청은 무시한다.
+        function sync() {
+          if (!local) return;
+          setSync("서버 반영 중…");
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            var my = ++seq;
+            var ok = Object.keys(done).map(Number).sort(function (a, b) { return a - b; });
+            fetch("/api/apply", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ok: ok })
+            }).then(function (r) { return r.json(); }).then(function (j) {
+              if (my !== seq) return;
+              if (j.ok) setSync("서버 반영됨 " + (j.commit ? "· " + j.commit : "· 변경 없음"));
+              else setSync("서버 반영 실패: " + j.error, true);
+            }).catch(function () {
+              if (my === seq) setSync("도우미가 꺼져 있어 서버 반영 실패", true);
+            });
+          }, 800);
         }
 
-        function flash(btn, text) {
-          var old = btn.textContent;
-          btn.textContent = text;
-          setTimeout(function () { btn.textContent = old; }, 1400);
-        }
-
-        function copyText(t) {
-          if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
-          return new Promise(function (ok, no) {
-            var ta = document.createElement("textarea");
-            ta.value = t;
-            document.body.appendChild(ta);
-            ta.select();
-            var r = document.execCommand("copy");
-            document.body.removeChild(ta);
-            r ? ok() : no();
-          });
+        function set(k, v) {
+          if (v) done[k] = true;
+          else delete done[k];
+          apply();
+          sync();
         }
 
         main.forEach(function (b) {
@@ -2197,55 +2212,33 @@
           });
         });
 
-        // 칸 어디를 눌러도 토글. 체크박스를 직접 누르면 그 change 로만 처리해 두 번 뒤집히지 않게 한다.
+        // 칸 어디를 눌러도 토글(로컬만). 체크박스를 직접 누르면 그 change 로만 처리해 두 번 뒤집히지 않게 한다.
         cells.forEach(function (c) {
           var box = c.querySelector(".icg-chk");
           if (!box) return;
-          function set(v) {
-            if (v) done[code(c)] = true;
-            else delete done[code(c)];
-            persist();
-            apply();
-          }
-          box.addEventListener("change", function () { set(box.checked); });
+          box.addEventListener("change", function () { set(code(c), box.checked); });
           c.addEventListener("click", function (e) {
             if (!local || e.target === box) return;
-            set(!done[code(c)]);
+            set(code(c), !done[code(c)]);
           });
         });
 
-        el("icg-copy").addEventListener("click", function (e) {
-          var r = report();
-          var t = "이슈없음 " + r.codes.length + "개: " + r.codes.join(", ");
-          if (r.diff.length) t += "\n내 판정과 다른 것: " + r.diff.join(", ");
-          copyText(t).then(function () { flash(e.target, "복사됨"); }, function () { flash(e.target, "복사 실패"); });
-        });
-
-        el("icg-save").addEventListener("click", function (e) {
-          var r = report();
-          var blob = new Blob([JSON.stringify({
-            savedAt: new Date().toISOString(),
-            total: document.querySelectorAll("#icg .icg-chk").length,
-            noIssue: r.codes.map(Number),
-            overridden: r.diff
-          }, null, 2)], { type: "application/json" });
-          var a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = "아이템-체크.json";
-          a.click();
-          setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-          flash(e.target, "저장됨");
-        });
-
-        el("icg-reset").addEventListener("click", function () {
-          if (!window.confirm("체크를 모두 지울까요?")) return;
+        el("icg-clear").addEventListener("click", function () {
+          if (!window.confirm("체크를 모두 지울까요? 서버에도 바로 반영됩니다.")) return;
           done = {};
-          persist();
           apply();
+          sync();
         });
 
-        load();
-        apply();
+        // 검수 결과를 읽어 온 뒤에 처음 그린다. 못 읽으면(파일로 열었거나 네트워크 오류) 빈 상태로 그리고 이유를 적는다.
+        fetch("data/item-art-reviewed.json?" + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
+          (j.ok || []).forEach(function (k) { done[k] = true; });
+          apply();
+          if (local) setSync("서버 반영됨 · 검수 결과 읽음");
+        }).catch(function () {
+          apply();
+          if (local) setSync("검수 결과를 못 읽음 — 도우미(localhost)로 여세요", true);
+        });
       })();
     </script>
   </body>
