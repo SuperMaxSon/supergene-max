@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-13 17:49",
+  updated: "2026-10-14 11:23",
 };
 
 /* --------------------------------------------------------------------------
@@ -365,6 +365,18 @@ const SECTIONS = [
         updated: "2026-10-12 20:40",
         pinned: false,
         tags: ["코드 실측", "리소스", "타임라인"],
+        share: false,
+      },
+      {
+        title: "에셋 용량",
+        desc: "프리팹·이미지 하나하나가 받기·메모리 몇 MB 인지 카테고리(데코·배경·아이템·채팅·손님·팝업·공용 텍스처 등)별로 펼쳐 봅니다. 순위는 그 항목만 쓰는 고유 메모리 기준.",
+        url: "docs/story-merge-asset-size.html",
+        project: "smg",
+        status: "완료",
+        version: "main 927f5ae0",
+        updated: "2026-10-14 11:23",
+        pinned: false,
+        tags: ["코드 실측", "리소스", "용량"],
         share: false,
       },
     ],
