@@ -377,7 +377,6 @@ const SECTIONS = [
         updated: "2026-10-14 11:39",
         pinned: false,
         tags: ["코드 실측", "리소스", "용량"],
-        share: false,
       },
     ],
   },
