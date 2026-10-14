@@ -96,7 +96,7 @@ const SECTIONS = [
         tags: ["story-merge", "IAP", "결제"],
       },
       {
-        title: "팝업 아트 UI 필요 여부",
+        title: "팝업 아트 교체 현황",
         desc: "팝업 · 화면 40종의 실엔진 캡처를 가이드 프리팹 · 기획서 와이어와 나란히 보고, 레거시 그림 · 가이드 프리팹 유무로 가른 표. 미교체 20 · 가이드 없음 9 · 교체 완료 11.",
         url: "docs/story-merge-popup-art-need.html",
         project: "smg",
