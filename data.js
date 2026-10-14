@@ -97,11 +97,11 @@ const SECTIONS = [
       },
       {
         title: "팝업 아트 UI 필요 여부",
-        desc: "팝업 프리팹 32종을 인게임 · 아웃게임 · 공용으로 나누고 스토리머지 아트 적용 여부를 실엔진 캡처와 함께 본 표. 필요 16 · 적용 완료 15 · 불필요 1, 판정 필터 토글.",
+        desc: "팝업 · 화면 42종의 실엔진 캡처를 가이드 프리팹 · 기획서 와이어와 나란히 보고, 레거시 그림이 하나라도 남았는지로 가른 표. 미교체 21 · 교체 완료 20 · 그림 없음 1.",
         url: "docs/story-merge-popup-art-need.html",
         project: "smg",
         status: "초안",
-        version: "dce1061",
+        version: "22d34e6",
         updated: "2026-10-14",
         pinned: false,
         tags: ["story-merge", "팝업", "아트"],
