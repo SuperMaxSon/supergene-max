@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-15 10:10",
+  updated: "2026-10-15 10:23",
 };
 
 /* --------------------------------------------------------------------------
@@ -108,14 +108,15 @@ const SECTIONS = [
       },
       {
         title: "스토리머지 구조 점검",
-        desc: "10-02 감사 134건 기준 e61ff9f → HEAD 5800cc0: 발견 54건(−60%) · high 11→0 · 역의존 3→0 · 점수 인 7.1→8.1 / 아웃 5.9→7.8",
+        desc: "10-02 감사 134건 기준 e61ff9f → HEAD 8f940e7: 발견 65건(−51%) · high 11→0 · 역의존 3→0 · 점수 인 7.1→8.0 / 아웃 5.9→7.6",
         url: "docs/story-merge-structure-review.html",
         project: "smg",
         status: "완료",
-        version: "5800cc0",
-        updated: "2026-10-12",
+        version: "8f940e7",
+        updated: "2026-10-14",
         pinned: false,
         tags: ["story-merge", "구조", "리팩토링"],
+        share: false,
       },
       {
         title: "부팅 로딩 빌드 대조",
@@ -273,6 +274,18 @@ const SECTIONS = [
         share: false,
       },
       {
+        title: "4게임 로딩 타임라인",
+        desc: "코인매치 · 솔리테어 · 코지타일 · 스토리머지의 NRU·RU 가 FB 로딩바 뒤 첫 입력까지 무엇을 받고 기다리는지 한 표와 간트로 비교. 모델 추정이며 순위표가 아니라 구조 비교.",
+        url: "docs/game-load-compare.html",
+        project: "multi",
+        status: "초안",
+        version: "코인 59aa05dfe · 솔리 d2b09630 · 코지 951f7e6d · 스머 7f7d2a28",
+        updated: "2026-10-13 16:05",
+        pinned: false,
+        tags: ["코드 실측", "리소스", "타임라인"],
+        share: false,
+      },
+      {
         title: "전면광고 지면 비교",
         desc: "솔리테어 · 퍼블마 · 코지 · 마종의 전면광고를 유저 플로우 13개 노드에 올려 비교.",
         url: "docs/ad-placements.html",
@@ -342,6 +355,7 @@ const SECTIONS = [
         updated: "2026-10-14 13:30",
         pinned: false,
         tags: ["머지", "기획 범위"],
+        share: false,
       },
       {
         title: "리소스 예산",
@@ -378,6 +392,18 @@ const SECTIONS = [
         pinned: false,
         tags: ["코드 실측", "리소스", "용량"],
       },
+      {
+        title: "아틀라스 기획",
+        desc: "아트 리소스를 아틀라스마다 가중치(W = 필요 시점 + 사용 확률 − 크기)를 매겨 우선순위별로 어떻게 묶을지 도식으로 정리한 기획 초안입니다.",
+        url: "docs/atlas-plan-story-merge.html",
+        project: "smg",
+        status: "초안",
+        version: "v0.4",
+        updated: "2026-10-13 15:44",
+        pinned: false,
+        tags: ["코드 실측", "아트", "임시"],
+        share: false,
+      },
     ],
   },
   {
@@ -386,6 +412,18 @@ const SECTIONS = [
     accent: "balance",
     desc: "프로젝트별 전체 지면 플로우 맵 — 오픈맵 + 와이어프레임 캔버스",
     cards: [
+      {
+        title: "심부름 클리어 플로우",
+        desc: "심부름 팝업에서 Start 를 누른 순간부터 채팅 · 꾸미기 · 레벨업 · 새날 팝업 · 출석 · 카메라 복구까지를 시간순 스윔레인으로 그렸습니다. 카메라는 4곳에서만 움직이고, 마을 입력은 확정부터 복구까지 한 번 잠깁니다.",
+        url: "docs/story-merge-chore-clear-flow.html",
+        project: "smg",
+        status: "초안",
+        version: "07c357ff",
+        updated: "2026-10-13 17:51",
+        pinned: false,
+        tags: ["코드 실측", "심부름", "플로우"],
+        share: false,
+      },
       {
         title: "부팅 로그 플로우",
         desc: "앱이 켜지고 게임 시작 화면이 뜰 때까지 찍히는 로그를 실행 순서대로 세운 지도입니다. 구간마다 색을 고정해 어느 로그가 어느 구간을 재는지 색만 보고 갈리고, 2026-09-01 빌드 480 사고가 났던 1b 구간은 주황으로 따로 세웠습니다. 퍼널 게이트 9개 · 실패 분기 16개 · 공통 필드 6개를 파일·줄 번호까지 붙여 실측했습니다.",
@@ -587,6 +625,7 @@ const SECTIONS = [
         pinned: false,
         project: "smg",
         tags: ["코드 실측", "아트", "도구"],
+        share: false,
       },
       {
         title: "머지 플로우 시뮬레이터",
@@ -610,6 +649,7 @@ const SECTIONS = [
         updated: "2026-09-28 10:17",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스"],
+        share: false,
       },
       {
         title: "고정 오더",
@@ -904,6 +944,7 @@ const SECTIONS = [
         updated: "2026-08-24 14:00",
         pinned: false,
         tags: ["아트", "데코"],
+        share: false,
       },
       {
         title: "아트 인계 · 이미지 관리",
