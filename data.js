@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-15 09:04",
+  updated: "2026-10-15 09:06",
 };
 
 /* --------------------------------------------------------------------------
@@ -373,8 +373,8 @@ const SECTIONS = [
         url: "docs/story-merge-asset-size.html",
         project: "smg",
         status: "완료",
-        version: "main 76d70107 · 캡처 v2",
-        updated: "2026-10-15 08:55",
+        version: "main 31342553 · 캡처 v2",
+        updated: "2026-10-15 09:06",
         pinned: false,
         tags: ["코드 실측", "리소스", "용량"],
       },
