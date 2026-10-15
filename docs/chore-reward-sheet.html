@@ -300,6 +300,54 @@
       .cr-stage-none { font-size: 10.5px; font-weight: 700; color: var(--text-faint); padding: 0 7px; border-radius: 999px;
                        border: 1px dashed var(--border); line-height: 18px; }
       .cr-stagebox { margin-bottom: 4px; }
+      /* 마을 ↔ 화자 대조 — 접힌 줄 칩 옆 배지, 펼침 상자엔 빠짐/남음 한 줄 */
+      .cr-stage .cr-vd { align-self: center; margin-left: 6px; }
+      .cr-stage-diff { margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+      .cr-stage-diff b { color: var(--deploy); font-weight: 800; }
+
+      /* 확인 필요 — 어긋난 행을 표에서 찾아다니지 않게 한곳에 모은다. 칩을 누르면 그 행으로 간다 */
+      .cr-chk { margin: 18px 0 6px; padding: 14px 16px; border-radius: 12px; background: var(--surface);
+                box-shadow: inset 0 0 0 1px var(--border), inset 4px 0 0 var(--deploy); }
+      .cr-chk-h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+      .cr-chk-h b { font-size: 15px; font-weight: 800; }
+      .cr-chk-h span { font-size: 12px; color: var(--text-faint); }
+      .cr-chk-g { padding: 8px 0; border-top: 1px solid var(--border-soft, var(--border)); scroll-margin-top: 80px; }
+      .cr-chk-g:first-of-type { border-top: 0; }
+      .cr-chk-g .ds { font-size: 12px; color: var(--text-dim); margin-left: 6px; }
+      .cr-chk-ks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+      .cr-chk-k { font: 700 11.5px/1 ui-monospace, Menlo, monospace; padding: 5px 8px; border-radius: 6px; cursor: pointer;
+                  border: 1px solid var(--border); background: var(--surface-2, var(--surface)); color: var(--text); }
+      .cr-chk-k:hover { border-color: var(--deploy); color: var(--deploy); }
+      .cr-chk-k em { font-style: normal; font-family: inherit; font-weight: 600; color: var(--text-dim); margin-left: 6px; }
+      .cr-chk-ref { margin-top: 4px; font-size: 12px; color: var(--text-faint); }
+      .cr-chk-ref summary { cursor: pointer; }
+      /* 확인 필요 행 — 연한 붉은 바탕. 펼침이 있는 행의 hover(흰색)보다 뒤에 와야 지워지지 않는다 */
+      .cr-tb tr.cr-row.is-flag > td { background: color-mix(in srgb, var(--deploy) 9%, var(--surface)); }
+      .cr-tb tr.cr-row.is-flash > td { background: color-mix(in srgb, var(--deploy) 24%, var(--surface)); transition: background .6s; }
+
+      /* 오른쪽 내비 — 본문(1040px) 바깥 여백에만 선다. 여백이 모자라는 화면에선 숨기고 위 nav 를 쓴다 */
+      .cr-rnav { display: none; }
+      @media (min-width: 1420px) {
+        .cr-rnav { display: block; position: fixed; top: calc(var(--nav-h, 52px) + 44px); left: calc(50% + 536px); width: 152px;
+                   max-height: calc(100vh - var(--nav-h, 52px) - 64px); overflow-y: auto; z-index: 15;
+                   font-size: 12.5px; scrollbar-width: thin; }
+      }
+      .cr-rnav .gh { margin: 14px 0 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: var(--text-faint); }
+      .cr-rnav .gh:first-child { margin-top: 0; }
+      .cr-rnav a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--text-dim);
+                   border-left: 2px solid transparent; }
+      .cr-rnav a:hover { background: var(--surface); color: var(--text); }
+      .cr-rnav a.is-sub { padding-left: 18px; font-size: 12px; }
+      .cr-rnav a.is-on { color: var(--text); font-weight: 700; border-left-color: var(--text); background: var(--surface); }
+      .cr-rnav a .n { float: right; font-weight: 800; color: var(--deploy); }
+      .cr-rnav a .n.is-zero { color: var(--text-faint); }
+      .cr-rdays { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+      .cr-rdays button { font: 700 11px/1 ui-monospace, Menlo, monospace; padding: 6px 0; border-radius: 5px; cursor: pointer;
+                         border: 1px solid var(--border); background: var(--surface); color: var(--text-dim);
+                         box-shadow: inset 0 -3px 0 var(--zc, transparent); }
+      .cr-rdays button:hover { color: var(--text); border-color: var(--text-faint); }
+      .cr-rdays button.is-on { color: var(--surface); background: var(--text); border-color: var(--text); }
+
       .cr-stage-figs { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 6px; }
       .cr-stage-figs figure { margin: 0; text-align: center; }
       .cr-stage-figs img { display: block; height: 120px; width: auto; margin: 0 auto; }
@@ -452,6 +500,8 @@
 
         <div class="stat-row" id="crKpi"></div>
 
+        <div class="cr-chk" id="crCheck"></div>
+
         <div class="cr-bar">
           <label class="cr-btn" style="cursor: default; background: var(--surface-2)">
             Day
@@ -585,7 +635,7 @@
           </table>
         </div>
 
-        <h3 class="doc-h2" style="font-size: 16px; margin-top: 26px">
+        <h3 class="doc-h2" id="deco-day1" style="font-size: 16px; margin-top: 26px">
           day 1 자리별 대조
           <span class="doc-h2-sub">클라는 <code>StoryDecorateSchedule</code> 이 시트 수선·택1 행에서 표를 만들어 프리팹이 있는 자리에 꾸미기를 붙입니다 &mdash; 82/139 ≈ 59.0%</span>
         </h3>
@@ -669,7 +719,7 @@
           </table>
         </div>
 
-        <h3 class="doc-h2" style="font-size: 16px; margin-top: 26px">
+        <h3 class="doc-h2" id="deco-areas" style="font-size: 16px; margin-top: 26px">
           구역별 아트 ↔ 시트 대조
           <span class="doc-h2-sub">원본 프리팹 <code>AreaCourtyard.prefab</code> 의 데코 지점을 시트 수선·택1 순서와 같은 순번에 놓았습니다 &mdash; 행마다의 판정은 위 표 꾸미기 행에 붙어 있습니다. 구역 표 전체는 <a href="yard-deco-style-compare.html">Yard 데코 비교표</a></span>
         </h3>
@@ -981,7 +1031,7 @@
          "first"(첫 진입) | "심부름": [소구역, 지점, [[캐릭터, 감정]…]] | null(지점 없음 = 아무도 안 선다).
          그림 = img/npc/stage/{캐릭터}_{감정}.png (클라 character/sprite 전신 첫 프레임 원본).
          허브 _ignore/tools/extract-stage-chars.py 로 갈아 끼운다 — 손으로 고치지 않는다. */
-      const STAGE = {"first":["area_1_1","story_70001",[["rosie","idle"],["poppy","idle"]]],"1-1":["area_1_1","story_70002",[["rosie","idle"],["poppy","idle"],["theo","idle"]]],"1-2":["area_1_1","story_70003",[["rosie","worried"],["poppy","sad"]]],"1-3":["area_1_1","story_70004",[["rosie","worried"],["poppy","sad"]]],"1-4":["area_1_1","story_70005",[["rosie","idle"],["poppy","sad"],["gus","fear"]]],"1-5":["area_1_1","story_70006",[["rosie","angry"],["theo","happy"],["gus","fear"]]],"1-6":["area_1_1","story_70007",[["rosie","sad"],["theo","happy"]]],"1-7":["area_1_1","story_70189",[["rosie","happy"],["theo","happy"],["poppy","idle"]]],"1-8":["area_1_1","story_70190",[["rosie","angry"],["brett","sad"]]],"1-9":["area_1_1","story_finish",[["rosie","idle"],["theo","happy"],["gus","idle"]]],"2-1":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-2":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-3":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-4":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-5":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-6":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-7":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-8":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"2-9":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-1":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-2":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-3":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-4":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-5":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-6":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-7":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-8":["area_1_2","story_70008",[["rosie","idle"],["rafa","idle"]]],"3-9":null,"4-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-9":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-10":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-11":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"4-12":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"5-9":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"6-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]]],"7-9":null,"8-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"8-11":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"9-11":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"10-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]]],"11-10":null,"12-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"12-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"13-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"14-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"15-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]]],"16-10":null,"17-1":null,"17-2":null,"17-3":null,"17-4":null,"17-5":null,"17-6":null,"17-7":null,"17-8":null,"17-9":null,"17-10":null,"18-1":null,"18-2":null,"18-3":null,"18-4":null,"18-5":null,"18-6":null,"18-7":null,"18-8":null,"18-9":null,"18-10":null,"19-1":null,"19-2":null,"19-3":null,"19-4":null,"19-5":null,"19-6":null,"19-7":null,"19-8":null,"19-9":null,"19-10":null,"20-1":null,"20-2":null,"20-3":null,"20-4":null,"20-5":null,"20-6":null,"20-7":null,"20-8":null,"20-9":null,"20-10":null};
+      const STAGE = {"first":["area_1_1","story_70001",[["rosie","idle"],["poppy","idle"]],"own"],"1-1":["area_1_1","story_70002",[["rosie","idle"],["poppy","idle"],["theo","idle"]],"own"],"1-2":["area_1_1","story_70003",[["rosie","worried"],["poppy","sad"]],"own"],"1-3":["area_1_1","story_70004",[["rosie","worried"],["poppy","sad"]],"own"],"1-4":["area_1_1","story_70005",[["rosie","idle"],["poppy","sad"],["gus","fear"]],"own"],"1-5":["area_1_1","story_70006",[["rosie","angry"],["theo","happy"],["gus","fear"]],"own"],"1-6":["area_1_1","story_70007",[["rosie","sad"],["theo","happy"]],"own"],"1-7":["area_1_1","story_70189",[["rosie","happy"],["theo","happy"],["poppy","idle"]],"own"],"1-8":["area_1_1","story_70190",[["rosie","angry"],["brett","sad"]],"own"],"1-9":["area_1_1","story_finish",[["rosie","idle"],["theo","happy"],["gus","idle"]],"finish"],"2-1":["area_1_2","story_70009",[["rosie","idle"],["rafa","idle"],["theo","happy"],["poppy","idle"]],"own"],"2-2":["area_1_2","story_70010",[["rosie","worried"],["hollis","idle"],["theo","happy"]],"own"],"2-3":["area_1_2","story_70011",[["rosie","happy"],["theo","happy"],["gus","fear"]],"own"],"2-4":["area_1_2","story_70012",[["rosie","angry"],["brett","sad"]],"own"],"2-5":["area_1_2","story_70013",[["rosie","worried"],["theo","happy"],["brett","sad"]],"own"],"2-6":["area_1_2","story_70014",[["rosie","happy"],["theo","happy"],["poppy","idle"]],"own"],"2-7":["area_1_2","story_70015",[["rosie","worried"],["diane","idle"],["hazel","idle"]],"own"],"2-8":["area_1_2","story_70191",[["rosie","happy"],["poppy","sad"],["gus","idle"]],"own"],"2-9":["area_1_2","story_70016",[["rosie","angry"],["brett","sad"]],"own"],"3-1":["area_1_2","story_70017",[["rosie","idle"],["rafa","idle"],["poppy","idle"]],"own"],"3-2":["area_1_2","story_70018",[["rosie","sad"],["rafa","idle"],["hazel","idle"]],"own"],"3-3":["area_1_2","story_70019",[["rosie","worried"],["diane","idle"],["hazel","idle"]],"own"],"3-4":["area_1_2","story_70020",[["rosie","happy"],["theo","happy"],["poppy","idle"]],"own"],"3-5":["area_1_2","story_70021",[["rosie","happy"],["theo","happy"],["rafa","idle"]],"own"],"3-6":["area_1_2","story_70022",[["rosie","angry"],["brett","idle"]],"own"],"3-7":["area_1_2","story_70023",[["rosie","idle"],["poppy","idle"]],"own"],"3-8":["area_1_2","story_70192",[["rosie","worried"],["theo","happy"],["hazel","idle"]],"own"],"3-9":["area_1_2","story_finish",[["rosie","idle"],["theo","idle"]],"finish"],"4-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-9":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-10":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-11":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"4-12":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"5-9":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"6-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-1":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-2":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-3":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-4":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-5":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-6":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-7":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-8":["area_1_3","story_70024",[["rosie","idle"],["rafa","idle"]],"prev"],"7-9":null,"8-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"8-11":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"9-11":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"10-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev"],"11-10":null,"12-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"12-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"13-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"14-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"15-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev"],"16-10":null,"17-1":null,"17-2":null,"17-3":null,"17-4":null,"17-5":null,"17-6":null,"17-7":null,"17-8":null,"17-9":null,"17-10":null,"18-1":null,"18-2":null,"18-3":null,"18-4":null,"18-5":null,"18-6":null,"18-7":null,"18-8":null,"18-9":null,"18-10":null,"19-1":null,"19-2":null,"19-3":null,"19-4":null,"19-5":null,"19-6":null,"19-7":null,"19-8":null,"19-9":null,"19-10":null,"20-1":null,"20-2":null,"20-3":null,"20-4":null,"20-5":null,"20-6":null,"20-7":null,"20-8":null,"20-9":null,"20-10":null};
       /* [구역, 아트 지점, 폐허 수선, 신규 생성, 택1, 시트 건수, 시트 수선, 시트 택1, 종류 다름, 아트 없음, 시트 없음] */
       const YARD_AREAS = [["area_1_1",7,1,1,5,7,2,5,0,0,0],["area_1_2",15,4,0,11,16,8,8,4,1,0],["area_1_3",20,5,2,13,28,15,13,11,8,0],["area_1_4",17,4,2,11,26,15,11,7,9,0],["area_1_5",23,4,1,18,35,22,13,11,12,0]];
       /* 시트 리소스 키 — 생성기가 채운다. 수선 = main_task.sprite_key 1개 · 택1 = skin_deco.sprite_key A·B·C 3개. */
@@ -1251,7 +1301,8 @@
         const client = !cl ? `<span class="cr-vd is-none">꾸미기 없음</span>`
           : `<code>${cl[0]}.prefab</code>${CLIENT_UNWIRED.has(key) ? ` <span class="cr-vd is-none">미연결</span>` : ""}`;
         const vd = yardVdHtml(key);
-        return `<tr class="cr-row is-deco${decoOpen ? " is-open" : ""}" data-det="${id}">`
+        const flag = decoIssues(key).some((k) => CHK_MAIN.has(k));
+        return `<tr class="cr-row is-deco${decoOpen ? " is-open" : ""}${flag ? " is-flag" : ""}" data-det="${id}" data-chk="deco-${esc(key)}">`
           + `<td class="cr-key"><span class="cr-dot is-d"></span>`
           + `<span class="cr-ar">▶</span> `
           + `<span class="cr-slot is-d">${esc(ev.key)} 꾸미기</span></td>`
@@ -1270,10 +1321,42 @@
       const stageOf = (ev) => STAGE[ev.kind === "first" ? "first" : ev.key];
       const capName = (c) => c.charAt(0).toUpperCase() + c.slice(1);
       const stageImg = (c, e) => `<img src="img/npc/stage/${esc(c)}_${esc(e)}.png" alt="${esc(capName(c))} ${esc(e)}" title="${esc(capName(c))} · ${esc(e)}" loading="lazy" decoding="async">`;
+      /* 마을 ↔ 화자 대조. 아트는 지점에 「그 지점이 세워지는 씬의 화자」를 세운다(1-1·1-2 실측 — story_N = N 시작 씬 화자).
+         대상 씬: 구역 완성 지점(finish) → 구역 완료 씬, 자기 지점(own) → 다음 심부름 시작 씬.
+         앞 지점 재사용(prev)은 지점이 없는 심부름이라 판정하지 않는다. Rosie 는 주인공이라 말이 없어도 「남음」이 아니다. */
+      const stageMemo = new Map();
+      function stageCheck(ev) {
+        if (stageMemo.has(ev)) return stageMemo.get(ev);
+        const s = stageOf(ev);
+        let r;
+        if (!s || !s[2].length) r = { st: "empty", s };
+        else if (s[3] === "prev") r = { st: "prev", s };
+        else {
+          const slot = s[3] === "finish" ? "a" : "s";
+          const segs = ev.segs.filter((g) => g.slot === slot);
+          const speak = new Set();
+          segs.forEach((g) => g.lines.forEach((l) => { const c = l[1].toLowerCase(); if (c !== "none") speak.add(c); }));
+          const on = new Set(s[2].map(([c]) => c));
+          const miss = [...speak].filter((c) => !on.has(c));
+          const extra = [...on].filter((c) => !speak.has(c) && c !== HERO.toLowerCase());
+          r = !segs.length ? { st: "na", s }
+            : { st: miss.length || extra.length ? "bad" : "ok", s, sid: segs.map((g) => g.sid).join(" · "), miss, extra };
+        }
+        stageMemo.set(ev, r);
+        return r;
+      }
+      const stageDiffText = (c) => [c.miss.length ? `빠짐 ${c.miss.map(capName).join("·")}` : "",
+        c.extra.length ? `남음 ${c.extra.map(capName).join("·")}` : ""].filter(Boolean).join(" / ");
+      function stageVdHtml(ev) {
+        const c = stageCheck(ev);
+        if (c.st === "bad") return `<span class="cr-vd is-bad" title="${esc(c.sid)} · ${esc(stageDiffText(c))}">화자 불일치</span>`;
+        if (c.st === "prev") return `<span class="cr-vd is-na" title="이 심부름의 스토리 지점이 없어 같은 구역 앞 지점(${esc(c.s[1])})을 세웁니다">앞 지점 재사용</span>`;
+        return "";
+      }
       function stageStripHtml(ev) {
         const s = stageOf(ev);
         if (!s || !s[2].length) return `<div class="cr-stage"><span class="lb">마을</span><span class="cr-stage-none">비어 있음</span></div>`;
-        return `<div class="cr-stage"><span class="lb">마을</span>${s[2].map(([c, e]) => stageImg(c, e)).join("")}</div>`;
+        return `<div class="cr-stage"><span class="lb">마을</span>${s[2].map(([c, e]) => stageImg(c, e)).join("")}${stageVdHtml(ev)}</div>`;
       }
       function stageHtml(ev) {
         const s = stageOf(ev);
@@ -1284,7 +1367,16 @@
         }
         return `<div class="cr-res cr-stagebox">${head}`
           + `<div class="cr-rk"><code title="assets/bundles/area_courtyard/area.prefab">${esc(s[0])} / ${esc(s[1])}</code></div>`
-          + `<div class="cr-stage-figs">${s[2].map(([c, e]) => `<figure>${stageImg(c, e)}<figcaption><b>${esc(capName(c))}</b>${esc(e)}</figcaption></figure>`).join("")}</div></div>`;
+          + `<div class="cr-stage-figs">${s[2].map(([c, e]) => `<figure>${stageImg(c, e)}<figcaption><b>${esc(capName(c))}</b>${esc(e)}</figcaption></figure>`).join("")}</div>`
+          + stageDiffHtml(ev) + `</div>`;
+      }
+
+      function stageDiffHtml(ev) {
+        const c = stageCheck(ev);
+        if (c.st === "bad") return `<div class="cr-stage-diff">${stageVdHtml(ev)} 대상 씬 <code>${esc(c.sid)}</code> — <b>${esc(stageDiffText(c))}</b></div>`;
+        if (c.st === "ok") return `<div class="cr-stage-diff">대상 씬 <code>${esc(c.sid)}</code> 화자와 일치</div>`;
+        if (c.st === "prev") return `<div class="cr-stage-diff">${stageVdHtml(ev)} 이 심부름의 지점이 없어 앞 지점을 세웁니다 — 판정 안 함</div>`;
+        return "";
       }
 
       function talkRowHtml(ev, id, det) {
@@ -1296,7 +1388,8 @@
         const who = head ? head[1] : HERO;
         const others = new Set(ev.lines.map((l) => l[1]));
         others.delete(who);
-        return `<tr class="cr-row is-talk${det && talkOpen ? " is-open" : ""}" data-det="${det ? id : ""}">`
+        const flag = ["bad", "empty"].includes(stageCheck(ev).st);
+        return `<tr class="cr-row is-talk${det && talkOpen ? " is-open" : ""}${flag ? " is-flag" : ""}" data-det="${det ? id : ""}" data-chk="${chkIdOf(ev)}">`
           + `<td class="cr-key"><span class="cr-dot is-${dot}"></span>`
           + `<span class="cr-ar">${det ? "▶" : ""}</span> `
           + `<span class="cr-slot is-${dot}">${ev.kind === "clear" ? `${esc(ev.key)} ` : ""}${lb}</span></td>`
@@ -1368,7 +1461,7 @@
           if (day !== prevDay) {
             prevDay = day;
             const d = stat[day];
-            html += `<tr class="cr-band" style="--zc: ${zoneColor(d.area)}"><td colspan="6"><div class="cr-band-in">`
+            html += `<tr class="cr-band" data-day="${day}" style="--zc: ${zoneColor(d.area)}"><td colspan="6"><div class="cr-band-in">`
               + `<span class="d">Day ${day}</span>`
               + `<span class="z" style="--zc: ${zoneColor(d.area)}">${esc(d.area)}</span>`
               + `<span class="c">심부름 ${d.task}건`
@@ -1438,6 +1531,154 @@
             + `<td>${sn}건 <span class="cr-nil">(${sr} · ${sch})</span></td>`
             + `<td>${vd(ok, "is-ok", "일치")}${vd(diff, "is-bad", "종류 다름")}${vd(noart, "is-none", "아트 없음")}${vd(nosheet, "is-na", "시트 없음")}</td></tr>`;
         }).join("");
+      }
+
+      /* ── 확인 필요 ─────────────────────────────────────────────────────── */
+      /* 문서 안의 어긋남을 한곳에 모은다. 앞 다섯은 「확인 필요」, 뒤 둘은 미완 현황이라 참고로만 접어 둔다. */
+      const CHK_CATS = [
+        ["stage-bad", "is-bad", "마을 ↔ 화자 불일치", "채팅 직전 마을에 선 캐릭터와 그 씬 화자가 다릅니다 — 원안 스토리 지점 확인"],
+        ["stage-empty", "is-none", "마을 비어 있음", "세울 스토리 지점이 없습니다 — 구역 완성 지점이 없거나 소구역 아트가 없음"],
+        ["deco-diff", "is-bad", "꾸미기 종류 다름", "원안 지점(수선·택1)과 시트 유형이 다릅니다 — 아트가 기준, 시트 확인"],
+        ["deco-noart", "is-none", "꾸미기 아트 없음", "시트엔 수선·택1 인데 원안 프리팹에 그 순번 지점이 없습니다"],
+        ["deco-unwired", "is-none", "꾸미기 미연결", "번들에 프리팹은 있는데 꾸미기 표에 안 걸렸습니다"],
+        ["stage-prev", "is-na", "앞 지점 재사용", "이 심부름의 스토리 지점이 없어 같은 구역 앞 지점을 세웁니다(아트 미완) — 판정 안 함"],
+        ["deco-noclient", "is-na", "클라 꾸미기 없음", "클라 번들에 아직 프리팹이 없습니다(반영 현황)"],
+      ];
+      const CHK_MAIN = new Set(["stage-bad", "stage-empty", "deco-diff", "deco-noart", "deco-unwired"]);
+      const chkIdOf = (ev) => (ev.kind === "first" ? "talk-first" : `talk-${ev.key}`);
+      const hasDeco = (row) => { const f = row[9]; return !!(YARD[keyOfRow(row)] || f["비포"] || f["애프터"] || f["디자인 A"]); };
+      function decoIssues(key) {
+        const out = [];
+        const y = YARD[key];
+        if (y && y[5] === "diff") out.push("deco-diff");
+        if (y && y[5] === "noart") out.push("deco-noart");
+        if (CLIENT_UNWIRED.has(key)) out.push("deco-unwired");
+        if (!CLIENT_DECO[key]) out.push("deco-noclient");
+        return out;
+      }
+      /* 항목: [분류, 이동할 행(data-chk), 라벨, ORDER 순번, day, 메모] */
+      const CHECKS = (() => {
+        const out = [];
+        const idx = new Map(ORDER.map((r, i) => [keyOfRow(r), i]));
+        TIMELINE.forEach((e) => {
+          if (e.t !== "talk") return;
+          const at = e.kind === "first" ? -1 : idx.get(e.key);
+          const label = e.kind === "first" ? "첫 진입" : e.key;
+          const c = stageCheck(e);
+          const cat = { bad: "stage-bad", empty: "stage-empty", prev: "stage-prev" }[c.st];
+          if (cat) out.push([cat, chkIdOf(e), label, at, e.row[0], c.st === "bad" ? `${c.sid} · ${stageDiffText(c)}` : ""]);
+          if (e.kind === "clear" && hasDeco(e.row)) decoIssues(e.key).forEach((k) => out.push([k, `deco-${e.key}`, e.key, at, e.row[0], ""]));
+        });
+        return out;
+      })();
+      /* 이어지는 순번은 한 칩으로 묶는다(앞 지점 재사용은 127행이라 낱개로 늘어놓으면 패널이 표가 된다). 메모가 있는 건 낱개로. */
+      function chkChips(items) {
+        const runs = [];
+        items.forEach((it) => {
+          const last = runs[runs.length - 1];
+          if (last && !it[5] && !last[0][5] && it[3] === last[last.length - 1][3] + 1) last.push(it);
+          else runs.push([it]);
+        });
+        return runs.map((r) => {
+          const a = r[0];
+          const b = r[r.length - 1];
+          const label = r.length > 1 ? `${a[2]} ~ ${b[2]}<em>${r.length}</em>` : `${esc(a[2])}${a[5] ? `<em>${esc(a[5])}</em>` : ""}`;
+          return `<button class="cr-chk-k" type="button" data-go="${esc(a[1])}">${label}</button>`;
+        }).join("");
+      }
+      function renderCheck() {
+        const by = (cat) => CHECKS.filter((c) => c[0] === cat);
+        const main = CHK_CATS.filter(([cat]) => CHK_MAIN.has(cat));
+        const total = main.reduce((a, [cat]) => a + by(cat).length, 0);
+        const group = ([cat, cls, label, ds]) => {
+          const items = by(cat);
+          return `<div class="cr-chk-g" id="chk-${cat}"><span class="cr-vd ${cls}">${label} ${items.length}</span><span class="ds">${ds}</span>`
+            + `<div class="cr-chk-ks">${chkChips(items)}</div></div>`;
+        };
+        const ref = CHK_CATS.filter(([cat]) => !CHK_MAIN.has(cat) && by(cat).length);
+        $("#crCheck").innerHTML = `<div class="cr-chk-h"><b>확인 필요 ${total}건</b>`
+          + `<span>매치가 안 되는 행 — 칩을 누르면 표에서 그 행으로 가서 펼칩니다. 표에서는 연한 붉은 바탕입니다</span></div>`
+          + (total ? main.filter(([cat]) => by(cat).length).map(group).join("") : `<div class="cr-chk-ref">어긋난 행이 없습니다</div>`)
+          + ref.map((g) => `<details class="cr-chk-ref"><summary>참고 · ${g[2]} ${by(g[0]).length} — ${g[3]}</summary>`
+            + `<div class="cr-chk-ks">${chkChips(by(g[0]))}</div></details>`).join("");
+      }
+
+      /* 표의 행으로 이동 — 필터가 걸려 있으면 풀고 다시 그린 뒤 찾는다. 펼침이 있으면 연다. */
+      const NAV_OFFSET = 72;
+      const scrollToEl = (el, center) => window.scrollTo({ behavior: "smooth",
+        top: el.getBoundingClientRect().top + window.scrollY - (center ? window.innerHeight / 2 - 40 : NAV_OFFSET) });
+      function clearFilters() {
+        if (dayFilter === 0 && !onlyItem) return;
+        dayFilter = 0;
+        $("#crDay").value = "0";
+        onlyItem = false;
+        $("#crOnlyItem").classList.remove("is-on");
+        renderSheet();
+        syncAllBtn();
+      }
+      function goRow(chk) {
+        clearFilters();
+        const tr = document.querySelector(`#crBody tr.cr-row[data-chk="${chk}"]`);
+        if (!tr) return;
+        const det = document.getElementById(tr.dataset.det);
+        if (det && det.hidden) { det.hidden = false; tr.classList.add("is-open"); syncAllBtn(); }
+        scrollToEl(tr, true);
+        tr.classList.add("is-flash");
+        setTimeout(() => tr.classList.remove("is-flash"), 1600);
+      }
+      function goDay(day) {
+        clearFilters();
+        const band = document.querySelector(`#crBody tr.cr-band[data-day="${day}"]`);
+        if (band) scrollToEl(band, false);
+      }
+
+      /* ── 오른쪽 내비 ───────────────────────────────────────────────────── */
+      const NAV_SECS = [["sheet", "보상 시트", false], ["deco", "데코 반영", false], ["deco-day1", "day 1 자리별 대조", true],
+        ["deco-areas", "구역별 아트↔시트", true], ["items", "아이템 33종", false], ["npc", "NPC 11종", false]];
+      function renderNav() {
+        const days = Array.from({ length: 20 }, (_, i) => i + 1).map((d) => {
+          const row = ORDER.find((r) => r[0] === d);
+          return `<button type="button" data-day="${d}" style="--zc: ${row ? zoneColor(row[8]) : "transparent"}"`
+            + ` title="Day ${d}${row ? ` · ${esc(row[8])}` : ""}">${d}</button>`;
+        }).join("");
+        const chk = CHK_CATS.filter(([cat]) => CHK_MAIN.has(cat)).map(([cat, , label]) => {
+          const n = CHECKS.filter((c) => c[0] === cat).length;
+          return `<a href="#chk-${cat}" data-go-chk="${cat}">${label}<span class="n${n ? "" : " is-zero"}">${n}</span></a>`;
+        }).join("");
+        const nav = document.createElement("aside");
+        nav.className = "cr-rnav";
+        nav.setAttribute("aria-label", "문서 내비");
+        nav.innerHTML = `<div class="gh">목차</div>`
+          + NAV_SECS.map(([id, label, sub]) => `<a href="#${id}" data-sec="${id}"${sub ? ` class="is-sub"` : ""}>${label}</a>`).join("")
+          + `<div class="gh">확인 필요</div>${chk}`
+          + `<div class="gh">DAY</div><div class="cr-rdays">${days}</div>`;
+        document.body.appendChild(nav);
+
+        nav.addEventListener("click", (ev) => {
+          const day = ev.target.closest("button[data-day]");
+          if (day) { goDay(Number(day.dataset.day)); return; }
+          const a = ev.target.closest("a[href^='#']");
+          if (!a) return;
+          const el = document.querySelector(a.getAttribute("href"));
+          if (!el) return;
+          ev.preventDefault();
+          scrollToEl(el, false);
+        });
+
+        /* 지금 보고 있는 섹션·Day 를 칠한다 — 화면 위쪽 기준선(NAV_OFFSET + 20px)을 지난 마지막 것 */
+        let ticking = false;
+        const spy = () => {
+          ticking = false;
+          const line = NAV_OFFSET + 20;
+          let cur = null;
+          NAV_SECS.forEach(([id]) => { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= line) cur = id; });
+          nav.querySelectorAll("a[data-sec]").forEach((a) => a.classList.toggle("is-on", a.dataset.sec === cur));
+          let day = null;
+          if (cur === "sheet") document.querySelectorAll("#crBody tr.cr-band").forEach((b) => { if (b.getBoundingClientRect().top <= line) day = b.dataset.day; });
+          nav.querySelectorAll(".cr-rdays button").forEach((b) => b.classList.toggle("is-on", b.dataset.day === day));
+        };
+        window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(spy); } }, { passive: true });
+        spy();
       }
 
       function renderKpi() {
@@ -1528,9 +1769,15 @@
         bindRowToggle();
 
         renderKpi();
+        renderCheck();
+        $("#crCheck").addEventListener("click", (ev) => {
+          const k = ev.target.closest("[data-go]");
+          if (k) goRow(k.dataset.go);
+        });
         renderYardAreas();
         renderSheet();
         syncAllBtn();
+        renderNav();
         renderItems();
         renderNpcs();
       }
