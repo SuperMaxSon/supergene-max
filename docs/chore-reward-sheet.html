@@ -1338,13 +1338,17 @@
          STAGE = [소구역, 번들 지점, 캐릭터, 종류, 없는 원안 노드, 세운 원안 노드].
          종류: own · finish → 대조 / prev → 원안 노드가 없어 앞 노드 재사용(판정 안 함) / nofinish · nosub · nopoint → 0명.
          Rosie 는 주인공이라 말이 없어도 「남음」이 아니다. */
+      /* 추적 소구역 — bean 이 스토리 캐릭터 배치·꾸미기 작업을 끝낸 원안 소구역만 「확인 필요」로 본다.
+         그 밖(아직 작업 전)은 없는 게 당연하니 판정·표시하지 않는다. 다음 소구역 작업이 끝나면 여기에 추가한다. */
+      const TRACKED = new Set(["area_1_1", "area_1_2"]);
       const stageMemo = new Map();
       const EMPTY_KINDS = { nofinish: "구역 완료용 task_story 없음", nosub: "소구역째 task_story 없음", nopoint: "task_story 없음" };
       function stageCheck(ev) {
         if (stageMemo.has(ev)) return stageMemo.get(ev);
         const s = stageOf(ev);
         let r;
-        if (!s || EMPTY_KINDS[s[3]] || !s[2].length) r = { st: s && EMPTY_KINDS[s[3]] ? s[3] : "nopoint", s };
+        if (s && !TRACKED.has(s[0])) r = { st: "todo", s };
+        else if (!s || EMPTY_KINDS[s[3]] || !s[2].length) r = { st: s && EMPTY_KINDS[s[3]] ? s[3] : "nopoint", s };
         else if (s[3] === "prev") r = { st: "prev", s };
         else {
           const slot = s[3] === "finish" ? "a" : "s";
@@ -1389,6 +1393,7 @@
       }
       function stageStripHtml(ev) {
         const c = stageCheck(ev);
+        if (c.st === "todo" && !c.s[2].length) return `<div class="cr-stage"><span class="lb">마을</span><span class="cr-stage-none">작업 전</span></div>`;
         if (isEmptySt(c.st)) {
           return `<div class="cr-stage"><span class="lb">마을</span><span class="cr-vd is-none">비어 있음</span>`
             + `<span class="cr-stage-miss">${esc(stageMissText(c))}</span></div>`;
@@ -1400,6 +1405,10 @@
         const c = stageCheck(ev);
         const s = c.s;
         const head = `<div class="lb">채팅 직전 마을</div>`;
+        if (c.st === "todo" && !s[2].length) {
+          return `<div class="cr-res cr-stagebox">${head}<div class="cr-rk"><span class="cr-stage-none">작업 전</span>`
+            + `<span class="no">${esc(s[0])} 은 아직 스토리 캐릭터 배치 전입니다</span></div></div>`;
+        }
         if (isEmptySt(c.st)) {
           return `<div class="cr-res cr-stagebox">${head}<div class="cr-rk"><span class="cr-vd is-none">비어 있음 · ${EMPTY_KINDS[c.st]}</span>`
             + `<span class="no">${esc(stageMissText(c))}</span></div></div>`;
@@ -1594,6 +1603,7 @@
       function decoIssues(key) {
         const out = [];
         const y = YARD[key];
+        if (!y || !TRACKED.has(y[0])) return out;
         if (y && y[5] === "diff") out.push("deco-diff");
         if (y && y[5] === "noart") out.push("deco-noart");
         if (CLIENT_UNWIRED.has(key)) out.push("deco-unwired");
@@ -1670,7 +1680,7 @@
       };
       function countTableHtml() {
         const deco = new Map(YARD_AREAS.map((r) => [r[0], r]));
-        const rows = Object.entries(STAGE_SRC).map(([area, src]) => {
+        const rows = Object.entries(STAGE_SRC).filter(([area]) => TRACKED.has(area)).map(([area, src]) => {
           const need = src.tasks + (src.finish ? 1 : 0);
           const have = Object.keys(src.nodes).map(storyNum).sort((a, b) => a - b);
           const miss = Array.from({ length: need }, (_, i) => i + 1).filter((n) => !have.includes(n));
@@ -1699,7 +1709,7 @@
         };
         const ref = CHK_CATS.filter(([cat]) => !CHK_MAIN.has(cat) && by(cat).length);
         $("#crCheck").innerHTML = `<div class="cr-chk-h"><b>확인 필요 ${total}건</b>`
-          + `<span>원안 AreaCourtyard.prefab 기준 · 칩을 누르면 그 행으로 이동 · 표에선 붉은 바탕</span></div>`
+          + `<span>원안 AreaCourtyard.prefab 기준 · 작업 끝난 ${[...TRACKED].join("·")} 만 추적 · 칩을 누르면 그 행으로 이동</span></div>`
           + countTableHtml()
 
           + (total ? main.filter(([cat]) => by(cat).length).map(group).join("") : `<div class="cr-chk-ref">어긋난 행이 없습니다</div>`)
@@ -1745,7 +1755,7 @@
           return `<button type="button" data-day="${d}" style="--zc: ${row ? zoneColor(row[8]) : "transparent"}"`
             + ` title="Day ${d}${row ? ` · ${esc(row[8])}` : ""}">${d}</button>`;
         }).join("");
-        const chk = CHK_CATS.filter(([cat]) => CHK_MAIN.has(cat)).map(([cat, , , , label]) => {
+        const chk = CHK_CATS.filter(([cat]) => CHK_MAIN.has(cat) && CHECKS.some((c) => c.cat === cat)).map(([cat, , , , label]) => {
           const n = CHECKS.filter((c) => c.cat === cat).length;
           return `<a href="#chk-${cat}" data-go-chk="${cat}">${label}<span class="n${n ? "" : " is-zero"}">${n}</span></a>`;
         }).join("");
