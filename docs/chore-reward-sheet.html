@@ -314,21 +314,14 @@
       .cr-chk-h b { font-size: 15px; font-weight: 800; }
       .cr-chk-h span { font-size: 12px; color: var(--text-faint); }
       .cr-chk-g { padding: 8px 0; border-top: 1px solid var(--border-soft, var(--border)); scroll-margin-top: 80px; }
-      .cr-chk-g:first-of-type { border-top: 0; }
-      .cr-chk-g .ds { font-size: 12px; line-height: 1.55; color: var(--text-dim); }
+      .cr-chk-g:first-of-type { border-top: 0; padding-top: 0; }
+      .cr-chk-g .ds { font-size: 12px; color: var(--text-dim); margin-left: 8px; }
       .cr-chk-ks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
       .cr-chk-k { font: 700 11.5px/1 ui-monospace, Menlo, monospace; padding: 5px 8px; border-radius: 6px; cursor: pointer;
                   border: 1px solid var(--border); background: var(--surface-2, var(--surface)); color: var(--text); }
       .cr-chk-k:hover { border-color: var(--deploy); color: var(--deploy); }
       .cr-chk-k em { font-style: normal; font-family: inherit; font-weight: 600; color: var(--text-dim); margin-left: 6px; }
       .cr-chk-ref { margin-top: 4px; font-size: 12px; color: var(--text-faint); }
-      .cr-chk-g .ds { margin: 4px 0 0; }
-      .cr-chk-p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--text); }
-      .cr-chk-p b { font-family: ui-monospace, Menlo, monospace; margin-right: 4px; }
-      .cr-chk-how { margin: 0 0 8px; padding: 8px 12px; border-radius: 8px; background: var(--surface-2); font-size: 12.5px; line-height: 1.65; }
-      .cr-chk-how summary { cursor: pointer; font-weight: 800; }
-      .cr-chk-how ol { margin: 6px 0 0; padding-left: 20px; }
-      .cr-chk-how li { margin: 2px 0; }
       .cr-chk-ref summary { cursor: pointer; }
       /* 확인 필요 행 — 연한 붉은 바탕. 펼침이 있는 행의 hover(흰색)보다 뒤에 와야 지워지지 않는다 */
       .cr-tb tr.cr-row.is-flag > td { background: color-mix(in srgb, var(--deploy) 9%, var(--surface)); }
@@ -1361,37 +1354,29 @@
         return r;
       }
       const isEmptySt = (st) => !!EMPTY_KINDS[st];
-      const stageDiffText = (c) => [c.miss.length ? `대사엔 있는데 마을에 없음 ${c.miss.map(capName).join("·")}` : "",
-        c.extra.length ? `마을엔 있는데 대사에 없음 ${c.extra.map(capName).join("·")}` : ""].filter(Boolean).join(" / ");
       /* 「무엇이 없나」를 원안 노드 이름으로 — 행 칩 · 펼침 · 확인 필요 패널이 같은 문장을 쓴다 */
       function stageMissText(c) {
         const s = c.s;
-        if (c.st === "nosub") return `원안에 ${s[4]} 소구역이 없어 task_story 가 하나도 없음`;
-        if (c.st === "nofinish") return `원안 ${s[0]} 에 ${s[4]} 없음 (구역 완료 대화용)`;
-        if (c.st === "prev") return `원안 ${s[0]} 에 ${s[4]} 없음 → ${s[5]} 대신 사용`;
-        if (c.st === "bad") return `마을 ${c.standing.join("·")} (원안 ${s[0]}/${s[5]}) · 대사 ${c.speakers.join("·")}`;
+        if (c.st === "nosub") return `${s[4]} 없음`;
+        if (c.st === "nofinish") return `${s[0]} ${s[4]} 없음`;
+        if (c.st === "prev") return `${s[0]} ${s[4]} 없음 → ${s[5]} 사용`;
+        if (c.st === "bad") {
+          const other = stageOther(c);
+          return `마을 ${c.standing.join("·")} ≠ 화자 ${c.speakers.join("·")}${other ? ` · 화자는 ${other} 에 있음` : ""}`;
+        }
         return "task_story 없음";
       }
-      /* 마을 캐릭터 ≠ 대사 화자를 문장으로 푼다. 같은 소구역 원안에 대사 화자가 다 선 노드가 따로 있으면 그 노드를 알려 준다. */
-      function stagePlain(c) {
-        const s = c.s;
-        const src = STAGE_SRC[s[0]];
+      /* 같은 소구역 원안에서 대사 화자가 다 선 다른 task_story — 3-9 처럼 번호가 잘못 잡힌 경우를 짚는다 */
+      function stageOther(c) {
+        const src = STAGE_SRC[c.s[0]];
+        if (!src) return null;
         const want = c.speakers.map((x) => x.toLowerCase());
-        const other = src ? Object.keys(src.nodes).find((n) => n !== s[5] && want.every((w) => src.nodes[n].includes(w))) : null;
-        let t = `이 채팅에서 말하는 사람은 ${c.speakers.join("·")} 인데, 채팅 직전 마을에 서 있는 건 원안 ${s[0]}/${s[5]} 의 ${c.standing.join("·")} 입니다.`;
-        if (other) {
-          t += ` 원안 ${s[0]} 에는 ${c.speakers.join("·")} 가 선 ${other} 가 따로 있습니다(${src.nodes[other].map(capName).join("·")}).`;
-          if (s[3] === "finish") {
-            t += ` 구역 완료 대화용 task_story 는 번들 때 「이 소구역 심부름 수(${src.tasks})를 넘는 번호 중 가장 큰 것」으로 정해져 ${s[5]} 가 잡혔습니다`
-              + ` — ${other} 가 구역 완료용이라면 원안에서 ${s[5]} 를 정리해야 합니다.`;
-          }
-        }
-        return t;
+        return Object.keys(src.nodes).find((n) => n !== c.s[5] && want.every((w) => src.nodes[n].includes(w))) || null;
       }
       function stageVdHtml(ev) {
         const c = stageCheck(ev);
         if (c.st === "bad") return `<span class="cr-vd is-bad" title="${esc(stageMissText(c))}">마을 캐릭터 ≠ 대사 화자</span>`;
-        if (c.st === "prev") return `<span class="cr-vd is-na" title="${esc(stageMissText(c))}">task_story 없음 · 앞 번호 사용</span>`;
+        if (c.st === "prev") return `<span class="cr-vd is-na" title="${esc(stageMissText(c))}">앞 번호 사용</span>`;
         return "";
       }
       function stageStripHtml(ev) {
@@ -1409,7 +1394,7 @@
         const head = `<div class="lb">채팅 직전 마을</div>`;
         if (isEmptySt(c.st)) {
           return `<div class="cr-res cr-stagebox">${head}<div class="cr-rk"><span class="cr-vd is-none">비어 있음 · ${EMPTY_KINDS[c.st]}</span>`
-            + `<span class="no">${esc(stageMissText(c))} — 그래서 이 채팅 동안 마을에 아무도 서지 않습니다</span></div></div>`;
+            + `<span class="no">${esc(stageMissText(c))}</span></div></div>`;
         }
         return `<div class="cr-res cr-stagebox">${head}`
           + `<div class="cr-rk"><code title="원안 assets/Effect/area/AreaCourtyard.prefab">${esc(s[0])}/${esc(s[5])}</code>`
@@ -1421,11 +1406,10 @@
       function stageDiffHtml(ev) {
         const c = stageCheck(ev);
         if (c.st === "bad") {
-          return `<div class="cr-stage-diff">${stageVdHtml(ev)} 대사 <code>${esc(c.sid)}</code> 화자 <b>${esc(c.speakers.join("·"))}</b>`
-            + ` · 마을 <b>${esc(c.standing.join("·"))}</b> — ${esc(stageDiffText(c))}<p class="cr-chk-p">${esc(stagePlain(c))}</p></div>`;
+          return `<div class="cr-stage-diff">${stageVdHtml(ev)} <b>${esc(stageMissText(c))}</b></div>`;
         }
         if (c.st === "ok") return `<div class="cr-stage-diff">대사 <code>${esc(c.sid)}</code> 화자와 일치</div>`;
-        if (c.st === "prev") return `<div class="cr-stage-diff">${stageVdHtml(ev)} ${esc(stageMissText(c))} — 대사 화자와 대조하지 않습니다</div>`;
+        if (c.st === "prev") return `<div class="cr-stage-diff">${stageVdHtml(ev)} ${esc(stageMissText(c))}</div>`;
         return "";
       }
 
@@ -1586,21 +1570,14 @@
       /* ── 확인 필요 ─────────────────────────────────────────────────────── */
       /* 문서 안의 어긋남을 한곳에 모은다. 앞 다섯은 「확인 필요」, 뒤 둘은 미완 현황이라 참고로만 접어 둔다. */
       const CHK_CATS = [
-        ["stage-bad", "is-bad", "마을 캐릭터 ≠ 대사 화자",
-          "채팅 직전 마을에 서 있는 캐릭터와, 바로 이어지는 대사에서 말하는 사람이 다릅니다. 「대사엔 있는데 마을에 없음」·「마을엔 있는데 대사에 없음」을 적었습니다(Rosie 는 주인공이라 항상 서 있어도 됩니다)", "마을 ≠ 화자"],
-        ["stage-nofinish", "is-none", "task_story 없음 · 구역 완료용",
-          "구역 마지막 심부름을 깨면 구역 완료 대화가 나오는데, 그때 쓸 task_story_{심부름 수+1} 이 원안에 없습니다. 그래서 그 채팅 동안 마을에 아무도 서지 않습니다", "없는 task_story · 완료"],
-        ["stage-nosub", "is-none", "task_story 없음 · 소구역째",
-          "이 구역의 소구역(area_1_N)이 원안 AreaCourtyard.prefab 에 없어 task_story 가 하나도 없습니다. 마을에 아무도 서지 않습니다", "없는 task_story · 소구역"],
-        ["deco-diff", "is-bad", "꾸미기 종류 다름",
-          "원안 꾸미기 지점은 수선(폐허→수선)인데 시트는 택1이거나, 그 반대입니다. 아트가 기준이라 시트를 맞출 일입니다", "꾸미기 종류 다름"],
-        ["deco-noart", "is-none", "꾸미기 아트 없음",
-          "시트엔 이 심부름에 수선·택1 꾸미기가 있는데, 원안에 그 순번의 꾸미기 지점(task_deco_N)이 없습니다", "꾸미기 아트 없음"],
-        ["deco-unwired", "is-none", "꾸미기 미연결",
-          "클라 번들에 꾸미기 프리팹은 있는데 게임 꾸미기 표에 연결이 안 돼 실제로는 안 붙습니다", "꾸미기 미연결"],
-        ["stage-prev", "is-na", "task_story 없음 · 앞 번호 사용",
-          "그 심부름의 task_story_N 이 원안에 없어, 같은 소구역에 있는 앞 번호 task_story 를 대신 세웁니다. 그래서 대사 화자와 대조하지 않습니다"],
-        ["deco-noclient", "is-na", "클라 꾸미기 없음", "클라 번들에 아직 꾸미기 프리팹이 없습니다(반영 현황)"],
+        ["stage-bad", "is-bad", "마을 ≠ 화자", "채팅 직전 마을에 선 캐릭터가 대사 화자와 다름", "마을 ≠ 화자"],
+        ["stage-nofinish", "is-none", "구역 완료 task_story 없음", "구역 완료 대화 때 마을이 빔", "구역 완료 task_story"],
+        ["stage-nosub", "is-none", "소구역 없음", "원안에 소구역이 없어 마을이 빔", "소구역 없음"],
+        ["deco-diff", "is-bad", "꾸미기 종류 다름", "아트(수선·택1)와 시트 유형이 다름", "꾸미기 종류 다름"],
+        ["deco-noart", "is-none", "꾸미기 아트 없음", "시트엔 꾸미기가 있는데 원안에 task_deco 없음", "꾸미기 아트 없음"],
+        ["deco-unwired", "is-none", "꾸미기 미연결", "프리팹은 있는데 게임에 안 붙음", "꾸미기 미연결"],
+        ["stage-prev", "is-na", "앞 번호 사용", "task_story 가 없어 앞 번호를 대신 씀"],
+        ["deco-noclient", "is-na", "클라 꾸미기 없음", "클라 프리팹 아직 없음"],
       ];
       const CHK_MAIN = new Set(["stage-bad", "stage-nofinish", "stage-nosub", "deco-diff", "deco-noart", "deco-unwired"]);
       const STAGE_CAT = { bad: "stage-bad", nofinish: "stage-nofinish", nosub: "stage-nosub", nopoint: "stage-nofinish", prev: "stage-prev" };
@@ -1628,15 +1605,14 @@
           const cat = STAGE_CAT[c.st];
           if (cat) {
             const s = c.s;
-            const it = { cat, go: chkIdOf(e), label, at, day: e.row[0], note: stageMissText(c), grp: "", range: null,
-              plain: c.st === "bad" ? stagePlain(c) : "" };
+            const it = { cat, go: chkIdOf(e), label, at, day: e.row[0], note: stageMissText(c), grp: "", range: null };
             /* 같은 소구역에서 같은 노드를 돌려 쓰는 재사용 · 같은 소구역이 없는 구간은 한 칩으로 묶는다 */
             if (c.st === "prev") {
               it.grp = `${s[0]}/${s[5]}`;
-              it.range = (x, y) => `원안 ${s[0]} 에 task_story_${storyNum(x.s4)}~${storyNum(y.s4)} 없음 → ${s[5]} 대신 사용`;
+              it.range = (x, y) => `${s[0]} task_story_${storyNum(x.s4)}~${storyNum(y.s4)} 없음`;
               it.s4 = s[4];
             }
-            if (c.st === "nosub") { it.grp = s[4]; it.range = () => `원안에 ${s[4]} 소구역이 없어 task_story 가 하나도 없음`; }
+            if (c.st === "nosub") { it.grp = s[4]; it.range = () => `${s[4]} 없음`; }
             out.push(it);
           }
           if (e.kind === "clear" && hasDeco(e.row)) {
@@ -1669,21 +1645,15 @@
         const total = main.reduce((a, [cat]) => a + by(cat).length, 0);
         const group = ([cat, cls, label, ds]) => {
           const items = by(cat);
-          return `<div class="cr-chk-g" id="chk-${cat}"><span class="cr-vd ${cls}">${label} ${items.length}</span><div class="ds">${ds}</div>`
-            + `<div class="cr-chk-ks">${chkChips(items)}</div>`
-            + items.filter((it) => it.plain).map((it) => `<p class="cr-chk-p"><b>${esc(it.label)}</b> ${esc(it.plain)}</p>`).join("")
-            + `</div>`;
+          return `<div class="cr-chk-g" id="chk-${cat}"><span class="cr-vd ${cls}">${label} ${items.length}</span><span class="ds">${ds}</span>`
+            + `<div class="cr-chk-ks">${chkChips(items)}</div></div>`;
         };
         const ref = CHK_CATS.filter(([cat]) => !CHK_MAIN.has(cat) && by(cat).length);
         $("#crCheck").innerHTML = `<div class="cr-chk-h"><b>확인 필요 ${total}건</b>`
-          + `<span>매치가 안 되는 행 — 칩을 누르면 표에서 그 행으로 가서 펼칩니다. 표에서는 연한 붉은 바탕입니다</span></div>`
-          + `<details class="cr-chk-how" open><summary>마을에 누가 서는지는 어떻게 정해지나</summary><ol>`
-          + `<li>심부름을 깨면 채팅이 뜨기 직전, 마을에 스토리 캐릭터들이 서 있습니다. 누가 어디 서는지는 원안 <code>AreaCourtyard.prefab</code> 의 소구역(<code>area_1_N</code>) 밑 <code>task_story_번호</code> 노드에 넣어 둔 캐릭터(<code>{이름}_{감정}</code>)가 전부입니다.</li>`
-          + `<li>번호는 그 소구역의 심부름 순서입니다. <code>task_story_K</code> 는 K번째 심부름의 시작 대사 직전에 쓰이고, 그 대사에서 말하는 사람이 들어 있어야 합니다. 마지막 번호 하나 뒤(<code>task_story_{심부름 수+1}</code>)는 구역 완료 대화 때 쓰입니다.</li>`
-          + `<li><code>task_story_K</code> 가 없으면 같은 소구역의 앞 번호 task_story 를 대신 세우고(<b>앞 번호 사용</b>), 구역 완료용 task_story 나 소구역 자체가 없으면 마을에 아무도 서지 않습니다.</li>`
-          + `</ol></details>`
+          + `<span>칩을 누르면 그 행으로 이동 · 표에선 붉은 바탕</span></div>`
+
           + (total ? main.filter(([cat]) => by(cat).length).map(group).join("") : `<div class="cr-chk-ref">어긋난 행이 없습니다</div>`)
-          + ref.map((g) => `<details class="cr-chk-ref"><summary>참고 · ${g[2]} ${by(g[0]).length} — ${g[3]}</summary>`
+          + ref.map((g) => `<details class="cr-chk-ref"><summary>참고 · ${g[2]} ${by(g[0]).length} · ${g[3]}</summary>`
             + `<div class="cr-chk-ks">${chkChips(by(g[0]))}</div></details>`).join("");
       }
 
