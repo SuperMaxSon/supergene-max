@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-15 16:20",
+  updated: "2026-10-15 17:58",
 };
 
 /* --------------------------------------------------------------------------
@@ -391,6 +391,17 @@ const SECTIONS = [
         updated: "2026-10-15 14:18",
         pinned: false,
         tags: ["코드 실측", "리소스", "용량"],
+      },
+      {
+        title: "프리로드 창 기획",
+        desc: "심부름이 정해진 한 줄이라는 점을 써서 앞 몇 칸의 채팅·꾸미기만 미리 받아 쥐고(칸 수 = 코인·기기 여유), 나머지는 화면 전환 때 커튼 뒤에서 올리는 로딩·메모리 기획 초안입니다.",
+        url: "docs/story-merge-preload-window.html",
+        project: "smg",
+        status: "초안",
+        version: "main 54309db3",
+        updated: "2026-10-15 17:58",
+        pinned: false,
+        tags: ["기획", "리소스", "프리로드"],
       },
       {
         title: "아틀라스 기획",

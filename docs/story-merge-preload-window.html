@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>프리로드 창 기획</title>
+    <meta name="description" content="심부름이 정해진 한 줄이라는 점을 이용해, 앞 몇 칸의 채팅·꾸미기만 미리 받아 두고 나머지는 화면 전환 때 올리는 로딩·메모리 기획입니다." />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <style>
+      /* 도식은 인라인 SVG. 래퍼(.dg)와 색 토큰은 아틀라스 기획 문서와 같은 방식이다.
+         레이아웃·타이포·노트·표는 style.css 공용 클래스를 그대로 쓴다. */
+      .dg {
+        --d-ink: var(--text);
+        --d-ink2: var(--text-dim);
+        --d-ink3: var(--text-faint);
+        --d-line2: #c7cddb;
+        --d-surf: #ffffff;
+        --d-acc: var(--smg);
+        --d-dec: var(--smg);
+        --d-dl: color-mix(in srgb, var(--smg) 30%, #fff);
+        --d-off: #eef0f5;
+        --d-warn: var(--warn);
+        --d-warn-s: #fdf2e3;
+        margin: 14px 0 0;
+        padding: 16px 12px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        overflow-x: auto;
+      }
+      .dg svg { display: block; width: 100%; min-width: 780px; height: auto; }
+      .dgsvg { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; }
+      .dgsvg text { fill: var(--d-ink); font-size: 13px; }
+      .dgsvg .mu { fill: var(--d-ink3); font-size: 12px; }
+      .dgsvg .b { font-weight: 700; }
+      .dgsvg .w { fill: #fff; }
+      .dgsvg .box { fill: var(--d-surf); stroke: var(--d-line2); stroke-width: 1.2; }
+      .dgsvg .dec { fill: var(--d-dec); }
+      .dgsvg .dl { fill: var(--d-dl); }
+      .dgsvg .off { fill: var(--d-off); stroke: var(--d-line2); stroke-width: 1; }
+      .dgsvg .done { fill: #d9dde6; }
+      .dgsvg .win { fill: none; stroke: var(--d-acc); stroke-width: 2.4; }
+      .dg-cap { margin: 10px 2px 0; padding-top: 9px; border-top: 1px dashed var(--border); font-size: 11.5px; font-weight: 700; line-height: 1.7; color: var(--text-dim); text-align: center; }
+      .dg-cap strong { color: var(--text); }
+      .pw-t { table-layout: fixed; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#summary">요약</a>
+        <a class="nav-back" href="#principle">원칙</a>
+        <a class="nav-back" href="#line">심부름 한 줄</a>
+        <a class="nav-back" href="#window">창 크기</a>
+        <a class="nav-back" href="#buckets">세 칸</a>
+        <a class="nav-back" href="#package">창 한 칸</a>
+        <a class="nav-back" href="#repair">수선 예외</a>
+        <a class="nav-back" href="#decide">정할 것</a>
+        <a class="nav-back" href="#basis">근거·한계</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">기획 · 스토리 머지 로딩·메모리</div>
+        <h1 class="doc-title">프리로드 창 기획 <span class="pill" style="--acc: var(--smg)">초안 · 검토 대기</span></h1>
+        <p class="doc-lede">
+          심부름은 <b>정해진 한 줄</b>이고, 심부름 하나를 깨면 채팅 → 꾸미기가 늘 같은 순서로 이어집니다.
+          그래서 지금 위치에서 <b>앞 몇 칸</b>의 채팅·꾸미기만 미리 받아 쥐고, 깰 때마다 한 칸씩 밉니다. 몇 칸을 쥘지는 <b>유저 코인</b>과 <b>기기 여유</b>로 정합니다.
+          나머지는 화면을 바꿀 때 커튼 뒤에서 올립니다. 목표는 유저가 플레이 중에 끊김을 겪지 않는 것입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">코드 확인 · 프리뷰 실측 · 모델 추정</span>
+          <span class="tag">main 54309db3 기준</span>
+          <span class="tag">2026-10-15</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="doc-section" id="summary">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">요약 <span class="doc-h2-sub">한눈에</span></h2>
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--smg)"><div class="stat-num">3<span class="stat-unit">칸</span></div><div class="stat-name">리소스를 세 칸으로</div><div class="stat-sub">상주 · 심부름 창 · 전환 때 로드</div></div>
+          <div class="stat" style="--acc: var(--plan)"><div class="stat-num">2~5<span class="stat-unit">칸</span></div><div class="stat-name">심부름 창 크기</div><div class="stat-sub">코인으로 깰 수 있는 수 + 1 · 기기 상한</div></div>
+          <div class="stat" style="--acc: var(--ok)"><div class="stat-num">0<span class="stat-unit">회</span></div><div class="stat-name">플레이 중 디코딩</div><div class="stat-sub">디코딩은 커튼·팝업 열기 대기에서만</div></div>
+          <div class="stat" style="--acc: var(--warn)"><div class="stat-num">4</div><div class="stat-name">정할 것</div><div class="stat-sub">데코 · 손님 · 수선 프리팹 · 창 숫자</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="principle">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">원칙 <span class="doc-h2-sub">유저가 겪는 순서대로</span></h2>
+        <div class="table-scroll">
+          <table class="pw-t">
+            <thead><tr><th style="width: 150px">동작</th><th style="width: 330px">언제 하나</th><th>하지 않는 곳</th></tr></thead>
+            <tbody>
+              <tr><td><strong>받기</strong> (다운로드)</td><td>앞 화면의 여유 구간에 일찍 · 넓게. GPU 메모리는 거의 0</td><td>—</td></tr>
+              <tr><td><strong>디코딩</strong> (텍스처 업로드 · 복제)</td><td>그 화면에 들어가는 <strong>대기 구간</strong>: 전환 커튼 · 팝업 열기 · 채팅 열기</td><td>드래그 · 머지 · 타이핑 · 연출 중. 팝업이 열린 뒤 그림이 늦게 차는 것도 금지</td></tr>
+              <tr><td><strong>놓기</strong> (해제)</td><td>다음에 쓸 때 <strong>다시 올릴 대기 구간이 있을 때만</strong></td><td>대기 구간 없이 다시 쓰게 되는 것</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--smg)">
+            <div class="note-title">왜 이 순서인가</div>
+            <p>유저에게 가장 치명적인 건 메모리가 넘쳐 게임이 튕기는 것이고, 다음이 플레이 중 끊김, 그다음이 전환 대기입니다. 여는 순간의 짧은 대기는 플레이 중 끊김보다 낫습니다. 실제로 채팅을 「첫 줄 감정만 먼저 열고 나머지는 열린 뒤에」 바꿨다가, 나머지가 타이핑 중에 올라와 끊길 자리가 생겨 되돌렸습니다(얻는 시간은 실측 15~27ms뿐이었습니다).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="line">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">심부름은 한 줄이다 <span class="doc-h2-sub">앞 몇 칸만 쥐고, 깰 때마다 한 칸씩 민다</span></h2>
+        <div class="dg"><svg viewBox="0 0 920 250" class="dgsvg" role="img" aria-label="심부름 1번부터 10번까지 한 줄. 지금 위치에서 창이 지금 칸과 앞 두 칸을 묶고, 심부름을 깰 때마다 창이 한 칸씩 오른쪽으로 민다. 창 안 첫 칸은 열 때 디코딩, 나머지는 받기만, 지나간 칸은 놓는다.">
+          <g class="mu"><text x="0" y="22">심부름 순서 (day, task_seq) — 한 줄로 고정</text></g>
+          <g>
+            <text class="b" x="0" y="72">지금 2번</text>
+            <rect class="done" x="120" y="54" width="60" height="28" rx="5"/><text class="mu" x="143" y="73">1</text>
+            <rect class="dec" x="190" y="54" width="60" height="28" rx="5"/><text class="w b" x="214" y="73">2</text>
+            <rect class="dl" x="260" y="54" width="60" height="28" rx="5"/><text x="284" y="73">3</text>
+            <rect class="dl" x="330" y="54" width="60" height="28" rx="5"/><text x="354" y="73">4</text>
+            <rect class="off" x="400" y="54" width="60" height="28" rx="5"/><text class="mu" x="424" y="73">5</text>
+            <rect class="off" x="470" y="54" width="60" height="28" rx="5"/><text class="mu" x="494" y="73">6</text>
+            <rect class="off" x="540" y="54" width="60" height="28" rx="5"/><text class="mu" x="564" y="73">7</text>
+            <rect class="win" x="184" y="48" width="212" height="40" rx="8"/>
+          </g>
+          <g>
+            <text class="b" x="0" y="132">2번 클리어 →</text>
+            <rect class="done" x="120" y="114" width="60" height="28" rx="5"/><text class="mu" x="143" y="133">1</text>
+            <rect class="done" x="190" y="114" width="60" height="28" rx="5"/><text class="mu" x="214" y="133">2</text>
+            <rect class="dec" x="260" y="114" width="60" height="28" rx="5"/><text class="w b" x="284" y="133">3</text>
+            <rect class="dl" x="330" y="114" width="60" height="28" rx="5"/><text x="354" y="133">4</text>
+            <rect class="dl" x="400" y="114" width="60" height="28" rx="5"/><text x="424" y="133">5</text>
+            <rect class="off" x="470" y="114" width="60" height="28" rx="5"/><text class="mu" x="494" y="133">6</text>
+            <rect class="off" x="540" y="114" width="60" height="28" rx="5"/><text class="mu" x="564" y="133">7</text>
+            <rect class="win" x="254" y="108" width="212" height="40" rx="8"/>
+          </g>
+          <g>
+            <rect class="dec" x="640" y="54" width="22" height="16" rx="3"/><text x="670" y="67">지금 칸 — 채팅·꾸미기 열 때 디코딩</text>
+            <rect class="dl" x="640" y="80" width="22" height="16" rx="3"/><text x="670" y="93">창 안 — 받기만</text>
+            <rect class="off" x="640" y="106" width="22" height="16" rx="3"/><text x="670" y="119">창 밖 — 아직 안 받음</text>
+            <rect class="done" x="640" y="132" width="22" height="16" rx="3"/><text x="670" y="145">지나감 — 채팅·안 고른 변형은 놓음</text>
+          </g>
+          <g class="mu">
+            <text x="0" y="186">클리어 뒤 순서 (PostChoreFlow 한 곳에 고정)</text>
+            <text x="0" y="208">카메라를 꾸미기 지점으로 → 마을 캐릭터 이동 → 채팅 → 꾸미기 → 카메라 복귀 → (구역 마지막이면) 구역 완성 채팅 → 레벨업 · 해금 · 새날 · 출석</text>
+            <text x="0" y="230">갈림길은 둘뿐: 택1에서 셋 중 무엇을 고를지(후보 3벌은 미리 앎) · 구역 완성 채팅이 나올지(클리어 전에 판정)</text>
+          </g>
+        </svg><div class="dg-cap">다음에 무엇을 쓸지는 <strong>지금 심부름이 정해진 순간 전부 확정</strong>된다 — 추측해서 미리 올리는 게 아니다</div></div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">근거</div>
+            <p>심부름은 197개, 순서는 (day, task_seq)로 고정입니다. 심부름을 막는 건 코인(<code>cost_coin</code>) 하나뿐이고 요구 아이템이 없습니다. 오늘 치를 다 깨면 바로 다음 날이 열려 시간 대기도 없습니다. 채팅은 <code>story_key</code>로 심부름과 1:1이고, 꾸미기 지점은 심부름 키 자체입니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="window">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">창 크기 <span class="doc-h2-sub">코인이 정하고, 기기가 상한을 정한다</span></h2>
+        <div class="dg"><svg viewBox="0 0 920 200" class="dgsvg" role="img" aria-label="코인 300, 앞 심부름 비용 90, 60, 90, 150일 때 누적 90, 150, 240까지는 낼 수 있고 390에서 넘친다. 연달아 깰 수 있는 3개에 모으는 중인 1칸을 더해 창은 4칸.">
+          <g class="mu"><text x="0" y="20">예) 코인 300 · 앞 심부름 비용 90 · 60 · 90 · 150</text></g>
+          <g transform="translate(6,0)">
+            <rect class="dl" x="0" y="40" width="150" height="34" rx="6"/><text x="12" y="62">비용 90 · 누적 90</text>
+            <rect class="dl" x="160" y="40" width="150" height="34" rx="6"/><text x="172" y="62">60 · 누적 150</text>
+            <rect class="dl" x="320" y="40" width="150" height="34" rx="6"/><text x="332" y="62">90 · 누적 240</text>
+            <rect class="dl" x="480" y="40" width="150" height="34" rx="6"/><text x="492" y="62">150 · 누적 390 &gt; 300</text>
+            <rect class="off" x="640" y="40" width="130" height="34" rx="6"/><text class="mu" x="652" y="62">창 밖</text>
+            <rect class="win" x="-4" y="34" width="638" height="46" rx="8"/>
+          </g>
+          <g>
+            <text x="0" y="112"><tspan class="b">창 = 연달아 낼 수 있는 수 + 1 = 3 + 1 = 4칸</tspan><tspan class="mu"> — 마지막 1칸은 「지금 모으는 중」. 코인이 차는 동안 받기가 끝난다</tspan></text>
+            <text class="mu" x="0" y="140">최소 2칸 · 최대는 기기 상한(아래 표). 다시 계산은 심부름 클리어 때, 그리고 코인이 바뀌어 창 크기가 달라질 때만.</text>
+            <text class="mu" x="0" y="164">창이 커져도 받기만이라 늘어나는 건 다운로드 양이다. 디코딩은 늘 지금 칸 하나.</text>
+            <text class="mu" x="0" y="188">우선순위: 지금 칸 → 마을 진입 선받기 → 창의 다음 칸. 창이 커져도 당장 필요한 받기를 밀어내지 않는다.</text>
+          </g>
+        </svg><div class="dg-cap">1일차 심부름은 12~46코인으로 싸서 신규 유저는 시작하자마자 창이 상한에 닿기 쉽다 — 그래서 우선순위와 상한이 같이 있어야 한다</div></div>
+
+        <div class="table-scroll">
+          <table class="pw-t">
+            <thead><tr><th style="width: 150px">기기 등급</th><th style="width: 330px">판정 (클라에 이미 있는 신호)</th><th style="width: 110px">창 상한</th><th>여유분을 어디에 쓰나 (제안)</th></tr></thead>
+            <tbody>
+              <tr><td><strong>저사양</strong></td><td>안드로이드 <code>navigator.deviceMemory</code> &lt; 3GB · 옛 아이폰(화면 크기로 판정) — 기존 <code>isLowDevice</code></td><td>3칸</td><td>마을 데코를 「전환 때 로드」로 — 인게임에서 메모리를 비운다</td></tr>
+              <tr><td><strong>보통</strong></td><td>그 밖 전부 (아이폰은 메모리를 알려 주지 않아 여기)</td><td>5칸</td><td>마을 데코 상주 — 전환이 잦아도 커튼이 늘지 않는다</td></tr>
+              <tr><td><strong>여유</strong></td><td>안드로이드 <code>deviceMemory</code> ≥ 6GB (새 기준)</td><td>7칸</td><td>보통과 같고 창만 더 길게</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">기기 여유는 아직 숫자가 아니다</div>
+            <p>지금 실측은 프리뷰 PC의 GPU 텍스처 합뿐입니다. 저사양 폰의 FB 앱에서 몇 MB에 튕기는지는 재지 않았습니다. 등급 경계(3GB · 6GB)와 상한(3 · 5 · 7)은 기기 실측 전까지 임시값입니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="buckets">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">리소스 세 칸 <span class="doc-h2-sub">안 버리는 것 두 칸 + 전환 때 올리는 한 칸</span></h2>
+        <div class="dg"><svg viewBox="0 0 920 262" class="dgsvg" role="img" aria-label="세 칸. 상주: 공용 아틀라스와 인게임 UI, 마을 배경 24.9MB, 보드 아이콘. 심부름 창: 지금과 앞 N칸의 채팅과 꾸미기, 받기만. 전환 때 로드: 손님, 마을 데코와 캐릭터는 결정 대기.">
+          <g>
+            <rect class="box" x="0" y="0" width="296" height="222" rx="9"/>
+            <rect class="dec" x="0" y="0" width="296" height="40" rx="9"/><text class="w b" x="14" y="26">① 상주 — 안 버림</text>
+            <text x="14" y="66">공용 아틀라스 · 이펙트 ~4MB</text>
+            <text x="14" y="90">인게임 공용 UI (헤더 등) 5~6MB</text>
+            <text x="14" y="114">마을 배경 24.9MB (해상도 유지 확정)</text>
+            <text x="14" y="138">보드 아이콘 4~5MB</text>
+            <text class="mu" x="14" y="182">디코딩: 처음 한 번 (커튼 뒤)</text>
+            <text class="mu" x="14" y="204">메모리: 고정비</text>
+          </g>
+          <g>
+            <rect class="box" x="312" y="0" width="296" height="222" rx="9"/>
+            <rect class="dl" x="312" y="0" width="296" height="40" rx="9"/><text class="b" x="326" y="26">② 심부름 창 — 안 버림</text>
+            <text x="326" y="66">지금 + 앞 N칸 (코인 · 기기로 2~7)</text>
+            <text x="326" y="90">· 채팅 행 · 감정 · 삽화</text>
+            <text x="326" y="114">· 꾸미기 수선 · 택1 3벌</text>
+            <text x="326" y="138">· 구역 완성 채팅 (마지막일 때)</text>
+            <text class="mu" x="326" y="182">디코딩: 채팅 · 꾸미기 열 때 (지금 칸만)</text>
+            <text class="mu" x="326" y="204">메모리: 받기만이라 거의 0</text>
+          </g>
+          <g>
+            <rect class="box" x="624" y="0" width="296" height="222" rx="9"/>
+            <rect class="off" x="624" y="0" width="296" height="40" rx="9"/><text class="b" x="638" y="26">③ 전환 때 로드 — 떠나면 버림</text>
+            <text x="638" y="66">인게임 쪽: 손님</text>
+            <text x="638" y="90">마을 쪽: 데코 ? · 캐릭터 ?</text>
+            <text class="mu" x="638" y="114">(정할 것 — 아래)</text>
+            <text class="mu" x="638" y="182">디코딩: 커튼 뒤, 들어갈 때마다</text>
+            <text class="mu" x="638" y="204">메모리: 그 화면에 있을 때만</text>
+          </g>
+          <text class="mu" x="0" y="250">③에 넣으면 메모리는 줄지만 그 화면에 들어갈 때마다 커튼이 그만큼 길어진다. 그래서 항목마다 ①과 ③ 중 하나를 고른다.</text>
+        </svg><div class="dg-cap">채팅 감정은 지금도 채팅이 닫히면 놓는다 — ②가 쥐는 건 <strong>받은 파일</strong>이지 디코딩된 텍스처가 아니다</div></div>
+
+        <div class="table-scroll">
+          <table class="pw-t">
+            <thead><tr><th style="width: 170px">항목</th><th style="width: 120px">크기</th><th style="width: 300px">①에 두면</th><th>③에 두면</th></tr></thead>
+            <tbody>
+              <tr><td><strong>마을 데코</strong></td><td>RU 51.7 · NRU 28.6MB</td><td>인게임에서도 상주 — RU 인게임 GPU 약 136MB</td><td>RU 인게임 약 85MB · 마을에 들어갈 때 커튼 중앙 +0.1초 · p90 +0.3초 · 최대 +1.0초</td></tr>
+              <tr><td><strong>마을 캐릭터</strong></td><td>2~12MB</td><td>상주</td><td>마을 들어갈 때 조금 더 길어짐</td></tr>
+              <tr><td><strong>손님</strong></td><td>레일 2~4MB/명 · 후보 약 15MB</td><td>마을에서도 상주</td><td>지금 방식. 단, 지금은 인게임에 들어간 뒤 <strong>머지 중에</strong> 다시 디코딩한다(후보 중앙 0.9초 · 최대 6.5초) — 레일 손님은 커튼 뒤로 옮겨야 한다</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="package">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">창 한 칸에 들어가는 것 <span class="doc-h2-sub">지금 코드와 비교</span></h2>
+        <div class="table-scroll">
+          <table class="pw-t">
+            <thead><tr><th style="width: 200px">항목</th><th style="width: 330px">지금</th><th>창에 넣으면</th></tr></thead>
+            <tbody>
+              <tr><td>채팅 행 · 감정 clip</td><td>미리 받음(채팅 워밍업) → 열 때 디코딩</td><td>그대로</td></tr>
+              <tr><td>채팅 삽화 · 카드</td><td>안 받음 → 채팅 열 때 받기부터</td><td>창에 포함</td></tr>
+              <tr><td><strong>꾸미기 택1 3벌</strong></td><td>안 받음 → 꾸미기 직전에 받기 + 디코딩 (<strong>가장 큰 구멍</strong>)</td><td>창에 포함 — 디코딩만 꾸미기 열 때</td></tr>
+              <tr><td>꾸미기 수선</td><td>마을 진입 때 전부 디코딩 (폐허 그림 때문 — 아래)</td><td>그대로 (예외)</td></tr>
+              <tr><td>구역 완성 채팅</td><td>안 받음</td><td>구역 마지막 심부름이면 창에 포함</td></tr>
+              <tr><td>선로드 주인</td><td>채팅 워밍업만 따로, 꾸미기는 없음</td><td>순서를 쥔 <code>PostChoreFlow</code> 옆에 창 하나로</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-scroll">
+          <table class="pw-t">
+            <thead><tr><th style="width: 110px">소구역</th><th style="width: 110px">심부름</th><th style="width: 200px">수선 (텍스처)</th><th style="width: 220px">택1 3벌 (텍스처)</th><th>아트 없는 키</th></tr></thead>
+            <tbody>
+              <tr><td>area_1_1</td><td>9</td><td>2개 · 5.1MB</td><td>5개 · 9.7MB</td><td>0</td></tr>
+              <tr><td>area_1_2</td><td>18</td><td>8개 · 4.5MB</td><td>7개 · 7.3MB</td><td>1</td></tr>
+              <tr><td>area_1_3</td><td>38</td><td>12개 · 9.1MB</td><td>8개 · 3.2MB</td><td>8</td></tr>
+              <tr><td>area_1_4</td><td>42</td><td>11개 · 9.6MB</td><td>6개 · 2.8MB</td><td>9</td></tr>
+              <tr><td>area_1_5</td><td>50</td><td>14개 · 13.6MB</td><td>9개 · 14.0MB</td><td>12</td></tr>
+              <tr><td>6 (마을 2)</td><td>40</td><td>—</td><td>—</td><td>27</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">표 읽는 법</div>
+            <p>텍스처는 가로×세로×4바이트 모델 추정이고, 에리어 프리팹(배경 등)이 이미 쥔 그림은 뺐습니다. 중첩 프리팹 링크는 실제로 로드되지 않아 세지 않았습니다. 첫 채팅은 감정 7개 · 받기 3.1MB · 디코딩 35.5MB입니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="repair">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">예외: 수선 데코 <span class="doc-h2-sub">폐허 그림이 수선 프리팹 안에 있다</span></h2>
+        <div class="dg"><svg viewBox="0 0 920 168" class="dgsvg" role="img" aria-label="지금 수선 프리팹 하나에 폐허 모습과 고친 모습이 같이 들어 있어, 마을에 폐허를 보이려면 고친 모습까지 올라온다. 프리팹을 폐허와 고친 모습으로 나누면 폐허만 상주하고 고친 모습은 심부름 창으로 돌릴 수 있다.">
+          <g>
+            <text class="b" x="0" y="20">지금</text>
+            <rect class="dec" x="0" y="34" width="400" height="44" rx="7"/>
+            <text class="w b" x="14" y="61">수선 프리팹 = 폐허 모습 + 고친 모습</text>
+            <text class="mu" x="0" y="104">폐허를 보여야 하니 안 한 수선 전부를 마을 진입 때 디코딩 — 고친 모습까지 같이 올라온다</text>
+          </g>
+          <g>
+            <text class="b" x="480" y="20">나누면 (아트 작업 필요)</text>
+            <rect class="dec" x="480" y="34" width="190" height="44" rx="7"/><text class="w b" x="494" y="61">폐허 프리팹 — ① 상주</text>
+            <rect class="dl" x="680" y="34" width="240" height="44" rx="7"/><text class="b" x="694" y="61">고친 모습 — ② 심부름 창</text>
+            <text class="mu" x="480" y="104">고친 모습은 그 심부름이 창에 들어올 때 받고 꾸미기 때 디코딩</text>
+          </g>
+          <text class="mu" x="0" y="150">신규 유저 마을 진입의 수선 전부(모델 약 41MB)를 줄이는 유일한 길이다. 나눈 뒤 얼마가 줄지는 프리팹별로 따로 잰다.</text>
+        </svg><div class="dg-cap">안 한 수선의 폐허는 마을에 보여야 한다 — 창 밖이라고 빼면 <strong>폐허까지 사라진다</strong></div></div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="decide">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">정할 것 <span class="doc-h2-sub">결정되면 이 문서를 고친다</span></h2>
+        <div class="table-scroll">
+          <table class="pw-t">
+            <thead><tr><th style="width: 40px">#</th><th style="width: 240px">항목</th><th style="width: 330px">선택지</th><th>제안</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>마을 데코 · 캐릭터</td><td>① 상주 / ③ 전환 때 로드 / 기기 등급으로 가름</td><td>기기 등급으로 가름 — 저사양만 ③</td></tr>
+              <tr><td>2</td><td>손님</td><td>③ 유지 · 레일 손님 디코딩을 커튼 뒤로</td><td>그대로 제안</td></tr>
+              <tr><td>3</td><td>수선 프리팹 나누기</td><td>폐허 / 고친 모습 분리 (아트팀)</td><td>프리팹별로 고친 모습 몫을 먼저 잰 뒤 아트팀에 제안</td></tr>
+              <tr><td>4</td><td>창 숫자</td><td>최소 2 · 상한 3 / 5 / 7</td><td>기기 실측 뒤 확정</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="basis">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">근거 · 한계 <span class="doc-h2-sub">숫자가 어디서 왔나</span></h2>
+        <div class="notes">
+          <div class="note" style="--acc: var(--validate)">
+            <div class="note-title">프리뷰 실측 (QA 봇)</div>
+            <p>RU 첫 인게임 GPU 텍스처 53MB → 마을을 다녀온 인게임 136~138MB(마을 데코 51.7 · 배경 24.9 · 캐릭터 2.0 · 연출 1.4가 남음). 전환 커튼과 마을 재진입 디코딩은 봇 212판 · 전환 2,738회의 <code>[cost]</code> 줄. 손님 후보 디코딩은 같은 기록의 <code>customer preload pool</code>.</p>
+          </div>
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">한계</div>
+            <p>GPU 텍스처 합만 재고 있습니다. JS 힙과 디코드 이미지 사본까지 포함한 실제 프로세스 메모리, 그리고 저사양 폰 FB 앱에서의 한도는 재지 않았습니다. 감정 pac 같은 auto-atlas 효과는 빌드에서만 보입니다. 소구역별 데코 크기는 모델 추정입니다.</p>
+          </div>
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">관련 문서</div>
+            <p><a href="story-merge-asset-size.html">에셋 용량</a> · <a href="story-merge-load-timeline.html">로딩 타임라인</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="wrap wrap--wide">
+        작성 2026-10-15 · Supergene
+      </div>
+    </footer>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
