@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-16 17:26",
+  updated: "2026-10-16 17:55",
 };
 
 /* --------------------------------------------------------------------------
@@ -391,6 +391,17 @@ const SECTIONS = [
         updated: "2026-10-16 15:06",
         pinned: false,
         tags: ["코드 실측", "리소스", "용량"],
+      },
+      {
+        title: "초반 메모리 시뮬레이션",
+        desc: "NRU·RU 를 10분씩(1배속 QA 봇) 플레이하는 동안 화면과 GPU 메모리가 어떻게 오르내리는지 재생합니다. 폰 화면 · 메모리 탱크 · 10분 타임라인.",
+        url: "docs/story-merge-memory-sim.html",
+        project: "smg",
+        status: "완료",
+        version: "main abb9dbb1 · QA 10-16 17:38",
+        updated: "2026-10-16 17:55",
+        pinned: false,
+        tags: ["봇 실측", "리소스", "메모리"],
       },
       {
         title: "아틀라스 기획",
