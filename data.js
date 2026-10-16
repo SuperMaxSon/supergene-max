@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-16 17:16",
+  updated: "2026-10-16 17:19",
 };
 
 /* --------------------------------------------------------------------------
@@ -553,7 +553,7 @@ const SECTIONS = [
         //    직접 읽고, 개발 기획서 · 밸런스 시트 기획서 원문 판본(v1.19)을 적었다.
         //    문서를 고쳤다고 올리는 개정 번호가 아니다. 시트를 다시 받을 때만 움직인다.
         version: "v1.19",
-        updated: "2026-10-16 10:53",
+        updated: "2026-10-16 17:19",
         pinned: false,
         tags: ["시트 실측", "머지", "스토리"],
       },
@@ -586,7 +586,7 @@ const SECTIONS = [
         project: "smg",
         status: "진행중",
         version: "v4.2",
-        updated: "2026-10-16 14:04",
+        updated: "2026-10-16 17:19",
         pinned: false,
         tags: ["연출", "도구"],
       },
@@ -657,7 +657,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v1.18",
-        updated: "2026-09-28 10:17",
+        updated: "2026-10-16 17:19",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스"],
         share: false,
@@ -669,7 +669,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v1.18",
-        updated: "2026-09-28 10:17",
+        updated: "2026-10-16 17:19",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스"],
       },
@@ -680,7 +680,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v1.18",
-        updated: "2026-09-28 10:17",
+        updated: "2026-10-16 17:19",
         pinned: false,
         tags: ["머지", "인터랙티브"],
         share: false,
@@ -692,7 +692,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v1.18",
-        updated: "2026-09-28 10:17",
+        updated: "2026-10-16 17:19",
         pinned: false,
         tags: ["머지", "인터랙티브", "밸런스", "자동 플레이"],
       },
