@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-16 15:21",
+  updated: "2026-10-16 15:06",
 };
 
 /* --------------------------------------------------------------------------
@@ -414,17 +414,6 @@ const SECTIONS = [
         pinned: false,
         tags: ["코드 실측", "아트", "임시"],
         share: false,
-      },
-      {
-        title: "메모리 관리",
-        desc: "텍스처를 언제 받고 언제 GPU 에 올리며 무엇을 상주시키는지 — 지금 구조 · 확정 원칙 · 실측 메모리와 작업 이력을 한 곳에 모았습니다.",
-        url: "docs/story-merge-memory-management.html",
-        project: "smg",
-        status: "진행중",
-        version: "main 0ce05fe7",
-        updated: "2026-10-16 15:21",
-        pinned: false,
-        tags: ["코드 실측", "리소스", "메모리"],
       },
     ],
   },
