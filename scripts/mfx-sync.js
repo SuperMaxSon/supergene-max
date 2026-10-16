@@ -41,7 +41,11 @@ function parseClient(text) {
       state = 'scene';
       return;
     }
+    if (inComment) { if (/\*\/\s*$/.test(l)) inComment = false; return; }
     if (l.trim() === '') return;
+    // 장면 안 키 주석(`/** … */` · `//`)은 건너뛴다.
+    if (/^\s*\/\*/.test(l)) { if (!/\*\/\s*$/.test(l)) inComment = true; return; }
+    if (/^\s*\/\//.test(l)) return;
     if (RE_CLOSE.test(l)) { state = 'top'; scene = null; return; }
     const m = RE_PROP.exec(l);
     if (!m) throw new Error('client line ' + no + ': not a property line: ' + l);

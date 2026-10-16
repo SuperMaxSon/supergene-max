@@ -592,7 +592,7 @@
            지금 크기에서 base(1)×sc 로 갔다가 1 로 돌아온다. 생략하면 예전 동작 그대로다. */
         function nodePunch(node, dIn, sc, dOut, easeOut, easeIn, restart) {
           if (restart) {
-            // 클라 ItemGatheringAnimation.ts:558-582 — 앞 트윈 stop() · 현재 크기 출발 · base 복귀
+            // 클라 ItemGatheringAnimation.ts:635-658 — 앞 트윈 stop() · 현재 크기 출발 · base 복귀
             var tok = (node.__punchTok || 0) + 1;
             node.__punchTok = tok;
             var m = /scale\(([-\d.]+)/.exec(node.style.transform || ""), s0 = m ? parseFloat(m[1]) : 1;
@@ -606,15 +606,17 @@
             });
         }
         /* ── A6 코인 부채꼴 — 수확(A6)과 납품 보상(C4)이 같이 쓴다 ─────────────────────────
-           클라 ItemGatheringAnimation.ts:410-508 playFan → :510-543 traceFan · :558-582 punch, 지갑 숫자는 TopBarNode rollTo.
+           클라 ItemGatheringAnimation.ts:461-561 playFan → :572-610 traceFan · :612-619 traceDuration · :635-658 punch, 지갑 숫자는 TopBarNode rollTo.
            닢마다 stagger 뒤에 떠서 부채꼴로 흩어졌다가(spread) HUD 로 빨려 들고(trace), 닿을 때마다 HUD 가 튄다.
+           추적 시간은 거리에 비례한다 — traceSec × clamp(√(거리/traceRefDist), 1, traceMaxStretch). 닿은 닢은 그 자리에
+           한 프레임 그린 뒤 지운다(크기·투명도 연출 없음). 2026-10-16 추적 시간 거리 비례 · 도착 즉시 사라짐.
            split 이 거짓이면 첫 닢 도착에 금액 전부를 굴린다(수확 — 클라 BoardTapFlow.ts:319-322 settle),
            참이면 닢마다 올림 분할로 나눠 굴린다(납품 보상 — 클라 RailServeFx.ts:204-207 ticket.release). */
-        var A6_COIN_MAX = 10;                       // 클라 MergeFxConfig.ts:331
-        var FAN_STEP_RAD = 0.42;                    // 클라 ItemGatheringAnimation.ts:32
-        var FAN_ARC_MAX_RAD = FAN_STEP_RAD * 5;     // 클라 ItemGatheringAnimation.ts:38
-        var FAN_PUNCH_IN_SEC = 0.05;                // 클라 ItemGatheringAnimation.ts:65
-        // 클라 MergeFxConfig.ts:333-337 a6CoinCount — 금액만큼 1~A6_COIN_MAX 닢
+        var A6_COIN_MAX = 10;                       // 클라 MergeFxConfig.ts:335
+        var FAN_STEP_RAD = 0.42;                    // 클라 ItemGatheringAnimation.ts:35
+        var FAN_ARC_MAX_RAD = FAN_STEP_RAD * 5;     // 클라 ItemGatheringAnimation.ts:41
+        var FAN_PUNCH_IN_SEC = 0.05;                // 클라 ItemGatheringAnimation.ts:76
+        // 클라 MergeFxConfig.ts:336-341 a6CoinCount — 금액만큼 1~A6_COIN_MAX 닢
         function a6CoinCount(amount) { return Math.max(1, Math.min(A6_COIN_MAX, Math.round(amount))); }
         function hudShown(st) { return parseInt(st.hudNum.textContent.replace(/,/g, ""), 10) || 0; }
         /* 지갑 숫자 굴리기 — 클라 TopBarNode.ts:467 rollTo(값, a6.rollSec, a6.rollEase). 지금 보이는 숫자에서 다시 출발한다 */
@@ -630,21 +632,21 @@
           if (!st.hud) return Promise.resolve();
           var P = V.a6, g = st.gen, N = Math.max(1, count), arrived = 0;
           if (st.wallet == null) st.wallet = hudShown(st);
-          var base = st.wallet;
+          var wallet0 = st.wallet;   // 안쪽 닢 크기 base 와 이름이 겹치지 않게 따로 둔다
           st.wallet += amount;
-          // 클라 ItemGatheringAnimation.ts:34-38,442 — 7닢부터 전체 부채각을 0.42×5 로 묶고 각폭을 좁힌다
+          // 클라 ItemGatheringAnimation.ts:35-41,486 — 7닢부터 전체 부채각을 0.42×5 로 묶고 각폭을 좁힌다
           var step = N <= 1 ? 0 : Math.min(FAN_STEP_RAD, FAN_ARC_MAX_RAD / (N - 1));
           var all = [];
           for (var i = 0; i < N; i++) {
             (function (i) {
-              all.push(wait(i * P.stagger).then(function () {          // 클라 ItemGatheringAnimation.ts:501-505
+              all.push(wait(i * P.stagger).then(function () {          // 클라 ItemGatheringAnimation.ts:554-558
                 if (st.gen !== g) return;
                 var c = st.spr('<div class="mfx-coin" style="width:55px;height:58px;background:url(img/ui/coin.png) center/contain no-repeat;border:0;border-radius:0;box-shadow:none"></div>');
-                // 출발 = 헤더 아이콘 상자에 닢을 맞춘 크기(HUD 점 / 코인 그림), 펼침 최고점 = 출발 × spreadScale (클라 RewardFx.ts:337 coinFanSize 가 startBox/arriveBox 를 넘기고 ItemGatheringAnimation.ts:485-486 fitNodeTo 가 배율을 낸다)
+                // 출발 = 헤더 아이콘 상자에 닢을 맞춘 크기(HUD 점 / 코인 그림), 펼침 최고점 = 출발 × spreadScale (클라 RewardFx.ts:337 coinFanSize 가 startBox/arriveBox 를 넘기고 ItemGatheringAnimation.ts:538-539 fitNodeTo 가 배율을 낸다)
                 var dot = st.hud.querySelector(".dot"), body = c.el.firstChild;
                 var base = dot && body && body.offsetWidth ? dot.offsetWidth / body.offsetWidth : 1;
                 c.set({ x: from.x, y: from.y, sx: base, sy: base });
-                // 클라 ItemGatheringAnimation.ts:490-493 — 중심 -90도, spreadUp 은 무더기 전체 오프셋(px → PX_K)
+                // 클라 ItemGatheringAnimation.ts:543-546 — 중심 -90도, spreadUp 은 무더기 전체 오프셋(px → PX_K)
                 var ang = -Math.PI / 2 + (i - (N - 1) / 2) * step;
                 return c.to(P.spreadSec, {
                   x: from.x + Math.cos(ang) * px(P.spreadR),
@@ -652,20 +654,25 @@
                   sx: base * P.spreadScale, sy: base * P.spreadScale,
                 }, P.spreadEase)
                   .then(function () {
-                    // 클라 ItemGatheringAnimation.ts:515-521 — 목적지는 매번 다시 잰다
+                    // 클라 ItemGatheringAnimation.ts:576-583 — 목적지는 매번 다시 잰다
                     var target = st.at(st.hud);
                     // 도착 크기 = 목적지 아이콘(HUD 점) 크기 × a6.arriveFit(= base × arriveFit)
                     var fit = P.arriveFit * base;
-                    return c.to(P.traceSec, { x: target.x, y: target.y, sx: fit, sy: fit }, P.traceEase);
+                    // 클라 ItemGatheringAnimation.ts:588,612-619 traceDuration — 펼침 끝 → 목적지 거리(클라 px = 무대 px / PX_K)가
+                    // traceRefDist 보다 멀면 traceSec × √(거리/기준), traceMaxStretch 배까지. 위치·크기가 같은 시간 · 같은 traceEase
+                    var d = Math.hypot(target.x - c.x, target.y - c.y) / PX_K;
+                    var stretch = P.traceRefDist > 0 ? Math.min(Math.max(1, Math.sqrt(d / P.traceRefDist)), Math.max(1, P.traceMaxStretch)) : 1;
+                    return c.to(P.traceSec * stretch, { x: target.x, y: target.y, sx: fit, sy: fit }, P.traceEase);
                   })
                   .then(function () {
-                    c.kill();
-                    if (st.gen !== g) return;
+                    if (st.gen !== g) { c.kill(); return; }
+                    // 클라 ItemGatheringAnimation.ts:602-608 — 도착 처리는 닿는 순간, 닢은 그 자리에 한 프레임 그린 뒤 지운다(크기·투명도 연출 없음)
+                    requestAnimationFrame(function () { c.kill(); });
                     arrived++;
                     /* 카운터는 도착 순서로 굴린다(발사 순서가 아니다) */
-                    if (split) walletRoll(st, base + Math.ceil(amount * arrived / N));
-                    else if (arrived === 1) walletRoll(st, base + amount);
-                    // 클라 ItemGatheringAnimation.ts:558-582 — 앞 펀치를 멈추고 지금 크기 → 1×punchScale → 1, 진입 0.05 quadOut 고정
+                    if (split) walletRoll(st, wallet0 + Math.ceil(amount * arrived / N));
+                    else if (arrived === 1) walletRoll(st, wallet0 + amount);
+                    // 클라 ItemGatheringAnimation.ts:635-658 — 앞 펀치를 멈추고 지금 크기 → 1×punchScale → 1, 진입 0.05 quadOut 고정
                     return nodePunch(st.hud, FAN_PUNCH_IN_SEC, P.punchScale, P.punchOutSec, P.punchEase, "quadOut", true);
                   });
               }));
@@ -976,59 +983,59 @@
 
         var PARAMS = {
           a1: [
-            { k:"pressSec",   label:"눌림 시간",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressEase",  ease:"quadOut", cfg:"MERGE_BOARD_PRESS_DURATION_SEC", note:"실측값" },
-            { k:"pressSX",    label:"눌림 가로",     v:1.06, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_PRESS_SQUASH_X" },
-            { k:"pressSY",    label:"눌림 세로",     v:0.94, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_PRESS_SQUASH_Y" },
+            { k:"pressSec",   label:"눌림 시간",     v:0.05, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressEase",  ease:"quadOut", cfg:"MERGE_BOARD_PRESS_DURATION_SEC", note:"실측값" },
+            { k:"pressSX",    label:"눌림 가로",     v:1.2, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_PRESS_SQUASH_X" },
+            { k:"pressSY",    label:"눌림 세로",     v:1.2, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_PRESS_SQUASH_Y" },
             { k:"overInSec",  label:"오버슛 진입",   v:0.08, min:0.01, max:1, step:0.01, unit:"s", easeK:"overInEase", ease:"quadOut", cfg:"MERGE_OVERSHOOT_IN_SEC",         note:"뗄 때 반대로 한 번" },
-            { k:"overSX",     label:"오버슛 가로",   v:0.95, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_OVERSHOOT_X" },
-            { k:"overSY",     label:"오버슛 세로",   v:1.07, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_OVERSHOOT_Y" },
-            { k:"overOutSec", label:"오버슛 복귀",   v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"overOutEase",ease:"backOut", cfg:"POP_IN_SEC",                     note:"실측값" },
+            { k:"overSX",     label:"오버슛 가로",   v:1.1, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_OVERSHOOT_X" },
+            { k:"overSY",     label:"오버슛 세로",   v:1.1, min:0.6,  max:1.6, step:0.01,unit:"×",                                    cfg:"MERGE_OVERSHOOT_Y" },
+            { k:"overOutSec", label:"오버슛 복귀",   v:0.1, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"overOutEase",ease:"backOut", cfg:"POP_IN_SEC",                     note:"실측값" },
           ],
           a2: [
             { k:"spawnScale", label:"스폰 시작 크기",v:0.5,  min:0.05, max:1.5,step:0.05,unit:"×",                                     cfg:"MERGE_SPAWN_START_SCALE" },
-            { k:"popSec",     label:"스폰 팝",       v:0.15, min:0.02, max:1, step:0.01, unit:"s", easeK:"popEase",    ease:"backOut", cfg:"MERGE_SPAWN_POP_SEC" },
-            { k:"popScale",   label:"스폰 팝 크기",  v:1.14, min:0.8,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_SPAWN_POP_SCALE" },
-            { k:"shrinkSec",  label:"비행 중 축소",  v:0.27, min:0.02, max:2, step:0.01, unit:"s", easeK:"shrinkEase", ease:"quadIn",  cfg:"MERGE_SPAWN_SHRINK_SEC" },
-            { k:"flightSec",  label:"비행 시간",     v:0.42, min:0.08, max:2, step:0.01, unit:"s", easeK:"flightEase", ease:"quadInOut",cfg:"MERGE_FLIGHT_DURATION_SEC",     note:"3차 베지어" },
-            { k:"liftRatio",  label:"곡선 높이 비율",v:0.38, min:0,    max:1.5,step:0.01,unit:"×",                                     cfg:"MERGE_FLIGHT_LIFT_RATIO",        note:"거리에 곱한다" },
-            { k:"minLift",    label:"최소 곡선 높이",v:70,   min:0,    max:300,step:5,   unit:"px",                                    cfg:"MERGE_FLIGHT_MIN_LIFT",          note:"짧은 거리 보정" },
-            { k:"landInSec",  label:"착지 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_SQUASH_IN_SEC" },
-            { k:"landSX",     label:"착지 가로",     v:1.18, min:0.6,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_LAND_SQUASH_X" },
-            { k:"landSY",     label:"착지 세로",     v:0.84, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_LAND_SQUASH_Y" },
-            { k:"landOutSec", label:"착지 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_SQUASH_OUT_SEC" },
+            { k:"popSec",     label:"스폰 팝",       v:0.2, min:0.02, max:1, step:0.01, unit:"s", easeK:"popEase",    ease:"quadOut", cfg:"MERGE_SPAWN_POP_SEC" },
+            { k:"popScale",   label:"스폰 팝 크기",  v:1.25, min:0.8,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_SPAWN_POP_SCALE" },
+            { k:"shrinkSec",  label:"비행 중 축소",  v:0.2, min:0.02, max:2, step:0.01, unit:"s", easeK:"shrinkEase", ease:"quadIn",  cfg:"MERGE_SPAWN_SHRINK_SEC" },
+            { k:"flightSec",  label:"비행 시간",     v:0.42, min:0.08, max:2, step:0.01, unit:"s", easeK:"flightEase", ease:"linear",cfg:"MERGE_FLIGHT_DURATION_SEC",     note:"3차 베지어" },
+            { k:"liftRatio",  label:"곡선 높이 비율",v:0.6, min:0,    max:1.5,step:0.01,unit:"×",                                     cfg:"MERGE_FLIGHT_LIFT_RATIO",        note:"거리에 곱한다" },
+            { k:"minLift",    label:"최소 곡선 높이",v:10,   min:0,    max:300,step:5,   unit:"px",                                    cfg:"MERGE_FLIGHT_MIN_LIFT",          note:"짧은 거리 보정" },
+            { k:"landInSec",  label:"착지 눌림",     v:0.13, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_SQUASH_IN_SEC" },
+            { k:"landSX",     label:"착지 가로",     v:1.2, min:0.6,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_LAND_SQUASH_X" },
+            { k:"landSY",     label:"착지 세로",     v:0.8, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_LAND_SQUASH_Y" },
+            { k:"landOutSec", label:"착지 복귀",     v:0.2, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_SQUASH_OUT_SEC" },
           ],
           a3: [
             { k:"pickSec",    label:"픽업 시간",     v:0.10, min:0.02, max:1, step:0.01, unit:"s", easeK:"pickEase",   ease:"backOut", cfg:"MERGE_PICKUP_DURATION_SEC" },
-            { k:"pickScale",  label:"픽업 크기",     v:1.08, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
-            { k:"liftPx",     label:"들림 높이",     v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_PICKUP_LIFT" },
-            { k:"follow",     label:"지연 추종 계수",v:0.40, min:0.05, max:1,  step:0.01,unit:"",                                      cfg:"MERGE_DRAG_FOLLOW_RATIO",        note:"1 이면 손가락에 딱 붙는다" },
-            { k:"snapSec",    label:"셀 스냅",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"snapEase",   ease:"quadOut", cfg:"MERGE_DRAG_SNAP_SEC" },
-            { k:"landInSec",  label:"착지 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_SQUASH_IN_SEC" },
-            { k:"landSX",     label:"착지 가로",     v:1.14, min:0.6,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_DRAG_LAND_X" },
-            { k:"landSY",     label:"착지 세로",     v:0.88, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DRAG_LAND_Y" },
-            { k:"landOutSec", label:"착지 복귀",     v:0.16, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_SQUASH_OUT_SEC" },
+            { k:"pickScale",  label:"픽업 크기",     v:1.3, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_PICKUP_SCALE" },
+            { k:"liftPx",     label:"들림 높이",     v:0,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_PICKUP_LIFT" },
+            { k:"follow",     label:"지연 추종 계수",v:0.6, min:0.05, max:1,  step:0.01,unit:"",                                      cfg:"MERGE_DRAG_FOLLOW_RATIO",        note:"1 이면 손가락에 딱 붙는다" },
+            { k:"snapSec",    label:"셀 스냅",       v:0.06, min:0.02, max:1, step:0.01, unit:"s", easeK:"snapEase",   ease:"quadOut", cfg:"MERGE_DRAG_SNAP_SEC" },
+            { k:"landInSec",  label:"착지 눌림",     v:0.1, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_SQUASH_IN_SEC" },
+            { k:"landSX",     label:"착지 가로",     v:0.9, min:0.6,  max:2, step:0.01, unit:"×",                                     cfg:"MERGE_DRAG_LAND_X" },
+            { k:"landSY",     label:"착지 세로",     v:0.9, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DRAG_LAND_Y" },
+            { k:"landOutSec", label:"착지 복귀",     v:0.15, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_SQUASH_OUT_SEC" },
           ],
           a4: [
-            { k:"absorbSec",  label:"흡수 시간",     v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"absorbEase", ease:"quadIn",  cfg:"MERGE_ABSORB_SEC",               note:"사라지는 쪽" },
+            { k:"absorbSec",  label:"흡수 시간",     v:0.05, min:0.02, max:1, step:0.01, unit:"s", easeK:"absorbEase", ease:"quadIn",  cfg:"MERGE_ABSORB_SEC",               note:"사라지는 쪽" },
             { k:"absorbScale",label:"흡수 끝 크기",  v:0.55, min:0,    max:1,  step:0.01,unit:"×",                                     cfg:"MERGE_ABSORB_END_SCALE" },
             { k:"ringSec",    label:"임팩트 링",     v:0.30, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"ringEase",   ease:"quadOut", cfg:"MERGE_RING_SEC" },
             { k:"ringMax",    label:"링 최대 배율",  v:1.9,  min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_RING_MAX_SCALE" },
-            { k:"hitSec",     label:"결과 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"hitEase",    ease:"quadOut", cfg:"MERGE_RESULT_HIT_SEC" },
-            { k:"hitSX",      label:"결과 눌림 가로",v:1.24, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RESULT_HIT_X" },
-            { k:"hitSY",      label:"결과 눌림 세로",v:0.82, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_RESULT_HIT_Y" },
+            { k:"hitSec",     label:"결과 눌림",     v:0.15, min:0.01, max:1, step:0.01, unit:"s", easeK:"hitEase",    ease:"quadOut", cfg:"MERGE_RESULT_HIT_SEC" },
+            { k:"hitSX",      label:"결과 눌림 가로",v:1.3, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RESULT_HIT_X" },
+            { k:"hitSY",      label:"결과 눌림 세로",v:1.3, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_RESULT_HIT_Y" },
             { k:"popSec",     label:"결과 팝",       v:0.20, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"popEase",    ease:"backOut", cfg:"MERGE_POP_DURATION_SEC",        note:"실측값" },
             { k:"sparkCount", label:"스파크 개수",   v:7,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_SPARK_COUNT" },
-            { k:"sparkSec",   label:"스파크 시간",   v:0.34, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"sparkEase",  ease:"quadOut", cfg:"MERGE_SPARK_SEC" },
-            { k:"sparkRadius",label:"스파크 반경",   v:40,   min:10,   max:160,step:2,   unit:"px",                                    cfg:"MERGE_SPARK_RADIUS" },
+            { k:"sparkSec",   label:"스파크 시간",   v:1, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"sparkEase",  ease:"quadOut", cfg:"MERGE_SPARK_SEC" },
+            { k:"sparkRadius",label:"스파크 반경",   v:120,   min:10,   max:160,step:2,   unit:"px",                                    cfg:"MERGE_SPARK_RADIUS" },
           ],
           a5: [
-            { k:"hopSec",     label:"이동 시간",     v:0.30, min:0.05, max:2, step:0.01, unit:"s", easeK:"hopEase",    ease:"quadInOut",cfg:"MERGE_HOP_DURATION_SEC" },
-            { k:"liftRatio",  label:"곡선 높이 비율",v:0.22, min:0,    max:1.5,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LIFT_RATIO",           note:"비행(0.38)보다 낮게" },
+            { k:"hopSec",     label:"이동 시간",     v:0.30, min:0.05, max:2, step:0.01, unit:"s", easeK:"hopEase",    ease:"linear",cfg:"MERGE_HOP_DURATION_SEC" },
+            { k:"liftRatio",  label:"곡선 높이 비율",v:0.4, min:0,    max:1.5,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LIFT_RATIO",           note:"비행(0.38)보다 낮게" },
             { k:"minLift",    label:"최소 곡선 높이",v:42,   min:0,    max:300,step:2,   unit:"px",                                    cfg:"MERGE_HOP_MIN_LIFT" },
-            { k:"landInSec",  label:"착지 눌림",     v:0.05, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_HOP_LAND_IN_SEC" },
-            { k:"landSX",     label:"착지 가로",     v:1.16, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_X" },
-            { k:"landSY",     label:"착지 세로",     v:0.86, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_Y" },
-            { k:"landOutSec", label:"착지 복귀",     v:0.15, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_HOP_LAND_OUT_SEC" },
+            { k:"landInSec",  label:"착지 눌림",     v:0.1, min:0.01, max:1, step:0.01, unit:"s", easeK:"landInEase", ease:"quadOut", cfg:"MERGE_HOP_LAND_IN_SEC" },
+            { k:"landSX",     label:"착지 가로",     v:1.2, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_X" },
+            { k:"landSY",     label:"착지 세로",     v:0.8, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_HOP_LAND_Y" },
+            { k:"landOutSec", label:"착지 복귀",     v:0.2, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"landOutEase",ease:"backOut", cfg:"MERGE_HOP_LAND_OUT_SEC" },
           ],
           a6: [
             { k:"boxInSec",   label:"상자 눌림",     v:0.07, min:0.01, max:1, step:0.01, unit:"s", easeK:"boxInEase",  ease:"quadOut", cfg:"MERGE_COIN_BOX_IN_SEC" },
@@ -1040,6 +1047,8 @@
             { k:"spreadUp",   label:"산개 상승",     v:48,   min:0,    max:200,step:2,   unit:"px",                                    cfg:"MERGE_COIN_SPREAD_RISE" },
             { k:"spreadScale",label:"산개 크기",     v:1.25, min:0.5,  max:2.5,step:0.05,unit:"×",                                     cfg:"MERGE_COIN_SPREAD_SCALE" },
             { k:"traceSec",   label:"추적 시간",     v:0.34, min:0.05, max:2, step:0.01, unit:"s", easeK:"traceEase",  ease:"circIn",  cfg:"MERGE_COIN_TRACE_SEC" },
+            { k:"traceRefDist",label:"추적 기준 거리", v:170, min:50,  max:800,step:10,  unit:"px",                                    cfg:"MERGE_COIN_TRACE_REF_DIST",      note:"더 멀면 추적 시간 × √(거리/기준)" },
+            { k:"traceMaxStretch",label:"추적 늘림 상한", v:2, min:1,  max:4,  step:0.1, unit:"×",                                     cfg:"MERGE_COIN_TRACE_MAX_STRETCH",   note:"먼 비행도 추적 시간 × 이 배수까지" },
             { k:"arriveFit",  label:"도착 크기(목적지 아이콘 대비)", v:1, min:0.5, max:1.5,step:0.05,unit:"×",                          cfg:"MERGE_COIN_ARRIVE_FIT",          note:"도착 크기 = 목적지 아이콘 × 이 값" },
             { k:"rollSec",    label:"카운터 롤링",   v:0.50, min:0.05, max:3, step:0.01, unit:"s", easeK:"rollEase",   ease:"quadOut", cfg:"COIN_ROLL_DURATION_SEC",         note:"첫 코인 도착에 시작" },
             { k:"punchScale", label:"HUD 펀치 크기", v:1.09, min:1,    max:1.8,step:0.01,unit:"×",                                     cfg:"MERGE_HUD_PUNCH_SCALE" },
@@ -1048,8 +1057,8 @@
           b1: [
             { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"pressInSec", label:"클릭 응답",     v:0.12, min:0.02, max:1, step:0.01, unit:"s", easeK:"pressInEase",ease:"quadOut", cfg:"MERGE_DENY_TAP_IN_SEC",          note:"흔들지 않는다" },
-            { k:"pressSX",    label:"응답 가로",     v:1.05, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_X" },
-            { k:"pressSY",    label:"응답 세로",     v:0.95, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_Y" },
+            { k:"pressSX",    label:"응답 가로",     v:1, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_X" },
+            { k:"pressSY",    label:"응답 세로",     v:1, min:0.6,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_DENY_TAP_Y" },
             { k:"pressOutSec",label:"응답 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"pressOutEase",ease:"backOut",cfg:"POP_IN_SEC" },
           ],
           b2: [
@@ -1133,13 +1142,13 @@
           ],
           c3: [
             { k:"gaugeOutSec",label:"게이지 소멸",   v:0.18, min:0.02, max:1, step:0.01, unit:"s", easeK:"gaugeEase",  ease:"quadIn",  cfg:"MERGE_GAUGE_OUT_SEC" },
-            { k:"popInSec",   label:"완료 눌림",     v:0.08, min:0.01, max:1, step:0.01, unit:"s", easeK:"popInEase",  ease:"quadOut", cfg:"MERGE_READY_POP_IN_SEC" },
-            { k:"popSX",      label:"완료 가로",     v:1.18, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_X" },
-            { k:"popSY",      label:"완료 세로",     v:0.84, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_Y" },
-            { k:"popOutSec",  label:"완료 복귀",     v:0.22, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"popOutEase", ease:"backOut", cfg:"MERGE_READY_POP_OUT_SEC" },
+            { k:"popInSec",   label:"완료 눌림",     v:0.15, min:0.01, max:1, step:0.01, unit:"s", easeK:"popInEase",  ease:"quadOut", cfg:"MERGE_READY_POP_IN_SEC" },
+            { k:"popSX",      label:"완료 가로",     v:1.3, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_X" },
+            { k:"popSY",      label:"완료 세로",     v:1.3, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_READY_POP_Y" },
+            { k:"popOutSec",  label:"완료 복귀",     v:0.2, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"popOutEase", ease:"quadIn", cfg:"MERGE_READY_POP_OUT_SEC" },
             { k:"bobSec",     label:"뱃지 까딱임",   v:0.42, min:0.1,  max:2, step:0.01, unit:"s", easeK:"bobEase",    ease:"sineInOut",cfg:"MERGE_READY_BADGE_BOB_SEC",      note:"닫힌 상자의 「!」 — 무대 왼쪽 칸" },
             { k:"bobPx",      label:"까딱임 높이",   v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_READY_BADGE_BOB_PX",       note:"대기 상태보다 크게" },
-            { k:"sparkCount", label:"스파크 개수",   v:8,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
+            { k:"sparkCount", label:"스파크 개수",   v:0,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
             { k:"breathSec",  label:"숨쉬기 반주기", v:0.5,  min:0.05, max:2, step:0.01, unit:"s", easeK:"breathEase", ease:"sineInOut",cfg:"C3_BREATH_SEC",                  note:"팝 뒤 한 번 부풀었다 돌아온다 — 오갈 때 같은 값" },
             { k:"breathScale",label:"숨쉬기 크기",   v:1.05, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"C3_BREATH_SCALE" },
           ],
@@ -1170,14 +1179,14 @@
             { k:"delaySec",   label:"입력 없음 대기",v:2,    min:1,    max:10, step:0.1, unit:"s",                                     cfg:"IDLE_HINT_DELAY_SEC",            note:"VM 스캔 주기도 겸함 · 1초 하한" },
             { k:"repeatSec",  label:"반복 쉼",       v:2,    min:1,    max:10, step:0.1, unit:"s",                                     cfg:"IDLE_HINT_REPEAT_SEC",           note:"VM 스캔 주기도 겸함 · 1초 하한 · H2 도 이 값" },
             { k:"motionCount",label:"튕김 횟수",     v:2,    min:1,    max:5,  step:1,   unit:"회",                                    cfg:"IDLE_HINT_COUNT" },
-            { k:"outSec",     label:"커짐",          v:0.1,  min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"IDLE_HINT_OUT_SEC" },
+            { k:"outSec",     label:"커짐",          v:0.15,  min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"IDLE_HINT_OUT_SEC" },
             { k:"backSec",    label:"되돌아옴",      v:0.15, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"quadIn",  cfg:"IDLE_HINT_BACK_SEC" },
-            { k:"bounceScale",label:"튕김 크기",     v:1.15, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"IDLE_HINT_SCALE",                note:"지금 배율에 곱한다" },
+            { k:"bounceScale",label:"튕김 크기",     v:1.2, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"IDLE_HINT_SCALE",                note:"지금 배율에 곱한다" },
           ],
           h2: [
             { k:"pullPx",     label:"당김 거리",     v:14,   min:0,    max:40, step:1,   unit:"px",                                    cfg:"IDLE_PULL_PX",                   note:"두 칩이 서로 쪽으로 각자 이만큼" },
             { k:"motionCount",label:"당김 횟수",     v:2,    min:1,    max:5,  step:1,   unit:"회",                                    cfg:"IDLE_PULL_COUNT" },
-            { k:"outSec",     label:"다가감",        v:0.1,  min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"IDLE_PULL_OUT_SEC" },
+            { k:"outSec",     label:"다가감",        v:0.15,  min:0.02, max:1, step:0.01, unit:"s", easeK:"outEase",    ease:"quadOut", cfg:"IDLE_PULL_OUT_SEC" },
             { k:"backSec",    label:"되돌아옴",      v:0.15, min:0.02, max:1, step:0.01, unit:"s", easeK:"backEase",   ease:"quadIn",  cfg:"IDLE_PULL_BACK_SEC" },
           ],
         };
@@ -2191,7 +2200,7 @@
           }
 
           /* 보상 코인 — A6 코인 부채꼴(a6CoinFan)을 그대로 부른다(클라 RailServeFx.ts:185-209). 카드 자리에서 떠 HUD 로 간다.
-             닢 수는 클라 a6CoinCount(coin) = clamp(round(coin), 1, 10) (클라 MergeFxConfig.ts:331-337),
+             닢 수는 클라 a6CoinCount(coin) = clamp(round(coin), 1, 10) (클라 MergeFxConfig.ts:335-341),
              숫자는 닢마다 올림 분할로 나눠 오른다(클라 RailServeFx.ts:204-207) */
           function rewardCoins(from) {
             if (REWARD_COIN <= 0 || !st.hud) return Promise.resolve();   // 클라 RailServeFx.ts:189 — 보상 0 이면 건너뛴다
@@ -2536,7 +2545,7 @@
 
           { group: "action", id: "a6", no: "A6", title: "재화 먹을 때", state: "ok", label: "클라 구현",
             dropped: "상자 눌림·복귀 — 수확하면 칩이 그 자리에서 바로 걷히고 코인이 곧장 뜬다.",
-            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 같은 칩을 한 번 더 탭해야 수확한다(BoardTapFlow.ts:169-171). 상자 눌림(box*) 키는 수확이 아니라 판매·제거 소멸이 쓴다(눌림 → 0.18초 backIn 으로 0) — 「판매·제거 소멸」 버튼으로 본다. 닢 수는 금액을 따른다(1~10닢). 무대는 표본 금액 8 고정이라 기본값에서 8닢이 뜬다. 7닢부터는 부채 전체 각도를 묶어 간격이 좁아진다.",
+            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 같은 칩을 한 번 더 탭해야 수확한다(BoardTapFlow.ts:169-171). 상자 눌림(box*) 키는 수확이 아니라 판매·제거 소멸이 쓴다(눌림 → 0.18초 backIn 으로 0) — 「판매·제거 소멸」 버튼으로 본다. 닢 수는 금액을 따른다(1~10닢). 무대는 표본 금액 8 고정이라 기본값에서 8닢이 뜬다. 7닢부터는 부채 전체 각도를 묶어 간격이 좁아진다. 추적 시간은 거리에 비례한다 — 펼침 끝에서 목적지까지가 추적 기준 거리보다 멀면 추적 시간 × √(거리/기준), 추적 늘림 상한 배까지. 닢은 닿는 순간 숫자·펀치를 내고 그 자리에 한 프레임 그려진 뒤 바로 사라진다(2026-10-16 추적 시간 거리 비례 · 도착 즉시 사라짐).",
             why: "코인이 날아가는 <b>ItemGatheringAnimation</b> 은 이미 있고 잘 돕니다. 빠진 건 <b>도착지</b>입니다 — 코인이 HUD 에 닿는데 HUD 는 아무 반응이 없습니다. 숫자가 굴러가고 카운터가 한 번 튀어야 \"내 것이 됐다\"가 완성됩니다. 카운터는 <b>첫 코인이 닿는 순간</b> 시작해야 합니다. 마지막 코인을 기다리면 늦습니다.",
             code:
 "// 기존 ItemGatheringAnimation 을 그대로 쓰고, 콜백 두 개만 채운다.\n" +
