@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>메모리 관리</title>
+    <meta name="description" content="스토리 머지 클라이언트가 텍스처를 언제 받고, 언제 GPU에 올리고, 무엇을 상주시키는지 — 지금 구조와 실측값, 확정된 원칙과 작업 이력." />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <style>
+      /* 도식은 인라인 SVG. 래퍼(.dg)와 색 토큰은 프리로드 창 기획 · 아틀라스 기획 문서와 같은 방식이다.
+         레이아웃·타이포·노트·표는 style.css 공용 클래스를 그대로 쓴다. */
+      .dg {
+        --d-ink: var(--text);
+        --d-ink3: var(--text-faint);
+        --d-line2: #c7cddb;
+        --d-surf: #ffffff;
+        --d-dec: var(--smg);
+        --d-dl: color-mix(in srgb, var(--smg) 30%, #fff);
+        --d-off: #eef0f5;
+        margin: 14px 0 0;
+        padding: 16px 12px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        overflow-x: auto;
+      }
+      .dg svg { display: block; width: 100%; min-width: 780px; height: auto; }
+      .dgsvg { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; }
+      .dgsvg text { fill: var(--d-ink); font-size: 13px; }
+      .dgsvg .mu { fill: var(--d-ink3); font-size: 12px; }
+      .dgsvg .b { font-weight: 700; }
+      .dgsvg .w { fill: #fff; }
+      .dgsvg .box { fill: var(--d-surf); stroke: var(--d-line2); stroke-width: 1.2; }
+      .dgsvg .dec { fill: var(--d-dec); }
+      .dgsvg .dl { fill: var(--d-dl); }
+      .dgsvg .off { fill: var(--d-off); stroke: var(--d-line2); stroke-width: 1; }
+      .dgsvg .ar { fill: none; stroke: var(--d-ink3); stroke-width: 1.6; }
+      .dgsvg .arh { fill: var(--d-ink3); }
+      .dg-cap { margin: 10px 2px 0; padding-top: 9px; border-top: 1px dashed var(--border); font-size: 11.5px; font-weight: 700; line-height: 1.7; color: var(--text-dim); text-align: center; }
+      .dg-cap strong { color: var(--text); }
+      /* 열이 많거나 셀 글이 긴 표 — 칸 폭을 th width 로 못박아 998px 안에 가둔다(넓은 표 잘림 방지). */
+      .mm-t { table-layout: fixed; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#summary">한눈에</a>
+        <a class="nav-back" href="#principle">원칙</a>
+        <a class="nav-back" href="#structure">구조</a>
+        <a class="nav-back" href="#measure">측정</a>
+        <a class="nav-back" href="#history">작업 이력</a>
+        <a class="nav-back" href="#caution">남은 것 · 주의</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">분석 · 스토리 머지 로딩·메모리</div>
+        <h1 class="doc-title">메모리 관리 <span class="pill" style="--acc: var(--smg)">main 0ce05fe7 · 4차 FB 빌드 확인 대기</span></h1>
+        <p class="doc-lede">
+          클라이언트가 텍스처를 <b>받고(다운로드)</b>, <b>올리고(디코딩 · GPU 업로드)</b>, <b>쥐고 있는(상주)</b> 방식을 한 곳에 모았습니다.
+          목표는 메모리를 무작정 줄이는 게 아니라 <b>플레이 중 끊김 없이</b> 필요한 것을 미리 받아 두고, GPU 업로드는 대기 화면이나 남는 프레임에만 나눠 하는 것입니다.
+          숫자는 전부 프리뷰 실측(QA 봇 GPU 텍스처 합)이고 텍스처 압축 전 값입니다.
+        </p>
+        <div class="doc-meta">
+          <span class="tag">코드 확인 · 프리뷰 실측 (QA 봇)</span>
+          <span class="tag">main 0ce05fe7 + 워킹트리(4차)</span>
+          <span class="tag">2026-10-16</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="doc-section" id="summary">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">한눈에 <span class="doc-h2-sub">지금 메모리 (GPU 텍스처 합 · MB)</span></h2>
+        <div class="stat-row">
+          <div class="stat" style="--acc: var(--smg)"><div class="stat-num">120~145<span class="stat-unit">MB</span></div><div class="stat-name">마을 · 인게임 상주</div><div class="stat-sub">데스크톱 · 폰 흉내 판 범위</div></div>
+          <div class="stat" style="--acc: var(--warn)"><div class="stat-num">173~206<span class="stat-unit">MB</span></div><div class="stat-name">판 피크</div><div class="stat-sub">폰 흉내 NRU 206 은 아틀라스 2장째 포함</div></div>
+          <div class="stat" style="--acc: var(--ok)"><div class="stat-num">16<span class="stat-unit">MB</span></div><div class="stat-name">동적 아틀라스</div><div class="stat-sub">1장으로 제한 (전 최대 96MB)</div></div>
+          <div class="stat" style="--acc: var(--plan)"><div class="stat-num">1~3<span class="stat-unit">회</span></div><div class="stat-name">업로드 탓 끊김 / 판</div><div class="stat-sub">10분 판 · 폰 흉내는 1회</div></div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 260px">판 (10분)</th><th style="width: 120px">계정</th><th style="width: 120px; text-align: right">마을</th><th style="width: 120px; text-align: right">인게임</th><th style="width: 120px; text-align: right">피크</th><th>비고</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="2"><strong>데스크톱</strong> (3차 뒤 · 14:21 판)</td><td>NRU</td><td style="text-align: right">128</td><td style="text-align: right">127</td><td style="text-align: right">187</td><td rowspan="2">업로드 탓 끊김 판당 1~3회</td></tr>
+              <tr><td>RU</td><td style="text-align: right">135</td><td style="text-align: right">135</td><td style="text-align: right">173</td></tr>
+              <tr><td rowspan="2"><strong>폰 흉내</strong> (CPU 4배 감속 · 모바일 디코딩 경로)</td><td>NRU</td><td style="text-align: right">120</td><td style="text-align: right">120</td><td style="text-align: right">206</td><td>피크에 동적 아틀라스 2장째 16MB 포함</td></tr>
+              <tr><td>RU</td><td style="text-align: right">145</td><td style="text-align: right">144</td><td style="text-align: right">183</td><td>업로드 탓 실제 끊김 판당 1회</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 200px">구간</th><th style="width: 340px">지금 값</th><th>읽는 법</th></tr></thead>
+            <tbody>
+              <tr><td><strong>부팅</strong></td><td>따로 실측 없음</td><td>첫 화면 최소만 받는다. 부팅 직후는 위 판 값에 포함</td></tr>
+              <tr><td><strong>마을 · 인게임</strong></td><td>120~145MB (위 표)</td><td>마을 배경 24.9MB · 손님 상주분(약 23MB)이 들어 있는 값</td></tr>
+              <tr><td><strong>첫 채팅 (NRU)</strong></td><td>채팅이 쓰는 것: 디스크 3.25MB · GPU 36MiB</td><td>로지 감정 6개 · 포피 1개 · 행 프리팹 2 · 삽화 카드. 고르는 규칙은 이미 최소다</td></tr>
+              <tr><td><strong>피크</strong></td><td>173~206MB (위 표)</td><td>채팅 · 전환이 겹치는 순간</td></tr>
+              <tr><td><strong>목표선</strong></td><td>프로젝트 규칙 60MB</td><td>기준작에서 실측한 근거가 없는 값이라 판정선으로 쓰지 않는다. 지금 프리뷰 값은 그 2~3배다</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">이 숫자를 읽는 법</div>
+            <p>QA 봇이 WebGL 호출(<code>texImage2D</code> · <code>deleteTexture</code>)을 직접 세서 낸 <strong>GPU 텍스처 합</strong>입니다. 에셋 크기(가로×세로×4)만 더하면 동적 아틀라스와 라벨 캔버스가 빠져 절반만 보입니다.
+            프리뷰는 <strong>텍스처 압축 전</strong>이라 빌드 · 실기기에서는 더 낮게 나옵니다. 폰 흉내 판은 CPU를 4배 늦췄을 뿐 GPU · 메모리 대역폭은 그대로라, 절대 ms 보다 전후 비교와 구간끼리의 크기 순서를 봅니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="principle">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">원칙 <span class="doc-h2-sub">확정된 결정 — 다시 제안하지 않는다</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 240px">원칙</th><th style="width: 400px">내용</th><th style="width: 100px">결정일</th><th>이유</th></tr></thead>
+            <tbody>
+              <tr><td><strong>시작 최소 · 플로우 선행 받기</strong></td><td>시작 때는 첫 화면에 필요한 것만. 플레이하는 동안 유저 흐름상 다음 리소스를 계속 받아 둔다</td><td>10-15</td><td>여는 순간 짧은 대기가 플레이 중 끊김보다 낫다</td></tr>
+              <tr><td><strong>쓰는 순간 처음 받기 0건</strong></td><td>부팅 최소 목록 밖의 로드가 쓰는 순간에 처음 받는 일이 없어야 한다 — 봇이 판마다 검사</td><td>10-15</td><td>「미리 받는다」를 검사할 수 있는 기준으로 둔다</td></tr>
+              <tr><td><strong>올리기는 대기 화면 · 남는 프레임에서만</strong></td><td>드래그 · 머지 · 타이핑 · 연출 중에는 올리지 않는다. 열린 뒤 그림이 늦게 차는 것도 금지</td><td>10-15</td><td>모바일은 디코딩이 메인 스레드에서 돈다 — 플레이 중 업로드가 곧 끊김</td></tr>
+              <tr><td><strong>텍스처 압축은 빌드에서</strong></td><td>빌드 때 어차피 적용한다. 메모리 개선 후보로 올리지 않는다</td><td>10-16</td><td>이미 계획된 일 · 프리뷰 수치는 압축 전</td></tr>
+              <tr><td><strong>마을 배경 상주 · 해상도 유지</strong></td><td>2216×2944(24.9MB) 그대로 상주. 올리기는 항상 마을 진입 커튼 뒤</td><td>10-15 · 10-16</td><td>진입이 잦고 화질을 양보하지 않는다. 한 장이라 나눠 올릴 수 없다</td></tr>
+              <tr><td><strong>스위칭 때 해제 보류</strong></td><td>인게임 ↔ 마을 전환에서 내리지 않는다. 손님도 상주(마을 +23MB 감수)</td><td>10-16</td><td>잦은 전환마다 다시 올리는 비용이 저사양일수록 크다. 실기기 메모리 부족이 확인될 때만 다시 연다</td></tr>
+              <tr><td><strong>동적 아틀라스 1장</strong></td><td>상한 1장(16MB). 들고 나는 텍스처(손님 · 초상 · 데코 낱장 · 채팅 UI · 마을 캐릭터)는 아틀라스에서 뺀다</td><td>10-15</td><td>빠진 자리가 회수되지 않아 6장(96MB)까지 쌓였다</td></tr>
+              <tr><td><strong>RU 마을은 인게임에서 미리 올림</strong></td><td>인게임 남는 프레임에 데코 · 캐릭터를 올린다(배경 제외). 큰 데코는 정지 팝업이 떠 있을 때만</td><td>10-16</td><td>첫 마을 진입 커튼을 줄인다. 마을은 한 번 가면 원래 상주라 판 최대치는 같다</td></tr>
+              <tr><td><strong>저사양은 미리 올리지 않음</strong></td><td>미리 올리기(채팅 · 마을)를 건너뛰고 지금처럼 열 때 올린다. 받기는 한다</td><td>10-16</td><td>웹에서는 남은 메모리를 읽을 수 없어 기기 등급으로만 가른다</td></tr>
+              <tr><td><strong>판단은 FB 테스트 빌드로</strong></td><td>데스크톱 웹 FB 테스트 빌드 + 폰 흉내로 본다. 폰 앱 실측은 하지 않는다</td><td>10-16</td><td>기기 차이는 끊김 되먹임(아래)이 스스로 맞춘다</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="structure">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">구조 <span class="doc-h2-sub">받기 → 올리기 → 쓰기</span></h2>
+        <div class="dg"><svg viewBox="0 0 920 372" class="dgsvg" role="img" aria-label="받기는 플로우 선받기가 상태별 순서표대로 미리 받는다. 올리기는 올리기 큐가 대기, 곧, 여유 세 우선순위로 기기 여유만큼 나눠 GPU에 올린다. 미리 올리기는 채팅과 마을 두 창구가 올리기 큐에 줄을 세운다. 쓰는 쪽은 커튼, 채팅 열기, 팝업 열기에서 엔진 캐시를 바로 받는다. 측정은 세 로그를 봇이 모은다.">
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arh" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+          <g>
+            <rect class="box" x="0" y="0" width="270" height="160" rx="9"/>
+            <rect class="dl" x="0" y="0" width="270" height="40" rx="9"/><text class="b" x="14" y="26">① 받기 — 플로우 선받기</text>
+            <text x="14" y="66">상태별 순서표 한 곳 (영상·마을·인게임)</text>
+            <text x="14" y="90">동시 2건 · 저사양 1건</text>
+            <text x="14" y="114">커튼 · 줄 선 대기 동안 새로 안 건다</text>
+            <text class="mu" x="14" y="146">파일만 받는다 — GPU 메모리 0</text>
+          </g>
+          <g>
+            <rect class="box" x="325" y="0" width="270" height="160" rx="9"/>
+            <rect class="dec" x="325" y="0" width="270" height="40" rx="9"/><text class="w b" x="339" y="26">② 올리기 — 올리기 큐</text>
+            <text x="339" y="66">우선순위 대기 &gt; 곧 &gt; 여유</text>
+            <text x="339" y="90">남는 프레임 시간만큼 (속도 학습)</text>
+            <text x="339" y="114">끊기면 예산 절반 · 누르는 중 쉼</text>
+            <text class="mu" x="339" y="146">디코딩 + GPU 업로드 = 메모리</text>
+          </g>
+          <g>
+            <rect class="box" x="650" y="0" width="270" height="160" rx="9"/>
+            <rect class="off" x="650" y="0" width="270" height="40" rx="9"/><text class="b" x="664" y="26">③ 쓰기</text>
+            <text x="664" y="66">전환 커튼 · 채팅 열기 · 팝업 열기</text>
+            <text x="664" y="90">이미 올라온 건 엔진 캐시 즉시 히트</text>
+            <text x="664" y="114">남은 것만 그 자리에서 올린다</text>
+            <text class="mu" x="664" y="146">목표: 쓰는 순간 처음 받기 0건</text>
+          </g>
+          <path class="ar" d="M272,80 L321,80" marker-end="url(#ah)"/>
+          <path class="ar" d="M597,80 L646,80" marker-end="url(#ah)"/>
+          <g>
+            <rect class="box" x="325" y="200" width="270" height="92" rx="9"/>
+            <text class="b" x="339" y="224">미리 올리기 창구 (공용층)</text>
+            <text x="339" y="248">채팅: 심부름 팝업 + 깰 수 있을 때</text>
+            <text x="339" y="272">마을: RU 인게임 중 (배경 제외)</text>
+          </g>
+          <path class="ar" d="M460,198 L460,164" marker-end="url(#ah)"/>
+          <g>
+            <rect class="off" x="0" y="314" width="920" height="54" rx="8"/>
+            <text class="b" x="14" y="337">측정</text>
+            <text x="64" y="337">[mem] GPU 텍스처 합 · [hitch] 50ms 이상 프레임 · [load] 로드마다 한 줄(선로드 여부 · 프레임 길이 · 해제)</text>
+            <text class="mu" x="64" y="357">디버그 빌드 또는 FB 테스트 빌드(UPLOAD_TRACE)에서만 켜진다 → QA 봇이 판마다 jsonl 로 모은다</text>
+          </g>
+        </svg><div class="dg-cap">받기는 <strong>일찍 · 넓게</strong>(메모리 0), 올리기는 <strong>대기 화면이나 남는 프레임에만 나눠서</strong>(메모리) — 둘을 다른 큐가 맡는다</div></div>
+
+        <h2 class="doc-h2">① 받기 — 상태별 순서표 <span class="doc-h2-sub">앞이 먼저 · 워킹트리(4차) 기준</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 190px">상태</th><th style="width: 520px">받는 순서</th><th>왜 이 순서</th></tr></thead>
+            <tbody>
+              <tr><td><strong>인트로 영상</strong> (NRU)</td><td>심부름 창(첫 채팅) → 마을 진입</td><td>첫 채팅과 엔진 받기 자리를 다투지 않게 나머지는 마을 표로 넘김</td></tr>
+              <tr><td><strong>인게임</strong> (RU 부팅)</td><td>마을 진입 → 마을 지점 캐릭터 → 심부름 창 → 인게임 팝업 → 새 생성기 큰 그림 → 정보 팝업 아이콘 → 효과음 → 마을 팝업 → 손님</td><td>마을이 한 탭 거리라 먼저. 손님은 보드가 선 직후 따로 받으므로 맨 뒤</td></tr>
+              <tr><td><strong>마을</strong></td><td>심부름 창 → 마을 팝업 → 인게임 진입 → 첫 보드 그림 → 손님 → 인게임 팝업 → 미룬 수선 프리팹 → 효과음</td><td>다음 채팅이 유저의 다음 대기라 맨 앞</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">순서표 규칙</div>
+            <p>순서는 이 표 한 곳에만 적습니다. 목록 내용(무엇을 받나)은 그 리소스를 아는 쪽이 등록합니다. 상태가 바뀌면 아직 안 건 요청은 버리고 새 목록으로 갈아탑니다(걸린 요청은 끝까지 갑니다).
+            <strong>심부름 창</strong> = 지금 + 앞 몇 칸 심부름의 채팅 · 꾸미기 · 구역 완성 채팅이고, 칸 수는 코인과 기기 등급으로 2~7칸입니다.
+            전환 커튼이 내려와 있거나 올리기 큐에 아직 안 받은 「대기」 항목이 있으면 새로 걸지 않습니다. 올리기 큐가 이미 줄 세운 파일도 다시 걸지 않습니다.</p>
+          </div>
+        </div>
+
+        <h2 class="doc-h2">② 올리기 — 올리기 큐 <span class="doc-h2-sub">기기 여유만큼 나눠 올린다</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 190px">장치</th><th style="width: 470px">동작</th><th>현재 값</th></tr></thead>
+            <tbody>
+              <tr><td><strong>우선순위</strong></td><td>대기(커튼 · 로딩 · 정지 팝업 뒤에서 쓸 것) &gt; 곧(새 카드 손님 등) &gt; 여유(미리 올려 둘 것)</td><td>3단계</td></tr>
+              <tr><td><strong>프레임 예산</strong></td><td>목표 프레임(60fps 16.7ms · 30fps 기기 33ms) − 이번 프레임에 이미 쓴 시간. 남은 시간이 「항목 MB × 기기 ms/MB」보다 크면 올린다. 한 프레임에 여러 건도 된다</td><td>첫 속도 저사양 12 · 보통 8 · 여유 5 ms/MB</td></tr>
+              <tr><td><strong>속도 학습</strong></td><td>올릴 때마다 실제 걸린 시간으로 그 기기의 ms/MB 를 이동평균한다. 0.25MB 미만은 잡음이라 안 배운다</td><td>비율 0.2 · 범위 0.5~100</td></tr>
+              <tr><td><strong>끊김 되먹임</strong></td><td>올린 프레임이 목표의 2배 또는 50ms 를 넘으면 예산을 절반으로. 깨끗한 프레임마다 조금씩 되돌린다. 연속 2번이면 그 화면에서 잠깐 멈춘다</td><td>최소 배수 0.125 · 복구 +0.05 · 멈춤 5초</td></tr>
+              <tr><td><strong>남 탓 끊김</strong></td><td>GC · 생성 · 레이아웃 탓 끊김은 예산에 안 넣는다. 단, 짧은 시간에 잦으면 그동안 「여유」 올리기를 쉰다</td><td>3초 안 3번</td></tr>
+              <tr><td><strong>대기 화면 배수</strong></td><td>커튼 · 로딩 · 인트로 영상 · 정지 팝업이 떠 있으면 예산을 넉넉히 — 커튼 애니가 멈추지 않을 만큼</td><td>목표의 3배</td></tr>
+              <tr><td><strong>누르기 게이트</strong></td><td>누르는 중(드래그 포함)에는 플레이 화면 올리기를 쉰다. 떼기를 놓치면 움직임 없는 누름은 풀린 걸로 본다</td><td>3초</td></tr>
+              <tr><td><strong>대기 화면 전용</strong></td><td>한 장이 커서 플레이 중 한 프레임에 안 들어가는 것은 대기 화면일 때만 올린다. 그런 순간이 없으면 원래 쓰는 시점(커튼 뒤)으로 남는다</td><td>마을 미리 올리기는 2MB 이상</td></tr>
+              <tr><td><strong>동시 수</strong></td><td>걸어 두고 안 끝난 올리기 · 올리기 전 받기 수 상한. 안 끝나는 올리기는 상한 시간 뒤 자리만 푼다</td><td>올리기 플레이 2 · 대기 4 · 받기 4 · 대기 6 · 상한 10초</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--smg)">
+            <div class="note-title">엔진이 못 해 주는 것</div>
+            <p>Cocos 2.4 는 에셋 로드가 끝나는 순간 바로 GPU 에 올리고, 모바일에서는 디코딩이 메인 스레드에서 동기로 돕니다. 엔진에 「나눠 올리기」가 없어 할 수 있는 건 로드를 프레임마다 나눠 거는 것뿐이고, <strong>텍스처 한 장은 못 쪼갭니다</strong>. 그래서 마을 배경(25MB 한 장)은 커튼 뒤 한 프레임에 그대로 올라갑니다.</p>
+          </div>
+        </div>
+
+        <h2 class="doc-h2">미리 올리기 · 상주 <span class="doc-h2-sub">무엇을 언제 쥐나</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 160px">대상</th><th style="width: 330px">언제 올리나</th><th style="width: 230px">언제 놓나</th><th>비고</th></tr></thead>
+            <tbody>
+              <tr><td><strong>채팅</strong></td><td>심부름 팝업이 열렸고 맨 앞 심부름을 지금 깰 수 있을 때 — 그 뒤 채팅의 감정 · 행 프리팹 · 삽화를 정지 팝업 뒤에서</td><td>채팅 연출이 넘겨받은 뒤 · 안 깨고 닫으면 · 채팅이 안 열리는 실패 경로</td><td>저사양은 열 때 올림</td></tr>
+              <tr><td><strong>마을</strong> (RU)</td><td>인게임 진입이 끝난 뒤 남는 프레임에 데코 · 마을 캐릭터. 큰 데코는 정지 팝업 때만</td><td>놓지 않음 (마을은 원래 상주)</td><td>캐릭터는 지금 지점 + 맨 앞 심부름을 깬 뒤 지점만</td></tr>
+              <tr><td><strong>마을 배경</strong></td><td>마을 진입 커튼 뒤에서만</td><td>상주</td><td>미리 올리기 대상 아님</td></tr>
+              <tr><td><strong>손님</strong></td><td>레일 손님은 커튼이 기다렸다가 걷힌다(최대 5초). 나머지는 「여유」로 한 명씩, 새 카드가 부르면 그 한 명만 앞으로</td><td>상주 (인게임을 나가도 안 놓음)</td><td>두 번째 진입부터 다시 올리기 0</td></tr>
+              <tr><td><strong>마을 진입 캐릭터</strong></td><td>진입이 세울 지점의 캐릭터만. 다음 지점은 선받기가 받기만 해 둔다</td><td>—</td><td>꾸미기 · 캐릭터 진입 대기 상한 15초</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="measure">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">측정 <span class="doc-h2-sub">로그 세 줄 + 봇</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 190px">로그</th><th style="width: 470px">무엇을 찍나</th><th>모으는 곳</th></tr></thead>
+            <tbody>
+              <tr><td><code>[mem]</code> 메모리</td><td>GPU 에 실제로 올리고 지운 텍스처를 종류별로(에셋 · 라벨 캔버스 · 동적 아틀라스 · RenderTexture · 기타). 바뀔 때 묶어서 + 10초마다</td><td>봇 판별 <code>_mem.jsonl</code> · 리소스 그래프</td></tr>
+              <tr><td><code>[hitch]</code> 끊김</td><td>50ms 이상 프레임마다 — 간격 · 화면 · 그 프레임의 업로드 MB · 끝난 로드 · 느린 생성. 탭 전환 · 일시정지는 뺀다</td><td>봇 판별 <code>_hitch.jsonl</code></td></tr>
+              <tr><td><code>[load]</code> 로드</td><td>로드 요청 하나당 한 줄 — 선로드가 건 것인지 · 첫 입력 전인지 · <strong>그 완료가 든 프레임 길이</strong>(실제 멈춘 시간) · 해제</td><td>봇 판별 <code>_loads.jsonl</code> · 「선받기 누락」 검사</td></tr>
+              <tr><td>폰 흉내</td><td>봇 실행 옵션 — CPU 4배 감속 + 모바일 디코딩 경로(이미지 비트맵 디코딩 끔)</td><td>봇 판 요약 · 튀는 구간 표</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--warn)">
+            <div class="note-title">봇 숫자의 함정</div>
+            <p>데스크톱 봇은 디코딩이 메인 스레드 밖에서 돌아 폰보다 훨씬 가볍게 나옵니다 — 그래서 폰 흉내가 있어야 전후 비교가 의미 있습니다.
+            반대로 폰 흉내 판의 봇 페이지 끊김 수(NRU 47 · RU 19)는 <strong>부풀려진 값</strong>입니다. 감속된 프레임은 모두 50ms 를 넘기 때문이고, 업로드가 원인인 실제 끊김은 판당 1회입니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="history">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">작업 이력 <span class="doc-h2-sub">무엇을 바꿨고 얼마나 달라졌나</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 70px">날짜</th><th style="width: 190px">작업</th><th style="width: 330px">무엇</th><th>실측 효과</th></tr></thead>
+            <tbody>
+              <tr><td>10-14</td><td><strong>기준선</strong></td><td>새 계정 5분 판 실측 (변경 전)</td><td>첫 채팅 최대 162.9 · 플레이 피크 227.9 · 마을 상주 168.5MB · 동적 아틀라스 96MB</td></tr>
+              <tr><td>10-14</td><td><strong>채팅 감정 단위 로드</strong></td><td>채팅이 재생하는 감정만 올린다(화자 전체 → 쓰는 감정)</td><td>첫 채팅 최대 162.9 → 127.1MB</td></tr>
+              <tr><td>10-15</td><td><strong>동적 아틀라스 1장</strong></td><td>상한 1장 + 들고 나는 텍스처 976장 아틀라스 제외</td><td>96 → 16MB · 인게임 드로우콜 167 → 57 (마을 · 채팅은 늘어남)</td></tr>
+              <tr><td>10-15</td><td><strong>측정 도구</strong></td><td><code>[mem]</code> · <code>[load]</code> · <code>[hitch]</code> 로그</td><td>GPU 실측이 에셋 추정의 약 2배임을 확인</td></tr>
+              <tr><td>10-16</td><td><strong>플로우 선받기</strong></td><td>흩어진 선받기 7곳을 상태별 순서표 하나로</td><td>「쓰는 순간 처음 받기」를 봇이 판마다 검사</td></tr>
+              <tr><td>10-16</td><td><strong>나눠 올리기 1차</strong></td><td>올리기 큐 · 손님 상주 · 채팅 미리 올리기 · 커튼 뒤 분산 · RU 마을 미리 올리기 · 추적 줄</td><td rowspan="2">3차 전 데스크톱 판(12:17): NRU 마을 132 · 인게임 135 · 피크 189 / RU 144 · 144 · 183MB</td></tr>
+              <tr><td>10-16</td><td><strong>나눠 올리기 2차</strong></td><td>빈틈 메우기 — 실패 경로 놓기 · 열기 트윈 보호 · 인트로 영상을 대기 화면으로 · 상수 설정으로 이동 · 다음 지점 캐릭터</td></tr>
+              <tr><td>10-16</td><td><strong>3차 부팅 직후 전환</strong></td><td>진입 캐릭터를 세울 지점만 · 순서표에서 반대편 진입을 맨 앞으로 · 커튼 중 선받기 멈춤 · 커튼 뒤 받기 4 → 6</td><td>인게임→마을 커튼(시작 1.3초 클릭) RU 13.5 → 7.7초 · NRU 약 11.5 → 7.0초 / 6초 클릭 RU 7.5 · NRU 6.7초 · 진입 캐릭터 12 → 2개(22 → 3.4MB) · 데스크톱 판(14:21) NRU 128 · 127 · 187 / RU 135 · 135 · 173MB</td></tr>
+              <tr><td>10-16</td><td><strong>4차 NRU 첫 채팅</strong> <span class="pill" style="--acc: var(--warn)">FB 빌드 확인 대기</span></td><td>채팅과 무관한 직접 받기를 순서표로 · 마을 표 심부름 창 맨 앞 · 대기 항목 먼저 · 프리뷰 받기 상한을 빌드와 같게</td><td>첫 채팅 열림 → 준비 약 9.5초 → 0.9초 · 부팅 직후 인게임→마을 커튼 1.3초 클릭 7.7 → 3.4초 · 6초 클릭 7.5 → 1.7초(프리뷰 프로브). 전은 프리뷰 받기 상한 2, 후는 빌드와 같은 8 — 확정은 FB 빌드 로그로</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notes">
+          <div class="note" style="--acc: var(--plan)">
+            <div class="note-title">4차를 하는 이유</div>
+            <p>첫 채팅이 쓰는 건 이미 최소(디스크 3.25MB)인데 <strong>받는 시점</strong>이 늦었습니다. 열기 전에 끝난 게 10개 중 3개였고, 그 사이 받기 자리를 채팅과 무관한 일(보드 아이콘 · 손님 · 팝업 · 다른 소구역 캐릭터 · 신규 생성 수선)이 차지했습니다.
+            FB 테스트 빌드 로그도 같은 그림입니다 — 미룬 수선 31개 받기 34.6초 · 손님 선로드 21.1초 · 인게임 화면 텍스처 106장 7.1초.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="caution">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">남은 것 · 운영 주의 <span class="doc-h2-sub">출시 전 확인</span></h2>
+        <div class="table-scroll">
+          <table class="mm-t">
+            <thead><tr><th style="width: 240px">항목</th><th style="width: 430px">내용</th><th>할 일</th></tr></thead>
+            <tbody>
+              <tr><td><strong>추적 스위치 <code>UPLOAD_TRACE</code></strong></td><td>지금 워킹트리는 FB 테스트 빌드 측정용으로 켜 둠. 켜면 릴리스 빌드에서도 로그 세 줄이 찍힌다</td><td><strong>라이브 빌드는 반드시 꺼야 한다</strong> — 출시 체크리스트 · 빌드 전 확인</td></tr>
+              <tr><td><strong>FB 빌드 측정</strong></td><td>4차 판정(첫 채팅 대기 3초 이하)은 FB 테스트 빌드 로그의 타임스탬프 · 추적 줄로 한다</td><td>다음 테스트 빌드에서 확정</td></tr>
+              <tr><td><strong>프리뷰 ≠ 빌드</strong></td><td>엔진 받기 동시 수가 프리뷰 2 · 빌드 8(저사양 안드로이드 4). 프리뷰엔 auto-atlas · 텍스처 압축이 없다</td><td>받기 시간은 프리뷰가 더 느리고, 메모리는 더 크게 나온다 — 판정은 빌드</td></tr>
+              <tr><td><strong>동적 아틀라스 2장째</strong></td><td>긴 판에서 팝업 UI 가 넘쳐 16MB 가 더 열린다(폰 흉내 NRU 피크 206 에 포함). 열리면 그 뒤로 새 아이콘이 안 묶인다</td><td>팝업 틀 auto-atlas + 큰 3장 제외안 — 우선순위 낮음, 빌드에서만 확인 가능</td></tr>
+              <tr><td><strong>삽화 110063 아트 없음</strong></td><td>첫 채팅 삽화 그림이 번들에 없어 빈 카드로 나온다</td><td>아트 도착 대기 (메모리 · 로딩 결함 아님)</td></tr>
+              <tr><td><strong>배경 한 프레임 멈춤</strong></td><td>마을 배경 25MB 한 장은 나눌 수 없어 커튼 애니가 그 한 프레임 멈춘다</td><td>그대로 둔다(확정)</td></tr>
+              <tr><td><strong>실기기 한도</strong></td><td>저사양 폰 FB 앱에서 몇 MB 에 튕기는지는 재지 않았다. 등급별 기본 속도는 보수적으로 잡았다</td><td>튕김 · 메모리 부족이 보이면 그때 스위칭 해제를 다시 연다</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="foot">
+          <b>확인 범위</b> 구조 · 설정값은 클라 main 0ce05fe7 + 워킹트리(4차, 미커밋) 코드에서 읽었습니다. 메모리 · 끊김 · 커튼 시간은 프리뷰 QA 봇 판과 실클릭 프로브 실측이고, FB 테스트 빌드 값은 로그에 찍힌 것만 옮겼습니다. 실기기 · 빌드 메모리는 재지 않았습니다.
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="wrap wrap--wide">
+        작성 2026-10-16 · Supergene
+      </div>
+    </footer>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
