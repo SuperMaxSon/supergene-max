@@ -399,7 +399,7 @@ const SECTIONS = [
         project: "smg",
         status: "완료",
         version: "v2 · main dc7148b5+chat-keep",
-        updated: "2026-10-19 11:50",
+        updated: "2026-10-19 13:25",
         pinned: false,
         tags: ["봇 실측", "리소스", "메모리", "캐시"],
       },
