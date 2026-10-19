@@ -504,6 +504,34 @@
       .cr-node { font-family: ui-monospace, Menlo, monospace; font-size: 12px;
                  white-space: nowrap; color: var(--text); }
 
+      /* ── 진행 수지 (본표 7열 · #cr-ledger) ───────────────────────────────
+         심부름을 깰 때마다 「코인이 남나 · 몇 레벨인가」를 계산한 값이다(실측 아님 — LEDGER 생성기 계산).
+         막힘은 확인 필요 칩과 같은 붉은 판정 칩(.cr-vd.is-bad)을 쓴다. 랜덤 오더 구간은 판정하지 않아 흐리게 둔다. */
+      .cr-led { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .cr-led .cr-chip { display: inline-flex; vertical-align: middle; gap: 3px; }
+      .cr-led .cr-chip img { width: 16px; height: 16px; }
+      .cr-led .cr-chip b { font-size: 12.5px; }
+      .cr-led .lv { color: var(--text-dim); font-weight: 700; }
+      .cr-led.is-rand { color: var(--text-faint); font-size: 11.5px; }
+      .cr-led-stop { margin-top: 3px; font-size: 11px; font-weight: 700; color: var(--deploy); white-space: nowrap; }
+      .cr-tb td .cr-led .cr-vd { cursor: help; }
+      /* 5번째 KPI(첫 진행 막힘) — 허브 stat-row 는 4칸이라 이 페이지에서만 5칸으로 연다 */
+      @media (min-width: 761px) { #crKpi.stat-row { grid-template-columns: repeat(5, 1fr); } }
+      .cr-led-tb { table-layout: fixed; width: 100%; }
+      .cr-led-tb td { vertical-align: middle; font-size: 12.5px; }
+      .cr-led-tb .num { text-align: right; font-variant-numeric: tabular-nums; }
+      .cr-led-its { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+      .cr-led-it { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 3px; border-radius: 999px;
+                   border: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; }
+      .cr-led-it img { display: block; width: 20px; height: 20px; object-fit: contain; pointer-events: none; }
+      .cr-led-it code { font-size: 11px; font-weight: 700; background: none; padding: 0; }
+      .cr-led-why { display: block; margin-top: 3px; font-size: 11.5px; color: var(--text-dim); }
+      .cr-led-as { margin-top: 14px; font-size: 12.5px; color: var(--text-dim); }
+      .cr-led-as > summary { cursor: pointer; font-weight: 700; color: var(--text); }
+      .cr-led-as ul { margin: 6px 0 4px; padding-left: 18px; }
+      .cr-led-as li { margin: 2px 0; }
+      .cr-led-as .k { margin-top: 8px; font-size: 11px; font-weight: 800; color: var(--text-faint); }
+
     </style>
   </head>
 
@@ -512,6 +540,7 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#sheet">보상 시트</a>
+        <a class="nav-back" href="#cr-ledger">고정 오더 · 수지</a>
         <a class="nav-back" href="#stage">마을 ↔ 화자</a>
         <a class="nav-back" href="#deco">데코 반영</a>
         <a class="nav-back" href="#items">아이템 31종</a>
@@ -535,7 +564,7 @@
         <span class="tag">시트 <code>story</code> 284행 · <code>story_dialog</code> 2,903행 (2026-10-18 export)</span>
         <span class="tag">클라 레포 <code>main</code> 실측</span>
         <span class="tag">아이템 아트 31종 실물</span>
-        <span class="tag">마지막 갱신 2026-10-19 11:30</span>
+        <span class="tag">마지막 갱신 2026-10-19 17:45</span>
       </div>
     </header>
 
@@ -557,7 +586,7 @@
           </label>
           <button class="cr-btn" id="crOnlyItem" type="button">추가 아이템 있는 건만</button>
           <button class="cr-btn" id="crAllDet" type="button">대화 전부 펼치기</button>
-          <span class="cr-issue" id="crIssue" role="group" aria-label="마을 캐릭터 ↔ 대사 화자 이슈 필터"></span>
+          <span class="cr-issue" id="crIssue" role="group" aria-label="이슈 필터 — 진행 막힘 · 마을 캐릭터 ↔ 대사 화자"></span>
           <span class="cr-count" id="crCount"></span>
         </div>
 
@@ -571,6 +600,7 @@
                 <th style="width: 76px; text-align: right">코스트</th>
                 <th style="width: 76px; text-align: right">경험치</th>
                 <th style="width: 230px">추가 아이템</th>
+                <th style="width: 120px" title="심부름을 깬 뒤 남는 코인 · 레벨 — 고정 오더 수입 기준 계산값(실측 아님). 아래 「고정 오더 · 레벨별 수지」 참고">진행 수지</th>
               </tr>
             </thead>
             <tbody id="crBody"></tbody>
@@ -579,6 +609,53 @@
 
 
 </section>
+
+      <section class="doc-section" id="cr-ledger">
+        <h2 class="doc-h2">
+          고정 오더 · 레벨별 수지
+          <span class="doc-h2-sub">계산값 &mdash; 레벨마다 고정 오더로 버는 코인이 그 레벨 심부름 비용을 메우는지, 고정 오더를 그 레벨 생산원으로 만들 수 있는지 봅니다. 고정 오더 원문은 <a href="rosewood-order-fixed.html">고정 오더 문서</a></span>
+        </h2>
+
+        <p class="doc-lede" style="margin-top: 0"><b id="crLedSum"></b></p>
+
+        <div class="table-scroll">
+          <table class="cr-led-tb">
+            <thead>
+              <tr>
+                <th style="width: 56px">Lv</th>
+                <th>생산원</th>
+                <th style="width: 112px; text-align: right">고정 오더 수입</th>
+                <th style="width: 96px; text-align: right">코인 아이템</th>
+                <th style="width: 132px; text-align: right">그 레벨 심부름 비용</th>
+                <th style="width: 190px">판정 (계산)</th>
+              </tr>
+            </thead>
+            <tbody id="crLedLv"></tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h2" id="cr-ledger-orders" style="font-size: 16px; margin-top: 26px">
+          고정 오더
+          <span class="doc-h2-sub">「만들 수 있다」 = 그 레벨 생산원에서 요구 아이템 체인에 닿는다는 뜻입니다 &mdash; 에너지 · 보드 칸은 따지지 않았습니다</span>
+        </h3>
+        <div class="table-scroll">
+          <table class="cr-led-tb">
+            <thead>
+              <tr>
+                <th style="width: 56px">seq</th>
+                <th style="width: 50px">Lv</th>
+                <th style="width: 64px">자리</th>
+                <th>요구</th>
+                <th style="width: 70px; text-align: right">코인</th>
+                <th style="width: 280px">그 레벨에서 만들 수 있나</th>
+              </tr>
+            </thead>
+            <tbody id="crLedOrd"></tbody>
+          </table>
+        </div>
+
+        <details class="cr-led-as" id="crLedAs"></details>
+      </section>
 
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
@@ -1089,6 +1166,9 @@
         [18,9,99,"Diane",15,[],"역 앞에 불","택1","역 앞 광장",{"디자인 A":"소박한 역 앞 가로등","디자인 B":"단정한 역 앞 가로등","디자인 C":"화려한 역 앞 가로등"}],
         [18,10,119,"Rosie",15,[[1603,1]],"안에 사람이 있다","대화","역 앞 광장",{}],
       ];
+      const LEDGER = {"1-1":[50,16,34,1,"",0],"1-2":[50,29,21,1,"",0],"1-3":[50,55,-5,2,"26 필요 · 21 보유 (고정 오더 1~4 = 50 · 코인 아이템 0)",80],"1-4":[191,68,123,2,"",0],"1-5":[191,120,71,2,"",0],"1-6":[191,133,58,3,"",0],"1-7":[null,146,null,3,"",0],"2-1":[null,211,null,3,"",0],"2-2":[null,237,null,3,"",0],"2-3":[null,250,null,4,"",0],"2-4":[null,276,null,4,"",0],"2-5":[null,302,null,4,"",0],"2-6":[null,354,null,4,"",0],"2-7":[null,406,null,4,"",0],"2-8":[null,432,null,4,"",0],"3-1":[null,471,null,5,"",0],"3-2":[null,523,null,5,"",0],"3-3":[null,549,null,5,"",0],"3-4":[null,575,null,5,"",0],"3-5":[null,601,null,5,"",0],"3-6":[null,627,null,6,"",0],"3-7":[null,653,null,6,"",0],"3-8":[null,679,null,6,"",0],"4-1":[null,731,null,6,"",0],"4-2":[null,757,null,6,"",0],"4-3":[null,783,null,6,"",0],"4-4":[null,809,null,6,"",0],"4-5":[null,848,null,6,"",0],"4-6":[null,874,null,7,"",0],"4-7":[null,926,null,7,"",0],"4-8":[null,978,null,7,"",0],"4-9":[null,991,null,7,"",0],"5-1":[null,1153,null,7,"",0],"5-2":[null,1168,null,7,"",0],"5-3":[null,1198,null,8,"",0],"5-4":[null,1228,null,8,"",0],"5-5":[null,1273,null,8,"",0],"5-6":[null,1303,null,8,"",0],"5-7":[null,1363,null,8,"",0],"5-8":[null,1423,null,8,"",0],"6-1":[null,1633,null,9,"",0],"6-2":[null,1678,null,9,"",0],"6-3":[null,1708,null,9,"",0],"6-4":[null,1783,null,9,"",0],"6-5":[null,1828,null,9,"",0],"6-6":[null,1888,null,9,"",0],"6-7":[null,1978,null,9,"",0],"6-8":[null,2008,null,10,"",0],"7-1":[null,2053,null,10,"",0],"7-2":[null,2173,null,10,"",0],"7-3":[null,2233,null,10,"",0],"7-4":[null,2353,null,10,"",0],"7-5":[null,2413,null,10,"",0],"7-6":[null,2428,null,10,"",0],"7-7":[null,2443,null,10,"",0],"7-8":[null,2503,null,11,"",0],"8-1":[null,2668,null,11,"",0],"8-2":[null,2758,null,11,"",0],"8-3":[null,2803,null,11,"",0],"8-4":[null,2953,null,11,"",0],"8-5":[null,3028,null,11,"",0],"8-6":[null,3073,null,12,"",0],"8-7":[null,3178,null,12,"",0],"8-8":[null,3208,null,12,"",0],"8-9":[null,3343,null,12,"",0],"8-10":[null,3403,null,12,"",0],"9-1":[null,3493,null,12,"",0],"9-2":[null,3583,null,12,"",0],"9-3":[null,3613,null,12,"",0],"9-4":[null,3628,null,12,"",0],"9-5":[null,3763,null,13,"",0],"9-6":[null,3913,null,13,"",0],"9-7":[null,3958,null,13,"",0],"9-8":[null,4003,null,13,"",0],"9-9":[null,4138,null,13,"",0],"9-10":[null,4228,null,13,"",0],"10-1":[null,4363,null,13,"",0],"10-2":[null,4513,null,14,"",0],"10-3":[null,4648,null,14,"",0],"10-4":[null,4798,null,14,"",0],"10-5":[null,4873,null,14,"",0],"10-6":[null,4948,null,14,"",0],"10-7":[null,5098,null,14,"",0],"10-8":[null,5248,null,14,"",0],"10-9":[null,5308,null,14,"",0],"10-10":[null,5368,null,15,"",0],"11-1":[null,5476,null,15,"",0],"11-2":[null,5602,null,15,"",0],"11-3":[null,5674,null,15,"",0],"11-4":[null,5746,null,15,"",0],"11-5":[null,5818,null,15,"",0],"11-6":[null,5944,null,15,"",0],"11-7":[null,6016,null,15,"",0],"11-8":[null,6178,null,15,"",0],"11-9":[null,6232,null,15,"",0],"11-10":[null,6286,null,15,"",0],"12-1":[null,6682,null,16,"",0],"12-2":[null,6754,null,16,"",0],"12-3":[null,6826,null,16,"",0],"12-4":[null,7006,null,16,"",0],"12-5":[null,7078,null,16,"",0],"12-6":[null,7150,null,16,"",0],"12-7":[null,7330,null,16,"",0],"12-8":[null,7402,null,16,"",0],"12-9":[null,7474,null,16,"",0],"12-10":[null,7654,null,17,"",0],"13-1":[null,7978,null,17,"",0],"13-2":[null,8032,null,17,"",0],"13-3":[null,8086,null,17,"",0],"13-4":[null,8158,null,17,"",0],"13-5":[null,8266,null,17,"",0],"13-6":[null,8320,null,17,"",0],"13-7":[null,8374,null,17,"",0],"13-8":[null,8428,null,17,"",0],"13-9":[null,8536,null,17,"",0],"13-10":[null,8680,null,17,"",0],"14-1":[null,9094,null,18,"",0],"14-2":[null,9220,null,18,"",0],"14-3":[null,9292,null,18,"",0],"14-4":[null,9436,null,18,"",0],"14-5":[null,9454,null,18,"",0],"14-6":[null,9472,null,18,"",0],"14-7":[null,9652,null,18,"",0],"14-8":[null,9670,null,18,"",0],"14-9":[null,9742,null,18,"",0],"14-10":[null,9850,null,19,"",0],"15-1":[null,10264,null,19,"",0],"15-2":[null,10372,null,19,"",0],"15-3":[null,10516,null,19,"",0],"15-4":[null,10588,null,19,"",0],"15-5":[null,10768,null,19,"",0],"15-6":[null,10840,null,19,"",0],"15-7":[null,10948,null,20,"",0],"15-8":[null,11038,null,20,"",0],"15-9":[null,11074,null,20,"",0],"15-10":[null,11146,null,20,"",0],"16-1":[null,11290,null,20,"",0],"16-2":[null,11380,null,20,"",0],"16-3":[null,11459,null,20,"",0],"16-4":[null,11578,null,20,"",0],"16-5":[null,11736,null,20,"",0],"16-6":[null,11934,null,20,"",0],"16-7":[null,12013,null,21,"",0],"16-8":[null,12211,null,21,"",0],"16-9":[null,12290,null,21,"",0],"16-10":[null,12409,null,21,"",0],"17-1":[null,12607,null,21,"",0],"17-2":[null,12686,null,21,"",0],"17-3":[null,12785,null,21,"",0],"17-4":[null,12904,null,21,"",0],"17-5":[null,13062,null,21,"",0],"17-6":[null,13141,null,21,"",0],"17-7":[null,13339,null,21,"",0],"17-8":[null,13458,null,22,"",0],"17-9":[null,13616,null,22,"",0],"17-10":[null,13735,null,22,"",0],"18-1":[null,13933,null,22,"",0],"18-2":[null,13973,null,22,"",0],"18-3":[null,14052,null,22,"",0],"18-4":[null,14171,null,22,"",0],"18-5":[null,14329,null,22,"",0],"18-6":[null,14527,null,22,"",0],"18-7":[null,14606,null,22,"",0],"18-8":[null,14804,null,22,"",0],"18-9":[null,14903,null,23,"",0],"18-10":[null,15022,null,23,"",0],"1-8":[null,159,null,3,"",0],"1-9":[null,185,null,3,"",0],"2-9":[null,445,null,5,"",0],"3-9":[null,705,null,6,"",0],"4-10":[null,1056,null,7,"",0],"4-11":[null,1095,null,7,"",0],"4-12":[null,1108,null,7,"",0],"5-9":[null,1453,null,8,"",0],"7-9":[null,2548,null,11,"",0],"5-10":[null,1468,null,8,"",0],"5-11":[null,1558,null,9,"",0],"13-11":[null,8716,null,18,"",0],"13-12":[null,8806,null,18,"",0],"13-13":[null,8860,null,18,"",0],"7-10":[null,2593,null,11,"",0],"7-11":[null,2623,null,11,"",0],"11-11":[null,6340,null,15,"",0],"11-12":[null,6430,null,15,"",0],"11-13":[null,6466,null,16,"",0],"11-14":[null,6502,null,16,"",0],"12-11":[null,7708,null,17,"",0],"12-12":[null,7762,null,17,"",0],"12-13":[null,7834,null,17,"",0],"13-14":[null,8914,null,18,"",0],"13-15":[null,9022,null,18,"",0],"14-11":[null,9922,null,19,"",0],"14-12":[null,10066,null,19,"",0],"14-13":[null,10120,null,19,"",0],"14-14":[null,10156,null,19,"",0],"14-15":[null,10192,null,19,"",0]};
+      const FIXED_ORDERS = [[1,1,[1],[803],2,true,"704 → 801 체인 8"],[2,1,[1],[808],32,true,"704 → 801 체인 8"],[3,1,[1],[804],4,true,"704 → 801 체인 8"],[4,1,[1],[806],12,true,"704 → 801 체인 8"],[5,2,[1,2],[904],14,true,"705 → 901 체인 9"],[6,2,[1,2],[903],8,true,"705 → 901 체인 9"],[7,2,[1,2],[903,806],20,true,"705 → 901 체인 9 · 704 → 801 체인 8"],[8,2,[1,2],[905],24,true,"705 → 901 체인 9"],[9,2,[1,2],[808],32,true,"704 → 801 체인 8"],[10,2,[1,2],[805,903],16,true,"704 → 801 체인 8 · 705 → 901 체인 9"],[11,3,[1,2],[204,204],8,true,"104 → 201 체인 2"],[12,3,[1,2],[805,205],16,true,"704 → 801 체인 8 · 104 → 201 체인 2"],[13,3,[1,2],[205,203],10,true,"104 → 201 체인 2"],[14,4,[1,2],[303],8,true,"105 → 301 체인 3"],[15,4,[3],[207,804],28,true,"104 → 201 체인 2 · 704 → 801 체인 8"],[16,4,[1,2],[806,304],26,true,"704 → 801 체인 8 · 105 → 301 체인 3"]];
+      const LEDGER_META = {"src":"2026-10-18-export","calcAt":"2026-10-19 17:30","randomLv":3,"firstBlock":"1-3","levels":[{"lv":1,"producers":[704],"fixedIncome":50,"coinItems":0,"choreCost":55,"verdict":"block"},{"lv":2,"producers":[704,705,3301,3601],"fixedIncome":114,"coinItems":22,"choreCost":78,"verdict":"ok"},{"lv":3,"producers":[104,704,705,3301,3501,3601],"fixedIncome":34,"coinItems":62,"choreCost":117,"verdict":"random"},{"lv":4,"producers":[104,105,704,705,2501,3301,3401,3501,3601],"fixedIncome":62,"coinItems":10,"choreCost":195,"verdict":"random"},{"lv":5,"producers":[104,105,704,705,1804,2501,2502,3301,3401,3501,3601],"fixedIncome":0,"coinItems":52,"choreCost":182,"verdict":"random"}],"assume":["상자 = 4방향 이웃 머지 충격, 거미줄 = 같은 코드를 얹어야 풀림(BoardMoveVM). 여분 없으면 못 푼다고 본다","704 생성기는 Lv1 보드 701·702·703 을 합쳐 얻는다. Lv2 보상 704 + 보드 704 → 705 로 9번 체인이 열린다","생성기는 무한 생산. 에너지·시간·보드 칸은 도달 판정에 안 넣는다","수입 = 풀 수 있는 고정 오더 + 보드 코인 아이템 + 보상 코인","판매는 수입에 안 넣는다. 부족분은 판매로 메우는 에너지로 따로 표시","랜덤 오더가 열리는 레벨부터 코인은 시간 문제로 보고 막힘 판정 안 함"],"unknown":["보드 칸 부족 (Lv1 시작 63칸 거의 꽉 참)","에너지 한도 (Lv1 오더만 탭 172회 vs 시작 100)","판매가 의도된 수입원인지","고정 오더 도착 순서"]};
 
       /* ROWS 한 줄 = [day, seq, cost_coin, npc, exp, [[item_code, 수량]…],
                         제목, 유형, 구역, { 비포 · 애프터 · 디자인 A~C }]
@@ -1411,6 +1491,7 @@
           + `<td style="text-align: right"><span class="cr-none">—</span></td>`
           + `<td style="text-align: right"><span class="cr-none">—</span></td>`
           + `<td><span class="cr-none">—</span></td>`
+          + `<td></td>`
           + `</tr>`;
       }
 
@@ -1567,7 +1648,32 @@
           + `<td style="text-align: right"><span class="cr-none">—</span></td>`
           + `<td style="text-align: right"><span class="cr-none">—</span></td>`
           + `<td><span class="cr-none">—</span></td>`
+          + `<td></td>`
           + `</tr>`;
+      }
+
+      /* ── 진행 수지 ─────────────────────────────────────────────────────
+         LEDGER["day-seq"] = [누적 수입|null, 누적 비용, 남는 코인|null, 깬 뒤 레벨, 막힘 사유|"", 판매로 메우는 에너지]
+         null = 랜덤 오더가 열려 수입 상한이 없다(시간 문제로 보고 판정 안 함). 전부 계산값이다. */
+      const isLedBlock = (key) => !!(LEDGER[key] && LEDGER[key][4]);
+      /* 막힌 심부름 바로 앞 심부름의 레벨 — 「어디서 멈추나」 */
+      function ledPrevLv(key) {
+        const i = ORDER.findIndex((r) => keyOfRow(r) === key);
+        const prev = i > 0 ? LEDGER[keyOfRow(ORDER[i - 1])] : null;
+        return prev ? prev[3] : 1;
+      }
+      function ledgerCellHtml(key) {
+        const l = LEDGER[key];
+        if (!l) return `<span class="cr-none">—</span>`;
+        const [, , left, lv, why, grind] = l;
+        if (why) {
+          const tip = `${why} · 판매로 메우면 에너지 ${grind} (계산값)`;
+          return `<div class="cr-led"><span class="cr-vd is-bad" title="${esc(tip)}">코인 막힘 −${-left}</span>`
+            + `<div class="cr-led-stop" title="${esc(tip)}">Lv${ledPrevLv(key)} 에서 멈춤</div></div>`;
+        }
+        if (left === null) return `<span class="cr-led is-rand" title="랜덤 오더가 열려 코인은 시간 문제 — 막힘 판정 안 함">랜덤 오더 · Lv${lv}</span>`;
+        return `<span class="cr-led" title="깬 뒤 남는 코인 · 레벨 (고정 오더 수입 기준 계산값)">남은 <span class="cr-chip"><img src="${COIN_ART}" alt="코인"><b>${left.toLocaleString()}</b></span>`
+          + ` · <span class="lv">Lv${lv}</span></span>`;
       }
 
       /* 심부름 행. 이 행이 「플레이어가 실제로 보드를 미는 구간」이다.
@@ -1588,6 +1694,7 @@
           + `<img src="${EXP_ART}" alt="경험치"><b>${exp}</b></span></td>`
           + `<td>${items.length ? `<span class="cr-items">${items.map((p) => itemHtml(p[0], p[1])).join("")}</span>`
                                 : `<span class="cr-none">—</span>`}</td>`
+          + `<td>${ledgerCellHtml(keyOfRow(ev.row))}</td>`
           + `</tr>`;
       }
 
@@ -1598,7 +1705,10 @@
         /* 이슈 버튼이 켜지면 그 유형의 채팅 + 바로 위 심부름 행만 — 꾸미기·나머지는 숨긴다.
            Day 는 채팅을 부른 심부름의 day 로 가른다(심부름·채팅 한 쌍이 갈라지지 않게). 「추가 아이템」은 그 심부름에 아이템이 있는 쌍만. */
         const issue = !!spCat;
-        if (issue) {
+        /* 「진행 막힘」 — 대화 이슈와 다른 축이라 심부름 행을 직접 고른다(Day · 「추가 아이템」은 그대로 건다) */
+        const led = ledOn;
+        if (led) ev = rows.filter((r) => isLedBlock(keyOfRow(r))).map((row) => ({ t: "task", key: keyOfRow(row), row }));
+        else if (issue) {
           ev = [];
           spIssueRows().forEach((r) => {
             const task = TASK_BEFORE.get(r.ev);
@@ -1635,7 +1745,7 @@
           if (day !== prevDay) {
             prevDay = day;
             const d = stat[day];
-            html += `<tr class="cr-band" data-day="${day}" style="--zc: ${zoneColor(d.area)}"><td colspan="6"><div class="cr-band-in">`
+            html += `<tr class="cr-band" data-day="${day}" style="--zc: ${zoneColor(d.area)}"><td colspan="7"><div class="cr-band-in">`
               + `<span class="d">Day ${day}</span>`
               + `<span class="z" style="--zc: ${zoneColor(d.area)}">${esc(d.area)}</span>`
               + `<span class="c">심부름 ${d.task}건`
@@ -1648,20 +1758,24 @@
           if (e.t === "talk") {
             const det = boxHtml(e, stageHtml(e) + chatHtml(e));
             html += talkRowHtml(e, id, det).replace('class="cr-row is-talk', `class="cr-row is-talk${daystart}`)
-              + (det ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="6">${det}</td></tr>` : "");
+              + (det ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="7">${det}</td></tr>` : "");
             /* 채팅이 끝나면 꾸미기 — 수선·택1 만 행이 선다(대화 유형·첫 진입은 꾸미기가 없다). */
             const deco = e.kind === "clear" && !issue ? boxHtml(e, resultHtml(e.row)) : "";
             if (deco) {
               const did = `${id}-deco`;
               html += decoRowHtml(e, did)
-                + `<tr class="cr-det is-d" id="${did}"${decoOpen ? "" : " hidden"}><td colspan="6">${deco}</td></tr>`;
+                + `<tr class="cr-det is-d" id="${did}"${decoOpen ? "" : " hidden"}><td colspan="7">${deco}</td></tr>`;
             }
             continue;
           }
           html += taskRowHtml(e).replace('class="cr-row is-task', `class="cr-row is-task${daystart}`);
         }
-        $("#crBody").innerHTML = html || `<tr><td colspan="6" class="cr-nil">해당 행이 없습니다</td></tr>`;
+        $("#crBody").innerHTML = html || `<tr><td colspan="7" class="cr-nil">해당 행이 없습니다</td></tr>`;
 
+        if (led) {
+          $("#crCount").textContent = `진행 막힘 · 심부름 ${ev.length}건 (계산)`;
+          return;
+        }
         if (issue) {
           const label = SP_CATS.find(([k]) => k === spCat)[2];
           const talks = ev.filter((e) => e.t === "talk");
@@ -1862,7 +1976,7 @@
       /* 이슈 버튼으로 걸러진 표에 목표 행이 없으면 그때만 이슈 필터를 끈다 — 대조표에서 누른 채팅은 남아 있다 */
       function findRow(sel) {
         let el = document.querySelector(sel);
-        if (!el && spCat) { spCat = null; renderFiltered(); el = document.querySelector(sel); }
+        if (!el && (spCat || ledOn)) { spCat = null; ledOn = false; renderFiltered(); el = document.querySelector(sel); }
         return el;
       }
       function goRow(chk) {
@@ -1915,6 +2029,9 @@
       /* 이슈 필터 — 위 표 조작 바의 버튼 하나가 위 표와 이 대조표를 같이 거른다. null = 끔. 「일치」는 이슈가 아니라 버튼이 없다. */
       let spCat = null;
       let spTracked = true;
+      /* 진행 막힘 필터 — spCat 과 한 묶음으로 하나만 켜진다(켜면 다른 이슈 버튼은 꺼진다). 대조표는 거르지 않는다. */
+      let ledOn = false;
+      const ledCount = () => ORDER.filter((r) => (dayFilter === 0 || r[0] === dayFilter) && isLedBlock(keyOfRow(r))).length;
       const ISSUE_CATS = SP_CATS.filter(([k]) => k !== "ok");
       /* 클리어 채팅 → 그 채팅을 부른 심부름 행(타임라인 바로 앞). 첫 진입 채팅은 위에 심부름이 없다. */
       const TASK_BEFORE = new Map();
@@ -1976,6 +2093,8 @@
         const base = spBase();
         const n = (cat) => base.filter((r) => r.cat === cat).length;
         $("#crIssue").innerHTML = `<span class="cr-sep" aria-hidden="true"></span>`
+          + `<button class="cr-btn${ledOn ? " is-on" : ""}" type="button" data-ledger aria-pressed="${ledOn}" title="심부름 비용을 그때까지 번 코인으로 못 내는 심부름 — 고정 오더 수입 기준 계산값">진행 막힘<span class="n">${ledCount()}</span></button>`
+          + `<span class="cr-sep" aria-hidden="true"></span>`
           + ISSUE_CATS.map(([k, , label, ds]) =>
             `<button class="cr-btn${spCat === k ? " is-on" : ""}" type="button" data-sp-cat="${k}" aria-pressed="${spCat === k}"${ds ? ` title="${esc(ds)}"` : ""}>${label}<span class="n">${n(k)}</span></button>`).join("")
           + `<span class="cr-sep" aria-hidden="true"></span>`
@@ -2011,7 +2130,7 @@
       }
 
       /* ── 오른쪽 내비 ───────────────────────────────────────────────────── */
-      const NAV_SECS = [["sheet", "보상 시트", false], ["stage", "클라 ↔ 기획", false], ["deco", "데코 반영", false], ["deco-day1", "day 1 자리별 대조", true],
+      const NAV_SECS = [["sheet", "보상 시트", false], ["cr-ledger", "고정 오더 · 수지", false], ["stage", "클라 ↔ 기획", false], ["deco", "데코 반영", false], ["deco-day1", "day 1 자리별 대조", true],
         ["deco-areas", "구역별 아트↔시트", true], ["items", "아이템 31종", false], ["npc", "NPC 12종", false]];
       function renderNav() {
         const days = Array.from({ length: 18 }, (_, i) => i + 1).map((d) => {
@@ -2075,11 +2194,78 @@
           ["--analysis", exp.toLocaleString(), "", "받는 경험치 합", expDist],
           ["--plan", coin.toLocaleString(), "", "무는 코인 합", "보상이 아니라 비용이다"],
           ["--validate", `${withItem}`, `/ ${ROWS.length}`, "아이템이 더 붙는 건", `${kinds}종 · 전건 ×1`],
+          ledKpiCard(),
         ];
         $("#crKpi").innerHTML = cards.map(([acc, num, unit, name, sub]) =>
           `<div class="stat" style="--acc: var(${acc})">`
           + `<div class="stat-num">${num}<span class="stat-unit">${unit}</span></div>`
           + `<div class="stat-name">${name}</div><div class="stat-sub">${sub}</div></div>`).join("");
+      }
+
+      /* 첫 진행 막힘 — LEDGER_META.firstBlock 의 심부름과 그 레벨 수지(계산값) */
+      function ledKpiCard() {
+        const k = LEDGER_META.firstBlock;
+        const l = k && LEDGER[k];
+        if (!l) return ["--deploy", "없음", "", "첫 진행 막힘", "계산값 · 고정 오더 수입으로 전 구간 통과"];
+        const [d, q] = k.split("-");
+        const lv = LEDGER_META.levels.find((x) => x.verdict === "block");
+        const sub = lv ? `계산값 · Lv${lv.lv} 수입 ${lv.fixedIncome + lv.coinItems} < 심부름 비용 ${lv.choreCost}` : "계산값";
+        return ["--deploy", `Day${d}-${q}`, ` · 코인 −${-l[2]}`, "첫 진행 막힘", sub];
+      }
+
+      /* ── 고정 오더 · 레벨별 수지 (#cr-ledger) ───────────────────────────────
+         LEDGER_META.levels · FIXED_ORDERS 는 생성기 계산값이다. 아이템 그림은 board/items 사본(img/items)을 쓴다.
+         이름은 ITEMS(보상 31종)에 있을 때만 title 에 붙인다. */
+      /* 생산원 상자 4종은 사본(img/items)이 없다 — 아트 확정대로 그림을 공유하는 상자 그림을 쓴다
+         (3301·3401→3001, 3601→2501). 3501 의 공유 그림 3701 도 사본에 없어 코드만 둔다(없는 그림을 요청하지 않는다). */
+      const LED_ART = { 3301: 3001, 3401: 3001, 3601: 2501, 3501: null };
+      function ledItemHtml(code) {
+        const it = ITEMS[code];
+        const art = code in LED_ART ? LED_ART[code] : code;
+        return `<span class="cr-led-it" title="item_code ${code}${it ? ` · ${esc(it[0])}` : ""}${art && art !== code ? ` · 그림은 ${art} 공유` : ""}">`
+          + (art ? `<img src="${ITEM_ART}${art}.png" alt="" loading="lazy" decoding="async">` : "")
+          + `<code>${code}</code></span>`;
+      }
+      const LED_VD = {
+        ok: `<span class="cr-vd is-ok">통과</span>`,
+        block: `<span class="cr-vd is-bad">막힘</span>`,
+        random: `<span class="cr-vd is-na">랜덤 오더 (시간 제한)</span>`,
+      };
+      function renderLedger() {
+        const m = LEDGER_META;
+        const k = m.firstBlock;
+        const l = k && LEDGER[k];
+        const sum = $("#crLedSum");
+        sum.title = l ? `${l[4]} · 판매로 메우면 에너지 ${l[5]} (계산값)` : "";
+        sum.textContent = l
+          ? `계산상 첫 진행 막힘 = ${keyOf(...k.split("-"))} · 코인 −${-l[2]} — Lv${m.randomLv} 부터는 랜덤 오더라 판정하지 않습니다`
+          : `계산상 진행 막힘이 없습니다. Lv${m.randomLv} 부터는 랜덤 오더가 열려 판정하지 않습니다`;
+
+        $("#crLedLv").innerHTML = m.levels.map((v) => {
+          const income = v.fixedIncome + v.coinItems;
+          const why = v.verdict === "block" ? `<span class="cr-led-why">수입 ${income} &lt; 비용 ${v.choreCost}</span>`
+            : v.verdict === "ok" ? `<span class="cr-led-why">수입 ${income} ≥ 비용 ${v.choreCost}</span>` : "";
+          return `<tr><td class="cr-key">Lv${v.lv}</td>`
+            + `<td><span class="cr-led-its">${v.producers.map(ledItemHtml).join("")}</span></td>`
+            + `<td class="num">${v.fixedIncome.toLocaleString()}</td>`
+            + `<td class="num">${v.coinItems.toLocaleString()}</td>`
+            + `<td class="num">${v.choreCost.toLocaleString()}</td>`
+            + `<td>${LED_VD[v.verdict] || esc(v.verdict)}${why}</td></tr>`;
+        }).join("");
+
+        $("#crLedOrd").innerHTML = FIXED_ORDERS.map(([seq, lv, slots, req, coin, ok, why]) =>
+          `<tr><td class="cr-key">${seq}</td><td>Lv${lv}</td><td>${slots.join(" · ")}</td>`
+          + `<td><span class="cr-led-its">${req.map(ledItemHtml).join("")}</span></td>`
+          + `<td class="num">${coin.toLocaleString()}</td>`
+          + `<td>${ok ? `<span class="cr-vd is-ok">✓ 가능</span>` : `<span class="cr-vd is-bad">✗ 불가</span>`}`
+          + `<span class="cr-led-why">${esc(why)}</span></td></tr>`).join("");
+
+        const li = (xs) => `<ul>${xs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+        $("#crLedAs").innerHTML = `<summary>계산값 · 모델 가정</summary>`
+          + `<div class="k">가정 ${m.assume.length}</div>${li(m.assume)}`
+          + `<div class="k">모르는 것 ${m.unknown.length}</div>${li(m.unknown)}`
+          + `<div>소스 <code>${esc(m.src)}</code> · 계산 ${esc(m.calcAt)} · 에너지·보드 칸 한도는 계산에 없음 — 「만들 수 있다」 = 생산원에서 닿는다는 뜻</div>`
+          + `<div style="margin-top: 4px">고정 오더 원문 · 그림은 <a href="rosewood-order-fixed.html">고정 오더 문서</a></div>`;
       }
 
       /* ── 아이템 인덱스 ─────────────────────────────────────────────────── */
@@ -2147,6 +2333,7 @@
         bindRowToggle();
 
         renderKpi();
+        renderLedger();
         renderCheck();
         $("#crCheck").addEventListener("click", (ev) => {
           const k = ev.target.closest("[data-go]");
@@ -2157,7 +2344,8 @@
           const b = ev.target.closest("button");
           if (!b) return;
           if (b.hasAttribute("data-sp-tracked")) spTracked = !spTracked;
-          else spCat = spCat === b.dataset.spCat ? null : b.dataset.spCat;
+          else if (b.hasAttribute("data-ledger")) { ledOn = !ledOn; if (ledOn) spCat = null; }
+          else { spCat = spCat === b.dataset.spCat ? null : b.dataset.spCat; if (spCat) ledOn = false; }
           renderFiltered();
         });
         $("#crSpBody").addEventListener("click", (ev) => {
