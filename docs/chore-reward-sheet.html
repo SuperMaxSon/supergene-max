@@ -400,6 +400,15 @@
       .cr-sp-fc .cr-face { width: 26px; height: 26px; font-size: 10px; }
       .cr-sp-tb .cr-stage { margin-top: 2px; }
       .cr-sp-tb .cr-stage img { height: 36px; }
+      /* 출처 구분 — 시트(현재 10-18) · 클라 · 시트(10-01) 를 칸 머리 띠와 칸 안 배지로 가른다 */
+      .cr-sp-tb thead tr.cr-sp-grp th { font-size: 11px; font-weight: 800; padding-top: 6px; padding-bottom: 6px; border-top: 3px solid var(--sp-c, transparent); }
+      #stage .is-src-sheet { --sp-c: var(--plan); }
+      #stage .is-src-client { --sp-c: var(--smg); }
+      #stage .is-src-old { --sp-c: var(--text-faint); }
+      .cr-sp-tb td.is-src-sheet, .cr-sp-tb td.is-src-client, .cr-sp-tb td.is-src-old { border-left: 3px solid var(--sp-c); }
+      .cr-sp-src { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .02em; padding: 1px 6px; border-radius: 999px; color: var(--sp-c); border: 1px solid var(--sp-c); margin-bottom: 4px; }
+      .cr-sp-legend { display: grid; gap: 4px; margin: 6px 0 10px; font-size: 12.5px; }
+      .cr-sp-legend > div { display: flex; gap: 8px; align-items: baseline; }
       .cr-sp-note { margin-top: 4px; font: 600 11.5px/1.35 ui-monospace, Menlo, monospace; color: var(--text-dim); }
 
       /* ── 아이템 · NPC 인덱스 그리드 ───────────────────────────────────── */
@@ -570,23 +579,32 @@
         </h2>
 
         <p class="doc-lede" style="margin-top: 0">
-          <b id="crSpSum"></b><br />
-          클라 마을 지점(<code>area.prefab</code> 의 <code>story_{key_number}</code>)은 <b>10-01 시트</b>를 보고 세웠습니다.
-          <b>10-18 시트가 <code>key_number</code> 별 <code>story_key</code> 를 다시 배정</b>해서, 같은 지점이 지금은 다른 씬 앞에 섭니다.
-          「클라 지점의 원래 씬」 칸은 그 지점을 세울 때 기준이던 10-01 씬과 화자입니다.
+          <b id="crSpSum"></b>
         </p>
+        <div class="cr-sp-legend">
+          <div class="is-src-sheet"><span class="cr-sp-src">시트 · 10-18</span><span><b>지금 시트가 틀 대사의 화자</b> &mdash; <code>main_task.story_key</code> → <code>story</code> 시작 씬 → <code>story_dialog.speaker</code> (2026-10-18 export · 클라 번들 JSON 과 같음)</span></div>
+          <div class="is-src-client"><span class="cr-sp-src">클라</span><span><b>클라가 채팅 직전 마을에 세우는 캐릭터</b> &mdash; <code>bundles/area_courtyard/area.prefab</code> 의 <code>story_{key_number}</code> 노드에 박힌 캐릭터</span></div>
+          <div class="is-src-old"><span class="cr-sp-src">시트 · 10-01</span><span><b>그 클라 지점을 세울 때 기준이던 대사 화자</b> &mdash; 같은 <code>key_number</code> 의 2026-10-01 export 씬. 10-18 시트가 <code>key_number</code> 별 <code>story_key</code> 를 다시 배정해서, 클라 지점은 이 옛 씬 기준으로 서 있습니다.</span></div>
+        </div>
 
         <div class="cr-bar" id="crSpBar"></div>
 
         <div class="table-scroll">
           <table class="cr-sp-tb">
             <thead>
+              <tr class="cr-sp-grp">
+                <th style="width: 92px"></th>
+                <th style="width: 210px" class="is-src-sheet">시트 데이터 · 10-18</th>
+                <th style="width: 230px" class="is-src-client">클라 데이터 · area.prefab</th>
+                <th style="width: 200px" class="is-src-old">시트 데이터 · 10-01</th>
+                <th style="width: 150px"></th>
+              </tr>
               <tr>
-                <th style="width: 92px">채팅</th>
-                <th style="width: 210px">시트가 가리키는 것</th>
-                <th style="width: 230px">클라가 가리키는 것</th>
-                <th style="width: 200px">클라 지점의 원래 씬 (10-01)</th>
-                <th style="width: 150px">판정</th>
+                <th>채팅</th>
+                <th class="is-src-sheet">지금 틀 대사의 화자</th>
+                <th class="is-src-client">마을에 세우는 캐릭터</th>
+                <th class="is-src-old">그 지점을 세울 때의 화자</th>
+                <th>판정 (클라 ↔ 시트 10-18)</th>
               </tr>
             </thead>
             <tbody id="crSpBody"></tbody>
@@ -1892,7 +1910,7 @@
         const note = cat === "ok" ? `대사 <code>${esc(c.sid)}</code> 화자와 일치`
           : cat === "na" ? "" : esc(stageMissText(c));
         const vd = `<span class="cr-vd ${cls}">${label}</span>` + (note ? `<div class="cr-sp-note">${note}</div>` : "");
-        return `<tr><td>${chat}</td><td>${sheet}</td><td>${client}</td><td>${old}</td><td>${vd}</td></tr>`;
+        return `<tr><td>${chat}</td><td class="is-src-sheet"><span class="cr-sp-src">시트 · 10-18</span>${sheet}</td><td class="is-src-client"><span class="cr-sp-src">클라</span>${client}</td><td class="is-src-old"><span class="cr-sp-src">시트 · 10-01</span>${old}</td><td>${vd}</td></tr>`;
       }
 
       function renderSp() {
