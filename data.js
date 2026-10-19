@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-16 18:04",
+  updated: "2026-10-19 09:15",
 };
 
 /* --------------------------------------------------------------------------
@@ -398,8 +398,8 @@ const SECTIONS = [
         url: "docs/story-merge-memory-sim.html",
         project: "smg",
         status: "완료",
-        version: "main abb9dbb1 · QA 10-16 17:38",
-        updated: "2026-10-16 17:55",
+        version: "v1 · main abb9dbb1",
+        updated: "2026-10-19 09:15",
         pinned: false,
         tags: ["봇 실측", "리소스", "메모리"],
       },
