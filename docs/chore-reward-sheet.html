@@ -383,6 +383,25 @@
       .cr-count { margin-left: auto; font-size: 12px; color: var(--text-faint);
                   font-family: ui-monospace, Menlo, monospace; }
 
+      /* ── 마을 캐릭터 ↔ 대사 화자 (#stage) ────────────────────────────────
+         필터 버튼은 위 조작 바(.cr-btn)와 같은 모양. 건수는 버튼 안 작은 숫자로 — 토글을 바꾸면 같이 바뀐다. */
+      .cr-btn .n { margin-left: 6px; font-weight: 800; font-variant-numeric: tabular-nums; opacity: .75; }
+      .cr-btn.is-on .n { opacity: 1; }
+      .cr-bar .cr-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+      .cr-sp-tb { table-layout: fixed; width: 100%; min-width: 760px; }
+      .cr-sp-tb td { vertical-align: top; font-size: 12.5px; }
+      .cr-sp-go { border: 0; background: none; padding: 0; font: inherit; cursor: pointer; text-align: left; color: var(--text); }
+      .cr-sp-go:hover .cr-slot { filter: brightness(1.1); text-decoration: underline; }
+      .cr-sp-go:focus-visible { outline: 2px solid var(--balance); outline-offset: 2px; border-radius: 4px; }
+      .cr-sp-ln { display: flex; flex-wrap: wrap; gap: 3px 6px; align-items: baseline; margin-bottom: 4px; }
+      .cr-sp-ln .k { font-size: 10.5px; font-weight: 800; color: var(--text-faint); }
+      .cr-sp-ln code { font-size: 11px; }
+      .cr-sp-fc { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+      .cr-sp-fc .cr-face { width: 26px; height: 26px; font-size: 10px; }
+      .cr-sp-tb .cr-stage { margin-top: 2px; }
+      .cr-sp-tb .cr-stage img { height: 36px; }
+      .cr-sp-note { margin-top: 4px; font: 600 11.5px/1.35 ui-monospace, Menlo, monospace; color: var(--text-dim); }
+
       /* ── 아이템 · NPC 인덱스 그리드 ───────────────────────────────────── */
       .cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
                  gap: 10px; }
@@ -477,6 +496,7 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#sheet">보상 시트</a>
+        <a class="nav-back" href="#stage">마을 ↔ 화자</a>
         <a class="nav-back" href="#deco">데코 반영</a>
         <a class="nav-back" href="#items">아이템 31종</a>
         <a class="nav-back" href="#npc">NPC 12종</a>
@@ -540,8 +560,39 @@
           </table>
         </div>
 
-        
+
 </section>
+
+      <section class="doc-section" id="stage">
+        <h2 class="doc-h2">
+          마을 캐릭터 ↔ 대사 화자
+          <span class="doc-h2-sub">채팅 1회 = 1행 &mdash; 시트가 틀 대사의 화자와, 클라가 채팅 직전 마을에 세우는 캐릭터를 나란히 놓았습니다. 채팅 칸을 누르면 위 표의 그 행으로 이동합니다</span>
+        </h2>
+
+        <p class="doc-lede" style="margin-top: 0">
+          <b id="crSpSum"></b><br />
+          클라 마을 지점(<code>area.prefab</code> 의 <code>story_{key_number}</code>)은 <b>10-01 시트</b>를 보고 세웠습니다.
+          <b>10-18 시트가 <code>key_number</code> 별 <code>story_key</code> 를 다시 배정</b>해서, 같은 지점이 지금은 다른 씬 앞에 섭니다.
+          「클라 지점의 원래 씬」 칸은 그 지점을 세울 때 기준이던 10-01 씬과 화자입니다.
+        </p>
+
+        <div class="cr-bar" id="crSpBar"></div>
+
+        <div class="table-scroll">
+          <table class="cr-sp-tb">
+            <thead>
+              <tr>
+                <th style="width: 92px">채팅</th>
+                <th style="width: 210px">시트가 가리키는 것</th>
+                <th style="width: 230px">클라가 가리키는 것</th>
+                <th style="width: 200px">클라 지점의 원래 씬 (10-01)</th>
+                <th style="width: 150px">판정</th>
+              </tr>
+            </thead>
+            <tbody id="crSpBody"></tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="doc-section" id="deco">
         <h2 class="doc-h2">
@@ -1049,6 +1100,7 @@
          허브 _ignore/tools/extract-stage-chars.py 로 갈아 끼운다 — 손으로 고치지 않는다. */
       const STAGE = {"first":["area_1_1","story_70001",[["rosie","idle"],["poppy","idle"]],"own","","task_story_1"],"1-1":["area_1_1","story_70002",[["rosie","idle"],["poppy","idle"],["theo","idle"]],"own","","task_story_2"],"1-2":["area_1_1","story_70003",[["rosie","worried"],["poppy","sad"]],"own","","task_story_3"],"1-3":["area_1_1","story_70004",[["rosie","worried"],["poppy","sad"]],"own","","task_story_4"],"1-4":["area_1_1","story_70005",[["rosie","idle"],["poppy","sad"],["gus","fear"]],"own","","task_story_5"],"1-5":["area_1_1","story_70006",[["rosie","angry"],["theo","happy"],["gus","fear"]],"own","","task_story_6"],"1-6":["area_1_1","story_70007",[["rosie","sad"],["theo","happy"]],"own","","task_story_7"],"1-7":["area_1_1","story_70189",[["rosie","happy"],["theo","happy"],["poppy","idle"]],"own","","task_story_8"],"1-8":["area_1_1","story_70190",[["rosie","angry"],["brett","sad"]],"own","","task_story_9"],"1-9":["area_1_1","story_finish",[["rosie","idle"],["theo","happy"],["gus","idle"]],"finish","","task_story_10"],"2-1":["area_1_2","story_70009",[["rosie","idle"],["rafa","idle"],["theo","happy"],["poppy","idle"]],"own","","task_story_2"],"2-2":["area_1_2","story_70010",[["rosie","worried"],["hollis","idle"],["theo","happy"]],"own","","task_story_3"],"2-3":["area_1_2","story_70011",[["rosie","happy"],["theo","happy"],["gus","fear"]],"own","","task_story_4"],"2-4":["area_1_2","story_70012",[["rosie","angry"],["brett","sad"]],"own","","task_story_5"],"2-5":["area_1_2","story_70013",[["rosie","worried"],["theo","happy"],["brett","sad"]],"own","","task_story_6"],"2-6":["area_1_2","story_70014",[["rosie","happy"],["theo","happy"],["poppy","idle"]],"own","","task_story_7"],"2-7":["area_1_2","story_70015",[["rosie","worried"],["diane","idle"],["hazel","idle"]],"own","","task_story_8"],"2-8":["area_1_2","story_70191",[["rosie","happy"],["poppy","sad"],["gus","idle"]],"own","","task_story_9"],"2-9":["area_1_2","story_70016",[["rosie","angry"],["brett","sad"]],"own","","task_story_10"],"3-1":["area_1_2","story_70017",[["rosie","idle"],["rafa","idle"],["poppy","idle"]],"own","","task_story_11"],"3-2":["area_1_2","story_70018",[["rosie","sad"],["rafa","idle"],["hazel","idle"]],"own","","task_story_12"],"3-3":["area_1_2","story_70019",[["rosie","worried"],["diane","idle"],["hazel","idle"]],"own","","task_story_13"],"3-4":["area_1_2","story_70020",[["rosie","happy"],["theo","happy"],["poppy","idle"]],"own","","task_story_14"],"3-5":["area_1_2","story_70021",[["rosie","happy"],["theo","happy"],["rafa","idle"]],"own","","task_story_15"],"3-6":["area_1_2","story_70022",[["rosie","angry"],["brett","idle"]],"own","","task_story_16"],"3-7":["area_1_2","story_70023",[["rosie","idle"],["poppy","idle"]],"own","","task_story_17"],"3-8":["area_1_2","story_70192",[["rosie","worried"],["theo","happy"],["hazel","idle"]],"own","","task_story_18"],"3-9":["area_1_2","story_finish",[["rosie","idle"],["theo","idle"]],"finish","","task_story_20"],"4-1":["area_1_3","story_70025",[["rosie","idle"],["tess","idle"],["poppy","idle"]],"own","","task_story_2"],"4-2":["area_1_3","story_70026",[["rosie","idle"],["theo","happy"]],"own","","task_story_3"],"4-3":["area_1_3","story_70027",[["rosie","idle"],["tess","idle"],["poppy","idle"]],"own","","task_story_4"],"4-4":["area_1_3","story_70028",[["rosie","sad"],["tess","idle"],["poppy","idle"]],"own","","task_story_5"],"4-5":["area_1_3","story_70029",[["rosie","sad"],["gus","idle"],["hazel","idle"]],"own","","task_story_6"],"4-6":["area_1_3","story_70030",[["rosie","worried"],["rafa","idle"],["tess","idle"]],"own","","task_story_7"],"4-7":["area_1_3","story_70031",[["rosie","happy"],["poppy","idle"]],"own","","task_story_8"],"4-8":["area_1_3","story_70032",[["rosie","angry"],["brett","sad"]],"own","","task_story_9"],"4-9":["area_1_3","story_70193",[["rosie","idle"],["poppy","idle"]],"own","","task_story_10"],"4-10":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"own","","task_story_11"],"4-11":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_12","task_story_11"],"4-12":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_13","task_story_11"],"5-1":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_14","task_story_11"],"5-2":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_15","task_story_11"],"5-3":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_16","task_story_11"],"5-4":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_17","task_story_11"],"5-5":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_18","task_story_11"],"5-6":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_19","task_story_11"],"5-7":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_20","task_story_11"],"5-8":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_21","task_story_11"],"5-9":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_22","task_story_11"],"5-10":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_23","task_story_11"],"5-11":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_24","task_story_11"],"6-1":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_25","task_story_11"],"6-2":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_26","task_story_11"],"6-3":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_27","task_story_11"],"6-4":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_28","task_story_11"],"6-5":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_29","task_story_11"],"6-6":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_30","task_story_11"],"6-7":["area_1_3","story_70194",[["rosie","idle"],["poppy","idle"]],"prev","task_story_31","task_story_11"],"6-8":["area_1_3",null,[],"nofinish","task_story_32",""],"7-1":["area_1_4",null,[],"nopoint","task_story_2",""],"7-2":["area_1_4",null,[],"nopoint","task_story_3",""],"7-3":["area_1_4",null,[],"nopoint","task_story_4",""],"7-4":["area_1_4",null,[],"nopoint","task_story_5",""],"7-5":["area_1_4",null,[],"nopoint","task_story_6",""],"7-6":["area_1_4",null,[],"nopoint","task_story_7",""],"7-7":["area_1_4",null,[],"nopoint","task_story_8",""],"7-8":["area_1_4",null,[],"nopoint","task_story_9",""],"7-9":["area_1_4",null,[],"nopoint","task_story_10",""],"7-10":["area_1_4",null,[],"nopoint","task_story_11",""],"7-11":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"own","","task_story_12"],"8-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_13","task_story_12"],"8-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_14","task_story_12"],"8-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_15","task_story_12"],"8-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_16","task_story_12"],"8-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_17","task_story_12"],"8-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_18","task_story_12"],"8-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_19","task_story_12"],"8-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_20","task_story_12"],"8-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_21","task_story_12"],"8-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_22","task_story_12"],"9-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_23","task_story_12"],"9-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_24","task_story_12"],"9-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_25","task_story_12"],"9-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_26","task_story_12"],"9-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_27","task_story_12"],"9-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_28","task_story_12"],"9-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_29","task_story_12"],"9-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_30","task_story_12"],"9-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_31","task_story_12"],"9-10":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_32","task_story_12"],"10-1":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_33","task_story_12"],"10-2":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_34","task_story_12"],"10-3":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_35","task_story_12"],"10-4":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_36","task_story_12"],"10-5":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_37","task_story_12"],"10-6":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_38","task_story_12"],"10-7":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_39","task_story_12"],"10-8":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_40","task_story_12"],"10-9":["area_1_4","story_70057",[["rosie","idle"],["theo","idle"]],"prev","task_story_41","task_story_12"],"10-10":["area_1_4",null,[],"nofinish","task_story_42",""],"11-1":["area_1_5",null,[],"nopoint","task_story_2",""],"11-2":["area_1_5",null,[],"nopoint","task_story_3",""],"11-3":["area_1_5",null,[],"nopoint","task_story_4",""],"11-4":["area_1_5",null,[],"nopoint","task_story_5",""],"11-5":["area_1_5",null,[],"nopoint","task_story_6",""],"11-6":["area_1_5",null,[],"nopoint","task_story_7",""],"11-7":["area_1_5",null,[],"nopoint","task_story_8",""],"11-8":["area_1_5",null,[],"nopoint","task_story_9",""],"11-9":["area_1_5",null,[],"nopoint","task_story_10",""],"11-10":["area_1_5",null,[],"nopoint","task_story_11",""],"11-11":["area_1_5",null,[],"nopoint","task_story_12",""],"11-12":["area_1_5",null,[],"nopoint","task_story_13",""],"11-13":["area_1_5",null,[],"nopoint","task_story_14",""],"11-14":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"own","","task_story_15"],"12-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_16","task_story_15"],"12-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_17","task_story_15"],"12-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_18","task_story_15"],"12-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_19","task_story_15"],"12-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_20","task_story_15"],"12-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_21","task_story_15"],"12-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_22","task_story_15"],"12-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_23","task_story_15"],"12-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_24","task_story_15"],"12-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_25","task_story_15"],"12-11":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_26","task_story_15"],"12-12":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_27","task_story_15"],"12-13":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_28","task_story_15"],"13-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_29","task_story_15"],"13-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_30","task_story_15"],"13-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_31","task_story_15"],"13-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_32","task_story_15"],"13-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_33","task_story_15"],"13-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_34","task_story_15"],"13-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_35","task_story_15"],"13-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_36","task_story_15"],"13-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_37","task_story_15"],"13-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_38","task_story_15"],"13-11":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_39","task_story_15"],"13-12":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_40","task_story_15"],"13-13":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_41","task_story_15"],"13-14":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_42","task_story_15"],"13-15":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_43","task_story_15"],"14-1":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_44","task_story_15"],"14-2":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_45","task_story_15"],"14-3":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_46","task_story_15"],"14-4":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_47","task_story_15"],"14-5":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_48","task_story_15"],"14-6":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_49","task_story_15"],"14-7":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_50","task_story_15"],"14-8":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_51","task_story_15"],"14-9":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_52","task_story_15"],"14-10":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_53","task_story_15"],"14-11":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_54","task_story_15"],"14-12":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_55","task_story_15"],"14-13":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_56","task_story_15"],"14-14":["area_1_5","story_70099",[["rosie","idle"],["theo","idle"]],"prev","task_story_57","task_story_15"],"14-15":["area_1_5",null,[],"nofinish","task_story_58",""],"15-1":["area_1_6",null,[],"nosub","area_1_6",""],"15-2":["area_1_6",null,[],"nosub","area_1_6",""],"15-3":["area_1_6",null,[],"nosub","area_1_6",""],"15-4":["area_1_6",null,[],"nosub","area_1_6",""],"15-5":["area_1_6",null,[],"nosub","area_1_6",""],"15-6":["area_1_6",null,[],"nosub","area_1_6",""],"15-7":["area_1_6",null,[],"nosub","area_1_6",""],"15-8":["area_1_6",null,[],"nosub","area_1_6",""],"15-9":["area_1_6",null,[],"nosub","area_1_6",""],"15-10":["area_1_6",null,[],"nosub","area_1_6",""],"16-1":["area_1_6",null,[],"nosub","area_1_6",""],"16-2":["area_1_6",null,[],"nosub","area_1_6",""],"16-3":["area_1_6",null,[],"nosub","area_1_6",""],"16-4":["area_1_6",null,[],"nosub","area_1_6",""],"16-5":["area_1_6",null,[],"nosub","area_1_6",""],"16-6":["area_1_6",null,[],"nosub","area_1_6",""],"16-7":["area_1_6",null,[],"nosub","area_1_6",""],"16-8":["area_1_6",null,[],"nosub","area_1_6",""],"16-9":["area_1_6",null,[],"nosub","area_1_6",""],"16-10":["area_1_6",null,[],"nosub","area_1_6",""],"17-1":["area_1_6",null,[],"nosub","area_1_6",""],"17-2":["area_1_6",null,[],"nosub","area_1_6",""],"17-3":["area_1_6",null,[],"nosub","area_1_6",""],"17-4":["area_1_6",null,[],"nosub","area_1_6",""],"17-5":["area_1_6",null,[],"nosub","area_1_6",""],"17-6":["area_1_6",null,[],"nosub","area_1_6",""],"17-7":["area_1_6",null,[],"nosub","area_1_6",""],"17-8":["area_1_6",null,[],"nosub","area_1_6",""],"17-9":["area_1_6",null,[],"nosub","area_1_6",""],"17-10":["area_1_6",null,[],"nosub","area_1_6",""],"18-1":["area_1_6",null,[],"nosub","area_1_6",""],"18-2":["area_1_6",null,[],"nosub","area_1_6",""],"18-3":["area_1_6",null,[],"nosub","area_1_6",""],"18-4":["area_1_6",null,[],"nosub","area_1_6",""],"18-5":["area_1_6",null,[],"nosub","area_1_6",""],"18-6":["area_1_6",null,[],"nosub","area_1_6",""],"18-7":["area_1_6",null,[],"nosub","area_1_6",""],"18-8":["area_1_6",null,[],"nosub","area_1_6",""],"18-9":["area_1_6",null,[],"nosub","area_1_6",""],"18-10":["area_1_6",null,[],"nosub","area_1_6",""]};
       const STAGE_SRC = {"area_1_1":{"tasks":9,"finish":true,"nosub":false,"nodes":{"task_story_1":["rosie","poppy"],"task_story_2":["rosie","poppy","theo","camera"],"task_story_3":["rosie","poppy"],"task_story_4":["rosie","poppy"],"task_story_5":["rosie","poppy","gus"],"task_story_6":["rosie","theo","gus"],"task_story_7":["rosie","theo"],"task_story_8":["rosie","theo","poppy"],"task_story_9":["rosie","brett"],"task_story_10":["rosie","theo","gus"]}},"area_1_2":{"tasks":18,"finish":true,"nosub":false,"nodes":{"task_story_1":["rosie","theo"],"task_story_2":["rosie","rafa","theo","poppy"],"task_story_3":["rosie","hollis","theo"],"task_story_4":["rosie","theo","gus"],"task_story_5":["rosie","brett"],"task_story_6":["rosie","theo","brett"],"task_story_7":["rosie","theo","poppy"],"task_story_8":["rosie","diane","hazel"],"task_story_9":["rosie","poppy","gus"],"task_story_10":["rosie","brett"],"task_story_11":["rosie","rafa","poppy"],"task_story_12":["rosie","rafa","hazel"],"task_story_13":["rosie","diane","hazel"],"task_story_14":["rosie","theo","poppy"],"task_story_15":["rosie","theo","rafa"],"task_story_16":["rosie","brett"],"task_story_17":["rosie","poppy"],"task_story_18":["rosie","theo","hazel"],"task_story_19":["rosie","hazel","poppy"],"task_story_20":["rosie","theo"]}},"area_1_3":{"tasks":31,"finish":true,"nosub":false,"nodes":{"task_story_1":["rosie","theo"],"task_story_2":["rosie","tess","poppy"],"task_story_3":["rosie","theo"],"task_story_4":["rosie","tess","poppy"],"task_story_5":["rosie","tess","poppy"],"task_story_6":["rosie","gus","hazel"],"task_story_7":["rosie","rafa","tess"],"task_story_8":["rosie","poppy"],"task_story_9":["rosie","brett"],"task_story_10":["rosie","poppy"],"task_story_11":["rosie","poppy"]}},"area_1_4":{"tasks":41,"finish":true,"nosub":false,"nodes":{"task_story_1":["rosie","theo"]}},"area_1_5":{"tasks":57,"finish":true,"nosub":false,"nodes":{"task_story_1":["rosie","theo"]}},"area_1_6":{"tasks":40,"finish":true,"nosub":true,"nodes":{}}};
+      const STAGE_OLD = {"story_70001":["main_ch01_01_begin",["rosie","poppy"],[["rosie","idle"],["poppy","idle"]],"1-1"],"story_70002":["main_ch01_60_begin",["rosie","theo","poppy"],[["rosie","idle"],["poppy","idle"],["theo","idle"]],"1-2"],"story_70003":["main_ch01_02_begin",["poppy","rosie"],[["rosie","worried"],["poppy","sad"]],"1-3"],"story_70004":["main_ch01_03_begin",["poppy","rosie"],[["rosie","worried"],["poppy","sad"]],"1-4"],"story_70005":["main_ch01_50_begin",["poppy","rosie","gus"],[["rosie","idle"],["poppy","sad"],["gus","fear"]],"1-5"],"story_70006":["main_ch01_53_begin",["rosie","gus","theo"],[["rosie","angry"],["theo","happy"],["gus","fear"]],"1-6"],"story_70007":["main_ch01_51_begin",["rosie","theo"],[["rosie","sad"],["theo","happy"]],"1-7"],"story_70189":["main_ch01_61_begin",["poppy","rosie","theo"],[["rosie","happy"],["theo","happy"],["poppy","idle"]],"1-8"],"story_70190":["main_ch01_52_begin",["brett","rosie"],[["rosie","angry"],["brett","sad"]],"1-9"],"area_1_1/story_finish":["area_01",["theo","gus"],[["rosie","idle"],["theo","happy"],["gus","idle"]],"1-9"],"story_70008":["main_ch02_01_begin",["rosie","theo"],[["rosie","idle"],["theo","happy"]],"2-1"],"story_70009":["main_ch02_50_begin",["rosie","theo","rafa","poppy"],[["rosie","idle"],["rafa","idle"],["theo","happy"],["poppy","idle"]],"2-2"],"story_70010":["main_ch02_02_begin",["hollis","rosie","theo"],[["rosie","worried"],["hollis","idle"],["theo","happy"]],"2-3"],"story_70011":["main_ch02_03_begin",["gus","rosie","theo"],[["rosie","happy"],["theo","happy"],["gus","fear"]],"2-4"],"story_70012":["main_ch02_04_begin",["brett","rosie"],[["rosie","angry"],["brett","sad"]],"2-5"],"story_70013":["main_ch02_52_begin",["brett","rosie","theo"],[["rosie","worried"],["theo","happy"],["brett","sad"]],"2-6"],"story_70014":["main_ch02_60_begin",["rosie","theo","poppy"],[["rosie","happy"],["theo","happy"],["poppy","idle"]],"2-7"],"story_70015":["main_ch02_51_begin",["rosie","diane","hazel"],[["rosie","worried"],["diane","idle"],["hazel","idle"]],"2-8"],"story_70016":["main_ch03_01_begin",["brett","rosie"],[["rosie","angry"],["brett","sad"]],"3-1"],"story_70017":["main_ch03_02_begin",["rafa","rosie","poppy"],[["rosie","idle"],["rafa","idle"],["poppy","idle"]],"3-2"],"story_70018":["main_ch03_04_begin",["hazel","rosie","rafa"],[["rosie","sad"],["rafa","idle"],["hazel","idle"]],"3-3"],"story_70019":["main_ch03_06_begin",["rosie","diane","hazel"],[["rosie","worried"],["diane","idle"],["hazel","idle"]],"3-4"],"story_70020":["main_ch03_60_begin",["theo","rosie","poppy"],[["rosie","happy"],["theo","happy"],["poppy","idle"]],"3-5"],"story_70021":["main_ch03_03_begin",["rosie","theo","rafa"],[["rosie","happy"],["theo","happy"],["rafa","idle"]],"3-6"],"story_70022":["main_ch03_05_begin",["brett","rosie"],[["rosie","angry"],["brett","idle"]],"3-7"],"story_70023":["main_ch03_50_begin",["poppy","rosie"],[["rosie","idle"],["poppy","idle"]],"3-8"],"story_70191":["main_ch02_05_begin",["rosie","gus","poppy"],[["rosie","happy"],["poppy","sad"],["gus","idle"]],"2-9"],"story_70192":["main_ch03_07_begin",["rosie","hazel","theo"],[["rosie","worried"],["theo","happy"],["hazel","idle"]],"3-9"],"area_1_2/story_finish":["area_02",["poppy","hazel"],[["rosie","idle"],["theo","idle"]],"3-9"],"story_70024":["main_ch04_01_begin",["rosie","theo"],[["rosie","idle"],["theo","happy"]],"4-1"],"story_70025":["main_ch04_60_begin",["poppy","rosie","tess"],[["rosie","idle"],["tess","idle"],["poppy","idle"]],"4-2"],"story_70026":["main_ch04_02_begin",["theo","rosie"],[["rosie","idle"],["theo","happy"]],"4-3"],"story_70027":["main_ch04_61_begin",["tess","rosie","poppy"],[["rosie","idle"],["tess","idle"],["poppy","idle"]],"4-4"],"story_70028":["main_ch04_62_begin",["rosie","tess","poppy"],[["rosie","sad"],["tess","idle"],["poppy","idle"]],"4-5"],"story_70029":["main_ch04_03_begin",["gus","rosie","hazel"],[["rosie","sad"],["gus","idle"],["hazel","idle"]],"4-6"],"story_70030":["main_ch04_04_begin",["tess","rosie","rafa"],[["rosie","worried"],["rafa","idle"],["tess","idle"]],"4-7"],"story_70031":["main_ch04_05_begin",["poppy","rosie"],[["rosie","happy"],["poppy","idle"]],"4-8"],"story_70032":["main_ch04_06_begin",["brett","rosie"],[["rosie","angry"],["brett","sad"]],"4-9"],"story_70193":["main_ch04_50_begin",["rosie","tess","diane"],[["rosie","idle"],["poppy","idle"]],"4-10"],"story_70194":["main_ch04_07_begin",["poppy","rosie"],[["rosie","idle"],["poppy","idle"]],"4-11"],"story_70057":["main_ch07_01_begin",["poppy","rosie"],[["rosie","idle"],["theo","idle"]],"8-1"],"story_70099":["main_ch11_01_begin",["rosie"],[["rosie","idle"],["theo","idle"]],"12-1"]};
       /* [구역, 아트 지점, 폐허 수선, 신규 생성, 택1, 시트 건수, 시트 수선, 시트 택1, 종류 다름, 아트 없음, 시트 없음] */
       const YARD_AREAS = [["area_1_1",7,1,1,5,7,2,5,0,0,0],["area_1_2",15,4,0,11,15,4,11,2,0,0],["area_1_3",20,5,2,13,20,7,13,6,0,0],["area_1_4",17,4,2,11,17,6,11,0,0,0],["area_1_5",23,4,1,18,23,5,18,0,0,0]];
       /* 시트 리소스 키 — 생성기가 채운다. 수선 = main_task.sprite_key 1개 · 택1 = skin_deco.sprite_key A·B·C 3개. */
@@ -1357,9 +1409,14 @@
       function stageCheck(ev) {
         if (stageMemo.has(ev)) return stageMemo.get(ev);
         const s = stageOf(ev);
+        const r = s && !TRACKED.has(s[0]) ? { st: "todo", s } : stageCompare(ev, s);
+        stageMemo.set(ev, r);
+        return r;
+      }
+      /* 추적 여부와 상관없는 대조 본체 — 「마을 캐릭터 ↔ 대사 화자」 섹션이 추적 밖 소구역까지 같은 판정으로 센다 */
+      function stageCompare(ev, s) {
         let r;
-        if (s && !TRACKED.has(s[0])) r = { st: "todo", s };
-        else if (!s || EMPTY_KINDS[s[3]] || !s[2].length) r = { st: s && EMPTY_KINDS[s[3]] ? s[3] : "nopoint", s };
+        if (!s || EMPTY_KINDS[s[3]] || !s[2].length) r = { st: s && EMPTY_KINDS[s[3]] ? s[3] : "nopoint", s };
         else if (s[3] === "prev") r = { st: "prev", s };
         else {
           const slot = s[3] === "finish" ? "a" : "s";
@@ -1373,7 +1430,6 @@
             : { st: miss.length || extra.length ? "bad" : "ok", s, sid: segs.map((g) => g.sid).join(" · "), miss, extra,
                 speakers: [...speak].map(capName), standing: s[2].map(([c]) => capName(c)) };
         }
-        stageMemo.set(ev, r);
         return r;
       }
       const isEmptySt = (st) => !!EMPTY_KINDS[st];
@@ -1757,8 +1813,112 @@
         if (band) scrollToEl(band, false);
       }
 
+      /* ── 마을 캐릭터 ↔ 대사 화자 ───────────────────────────────────────────
+         채팅 1회 = 1행. 판정은 stageCompare(위 표 「마을 ≠ 화자」와 같은 규칙)를 추적 밖 소구역까지 그대로 돌린다.
+         「키 재배정 탓 / 원래부터」는 같은 지점을 10-01 씬(STAGE_OLD)에 같은 규칙(빠짐·남음, Rosie 제외)으로 대 본 결과로 가른다. */
+      const SP_CATS = [
+        ["rekey", "is-bad", "키 재배정 탓", "지금은 어긋나지만 이 지점은 10-01 씬과 맞았습니다"],
+        ["orig", "is-bad", "원래부터 어긋남", "10-01 씬과도 어긋났던 지점"],
+        ["prev", "is-na", "지점 재사용", "자기 지점이 없어 같은 소구역 앞 지점을 씀"],
+        ["nopoint", "is-none", "지점 없음", "마을이 빔"],
+        ["ok", "is-ok", "일치", ""],
+        ["na", "is-na", "대사 없음", "대조할 씬 대사가 없음"],
+      ];
+      const spSpeakers = (segs) => [...new Set(segs.flatMap(([, ls]) => ls.map((l) => l[1])).filter((c) => c.toLowerCase() !== "none"))];
+      /* 대 볼 씬이 없으면(화자 0명) 일치로 치지 않는다 — 표의 「대사 없음」 행과 같은 판단 */
+      const spFits = (sp, chars) => { const on = new Set(chars.map(([c]) => c)); on.add(HERO.toLowerCase()); return sp.length > 0 && sp.every((c) => on.has(c.toLowerCase())); };
+      const spOldKey = (s) => (s[3] === "finish" ? `${s[0]}/${s[1]}` : s[1]);
+      function spOldFit(o) {
+        const on = new Set(o[2].map(([c]) => c));
+        const miss = o[1].filter((c) => !on.has(c));
+        const extra = [...on].filter((c) => !o[1].includes(c) && c !== HERO.toLowerCase());
+        return { miss, extra, ok: !miss.length && !extra.length };
+      }
+      const SP_NEXT = new Map(ORDER.map((r, i) => [keyOfRow(r), ORDER[i + 1] ? keyOfRow(ORDER[i + 1]) : null]));
+      const SP_ROWS = TIMELINE.filter((e) => e.t === "talk").map((ev) => {
+        const s = stageOf(ev);
+        const c = stageCompare(ev, s);
+        const o = s && s[1] ? STAGE_OLD[spOldKey(s)] || null : null;
+        const of = o ? spOldFit(o) : null;
+        const cat = c.st === "bad" ? (of && of.ok ? "rekey" : "orig")
+          : c.st === "prev" ? "prev" : isEmptySt(c.st) ? "nopoint" : c.st === "ok" ? "ok" : "na";
+        return { ev, s, c, o, of, cat, tracked: !!s && TRACKED.has(s[0]) };
+      });
+      let spCat = "all";
+      let spTracked = true;
+      const spFaces = (names) => (names.length
+        ? `<div class="cr-sp-fc">${names.map((n) => faceHtml(n)).join("")}</div><div class="cr-sp-note">${esc(names.join(" · "))}</div>`
+        : `<span class="cr-nil">화자 없음</span>`);
+
+      function spRowHtml(r) {
+        const { ev, s, c, o, of, cat } = r;
+        const dot = ev.kind === "first" ? "s" : "c";
+        const lb = ev.kind === "first" ? "첫 진입" : `${ev.key} 클리어 후`;
+        const chat = `<button class="cr-sp-go" type="button" data-go="${chkIdOf(ev)}" title="위 표의 이 채팅 행으로"><span class="cr-slot is-${dot}">${esc(lb)}</span></button>`
+          + (r.tracked ? "" : `<div class="cr-sp-note cr-nil">작업 전 소구역</div>`);
+
+        /* 시트 — 마을과 대는 슬롯: 구역 완료 지점이면 구역 완료 씬, 아니면 다음 심부름 착수 씬 */
+        const fin = s && (s[3] === "finish" || s[3] === "nofinish");
+        const segs = ev.segs.filter((g) => g.slot === (fin ? "a" : "s"));
+        const next = ev.kind === "first" ? ev.key : SP_NEXT.get(ev.key);
+        const sheet = `<div class="cr-sp-ln"><span class="k">${fin ? "구역 완료" : "다음 심부름"}</span>${fin ? "" : `<b>${esc(next || "—")}</b>`}</div>`
+          + (segs.length ? `<div class="cr-sp-ln">${segs.map((g) => `<code>${esc(g.sid)}</code>`).join(" ")}</div>` + spFaces(spSpeakers(segs.map((g) => [g.sid, g.lines])))
+            : `<span class="cr-nil">씬 없음</span>`);
+
+        /* 클라 — 소구역 · 번들 지점 · 원안 노드 · 서 있는 캐릭터 */
+        let client;
+        if (!s) client = `<span class="cr-vd is-none">비어 있음</span>`;
+        else {
+          const node = s[3] === "prev" ? `${s[4]} 없음 → ${s[5]}` : s[5] || s[4];
+          client = `<div class="cr-sp-ln"><span class="k">소구역</span><code>${esc(s[0])}</code></div>`
+            + `<div class="cr-sp-ln">${s[1] ? `<code title="번들 area.prefab">${esc(s[1])}</code>` : `<span class="cr-nil">번들 지점 없음</span>`}`
+            + (node ? `<span class="cr-nil">· 원안 <code>${esc(node)}</code></span>` : "") + `</div>`
+            + (s[2].length ? `<div class="cr-stage">${s[2].map(([ch, e]) => stageImg(ch, e)).join("")}</div>`
+              + `<div class="cr-sp-note">${esc(s[2].map(([ch]) => capName(ch)).join(" · "))}</div>`
+              : `<span class="cr-vd is-none">비어 있음</span>`);
+        }
+
+        /* 10-01 — 이 지점을 세울 때 기준이던 씬 */
+        let old = `<span class="cr-nil">—</span>`;
+        if (o && !o[0]) old = `<span class="cr-nil">옛 시트에 씬 없음</span>`;
+        else if (o) {
+          const diff = [of.miss.length ? `빠짐 ${of.miss.map(capName).join("·")}` : "", of.extra.length ? `남음 ${of.extra.map(capName).join("·")}` : ""].filter(Boolean).join(" · ");
+          old = `<div class="cr-sp-ln"><code>${esc(o[0])}</code></div>` + spFaces(o[1].map(capName))
+            + `<div class="cr-sp-ln" style="margin-top: 4px">${of.ok ? `<span class="cr-vd is-ok">지점과 일치</span>` : `<span class="cr-vd is-bad">지점과 어긋남</span>`}`
+            + (diff ? `<span class="cr-sp-note" style="margin: 0">${esc(diff)}</span>` : "") + `</div>`;
+        }
+
+        const [, cls, label] = SP_CATS.find(([k]) => k === cat);
+        const note = cat === "ok" ? `대사 <code>${esc(c.sid)}</code> 화자와 일치`
+          : cat === "na" ? "" : esc(stageMissText(c));
+        const vd = `<span class="cr-vd ${cls}">${label}</span>` + (note ? `<div class="cr-sp-note">${note}</div>` : "");
+        return `<tr><td>${chat}</td><td>${sheet}</td><td>${client}</td><td>${old}</td><td>${vd}</td></tr>`;
+      }
+
+      function renderSp() {
+        const base = SP_ROWS.filter((r) => !spTracked || r.tracked);
+        const n = (cat) => base.filter((r) => r.cat === cat).length;
+        $("#crSpBar").innerHTML = `<button class="cr-btn${spCat === "all" ? " is-on" : ""}" type="button" data-sp-cat="all">전체<span class="n">${base.length}</span></button>`
+          + SP_CATS.filter(([k]) => k !== "na" || SP_ROWS.some((r) => r.cat === "na")).map(([k, , label, ds]) =>
+            `<button class="cr-btn${spCat === k ? " is-on" : ""}" type="button" data-sp-cat="${k}"${ds ? ` title="${esc(ds)}"` : ""}>${label}<span class="n">${n(k)}</span></button>`).join("")
+          + `<span class="cr-sep" aria-hidden="true"></span>`
+          + `<button class="cr-btn${spTracked ? " is-on" : ""}" type="button" data-sp-tracked aria-pressed="${spTracked}" title="${esc([...TRACKED].join(" · "))}">작업 끝난 소구역만</button>`;
+        const rows = base.filter((r) => spCat === "all" || r.cat === spCat);
+        $("#crSpBody").innerHTML = rows.length ? rows.map(spRowHtml).join("")
+          : `<tr><td colspan="5" class="cr-nil">해당 행이 없습니다</td></tr>`;
+      }
+
+      function renderSpSummary() {
+        const pts = Object.entries(STAGE_OLD).filter(([k]) => /^story_\d+$/.test(k));
+        const oldN = pts.filter(([, o]) => spFits(o[1], o[2])).length;
+        const newN = pts.filter(([, o]) => o[3] && STORY[o[3]] && spFits(spSpeakers(STORY[o[3]].s), o[2])).length;
+        const el = $("#crSpSum");
+        el.textContent = `클라 지점 ${pts.length}개 — 10-01 시트 기준 ${oldN} 일치 · 10-18 시트 기준 ${newN} 일치`;
+        el.title = "지점 story_{key_number} 마다 그 key_number 의 착수 씬 화자가 전부 지점에 서 있으면 일치(Rosie 는 주인공이라 빠져도 일치) · 그 key_number 에 착수 씬이 없으면 불일치";
+      }
+
       /* ── 오른쪽 내비 ───────────────────────────────────────────────────── */
-      const NAV_SECS = [["sheet", "보상 시트", false], ["deco", "데코 반영", false], ["deco-day1", "day 1 자리별 대조", true],
+      const NAV_SECS = [["sheet", "보상 시트", false], ["stage", "마을 ↔ 화자", false], ["deco", "데코 반영", false], ["deco-day1", "day 1 자리별 대조", true],
         ["deco-areas", "구역별 아트↔시트", true], ["items", "아이템 31종", false], ["npc", "NPC 12종", false]];
       function renderNav() {
         const days = Array.from({ length: 18 }, (_, i) => i + 1).map((d) => {
@@ -1900,6 +2060,19 @@
           if (k) goRow(k.dataset.go);
         });
         renderYardAreas();
+        renderSpSummary();
+        renderSp();
+        $("#crSpBar").addEventListener("click", (ev) => {
+          const b = ev.target.closest("button");
+          if (!b) return;
+          if (b.hasAttribute("data-sp-tracked")) spTracked = !spTracked;
+          else spCat = b.dataset.spCat;
+          renderSp();
+        });
+        $("#crSpBody").addEventListener("click", (ev) => {
+          const k = ev.target.closest("[data-go]");
+          if (k) goRow(k.dataset.go);
+        });
         renderSheet();
         syncAllBtn();
         renderNav();
