@@ -388,6 +388,8 @@
       .cr-btn .n { margin-left: 6px; font-weight: 800; font-variant-numeric: tabular-nums; opacity: .75; }
       .cr-btn.is-on .n { opacity: 1; }
       .cr-bar .cr-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+      /* 이슈 버튼 묶음 — 조작 바 안에서 버튼 하나하나가 따로 줄바꿈되도록 상자를 풀어 둔다 */
+      .cr-issue { display: contents; }
       .cr-sp-tb { table-layout: fixed; width: 100%; min-width: 760px; }
       .cr-sp-tb td { vertical-align: top; font-size: 12.5px; }
       .cr-sp-go { border: 0; background: none; padding: 0; font: inherit; cursor: pointer; text-align: left; color: var(--text); }
@@ -550,6 +552,7 @@
           </label>
           <button class="cr-btn" id="crOnlyItem" type="button">추가 아이템 있는 건만</button>
           <button class="cr-btn" id="crAllDet" type="button">대화 전부 펼치기</button>
+          <span class="cr-issue" id="crIssue" role="group" aria-label="마을 캐릭터 ↔ 대사 화자 이슈 필터"></span>
           <span class="cr-count" id="crCount"></span>
         </div>
 
@@ -575,7 +578,7 @@
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
           마을 캐릭터 ↔ 대사 화자
-          <span class="doc-h2-sub">채팅 1회 = 1행 &mdash; 시트가 틀 대사의 화자와, 클라가 채팅 직전 마을에 세우는 캐릭터를 나란히 놓았습니다. 채팅 칸을 누르면 위 표의 그 행으로 이동합니다</span>
+          <span class="doc-h2-sub">채팅 1회 = 1행 &mdash; 시트가 틀 대사의 화자와, 클라가 채팅 직전 마을에 세우는 캐릭터를 나란히 놓았습니다. 채팅 칸을 누르면 위 표의 그 행으로 이동합니다. 위 표 조작 바의 이슈 버튼 · Day · 「작업 끝난 소구역만」이 이 표도 같이 거릅니다</span>
         </h2>
 
         <p class="doc-lede" style="margin-top: 0">
@@ -586,8 +589,6 @@
           <div class="is-src-client"><span class="cr-sp-src">클라</span><span><b>클라가 채팅 직전 마을에 세우는 캐릭터</b> &mdash; <code>bundles/area_courtyard/area.prefab</code> 의 <code>story_{key_number}</code> 노드에 박힌 캐릭터</span></div>
           <div class="is-src-old"><span class="cr-sp-src">시트 · 10-01</span><span><b>그 클라 지점을 세울 때 기준이던 대사 화자</b> &mdash; 같은 <code>key_number</code> 의 2026-10-01 export 씬. 10-18 시트가 <code>key_number</code> 별 <code>story_key</code> 를 다시 배정해서, 클라 지점은 이 옛 씬 기준으로 서 있습니다.</span></div>
         </div>
-
-        <div class="cr-bar" id="crSpBar"></div>
 
         <div class="table-scroll">
           <table class="cr-sp-tb">
@@ -1568,7 +1569,18 @@
         const rows = ORDER.filter((r) => (dayFilter === 0 || r[0] === dayFilter) && (!onlyItem || r[5].length > 0));
         /* 「아이템 있는 건만」은 보상을 훑는 눈이다 — 대사 행을 끼우면 그 줄이 끊긴다. */
         let ev;
-        if (onlyItem) ev = rows.map((row) => ({ t: "task", key: keyOfRow(row), row }));
+        /* 이슈 버튼이 켜지면 그 유형의 채팅 + 바로 위 심부름 행만 — 꾸미기·나머지는 숨긴다.
+           Day 는 채팅을 부른 심부름의 day 로 가른다(심부름·채팅 한 쌍이 갈라지지 않게). 「추가 아이템」은 그 심부름에 아이템이 있는 쌍만. */
+        const issue = !!spCat;
+        if (issue) {
+          ev = [];
+          spIssueRows().forEach((r) => {
+            const task = TASK_BEFORE.get(r.ev);
+            if (onlyItem && (!task || !task.row[5].length)) return;
+            if (task) ev.push(task);
+            ev.push(r.ev);
+          });
+        } else if (onlyItem) ev = rows.map((row) => ({ t: "task", key: keyOfRow(row), row }));
         else if (dayFilter === 0) ev = TIMELINE;
         else {
           /* 그날 첫 심부름의 시작 대사는 **전날 마지막 클리어 채팅**에 들어 있다 — 그 행을 맨 위에 같이 세운다 */
@@ -1579,11 +1591,11 @@
         /* day 별 집계 — 밴드에 실을 값. 구역은 day 구간과 1:1이라 하나로 떨어진다. */
         const stat = {};
         /* 밴드는 보이는 day 로 묶는다 — 전날에서 끌어온 채팅 행도 그날 밴드 아래에 선다 */
-        const bandDay = (e) => (dayFilter === 0 || onlyItem ? e.row[0] : dayFilter);
+        const bandDay = (e) => (dayFilter === 0 || onlyItem || issue ? e.row[0] : dayFilter);
         for (const e of ev) {
           const bd = bandDay(e);
           const d = (stat[bd] = stat[bd] || { area: null, task: 0, talk: 0, line: 0 });
-          if (e.t === "task" && !d.area) d.area = e.row[8];
+          if ((e.t === "task" || issue) && !d.area) d.area = e.row[8];
           if (e.t === "task") d.task++;
           else { d.talk++; d.line += e.lines.length; }
         }
@@ -1612,7 +1624,7 @@
             html += talkRowHtml(e, id, det).replace('class="cr-row is-talk', `class="cr-row is-talk${daystart}`)
               + (det ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="6">${det}</td></tr>` : "");
             /* 채팅이 끝나면 꾸미기 — 수선·택1 만 행이 선다(대화 유형·첫 진입은 꾸미기가 없다). */
-            const deco = e.kind === "clear" ? boxHtml(e, resultHtml(e.row)) : "";
+            const deco = e.kind === "clear" && !issue ? boxHtml(e, resultHtml(e.row)) : "";
             if (deco) {
               const did = `${id}-deco`;
               html += decoRowHtml(e, did)
@@ -1622,8 +1634,14 @@
           }
           html += taskRowHtml(e).replace('class="cr-row is-task', `class="cr-row is-task${daystart}`);
         }
-        $("#crBody").innerHTML = html;
+        $("#crBody").innerHTML = html || `<tr><td colspan="6" class="cr-nil">해당 행이 없습니다</td></tr>`;
 
+        if (issue) {
+          const label = SP_CATS.find(([k]) => k === spCat)[2];
+          const talks = ev.filter((e) => e.t === "talk");
+          $("#crCount").textContent = `${label} · 채팅 ${talks.length}회 · 심부름 ${ev.length - talks.length}건`;
+          return;
+        }
         /* 건수는 **심부름만** 센다 — 대사 행은 심부름이 아니다. */
         const withItem = rows.filter((r) => r[5].length > 0).length;
         const talkLines = ev.reduce((a, e) => a + (e.t === "talk" ? e.lines.length : 0), 0);
@@ -1812,12 +1830,17 @@
         $("#crDay").value = "0";
         onlyItem = false;
         $("#crOnlyItem").classList.remove("is-on");
-        renderSheet();
-        syncAllBtn();
+        renderFiltered();
+      }
+      /* 이슈 버튼으로 걸러진 표에 목표 행이 없으면 그때만 이슈 필터를 끈다 — 대조표에서 누른 채팅은 남아 있다 */
+      function findRow(sel) {
+        let el = document.querySelector(sel);
+        if (!el && spCat) { spCat = null; renderFiltered(); el = document.querySelector(sel); }
+        return el;
       }
       function goRow(chk) {
         clearFilters();
-        const tr = document.querySelector(`#crBody tr.cr-row[data-chk="${chk}"]`);
+        const tr = findRow(`#crBody tr.cr-row[data-chk="${chk}"]`);
         if (!tr) return;
         const det = document.getElementById(tr.dataset.det);
         if (det && det.hidden) { det.hidden = false; tr.classList.add("is-open"); syncAllBtn(); }
@@ -1827,7 +1850,7 @@
       }
       function goDay(day) {
         clearFilters();
-        const band = document.querySelector(`#crBody tr.cr-band[data-day="${day}"]`);
+        const band = findRow(`#crBody tr.cr-band[data-day="${day}"]`);
         if (band) scrollToEl(band, false);
       }
 
@@ -1862,8 +1885,16 @@
           : c.st === "prev" ? "prev" : isEmptySt(c.st) ? "nopoint" : c.st === "ok" ? "ok" : "na";
         return { ev, s, c, o, of, cat, tracked: !!s && TRACKED.has(s[0]) };
       });
-      let spCat = "all";
+      /* 이슈 필터 — 위 표 조작 바의 버튼 하나가 위 표와 이 대조표를 같이 거른다. null = 끔. 「일치」는 이슈가 아니라 버튼이 없다. */
+      let spCat = null;
       let spTracked = true;
+      const ISSUE_CATS = SP_CATS.filter(([k]) => k !== "ok");
+      /* 클리어 채팅 → 그 채팅을 부른 심부름 행(타임라인 바로 앞). 첫 진입 채팅은 위에 심부름이 없다. */
+      const TASK_BEFORE = new Map();
+      TIMELINE.forEach((e, i) => { if (e.t === "talk" && e.kind === "clear") TASK_BEFORE.set(e, TIMELINE[i - 1]); });
+      /* 건수·대조표 기준 — 추적 토글 · Day(채팅을 부른 심부름의 day). 「추가 아이템」은 위 표에만 건다. */
+      const spBase = () => SP_ROWS.filter((r) => (!spTracked || r.tracked) && (dayFilter === 0 || r.ev.row[0] === dayFilter));
+      const spIssueRows = () => spBase().filter((r) => !spCat || r.cat === spCat);
       const spFaces = (names) => (names.length
         ? `<div class="cr-sp-fc">${names.map((n) => faceHtml(n)).join("")}</div><div class="cr-sp-note">${esc(names.join(" · "))}</div>`
         : `<span class="cr-nil">화자 없음</span>`);
@@ -1913,15 +1944,19 @@
         return `<tr><td>${chat}</td><td class="is-src-sheet"><span class="cr-sp-src">시트 · 10-18</span>${sheet}</td><td class="is-src-client"><span class="cr-sp-src">클라</span>${client}</td><td class="is-src-old"><span class="cr-sp-src">시트 · 10-01</span>${old}</td><td>${vd}</td></tr>`;
       }
 
-      function renderSp() {
-        const base = SP_ROWS.filter((r) => !spTracked || r.tracked);
+      /* 위 표 조작 바의 이슈 버튼 — 하나만 켜지고, 켜진 걸 다시 누르면 끈다 */
+      function renderIssueBar() {
+        const base = spBase();
         const n = (cat) => base.filter((r) => r.cat === cat).length;
-        $("#crSpBar").innerHTML = `<button class="cr-btn${spCat === "all" ? " is-on" : ""}" type="button" data-sp-cat="all">전체<span class="n">${base.length}</span></button>`
-          + SP_CATS.filter(([k]) => k !== "na" || SP_ROWS.some((r) => r.cat === "na")).map(([k, , label, ds]) =>
-            `<button class="cr-btn${spCat === k ? " is-on" : ""}" type="button" data-sp-cat="${k}"${ds ? ` title="${esc(ds)}"` : ""}>${label}<span class="n">${n(k)}</span></button>`).join("")
+        $("#crIssue").innerHTML = `<span class="cr-sep" aria-hidden="true"></span>`
+          + ISSUE_CATS.map(([k, , label, ds]) =>
+            `<button class="cr-btn${spCat === k ? " is-on" : ""}" type="button" data-sp-cat="${k}" aria-pressed="${spCat === k}"${ds ? ` title="${esc(ds)}"` : ""}>${label}<span class="n">${n(k)}</span></button>`).join("")
           + `<span class="cr-sep" aria-hidden="true"></span>`
           + `<button class="cr-btn${spTracked ? " is-on" : ""}" type="button" data-sp-tracked aria-pressed="${spTracked}" title="${esc([...TRACKED].join(" · "))}">작업 끝난 소구역만</button>`;
-        const rows = base.filter((r) => spCat === "all" || r.cat === spCat);
+      }
+
+      function renderSp() {
+        const rows = spIssueRows();
         $("#crSpBody").innerHTML = rows.length ? rows.map(spRowHtml).join("")
           : `<tr><td colspan="5" class="cr-nil">해당 행이 없습니다</td></tr>`;
       }
@@ -1930,9 +1965,22 @@
         const pts = Object.entries(STAGE_OLD).filter(([k]) => /^story_\d+$/.test(k));
         const oldN = pts.filter(([, o]) => spFits(o[1], o[2])).length;
         const newN = pts.filter(([, o]) => o[3] && STORY[o[3]] && spFits(spSpeakers(STORY[o[3]].s), o[2])).length;
+        const base = spBase();
+        const okN = base.filter((r) => r.cat === "ok").length;
         const el = $("#crSpSum");
-        el.textContent = `클라 지점 ${pts.length}개 — 10-01 시트 기준 ${oldN} 일치 · 10-18 시트 기준 ${newN} 일치`;
-        el.title = "지점 story_{key_number} 마다 그 key_number 의 착수 씬 화자가 전부 지점에 서 있으면 일치(Rosie 는 주인공이라 빠져도 일치) · 그 key_number 에 착수 씬이 없으면 불일치";
+        el.textContent = `클라 지점 ${pts.length}개 — 10-01 시트 기준 ${oldN} 일치 · 10-18 시트 기준 ${newN} 일치`
+          + ` · 채팅 ${base.length}회 중 일치 ${okN}`;
+        el.title = "지점 story_{key_number} 마다 그 key_number 의 착수 씬 화자가 전부 지점에 서 있으면 일치(Rosie 는 주인공이라 빠져도 일치) · 그 key_number 에 착수 씬이 없으면 불일치"
+          + " · 채팅 건수는 「작업 끝난 소구역만」 · Day 를 따른다";
+      }
+
+      /* 필터가 바뀌면 위 표 · 버튼 건수 · 대조표 · 요약을 한 번에 다시 그린다 */
+      function renderFiltered() {
+        renderSheet();
+        syncAllBtn();
+        renderIssueBar();
+        renderSp();
+        renderSpSummary();
       }
 
       /* ── 오른쪽 내비 ───────────────────────────────────────────────────── */
@@ -2045,7 +2093,7 @@
         const sel = $("#crDay");
         sel.innerHTML = `<option value="0">전체</option>`
           + Array.from({ length: 18 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
-        sel.addEventListener("change", () => { dayFilter = Number(sel.value); renderSheet(); syncAllBtn(); });
+        sel.addEventListener("change", () => { dayFilter = Number(sel.value); renderFiltered(); });
 
         const btn = $("#crOnlyItem");
         btn.addEventListener("click", () => {
@@ -2078,21 +2126,18 @@
           if (k) goRow(k.dataset.go);
         });
         renderYardAreas();
-        renderSpSummary();
-        renderSp();
-        $("#crSpBar").addEventListener("click", (ev) => {
+        $("#crIssue").addEventListener("click", (ev) => {
           const b = ev.target.closest("button");
           if (!b) return;
           if (b.hasAttribute("data-sp-tracked")) spTracked = !spTracked;
-          else spCat = b.dataset.spCat;
-          renderSp();
+          else spCat = spCat === b.dataset.spCat ? null : b.dataset.spCat;
+          renderFiltered();
         });
         $("#crSpBody").addEventListener("click", (ev) => {
           const k = ev.target.closest("[data-go]");
           if (k) goRow(k.dataset.go);
         });
-        renderSheet();
-        syncAllBtn();
+        renderFiltered();
         renderNav();
         renderItems();
         renderNpcs();
