@@ -399,7 +399,7 @@ const SECTIONS = [
         project: "smg",
         status: "완료",
         version: "v4 · main 555b5a7b+보상함 클릭 수정",
-        updated: "2026-10-20 09:12",
+        updated: "2026-10-20 09:18",
         pinned: false,
         tags: ["봇 실측", "리소스", "메모리", "캐시"],
       },
