@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>기획서 · 프로토콜 규칙 차이</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each rule is a row that puts 기획서 and 프로토콜 side by side, stacking on phones. */
+:root{
+  --bg:#f5f6f4; --surface:#ffffff; --fg:#1c1f1d; --muted:#646b66; --line:#dfe3df;
+  --spec:#2558b8; --spec-soft:#e9effb; --srv:#a8521c; --srv-soft:#fbefe6; --note:#7a6200; --note-soft:#fbf4d9;
+  --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141615; --surface:#1d201e; --fg:#e6e9e6; --muted:#9aa29c; --line:#2d322f;
+  --spec:#8db0f0; --spec-soft:#1b2639; --srv:#eea277; --srv-soft:#35241a; --note:#e3c55c; --note-soft:#2f2a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141615; --surface:#1d201e; --fg:#e6e9e6; --muted:#9aa29c; --line:#2d322f;
+  --spec:#8db0f0; --spec-soft:#1b2639; --srv:#eea277; --srv-soft:#35241a; --note:#e3c55c; --note-soft:#2f2a12; color-scheme:dark}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--font-body);padding-inline:16px;padding-block:28px 72px}
+.wrap{max-width:1120px;margin:0 auto}
+header h1{font-size:26px;line-height:1.3;margin:0 0 10px;text-wrap:balance;letter-spacing:-.01em}
+.lede{max-width:68ch;color:var(--fg);margin:0 0 14px}
+.basis{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:0 0 6px}
+.basis b{color:var(--fg);font-weight:600}
+.key{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:600}
+.chip.spec{background:var(--spec-soft);color:var(--spec)} .chip.srv{background:var(--srv-soft);color:var(--srv)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);display:flex;flex-wrap:wrap;gap:6px;padding:10px 0;margin:18px 0 6px;border-bottom:1px solid var(--line)}
+nav a{font-size:13px;text-decoration:none;color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:3px 11px;background:var(--surface)}
+nav a:hover,nav a:focus-visible{border-color:var(--fg);outline:none}
+nav a span{color:var(--muted);font-family:var(--font-mono);font-size:12px;margin-left:4px}
+section{scroll-margin-top:64px}
+h2{font-size:18px;margin:34px 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:72ch}
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,2fr);border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row.head{background:var(--bg);font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.row>div{padding:11px 14px;min-width:0}
+.row .name{font-weight:600}
+.row .s{border-left:3px solid var(--spec)} .row .v{border-left:3px solid var(--srv)}
+.row.head .s{color:var(--spec)} .row.head .v{color:var(--srv)}
+.lab{display:none;font-size:11.5px;font-weight:600;letter-spacing:.02em;margin-bottom:2px}
+.s .lab{color:var(--spec)} .v .lab{color:var(--srv)}
+mark{background:none;color:inherit;font-weight:600;box-shadow:inset 0 -.42em 0 var(--hl)}
+.s mark{--hl:var(--spec-soft)} .v mark{--hl:var(--srv-soft)}
+.src{display:block;margin-top:5px;font-size:12px;color:var(--muted);font-family:var(--font-body)}
+.src code{font-family:var(--font-mono);font-size:11.5px}
+.flag{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;padding:0 7px;border-radius:999px;background:var(--note-soft);color:var(--note);vertical-align:1px}
+.conf{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:0;padding:4px 0;list-style:none}
+.conf li{padding:10px 14px;border-top:1px solid var(--line)}
+.conf li:first-child{border-top:0}
+.conf .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:6px}
+.conf .pair div{padding:6px 10px;border-radius:6px;background:var(--bg);font-size:14px}
+.conf .pair .same{box-shadow:inset 3px 0 0 var(--srv)}
+footer{margin-top:40px;font-size:12.5px;color:var(--muted);max-width:72ch}
+footer a{color:inherit}
+@media (max-width:720px){
+  .row{grid-template-columns:minmax(0,1fr)}
+  .row.head{display:none}
+  .row>div{padding:8px 14px}
+  .row .name{padding-top:12px}
+  .lab{display:block}
+  .conf .pair{grid-template-columns:minmax(0,1fr)}
+  header h1{font-size:22px}
+}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <h1>기획서 · 프로토콜 규칙 차이</h1>
+  <p class="lede">같은 기능을 개발 기획서와 서버 프로토콜이 다르게 정한 곳만 모았습니다. 각 줄은 「기획서대로 만들면 이렇게 동작하고, 프로토콜대로 만들면 이렇게 동작한다」를 나란히 적었습니다. 어느 쪽으로 맞출지 정해 주시면 그 기준으로 구현합니다.</p>
+  <div class="basis">
+    <span><b>기획서</b> 개발 · 밸런스 시트 기획서 v1.22 + 미배포 (2026-10-20 13:00 KST 판)</span>
+    <span><b>프로토콜</b> merge-story-server <code>64d086e</code> · <code>src/model/type-protocol.ts</code></span>
+  </div>
+  <div class="key"><span class="chip spec">기획서</span><span class="chip srv">프로토콜</span><span class="chip" style="background:var(--note-soft);color:var(--note)">기획서가 직접 「서버 반영 필요」라고 적은 항목</span></div>
+</header>
+
+<nav aria-label="구역">
+  <a href="#ingame">인게임<span>3</span></a>
+  <a href="#event">이벤트<span>9</span></a>
+  <a href="#outgame">아웃게임<span>6</span></a>
+  <a href="#comm">통신<span>7</span></a>
+  <a href="#shop">상점 · 인앱<span>4</span></a>
+  <a href="#conflict">기획서 안의 충돌<span>3</span></a>
+</nav>
+
+<section id="ingame">
+<h2>인게임</h2>
+<div class="rows">
+  <div class="row head"><div>항목</div><div class="s">기획서대로 만들면</div><div class="v">프로토콜대로 만들면</div></div>
+  <div class="row"><div class="name">합칠 수 없는 아이템 위에 드롭</div>
+    <div class="s"><span class="lab">기획서</span>불가 표시를 한 번 주고 <mark>원래 칸으로 돌아감</mark>. 서버에 보내는 액션 없음 (MERGE_DENY)<span class="src">기획서 1.1.2 보드</span></div>
+    <div class="v"><span class="lab">프로토콜</span>두 칸의 <mark>자리를 바꿔</mark> 저장 (SwapAction). MERGE_DENY는 정상 클라이언트에서 생길 수 없는 예외로 봄<span class="src"><code>type-protocol.ts:3570 · :174</code></span></div></div>
+  <div class="row"><div class="name">상자 즉시 개봉 젬</div>
+    <div class="s"><span class="lab">기획서</span>ceil(기본 비용 × 남은 시간 비율). 거의 다 열렸으면 <mark>0젬</mark>이 될 수 있음<span class="src">기획서 1.1.1 생성기</span></div>
+    <div class="v"><span class="lab">프로토콜</span>같은 식에 <mark>최소 1젬</mark> — max(1, ceil(…))<span class="src"><code>type-protocol.ts:3728</code></span></div></div>
+  <div class="row"><div class="name">특수 오더의 이벤트 점수</div>
+    <div class="s"><span class="lab">기획서</span>제외 조항 없음 → 특수 오더 납품에도 <mark>점수가 쌓임</mark><span class="src">기획서 1.2.1 오더 생성 (이벤트 점수 절차)</span></div>
+    <div class="v"><span class="lab">프로토콜</span>특수 오더 납품은 <mark>점수 계산에서 뺌</mark><span class="src"><code>type-protocol.ts:368</code></span></div></div>
+</div>
+</section>
+
+<section id="event">
+<h2>이벤트</h2>
+<div class="rows">
+  <div class="row head"><div>항목</div><div class="s">기획서대로 만들면</div><div class="v">프로토콜대로 만들면</div></div>
+  <div class="row"><div class="name">향초 품평회 완주 뒤<span class="flag">서버 반영 필요</span></div>
+    <div class="s"><span class="lab">기획서</span>10단계 Grand Prize를 받고 기간이 남았으면 난이도를 비우고 <mark>다시 골라 1단계부터</mark>. 횟수 제한 없음. 기간이 끝나면 화면 213(지급 없음)<span class="src">기획서 6.3.1 로즈우드 향초 품평회</span></div>
+    <div class="v"><span class="lab">프로토콜</span>난이도는 <mark>회차에 처음 참가할 때 한 번</mark>. is_final 단계 보상을 주면 <mark>이벤트가 끝남</mark><span class="src"><code>type-protocol.ts:4114 · :4142</code></span></div></div>
+  <div class="row"><div class="name">오더 점수 구간 고르기</div>
+    <div class="s"><span class="lab">기획서</span>score_min 오름차순으로 놓고 기준값 ≥ score_min인 <mark>마지막 행</mark>. score_max는 쓰지 않음. 기준값은 score_base에 따라 <mark>코인 또는 난이도</mark><span class="src">기획서 1.2.1 오더 생성</span></div>
+    <div class="v"><span class="lab">프로토콜</span>band_seq 순으로 score_min ≤ 기준값 ≤ score_max인 <mark>첫 행</mark>. 기준값은 <mark>요구품 코인 합만</mark><span class="src"><code>type-protocol.ts:369-370</code> · 지금 시트 값으로는 두 방식 결과가 같음</span></div></div>
+  <div class="row"><div class="name">이벤트 진행값을 누가 계산하나</div>
+    <div class="s"><span class="lab">기획서</span>점수 · 순위 · 토큰은 <mark>서버가 판정</mark>하고 클라이언트는 받은 값을 표시<span class="src">기획서 6.1.1 이벤트 공통 구조</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>클라이언트가 계산</mark>해 액션 묶음 끝(GameActionsState)에 싣고, 서버가 같은 값을 다시 계산해 비교<span class="src"><code>type-protocol.ts:3827</code></span></div></div>
+  <div class="row"><div class="name">패스 반복 미션 진행</div>
+    <div class="s"><span class="lab">기획서</span>보상을 주면 진행을 <mark>0으로 되돌림</mark><span class="src">기획서 6.2.1 시즈널 패스</span></div>
+    <div class="v"><span class="lab">프로토콜</span>진행은 <mark>계속 누적</mark>. 받을 수 있는 횟수 = floor(진행 ÷ 목표) − 받은 횟수<span class="src"><code>type-protocol.ts:412</code></span></div></div>
+  <div class="row"><div class="name">패스 에너지 미션 집계</div>
+    <div class="s"><span class="lab">기획서</span>생성기 탭 + <mark>잠금 칸 해제</mark>에 쓴 에너지<span class="src">기획서 6.2.1 시즈널 패스</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>생산에 쓴</mark> 에너지만<span class="src"><code>type-protocol.ts:406</code> · 현재 에너지 미션 행은 비활성</span></div></div>
+  <div class="row"><div class="name">패스 회차 정산</div>
+    <div class="s"><span class="lab">기획서</span>달성했지만 안 받은 보상을 즉시 우편으로<span class="src">기획서 6.2.1 시즈널 패스</span></div>
+    <div class="v"><span class="lab">프로토콜</span>그 전에 <mark>안 받은 미션 토큰을 트랙 점수에 먼저 반영</mark>하고, 그 점수로 생긴 칸 보상까지 우편으로<span class="src"><code>type-protocol.ts:4020</code></span></div></div>
+  <div class="row"><div class="name">5인전 순위</div>
+    <div class="s"><span class="lab">기획서</span><mark>점수 내림차순</mark> → 도달 시각 → 완전 동률이면 플레이어 우선<span class="src">기획서 6.6.1 5인전 이벤트 2종</span></div>
+    <div class="v"><span class="lab">프로토콜</span>순위 = 1 + (나보다 <mark>먼저 목표에 닿은</mark> 상대 수). 목표를 넘는 점수는 쌓지 않고, 순위가 정해진 뒤 다음 라운드 전까지 얻은 점수는 <mark>버림</mark><span class="src"><code>type-protocol.ts:451-454</code></span></div></div>
+  <div class="row"><div class="name">향초 품평회 동시 도달</div>
+    <div class="s"><span class="lab">기획서</span>규칙 없음<span class="src">기획서 6.3.1 로즈우드 향초 품평회</span></div>
+    <div class="v"><span class="lab">프로토콜</span>봇과 같은 시각이면 <mark>플레이어가 먼저</mark>(통과)<span class="src"><code>type-protocol.ts:3002</code></span></div></div>
+  <div class="row"><div class="name">수집 앨범 · 개인 마일스톤</div>
+    <div class="s"><span class="lab">기획서</span>런칭 OFF, 운영 중 앨범 <mark>D29</mark> · 마일스톤 <mark>D36</mark> 개시 계획<span class="src">기획서 6.5.1 · 6.7.1</span></div>
+    <div class="v"><span class="lab">프로토콜</span>런칭 범위는 패스 · 오더 러시 · 향초 품평회 · 5인전. 앨범 · 마일스톤은 <mark>진행 상태 · API 없음</mark><span class="src"><code>type-protocol.ts:2326</code></span></div></div>
+</div>
+</section>
+
+<section id="outgame">
+<h2>아웃게임</h2>
+<div class="rows">
+  <div class="row head"><div>항목</div><div class="s">기획서대로 만들면</div><div class="v">프로토콜대로 만들면</div></div>
+  <div class="row"><div class="name">설정 저장 (언어 · 음악 · 효과음 · 진동)</div>
+    <div class="s"><span class="lab">기획서</span><mark>기기에</mark> 저장. 통신이 끊겨도 유지<span class="src">기획서 3.4.1 설정 · 언어</span></div>
+    <div class="v"><span class="lab">프로토콜</span>/profile/save로 <mark>서버에</mark> 저장하고 부팅 때 받아 적용. 원문에 「기획서와 달리」라고 명시<span class="src"><code>type-protocol.ts:4488</code></span></div></div>
+  <div class="row"><div class="name">이름 후보</div>
+    <div class="s"><span class="lab">기획서</span>판을 열거나 주사위를 누를 때마다 <mark>서버에서 후보를 받음</mark>. 첫 이름도 계정 생성 때 서버가 배정<span class="src">기획서 3.4.2 프로필 · 레벨업 · 아바타</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>클라이언트가 이름 풀 표에서 뽑아</mark> 보여 주고, 저장 때 그 행 번호를 보냄. 이름 풀 표는 시트에 아직 없음<span class="src"><code>type-protocol.ts:4487</code></span></div></div>
+  <div class="row"><div class="name">우편 모두 받기</div>
+    <div class="s"><span class="lab">기획서</span>보상 첨부 우편을 <mark>한 통씩 순서대로</mark> /mail/claim. 실패한 통은 남김<span class="src">기획서 3.3.1 우편함</span></div>
+    <div class="v"><span class="lab">프로토콜</span>받을 우편 목록(created_ats)을 <mark>한 요청에 묶어</mark> 수령<span class="src"><code>type-protocol.ts:4336</code></span></div></div>
+  <div class="row"><div class="name">우편 목록 받기</div>
+    <div class="s"><span class="lab">기획서</span>동기화 응답에 우편이 같이 오므로 <mark>목록 API를 따로 두지 않음</mark><span class="src">기획서 A8-3 통신</span></div>
+    <div class="v"><span class="lab">프로토콜</span>우편함을 열 때 <mark>/mail/list</mark>로 받음. 하트비트는 개수만 알림<span class="src"><code>type-protocol.ts:4313</code></span></div></div>
+  <div class="row"><div class="name">심부름 착수</div>
+    <div class="s"><span class="lab">기획서</span>START 때 <mark>/chore/start</mark>로 진행 중 상태를 서버에 저장. 재접속 후 다시 누르면 같은 요청을 재호출<span class="src">기획서 2.2.1 심부름</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>시작 API 없음</mark>. 마지막 완료 심부름만 저장하고, 재접속하면 시작 팝업부터<span class="src"><code>type-protocol.ts:184</code></span></div></div>
+  <div class="row"><div class="name">스토리 장면 끊김 복구</div>
+    <div class="s"><span class="lab">기획서</span><mark>/story/progress</mark>로 장면 완료를 기록<span class="src">기획서 2.2.3 스토리</span></div>
+    <div class="v"><span class="lab">프로토콜</span>재생 전 <mark>「보는 중」으로 설정</mark>, 다 보면 해제. 끊겼으면 다음 진입 때 그 장면 처음부터. 진행은 심부름 · 특수 오더 상태로 판정<span class="src"><code>type-protocol.ts:288</code></span></div></div>
+</div>
+</section>
+
+<section id="comm">
+<h2>통신</h2>
+<p class="sub">기획서 부록 A8의 통신 계약이 프로토콜 개편 전 내용입니다. 프로토콜 README 「A8과 다른 점」에 서버가 바꾼 이유가 적혀 있습니다.</p>
+<div class="rows">
+  <div class="row head"><div>항목</div><div class="s">기획서대로 만들면</div><div class="v">프로토콜대로 만들면</div></div>
+  <div class="row"><div class="name">요청 순서 관리</div>
+    <div class="s"><span class="lab">기획서</span>직전 응답의 <mark>update_token</mark>을 다음 요청에 실음<span class="src">기획서 A8-3 통신</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>세션 ID + 요청 번호</mark>. 번호는 1부터, 성공 응답을 받았을 때만 +1<span class="src"><code>type-protocol.ts:65-92</code></span></div></div>
+  <div class="row"><div class="name">상태가 어긋났을 때</div>
+    <div class="s"><span class="lab">기획서</span><mark>SYNC_FAIL</mark>을 받으면 서버 확정 상태로 보드 · 오더를 덮음<span class="src">기획서 3.4.3 시스템 공통 · A8-7</span></div>
+    <div class="v"><span class="lab">프로토콜</span>값이 조금 어긋나면 <mark>클라이언트 값을 저장</mark>. 처리할 수 없으면 거절 → 시트를 다시 받고 새 세션<span class="src"><code>type-protocol.ts:164</code></span></div></div>
+  <div class="row"><div class="name">에러 응답</div>
+    <div class="s"><span class="lab">기획서</span>37종 · HTTP <mark>409 / 426 / 429 / 503</mark><span class="src">기획서 A8-7 오류 안내</span></div>
+    <div class="v"><span class="lab">프로토콜</span>항상 <mark>HTTP 200</mark> + 에러 코드 6종(BUSY · 서명 오류 · 세션 충돌 · 앱 업데이트 · 테이블 업데이트 · 알 수 없음)<span class="src"><code>type-protocol.ts:2687</code></span></div></div>
+  <div class="row"><div class="name">지난 시간 따라잡기</div>
+    <div class="s"><span class="lab">기획서</span>부팅 · 동기화 요청 <mark>한 번에</mark> 회차 정산 · 미수령 회수 · 리셋 · 진열 갱신<span class="src">기획서 A8-4 시간과 세션</span></div>
+    <div class="v"><span class="lab">프로토콜</span>이벤트 정산 · 주간 회수 · 상점 목록 · 일자 변경을 <mark>각 전용 API</mark>로 클라이언트가 호출<span class="src"><code>type-protocol.ts:130 · :3484</code></span></div></div>
+  <div class="row"><div class="name">예상 서버 시각</div>
+    <div class="s"><span class="lab">기획서</span>최근 응답의 server_time + 단조 시계 경과분<span class="src">기획서 1.1.1 생성기 (시간 판정)</span></div>
+    <div class="v"><span class="lab">프로토콜</span>같은 식에 max() 두 개를 더해 <mark>시각이 뒤로 가지 않게</mark> 보정 — 직전 at보다 작지 않게, 기준 시각도 갱신<span class="src"><code>type-protocol.ts:100-120</code></span></div></div>
+  <div class="row"><div class="name">앱 버전 체크</div>
+    <div class="s"><span class="lab">기획서</span>부팅 요청에 <mark>「1.0.0」 문자열</mark>, 서버가 정수로 바꿔 시트 상수 min_client_version과 비교<span class="src">기획서 A8-3 통신</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>모든 요청</mark>에 정수 빌드 번호. 최소 버전을 어디서 관리할지는 <mark>미정</mark><span class="src"><code>type-protocol.ts:2711</code></span></div></div>
+  <div class="row"><div class="name">거절한 특수 오더 다시 받기</div>
+    <div class="s"><span class="lab">기획서</span>잠금 상자를 누르면 <mark>/order/special/reopen</mark><span class="src">기획서 1.2.3 특수 오더 · A8-3</span></div>
+    <div class="v"><span class="lab">프로토콜</span>별도 API 없이 <mark>수락 액션을 다시</mark> 보냄<span class="src"><code>type-protocol.ts:3693</code></span></div></div>
+</div>
+</section>
+
+<section id="shop">
+<h2>상점 · 인앱</h2>
+<div class="rows">
+  <div class="row head"><div>항목</div><div class="s">기획서대로 만들면</div><div class="v">프로토콜대로 만들면</div></div>
+  <div class="row"><div class="name">레벨업 선물 (levelup_gift_1~3)</div>
+    <div class="s"><span class="lab">기획서</span>도달 레벨의 <mark>level_min · level_max 구간 상품</mark> 하나를 3600초 판매. 구매와 무관하게 레벨업마다 새 창, limit_type=level(레벨마다 1회)<span class="src">기획서 3.2.4 오퍼 레이어 · 밸런스 시트 product · popup_trigger(on_level_up)</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>마지막으로 산 단의 다음 단</mark>(1→2→3→1), 안 사면 같은 단. 한도는 account · day · event뿐이고 on_level_up 트리거 · level_min/max 칸 없음<span class="src"><code>type-protocol.ts:250-254 · :2603 · :2614</code></span></div></div>
+  <div class="row"><div class="name">광고 한도 초과 응답</div>
+    <div class="s"><span class="lab">기획서</span><mark>RATE_LIMITED</mark><span class="src">기획서 3.2.1 상점</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>TABLE_UPDATE_REQUIRED</mark><span class="src"><code>type-protocol.ts:4451</code></span></div></div>
+  <div class="row"><div class="name">인기 상품 칸 후보</div>
+    <div class="s"><span class="lab">기획서</span>원작 슬롯 설정의 <mark>슬롯별 체인 후보 + 후보 조건</mark><span class="src">기획서 3.2.1 상점</span></div>
+    <div class="v"><span class="lab">프로토콜</span><mark>shop_slot 규칙만</mark> (shop_slot &gt; 0이면 그 칸 후보로만)<span class="src"><code>type-protocol.ts:257-262</code></span></div></div>
+  <div class="row"><div class="name">「나중에」 뒤 억제 시간</div>
+    <div class="s"><span class="lab">기획서</span>popup_trigger.dismiss_suppress_sec를 <mark>사용</mark><span class="src">밸런스 시트 popup_trigger</span></div>
+    <div class="v"><span class="lab">프로토콜</span>닫은 시각을 저장하지 않으므로 <mark>쓰지 않음</mark> — 런칭에 켜진 행은 모두 0이라 지금은 차이 없음<span class="src"><code>type-protocol.ts:2030</code></span></div></div>
+</div>
+</section>
+
+<section id="conflict">
+<h2>기획서 안에서 서로 다르게 적힌 곳</h2>
+<p class="sub">같은 기획서의 두 문장이 다릅니다. 프로토콜은 두 문장 중 한쪽과 같습니다(주황 테두리).</p>
+<ul class="conf">
+  <li><b>오더 반복 감쇠</b> — 기획서 1.2.2 오더
+    <div class="pair"><div class="same">「제한 대상 아이템을 납품하면 그 체인의 남은 횟수를 3으로 설정한다」 · 프로토콜 <code>:362</code>와 같음</div><div>「그 체인의 오더가 하나 완료될 때마다 감쇠가 한 칸씩 풀린다」</div></div></li>
+  <li><b>끝난 이벤트 회차 처리</b> — 기획서 6.1.1 이벤트 공통 구조
+    <div class="pair"><div class="same">「달성했지만 받지 않은 보상을 즉시 우편으로 이관한다. 수령 유예는 0일」 · 프로토콜 <code>:3968</code>과 같음</div><div>「미수령 보상이 있으면 104 미수령함으로 이관 후 24h 뒤 회수」</div></div></li>
+  <li><b>오더 러시 미수령 바퀴 보상</b> — 기획서 6.4.1 오더 러시
+    <div class="pair"><div class="same">「목표에 닿고 받지 않은 회차는 … 그 회차 단계의 팩을 즉시 우편으로 옮기고」 · 프로토콜 <code>:4101</code>과 같음</div><div>「자동 지급/메일·최신 종료 화면은 서버 확인 전이며, 수령 금지 정책으로 확정하지 않는다」</div></div></li>
+</ul>
+</section>
+
+<footer>
+  기획서 원문: <a href="https://atomking0.github.io/supergene-esther/rosewood_dev_spec.html">개발 기획서</a> · 프로토콜 원문: merge-story-server <code>src/model/type-protocol.ts</code> (줄 번호는 <code>64d086e</code> 기준).<br>
+  기획서 판은 2026-10-20 13:00 KST 웹 게시본입니다. 이후 기획서나 프로토콜이 바뀌면 이 표도 다시 대조해야 합니다.
+</footer>
+</div>
+
+</body>
+</html>
