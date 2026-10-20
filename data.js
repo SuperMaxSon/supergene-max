@@ -399,7 +399,7 @@ const SECTIONS = [
         project: "smg",
         status: "완료",
         version: "v5 · main 989fb175 · 모바일 시뮬",
-        updated: "2026-10-20 11:53",
+        updated: "2026-10-20 11:56",
         pinned: false,
         tags: ["봇 실측", "성능", "CPU", "GPU", "메모리", "네트워크"],
       },
