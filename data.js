@@ -102,7 +102,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "b27549d",
-        updated: "2026-10-19",
+        updated: "2026-10-20",
         pinned: false,
         tags: ["story-merge", "팝업", "아트"],
       },
