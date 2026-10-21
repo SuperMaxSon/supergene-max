@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-10-20 18:25",
+  updated: "2026-10-21 09:21",
 };
 
 /* --------------------------------------------------------------------------
@@ -585,8 +585,8 @@ const SECTIONS = [
         url: "docs/merge-feedback-anim.html",
         project: "smg",
         status: "진행중",
-        version: "v4.2",
-        updated: "2026-10-20 18:25",
+        version: "v4.3",
+        updated: "2026-10-21 09:21",
         pinned: false,
         tags: ["연출", "도구"],
       },

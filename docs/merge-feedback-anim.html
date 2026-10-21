@@ -19,10 +19,22 @@
       .mfx-tile { width: 96px; height: 96px; }                               /* BoardItemNode 96 · 아이콘 95 는 symbol 안에서 맞춘다 */
       .mfx-tile svg { transform: none; }
       .mfx-ring { box-sizing: border-box; }
+      /* C2 놓을 칸 표시 — 클라 Effect/prefab/merge_effect_loop. 보드 레이어 맨 앞(칩 아래)에 끼운다(BoardInputNode.ts:93-97 HoverFxLayer). */
+      .mfx-hover-ring, .mfx-hover-ray { pointer-events: none; }
+      .mfx-hover-ring img { display: block; width: 123px; height: 123px; }                  /* ring_glow 123×123 · 일반 알파(770/771) */
+      .mfx-hover-ray { width: 252px; height: 256px; mix-blend-mode: plus-lighter; }          /* ray_01 252×256(트림) · 가산(770/1) */
+      .mfx-hover-ray img { display: block; width: 256px; height: 256px; filter: url(#mfx-ray-tint); }   /* 원본 256 — 오른쪽 투명 4px 가 트림된다(ray_01.png.meta trimX 0 · width 252) */
+      .mfx-mergefx { pointer-events: none; z-index: 7; }                    /* A4 머지 FX — fxRoot 는 칩 층 위(클라 BoardChipFx.ts:385 setParent(fxRoot)) */
+      .mfx-mergefx > div { background: center / 100% 100% no-repeat; }      /* 스프라이트는 노드 크기 그대로(merge_effect.prefab sizeMode 1 · 텍스처 트림 없음) */
+      .mfx-mergefx .glow { width: 58px; height: 58px; background-image: url(img/mfx/glow_01.png); }       /* 클라 merge_effect.prefab:116 glow_0N 58×58 */
+      .mfx-mergefx .ring { width: 123px; height: 123px; background-image: url(img/mfx/ring_glow.png); }  /* 클라 merge_effect.prefab:920 ring_glow 123×123 */
       .mfx-shelf .slot { width: 96px; height: 96px; border-radius: 0; }     /* 클라 인게임엔 보너스 슬롯이 없다 — 칸 크기만 맞춘다 */
       .mfx-hud { box-sizing: border-box; height: 48px; min-width: 140px; padding: 0 16px 0 0; gap: 4px; font-size: 30px; }   /* HeaderLayer coinChip/box 140×48 · value 30 */
       .mfx-hud .dot { width: 55px; height: 58px; margin: -5px 0; border: 0; border-radius: 0; flex: none; }                  /* coinChip/icon 81×85 × 0.68 */
       .mfx-badge { width: 33px; height: 35px; line-height: 35px; font-size: 22px; }                                         /* BoardItemNode readyMark 33×35 */
+      /* A2 생산 가능 반짝임 — 칩(Spr) 자식 캔버스. 칩 원점 중앙 · 160×160 이면 상자 70×60(y -10) + 상승 + 크기 35 가 다 들어간다.
+         칩 배율(눌림)을 같이 받고, 탭은 칩 본체만 받는다(pointer-events none) */
+      .mfx-sparkle { position: absolute; left: 50%; top: 50%; width: 160px; height: 160px; margin: -80px 0 0 -80px; pointer-events: none; }
     </style>
   </head>
   <body class="mfx">
@@ -56,7 +68,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 16종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.2 · 2026-10-02 14:34</span>
+          <span class="tag" id="mfx-ver">v4.3 · 2026-10-21 09:21</span>
         </div>
       </div>
     </header>
@@ -79,6 +91,10 @@
           <rect x="20" y="32" width="20" height="3.4" rx="1.7" fill="#B57F4E" />
           <rect x="20" y="40" width="24" height="3.4" rx="1.7" fill="#B57F4E" />
         </symbol>
+        <!-- C2 ray_01 노드 색 rgb(220,251,255) — 코코스 노드 색은 텍스처에 곱한다(merge_effect_loop.prefab ray_01 _color) -->
+        <filter id="mfx-ray-tint" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0.8627 0 0 0 0  0 0.9843 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        </filter>
       </defs>
     </svg>
 
@@ -574,6 +590,97 @@
           }
           return Promise.all(list);
         }
+        /* A4 머지 FX — 클라는 코드로 그리던 링·스파크(MergeFxNode)를 걷고 아트 프리팹 merge_effect 의 0.6초 클립 하나를 튼다.
+           아래 수치는 전부 클라 assets/Effect/animation/merge_effect.anim 의 curveData 원문이다(줄 번호 = 그 파일).
+           Cocos 키프레임의 curve [x1,y1,x2,y2] 는 「그 키 → 다음 키」 구간의 3차 베지어 이징(CSS cubic-bezier 와 같은 꼴)이고,
+           curve 가 없는 구간은 선형이다. EASE 표의 이름 곡선과는 모양이 달라 표에 넣지 않고 여기서 푼다. */
+        function cubicEase(x1, y1, x2, y2) {
+          function bx(s) { var u = 1 - s; return 3 * u * u * s * x1 + 3 * u * s * s * x2 + s * s * s; }
+          function by(s) { var u = 1 - s; return 3 * u * u * s * y1 + 3 * u * s * s * y2 + s * s * s; }
+          return function (x) {
+            if (x <= 0) return 0;
+            if (x >= 1) return 1;
+            var lo = 0, hi = 1, s = x;
+            for (var i = 0; i < 30; i++) {           // x(s) 는 단조 증가 — 이분법으로 s 를 찾고 y(s) 를 낸다
+              var v = bx(s);
+              if (Math.abs(v - x) < 1e-6) break;
+              if (v < x) lo = s; else hi = s;
+              s = (lo + hi) / 2;
+            }
+            return by(s);
+          };
+        }
+        /* 키 = [시각(초), 값(숫자 또는 [x, y]), 이징(없으면 선형)]. 첫 키 앞은 첫 값, 끝 키 뒤는 끝 값을 유지한다. */
+        function keyAt(keys, t) {
+          if (t <= keys[0][0]) return keys[0][1];
+          for (var i = 0; i < keys.length - 1; i++) {
+            var k0 = keys[i], k1 = keys[i + 1];
+            if (t > k1[0]) continue;
+            var r = (t - k0[0]) / (k1[0] - k0[0]);
+            if (k0[2]) r = k0[2](r);
+            if (typeof k0[1] === "number") return k0[1] + (k1[1] - k0[1]) * r;
+            return [k0[1][0] + (k1[1][0] - k0[1][0]) * r, k0[1][1] + (k1[1][1] - k0[1][1]) * r];
+          }
+          return keys[keys.length - 1][1];
+        }
+        var MERGE_CLIP_SEC = 0.6;                                                    // 클라 merge_effect.anim:6 _duration · :9 wrapMode 1(한 번)
+        var MERGE_SPARK_EASE = cubicEase(0.024025974025974013, 0.5786796536796537,
+                                         0.46190476190476193, 0.9462121212121212);  // 클라 merge_effect.anim:106·153·201·249·297 — 불티 다섯 개 위치 곡선(모두 같다)
+        var MERGE_CLIP = {
+          // 클라 merge_effect.anim:12-35 glow_01(루트) — 배율 4 → 0 · 0~1/6초 · 선형. 불투명도 트랙 없음(255 고정)
+          glow: { scale: [[0, 4], [0.16666666666666666, 0]] },
+          // 클라 merge_effect.anim:36-75 ring_glow — 배율 1 → 4 · 0~1/3초 · curve(:47) / 불투명도 255 → 0 · 같은 구간 · 선형
+          ring: {
+            scale: [[0, 1, cubicEase(0.07272727272727271, 0.5029220779220779, 0.5133116883116884, 0.9083333333333332)], [0.3333333333333333, 4]],
+            alpha: [[0, 1], [0.3333333333333333, 0]],
+          },
+          // 클라 merge_effect.anim:315-356 dot — 위로 28.597 떴다가(0~0.267초 · curve :325) 아래 -37.008 로 처진다(~0.6초 · curve :339)
+          dot: [
+            [0, [0, 0], cubicEase(0.061904761904761886, 0.5408008658008658, 0.4348484848484849, 0.9218614718614718)],
+            [0.26666666666666666, [0, 28.597], cubicEase(0.46504329004329, 0.03755411255411256, 0.8731601731601731, 0.44025974025974024)],
+            [0.6, [0, -37.008]],
+          ],
+          // 클라 merge_effect.anim:76-314 dot/rot/glow_01~05 — 배율은 선형으로 0, 위치는 (0,0) 에서 끝점까지 MERGE_SPARK_EASE.
+          // 끝점은 rot 로컬 좌표다(rot 가 매 재생마다 돌아 화면 방향이 바뀐다)
+          sparks: [
+            { end: 0.5,                 scale: 0.5, to: [37.008, 67.287] },  // :76-123  glow_01
+            { end: 0.6,                 scale: 0.2, to: [-40, 104] },        // :124-171 glow_02
+            { end: 0.43333333333333335, scale: 0.3, to: [13, 44] },          // :172-219 glow_03
+            { end: 0.5,                 scale: 0.3, to: [-91, -64] },        // :220-267 glow_04
+            { end: 0.5333333333333333,  scale: 0.4, to: [37, -91] },         // :268-314 glow_05
+          ],
+        };
+        /* 결과 칸 중심(at)에서 클립을 한 번 튼다. 노드 순서 = 그리는 순서(클라 merge_effect.prefab:16 자식 glow_01 · dot · ring_glow) —
+           링이 맨 위다. 첫 프레임은 바로 입힌다(클라 BoardMergeFx.ts:22 animation.sample — 정지 자세가 한 프레임 비치지 않게). */
+        function mergeClip(st, at) {
+          var C = MERGE_CLIP;
+          // 클라 PooledEffect.ts:79·125-127 — 재생마다 rot 노드 각도를 0~180° 무작위로 놓는다(merge_effect.prefab:1031 randomRotationNodes = rot)
+          var ang = Math.random() * 180, rad = (ang * Math.PI) / 180, cos = Math.cos(rad), sin = Math.sin(rad);
+          var glow = st.spr('<div class="glow"></div>', "mfx-mergefx");
+          var sp = C.sparks.map(function () { return st.spr('<div class="glow"></div>', "mfx-mergefx"); });
+          var ring = st.spr('<div class="ring"></div>', "mfx-mergefx");
+          var tracks = C.sparks.map(function (k) {
+            return { scale: [[0, k.scale], [k.end, 0]], pos: [[0, [0, 0], MERGE_SPARK_EASE], [k.end, k.to]] };
+          });
+          function pose(t) {
+            var g = keyAt(C.glow.scale, t), r = keyAt(C.ring.scale, t), d = keyAt(C.dot, t);
+            glow.set({ x: at.x, y: at.y, sx: g, sy: g });
+            ring.set({ x: at.x, y: at.y, sx: r, sy: r, a: keyAt(C.ring.alpha, t) });
+            for (var i = 0; i < sp.length; i++) {
+              var p = keyAt(tracks[i].pos, t), s = keyAt(tracks[i].scale, t);
+              // rot 로컬 → dot 로컬: Cocos angle 은 + 가 반시계(y 위쪽 +)라 표준 회전식 그대로. 클립 위치는 클라 px 라 PX_K 로 옮긴다
+              var lx = p[0] * cos - p[1] * sin, ly = p[0] * sin + p[1] * cos;
+              // 스프라이트 자체 각도 — CSS rotate 는 + 가 시계라 부호를 뒤집는다(둥근 텍스처라 눈엔 거의 안 보인다)
+              sp[i].set({ x: at.x + px(d[0] + lx), y: at.y + px(d[1] + ly), sx: s, sy: s, rot: -ang });
+            }
+          }
+          pose(0);
+          return tw(MERGE_CLIP_SEC, "linear", function (e, r) { pose(r * MERGE_CLIP_SEC); }).then(function () {
+            // 클라 PooledEffect.play → 클립 finished 에 스스로 반납(BoardMergeFx.ts:7)
+            glow.kill(); ring.kill();
+            sp.forEach(function (s) { s.kill(); });
+          });
+        }
         /* 베지어 가이드 — 제어점이 어디 있는지 보여야 곡선 얘기가 된다. */
         function guide(st, from, c1, c2, to) {
           var w = st.layer.clientWidth, h = st.layer.clientHeight;
@@ -1018,15 +1125,12 @@
           a4: [
             { k:"absorbSec",  label:"흡수 시간",     v:0.05, min:0.02, max:1, step:0.01, unit:"s", easeK:"absorbEase", ease:"quadIn",  cfg:"MERGE_ABSORB_SEC",               note:"사라지는 쪽" },
             { k:"absorbScale",label:"흡수 끝 크기",  v:0.55, min:0,    max:1,  step:0.01,unit:"×",                                     cfg:"MERGE_ABSORB_END_SCALE" },
-            { k:"ringSec",    label:"임팩트 링",     v:0.30, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"ringEase",   ease:"quadOut", cfg:"MERGE_RING_SEC" },
-            { k:"ringMax",    label:"링 최대 배율",  v:1.9,  min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_RING_MAX_SCALE" },
+            { k:"ringSec",    label:"도착 보류",     v:0.30, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"ringEase",   ease:"quadOut", cfg:"MERGE_RING_SEC",                 note:"클라는 시간만 읽는다(자동 생산 도착 보류 · BoardChipFx.ts:82·97) · 이징은 안 읽음 — 연출은 아트 클립 0.6s" },
+            { k:"ringMax",    label:"링 배율(미사용)",v:1.9,  min:1,    max:4,  step:0.05,unit:"×",                                     cfg:"MERGE_RING_MAX_SCALE",           note:"클라가 안 읽는다 — 키만 남김(MergeFxConfig.ts:86)" },
             { k:"hitSec",     label:"결과 눌림",     v:0.15, min:0.01, max:1, step:0.01, unit:"s", easeK:"hitEase",    ease:"quadOut", cfg:"MERGE_RESULT_HIT_SEC" },
             { k:"hitSX",      label:"결과 눌림 가로",v:1.3, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RESULT_HIT_X" },
             { k:"hitSY",      label:"결과 눌림 세로",v:1.3, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_RESULT_HIT_Y" },
             { k:"popSec",     label:"결과 팝",       v:0.20, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"popEase",    ease:"backOut", cfg:"MERGE_POP_DURATION_SEC",        note:"실측값" },
-            { k:"sparkCount", label:"스파크 개수",   v:7,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_SPARK_COUNT" },
-            { k:"sparkSec",   label:"스파크 시간",   v:1, min:0.05, max:1.5,step:0.01, unit:"s", easeK:"sparkEase",  ease:"quadOut", cfg:"MERGE_SPARK_SEC" },
-            { k:"sparkRadius",label:"스파크 반경",   v:120,   min:10,   max:160,step:2,   unit:"px",                                    cfg:"MERGE_SPARK_RADIUS" },
           ],
           a5: [
             { k:"hopSec",     label:"이동 시간",     v:0.30, min:0.05, max:2, step:0.01, unit:"s", easeK:"hopEase",    ease:"linear",cfg:"MERGE_HOP_DURATION_SEC" },
@@ -1132,13 +1236,16 @@
           c1: [
             { k:"snapSec",    label:"원위치 복귀",   v:0.26, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"snapEase",   ease:"backOut", cfg:"MERGE_SNAP_BACK_SEC" },
           ],
+          /* C2 값 6줄은 클라가 더는 안 읽는다 — 옛 칩 링(BoardItemNode.setMergeHighlight) 이 지워지고 아트 프리팹
+             merge_effect_loop 의 클립(show 0.5s → loop 1s → hide 0.333s)이 대신 돈다(MergeHoverFx.ts:5-8).
+             클라 MergeFxConfig.ts c2 에 키가 남아 있어 mfx-sync 1:1 대조용으로만 둔다. 무대도 이 값을 안 쓴다. */
           c2: [
-            { k:"inSec",      label:"링 등장",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"inEase",     ease:"backOut", cfg:"MERGE_RING_IN_SEC" },
-            { k:"inScale",    label:"링 등장 크기",  v:1.02, min:0.5,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RING_IN_SCALE" },
-            { k:"pulseSec",   label:"펄스 반주기",   v:0.45, min:0.1,  max:2, step:0.01, unit:"s", easeK:"pulseEase",  ease:"sineInOut",cfg:"MERGE_RING_PULSE_SEC" },
-            { k:"pulseMax",   label:"펄스 최대",     v:1.14, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RING_PULSE_MAX" },
-            { k:"pulseMin",   label:"펄스 최소",     v:0.98, min:0.5,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_RING_PULSE_MIN" },
-            { k:"pulseAlpha", label:"펄스 최저 투명도",v:0.45,min:0,   max:1,  step:0.01,unit:"",                                      cfg:"MERGE_RING_PULSE_ALPHA" },
+            { k:"inSec",      label:"(미사용) 옛 링 등장",       v:0.14, min:0.02, max:1, step:0.01, unit:"s", easeK:"inEase",     ease:"backOut", cfg:"MERGE_RING_IN_SEC",     note:"클라 미사용 — 아트 클립이 돈다 · 키 싱크용" },
+            { k:"inScale",    label:"(미사용) 옛 링 등장 크기",  v:1.02, min:0.5,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RING_IN_SCALE",   note:"클라 미사용 · 키 싱크용" },
+            { k:"pulseSec",   label:"(미사용) 옛 펄스 반주기",   v:0.45, min:0.1,  max:2, step:0.01, unit:"s", easeK:"pulseEase",  ease:"sineInOut",cfg:"MERGE_RING_PULSE_SEC",  note:"클라 미사용 · 키 싱크용" },
+            { k:"pulseMax",   label:"(미사용) 옛 펄스 최대",     v:1.14, min:1,    max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_RING_PULSE_MAX",  note:"클라 미사용 · 키 싱크용" },
+            { k:"pulseMin",   label:"(미사용) 옛 펄스 최소",     v:0.98, min:0.5,  max:1.2,step:0.01,unit:"×",                                     cfg:"MERGE_RING_PULSE_MIN",  note:"클라 미사용 · 키 싱크용" },
+            { k:"pulseAlpha", label:"(미사용) 옛 펄스 최저 투명도",v:0.45,min:0,   max:1,  step:0.01,unit:"",                                      cfg:"MERGE_RING_PULSE_ALPHA",note:"클라 미사용 · 키 싱크용" },
           ],
           c3: [
             { k:"gaugeOutSec",label:"게이지 소멸",   v:0.18, min:0.02, max:1, step:0.01, unit:"s", easeK:"gaugeEase",  ease:"quadIn",  cfg:"MERGE_GAUGE_OUT_SEC" },
@@ -1148,7 +1255,6 @@
             { k:"popOutSec",  label:"완료 복귀",     v:0.2, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"popOutEase", ease:"quadIn", cfg:"MERGE_READY_POP_OUT_SEC" },
             { k:"bobSec",     label:"뱃지 까딱임",   v:0.42, min:0.1,  max:2, step:0.01, unit:"s", easeK:"bobEase",    ease:"sineInOut",cfg:"MERGE_READY_BADGE_BOB_SEC",      note:"닫힌 상자의 「!」 — 무대 왼쪽 칸" },
             { k:"bobPx",      label:"까딱임 높이",   v:6,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_READY_BADGE_BOB_PX",       note:"대기 상태보다 크게" },
-            { k:"sparkCount", label:"스파크 개수",   v:0,    min:0,    max:20, step:1,   unit:"개",                                    cfg:"MERGE_READY_SPARK_COUNT" },
             { k:"breathSec",  label:"숨쉬기 반주기", v:0.5,  min:0.05, max:2, step:0.01, unit:"s", easeK:"breathEase", ease:"sineInOut",cfg:"C3_BREATH_SEC",                  note:"팝 뒤 한 번 부풀었다 돌아온다 — 오갈 때 같은 값" },
             { k:"breathScale",label:"숨쉬기 크기",   v:1.05, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"C3_BREATH_SCALE" },
           ],
@@ -1305,6 +1411,102 @@
           return { st: st, reset: reset, play: play, hint: "공구함을 눌러 보세요" };
         };
 
+        /* A2 · 생산 가능 반짝임 ----------------------------------------------
+           클라 BoardItemNode.prefab 자식 producerSparkle = Effect/prefab/manufacturer_Particle.prefab 사본(cc.ParticleSystem3D).
+           값은 프리팹에만 있고 MERGE_FX 키가 없다 — 그래서 PARAMS/V 에 넣지 않고(mfx-sync 는 클라 키 1:1) 여기 상수로 옮긴다.
+           칩 사본은 _capacity 8 만 다르다(BoardItemNode.prefab). 3D 입자 단위 = 2D 장면 px 로 본다(노드 배율 1 · 직교 카메라). */
+        var SPARKLE = {
+          rate: 2,                         // manufacturer_Particle.prefab rateOverTime 상수 2/s · loop · playOnAwake · startDelay 0
+          lifeMin: 0.7, lifeMax: 1.0,      // startLifetime TwoConstants 0.7–1.0 초
+          sizeMin: 25, sizeMax: 35,        // startSize TwoConstants 25–35 px — 수명과 같은 난수 하나(엔진 3d/particle/particle-system-3d.ts:847,856)라 오래 사는 입자가 크다
+          boxW: 70, boxH: 60, boxY: -10,   // shapeModule Box · scale 70×60×1 · position y -10 · emitFrom Volume(±0.5 균등, 엔진 shape-module.ts:408-411)
+          vy: 15,                          // velocityOvertime y 15 px/s(Local) — 매 프레임 0 에서 다시 더해 등속이다(엔진 particle-system-3d-renderer.ts:177)
+          // startSpeed 5 는 상자 방출 방향(로컬 z, 엔진 shape-module.ts:435)이라 직교 2D 화면에선 안 움직인다 · startRotation 0 · gravity 0 · Billboard
+          // sizeOvertime 곡선 — [time, value, inTangent, outTangent] · 3차 에르미트(엔진 curve.ts evaluate_slow)
+          sizeKeys: [[0, 0, 0, 4.25], [0.42, 1, 0, 0], [1, 0, -2.83, 0]],
+          cap: 8,                          // BoardItemNode.prefab 칩 사본 _capacity 8
+          canvas: 160,                     // 무대 전용 — 캔버스 한 변(px). 문서 <style> .mfx-sparkle 과 같은 값
+        };
+        /* 재질 star01.mtl = builtin-3d-particle technique 1(alpha blend · tinted-fs:add): col = 2 × tint(213,213,213,255) × tex.
+           흰 별이라 rgb 는 1 에 붙고 알파만 2배(1 에서 자름)가 된다 — 같은 그림을 'lighter' 로 두 번 겹치면 정확히 min(1, 2a) 다 */
+        var sparkleTex = null;
+        (function () {
+          var img = new Image();
+          img.onload = function () {
+            var c = document.createElement("canvas");
+            c.width = img.naturalWidth; c.height = img.naturalHeight;
+            var g = c.getContext("2d");
+            g.globalCompositeOperation = "lighter";
+            g.drawImage(img, 0, 0); g.drawImage(img, 0, 0);
+            sparkleTex = c;
+          };
+          img.src = "img/mfx/bling_01.png";                  // 클라 Effect/texture/bling_01.png 사본(64×64 · md5 동일)
+        })();
+        function sparkleSize(t) {                            // sizeOvertime — 3차 에르미트, 접선 × 구간 길이
+          var k = SPARKLE.sizeKeys, i = t >= k[1][0] ? 1 : 0, a = k[i], b = k[i + 1];
+          var dt = b[0] - a[0], u = Math.max(0, Math.min(1, (t - a[0]) / dt));
+          var u2 = u * u, u3 = u2 * u;
+          return (2 * u3 - 3 * u2 + 1) * a[1] + (u3 - 2 * u2 + u) * a[3] * dt + (-2 * u3 + 3 * u2) * b[1] + (u3 - u2) * b[2] * dt;
+        }
+        /* 칩 하나에 붙는 방출기. 칩 Spr 안(아이콘 다음 형제)에 캔버스를 달아 칩 위치·배율을 같이 받는다(simulationSpace Local).
+           켜고 끄기는 클라 BoardItemNode.ts:523-542 applySparkle — 끄면 stop()(입자 즉시 비움), 켜면 stop()+play() 로 0 부터 다시 센다 */
+        function producerSparkle(chip) {
+          var cv = elm("canvas", "mfx-sparkle"), dpr = Math.max(1, window.devicePixelRatio || 1), S = SPARKLE.canvas;
+          cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr);
+          chip.el.appendChild(cv);
+          var g = cv.getContext("2d"), parts = [], counter = 0, on = false;
+          function draw() {
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            g.clearRect(0, 0, cv.width, cv.height);
+            if (!sparkleTex) return;
+            g.setTransform(dpr, 0, 0, dpr, S / 2 * dpr, S / 2 * dpr);   // 원점 = 칩 중앙 · 화면 y 는 아래로라 -y 로 그린다
+            for (var i = 0; i < parts.length; i++) {
+              var p = parts[i], s = p.size * sparkleSize(p.age / p.life);
+              if (s > 0.01) g.drawImage(sparkleTex, p.x - s / 2, -p.y - s / 2, s, s);
+            }
+          }
+          function tick(dt) {
+            if (!cv.isConnected) { delTick(tick); return; }   // st.clear() 가 칩째 지웠다
+            if (!on) return;
+            // 엔진 particle-system-3d.ts:895-899 _emit — 카운터가 1 을 넘으면 정수만큼 낸다
+            counter += SPARKLE.rate * dt;
+            if (counter > 1) {
+              var n = Math.floor(counter);
+              counter -= n;
+              for (var k = 0; k < n && parts.length < SPARKLE.cap; k++) {
+                var r = Math.random();
+                parts.push({
+                  x: (Math.random() - 0.5) * SPARKLE.boxW,
+                  y: SPARKLE.boxY + (Math.random() - 0.5) * SPARKLE.boxH,
+                  life: SPARKLE.lifeMin + (SPARKLE.lifeMax - SPARKLE.lifeMin) * r + dt,   // 클라는 수명에 그 프레임 dt 를 더한다(:856)
+                  size: SPARKLE.sizeMin + (SPARKLE.sizeMax - SPARKLE.sizeMin) * r,
+                  age: 0,
+                });
+              }
+            }
+            var live = [];
+            for (var i = 0; i < parts.length; i++) {
+              var p = parts[i];
+              p.age += dt;
+              if (p.age > p.life) continue;
+              p.y += SPARKLE.vy * dt;
+              live.push(p);
+            }
+            parts = live;
+            draw();
+          }
+          addTick(tick);
+          return {
+            set: function (want) {
+              if (want === on) return;
+              on = want;
+              parts = []; counter = 0;     // 켜도 꺼도 비우고 0 부터 — stop() 의 clear · _emitRateTimeCounter 0
+              draw();
+            },
+            dispose: function () { delTick(tick); cv.remove(); },
+          };
+        }
+
         /* A2 · 생산물 비행 -------------------------------------------------- */
         DEMOS.a2 = function (host) {
           /* 5×5 · 생산자는 정가운데(12번 칸). 생산물은 가까운 칸부터 채운다 —
@@ -1316,13 +1518,40 @@
             7, 8, 13, 18, 17, 16, 11, 6,                                  // 안쪽 한 겹
             2, 3, 4, 9, 14, 19, 24, 23, 22, 21, 20, 15, 10, 5, 0, 1,      // 바깥 한 겹
           ];
+          /* 생산 가능 반짝임 — 클라 BoardItemNode.ts:228-231 · 523-542. 켜는 조건 = 번개 칸(상자·충전 시계 아님) + 거미줄 없음
+             + 탭 1회분 에너지(IngameVM.ts:364 canPayProduce) + 저사양 아님. 무대 생산자는 늘 번개 칸이라 에너지만 고른다.
+             반짝임은 칩 몫이다 — 생산물만 날고 생산자 칩은 보드에 남아 눌림 배율을 같이 받는다. */
+          var energyOk = true, sparkle = null;
+          var energySeg = elm("div", "mfx-seg");
+          energySeg.setAttribute("role", "group");
+          energySeg.setAttribute("aria-label", "에너지");
+          [["1", "에너지 있음"], ["0", "에너지 없음"]].forEach(function (o) {
+            var b = elm("button");
+            b.type = "button";
+            b.textContent = o[1];
+            b.setAttribute("aria-pressed", String((o[0] === "1") === energyOk));
+            b.addEventListener("click", function () {
+              energyOk = o[0] === "1";
+              Array.prototype.forEach.call(energySeg.querySelectorAll("button"), function (x) {
+                x.setAttribute("aria-pressed", String(x === b));
+              });
+              // 클라는 에너지가 바뀔 때(탭 소모 · 회복 · 구매) BoardRenderFlow.ts:215-228 refreshSparkles 가 칩마다 다시 판정한다
+              if (sparkle) sparkle.set(energyOk);
+            });
+            energySeg.appendChild(b);
+          });
+          st.wrap.appendChild(energySeg);
+
           function reset() {
             era++;
+            if (sparkle) sparkle.dispose();
             st.clear();
             used = [];
             gen = st.tile("mfx-producer");
             var p = st.cellPos(GI);
             gen.set({ x: p.x, y: p.y });
+            sparkle = producerSparkle(gen);                         // 아이콘 바로 다음 자식(배지는 그 위) — BoardItemNode.prefab 자식 순서
+            sparkle.set(energyOk);
             gate = armGate(st, GI, spawn);                          // 클라 BoardTapFlow.ts:169-171 — 생산은 무장 뒤 탭
             tappify(st, gen, { onDown: gate.onDown, onTap: gate.onTap });
           }
@@ -1362,7 +1591,7 @@
             });
           }
           function play() { reset(); return armedTapPlay(gen, gate); }
-          return { st: st, reset: reset, play: play, hint: "공구함을 한 번 눌러 고르고(테두리) 다시 누르면 그때부터 누를 때마다 하나씩 날아갑니다 · 착지 후 정리됩니다" };
+          return { st: st, reset: reset, play: play, hint: "공구함을 한 번 눌러 고르고(테두리) 다시 누르면 그때부터 누를 때마다 하나씩 날아갑니다 · 착지 후 정리됩니다 · 「에너지 있음/없음」은 공구함의 생산 가능 반짝임을 켜고 끕니다" };
         };
 
         /* A3 · 드래그 ------------------------------------------------------- */
@@ -1487,17 +1716,11 @@
             var gen = dst.fxGen;
             dst.set({ x: from.x, y: from.y, sx: a3.pickScale, sy: a3.pickScale });
 
-            /* 링은 드롭 뒤 absorbSec 에, 스파크는 거기서 hitSec 뒤에 뜬다 */
-            // 클라 BoardDropFlow.ts:151 scheduleOnce(playMergeFx, absorbSec) · MergeFxNode.ts:88-91 sparks @hitSec
+            /* 머지 FX(아트 클립 merge_effect 0.6초)는 드롭 뒤 absorbSec 에 결과 칸 중심에서 한 번 돈다 — 흡수 뒤다 */
+            // 클라 BoardDropFlow.ts:140 scheduleOnce(playMergeFx, absorbSec) · BoardChipFx.ts:376-391 playMergeFx(fxRoot · 칸 중심 · play)
             var fx = wait(P.absorbSec).then(function () {
               if (mine !== era) return;
-              var ring = st.spr('<div class="mfx-ring" style="width:140px;height:140px"></div>');   // 클라 MergeFxNode.prefab ring 140
-              ring.set({ x: b.x, y: b.y, sx: 0.5, sy: 0.5 });   // 클라 MergeFxNode.ts:13 RING_START_SCALE
-              ring.to(P.ringSec, { sx: P.ringMax, sy: P.ringMax, a: 0 }, P.ringEase).then(function () { ring.kill(); });
-              return wait(P.hitSec).then(function () {
-                if (mine !== era) return;
-                return sparks(st, b, P.sparkCount, null, P.sparkSec, P.sparkRadius, P.sparkEase);
-              });
+              return mergeClip(st, b);
             });
 
             var chain = fxTo(dst, a3.snapSec, { x: b.x, y: b.y, sx: 1, sy: 1 }, a3.snapEase)
@@ -1885,12 +2108,105 @@
           return { st: st, reset: reset, play: play, hint: "잠긴 칸 위로 끌어 보세요 · 원래 칸으로 돌아갑니다" };
         };
 
-        /* C2 · 병합 가능 대상 하이라이트 ------------------------------------- */
+        /* C2 · 병합 가능 대상 표시 — 아트 프리팹 merge_effect_loop -------------
+           클라 Effect/prefab/merge_effect_loop.prefab 을 그대로 옮긴다: 뿌리 > ring_glow(123×123 · 배율 2 · 일반 알파)
+           · ray > ray_01(252×256 · 배율 0.8 · 색 rgb(220,251,255) · 가산). 클립은 등장 → 반복 → 퇴장(MergeHoverFx.ts:29-83),
+           켜고 끄는 시점은 hover 장부(BoardDragController.ts:246-303). 칩 아래에 그린다 — 대상 칩 아이콘이 가운데를 덮는다. */
+        var HOVER_SHOW_SEC = 0.5;                    // 클라 Effect/animation/merge_loop_show.anim _duration · wrapMode Normal
+        var HOVER_LOOP_SEC = 1;                      // 클라 merge_loop.anim _duration · wrapMode Loop
+        var HOVER_HIDE_SEC = 1 / 3;                  // 클라 merge_loop_hide.anim _duration 0.333 · wrapMode Normal
+        var HOVER_RING_FROM = 1, HOVER_RING_TO = 2;  // 클라 merge_loop_show.anim ring_glow.scale 1 → 2 (선형)
+        var HOVER_RING_LOOP_MIN = 1.6;               // 클라 merge_loop.anim ring_glow.scale 2 → 1.6(0.5s) → 2(1s) (선형)
+        var HOVER_CUT_BELOW = 0.1;                   // 클라 MergeHoverFx.ts:11 HIDE_CUT_BELOW
+        var HOVER_RAY_SCALE = 0.8;                   // 클라 merge_effect_loop.prefab ray_01 _trs 배율 0.8
+        var HOVER_RAY_DPS = 360 * 0.45 / 4;          // 클라 art/animation/Rotation_04.anim angle 0 → -360 · 4s · speed 0.45 → 한 바퀴 ≈ 8.9s(시계 방향)
+
+        /* 인스턴스 하나 = 풀에서 빌린 MergeHoverFx 하나. 클립은 rAF 틱에서 직접 샘플한다 —
+           퇴장이 등장의 현재 시점을 읽어 뒤에서 이어 틀어야 해서(MergeHoverFx.ts:44-54) 끊을 수 없는 tw 로는 못 건다. */
+        function HoverFx(st, at) {
+          var self = this;
+          this.ring = st.spr('<img src="img/mfx/ring_glow.png" alt="" draggable="false">', "mfx-hover-ring");
+          this.ray = st.spr('<img src="img/mfx/ray_01.png" alt="" draggable="false">', "mfx-hover-ray");
+          // 클라 BoardInputNode.ts:93-97 — HoverFxLayer 는 CellMask 와 itemLayer 사이: 레이어 맨 앞에 끼워 칩보다 먼저 그린다.
+          // 자식 순서는 프리팹 그대로 ring_glow → ray(가산은 링 위에 더해진다).
+          var L = st.layer;
+          L.insertBefore(this.ray.el, L.firstChild);
+          L.insertBefore(this.ring.el, L.firstChild);
+          this.ring.set({ x: at.x, y: at.y });
+          this.ray.set({ x: at.x, y: at.y, sx: HOVER_RAY_SCALE, sy: HOVER_RAY_SCALE });
+          this.clip = null; this.t = 0; this.angle = 0; this.hiding = false; this.dead = false;
+          this.rs = HOVER_RING_FROM;
+          // ray_01 회전은 자기 Animation(playOnLoad) 이라 등장·반복·퇴장과 무관하게 계속 돈다 — 반납하면 같이 멈춘다.
+          this.tick = function (dt) { self.step(dt); };
+          addTick(this.tick);
+        }
+        HoverFx.prototype.sample = function () {
+          var t = this.t, a = 1;
+          if (this.clip === "show") {
+            var r = Math.min(1, t / HOVER_SHOW_SEC);
+            a = r;                                                   // ray · ring_glow opacity 0 → 255
+            this.rs = HOVER_RING_FROM + (HOVER_RING_TO - HOVER_RING_FROM) * r;
+          } else if (this.clip === "loop") {
+            var u = (t % HOVER_LOOP_SEC) / HOVER_LOOP_SEC;           // opacity 255 유지
+            this.rs = u < 0.5
+              ? HOVER_RING_TO + (HOVER_RING_LOOP_MIN - HOVER_RING_TO) * (u / 0.5)
+              : HOVER_RING_LOOP_MIN + (HOVER_RING_TO - HOVER_RING_LOOP_MIN) * ((u - 0.5) / 0.5);
+          } else if (this.clip === "hide") {
+            a = 1 - Math.min(1, t / HOVER_HIDE_SEC);                 // 255 → 0 · 배율 곡선 없음 = 지금 배율 그대로
+          }
+          this.ring.set({ sx: this.rs, sy: this.rs, a: a });
+          this.ray.set({ a: a, rot: -this.angle });                  // 코코스 angle(반시계 +) → CSS rotate(시계 +)
+        };
+        HoverFx.prototype.step = function (dt) {
+          if (this.dead) return;
+          // 무대가 다시 깔려(st.clear) 노드가 걷혔으면 틱도 뗀다 — 회차를 넘어 도는 틱이 남지 않는다.
+          if (!this.ring.el.parentNode) { this.cut(); return; }
+          this.angle = (this.angle - HOVER_RAY_DPS * dt) % 360;
+          this.t += dt;
+          if (this.clip === "show" && this.t >= HOVER_SHOW_SEC) {
+            // 클라 MergeHoverFx.ts:76-83 onClipFinished — 등장이 끝나면 반복
+            this.clip = "loop"; this.t = 0;
+          } else if (this.clip === "hide" && this.t >= HOVER_HIDE_SEC) {
+            this.cut();                                               // 퇴장이 끝나면 스스로 반납(MergeHoverFx.ts:77-79)
+            return;
+          }
+          this.sample();
+        };
+        /* 클라 MergeHoverFx.ts:29-36 — 등장 → 반복. 첫 프레임(배율 1 · 투명)을 바로 입힌다. */
+        HoverFx.prototype.show = function () {
+          this.hiding = false; this.clip = "show"; this.t = 0;
+          this.sample();
+        };
+        /* 클라 MergeHoverFx.ts:39-60 — 등장 도중이면 진행된 만큼 뒤에서 퇴장을 잇는다((1 − shown) × 퇴장 길이).
+           10% 도 안 떴으면 연출 없이 걷는다. 이미 퇴장 중이면 그대로 둔다. */
+        HoverFx.prototype.hide = function () {
+          if (this.dead || this.hiding) return;
+          if (this.clip === "show") {
+            var shown = Math.min(1, this.t / HOVER_SHOW_SEC);
+            if (shown < HOVER_CUT_BELOW) { this.cut(); return; }
+            this.hiding = true; this.clip = "hide"; this.t = (1 - shown) * HOVER_HIDE_SEC;
+            this.sample();
+            return;
+          }
+          this.hiding = true; this.clip = "hide"; this.t = 0;
+          this.sample();
+        };
+        /* 클라 MergeHoverFx.ts:63-74 — 연출 없이 바로 반납(드롭 · 재렌더 · 화면 이탈) */
+        HoverFx.prototype.cut = function () {
+          if (this.dead) return;
+          this.dead = true;
+          delTick(this.tick);
+          this.ring.kill(); this.ray.kill();
+        };
+
         DEMOS.c2 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), P = V.c2, tile, rings = {}, SI = 9, MI = 2, XI = 1;
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, SI = 9, MI = 2, XI = 1, era = 0;
+          /* hover 장부 — 클라 BoardDragController.ts:50-51 hoverIndex · hoverFx. live 는 퇴장 중인 것까지 들고 reset 에서 전부 끊는다. */
+          var hoverIndex = -1, hoverFx = null, live = [], leaving = null;
           function reset() {
-            Object.keys(rings).forEach(function (k) { rings[k].dead = true; });
-            rings = {};
+            era++;
+            live.forEach(function (fx) { fx.cut(); });
+            live = []; hoverFx = null; hoverIndex = -1; leaving = null;
             st.clear();
             var m = st.cellPos(MI), x = st.cellPos(XI);
             st.tile("mfx-product", 2).set({ x: m.x, y: m.y });
@@ -1899,46 +2215,60 @@
             tile = st.tile("mfx-product", 2);
             tile.set({ x: p.x, y: p.y });
             dragify(st, tile, {
-              onHover: function (cell) { setRing(cell === MI ? MI : -1); },
-              onDrop: function (cell) { setRing(-1); return snapBack(st, tile, null); },
+              onHover: function (cell) { updateHover(cell); },
+              onDrop: function () { dropHover(); return snapBack(st, tile, null); },
             });
           }
-          /* 링은 같은 레벨 타일에만 뜬다 — 아무 데나 뜨면 정보가 아니라 소음이다 */
-          function setRing(cell) {
-            Object.keys(rings).forEach(function (k) {
-              if (Number(k) === cell) return;
-              var r = rings[k];
-              delete rings[k];
-              r.dead = true;
-              r.kill();                                // 클라는 링을 즉시 끈다 — 해제 페이드가 없다
-            });
-            if (cell < 0 || rings[cell]) return;
-            var p = st.cellPos(cell);
-            var ring = st.spr('<div class="mfx-ring" style="width:111px;height:111px"></div>');   // 클라 BoardItemNode mergeHighlight 111
-            ring.set({ x: p.x, y: p.y, sx: 1, sy: 1, a: 0 });   // 클라 BoardItemNode.ts:420·431 — 시작은 배율 1 · 알파 0
-            rings[cell] = ring;
-            function pulse() {
-              if (ring.dead) return;
-              ring.to(P.pulseSec, { sx: P.pulseMax, sy: P.pulseMax, a: P.pulseAlpha }, P.pulseEase)
-                .then(function () { return ring.dead ? null : ring.to(P.pulseSec, { sx: P.pulseMin, sy: P.pulseMin, a: 1 }, P.pulseEase); })
-                .then(function () { if (!ring.dead) pulse(); });
-            }
-            // 클라 BoardItemNode.ts:432-439 — 등장 트윈을 끝까지 돈 뒤에 펄스 반복을 건다(같은 프레임에 덮지 않는다)
-            ring.to(P.inSec, { a: 1, sx: P.inScale, sy: P.inScale }, P.inEase).then(pulse);
+          /* 클라 BoardDragController.ts:246-253 — 칸이 바뀐 프레임에만. 대상 → 대상이면 끊고 새 칸에서 다시 등장,
+             대상 밖(다른 칸 · 보드 밖 -1)으로 나가면 퇴장 클립. 표시는 같은 레벨 타일에만 뜬다(isHoverTarget :256-270). */
+          function updateHover(index) {
+            if (index === hoverIndex) return;
+            var lit = index >= 0 && index === MI;
+            clearHover(!lit);
+            hoverIndex = index;
+            if (lit) lightHover(index);
+          }
+          /* 클라 BoardDragController.ts:273-288 — 칸 가운데에 띄우고 장부에 적는다 */
+          function lightHover(index) {
+            var fx = new HoverFx(st, st.cellPos(index));
+            fx.show();
+            hoverFx = fx;
+            live = live.filter(function (f) { return !f.dead; });
+            live.push(fx);
+          }
+          /* 클라 BoardDragController.ts:295-303 — animated 면 퇴장 클립, 아니면 즉시 반납 */
+          function clearHover(animated) {
+            var fx = hoverFx;
+            hoverFx = null;
+            hoverIndex = -1;
+            if (fx == null || fx.dead) return;
+            if (!animated) { fx.cut(); return; }
+            fx.hide();
+            leaving = fx;
+            Promise.resolve().then(function () { if (leaving === fx) leaving = null; });
+          }
+          /* 클라 BoardDropFlow.ts:59 — 드롭은 표시를 즉시 걷는다(머지면 곧 머지 이펙트가 덮는다).
+             dragify 는 놓는 순간 onHover(-1) 을 먼저 부르므로, 바로 그 호출이 튼 퇴장도 같은 틱에 끊는다.
+             앞서 칸을 벗어나며 시작된 퇴장은 클라처럼 그대로 끝까지 간다. */
+          function dropHover() {
+            clearHover(false);
+            if (leaving) { leaving.cut(); leaving = null; }
           }
           function play() {
             reset();
-            var m = st.cellPos(MI);
+            var m = st.cellPos(MI), mine = era;
             return playPick(tile).then(function () {
-              setRing(MI);
+              if (mine !== era) return null;
+              updateHover(MI);
               return tile.to(0.5, { x: m.x, y: m.y + 10 }, "quadInOut");
-            }).then(function () { return wait(0.9); }).then(function () {
-              setRing(-1);
+            }).then(function () { return mine !== era ? null : wait(0.9); }).then(function () {
+              if (mine !== era) return null;
+              updateHover(-1);                                       // 칸을 벗어남 — 퇴장 클립(BoardDragController.ts:250)
               fxStop(tile);
               return snapBack(st, tile, null);
-            }).then(function () { tile.el.style.zIndex = ""; });
+            }).then(function () { if (mine === era) tile.el.style.zIndex = ""; });
           }
-          return { st: st, reset: reset, play: play, hint: "아래 레벨 2를 끌면 같은 레벨 위에서만 링이 뜹니다" };
+          return { st: st, reset: reset, play: play, hint: "아래 레벨 2를 같은 레벨 위로 끌면 표시가 뜹니다 · 벗어나면 서서히, 놓으면 바로 꺼집니다" };
         };
 
         /* C3 · 충전 완료 ----------------------------------------------------- */
@@ -1973,7 +2303,8 @@
                 .then(function () { if (live()) loop(); });
             })();
           }
-          /* 순서: 칩 팝 → (스파크 ‖ 숨쉬기). 배지 등장은 없다. 충전 게이지는 무대에 두지 않는다(클라 칩에 없음). */
+          /* 순서: 칩 팝 → 숨쉬기. 배지 등장은 없다. 충전 게이지는 무대에 두지 않는다(클라 칩에 없음).
+           스파크는 걷었다 — 코드로 그리던 점 묶음(sparks 노드)이 값 0 으로 꺼져 있었고(2026-10-02 튜닝) 칩 프리팹에서 지웠다(2026-10-21). */
           function complete() {
             if (done) return Promise.resolve();
             done = true;
@@ -1984,14 +2315,10 @@
               return fxTo(gen, P.popInSec, { sx: P.popSX, sy: P.popSY }, P.popInEase)
                 .then(function (ok) { return ok && fxTo(gen, P.popOutSec, { sx: 1, sy: 1 }, P.popOutEase); });
             }).then(function (ok) {
-              return Promise.all([
-                // 클라 BoardItemFx.ts:11·217·225-248 — 시간·반경·이징은 a4 값, 색은 SPARK_COLOR(255,224,130), 개수는 점 8개 상한(sparks 가 자른다)
-                sparks(st, p, P.sparkCount, SPARK_COLOR, V.a4.sparkSec, V.a4.sparkRadius, V.a4.sparkEase),
-                // 클라 BoardItemFx.ts:179-180 playReadyBreath — 팝이 끊기지 않았을 때만 숨쉰다(오갈 때 같은 breathSec · breathEase)
-                ok && fxTo(gen, P.breathSec, { sy: P.breathScale, sx: P.breathScale }, P.breathEase)
-                  .then(function (ok2) { return ok2 && fxTo(gen, P.breathSec, { sy: 1, sx: 1 }, P.breathEase); })
-                  .then(function (ok2) { return fxEnd(gen, ok2); }),
-              ]);
+              // 클라 BoardItemFx.ts playOpenedPop → playReadyBreath — 팝이 끊기지 않았을 때만 숨쉰다(오갈 때 같은 breathSec · breathEase)
+              return ok && fxTo(gen, P.breathSec, { sy: P.breathScale, sx: P.breathScale }, P.breathEase)
+                .then(function (ok2) { return ok2 && fxTo(gen, P.breathSec, { sy: 1, sx: 1 }, P.breathEase); })
+                .then(function (ok2) { return fxEnd(gen, ok2); });
             });
           }
           function play() { reset(); return complete(); }
@@ -2388,7 +2715,7 @@
 
           { group: "action", id: "a2", no: "A2", title: "생산물이 튀어나와 보드로 (베지어)", state: "ok", label: "클라 구현",
             dropped: "생산자 눌림 — 누르는 순간은 A1 값 하나가 모든 칩에 걸린다.",
-            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 고른 생산자를 다시 탭해야 생산한다(BoardTapFlow.ts:169-171). 무장은 칸이 비지 않는 한 남아 있어서 그 뒤로는 탭마다 한 발씩 난다.",
+            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 고른 생산자를 다시 탭해야 생산한다(BoardTapFlow.ts:169-171). 무장은 칸이 비지 않는 한 남아 있어서 그 뒤로는 탭마다 한 발씩 난다. 생산 가능 반짝임은 생산자 칩의 자식 producerSparkle(BoardItemNode.prefab · Effect/prefab/manufacturer_Particle 사본 · 3D 파티클)이다 — 아이콘 바로 위 · 배지 아래. 번개가 서고(상자·충전 시계 아님) 거미줄이 없고 탭 1회분 에너지가 있고(IngameVM.canPayProduce) 저사양이 아닐 때만 켜진다(BoardItemNode.ts:228-231 · 523-542). 에너지가 모자라면 반짝임만 꺼지고 번개 배지는 남는다 — 탭 소모 · 회복 · 구매로 에너지가 바뀌면 BoardRenderFlow.refreshSparkles 가 다시 판정한다. 입자 값은 프리팹에만 있어 MERGE_FX 키가 없다 — 표에 행이 없고 무대는 프리팹 값을 상수로 옮겨 그린다. 켜진 3D 파티클마다 스프라이트 배치가 끊겨 켜진 생산자 하나당 드로우콜이 약 2 늘어난다(미측정). 무대의 「에너지 있음/없음」으로 켜고 끈다.",
             why: "지금 <b>generateItem()</b> 은 빈 셀을 찾아 <b>setPosition</b> 후 그 자리에서 팝만 합니다. 생산자와 결과물 사이에 <b>인과가 화면에 없습니다.</b> 3차 베지어로 날리면 \"저 통에서 이게 나왔다\"가 눈으로 붙습니다. 점선과 붉은 점은 제어점 — 실제 게임에는 안 나옵니다.",
             code:
 "// ViewMergeBoard.ts — cc.bezierTo 는 cc.Action 이라 tween 체인과 안 섞인다.\n" +
@@ -2465,8 +2792,8 @@
 "}" },
 
           { group: "action", id: "a4", no: "A4", title: "병합", state: "ok", label: "클라 구현",
-            dropped: "드래그 값(픽업 · 셀 스냅 · 원위치 복귀) — 클라는 A3 · C1 값을 쓴다. 다른 레벨 위에 놓으면 자리를 바꾼다(2026-09-29).",
-            memo: "결과 칩은 첫 프레임부터 새 단계로, 손 뗀 자리에서 A3 픽업 크기로 칸에 스냅한다. 흡수는 옛 단계 분신(크기 1)이 맡는다. 스파크는 최대 8개(프리팹 점 수). 흡수·링·스파크 키(absorbSec · ring* · spark*)는 클라에서 C3 충전 완료 · 잠금 해제 · 도구 겹치기/적용 연출도 같이 읽는다 — 여기를 바꾸면 그쪽도 바뀐다.",
+            dropped: "드래그 값(픽업 · 셀 스냅 · 원위치 복귀) — 클라는 A3 · C1 값을 쓴다. 다른 레벨 위에 놓으면 자리를 바꾼다(2026-09-29). 스파크 키(sparkCount · sparkSec · sparkEase · sparkRadius) — 코드로 그리던 링·스파크(MergeFxNode)를 아트 클립으로 바꾸며 클라에서 지웠다(2026-10-21).",
+            memo: "결과 칩은 첫 프레임부터 새 단계로, 손 뗀 자리에서 A3 픽업 크기로 칸에 스냅한다. 흡수는 옛 단계 분신(크기 1)이 맡는다. 임팩트는 아트 클립 merge_effect 한 번(0.6초 — 가운데 글로우 수축 · 링 확산 · 불티 5개, 불티 방향은 재생마다 무작위)이라 표 값으로는 모양이 안 바뀐다. 같은 클립을 도구 겹치기 · 도구 적용도 흡수 대기 없이 바로 띄운다. ringSec 는 클라에서 자동 생산 도착 보류 시간으로만 남았고(머지는 흡수 + ringSec 와 착지 사슬 중 늦은 쪽), ringMax · ringEase 는 아무도 안 읽는다 — 키는 설정 주고받기용으로만 남는다.",
             why: "지금은 스프라이트를 바꾸고 <b>0.78 → 1 backOut</b> 팝 하나가 전부입니다. 없는 건 <b>흡수</b>입니다 — 두 개가 하나가 됐다는 사실이 화면에 안 남고, 사라진 타일은 그냥 <b>active = false</b> 로 꺼집니다. 흡수 → 임팩트 → 팝, 세 박자로 끊어야 합쳐진 게 보입니다.<br><br>여기만 <b>4×4 샌드박스</b>입니다. 병합은 한 번 보고 끝나는 연출이 아니라 <b>계속 반복되는 리듬</b>이라, 칩이 자동으로 차오르는 상태에서 봐야 감이 잡힙니다. 자동 생성 주기와 병합 후 잔존 시간은 문서 전용 값이고, 나머지는 그대로 게임 값입니다.",
             code:
 "private async playMerge(source: MergeBoardDragItem, target: MergeBoardDragItem, resultTier: number): Promise<void> {\n" +
@@ -2485,8 +2812,7 @@
 "    source.node.active = false;\n" +
 "    source.node.opacity = 255;\n" +
 "\n" +
-"    this.spawnEffect(\"MergeImpactRing\", targetPosition);\n" +
-"    this.spawnEffect(\"MergeSparkBurst\", targetPosition);\n" +
+"    this.spawnEffect(\"merge_effect\", targetPosition);   // 아트 프리팹 · 0.6초 클립 한 번(링 · 불티 포함)\n" +
 "    GameSound.play(\"FX_TILE_MATCH\", target.node);\n" +
 "\n" +
 "    target.setArtworkSpriteFrame(this.tierSpriteFrames[resultTier - 1]);\n" +
@@ -2676,41 +3002,46 @@
 "}" },
 
           { group: "gap", id: "c2", no: "C2", title: "드래그 중 병합 가능 대상 하이라이트", state: "ok", label: "클라 구현",
-            memo: "클라는 도구 칩을 끌 때도 쓸 수 있는 대상 위에서 같은 링을 켠다(BoardDragController.ts:378-385). 등장(in)이 끝난 뒤 펄스가 반복된다.",
-            dropped: "링 해제 페이드 — 대상에서 벗어나면 링을 즉시 끈다.",
-            why: "머지 장르의 핵심 가독성 장치입니다. 손가락 아래에서 <b>무엇과 합쳐지는지</b>가 보여야 합니다. 링은 <b>같은 레벨 타일에만</b> 뜹니다 — 아무 데나 뜨면 정보가 아니라 소음입니다. 이게 있으면 C1(거부)이 애초에 덜 발생합니다.",
+            memo: "클라는 칩 링을 지우고 아트 프리팹 merge_effect_loop(링 ring_glow + 가산 광선 ray_01)으로 바꿨다(MergeHoverFx.ts). 등장 0.5s(링 1→2배 · 투명→불투명) → 반복 1s(링 2→1.6→2배) → 퇴장 0.333s(투명). 광선은 자기 회전 클립으로 약 8.9초에 한 바퀴 계속 돈다. 칩 아래(HoverFxLayer, CellMask 와 itemLayer 사이)에 그려 대상 칩 아이콘이 가운데를 덮는다. 끄는 규칙(BoardDragController.ts:246-303): 대상 밖 칸 · 보드 밖 · 가방 드롭 · 입력 잠금은 퇴장 클립(등장 도중이면 진행된 만큼 뒤에서 잇고, 10% 도 안 떴으면 바로 끊음), 드롭 · 재렌더 · 화면 이탈은 즉시 끊음, 대상 → 다른 대상은 끊고 새 칸에서 다시 등장. 도구 칩도 쓸 수 있는 대상 위에서 같은 표시를 켠다(:256-270).",
+            dropped: "옛 칩 링 튜닝값(표의 c2 6줄) — 클라가 더는 안 읽는다. 시간·배율은 아트 클립(.anim)이 정한다. MergeFxConfig.ts c2 에 키가 남아 있어 mfx-sync 1:1 대조용으로만 둔다.",
+            why: "머지 장르의 핵심 가독성 장치입니다. 손가락 아래에서 <b>무엇과 합쳐지는지</b>가 보여야 합니다. 표시는 <b>같은 레벨 타일에만</b> 뜹니다 — 아무 데나 뜨면 정보가 아니라 소음입니다. 놓는 순간은 머지 이펙트가 바로 덮으니 즉시 끄고, 그냥 지나칠 때만 서서히 사라집니다. 이게 있으면 C1(거부)이 애초에 덜 발생합니다.",
             code:
-"// moveItemDrag() 안에서 매 이동마다 호출. 대상이 바뀔 때만 실제로 갱신한다.\n" +
-"private updateMergeHighlight(draggedTier: number, hoverCell: number): void {\n" +
-"    if (hoverCell === this.highlightedCell) return;\n" +
-"    this.setMergeHighlight(this.highlightedCell, false);\n" +
-"    this.highlightedCell = -1;\n" +
-"\n" +
-"    if (hoverCell < 0) return;\n" +
-"    if (this.model.getTier(hoverCell) !== draggedTier) return;   // 같은 레벨에만\n" +
-"    this.highlightedCell = hoverCell;\n" +
-"    this.setMergeHighlight(hoverCell, true);\n" +
-"    GameSound.play(\"FX_ITEM_HIGHLIGHT\", this.node);\n" +
+"// BoardDragController — 칸이 바뀐 프레임에만 갈아 끼운다.\n" +
+"public updateHover(index: number): void {\n" +
+"    if (index === this.hoverIndex) return;\n" +
+"    const lit = index >= 0 && this.isHoverTarget(index);\n" +
+"    this.clearHover(!lit);            // 대상 → 대상은 즉시 끊고, 대상 밖으로 나가면 퇴장 클립\n" +
+"    this.hoverIndex = index;\n" +
+"    if (lit) this.lightHover(index);  // PoolManager.get(MergeHoverFx) → 칸 가운데 → show()\n" +
 "}\n" +
 "\n" +
-"private setMergeHighlight(cellIndex: number, on: boolean): void {\n" +
-"    const ring = this.findRingNode(cellIndex);\n" +
-"    if (!ring) return;\n" +
-"    cc.Tween.stopAllByTarget(ring);\n" +
-"    if (!on) { ring.active = false; return; }\n" +
-"    ring.active = true;\n" +
-"    ring.setScale(0.9);\n" +
-"    ring.opacity = 0;\n" +
-"    cc.tween(ring)\n" +
-"        .to(0.14, { scale: 1.02, opacity: 255 }, { easing: \"backOut\" })\n" +
-"        .repeatForever(cc.tween()\n" +
-"            .to(0.45, { scale: 1.14, opacity: 115 }, { easing: \"sineInOut\" })\n" +
-"            .to(0.45, { scale: 0.98, opacity: 255 }, { easing: \"sineInOut\" }))\n" +
-"        .start();\n" +
+"public clearHover(animated: boolean = false): void {\n" +
+"    const fx = this.hoverFx;\n" +
+"    this.hoverFx = null;\n" +
+"    this.hoverIndex = -1;\n" +
+"    if (fx == null || !fx.isValid) return;\n" +
+"    if (animated) fx.hide();          // 칸 벗어남 · 보드 밖 · 가방 드롭 · 입력 잠금\n" +
+"    else fx.cut();                    // 드롭 · 재렌더 · 화면 이탈\n" +
+"}\n" +
+"\n" +
+"// MergeHoverFx — merge_loop_show(0.5s) → merge_loop(1s 반복) → merge_loop_hide(0.333s) → 반납\n" +
+"public hide(): void {\n" +
+"    if (this.hiding) return;\n" +
+"    const show = this.animation.getAnimationState(\"merge_loop_show\");\n" +
+"    if (show != null && show.isPlaying) {\n" +
+"        const shown = Math.min(1, show.time / show.duration);\n" +
+"        if (shown < 0.1) { this.cut(); return; }   // 거의 안 떴다 — 바로 걷는다\n" +
+"        this.hiding = true;\n" +
+"        const hide = this.animation.getAnimationState(\"merge_loop_hide\");\n" +
+"        this.animation.play(\"merge_loop_hide\", (1 - shown) * hide.duration);   // 지금 투명도에서 잇는다\n" +
+"        return;\n" +
+"    }\n" +
+"    this.hiding = true;\n" +
+"    this.animation.play(\"merge_loop_hide\");\n" +
 "}" },
 
           { group: "gap", id: "c3", no: "C3", title: "타이머 상자 개봉 완료", state: "ok", label: "클라 구현",
-            memo: "스파크의 시간·반경·이징은 A4 값을 빌린다(점 8개 상한). sparkCount 는 잠금 해제 버스트도 같이 쓴다(BoardItemFx.ts:129). 게이지 소멸은 클라 실경로에선 안 보임 — 상자 개봉에는 게이지가 없다(WakeFlow.ts:108). 무대에서도 게이지를 뺐다(2026-10-16) — 값은 설정 주고받기용으로만 남는다.",
+            memo: "스파크는 걷었다 — 코드로 그리던 점 묶음(칩 프리팹 sparks 노드)은 값이 0 으로 꺼져 있었고(2026-10-02 튜닝) 잠금 해제 불꽃과 함께 지웠다(2026-10-21). 지금 완료 연출은 칩 팝 → 숨쉬기다. 게이지 소멸은 클라 실경로에선 안 보임 — 상자 개봉에는 게이지가 없다(WakeFlow.ts:108). 무대에서도 게이지를 뺐다(2026-10-16) — 값은 설정 주고받기용으로만 남는다.",
             dropped: "완료 순간의 「!」 등장 — 「!」는 닫힌 타이머 상자를 열라는 노티라 열린 상자에는 안 붙는다 (2026-09-30 결정).",
             why: "요청 목록에 \"충전중\"은 있는데 <b>충전 완료</b>가 없습니다. 그런데 유저를 게임으로 다시 부르는 건 충전중이 아니라 <b>완료되는 순간</b>입니다. 게이지가 사라지고, 감광이 풀리고, 한 번 크게 튀고, 느낌표가 붙어 계속 까딱거려야 합니다 — 이 까딱거림이 B2 의 조용한 숨쉬기와 대비돼서 상태가 구분됩니다.",
             code:
@@ -2719,7 +3050,6 @@
 "    this.chargingRoot.active = false;\n" +
 "    this.generatorSprite.node.opacity = 255;\n" +
 "    GameSound.play(\"FX_STAGE_UP\", this.generatorNode);\n" +
-"    this.spawnEffect(\"MergeReadySpark\", this.generatorNode.getPosition());\n" +
 "\n" +
 "    cc.Tween.stopAllByTarget(this.generatorNode);\n" +
 "    cc.tween(this.generatorNode)\n" +
