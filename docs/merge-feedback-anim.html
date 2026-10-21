@@ -68,7 +68,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
           <span class="tag">연출 16종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.3 · 2026-10-21 09:21</span>
+          <span class="tag" id="mfx-ver">v4.3 · 2026-10-21 09:26</span>
         </div>
       </div>
     </header>
@@ -1664,6 +1664,13 @@
           var st = makeStage(host, { cols: 4, rows: 4 }), P = V.a4;
           var N = 16, cells = new Array(N), era = 0, spawnIdx = 0;
           var START = [0, 2, 5, 7, 9, 12], TIERS = [1, 1, 2, 2, 1, 3];
+          /* 놓을 칸 표시 — 클라 BoardDragController.updateHover: 끌고 있는 칩과 같은 단계(최고 단계 제외)의 다른 칩 위에서만 뜬다(MergeRules.mergeCheck).
+             C2 와 같은 장부다. 끌고 있는 칩은 dragTile 로 안다. */
+          var dragTile = null;
+          var hover = makeHoverLedger(st, function (cell) {
+            var o = cells[cell];
+            return !!(dragTile && o && o !== dragTile && o.tier === dragTile.tier && dragTile.tier < 4);
+          });
           /* 무대 전용 — 샌드박스가 계속 차오르게 하는 값. 게임에는 없다 */
           var SPAWN_SEC = 1, SPAWN_POP_SEC = 0.18, MERGED_LINGER_SEC = 2;
 
@@ -1678,7 +1685,10 @@
             t.set({ x: p.x, y: p.y });
             cells[cell] = t;
             dragify(st, t, {
+              onHover: function (cell2) { dragTile = t; hover.update(cell2); },
               onDrop: function (cell2) {
+                hover.drop();                                   // 클라 BoardDropFlow.ts:59 — 드롭은 표시를 바로 걷는다
+                dragTile = null;
                 var from = t.cell;
                 if (cell2 < 0 || cell2 === from) return home(t);
                 var other = cells[cell2];
@@ -1768,6 +1778,8 @@
 
           function reset() {
             era++;
+            hover.reset();
+            dragTile = null;
             st.clear();
             cells = new Array(N);
             spawnIdx = 0;
@@ -1780,11 +1792,12 @@
             if (!a || !b) return Promise.resolve();
             // 손으로 끌 때와 같은 앞머리 — 터치다운 누름(a1) → 1 에서 집기(a3) → 손 뗀 자리에서 병합
             return playPick(a)
-              .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
-              .then(function () { fxStop(a); cells[a.cell] = null; a.el.style.zIndex = ""; return merge(a, b, 2); });
+              .then(function () { dragTile = a; hover.update(2); return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
+              .then(function () { return wait(0.35); })                       // 표시가 뜨는 걸 보여 주고 놓는다
+              .then(function () { hover.drop(); dragTile = null; fxStop(a); cells[a.cell] = null; a.el.style.zIndex = ""; return merge(a, b, 2); });
           }
-          return { st: st, reset: reset, play: play, stop: function () { era++; },
-            hint: "같은 레벨끼리 겹쳐 보세요 · 다른 레벨 위에 놓으면 자리를 바꿉니다 · 1초마다 새 칩이 나오고 합친 건 잠시 뒤 사라집니다" };
+          return { st: st, reset: reset, play: play, stop: function () { era++; hover.reset(); dragTile = null; },
+            hint: "같은 레벨끼리 겹쳐 보세요 · 합쳐질 칸 위에선 놓을 칸 표시가 뜹니다 · 다른 레벨 위에 놓으면 자리를 바꿉니다 · 1초마다 새 칩이 나오고 합친 건 잠시 뒤 사라집니다" };
         };
 
         /* A5 · 보너스 슬롯에서 보드로 -------------------------------------- */
@@ -2199,45 +2212,13 @@
           this.ring.kill(); this.ray.kill();
         };
 
-        DEMOS.c2 = function (host) {
-          var st = makeStage(host, { cols: 4, rows: 3 }), tile, SI = 9, MI = 2, XI = 1, era = 0;
-          /* hover 장부 — 클라 BoardDragController.ts:50-51 hoverIndex · hoverFx. live 는 퇴장 중인 것까지 들고 reset 에서 전부 끊는다. */
+        /* 놓을 칸 표시 장부 — 클라 BoardDragController.ts:50-51 hoverIndex · hoverFx 와 updateHover · lightHover · clearHover.
+           C2 와 A4 가 같이 쓴다. isTarget(cell) 이 「놓으면 합쳐지는 칸인가」를 답한다(클라는 IngameVM.mergeCheckAt).
+           live 는 퇴장 중인 것까지 들고 있다가 reset 에서 전부 끊는다. */
+        function makeHoverLedger(st, isTarget) {
           var hoverIndex = -1, hoverFx = null, live = [], leaving = null;
-          function reset() {
-            era++;
-            live.forEach(function (fx) { fx.cut(); });
-            live = []; hoverFx = null; hoverIndex = -1; leaving = null;
-            st.clear();
-            var m = st.cellPos(MI), x = st.cellPos(XI);
-            st.tile("mfx-product", 2).set({ x: m.x, y: m.y });
-            st.tile("mfx-product", 3).set({ x: x.x, y: x.y });
-            var p = st.cellPos(SI);
-            tile = st.tile("mfx-product", 2);
-            tile.set({ x: p.x, y: p.y });
-            dragify(st, tile, {
-              onHover: function (cell) { updateHover(cell); },
-              onDrop: function () { dropHover(); return snapBack(st, tile, null); },
-            });
-          }
-          /* 클라 BoardDragController.ts:246-253 — 칸이 바뀐 프레임에만. 대상 → 대상이면 끊고 새 칸에서 다시 등장,
-             대상 밖(다른 칸 · 보드 밖 -1)으로 나가면 퇴장 클립. 표시는 같은 레벨 타일에만 뜬다(isHoverTarget :256-270). */
-          function updateHover(index) {
-            if (index === hoverIndex) return;
-            var lit = index >= 0 && index === MI;
-            clearHover(!lit);
-            hoverIndex = index;
-            if (lit) lightHover(index);
-          }
-          /* 클라 BoardDragController.ts:273-288 — 칸 가운데에 띄우고 장부에 적는다 */
-          function lightHover(index) {
-            var fx = new HoverFx(st, st.cellPos(index));
-            fx.show();
-            hoverFx = fx;
-            live = live.filter(function (f) { return !f.dead; });
-            live.push(fx);
-          }
           /* 클라 BoardDragController.ts:295-303 — animated 면 퇴장 클립, 아니면 즉시 반납 */
-          function clearHover(animated) {
+          function clear(animated) {
             var fx = hoverFx;
             hoverFx = null;
             hoverIndex = -1;
@@ -2247,23 +2228,67 @@
             leaving = fx;
             Promise.resolve().then(function () { if (leaving === fx) leaving = null; });
           }
-          /* 클라 BoardDropFlow.ts:59 — 드롭은 표시를 즉시 걷는다(머지면 곧 머지 이펙트가 덮는다).
-             dragify 는 놓는 순간 onHover(-1) 을 먼저 부르므로, 바로 그 호출이 튼 퇴장도 같은 틱에 끊는다.
-             앞서 칸을 벗어나며 시작된 퇴장은 클라처럼 그대로 끝까지 간다. */
-          function dropHover() {
-            clearHover(false);
-            if (leaving) { leaving.cut(); leaving = null; }
+          /* 클라 BoardDragController.ts:273-288 — 칸 가운데에 띄우고 장부에 적는다 */
+          function light(index) {
+            var fx = new HoverFx(st, st.cellPos(index));
+            fx.show();
+            hoverFx = fx;
+            live = live.filter(function (f) { return !f.dead; });
+            live.push(fx);
+          }
+          return {
+            /* 클라 BoardDragController.ts:246-253 — 칸이 바뀐 프레임에만. 대상 → 대상이면 끊고 새 칸에서 다시 등장,
+               대상 밖(다른 칸 · 보드 밖 -1)으로 나가면 퇴장 클립. */
+            update: function (index) {
+              if (index === hoverIndex) return;
+              var lit = index >= 0 && isTarget(index);
+              clear(!lit);
+              hoverIndex = index;
+              if (lit) light(index);
+            },
+            /* 클라 BoardDropFlow.ts:59 — 드롭은 표시를 즉시 걷는다(머지면 곧 머지 이펙트가 덮는다).
+               dragify 는 놓는 순간 onHover(-1) 을 먼저 부르므로, 바로 그 호출이 튼 퇴장도 같은 틱에 끊는다.
+               앞서 칸을 벗어나며 시작된 퇴장은 클라처럼 그대로 끝까지 간다. */
+            drop: function () {
+              clear(false);
+              if (leaving) { leaving.cut(); leaving = null; }
+            },
+            reset: function () {
+              live.forEach(function (fx) { fx.cut(); });
+              live = []; hoverFx = null; hoverIndex = -1; leaving = null;
+            },
+          };
+        }
+
+        DEMOS.c2 = function (host) {
+          var st = makeStage(host, { cols: 4, rows: 3 }), tile, SI = 9, MI = 2, XI = 1, era = 0;
+          /* 같은 레벨 타일(MI) 위에서만 표시가 뜬다 — 장부는 makeHoverLedger(A4 도 같이 쓴다) */
+          var hover = makeHoverLedger(st, function (cell) { return cell === MI; });
+          function reset() {
+            era++;
+            hover.reset();
+            st.clear();
+            var m = st.cellPos(MI), x = st.cellPos(XI);
+            st.tile("mfx-product", 2).set({ x: m.x, y: m.y });
+            st.tile("mfx-product", 3).set({ x: x.x, y: x.y });
+            var p = st.cellPos(SI);
+            tile = st.tile("mfx-product", 2);
+            tile.set({ x: p.x, y: p.y });
+            dragify(st, tile, {
+              onHover: function (cell) { hover.update(cell); },
+              onDrop: function () { hover.drop(); return snapBack(st, tile, null); },
+            });
           }
           function play() {
             reset();
             var m = st.cellPos(MI), mine = era;
             return playPick(tile).then(function () {
               if (mine !== era) return null;
-              updateHover(MI);
+              hover.update(MI);
               return tile.to(0.5, { x: m.x, y: m.y + 10 }, "quadInOut");
             }).then(function () { return mine !== era ? null : wait(0.9); }).then(function () {
               if (mine !== era) return null;
-              updateHover(-1);                                       // 칸을 벗어남 — 퇴장 클립(BoardDragController.ts:250)
+              hover.update(-1);                                      // 칸을 벗어남 — 퇴장 클립(BoardDragController.ts:250)
               fxStop(tile);
               return snapBack(st, tile, null);
             }).then(function () { if (mine === era) tile.el.style.zIndex = ""; });
