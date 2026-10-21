@@ -1719,8 +1719,19 @@
         const issue = !!spCat;
         /* 「진행 막힘」 — 대화 이슈와 다른 축이라 심부름 행을 직접 고른다(Day · 「추가 아이템」은 그대로 건다) */
         const led = ledOn;
+        const ill = illOn;
         if (led) ev = rows.filter((r) => isLedBlock(keyOfRow(r))).map((row) => ({ t: "task", key: keyOfRow(row), row }));
-        else if (issue) {
+        else if (ill) {
+          /* 삽화 채팅 + 바로 위 심부름. Day 는 채팅을 부른 심부름의 day 로 가른다(이슈 필터와 같은 규칙). */
+          ev = [];
+          ILL_TALKS.forEach((e) => {
+            if (dayFilter !== 0 && e.row[0] !== dayFilter) return;
+            const task = TASK_BEFORE.get(e);
+            if (onlyItem && (!task || !task.row[5].length)) return;
+            if (task) ev.push(task);
+            ev.push(e);
+          });
+        } else if (issue) {
           ev = [];
           spIssueRows().forEach((r) => {
             const task = TASK_BEFORE.get(r.ev);
@@ -1739,11 +1750,12 @@
         /* day 별 집계 — 밴드에 실을 값. 구역은 day 구간과 1:1이라 하나로 떨어진다. */
         const stat = {};
         /* 밴드는 보이는 day 로 묶는다 — 전날에서 끌어온 채팅 행도 그날 밴드 아래에 선다 */
-        const bandDay = (e) => (dayFilter === 0 || onlyItem || issue ? e.row[0] : dayFilter);
+        const grouped = issue || ill;
+        const bandDay = (e) => (dayFilter === 0 || onlyItem || grouped ? e.row[0] : dayFilter);
         for (const e of ev) {
           const bd = bandDay(e);
           const d = (stat[bd] = stat[bd] || { area: null, task: 0, talk: 0, line: 0 });
-          if ((e.t === "task" || issue) && !d.area) d.area = e.row[8];
+          if ((e.t === "task" || grouped) && !d.area) d.area = e.row[8];
           if (e.t === "task") d.task++;
           else { d.talk++; d.line += e.lines.length; }
         }
@@ -1772,7 +1784,7 @@
             html += talkRowHtml(e, id, det).replace('class="cr-row is-talk', `class="cr-row is-talk${daystart}`)
               + (det ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="7">${det}</td></tr>` : "");
             /* 채팅이 끝나면 꾸미기 — 수선·택1 만 행이 선다(대화 유형·첫 진입은 꾸미기가 없다). */
-            const deco = e.kind === "clear" && !issue ? boxHtml(e, resultHtml(e.row)) : "";
+            const deco = e.kind === "clear" && !grouped ? boxHtml(e, resultHtml(e.row)) : "";
             if (deco) {
               const did = `${id}-deco`;
               html += decoRowHtml(e, did)
@@ -1786,6 +1798,11 @@
 
         if (led) {
           $("#crCount").textContent = `진행 막힘 · 심부름 ${ev.length}건 (계산)`;
+          return;
+        }
+        if (ill) {
+          const talks = ev.filter((e) => e.t === "talk");
+          $("#crCount").textContent = `삽화 채팅 ${talks.length}회 · 삽화 ${talks.reduce((a, e) => a + illCountOf(e), 0)}장 · 심부름 ${ev.length - talks.length}건`;
           return;
         }
         if (issue) {
@@ -1988,7 +2005,7 @@
       /* 이슈 버튼으로 걸러진 표에 목표 행이 없으면 그때만 이슈 필터를 끈다 — 대조표에서 누른 채팅은 남아 있다 */
       function findRow(sel) {
         let el = document.querySelector(sel);
-        if (!el && (spCat || ledOn)) { spCat = null; ledOn = false; renderFiltered(); el = document.querySelector(sel); }
+        if (!el && (spCat || ledOn || illOn)) { spCat = null; ledOn = false; setIll(false); renderFiltered(); el = document.querySelector(sel); }
         return el;
       }
       function goRow(chk) {
@@ -2048,6 +2065,17 @@
       /* 클리어 채팅 → 그 채팅을 부른 심부름 행(타임라인 바로 앞). 첫 진입 채팅은 위에 심부름이 없다. */
       const TASK_BEFORE = new Map();
       TIMELINE.forEach((e, i) => { if (e.t === "talk" && e.kind === "clear") TASK_BEFORE.set(e, TIMELINE[i - 1]); });
+      /* 「삽화 채팅」 — story_dialog 삽화 줄(animation=illustration)이 들어가는 채팅만. 이슈 버튼과 같은 묶음이라 하나만 켜진다.
+         켜 두면 삽화를 바로 봐야 하니 채팅 펼침을 열고, 끄면 전 상태로 되돌린다. */
+      const illCountOf = (e) => e.segs.reduce((a, g) => a + g.lines.filter(isIll).length, 0);
+      const ILL_TALKS = TIMELINE.filter((e) => e.t === "talk" && illCountOf(e) > 0);
+      let illOn = false;
+      let talkOpenBeforeIll = false;
+      function setIll(on) {
+        if (on === illOn) return;
+        illOn = on;
+        if (on) { talkOpenBeforeIll = talkOpen; talkOpen = true; } else talkOpen = talkOpenBeforeIll;
+      }
       /* 건수·대조표 기준 — 추적 토글 · Day(채팅을 부른 심부름의 day). 「추가 아이템」은 위 표에만 건다. */
       const spBase = () => SP_ROWS.filter((r) => (!spTracked || r.tracked) && (dayFilter === 0 || r.ev.row[0] === dayFilter));
       const spIssueRows = () => spBase().filter((r) => !spCat || r.cat === spCat);
@@ -2104,7 +2132,9 @@
       function renderIssueBar() {
         const base = spBase();
         const n = (cat) => base.filter((r) => r.cat === cat).length;
+        const illN = ILL_TALKS.filter((e) => dayFilter === 0 || e.row[0] === dayFilter).length;
         $("#crIssue").innerHTML = `<span class="cr-sep" aria-hidden="true"></span>`
+          + `<button class="cr-btn${illOn ? " is-on" : ""}" type="button" data-ill aria-pressed="${illOn}" title="삽화 줄(story_dialog animation=illustration)이 들어가는 채팅만 — 그 채팅과 바로 위 심부름 행, 삽화는 펼친 채로">삽화 채팅<span class="n">${illN}</span></button>`
           + `<button class="cr-btn${ledOn ? " is-on" : ""}" type="button" data-ledger aria-pressed="${ledOn}" title="심부름 비용을 그때까지 번 코인으로 못 내는 심부름 — 고정 오더 수입 기준 계산값">진행 막힘<span class="n">${ledCount()}</span></button>`
           + `<span class="cr-sep" aria-hidden="true"></span>`
           + ISSUE_CATS.map(([k, , label, ds]) =>
@@ -2352,8 +2382,9 @@
           const b = ev.target.closest("button");
           if (!b) return;
           if (b.hasAttribute("data-sp-tracked")) spTracked = !spTracked;
-          else if (b.hasAttribute("data-ledger")) { ledOn = !ledOn; if (ledOn) spCat = null; }
-          else { spCat = spCat === b.dataset.spCat ? null : b.dataset.spCat; if (spCat) ledOn = false; }
+          else if (b.hasAttribute("data-ill")) { setIll(!illOn); if (illOn) { spCat = null; ledOn = false; } }
+          else if (b.hasAttribute("data-ledger")) { ledOn = !ledOn; if (ledOn) { spCat = null; setIll(false); } }
+          else { spCat = spCat === b.dataset.spCat ? null : b.dataset.spCat; if (spCat) { ledOn = false; setIll(false); } }
           renderFiltered();
         });
         $("#crSpBody").addEventListener("click", (ev) => {
