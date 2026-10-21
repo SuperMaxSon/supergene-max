@@ -216,8 +216,16 @@
       /* 흉상이 없는 화자는 기본 얼굴 원형 — 흉상 링과 비슷한 크기로 칸 가운데 아래에 앉힌다 */
       .cr-ava .cr-face { width: 38px; height: 38px; font-size: 12px; margin-bottom: 4px; }
       /* 한 채팅 안의 씬 경계 — 클리어 채팅은 완료 · 구역 완료 · 다음 시작 씬을 이어 붙인다 */
-      .cr-ill { margin: 4px auto 10px; max-width: 360px; }
-      .cr-ill img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border-soft); }
+      /* 삽화 카드 — 클라 dialogue_illustration.prefab 모양 그대로(720×500 기준 %).
+         마스크는 4.6° 기울어 위·아래가 띠 중앙선을 따라 잘리고, 삽화는 똑바로 선다. 띠는 그 위에 얹는다. */
+      .cr-ill { margin: 4px auto 10px; max-width: 420px; }
+      .cr-ill .cr-ill-box { position: relative; aspect-ratio: 720 / 500; overflow: hidden; border-radius: 10px; background: #34312e; }
+      .cr-ill .cr-ill-pic { position: absolute; inset: 0;
+        clip-path: polygon(0% 13.47%, 100% 2.03%, 100% 83.44%, 0% 95.15%); }
+      .cr-ill .cr-ill-pic img { position: absolute; left: -2.22%; top: 1.02%; width: 104.44%; height: 95%; max-width: none; }
+      .cr-ill .cr-ill-band { position: absolute; left: 0; width: 100%; height: auto; pointer-events: none; }
+      .cr-ill .cr-ill-top { top: 0.6%; }
+      .cr-ill .cr-ill-bot { top: 70.1%; }
       .cr-ill figcaption { margin-top: 3px; text-align: center; font-size: 10.5px; color: var(--text-faint); }
       .cr-seg { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px;
                 font-size: 11px; font-weight: 700; color: var(--text-faint); }
@@ -950,7 +958,7 @@
         시트 export 의 런칭분은 day 1~18 · 196건입니다(<a href="chore-order-story-merge.html">등장 순서 문서</a> 참고).
         <br />삽화 11장(speaker <code>none</code> · animation <code>illustration</code>)은 대사가 아니라 그 자리에
         <code>story/illustration/{key_number}</code> 그림을 띄우라는 <code>story_dialog</code> 행이라 <b>줄 수에는 안 세고</b>,
-        채팅에서 해당 위치에 카드로 보입니다. 그림은 클라 <code>assets/bundle/story/illustration/</code> 사본이고, 카드 위치는 클라 <code>story_dialog.json</code>(시트 10-21 · 기획서 v1.24) 기준입니다 — 대사 문장은 10-18 과 글자까지 같지만 삽화 행의 step 은 10-21 에서 바뀌었습니다(2026-10-21).
+        채팅에서 해당 위치에 카드로 보입니다(카드 모양은 클라 <code>dialogue_illustration</code> 프리팹 그대로 — 4.6° 기울인 마스크로 위·아래를 자르고 위아래 띠를 얹음). 그림은 클라 <code>assets/bundle/story/illustration/</code> 사본이고, 카드 위치는 클라 <code>story_dialog.json</code>(시트 10-21 · 기획서 v1.24) 기준입니다 — 대사 문장은 10-18 과 글자까지 같지만 삽화 행의 step 은 10-21 에서 바뀌었습니다(2026-10-21).
         <br />화자 얼굴은 클라 <code>assets/bundle/character/sprite/</code> 임시 원화에서 잘라 냈습니다(Wren 은 대화 초상에서). 채팅 감정 얼굴은 클라 <code>assets/bundle/dialogue/</code> 초상 clip 의 첫 프레임이고, 감정 고르는 규칙도 클라 <code>StoryCharacterTheme.ts</code> 그대로입니다. 채팅 행의 「마을」은 클라 <code>StoryCharacterStage</code> 규칙으로 계산한 채팅 직전 무대(<code>area.prefab</code> 지점 하나)이고, 그림은 <code>character/sprite</code> 전신 감정 첫 프레임입니다.
         채팅 말풍선 얼굴은 클라 스프라이트 애니메이션(<code>bundle/chat/animation</code> 흉상)의
         <b>첫 프레임 원본</b>을 크기만 줄여 썼습니다. 흉상은 Rosie · Brett · Rafa · Poppy 4명뿐이라 나머지는 기본 얼굴만 나옵니다. 시트 감정 16종 → 아트 감정 대응은 정본에 표가 없어 이 문서가 정한 것이고,
@@ -1385,8 +1393,11 @@
       };
 
       /* 삽화 카드 — 클라 story/illustration/{key_number} 사본(docs/img/story-illust). 채팅 흐름 안 해당 줄 자리에 놓는다. */
+      /* 모양은 클라 dialogue_illustration.prefab(720×500) 그대로 — 위 CSS .cr-ill 참고. 띠 PNG 는 img/story-illust/band-top·bottom.png. */
       function illustHtml(key) {
-        return `<figure class="cr-ill"><img src="img/story-illust/${esc(key)}.jpg" alt="삽화 ${esc(key)}" loading="lazy" decoding="async">`
+        return `<figure class="cr-ill"><div class="cr-ill-box"><div class="cr-ill-pic"><img src="img/story-illust/${esc(key)}.jpg" alt="삽화 ${esc(key)}" loading="lazy" decoding="async"></div>`
+          + `<img class="cr-ill-band cr-ill-top" src="img/story-illust/band-top.png" alt="" aria-hidden="true">`
+          + `<img class="cr-ill-band cr-ill-bot" src="img/story-illust/band-bottom.png" alt="" aria-hidden="true"></div>`
           + `<figcaption>삽화 · story_dialog ${esc(key)}</figcaption></figure>`;
       }
 
