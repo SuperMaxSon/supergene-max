@@ -394,14 +394,14 @@ const SECTIONS = [
       },
       {
         title: "초반 성능 시뮬레이션",
-        desc: "NRU·RU 를 10분씩(1배속 QA 봇) 플레이하는 동안 성능을 CPU · GPU · 메모리 · 네트워크 4축으로 봅니다. 10분 시연 아래 4축 그래프(긴 프레임 ▼ 원인 카드) · 4축 버전 표.",
+        desc: "NRU·RU 를 10분씩(1배속 QA 봇) 플레이하는 동안 성능을 CPU · GPU · 메모리 · 네트워크 4축으로 봅니다. 10분 시연 아래 4축 그래프(긴 프레임 ▼ 원인 카드) · 4축 버전 표 · 다른 게임 비교 · 실기기(갤럭시 A12) 비교.",
         url: "docs/story-merge-memory-sim.html",
         project: "smg",
         status: "완료",
         version: "v2.2 · main 1cd91f54 · 모바일 시뮬",
-        updated: "2026-10-22 16:28",
+        updated: "2026-10-22 17:58",
         pinned: false,
-        tags: ["봇 실측", "성능", "CPU", "GPU", "메모리", "네트워크"],
+        tags: ["봇 실측", "성능", "CPU", "GPU", "메모리", "네트워크", "실기기"],
       },
       {
         title: "아틀라스 기획",
