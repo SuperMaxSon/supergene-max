@@ -383,6 +383,18 @@
       .cr-stage-figs img { display: block; height: 120px; width: auto; margin: 0 auto; }
       .cr-stage-figs figcaption { margin-top: 3px; font-size: 11px; color: var(--text-faint); }
       .cr-stage-figs figcaption b { display: block; font-size: 12px; color: var(--text); }
+      /* 기획 ↔ 클라 나란히 — 같으면 한 번만(일치), 다르면 두 칸. 빠짐은 점선 칸, 남음(말 안 함)은 흐리게 */
+      .cr-cmp { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+      .cr-cmp-b { flex: 1 1 260px; min-width: 0; padding: 8px 10px 10px; border-radius: 10px; background: var(--surface-2, var(--surface)); box-shadow: inset 0 0 0 1px var(--border); }
+      .cr-cmp-h { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; font-weight: 800; color: var(--text); }
+      .cr-cmp-h .sub { font-weight: 500; color: var(--text-faint); font-size: 11px; }
+      .cr-cmp .cr-stage-figs { margin-top: 8px; }
+      .cr-stage-figs figure.is-gap { opacity: 0.55; }
+      .cr-stage-figs figure.is-miss .cr-miss-box { height: 120px; width: 70px; display: grid; place-items: center; border: 2px dashed var(--deploy); border-radius: 8px;
+                                                    font-size: 11px; font-weight: 800; color: var(--deploy); }
+      .cr-stage-figs figure.is-miss img { outline: 2px dashed var(--deploy); outline-offset: 3px; border-radius: 6px; }
+      .cr-stage-figs figcaption i { font-style: normal; font-weight: 700; color: var(--deploy); }
+      .cr-stage-figs figcaption u { text-decoration: none; font-weight: 800; color: var(--deploy); }
       /* 클라 텍스처 전체 — 접어 둔다 */
       .cr-tex { margin-top: 8px; }
       .cr-tex > summary { cursor: pointer; font-size: 11.5px; color: var(--text-dim); }
@@ -1611,7 +1623,7 @@
           const slot = s[3] === "finish" ? "a" : ev.kind === "finish" ? "f" : "s";
           const segs = ev.segs.filter((g) => g.slot === slot);
           const speak = new Set();
-          segs.forEach((g) => g.lines.forEach((l) => { const c = l[1].toLowerCase(); if (c !== "none") speak.add(c); }));
+          segs.forEach((g) => g.lines.forEach((l) => { const c = l[1].toLowerCase(); if (c !== "none") speak.add(STAGE_ALIAS[c] || c); }));
           const on = new Set(s[2].map(([c]) => c));
           const miss = [...speak].filter((c) => !on.has(c));
           const extra = [...on].filter((c) => !speak.has(c) && c !== HERO.toLowerCase());
@@ -1669,6 +1681,74 @@
         return `<div class="cr-stage"><span class="lb">마을</span>${c.s[2].map(([ch, e]) => stageImg(ch, e)).join("")}${stageVdHtml(ev)}`
           + (c.st === "bad" ? `<span class="cr-stage-miss">${stageMissHtml(c)}</span>` : "") + `</div>`;
       }
+      /* 클라 character/prefab 폴더 실측(2026-10-22) — 감정 프리팹이 있는 캐릭터만 적는다. 나머지는 idle 만 있다.
+         기획 감정 = 그 씬에서 그 화자가 가장 많이 쓴 시트 감정 → EMO_MAP 후보 중 클라에 있는 첫 감정, 없으면 idle(시트 어휘 16종 대비 클라 감정은 5종 이하라 대부분 idle). */
+      const STAGE_EMO = { rosie: ["idle", "happy", "sad", "worried", "angry"], theo: ["idle", "happy", "serious"], poppy: ["idle", "sad"], gus: ["idle", "fear"], brett: ["idle", "sad"] };
+      const STAGE_ALIAS = { wrenhood: "hood" };
+      const stageKey = (name) => { const k = name.toLowerCase(); return STAGE_ALIAS[k] || k; };
+      const planEmo = (ch, sheet) => (EMO_MAP[sheet] || []).find((x) => (STAGE_EMO[ch] || ["idle"]).includes(x)) || "idle";
+      /* 이 채팅이 대 보는 기획 씬의 인물 — 주인공은 늘 서 있으니 맨 앞에 두고, 나머지는 처음 말한 순서. [[캐릭터, 클라 감정, 시트 감정]…] */
+      function planCastOf(ev, s) {
+        const slot = s[3] === "finish" ? "a" : ev.kind === "finish" ? "f" : "s";
+        const segs = ev.segs.filter((g) => g.slot === slot);
+        if (!segs.length) return null;
+        const by = new Map([[HERO.toLowerCase(), new Map()]]);
+        segs.forEach((g) => g.lines.forEach((l) => {
+          if (l[1].toLowerCase() === "none") return;
+          const k = stageKey(l[1]);
+          if (!by.has(k)) by.set(k, new Map());
+          by.get(k).set(l[2], (by.get(k).get(l[2]) || 0) + 1);
+        }));
+        return [...by].map(([ch, m]) => {
+          const top = [...m].sort((a, b) => b[1] - a[1])[0];
+          return [ch, top ? planEmo(ch, top[0]) : "idle", top ? top[0] : ""];
+        });
+      }
+      /* 그림이 없는 감정은 idle 그림으로 대신 보이고, 그것도 없으면(후드 · 렌) 그림 없이 이름만 */
+      const stageImgFb = (c, e) => `<img src="img/npc/stage/${esc(c)}_${esc(e)}.png" alt="${esc(capName(c))} ${esc(e)}" loading="lazy" decoding="async"`
+        + ` onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.src.replace(/_[^_/]+[.]png$/,'_idle.png')}else{this.style.visibility='hidden'}">`;
+      const stageFig = (ch, e, cls, note, tip) => `<figure class="${cls || ""}"${tip ? ` title="${esc(tip)}"` : ""}>${stageImgFb(ch, e)}<figcaption><b>${esc(capName(ch))}</b>${esc(e)}${note ? ` <i>${note}</i>` : ""}</figcaption></figure>`;
+      function stageCompareHtml(ev, c) {
+        const s = c.s;
+        const plan = planCastOf(ev, s);
+        const client = s[2];
+        const emoOf = (list, ch) => { const f = list.find(([x]) => x === ch); return f ? f[1] : null; };
+        if (!plan) {
+          return `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.plan} <span class="sub">대조할 기획 씬 대사가 없음</span></div></div>`
+            + `<div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.client} <span class="sub">마을</span></div><div class="cr-stage-figs">${client.map(([ch, e]) => stageFig(ch, e)).join("")}</div></div></div>`;
+        }
+        /* 시트 감정이 가리키는 클라 감정 후보 중 클라가 이미 쓰는 게 있으면 그걸로 본다(같은 감정이다) */
+        /* 주인공의 포즈는 아트가 고르는 것이라 감정 차이로 치지 않는다 */
+        plan.forEach((p) => { const ce = emoOf(client, p[0]); if (ce && (p[0] === HERO.toLowerCase() || (EMO_MAP[p[2]] || []).includes(ce))) p[1] = ce; });
+        const names = new Set(plan.map(([ch]) => ch));
+        const hero = HERO.toLowerCase();
+        /* 주인공은 늘 서 있는 사람이라 있고 없고로 어긋남을 가르지 않는다(판정 규칙과 같다) */
+        const sameChars = client.filter(([ch]) => ch !== hero).length === plan.filter(([ch]) => ch !== hero).length && client.every(([ch]) => ch === hero || names.has(ch));
+        const sameAll = sameChars && plan.every(([ch, e]) => (ch === hero && emoOf(client, ch) === null) || emoOf(client, ch) === e);
+        if (sameAll) {
+          return `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h"><span class="cr-vd is-ok">일치</span>${SRC_B.plan}${SRC_B.client}`
+            + `<span class="sub">${plan.map(([ch, e]) => `${esc(capName(ch))} ${esc(e)}`).join(" · ")}</span></div>`
+            + `<div class="cr-stage-figs">${plan.map(([ch, e, sh]) => stageFig(ch, e, "", "", sh ? `시트 감정 ${sh}` : "")).join("")}</div></div></div>`;
+        }
+        const cl = new Set(client.map(([ch]) => ch));
+        /* 작업 전 소구역 · 앞 지점 재사용은 없는 게 당연하니 어긋남으로 칠하지 않는다(판정 규칙과 같다) */
+        const neutral = c.st === "todo" || c.st === "prev";
+        const planB = plan.map(([ch, e, sh]) => {
+          const miss = ch !== hero && !cl.has(ch);
+          if (miss && neutral) return stageFig(ch, e, "is-gap", "마을에 없음", sh ? `시트 감정 ${sh}` : "");
+          return miss ? `<figure class="is-miss"${sh ? ` title="시트 감정 ${esc(sh)}"` : ""}>${stageImgFb(ch, e)}<figcaption><b>${esc(capName(ch))}</b>${esc(e)} <u>마을에 없음</u></figcaption></figure>`
+            : stageFig(ch, e, "", emoOf(client, ch) !== e ? "감정 다름" : "", sh ? `시트 감정 ${sh}` : "");
+        }).join("");
+        const clientB = client.map(([ch, e]) => (names.has(ch)
+          ? stageFig(ch, e, "", plan.find(([x]) => x === ch)[1] !== e ? "감정 다름" : "")
+          : stageFig(ch, e, "is-gap", "말 안 함"))).join("");
+        const title = sameChars ? `<span class="cr-vd is-ok">인물 일치</span><span class="sub">감정만 다름</span>`
+          : neutral ? `<span class="cr-vd is-none">${c.st === "prev" ? "앞 지점 재사용" : "작업 전 소구역"} · 참고</span>`
+            : `<span class="cr-vd is-bad">${SRC_B.client} ≠ ${SRC_B.plan}</span>`;
+        return `<div class="cr-cmp-h" style="margin-top: 8px">${title}</div>`
+          + `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.plan}<span class="sub">이 대화에 나오는 인물 · 시트 감정에서 옮긴 클라 감정</span></div><div class="cr-stage-figs">${planB}</div></div>`
+          + `<div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.client}<span class="sub">마을에 서 있는 인물</span></div><div class="cr-stage-figs">${clientB}</div></div></div>`;
+      }
       function stageHtml(ev) {
         const c = stageCheck(ev);
         const s = c.s;
@@ -1684,7 +1764,7 @@
         return `<div class="cr-res cr-stagebox">${head}`
           + `<div class="cr-rk"><code title="원안 assets/Effect/area/AreaCourtyard.prefab">${esc(s[0])}/${esc(s[5])}</code>`
           + `<span class="no">번들 <code>${esc(s[1])}</code></span></div>`
-          + `<div class="cr-stage-figs">${s[2].map(([ch, e]) => `<figure>${stageImg(ch, e)}<figcaption><b>${esc(capName(ch))}</b>${esc(e)}</figcaption></figure>`).join("")}</div>`
+          + stageCompareHtml(ev, c)
           + stageDiffHtml(ev) + `</div>`;
       }
 
