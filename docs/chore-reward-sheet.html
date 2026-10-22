@@ -473,6 +473,19 @@
       @media (max-width: 640px) { .cr-ver-n { font-size: 22px; } }
 
 
+      /* 대사·꾸미기 어색한 곳 표시(붉은 글씨) */
+      .cr-iss { margin-top: 5px; font-size: 12px; font-weight: 700; line-height: 1.5; color: #e53935; white-space: normal; }
+      .cr-iss.is-weak { font-weight: 600; opacity: 0.85; }
+      .cr-iss .q { margin-top: 1px; font-weight: 500; font-size: 11.5px; }
+      .cr-bub.is-iss { outline: 2px solid #e53935; outline-offset: 1px; }
+      .cr-bub.is-iss .tx { color: #e53935; font-weight: 700; }
+      .cr-issb.is-weak { opacity: 0.7; font-weight: 600; }
+      .cr-issb.is-none { border-style: dashed; }
+      .cr-issb { margin-left: 6px; padding: 0 7px; border: 1px solid #e53935; border-radius: 9px; font-size: 11px; font-weight: 700; color: #e53935; white-space: nowrap; }
+      .cr-isschips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+      .cr-isschips a { padding: 1px 8px; border: 1px solid #e53935; border-radius: 10px; font-size: 11.5px; font-weight: 700; color: #e53935; text-decoration: none; }
+      .cr-isschips a.is-weak { opacity: 0.6; font-weight: 600; }
+      .cr-isschips a.is-none { border-style: dashed; }
       /* ── 데코 반영 현황 (#deco) ─────────────────────────────────────────
          「정본에는 있는데 클라에는 없다」를 한 줄에서 보이게 하는 표다.
          정본 수 · 클라 수를 숫자 두 칸으로만 늘어놓으면 둘이 같은 급으로 읽혀
@@ -564,6 +577,14 @@
     <header class="doc-header wrap wrap--wide">
       <div class="doc-eyebrow">스토리 머지 · 심부름</div>
       <h1 class="doc-title">심부름 보상 시트</h1>
+      <div class="notes" style="margin: 10px 0 14px">
+        <div class="note" style="--acc: #e53935">
+          <div class="note-title">클라 반영 순서 &mdash; 시작 씬 &rarr; 꾸미기 &rarr; 완료 씬 (2026-10-22)</div>
+          <p>심부름을 깨면 <strong>그 심부름의 시작 씬 &rarr; 꾸미기 &rarr; 완료 씬 &rarr; (구역 마지막이면) 구역 완료 씬</strong> 순서입니다. 대사 본문이 자기 심부름의 꾸미기를 말하기 때문입니다(시작 씬 N 이 꾸미기 N 과 맞물리는 건 101/109, 예전처럼 시작 씬 N+1 을 붙이면 26/109). 첫 진입 채팅(1-1 시작 씬)은 첫 진입에서 한 번 나오므로 1-1 클리어는 채팅 없이 곧바로 꾸미기입니다.</p>
+          <p style="color: #e53935; font-weight: 700; margin-top: 6px">붉은 글씨 = 대사와 꾸미기가 어색한 곳 35건 (어긋남 6 &middot; 느슨함 27 &middot; 씬 없음 2). 남은 어색한 곳은 대사 본문 쪽 문제입니다. 수선은 대사로 말한 뒤 화면에서 일어나는 거라 이슈로 보지 않았고, 택1은 고르기 전에 완성을 말하면 느슨함으로 봤습니다. 어긋남과 씬 없음은 원문 확인, 느슨함 중 22건은 에이전트 판정(미검증)입니다. 칩을 누르면 해당 행으로 이동합니다.</p>
+          <div class="cr-isschips" id="crIssChips"></div>
+        </div>
+      </div>
       <div class="cr-ver">
         <span class="cr-ver-n">v1.24</span>
         <span class="cr-ver-t">2026-10-20 배포 · 2026-10-21 export</span>
@@ -583,7 +604,7 @@
       <section class="doc-section" id="sheet">
         <h2 class="doc-h2">
           보상 시트
-          <span class="doc-h2-sub">1클리어 1채팅 &mdash; 심부름 행 바로 아래 채팅 행이 그 클리어에 열리는 채팅입니다. 수선·택1 은 채팅 다음에 꾸미기 행이 이어집니다. 눌러서 펼칩니다</span>
+          <span class="doc-h2-sub">1클리어 1채팅 &mdash; 심부름 행 아래 시작 씬 · 꾸미기 · 완료 씬이 그 심부름 하나에서 열리는 채팅과 꾸미기입니다. 심부름 → 시작 씬 → 꾸미기 → 완료 씬 순서로 섭니다(클라 반영 순서). 눌러서 펼칩니다</span>
         </h2>
 
         <div class="stat-row" id="crKpi"></div>
@@ -948,7 +969,7 @@
         scene 연결은 시트 <code>main_task.story_key</code> · <code>area_unlock.area_finish_story_key</code>
         &rarr; <code>story</code>(284행)에서, 대사 문장은 <code>story_dialog</code>(2,903행)의
         <code>key_number</code> 로 <code>string_code</code> 의 <code>T_STORY_DIALOG_*</code> 를 찾아 읽었습니다.
-        화면 동작(클리어 → 채팅 → 꾸미기 → 레벨업 순서)은 <code>PopupChore.ts</code> · <code>PopupChat.ts</code> 실측입니다.
+        화면 동작(클리어 → 시작 씬 → 꾸미기 → 완료 씬 → 구역 완료 → 레벨업 순서)은 <code>ChoreCycleFlow.ts</code> · <code>StorySchedule.ts</code> 실측입니다.
         데코 반영 현황은 클라 <code>main</code> 실측입니다 &mdash;
         <code>assets/bundle/data/story*.json</code>(4파일 · <code>StoryDataLoader.ts</code>) ·
         <code>StoryDecorateSchedule.ts</code>(시트 <code>main_task</code> 수선·택1 행 기반) ·
@@ -1319,8 +1340,8 @@
 
          시트 슬롯(s/f/a)으로 행을 쪼개면 start(N+1) 이 N+1 쪽에 붙어 「어느 클리어가 어느 채팅을
          부르나」가 흩어진다. 그래서 채팅 행은 **깬 심부름 바로 아래 한 줄**로 둔다.
-         게임 안의 한 사이클은 클리어 → 채팅 → 꾸미기 → 레벨업이라, 행도 그 순서로 세운다 —
-         [심부름] N → [채팅] N 클리어 후 → [꾸미기] N(수선·택1 만). 심부름 행은 펼치지 않는다.
+         클라 반영 순서(2026-10-22): 심부름 → 시작 씬 → 꾸미기 → 완료 씬 —
+         [심부름] N → [시작 씬] N → [꾸미기] N(수선·택1 만) → [완료 씬] N(구역 완료 포함). 심부름 행은 펼치지 않는다.
          집계(KPI·건수)는 **심부름 행만** 센다. */
       const ORDER = ROWS.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
       const keyOfRow = (row) => `${row[0]}-${row[1]}`;
@@ -1374,8 +1395,9 @@
 
       function bubbleHtml(who, emo, text, right) {
         const empty = !text;
+        const hi = !empty && hiQuotes.some((q) => text.includes(q));
         return `<div class="cr-msg${right ? " is-right" : ""}">${avaHtml(who, emo)}`
-          + `<div class="cr-bub${empty ? " is-empty" : ""}">`
+          + `<div class="cr-bub${empty ? " is-empty" : ""}${hi ? " is-iss" : ""}">`
           + `<div class="who">${esc(who)}${emoTagHtml(emo)}</div>`
           + `<div class="tx">${empty ? "대사 미작성 — 정본에 없음" : esc(text)}</div></div></div>`;
       }
@@ -1388,9 +1410,27 @@
          한 심부름이 착수 때 한 번, 완료 때 한 번 열릴 수 있고 구역 마지막 건이면 구역 대화까지 붙는다.
          ⚠ 여기서 연출(컷씬·편지·글자 표현)은 그리지 않는다 — 삽화(story_dialog animation=illustration)만 해당 위치에 카드로 그린다. — 화면 기획서의 아트 지시라
          대사와 계열이 다르고, 섞어 두면 「대화 중에 나오는 것」으로 잘못 읽힌다. */
+      /* 시작 씬 → 꾸미기 → 완료 씬 순서에서 대사와 꾸미기가 어색한 곳 35건(어긋남 6 · 느슨함 27 · 씬 없음 2). 수선은 「대사로 말한 뒤 화면에서 일어남」이라 결과 선행을 이슈로 보지 않는다.
+         어긋남·씬 없음은 원문 확인, 느슨함은 에이전트 판정(미검증)이거나 택1 전 결과 선행. 붉은 글씨로 행 아래에 보이고, 문제 대사는 말풍선을 붉게 칠한다. */
+      const PREVIEW_ISS = [{"k":"1-8","at":"start","v":"weak","t":"택1 전 결과 선행","why":"고르기 전에 이미 완성·착석을 말함 - 택1은 고르는 순간이 꾸미기라 순서가 뒤집혀 읽힘","q":["대문 고정했어. 덤불대도 흔들리지 않아.","앞마당 경계가 완성됐어."]},{"k":"3-4","at":"start","v":"bad","t":"설정 모순","why":"시작 씬이 색을 미리 정해 버림 - 택1(A/B/C)과 충돌","q":["등받이 노란 걸로 하자."]},{"k":"3-4","at":"finish","v":"bad","t":"설정 모순","why":"2-7에서 이미 작업대를 설치했는데 「작업대보다 먼저」라고 함","q":["작업대보다 의자가 먼저 주인을 찾았네."]},{"k":"3-5","at":"start","v":"weak","t":"택1 전 결과 선행","why":"고르기 전에 이미 완성·착석을 말함 - 택1은 고르는 순간이 꾸미기라 순서가 뒤집혀 읽힘","q":["액자 끝.","벽에 그림이 생기니까 진짜 가게 같아요."]},{"k":"4-10","at":"start","v":"weak","t":"택1 전 결과 선행","why":"고르기 전에 이미 완성·착석을 말함 - 택1은 고르는 순간이 꾸미기라 순서가 뒤집혀 읽힘","q":["푹신해요! 궤짝까지 발이 닿아요."]},{"k":"5-1","at":"start","v":"weak","t":"택1 전 결과 선행","why":"고르기 전에 이미 완성·착석을 말함 - 택1은 고르는 순간이 꾸미기라 순서가 뒤집혀 읽힘","q":["끼웠어. 틈은 다 막았고.","이제 안에서 밖이 다 보여요."]},{"k":"8-9","at":"start","v":"bad","t":"설정 모순","why":"매트를 이미 깔고 왔다고 말하고, 이후는 보안관 대화라 매트와 무관","q":["티하우스 문 앞 매트까지 깔고 왔더니"]},{"k":"9-9","at":"start","v":"weak","t":"택1 전 결과 선행","why":"고르기 전에 이미 완성·착석을 말함 - 택1은 고르는 순간이 꾸미기라 순서가 뒤집혀 읽힘","q":["마을 게시판 새로 세웠어."]},{"k":"15-9","at":"start","v":"bad","t":"대상 불일치","why":"대사는 의자 얘기인데 꾸미기는 역사 창(A/B/C)","q":["그럼 의자를 많이 놓아야겠다.","의자는 제 담당입니다."]},{"k":"16-6","at":"start","v":"bad","t":"대상 불일치","why":"대사는 철문 경첩 얘기인데 꾸미기는 화물 측선 녹","q":["철문 경첩이 통째로 녹았어요."]},{"k":"17-2","at":"start","v":"bad","t":"대상 불일치","why":"대사는 「선은 살아 있다」인데 꾸미기는 끊어진 조명선 복구","q":["선은 살아 있는데 등이 다 깨졌어요."]},{"k":"18-6","at":"start","v":"bad","t":"대상 불일치","why":"대사는 「난간이 없다」인데 꾸미기는 녹슨 난간 수선","q":["계단 난간이 없어."]},{"k":"3-8","at":"start","v":"none","t":"씬 없음","why":"시작 씬이 없음 - 벽지 색 대사는 2-7 시작 씬에 있음","q":[]},{"k":"6-7","at":"start","v":"none","t":"씬 없음","why":"시작 씬이 없음 - 앞 심부름 6-6 씬은 벽램프 얘기","q":[]},{"k":"1-1","at":"start","v":"weak","t":"연결 약함","why":"덤불은 맞으나 벤치 닦기는 꾸미기 대상 아님 (에이전트 판정, 미검증)","q":[]},{"k":"1-3","at":"start","v":"weak","t":"연결 약함","why":"벤치 선택 언급 없고 난간 얘기 위주 (에이전트 판정, 미검증)","q":[]},{"k":"1-9","at":"finish","v":"weak","t":"연결 약함","why":"구역 완료 씬이 방금 만든 화단을 모른 척함 (에이전트 판정, 미검증)","q":[]},{"k":"2-7","at":"start","v":"weak","t":"연결 약함","why":"벽지 색 고르기가 앞에 섞이고 작업대는 끝에만 (에이전트 판정, 미검증)","q":[]},{"k":"3-7","at":"start","v":"weak","t":"시점 앞섬","why":"선반 설치 끝난 말투(수평 맞음, 병 올려도 돼) (에이전트 판정, 미검증)","q":[]},{"k":"4-7","at":"start","v":"weak","t":"연결 약함","why":"궤짝 닦기는 마지막 한 줄로만 언급 (에이전트 판정, 미검증)","q":[]},{"k":"5-7","at":"start","v":"weak","t":"시점 앞섬","why":"카펫이 이미 깔린 듯, 금고 개봉이 주제 (에이전트 판정, 미검증)","q":[]},{"k":"8-4","at":"start","v":"weak","t":"연결 약함","why":"화단 장식 언급뿐, 이후 대화는 사무실 얘기 (에이전트 판정, 미검증)","q":[]},{"k":"9-1","at":"start","v":"weak","t":"연결 약함","why":"테이블은 위치 언급뿐, 설치 내용 아님 (에이전트 판정, 미검증)","q":[]},{"k":"11-8","at":"start","v":"weak","t":"시점 앞섬","why":"새 벤치에 앉는다 해 이미 설치된 듯한 시점 (에이전트 판정, 미검증)","q":[]},{"k":"11-12","at":"start","v":"weak","t":"연결 약함","why":"게시판은 숨는 장소일 뿐 꾸미기와 약한 연결 (에이전트 판정, 미검증)","q":[]},{"k":"12-1","at":"start","v":"weak","t":"시점 앞섬","why":"테이블을 이미 놓았다 해 시점이 앞섬 (에이전트 판정, 미검증)","q":[]},{"k":"12-7","at":"start","v":"weak","t":"시점 앞섬","why":"가판대를 이미 세워 놨다 해 시점 어색 (에이전트 판정, 미검증)","q":[]},{"k":"13-1","at":"start","v":"weak","t":"연결 약함","why":"조명 아치로 단정해 택1 선택과 어긋날 수 있음 (에이전트 판정, 미검증)","q":[]},{"k":"13-9","at":"start","v":"weak","t":"연결 약함","why":"가로등은 한 줄 언급뿐, 대화는 다른 주제 (에이전트 판정, 미검증)","q":[]},{"k":"13-10","at":"start","v":"weak","t":"시점 앞섬","why":"자전거는 배경 언급뿐, 이미 있는 듯한 시점 (에이전트 판정, 미검증)","q":[]},{"k":"13-15","at":"start","v":"weak","t":"시점 앞섬","why":"두 화단 완성된 듯 말해 시점이 앞섬 (에이전트 판정, 미검증)","q":[]},{"k":"14-10","at":"start","v":"weak","t":"시점 앞섬","why":"장식을 이미 거는 중이라 택1 전과 시점 어색 (에이전트 판정, 미검증)","q":[]},{"k":"14-12","at":"start","v":"weak","t":"시점 앞섬","why":"화분을 이미 놓았다고 해 택1 전 시점 어색 (에이전트 판정, 미검증)","q":[]},{"k":"15-1","at":"start","v":"weak","t":"연결 약함","why":"보도 대신 승강장 판자 얘기, 연결 느슨 (에이전트 판정, 미검증)","q":[]},{"k":"16-5","at":"start","v":"weak","t":"연결 약함","why":"역사 문 아닌 입구 치우기로만 연결 (에이전트 판정, 미검증)","q":[]},{"k":"18-5","at":"start","v":"weak","t":"시점 앞섬","why":"초록으로 미리 정해 택1(무지/줄무늬/꽃무늬)과 어긋남 (에이전트 판정, 미검증)","q":[]}];
+      const ISS_LABEL = { bad: "어긋남", weak: "느슨함", none: "씬 없음" };
+      /* 첫 진입 채팅은 첫 심부름의 시작 씬이다 */
+      const issOf = (ev) => (["start", "finish", "first"].includes(ev.kind) ? PREVIEW_ISS.filter((x) => x.k === ev.key && x.at === (ev.kind === "first" ? "start" : ev.kind)) : []);
+      const issKeys = new Set(PREVIEW_ISS.map((x) => x.k));
+      /* 꾸미기 행 배지 - 대사 행의 붉은 사유와 같은 판정 단어를 쓴다(어긋남 > 씬 없음 > 느슨함 중 센 쪽). 둘 이상이면 건수를 붙인다. */
+      const issBadgeHtml = (key) => {
+        const list = PREVIEW_ISS.filter((x) => x.k === key);
+        const v = list.some((x) => x.v === "bad") ? "bad" : list.some((x) => x.v === "none") ? "none" : "weak";
+        return `<span class="cr-issb is-${v}">대사 ${ISS_LABEL[v]}${list.length > 1 ? ` ${list.length}` : ""}</span>`;
+      };
+      let hiQuotes = [];
+      const issNoteHtml = (list) => list.map((x) => `<div class="cr-iss is-${x.v}">&#9888; ${ISS_LABEL[x.v]} &middot; ${esc(x.t)} &mdash; ${esc(x.why)}`
+        + (x.q.length ? `<div class="q">${x.q.map((q) => `\u201c${esc(q)}\u201d`).join(" / ")}</div>` : "") + `</div>`).join("");
       const KIND_LABEL = {
         first: ["첫 진입", "마을에 처음 들어올 때 — 1-1 을 하기 전에 한 번"],
-        clear: ["클리어 후", "이 심부름을 깬 직후 한 번 — 완료 · 구역 완료 · 다음 심부름 시작 대사를 이어서. 꾸미기(수선·택1)는 이 채팅 다음 행이다"],
+        clear: ["클리어 후", "이 심부름을 깬 직후 한 번 — 완료 · 구역 완료 · 다음 심부름 시작 대사를 이어서(원본 순서)"],
+        start: ["시작 씬", "이 심부름을 누르면 먼저 나오는 대사 — 꾸미기 바로 앞 (첫 심부름은 첫 진입에서 나옴)"],
+        finish: ["완료 씬", "꾸미기가 끝난 뒤 나오는 대사 — 완료 · 구역 완료"],
       };
 
       /* 삽화 카드 — 클라 story/illustration/{key_number} 사본(docs/img/story-illust). 채팅 흐름 안 해당 줄 자리에 놓는다. */
@@ -1406,10 +1446,13 @@
       function chatHtml(ev) {
         if (!ev.lines.length) return "";
         const many = ev.segs.length > 1;
-        return `<div class="cr-chat">`
+        hiQuotes = issOf(ev).flatMap((x) => x.q);
+        const out = `<div class="cr-chat">`
           + ev.segs.map((g) => (many ? `<div class="cr-seg">${esc(g.label)} <code>${esc(g.sid)}</code></div>` : "")
             + g.lines.map((l) => (isIll(l) ? illustHtml(l[3]) : bubbleHtml(l[1], l[2], l[3], l[1] !== HERO))).join("")).join("")
           + `</div>`;
+        hiQuotes = [];
+        return out;
       }
 
       /* 심부름을 끝냈을 때 그 자리가 실제로 어떻게 바뀌는가. 대사와 계열이 달라 따로 세우고,
@@ -1492,7 +1535,7 @@
       /* 펼침 상자 — 채팅 행은 대화, 꾸미기 행은 결과. */
       const boxHtml = (ev, inner) => (inner ? `<div class="cr-detbox" style="--zc: ${zoneColor(ev.row[8])}">${inner}</div>` : "");
 
-      /* 꾸미기 행 — 클리어 채팅 다음. 접힌 채로도 「무엇이 바뀌나」가 한 줄로 보이게 문장을 싣는다. */
+      /* 꾸미기 행 — 시작 씬 다음. 접힌 채로도 「무엇이 바뀌나」가 한 줄로 보이게 문장을 싣는다. */
       function decoRowHtml(ev, id) {
         const row = ev.row;
         const f = row[9];
@@ -1511,7 +1554,9 @@
           + `<span class="cr-ar">▶</span> `
           + `<span class="cr-slot is-d">${esc(ev.key)} 꾸미기</span></td>`
           + `<td><span class="cr-type ${TYPE_CLASS[type] || ""}">${esc(type)}</span>`
-          + `<div class="cr-peek">${esc(summary)}</div></td>`
+          + `<div class="cr-peek">${esc(summary)}</div>`
+          + (issKeys.has(key) ? issBadgeHtml(key) : "")
+          + `</td>`
           + `<td>${client}${vd ? `<div class="cr-peek">${vd}</div>` : ""}</td>`
           + `<td style="text-align: right"><span class="cr-none">—</span></td>`
           + `<td style="text-align: right"><span class="cr-none">—</span></td>`
@@ -1523,7 +1568,9 @@
       /* 대사 행. 코인·경험치·아이템 칸은 **칩을 그리지 않는다** —
          0 을 그리면 「0 코인이 든다」로 읽히고, 대사가 오가는 동안은 무는 것도 받는 것도 없다. */
       /* 채팅 직전 마을 무대 — 접힌 줄엔 작은 전신, 펼침 맨 위엔 크게 이름·감정과 함께 */
-      const stageOf = (ev) => STAGE[ev.kind === "first" ? "first" : ev.key];
+      /* 시작 씬은 원본에선 앞 심부름의 클리어 채팅에 들어 있었다 — 무대도 그 심부름의 것을 쓴다(첫 심부름은 첫 진입) */
+      const prevKeyOf = (key) => { const i = ORDER.findIndex((r) => keyOfRow(r) === key); return i > 0 ? keyOfRow(ORDER[i - 1]) : "first"; };
+      const stageOf = (ev) => STAGE[ev.kind === "first" ? "first" : ev.kind === "start" ? prevKeyOf(ev.key) : ev.key];
       const capName = (c) => c.charAt(0).toUpperCase() + c.slice(1);
       const stageImg = (c, e) => `<img src="img/npc/stage/${esc(c)}_${esc(e)}.png" alt="${esc(capName(c))} ${esc(e)}" title="${esc(capName(c))} · ${esc(e)}" loading="lazy" decoding="async">`;
       /* 마을 캐릭터 ↔ 대사 화자 대조. 원안 AreaCourtyard.prefab 의 스토리 지점(task_story_N)에는 「그 지점이 세워지는 씬의
@@ -1650,7 +1697,7 @@
 
       function talkRowHtml(ev, id, det) {
         const [lb, desc] = KIND_LABEL[ev.kind];
-        const dot = ev.kind === "first" ? "s" : "c";
+        const dot = ev.kind === "first" || ev.kind === "start" ? "s" : "c";
         const head = ev.lines.length ? ev.lines[0] : null;
         /* 그 씬에 실제로 말하는 사람. 첫 화자를 얼굴로 세우고 나머지는 수로만 알린다 —
            11명이 섞이는 씬이 있어 전부 그리면 칸이 무너진다. */
@@ -1661,12 +1708,13 @@
         return `<tr class="cr-row is-talk${det && talkOpen ? " is-open" : ""}${flag ? " is-flag" : ""}" data-det="${det ? id : ""}" data-chk="${chkIdOf(ev)}">`
           + `<td class="cr-key"><span class="cr-dot is-${dot}"></span>`
           + `<span class="cr-ar">${det ? "▶" : ""}</span> `
-          + `<span class="cr-slot is-${dot}">${ev.kind === "clear" ? `${esc(ev.key)} ` : ""}${lb}</span></td>`
+          + `<span class="cr-slot is-${dot}">${ev.kind !== "first" ? `${esc(ev.key)} ` : ""}${lb}</span></td>`
           + `<td><b style="font-size: 12.5px">채팅 1회</b>`
           + `<span class="cr-talk-tag${ev.lines.length ? "" : " is-wait"}" title="${desc}">${ev.lines.length ? `${ev.lines.length}줄` : "채팅 없음"}</span>`
           + (ev.segs.length ? `<div class="cr-segs">${ev.segs.map((g) => esc(g.label)).join(" → ")}</div>` : "")
           + (head ? `<div class="cr-peek">${esc(head[3])}</div>` : "")
           + stageStripHtml(ev)
+          + issNoteHtml(issOf(ev))
           + `</td>`
           + `<td><span class="cr-npc">${faceHtml(who)}<span class="nm">${esc(who)}`
           + (others.size ? `<i class="cr-more"> 외 ${others.size}</i>` : "") + `</span></span></td>`
@@ -1776,6 +1824,17 @@
         let html = "";
         let prevDay = -1;
         let n = 0;
+        /* 클라 반영 순서 — 심부름 N → 시작 씬 N → 꾸미기 N → 완료 씬 N(·구역 완료).
+           원본 타임라인의 클리어 채팅은 「완료 N + 구역 완료 + 시작 N+1」이라, 시작 씬은 다음 심부름 몫으로 넘겨 들고(carry) 간다.
+           첫 진입 채팅(1-1 시작 씬)은 첫 진입 행으로 그대로 두고 1-1 에는 시작 씬 행을 세우지 않는다. 이슈·삽화 필터(grouped)는 원본 채팅 그대로. */
+        let carry = [];
+        const firstKey = keyOfRow(ORDER[0]);
+        const rowHtml = (ev2, id2, openCls) => {
+          const det2 = boxHtml(ev2, stageHtml(ev2) + chatHtml(ev2));
+          const anchor = ev2.kind === "start" && issKeys.has(ev2.key) ? ` id="iss-${ev2.key}"` : "";
+          return talkRowHtml(ev2, id2, det2).replace('<tr class="cr-row is-talk', `<tr${anchor} class="cr-row is-talk${openCls}`)
+            + (det2 ? `<tr class="cr-det is-t" id="${id2}"${talkOpen ? "" : " hidden"}><td colspan="7">${det2}</td></tr>` : "");
+        };
         for (const e of ev) {
           const day = bandDay(e);
           let daystart = "";
@@ -1792,20 +1851,37 @@
           }
           const id = `d-${e.key}-${n++}`;
 
-          if (e.t === "talk") {
-            const det = boxHtml(e, stageHtml(e) + chatHtml(e));
-            html += talkRowHtml(e, id, det).replace('class="cr-row is-talk', `class="cr-row is-talk${daystart}`)
-              + (det ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="7">${det}</td></tr>` : "");
-            /* 채팅이 끝나면 꾸미기 — 수선·택1 만 행이 선다(대화 유형·첫 진입은 꾸미기가 없다). */
-            const deco = e.kind === "clear" && !grouped ? boxHtml(e, resultHtml(e.row)) : "";
+          if (e.t === "talk" && !grouped) {
+            if (e.kind === "first") {
+              /* 첫 진입 채팅 - 첫 심부름의 시작 씬이 마을에 처음 들어올 때 한 번 나온다. 1-1 클리어에는 시작 씬이 없다. */
+              const det0 = boxHtml(e, stageHtml(e) + chatHtml(e));
+              html += talkRowHtml(e, id, det0).replace('<tr class="cr-row is-talk', `<tr${issKeys.has(e.key) ? ` id="iss-${e.key}"` : ""} class="cr-row is-talk${daystart}`)
+                + (det0 ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="7">${det0}</td></tr>` : "");
+              carry = [];
+              continue;
+            }
+            const own = e.segs.filter((g) => g.slot !== "s");
+            const nextStart = e.segs.filter((g) => g.slot === "s");
+            /* 날짜 필터가 끌어온 전날 마지막 클리어 — 그날 첫 시작 씬만 건네고 행은 세우지 않는다 */
+            if (dayFilter !== 0 && e.row[0] !== dayFilter) { carry = nextStart; continue; }
+            const deco = boxHtml(e, resultHtml(e.row));
             if (deco) {
               const did = `${id}-deco`;
               html += decoRowHtml(e, did)
                 + `<tr class="cr-det is-d" id="${did}"${decoOpen ? "" : " hidden"}><td colspan="7">${deco}</td></tr>`;
             }
+            if (own.length) html += rowHtml(talkEv("finish", e.key, e.row, own), `${id}-fin`, "");
+            carry = nextStart;
+            continue;
+          }
+          if (e.t === "talk") {
+            const det = boxHtml(e, stageHtml(e) + chatHtml(e));
+            html += talkRowHtml(e, id, det).replace('class="cr-row is-talk', `class="cr-row is-talk${daystart}`)
+              + (det ? `<tr class="cr-det is-t" id="${id}"${talkOpen ? "" : " hidden"}><td colspan="7">${det}</td></tr>` : "");
             continue;
           }
           html += taskRowHtml(e).replace('class="cr-row is-task', `class="cr-row is-task${daystart}`);
+          if (!grouped && !onlyItem && !led && e.key !== firstKey) html += rowHtml(talkEv("start", e.key, e.row, carry), `${id}-st`, "");
         }
         $("#crBody").innerHTML = html || `<tr><td colspan="7" class="cr-nil">해당 행이 없습니다</td></tr>`;
 
@@ -1889,7 +1965,7 @@
       ];
       const CHK_MAIN = new Set(["stage-bad", "stage-nofinish", "stage-nosub", "deco-diff", "deco-noart", "deco-unwired"]);
       const STAGE_CAT = { bad: "stage-bad", nofinish: "stage-nofinish", nosub: "stage-nosub", nopoint: "stage-nofinish", prev: "stage-prev" };
-      const chkIdOf = (ev) => (ev.kind === "first" ? "talk-first" : `talk-${ev.key}`);
+      const chkIdOf = (ev) => (ev.kind === "first" ? "talk-first" : ev.kind === "start" ? `start-${ev.key}` : `talk-${ev.key}`);
       const hasDeco = (row) => { const f = row[9]; return !!(YARD[keyOfRow(row)] || f["비포"] || f["애프터"] || f["디자인 A"]); };
       function decoIssues(key) {
         const out = [];
@@ -2409,6 +2485,12 @@
           if (k) goRow(k.dataset.go);
         });
         renderYardAreas();
+        /* 어색한 곳 이동 칩(심부름 순서). 한 심부름에 둘이면 센 쪽 색을 쓴다. */
+        $("#crIssChips").innerHTML = ORDER.map(keyOfRow).filter((k) => issKeys.has(k)).map((k) => {
+          const vs = PREVIEW_ISS.filter((x) => x.k === k).map((x) => x.v);
+          const v = vs.includes("bad") ? "bad" : vs.includes("none") ? "none" : "weak";
+          return `<a href="#iss-${k}" class="is-${v}" title="${ISS_LABEL[v]}">${k}</a>`;
+        }).join("");
         $("#crIssue").addEventListener("click", (ev) => {
           const b = ev.target.closest("button");
           if (!b) return;
