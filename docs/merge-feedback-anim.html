@@ -1506,19 +1506,21 @@
         };
 
         /* A2 · 생산 가능 반짝임 ----------------------------------------------
-           클라 BoardItemNode.prefab 자식 producerSparkle = Effect/prefab/manufacturer_Particle.prefab 사본(cc.ParticleSystem3D).
+           클라 풀 ProducerSparkleFx = Effect/prefab/manufacturer_Particle.prefab 직접 참조(cc.ParticleSystem3D). 칩은 처음 필요할 때 풀에서 빌려
+           아이콘 바로 뒤 자식으로 붙이고, 칩이 반납될 때까지 들고 노드 켜고 끄기만 한다(BoardItemNode.ts applySparkle · 10-22 풀 분리).
            값은 프리팹에만 있고 MERGE_FX 키가 없다 — 그래서 PARAMS/V 에 넣지 않고(mfx-sync 는 클라 키 1:1) 여기 상수로 옮긴다.
-           칩 사본은 _capacity 8 만 다르다(BoardItemNode.prefab). 3D 입자 단위 = 2D 장면 px 로 본다(노드 배율 1 · 직교 카메라). */
+           3D 입자 단위 = 2D 장면 px 로 본다(직교 카메라). 노드 배율은 (1, 1.2, 1) 이라 세로만 1.2 배다(셰이더가 입자 크기에 노드 배율을 곱하고 · Local 이라 위치에도 월드 행렬이 걸린다). */
         var SPARKLE = {
-          rate: 2,                         // manufacturer_Particle.prefab rateOverTime 상수 2/s · loop · playOnAwake · startDelay 0
-          lifeMin: 0.7, lifeMax: 1.0,      // startLifetime TwoConstants 0.7–1.0 초
-          sizeMin: 25, sizeMax: 35,        // startSize TwoConstants 25–35 px — 수명과 같은 난수 하나(엔진 3d/particle/particle-system-3d.ts:847,856)라 오래 사는 입자가 크다
-          boxW: 70, boxH: 60, boxY: -10,   // shapeModule Box · scale 70×60×1 · position y -10 · emitFrom Volume(±0.5 균등, 엔진 shape-module.ts:408-411)
-          vy: 15,                          // velocityOvertime y 15 px/s(Local) — 매 프레임 0 에서 다시 더해 등속이다(엔진 particle-system-3d-renderer.ts:177)
+          rate: 1.8,                       // manufacturer_Particle.prefab rateOverTime TwoConstants 1–1.8/s — 엔진 _emit 이 evaluate(t, 1) 로 부르므로 상한 1.8 이 쓰인다(curve-range.ts lerp(min, max, 1)) · loop · playOnAwake · startDelay 0
+          lifeMin: 0.9, lifeMax: 1.2,      // startLifetime TwoConstants 0.9–1.2 초
+          sizeMin: 20, sizeMax: 35,        // startSize TwoConstants 20–35 px — 수명과 같은 난수 하나(엔진 3d/particle/particle-system-3d.ts:812)라 오래 사는 입자가 크다
+          boxW: 70, boxH: 50, boxY: -10,   // shapeModule Box · scale 70×50×1 · position y -10 · emitFrom Volume(±0.5 균등, 엔진 shape-module.ts:408-411)
+          vyMin: 10, vyMax: 13,            // velocityOvertime y TwoConstants 10–13 px/s(Local) — 입자마다 시드 난수(pseudoRandom(randomSeed))로 하나 골라 평생 같은 값이다 · 매 프레임 0 에서 다시 더해 등속(엔진 particle-system-3d-renderer.ts:177)
+          yScale: 1.2,                     // 노드 배율 y — 위치(월드 행렬)와 입자 높이(셰이더 scale × size)에 곱한다. x 는 1
           // startSpeed 5 는 상자 방출 방향(로컬 z, 엔진 shape-module.ts:435)이라 직교 2D 화면에선 안 움직인다 · startRotation 0 · gravity 0 · Billboard
           // sizeOvertime 곡선 — [time, value, inTangent, outTangent] · 3차 에르미트(엔진 curve.ts evaluate_slow)
           sizeKeys: [[0, 0, 0, 4.25], [0.42, 1, 0, 0], [1, 0, -2.83, 0]],
-          cap: 8,                          // BoardItemNode.prefab 칩 사본 _capacity 8
+          cap: 100,                        // manufacturer_Particle.prefab _capacity 100 (풀 항목이 원본을 직접 쓰므로 칩 사본이 없다)
           canvas: 160,                     // 무대 전용 — 캔버스 한 변(px). 문서 <style> .mfx-sparkle 과 같은 값
         };
         /* 재질 star01.mtl = builtin-3d-particle technique 1(alpha blend · tinted-fs:add): col = 2 × tint(213,213,213,255) × tex.
@@ -1543,7 +1545,7 @@
           return (2 * u3 - 3 * u2 + 1) * a[1] + (u3 - 2 * u2 + u) * a[3] * dt + (-2 * u3 + 3 * u2) * b[1] + (u3 - u2) * b[2] * dt;
         }
         /* 칩 하나에 붙는 방출기. 칩 Spr 안(아이콘 다음 형제)에 캔버스를 달아 칩 위치·배율을 같이 받는다(simulationSpace Local).
-           켜고 끄기는 클라 BoardItemNode.ts:523-542 applySparkle — 끄면 stop()(입자 즉시 비움), 켜면 stop()+play() 로 0 부터 다시 센다 */
+           켜고 끄기는 클라 BoardItemNode.ts:512-532 applySparkle — 끄면 노드 비활성, 켜면 ProducerSparkleFx.onEnable 이 stop()+play() 로 0 부터 다시 센다(입자 즉시 비움) */
         function producerSparkle(chip) {
           var cv = elm("canvas", "mfx-sparkle"), dpr = Math.max(1, window.devicePixelRatio || 1), S = SPARKLE.canvas;
           cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr);
@@ -1555,8 +1557,8 @@
             if (!sparkleTex) return;
             g.setTransform(dpr, 0, 0, dpr, S / 2 * dpr, S / 2 * dpr);   // 원점 = 칩 중앙 · 화면 y 는 아래로라 -y 로 그린다
             for (var i = 0; i < parts.length; i++) {
-              var p = parts[i], s = p.size * sparkleSize(p.age / p.life);
-              if (s > 0.01) g.drawImage(sparkleTex, p.x - s / 2, -p.y - s / 2, s, s);
+              var p = parts[i], s = p.size * sparkleSize(p.age / p.life), sh = s * SPARKLE.yScale;   // 높이만 노드 배율 y 가 걸린다
+              if (s > 0.01) g.drawImage(sparkleTex, p.x - s / 2, -p.y * SPARKLE.yScale - sh / 2, s, sh);
             }
           }
           function tick(dt) {
@@ -1574,6 +1576,7 @@
                   y: SPARKLE.boxY + (Math.random() - 0.5) * SPARKLE.boxH,
                   life: SPARKLE.lifeMin + (SPARKLE.lifeMax - SPARKLE.lifeMin) * r + dt,   // 클라는 수명에 그 프레임 dt 를 더한다(:856)
                   size: SPARKLE.sizeMin + (SPARKLE.sizeMax - SPARKLE.sizeMin) * r,
+                  vy: SPARKLE.vyMin + (SPARKLE.vyMax - SPARKLE.vyMin) * Math.random(),
                   age: 0,
                 });
               }
@@ -1583,7 +1586,7 @@
               var p = parts[i];
               p.age += dt;
               if (p.age > p.life) continue;
-              p.y += SPARKLE.vy * dt;
+              p.y += p.vy * dt;
               live.push(p);
             }
             parts = live;
@@ -1612,7 +1615,7 @@
             7, 8, 13, 18, 17, 16, 11, 6,                                  // 안쪽 한 겹
             2, 3, 4, 9, 14, 19, 24, 23, 22, 21, 20, 15, 10, 5, 0, 1,      // 바깥 한 겹
           ];
-          /* 생산 가능 반짝임 — 클라 BoardItemNode.ts:228-231 · 523-542. 켜는 조건 = 번개 칸(상자·충전 시계 아님) + 거미줄 없음
+          /* 생산 가능 반짝임 — 클라 BoardItemNode.ts:232 · 512-532. 켜는 조건 = 번개 칸(상자·충전 시계 아님) + 거미줄 없음
              + 탭 1회분 에너지(IngameVM.ts:364 canPayProduce) + 저사양 아님. 무대 생산자는 늘 번개 칸이라 에너지만 고른다.
              반짝임은 칩 몫이다 — 생산물만 날고 생산자 칩은 보드에 남아 눌림 배율을 같이 받는다. */
           var energyOk = true, sparkle = null;
@@ -2880,7 +2883,7 @@
 
           { group: "action", id: "a2", no: "A2", title: "생산물이 튀어나와 보드로 (베지어)", state: "ok", label: "클라 구현",
             dropped: "생산자 눌림 — 누르는 순간은 A1 값 하나가 모든 칩에 걸린다.",
-            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 고른 생산자를 다시 탭해야 생산한다(BoardTapFlow.ts:169-171). 무장은 칸이 비지 않는 한 남아 있어서 그 뒤로는 탭마다 한 발씩 난다. 생산 가능 반짝임은 생산자 칩의 자식 producerSparkle(BoardItemNode.prefab · Effect/prefab/manufacturer_Particle 사본 · 3D 파티클)이다 — 아이콘 바로 위 · 배지 아래. 번개가 서고(상자·충전 시계 아님) 거미줄이 없고 탭 1회분 에너지가 있고(IngameVM.canPayProduce) 저사양이 아닐 때만 켜진다(BoardItemNode.ts:228-231 · 523-542). 에너지가 모자라면 반짝임만 꺼지고 번개 배지는 남는다 — 탭 소모 · 회복 · 구매로 에너지가 바뀌면 BoardRenderFlow.refreshSparkles 가 다시 판정한다. 입자 값은 프리팹에만 있어 MERGE_FX 키가 없다 — 표에 행이 없고 무대는 프리팹 값을 상수로 옮겨 그린다. 켜진 3D 파티클마다 스프라이트 배치가 끊겨 켜진 생산자 하나당 드로우콜이 약 2 늘어난다(미측정). 무대의 「에너지 있음/없음」으로 켜고 끈다.",
+            memo: "첫 탭은 고르기(무장 · 시안 브래킷)까지고, 고른 생산자를 다시 탭해야 생산한다(BoardTapFlow.ts:169-171). 무장은 칸이 비지 않는 한 남아 있어서 그 뒤로는 탭마다 한 발씩 난다. 생산 가능 반짝임은 생산자 칩의 자식 반짝임(풀 ProducerSparkleFx · Effect/prefab/manufacturer_Particle 직접 참조 · 3D 파티클 · 칩이 처음 필요할 때 빌려 들고 켜고 끄기만 한다)이다 — 아이콘 바로 위 · 배지 아래. 번개가 서고(상자·충전 시계 아님) 거미줄이 없고 탭 1회분 에너지가 있고(IngameVM.canPayProduce) 저사양이 아닐 때만 켜진다(BoardItemNode.ts:232 · 512-532). 에너지가 모자라면 반짝임만 꺼지고 번개 배지는 남는다 — 탭 소모 · 회복 · 구매로 에너지가 바뀌면 BoardRenderFlow.refreshSparkles 가 다시 판정한다. 입자 값은 프리팹에만 있어 MERGE_FX 키가 없다 — 표에 행이 없고 무대는 프리팹 값을 상수로 옮겨 그린다. 켜진 3D 파티클마다 스프라이트 배치가 끊겨 켜진 생산자 하나당 드로우콜이 약 2 늘어난다(미측정). 무대의 「에너지 있음/없음」으로 켜고 끈다.",
             why: "지금 <b>generateItem()</b> 은 빈 셀을 찾아 <b>setPosition</b> 후 그 자리에서 팝만 합니다. 생산자와 결과물 사이에 <b>인과가 화면에 없습니다.</b> 3차 베지어로 날리면 \"저 통에서 이게 나왔다\"가 눈으로 붙습니다. 점선과 붉은 점은 제어점 — 실제 게임에는 안 나옵니다.",
             code:
 "// ViewMergeBoard.ts — cc.bezierTo 는 cc.Action 이라 tween 체인과 안 섞인다.\n" +
