@@ -708,8 +708,8 @@
           });
         }
         /* C4 납품 착지 이펙트 — 아이템이 요구 칩에 다 닿은 순간 카드 중앙(클라는 납품 버튼 자리)에서 한 번 도는 0.567초 클립
-           (클라 RailServeFx.playLandFx -> 풀 OrderServeLandFx · 프리팹 Effect/prefab/serve_effect · 클립 Effect/animation/serve_effect.anim).
-           수치는 그 클립 curveData 원문이다. rot 노드 각도는 프리팹 저장값 0 그대로다(OrderServeLandFx 는 rot 를 무작위로 돌리지 않는다 - 머지와 다르다). */
+           (클라 RailServeFx.playLandFx -> 풀 이름 OrderServeLandFx(범용 PooledEffect) · 프리팹 Effect/prefab/serve_effect · 클립 Effect/animation/serve_effect.anim).
+           수치는 그 클립 curveData 원문이다. rot 노드 각도는 프리팹 저장값 0 그대로다(범용 PooledEffect 라 rot 를 무작위로 돌리지 않는다 - 머지와 다르다). */
         var SERVE_CLIP_SEC = 0.5666666666666667;                                   // 클라 serve_effect.anim _duration · wrapMode 1(한 번)
         var SV_BLING_POS = cubicEase(0.0782, 0.6189, 0.4528, 0.9033);                // bling 셋의 위치 곡선(모두 같다)
         var SV_DOT_POS = cubicEase(0.1059, 0.6558, 0.4713, 0.9079);                  // dot/rot/glow 넷의 위치 곡선(모두 같다)
@@ -738,7 +738,7 @@
           ],
         };
         /* 노드 순서 = 그리는 순서(클라 serve_effect.prefab 자식 glow_01 -> bling -> dot -> ring_glow, 부모 다음 자식 add).
-           첫 프레임은 바로 입힌다(클라 PooledClipFx.play 의 animation.sample). */
+           첫 프레임은 바로 입힌다(웹은 정지 자세가 한 프레임 비치지 않게 · 클라는 프리팹 루트 불투명도 0 이 같은 일을 한다). */
         function serveClip(st, at) {
           var C = SERVE_CLIP;
           function node(inner, add) { return st.spr(inner, "mfx-servefx" + (add ? " mfx-servefx-add" : "")); }
@@ -769,7 +769,7 @@
           }
           pose(0);
           return tw(SERVE_CLIP_SEC, "linear", function (e, r) { pose(r * SERVE_CLIP_SEC); }).then(function () {
-            // 클라 PooledClipFx — 클립 finished 에 스스로 반납
+            // 클라 PooledEffect.play — 클립 finished 에 스스로 반납
             glow.kill(); ring.kill();
             bl.forEach(function (b) { b.base.kill(); b.add.kill(); });
             dt.forEach(function (s) { s.kill(); });
