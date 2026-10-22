@@ -703,7 +703,7 @@
       <section class="doc-section" id="stage">
         <h2 class="doc-h2">
           클라 마을 캐릭터 ↔ 기획 대사 화자
-          <span class="doc-h2-sub">채팅 1회 = 1행 &mdash; 기획(밸런스 시트)이 틀 대사의 화자와, 클라가 채팅 직전 마을에 세우는 캐릭터를 나란히 놓았습니다. 채팅 칸을 누르면 위 표의 그 행으로 이동합니다. 위 표 조작 바의 이슈 버튼 · Day · 「작업 끝난 소구역만」이 이 표도 같이 거릅니다</span>
+          <span class="doc-h2-sub">채팅 1회 = 1행 &mdash; 기획(밸런스 시트)이 틀 대사의 화자와, 클라가 채팅 직전 마을에 세우는 캐릭터를 나란히 놓았습니다. 꾸미기 뒤 완료 씬도 한 행으로 대조합니다(무대가 시작 씬 지점에 붙들려 있어 같은 지점에 서 있어야 합니다). 채팅 칸을 누르면 위 표의 그 행으로 이동합니다. 위 표 조작 바의 이슈 버튼 · Day · 「작업 끝난 소구역만」이 이 표도 같이 거릅니다</span>
         </h2>
 
         <p class="doc-lede" style="margin-top: 0">
@@ -1580,7 +1580,9 @@
       /* 채팅 직전 마을 무대 — 접힌 줄엔 작은 전신, 펼침 맨 위엔 크게 이름·감정과 함께 */
       /* 시작 씬은 원본에선 앞 심부름의 클리어 채팅에 들어 있었다 — 무대도 그 심부름의 것을 쓴다(첫 심부름은 첫 진입) */
       const prevKeyOf = (key) => { const i = ORDER.findIndex((r) => keyOfRow(r) === key); return i > 0 ? keyOfRow(ORDER[i - 1]) : "first"; };
-      const stageOf = (ev) => STAGE[ev.kind === "first" ? "first" : ev.kind === "start" ? prevKeyOf(ev.key) : ev.key];
+      /* 완료 씬(꾸미기 뒤)도 시작 씬과 같은 지점 — 무대는 심부름을 깨기 전 지점에 완료 씬이 끝날 때까지 붙들려 있다(클라 PendingChoreClaim.stageProgress) */
+      const heldPoint = (ev) => ev.kind === "start" || (ev.kind === "finish" && ev.segs.some((g) => g.slot === "f"));
+      const stageOf = (ev) => STAGE[ev.kind === "first" ? "first" : heldPoint(ev) ? prevKeyOf(ev.key) : ev.key];
       const capName = (c) => c.charAt(0).toUpperCase() + c.slice(1);
       const stageImg = (c, e) => `<img src="img/npc/stage/${esc(c)}_${esc(e)}.png" alt="${esc(capName(c))} ${esc(e)}" title="${esc(capName(c))} · ${esc(e)}" loading="lazy" decoding="async">`;
       /* 마을 캐릭터 ↔ 대사 화자 대조. 원안 AreaCourtyard.prefab 의 스토리 지점(task_story_N)에는 「그 지점이 세워지는 씬의
@@ -1606,7 +1608,7 @@
         if (!s || EMPTY_KINDS[s[3]] || !s[2].length) r = { st: s && EMPTY_KINDS[s[3]] ? s[3] : "nopoint", s };
         else if (s[3] === "prev") r = { st: "prev", s };
         else {
-          const slot = s[3] === "finish" ? "a" : "s";
+          const slot = s[3] === "finish" ? "a" : ev.kind === "finish" ? "f" : "s";
           const segs = ev.segs.filter((g) => g.slot === slot);
           const speak = new Set();
           segs.forEach((g) => g.lines.forEach((l) => { const c = l[1].toLowerCase(); if (c !== "none") speak.add(c); }));
@@ -1670,7 +1672,7 @@
       function stageHtml(ev) {
         const c = stageCheck(ev);
         const s = c.s;
-        const head = `<div class="lb">채팅 직전 마을</div>`;
+        const head = `<div class="lb">${ev.kind === "finish" && heldPoint(ev) ? "꾸미기 뒤 마을 · 시작 씬과 같은 지점" : "채팅 직전 마을"}</div>`;
         if (c.st === "todo" && !s[2].length) {
           return `<div class="cr-res cr-stagebox">${head}<div class="cr-rk"><span class="cr-stage-none">작업 전</span>`
             + `<span class="no">${esc(s[0])} 은 아직 스토리 캐릭터 배치 전입니다</span></div></div>`;
@@ -2010,6 +2012,15 @@
             if (c.st === "nosub") { it.grp = s[4]; it.range = () => `${s[4]} 없음`; }
             out.push(it);
           }
+          if (e.kind === "clear") {
+            /* 완료 씬 — 무대가 시작 씬 지점에 붙들려 있어 완료 씬 화자도 그 지점에 서 있어야 한다 */
+            const fs = e.segs.filter((g) => g.slot === "f");
+            if (fs.length) {
+              const fev = talkEv("finish", e.key, e.row, fs);
+              const fc = stageCheck(fev);
+              if (STAGE_CAT[fc.st] === "stage-bad") out.push({ cat: "stage-bad", go: chkIdOf(fev), label: `${e.key} 완료`, at, day: e.row[0], note: stageMissText(fc), noteHtml: stageMissHtml(fc), grp: "", range: null });
+            }
+          }
           if (e.kind === "clear" && hasDeco(e.row)) {
             const y = YARD[e.key];
             decoIssues(e.key).forEach((k) => {
@@ -2160,6 +2171,21 @@
           : c.st === "prev" ? "prev" : isEmptySt(c.st) ? "nopoint" : c.st === "ok" ? "ok" : "na";
         return { ev, s, c, o, of, cat, tracked: !!s && TRACKED.has(s[0]) };
       });
+      /* 완료 씬(꾸미기 뒤) 행 — 무대가 시작 씬 지점에 붙들려 있으니 같은 지점에 완료 씬 화자가 다 서 있어야 한다. 옛 기획 대조(10-01)는 시작 씬 기준이라 비운다 */
+      TIMELINE.forEach((e) => {
+        if (e.t !== "talk" || e.kind !== "clear") return;
+        const fs = e.segs.filter((g) => g.slot === "f");
+        if (!fs.length) return;
+        const fev = talkEv("finish", e.key, e.row, fs);
+        const s = stageOf(fev);
+        const c = stageCompare(fev, s);
+        const cat = c.st === "bad" ? "orig" : c.st === "prev" ? "prev" : isEmptySt(c.st) ? "nopoint" : c.st === "ok" ? "ok" : "na";
+        SP_ROWS.push({ ev: fev, s, c, o: null, of: null, cat, tracked: !!s && TRACKED.has(s[0]) });
+      });
+      /* 클라 반영 순서 — 한 심부름 안에서 완료 씬 행이 그 클리어(다음 시작 씬 · 구역 완료) 행보다 앞이다 */
+      const spAt = new Map(ORDER.map((r, i) => [keyOfRow(r), i]));
+      SP_ROWS.sort((a, b) => (a.ev.kind === "first" ? -1 : spAt.get(a.ev.key)) - (b.ev.kind === "first" ? -1 : spAt.get(b.ev.key))
+        || (a.ev.kind === "finish" ? 0 : 1) - (b.ev.kind === "finish" ? 0 : 1));
       /* 이슈 필터 — 위 표 조작 바의 버튼 하나가 위 표와 이 대조표를 같이 거른다. null = 끔. 「일치」는 이슈가 아니라 버튼이 없다. */
       let spCat = null;
       let spTracked = true;
@@ -2191,15 +2217,15 @@
       function spRowHtml(r) {
         const { ev, s, c, o, of, cat } = r;
         const dot = ev.kind === "first" ? "s" : "c";
-        const lb = ev.kind === "first" ? "첫 진입" : `${ev.key} 클리어 후`;
+        const lb = ev.kind === "first" ? "첫 진입" : ev.kind === "finish" ? `${ev.key} 완료 씬` : `${ev.key} 클리어 후`;
         const chat = `<button class="cr-sp-go" type="button" data-go="${chkIdOf(ev)}" title="위 표의 이 채팅 행으로"><span class="cr-slot is-${dot}">${esc(lb)}</span></button>`
           + (r.tracked ? "" : `<div class="cr-sp-note cr-nil">작업 전 소구역</div>`);
 
         /* 기획 — 클라 마을과 대는 슬롯: 구역 완료 지점이면 구역 완료 씬, 아니면 다음 심부름 착수 씬 */
         const fin = s && (s[3] === "finish" || s[3] === "nofinish");
-        const segs = ev.segs.filter((g) => g.slot === (fin ? "a" : "s"));
+        const segs = ev.segs.filter((g) => g.slot === (ev.kind === "finish" ? "f" : fin ? "a" : "s"));
         const next = ev.kind === "first" ? ev.key : SP_NEXT.get(ev.key);
-        const sheet = `<div class="cr-sp-ln"><span class="k">${fin ? "구역 완료" : "다음 심부름"}</span>${fin ? "" : `<b>${esc(next || "—")}</b>`}</div>`
+        const sheet = `<div class="cr-sp-ln">${ev.kind === "finish" ? `<span class="k">완료 씬</span><b>${esc(ev.key)}</b>` : `<span class="k">${fin ? "구역 완료" : "다음 심부름"}</span>${fin ? "" : `<b>${esc(next || "—")}</b>`}`}</div>`
           + (segs.length ? `<div class="cr-sp-ln">${segs.map((g) => `<code>${esc(g.sid)}</code>`).join(" ")}</div>` + spFaces(spSpeakers(segs.map((g) => [g.sid, g.lines])))
             : `<span class="cr-nil">씬 없음</span>`);
 
