@@ -597,6 +597,7 @@
           </label>
           <button class="cr-btn" id="crOnlyItem" type="button">추가 아이템 있는 건만</button>
           <button class="cr-btn" id="crAllDet" type="button">대화 전부 펼치기</button>
+          <button class="cr-btn" id="crAllDeco" type="button">꾸미기 전부 접기</button>
           <span class="cr-issue" id="crIssue" role="group" aria-label="이슈 필터 — 진행 막힘 · 마을 캐릭터 ↔ 대사 화자"></span>
           <span class="cr-count" id="crCount"></span>
         </div>
@@ -1427,7 +1428,8 @@
       const YARD_VD = { ok: ["is-ok", "아트 일치"], diff: ["is-bad", "종류 다름"], noart: ["is-none", "아트 없음"] };
       const yardVdHtml = (key) => {
         const y = YARD[key];
-        return y ? `<span class="cr-vd ${YARD_VD[y[5]][0]}">${YARD_VD[y[5]][1]}</span>` : "";
+        /* 일치는 기본값이라 적지 않는다 — 어긋난 것(종류 다름 · 아트 없음)만 배지로 눈에 띄게 */
+        return y && y[5] !== "ok" ? `<span class="cr-vd ${YARD_VD[y[5]][0]}">${YARD_VD[y[5]][1]}</span>` : "";
       };
       function yardHtml(key) {
         const y = YARD[key];
@@ -1852,6 +1854,12 @@
         const btn = $("#crAllDet");
         btn.classList.toggle("is-on", open);
         btn.textContent = open ? "대화 전부 접기" : "대화 전부 펼치기";
+
+        const decos = document.querySelectorAll("#crBody tr.cr-det.is-d");
+        const decoAll = decos.length > 0 && Array.prototype.every.call(decos, (d) => !d.hidden);
+        const dbtn = $("#crAllDeco");
+        dbtn.classList.toggle("is-on", decoAll);
+        dbtn.textContent = decoAll ? "꾸미기 전부 접기" : "꾸미기 전부 펼치기";
       }
 
       /* ── 요약 ──────────────────────────────────────────────────────────── */
@@ -2372,6 +2380,18 @@
           const open = Array.prototype.every.call(dets, (d) => !d.hidden);
           /* 상태에 남겨 둔다 — 안 그러면 Day 필터를 건드리는 순간 기본값으로 되돌아간다 */
           talkOpen = !open;
+          dets.forEach((d) => {
+            d.hidden = open;
+            const tr = document.querySelector(`tr.cr-row[data-det="${d.id}"]`);
+            if (tr) tr.classList.toggle("is-open", !open);
+          });
+          syncAllBtn();
+        });
+        /* 꾸미기 일괄 접기 / 펼치기 — 대화 버튼과 같은 규칙(하나라도 접혀 있으면 펼치기 먼저) */
+        $("#crAllDeco").addEventListener("click", () => {
+          const dets = document.querySelectorAll("#crBody tr.cr-det.is-d");
+          const open = Array.prototype.every.call(dets, (d) => !d.hidden);
+          decoOpen = !open;
           dets.forEach((d) => {
             d.hidden = open;
             const tr = document.querySelector(`tr.cr-row[data-det="${d.id}"]`);
