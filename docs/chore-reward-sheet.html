@@ -1638,16 +1638,28 @@
         else {
           const slot = s[3] === "finish" ? "a" : ev.kind === "finish" ? "f" : "s";
           const segs = ev.segs.filter((g) => g.slot === slot);
-          const speak = new Set();
-          segs.forEach((g) => g.lines.forEach((l) => { const c = l[1].toLowerCase(); if (c !== "none") speak.add(STAGE_ALIAS[c] || c); }));
-          const pick = pickScene(s, speak);
-          const cur = pick ? s[6][pick - 1] : s[2];
-          const on = new Set(cur.map(([c]) => c));
-          const miss = [...speak].filter((c) => !on.has(c));
-          const extra = [...on].filter((c) => !speak.has(c) && c !== HERO.toLowerCase());
+          const hero = HERO.toLowerCase();
+          const speakOf = (gs) => {
+            const sp = new Set();
+            gs.forEach((g) => g.lines.forEach((l) => { const c = l[1].toLowerCase(); if (c !== "none") sp.add(STAGE_ALIAS[c] || c); }));
+            return sp;
+          };
+          /* 씬 세트가 하나면 채팅 전체 화자를 한 번에, 둘 이상이면 클라처럼 씬(sid)마다 세트를 고른다 */
+          const groups = (s[6] || []).length ? segs.map((g) => [g]) : [segs];
+          const parts = groups.map((gs) => {
+            const sp = speakOf(gs);
+            const pick = pickScene(s, sp);
+            const on = new Set((pick ? s[6][pick - 1] : s[2]).map(([c]) => c));
+            return { pick, miss: [...sp].filter((c) => !on.has(c)), extra: [...on].filter((c) => !sp.has(c) && c !== hero) };
+          });
+          const miss = [...new Set(parts.flatMap((x) => x.miss))];
+          const extra = [...new Set(parts.flatMap((x) => x.extra))];
+          const scenes = [...new Set(parts.map((x) => x.pick))].sort();
+          const cur = [];
+          scenes.forEach((i) => (i ? s[6][i - 1] : s[2]).forEach(([c, e]) => { if (!cur.some(([x]) => x === c)) cur.push([c, e]); }));
           r = !segs.length ? { st: "na", s }
-            : { st: miss.length || extra.length ? "bad" : "ok", s, cur, scene: pick, sid: segs.map((g) => g.sid).join(" · "), miss, extra,
-                speakers: [...speak].map(capName), standing: cur.map(([c]) => capName(c)) };
+            : { st: miss.length || extra.length ? "bad" : "ok", s, cur, scenes, sid: segs.map((g) => g.sid).join(" · "), miss, extra,
+                speakers: [...speakOf(segs)].map(capName), standing: cur.map(([c]) => capName(c)) };
         }
         return r;
       }
@@ -1729,7 +1741,7 @@
         const hero = HERO.toLowerCase();
         /* 주인공은 늘 서 있는 사람이라 있고 없고로 어긋남을 가르지 않는다(판정 규칙과 같다) */
         const sameChars = client.filter(([ch]) => ch !== hero).length === plan.filter((ch) => ch !== hero).length && client.every(([ch]) => ch === hero || names.has(ch));
-        if (sameChars) {
+        if (c.st === "ok" || (c.st !== "bad" && sameChars)) {
           return `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h"><span class="cr-vd is-ok">일치</span>${SRC_B.plan}${SRC_B.client}`
             + `<span class="sub">${plan.map((ch) => esc(capName(ch))).join(" · ")}</span></div>`
             + `<div class="cr-stage-figs">${plan.map((ch) => stageFigN(ch, emoOf(ch))).join("")}</div></div></div>`;
@@ -1754,10 +1766,10 @@
       function stageScenesHtml(c) {
         const sets = [c.s[2], ...(c.s[6] || [])];
         if (sets.length < 2) return "";
-        const on = c.scene || 0;
+        const on = c.scenes || [0];
         return `<div class="cr-cmp-h" style="margin-top: 8px">씬 세트 ${sets.length}개<span class="sub">클라는 화자가 가장 많이 선 세트 하나만 켭니다</span></div>`
           + `<div class="cr-cmp">${sets.map((set, i) => `<div class="cr-cmp-b"><div class="cr-cmp-h">씬 ${i + 1}`
-            + `${i === on ? ` <span class="cr-vd is-ok">켜짐</span>` : ` <span class="cr-vd is-none">꺼짐</span>`}</div>`
+            + `${on.includes(i) ? ` <span class="cr-vd is-ok">켜짐</span>` : ` <span class="cr-vd is-none">꺼짐</span>`}</div>`
             + `<div class="cr-stage-figs">${set.map(([ch, e]) => stageFigN(ch, e)).join("")}</div></div>`).join("")}</div>`;
       }
       function stageHtml(ev) {
@@ -2330,7 +2342,7 @@
             + `<div class="cr-sp-ln">${s[1] ? `<code title="번들 area.prefab">${esc(s[1])}</code>` : `<span class="cr-nil">번들 지점 없음</span>`}`
             + (node ? `<span class="cr-nil">· 원안 <code>${esc(node)}</code></span>` : "") + `</div>`
             + (s[2].length ? `<div class="cr-stage">${(c.cur || s[2]).map(([ch, e]) => stageImg(ch, e)).join("")}</div>`
-              + `<div class="cr-sp-note">${esc((c.cur || s[2]).map(([ch]) => capName(ch)).join(" · "))}${(s[6] || []).length ? ` (씬 세트 ${(s[6] || []).length + 1}개 중 씬 ${(c.scene || 0) + 1})` : ""}</div>`
+              + `<div class="cr-sp-note">${esc((c.cur || s[2]).map(([ch]) => capName(ch)).join(" · "))}${(s[6] || []).length ? ` (씬 세트 ${(s[6] || []).length + 1}개 중 씬 ${(c.scenes || [0]).map((n) => n + 1).join(" · ")})` : ""}</div>`
               : `<span class="cr-vd is-none">비어 있음</span>`);
         }
 
