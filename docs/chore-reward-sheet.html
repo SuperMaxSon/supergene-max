@@ -1699,72 +1699,55 @@
         return `<div class="cr-stage"><span class="lb">마을</span>${(c.cur || c.s[2]).map(([ch, e]) => stageImg(ch, e)).join("")}${stageVdHtml(ev)}`
           + (c.st === "bad" ? `<span class="cr-stage-miss">${stageMissHtml(c)}</span>` : "") + `</div>`;
       }
-      /* 클라 character/prefab 폴더 실측(2026-10-22) — 감정 프리팹이 있는 캐릭터만 적는다. 나머지는 idle 만 있다.
-         기획 감정 = 그 씬에서 그 화자가 가장 많이 쓴 시트 감정 → EMO_MAP 후보 중 클라에 있는 첫 감정, 없으면 idle(시트 어휘 16종 대비 클라 감정은 5종 이하라 대부분 idle). */
-      const STAGE_EMO = { rosie: ["idle", "happy", "sad", "worried", "angry"], theo: ["idle", "happy", "serious"], poppy: ["idle", "sad"], gus: ["idle", "fear"], brett: ["idle", "sad"] };
       const STAGE_ALIAS = { wrenhood: "hood" };
       const stageKey = (name) => { const k = name.toLowerCase(); return STAGE_ALIAS[k] || k; };
-      const planEmo = (ch, sheet) => (EMO_MAP[sheet] || []).find((x) => (STAGE_EMO[ch] || ["idle"]).includes(x)) || "idle";
-      /* 이 채팅이 대 보는 기획 씬의 인물 — 주인공은 늘 서 있으니 맨 앞에 두고, 나머지는 처음 말한 순서. [[캐릭터, 클라 감정, 시트 감정]…] */
+      /* 이 채팅이 대 보는 기획 씬의 인물 이름 — 주인공은 늘 서 있으니 맨 앞에 두고, 나머지는 처음 말한 순서.
+         감정은 비교하지 않는다(기획은 마을 캐릭터의 감정을 정하지 않는다, 인물만 본다). */
       function planCastOf(ev, s) {
         const slot = s[3] === "finish" ? "a" : ev.kind === "finish" ? "f" : "s";
         const segs = ev.segs.filter((g) => g.slot === slot);
         if (!segs.length) return null;
-        const by = new Map([[HERO.toLowerCase(), new Map()]]);
-        segs.forEach((g) => g.lines.forEach((l) => {
-          if (l[1].toLowerCase() === "none") return;
-          const k = stageKey(l[1]);
-          if (!by.has(k)) by.set(k, new Map());
-          by.get(k).set(l[2], (by.get(k).get(l[2]) || 0) + 1);
-        }));
-        return [...by].map(([ch, m]) => {
-          const top = [...m].sort((a, b) => b[1] - a[1])[0];
-          return [ch, top ? planEmo(ch, top[0]) : "idle", top ? top[0] : ""];
-        });
+        const names = new Set([HERO.toLowerCase()]);
+        segs.forEach((g) => g.lines.forEach((l) => { if (l[1].toLowerCase() !== "none") names.add(stageKey(l[1])); }));
+        return [...names];
       }
       /* 그림이 없는 감정은 idle 그림으로 대신 보이고, 그것도 없으면(후드 · 렌) 그림 없이 이름만 */
       const stageImgFb = (c, e) => `<img src="img/npc/stage/${esc(c)}_${esc(e)}.png" alt="${esc(capName(c))} ${esc(e)}" loading="lazy" decoding="async"`
         + ` onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.src.replace(/_[^_/]+[.]png$/,'_idle.png')}else{this.style.visibility='hidden'}">`;
-      const stageFig = (ch, e, cls, note, tip) => `<figure class="${cls || ""}"${tip ? ` title="${esc(tip)}"` : ""}>${stageImgFb(ch, e)}<figcaption><b>${esc(capName(ch))}</b>${esc(e)}${note ? ` <i>${note}</i>` : ""}</figcaption></figure>`;
+      /* 인물만 보이는 칸 — 그림은 쓰는 감정 그대로, 글자엔 이름만(감정은 비교 대상이 아니다) */
+      const stageFigN = (ch, e, cls, note) => `<figure class="${cls || ""}">${stageImgFb(ch, e)}<figcaption><b>${esc(capName(ch))}</b>${note ? ` <i>${note}</i>` : ""}</figcaption></figure>`;
       function stageCompareHtml(ev, c) {
         const s = c.s;
         const plan = planCastOf(ev, s);
         const client = c.cur || s[2];
-        const emoOf = (list, ch) => { const f = list.find(([x]) => x === ch); return f ? f[1] : null; };
+        const emoOf = (ch) => { const f = client.find(([x]) => x === ch); return f ? f[1] : "idle"; };
         if (!plan) {
           return `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.plan} <span class="sub">대조할 기획 씬 대사가 없음</span></div></div>`
-            + `<div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.client} <span class="sub">마을</span></div><div class="cr-stage-figs">${client.map(([ch, e]) => stageFig(ch, e)).join("")}</div></div></div>`;
+            + `<div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.client} <span class="sub">마을</span></div><div class="cr-stage-figs">${client.map(([ch, e]) => stageFigN(ch, e)).join("")}</div></div></div>`;
         }
-        /* 시트 감정이 가리키는 클라 감정 후보 중 클라가 이미 쓰는 게 있으면 그걸로 본다(같은 감정이다) */
-        /* 주인공의 포즈는 아트가 고르는 것이라 감정 차이로 치지 않는다 */
-        plan.forEach((p) => { const ce = emoOf(client, p[0]); if (ce && (p[0] === HERO.toLowerCase() || (EMO_MAP[p[2]] || []).includes(ce))) p[1] = ce; });
-        const names = new Set(plan.map(([ch]) => ch));
+        const names = new Set(plan);
         const hero = HERO.toLowerCase();
         /* 주인공은 늘 서 있는 사람이라 있고 없고로 어긋남을 가르지 않는다(판정 규칙과 같다) */
-        const sameChars = client.filter(([ch]) => ch !== hero).length === plan.filter(([ch]) => ch !== hero).length && client.every(([ch]) => ch === hero || names.has(ch));
-        const sameAll = sameChars && plan.every(([ch, e]) => (ch === hero && emoOf(client, ch) === null) || emoOf(client, ch) === e);
-        if (sameAll) {
+        const sameChars = client.filter(([ch]) => ch !== hero).length === plan.filter((ch) => ch !== hero).length && client.every(([ch]) => ch === hero || names.has(ch));
+        if (sameChars) {
           return `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h"><span class="cr-vd is-ok">일치</span>${SRC_B.plan}${SRC_B.client}`
-            + `<span class="sub">${plan.map(([ch, e]) => `${esc(capName(ch))} ${esc(e)}`).join(" · ")}</span></div>`
-            + `<div class="cr-stage-figs">${plan.map(([ch, e, sh]) => stageFig(ch, e, "", "", sh ? `시트 감정 ${sh}` : "")).join("")}</div></div></div>`;
+            + `<span class="sub">${plan.map((ch) => esc(capName(ch))).join(" · ")}</span></div>`
+            + `<div class="cr-stage-figs">${plan.map((ch) => stageFigN(ch, emoOf(ch))).join("")}</div></div></div>`;
         }
         const cl = new Set(client.map(([ch]) => ch));
         /* 작업 전 소구역 · 앞 지점 재사용은 없는 게 당연하니 어긋남으로 칠하지 않는다(판정 규칙과 같다) */
         const neutral = c.st === "todo" || c.st === "prev";
-        const planB = plan.map(([ch, e, sh]) => {
+        const planB = plan.map((ch) => {
           const miss = ch !== hero && !cl.has(ch);
-          if (miss && neutral) return stageFig(ch, e, "is-gap", "마을에 없음", sh ? `시트 감정 ${sh}` : "");
-          return miss ? `<figure class="is-miss"${sh ? ` title="시트 감정 ${esc(sh)}"` : ""}>${stageImgFb(ch, e)}<figcaption><b>${esc(capName(ch))}</b>${esc(e)} <u>마을에 없음</u></figcaption></figure>`
-            : stageFig(ch, e, "", emoOf(client, ch) !== e ? "감정 다름" : "", sh ? `시트 감정 ${sh}` : "");
+          if (miss && neutral) return stageFigN(ch, "idle", "is-gap", "마을에 없음");
+          return miss ? `<figure class="is-miss">${stageImgFb(ch, "idle")}<figcaption><b>${esc(capName(ch))}</b> <u>마을에 없음</u></figcaption></figure>`
+            : stageFigN(ch, emoOf(ch));
         }).join("");
-        const clientB = client.map(([ch, e]) => (names.has(ch)
-          ? stageFig(ch, e, "", plan.find(([x]) => x === ch)[1] !== e ? "감정 다름" : "")
-          : stageFig(ch, e, "is-gap", "말 안 함"))).join("");
-        const title = sameChars ? `<span class="cr-vd is-ok">인물 일치</span><span class="sub">감정만 다름</span>`
-          : neutral ? `<span class="cr-vd is-none">${c.st === "prev" ? "앞 지점 재사용" : "작업 전 소구역"} · 참고</span>`
-            : `<span class="cr-vd is-bad">${SRC_B.client} ≠ ${SRC_B.plan}</span>`;
+        const clientB = client.map(([ch, e]) => (names.has(ch) ? stageFigN(ch, e) : stageFigN(ch, e, "is-gap", "말 안 함"))).join("");
+        const title = neutral ? `<span class="cr-vd is-none">${c.st === "prev" ? "앞 지점 재사용" : "작업 전 소구역"} · 참고</span>`
+          : `<span class="cr-vd is-bad">${SRC_B.client} ≠ ${SRC_B.plan}</span>`;
         return `<div class="cr-cmp-h" style="margin-top: 8px">${title}</div>`
-          + `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.plan}<span class="sub">이 대화에 나오는 인물 · 시트 감정에서 옮긴 클라 감정</span></div><div class="cr-stage-figs">${planB}</div></div>`
+          + `<div class="cr-cmp"><div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.plan}<span class="sub">이 대화에 나오는 인물</span></div><div class="cr-stage-figs">${planB}</div></div>`
           + `<div class="cr-cmp-b"><div class="cr-cmp-h">${SRC_B.client}<span class="sub">마을에 서 있는 인물</span></div><div class="cr-stage-figs">${clientB}</div></div></div>`;
       }
       /* 한 지점에 씬 세트가 둘 이상이면 전부 보여 준다 — 클라가 고른 세트에 「켜짐」, 나머지는 꺼진 채 남는다 */
@@ -1775,7 +1758,7 @@
         return `<div class="cr-cmp-h" style="margin-top: 8px">씬 세트 ${sets.length}개<span class="sub">클라는 화자가 가장 많이 선 세트 하나만 켭니다</span></div>`
           + `<div class="cr-cmp">${sets.map((set, i) => `<div class="cr-cmp-b"><div class="cr-cmp-h">씬 ${i + 1}`
             + `${i === on ? ` <span class="cr-vd is-ok">켜짐</span>` : ` <span class="cr-vd is-none">꺼짐</span>`}</div>`
-            + `<div class="cr-stage-figs">${set.map(([ch, e]) => stageFig(ch, e)).join("")}</div></div>`).join("")}</div>`;
+            + `<div class="cr-stage-figs">${set.map(([ch, e]) => stageFigN(ch, e)).join("")}</div></div>`).join("")}</div>`;
       }
       function stageHtml(ev) {
         const c = stageCheck(ev);
