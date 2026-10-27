@@ -80,7 +80,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "v1.24",
-        updated: "2026-10-26 15:24",
+        updated: "2026-10-27 17:58",
         pinned: false,
         tags: ["story-merge", "아트", "번역시트"],
       },
