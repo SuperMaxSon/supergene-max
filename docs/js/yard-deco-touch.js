@@ -32,12 +32,19 @@
       what: "알파가 32 이상인 픽셀만 터치영역이다. 눈에 보이는 윤곽 안만 누를 수 있다.",
       how: "오프라인 베이크 도구가 PNG 알파에서 윤곽(저해상 비트맵)을 JSON 으로 만들어 번들에 동봉한다. 터치영역 노드의 <code>_hitTest</code> 를 덮어 그 윤곽 안에서만 통과시킨다. 엔진은 히트 테스트를 통과한 맨 위 노드 하나만 받으니 '눈에 보이는 맨 위 물건이 받는다'가 된다. 런타임에 텍스처 픽셀을 읽는 방식은 빌드 압축 텍스처 때문에 기기에서 못 쓴다. 엔진이 터치를 뗄 때도 <code>_hitTest</code> 를 다시 돌려 거짓이면 TOUCH_CANCEL 로 바꾸므로, 알파 판정은 터치 시작 때만 쓰고 닿아 있는 동안은 사각형 판정만 쓴다.",
       data: "스프라이트프레임별 윤곽 JSON(베이크 산출물, 4px 격자 기준 gzip 약 35KB).", cost: "탭 한 번에 +0.35us(데스크톱 마이크로 벤치, 모바일 4배 가정 +1.3us), 메모리 약 88KB.",
-      limit: "가는 물건(가로등, 꽃)은 손가락으로 누르기 어렵다. 그림이 바뀌면 재베이크가 필요하다(재가공 파이프라인에 붙여야 한다)." }
+      limit: "가는 물건(가로등, 꽃)은 손가락으로 누르기 어렵다. 그림이 바뀌면 재베이크가 필요하다(재가공 파이프라인에 붙여야 한다)." },
+    { id: "fill", lazy: true, name: "4+. 알파 + 구멍 메움 + 부풀리기",
+      what: "4번과 같되, 그림 바깥에서 닿을 수 없는 투명 구멍(사다리 칸, 아치 안, 창살 사이)도 터치영역에 넣고, 윤곽을 고른 px 만큼 바깥으로 키운다. 뚫린 그림과 가는 물건을 손가락으로 누르기 쉽게 하는 확장이다.",
+      how: "베이크 도구(<code>touch-mask</code>)가 프레임의 4px 칸 비트맵에서 가장자리에서 닿는 빈 칸을 찾고(홍수 채우기), 못 닿는 빈 칸을 켠 뒤 고른 칸 수만큼 원 모양으로 키운다. 런타임 판정 코드는 4번과 같고 구운 비트맵만 달라진다. 부풀림은 불투명 영역(trim) 박스 밖으로 번지므로 비트맵에 부풀린 칸 수만큼 가장자리 여백이 필요하다(JSON 형식 확장).",
+      data: "4번과 같은 윤곽 JSON. 여백 칸이 더해져 소폭 커진다.", cost: "탭 한 번에 칸 조회 한 번으로 4번과 같다. 파일 크기와 메모리만 소폭 늘어난다.",
+      limit: "구멍이 옆이나 위로 터진 모양(전구 줄, 울타리)은 메워지지 않는다. 부풀릴수록 이웃 꾸미기와 겹침이 다시 늘어난다(비교표의 터치면적과 지도의 빨강으로 확인)." }
   ];
+  var FILL_PXS = [0, 4, 8, 12, 16];
 
   var BG, C, GW, GH, decos, N, DATA;
   var mode = "alpha", variant = "a", subFilter = "", selected = null, clicked = null;
   var planes = {}, cache = {};
+  var fillPx = 8, fillLoaded = {}, fillData = {};
   var img = new Image();
   var overlay = document.createElement("canvas");
   var tmp = document.createElement("canvas"), tctx;
@@ -67,11 +74,27 @@
   }
   function ensure(v) {
     if (planes[MODES[0].id] && planes[MODES[0].id][v]) return Promise.resolve();
-    return Promise.all(MODES.map(function (m) {
+    return Promise.all(MODES.filter(function (m) { return !m.lazy; }).map(function (m) {
       return Promise.all(DATA.grids[m.id][v].map(decode)).then(function (p) {
         planes[m.id] = planes[m.id] || {}; planes[m.id][v] = p;
       });
     }));
+  }
+
+  /* 4+ 방식은 고를 때만 불러온다(부풀리기 px 별 파일). */
+  function fillReady() { return !!(planes.fill && planes.fill[variant] && fillLoaded[variant] === fillPx); }
+  function ensureFill(v) {
+    if (planes.fill && planes.fill[v] && fillLoaded[v] === fillPx) return Promise.resolve();
+    var px = fillPx;
+    var src = fillData[px] || (fillData[px] = fetch("data/yard-deco-touch-fill-f" + px + ".json").then(function (r) { return r.json(); }));
+    tip.textContent = "불러오는 중...";
+    return src.then(function (d) { return Promise.all(d[v].map(decode)); }).then(function (p) {
+      planes.fill = planes.fill || {}; planes.fill[v] = p; fillLoaded[v] = px;
+    });
+  }
+  function pickFill() {
+    ensureFill(variant).then(function () { mode = "fill"; tip.textContent = TIP; analyzeAll(); refreshStack(); })
+      .catch(function (e) { tip.textContent = "불러오기 실패: " + e; });
   }
 
   function allowed() {
@@ -111,7 +134,7 @@
 
   function analyzeAll() {
     cache = {};
-    MODES.forEach(function (m) { cache[m.id] = analyze(m.id); });
+    MODES.forEach(function (m) { cache[m.id] = m.lazy && !fillReady() ? null : analyze(m.id); });
     renderCmp(); renderDef(); renderRank(); paint(); draw();
   }
 
@@ -137,14 +160,28 @@
   function renderCmp() {
     var tb = document.querySelector("#tz-cmp tbody"); tb.innerHTML = "";
     MODES.forEach(function (m) {
-      var s = cache[m.id].stats;
-      var le5 = s.filter(function (x) { return x.pct <= 5; }).length;
-      var lt50 = s.filter(function (x) { return x.pct < 50; }).length;
-      var lt100 = s.filter(function (x) { return x.pct < 99.5; }).length;
-      var area = s.reduce(function (t, x) { return t + x.area; }, 0) / 10000;
       var tr = document.createElement("tr"); tr.className = "tz-hit" + (m.id === mode ? " tz-sel" : "");
-      tr.innerHTML = "<td>" + m.name + "</td><td class=\"tz-n\">" + le5 + "/" + s.length + "</td><td class=\"tz-n\">" + lt50 + "</td><td class=\"tz-n\">" + lt100 + "</td><td class=\"tz-n\">" + area.toFixed(0) + "</td>";
-      tr.onclick = function () { mode = m.id; refresh(); };
+      var first = "<td>" + m.name + (m.lazy ? " <select class=\"tz-px\">" + FILL_PXS.map(function (px) {
+        return "<option value=\"" + px + "\"" + (px === fillPx ? " selected" : "") + ">" + px + "px</option>";
+      }).join("") + "</select>" : "") + "</td>";
+      var a = cache[m.id];
+      if (!a) {
+        tr.innerHTML = first + "<td class=\"tz-n tz-dim\" colspan=\"4\">눌러서 지도에 올리기</td>";
+        tr.onclick = pickFill;
+      } else {
+        var s = a.stats;
+        var le5 = s.filter(function (x) { return x.pct <= 5; }).length;
+        var lt50 = s.filter(function (x) { return x.pct < 50; }).length;
+        var lt100 = s.filter(function (x) { return x.pct < 99.5; }).length;
+        var area = s.reduce(function (t, x) { return t + x.area; }, 0) / 10000;
+        tr.innerHTML = first + "<td class=\"tz-n\">" + le5 + "/" + s.length + "</td><td class=\"tz-n\">" + lt50 + "</td><td class=\"tz-n\">" + lt100 + "</td><td class=\"tz-n\">" + area.toFixed(0) + "</td>";
+        tr.onclick = function () { mode = m.id; refresh(); };
+      }
+      if (m.lazy) {
+        var sel = tr.querySelector("select");
+        sel.onclick = function (e) { e.stopPropagation(); };
+        sel.onchange = function () { fillPx = +this.value; pickFill(); };
+      }
       tb.appendChild(tr);
     });
   }
@@ -239,7 +276,11 @@
     $("tz-zout").onclick = function () { zoomAt(cv.width / 2, cv.height / 2, 1 / 1.5); };
     $("tz-zfit").onclick = function () { fit(); draw(); };
     Array.prototype.forEach.call(root.querySelectorAll("input[name=tz-v]"), function (r) {
-      r.onchange = function () { variant = r.value; tip.textContent = "불러오는 중..."; ensure(variant).then(function () { tip.textContent = TIP; analyzeAll(); refreshStack(); }); };
+      r.onchange = function () {
+        variant = r.value; tip.textContent = "불러오는 중...";
+        ensure(variant).then(function () { return mode === "fill" ? ensureFill(variant) : null; })
+          .then(function () { tip.textContent = TIP; if (mode === "fill" && !fillReady()) mode = "alpha"; analyzeAll(); refreshStack(); });
+      };
     });
     $("tz-sub").onchange = function () { subFilter = this.value; analyzeAll(); refreshStack(); };
     ["tz-showown", "tz-showred"].forEach(function (id) { $(id).onchange = function () { paint(); draw(); }; });
