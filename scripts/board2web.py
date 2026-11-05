@@ -24,7 +24,7 @@ BAL = os.path.join(GAME, "assets/bundle/data/rosewood-balance.json")
 # 이름은 클라 로컬라이제이션(en.json — 다른 세션이 편집 중이라 낡을 수 있다)이 아니라
 # 시트 export 원본 string_code 에서 읽는다(정본은 시트, 클라 번들은 읽기 전용 사본).
 # export 판본이 바뀌면 이 경로도 같이 옮긴다.
-STR = os.path.join(GAME, "_ignore/item-sheets/2026-09-23-export/string_code.json")
+STR = os.path.join(GAME, "_ignore/item-sheets/2026-11-04-export/string_code.json")
 OUT = os.path.join(HERE, "docs", "data", "rosewood-board.json")
 IMG = os.path.join(HERE, "docs", "img", "items")
 
@@ -75,12 +75,14 @@ def item_name(code):
     return strings.get(key, key or str(code))
 
 
-# reward_key(문자열) → item_code. "머지 아이템" 분류만 실제 아이템이고
-# 재화/부스터/이벤트 토큰은 item_code=0 이라 닫힘 대상이 아니다.
+# reward_key(문자열) → item_code. 머지 아이템 분류만 닫힘 시작점으로 본다.
+# 분류 값은 2026-11-04 export 부터 영문 코드("item")다 — 그 전 판은 한글("머지 아이템").
+# 재화/이벤트 토큰은 item_code=0 이고, 부스터 조각(3801/3901)은 도구라 닫힘 대상이 아니다.
+ITEM_CATEGORIES = ("item", "머지 아이템")
 reward_key_to_item = {
     r["reward_key"]: r["item_code"]
     for r in bal["reward_key"]
-    if r.get("category") == "머지 아이템" and isinstance(r.get("item_code"), int) and r["item_code"] > 0
+    if r.get("category") in ITEM_CATEGORIES and isinstance(r.get("item_code"), int) and r["item_code"] > 0
 }
 
 

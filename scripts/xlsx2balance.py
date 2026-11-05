@@ -39,7 +39,7 @@ RNS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_SRC = os.path.expanduser(
-    "~/Projects/story-merge-proto-client/_ignore/item-sheets/2026-09-23-export")
+    "~/Projects/story-merge-proto-client/_ignore/item-sheets/2026-11-04-export")
 DEFAULT_OUT = os.path.join(HERE, "docs", "data", "rosewood-balance.json")
 
 PRODUCE = [c for i in range(1, 21) for c in (f"produce_item_{i}", f"produce_weight_{i}")]

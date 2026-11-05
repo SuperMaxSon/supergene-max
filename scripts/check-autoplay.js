@@ -272,11 +272,13 @@ function part1() {
   {
     const { RwEcon } = newEcon();
     const acc = RwEcon.newAccount();
-    const itemRewardKey = (bal.reward_key || []).find((r) => r.category && r.category.includes('머지'));
+    // 분류 값은 2026-11-04 export 부터 영문 코드("item"), 그 전 판은 한글("머지 아이템")이다.
+    const isItemCat = (r) => r.category === 'item' || (r.category && r.category.includes('머지'));
+    const itemRewardKey = (bal.reward_key || []).find(isItemCat);
     check('rewardBox: FIFO order preserved', () => {
       assertTrue(!!itemRewardKey, 'need at least one item reward_key row to test with');
       RwEcon.grant(acc, itemRewardKey.reward_key, 1);
-      const other = (bal.reward_key || []).find((r) => r.reward_key !== itemRewardKey.reward_key && r.category && r.category.includes('머지'));
+      const other = (bal.reward_key || []).find((r) => r.reward_key !== itemRewardKey.reward_key && isItemCat(r));
       assertTrue(!!other, 'need a second distinct item reward_key row');
       RwEcon.grant(acc, other.reward_key, 1);
       assertEq(acc.rewardBox[0], itemRewardKey.item_code, 'first pushed should stay first (FIFO)');

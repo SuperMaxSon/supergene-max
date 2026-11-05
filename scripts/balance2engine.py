@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """docs/data/rosewood-balance.json → 오더 엔진 내장 데이터 블록 갱신.
 
-벤치(rosewood-order-bench.html)는 파일을 안 읽고 엔진에 박힌 `*_DB` 상수로 돈다.
+벤치(rosewood-order-bench.html, 2026-11-05 삭제)는 파일을 안 읽고 엔진에 박힌 `*_DB` 상수로 돈다.
 드로우(rosewood-order-draw.html)는 balance.json 을 읽는다. 둘이 갈리면 「같은 코드를
 검증한다」는 전제가 깨지므로, 시트가 바뀌면 이 스크립트로 블록을 통째로 갈아끼운다.
 

@@ -1,9 +1,9 @@
 /* ==========================================================================
    Rosewood 오더 생성 엔진 — 개발 기획서 1.2.1 의 구현 정본
    ==========================================================================
-   두 페이지가 이 파일 하나를 읽는다.
+   이 파일 하나를 읽는 페이지.
 
-     docs/rosewood-order-bench.html   시뮬레이터 — 사람이 눌러 본다
+     (docs/rosewood-order-bench.html 시뮬레이터는 2026-11-05 삭제됨)
      docs/rosewood-order-draw.html    테스트    — 연산이 맞는지 본다
 
    사본을 두지 않는 이유: 테스트 페이지가 자기 사본을 돌리면 시뮬레이터가 쓰는
@@ -126,7 +126,7 @@ const RNG = {
    2. 데이터 — 확인값 + 시드값(근거 섹션 참조)
    ====================================================================== */
 /* ── 실물 시트 데이터 ─────────────────────────────────────────
-   출처  시트 export 2026-09-23 (탭별 JSON 57개 · v1.18)
+   출처  시트 export 2026-11-04 (탭별 JSON 59개 · v1.25)
    생성  scripts/balance2engine.py — 시트가 바뀌면 다시 돌려 통째로 교체한다
    주의  name 은 시트의 에디터 전용 사이드카 칸이다. 실물 런타임은
          item_display.name_key → string_code 를 거친다. 벤치는 문구
@@ -170,6 +170,9 @@ const CHAIN_DB = [
   [34,"X_CH34","Small Energy Chest",9,5,"res"],
   [35,"X_CH35","Starter Gem Chest",9,5,"res"],
   [36,"X_CH36","Starter Supply Chest",9,5,"res"],
+  [37,"X_CH37","돼지 저금통",9,5,"res"],
+  [38,"X_CH38","무지개 유리알",9,5,"res"],
+  [39,"X_CH39","재단 가위",9,5,"res"],
 ];
 /* [코드, 다음, 판매가, show_sell_confirm, 생성기, 이름, name_en, chain_key,
     재고상한, 에너지, 회복초, first_gen_chain, second_gen_chain, spread_weight_type,
@@ -328,13 +331,13 @@ const ITEM_DB = [
   [1609,1610,7,1,0,"허니 디퍼 꿀단지","Honey Jar with Dipper","R_HONEY",0,0,0,0,0,0,1,[]],
   [1610,1611,8,1,0,"꿀 선물함","Honey Gift Box","R_HONEY",0,0,0,0,0,0,1,[]],
   [1611,0,9,1,0,"꿀 진열대","Honey Display","R_HONEY",0,0,0,0,0,0,1,[]],
-  [1701,1702,0,0,0,"밀랍 부스러기","Wax Crumb","R_WAX",0,0,0,0,0,0,1,[]],
-  [1702,1703,0,0,0,"밀랍 조각","Wax Chip","R_WAX",0,0,0,0,0,0,1,[]],
-  [1703,1704,1,0,0,"밀랍 덩이","Wax Block","R_WAX",0,0,0,0,0,0,1,[]],
-  [1704,1705,2,0,0,"정제 밀랍","Refined Wax","R_WAX",0,0,0,0,0,0,1,[]],
-  [1705,1706,3,1,0,"밀랍 시트","Wax Sheet","R_WAX",0,0,0,0,0,0,1,[]],
-  [1706,1707,4,1,0,"밀랍 블록","Wax Bar","R_WAX",0,0,0,0,0,0,1,[]],
-  [1707,0,5,1,0,"밀랍 상자","Wax Box","R_WAX",0,0,0,0,0,0,1,[]],
+  [1701,1702,0,0,0,"프로폴리스 방울","Propolis Drop","R_WAX",0,0,0,0,0,0,1,[]],
+  [1702,1703,0,0,0,"프로폴리스 팅크","Propolis Tincture","R_WAX",0,0,0,0,0,0,1,[]],
+  [1703,1704,1,0,0,"로열젤리 통","Royal Jelly Tin","R_WAX",0,0,0,0,0,0,1,[]],
+  [1704,1705,2,0,0,"꿀 립밤","Honey Lip Balm","R_WAX",0,0,0,0,0,0,1,[]],
+  [1705,1706,3,1,0,"꿀 핸드크림","Honey Hand Cream","R_WAX",0,0,0,0,0,0,1,[]],
+  [1706,1707,4,1,0,"꿀 바디버터","Honey Body Butter","R_WAX",0,0,0,0,0,0,1,[]],
+  [1707,0,5,1,0,"양봉 스킨케어 세트","Apiary Skincare Set","R_WAX",0,0,0,0,0,0,1,[]],
   [1801,1802,0,0,0,"방석","Cushion","Q_CAT",0,0,0,0,0,0,1,[]],
   [1802,1803,0,0,0,"담요","Blanket","Q_CAT",0,0,0,0,0,0,1,[]],
   [1803,1804,1,0,0,"바구니","Basket","Q_CAT",0,0,0,0,0,0,1,[]],
@@ -409,11 +412,14 @@ const ITEM_DB = [
   [3103,0,-1,0,0,"큰 이벤트 상자","Grand Event Chest","X_BOXEV",10,0,0,0,0,1,1,[[806,2],[807,2],[904,4],[2804,1]]],
   [3201,3202,-1,0,0,"심플 상자","Simple Pack","X_CH32",5,0,0,0,0,1,1,[[2701,4],[2901,6]]],
   [3202,3203,-1,0,0,"팬시 상자","Fancy Pack","X_CH32",11,0,0,0,0,1,1,[[2701,8],[2702,2],[2901,10],[2902,2]]],
-  [3203,0,-1,0,0,"큰 무료 선물 상자","Large Free Gift Chest","X_CH32",23,0,0,0,0,1,1,[[2701,16],[2702,6],[2703,2],[2901,16],[2902,4],[2903,2]]],
+  [3203,0,-1,0,0,"큰 선물 상자","Large Gift Chest","X_CH32",23,0,0,0,0,1,1,[[2701,16],[2702,6],[2703,2],[2901,16],[2902,4],[2903,2]]],
   [3301,0,-1,0,0,"첫 에너지 상자","Starter Energy Chest","X_CH33",5,0,0,0,0,2,1,[[2901,2],[2902,1],[2903,1],[2904,1]]],
   [3401,0,-1,0,0,"작은 에너지 상자","Small Energy Chest","X_CH34",5,0,0,0,0,2,1,[[2901,2],[2902,1],[2903,2]]],
-  [3501,0,-1,0,0,"첫 젬 상자","Starter Gem Chest","X_CH35",5,0,0,0,0,2,1,[[2701,2],[2702,3]]],
+  [3501,0,-1,0,0,"첫 동전 상자","Starter Coin Chest","X_CH35",5,0,0,0,0,2,1,[[2701,2],[2702,3]]],
   [3601,0,-1,0,0,"첫 보급 상자","Starter Supply Chest","X_CH36",7,0,0,0,0,2,1,[[2701,2],[2702,2],[2801,2],[2802,1]]],
+  [3701,0,-1,0,0,"돼지 저금통","Piggy Bank","X_CH37",5,0,0,0,0,1,1,[[2701,40],[2702,30],[2703,20],[2704,10]]],
+  [3801,0,-1,0,0,"무지개 유리알","Rainbow Bead","X_CH38",0,0,0,0,0,0,1,[]],
+  [3901,0,-1,0,0,"재단 가위","Shears","X_CH39",0,0,0,0,0,0,1,[]],
 ];
 /* [item_code, unlock_level, order_price, diff_score, weight, weight_multiple,
     repeat_weight_decrease, progress_unlock, difficulty_level, in_use]
@@ -598,29 +604,40 @@ const AVATAR_DB = [
   ["Loren",1],
   ["Izzy",2],
   ["Barnett",3],
-  ["Della",16],
-  ["Nora",19],
+  ["Della",14],
+  ["Nora",17],
 ];
 /* [level, exp_cost] */
 /* [event_id, band_seq, score_base, score_min, score_max, token_pct, token_fix]
    실물 시트다. 예전엔 「자리를 채우는 임시값」 5행을 손으로 박아 뒀는데, 그 바람에
    벤치와 「오더 시뮬레이터」의 이벤트 점수가 갈렸다(Lv30 에서 94 대 24). 이제 같은 표를 본다. */
 const EVENT_DB = [
-  [120002,1,"coin",0,9999,2500,0],
-  [120004,1,"coin",0,9999,2500,0],
+  [120002,1,"coin",0,44,5000,0],
+  [120004,1,"coin",0,59,11000,0],
   [120003,1,"coin",0,9999,2500,0],
   [120008,1,"coin",0,9999,2500,0],
   [120009,1,"coin",0,9999,2500,0],
-  [120011,1,"coin",0,9999,0,0],
-  [120012,1,"coin",0,9999,0,0],
+  [120011,1,"coin",0,59,11000,0],
+  [120012,1,"coin",0,59,11000,0],
+  [120002,2,"coin",45,59,0,35],
+  [120002,3,"coin",60,9999,7600,0],
+  [120004,2,"coin",60,89,0,72],
+  [120004,3,"coin",90,119,0,75],
+  [120004,4,"coin",120,9999,6250,0],
+  [120011,2,"coin",60,89,0,72],
+  [120011,3,"coin",90,119,0,75],
+  [120011,4,"coin",120,9999,6250,0],
+  [120012,2,"coin",60,89,0,72],
+  [120012,3,"coin",90,119,0,75],
+  [120012,4,"coin",120,9999,6250,0],
   [120007,1,"coin",0,9999,2500,0],
 ];
 /* [special_no, chain_key, start_item_code, avatar_key, trigger_task, duration_sec, in_use]
    특별주문 대본. 추첨이 아니라 chore 완료(trigger_task)로 열린다 — 슬롯 6 의 발급 경로다. */
 const SPECIAL_DB = [
   [1,"Q_CAT",0,"Poppy","T_TASK_2_6",0,1],
-  [2,"Q_WAX",2201,"Hazel","T_TASK_11_3",0,1],
-  [3,"Q_SEW",0,"Tess","T_TASK_18_6",0,0],
+  [2,"Q_WAX",2201,"Hazel","T_TASK_11_12",0,1],
+  [3,"Q_SEW",0,"Tess","none",0,0],
 ];
 const LEVEL_DB = [
   [1,30],
@@ -710,14 +727,14 @@ const CONST_DB = {
   "chore_extra_duration_hour": 24,
   "chore_extra_reward_energy": 30,
   "score_race_merge_score_rate": 10000,
-  "shop_refresh_cycle_sec": 28800,
+  "shop_refresh_cycle_sec": 86400,
   "shop_special_stock_per_slot": 1,
   "shop_hot_sale_stock_per_slot": 5,
   "shop_gem_only_max_level": 2,
   "offer_popup_min_interval_sec": 120,
   "starter_offer_popup_cooldown_sec": 14400,
   "rail_visible_max": 6,
-  "daily_ad_total_cap": 15,
+  "daily_ad_total_cap": 12,
   "energy_gem_reset_utc_sec": 0,
   "rv_fail_toast_sec": 3,
   "net_retry_max": 2,
@@ -730,7 +747,19 @@ const CONST_DB = {
   "toast_show_sec": 1.5,
   "order_repeat_reset_count": 3,
   "round_race_group_size": 5,
-  "upward_participant_count": 100
+  "upward_participant_count": 100,
+  "shop_refresh_gem_cost": 20,
+  "race_entry_min_remaining_sec": 600,
+  "invite_reward_level": 5,
+  "invite_reward_max_count": 5,
+  "optional_popup_max_per_launch": 3,
+  "rv_speedup_max_gem_price": 10,
+  "rv_bubble_max_gem_price": 10,
+  "heartbeat_sec": 60,
+  "min_client_version": 1,
+  "pass_super_point_bonus_bp": 5000,
+  "pass_endless_repeat_token": 660,
+  "pass_endless_reward_energy": 50
 };
 
 /* 체인 사전 — 색(클러스터)·무늬(클러스터 안 순번)·이름을 전부 여기서 판다 */
@@ -858,7 +887,7 @@ const lvOf = (level) => idx().lv.get(level);
    없고 축이 다르다 — 실제 단계는 「아이템이 체인 어디에 있나」, difficulty_level 은
    「이 자리에 낼 만큼 어려운가」다. 306(실제 6단계 · difficulty 7)이 상한 6인 자리에서
    빠지는 것이 정본의 검증 예시다.
-   item_spec.step 은 코드에서 바로 나온다 — 239행 전수에서 step === code % 100 (실측). */
+   item_spec.step 은 코드에서 바로 나온다 — 242행 전수에서 step === code % 100 (실측). */
 const drawStepOf = (code) => {
   const o = oiOf(code);
   const d = o && o.difficulty_level != null
@@ -953,7 +982,7 @@ const hasProgressUnlock = (o, hist) => {
    엔진이 v7.0 이면 「일곱 세대 앞섰다」로 읽힌다. 이 파일은 <b>절반이 데이터</b>(*_DB 블록)라
    축이 둘이다 — 어느 정본을 대조했나, 어느 시트 판을 구웠나. 둘 다 적는다.
    <b>값을 치러야 올라간다</b>: 정본이 1.2 를 내면 다시 대조하고 나서, 데이터는 재생성하고 나서. */
-const BUILD = "정본 1.6 · 데이터 v1.18 · 2026-09-23 export";
+const BUILD = "정본 1.6 · 데이터 v1.25 · 2026-11-04 export";
 const SAVE_KEY = "rw.orderBench";
 /* 4 → 5: 슬롯이 5칸에서 6칸이 되고 타입 이름이 바뀌었다. 옛 세이브의 slots 는
    키(슬롯 번호)가 다른 타입을 가리키게 되므로 이관하지 않고 버린다. */
