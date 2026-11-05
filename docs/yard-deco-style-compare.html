@@ -39,13 +39,41 @@
       details.fold > summary { font-size: 15px; }
       main .doc-section { padding-top: 12px; }
       /* yd-fold:end */
+      /* tz: 터치영역 겹침 섹션 전용 - 허브 토큰만 쓰고 클래스는 tz- 접두 */
+      .tz-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 10px 0; font-size: 13px; }
+      .tz-row label { cursor: pointer; }
+      .tz-row select { font: inherit; padding: 2px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+      .tz-key { display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-dim); font-size: 12px; margin: 4px 0 10px; }
+      .tz-chip { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+      .tz-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; margin-top: 12px; }
+      .tz-map { position: relative; height: 760px; background: #222; border-radius: var(--radius); overflow: hidden; }
+      .tz-map canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+      .tz-tip { position: absolute; left: 10px; top: 10px; padding: 4px 9px; border-radius: var(--radius-sm); background: rgba(0, 0, 0, .72); color: #fff; font-size: 12px; pointer-events: none; }
+      .tz-zoom { position: absolute; right: 10px; top: 10px; display: flex; gap: 4px; }
+      .tz-zoom button { font: inherit; font-size: 12px; min-width: 32px; padding: 3px 8px; border: 0; border-radius: var(--radius-sm); background: rgba(255, 255, 255, .9); cursor: pointer; }
+      .tz-side h3 { margin: 0 0 6px; font-size: 13px; }
+      .tz-side .table-scroll { max-height: 400px; overflow-y: auto; }
+      .tz-side table { table-layout: fixed; width: 100%; min-width: 0; }
+      #tz-cmp th, #tz-rank th { text-transform: none; }
+      #tz-cmp { table-layout: fixed; width: 100%; }
+      #tz-cmp th:first-child { width: 36%; }
+      #tz-rank th:nth-child(1) { width: 46%; }
+      #tz-rank th:nth-child(2) { width: 22%; }
+      .tz-n { text-align: right; font-variant-numeric: tabular-nums; }
+      tr.tz-hit { cursor: pointer; }
+      tr.tz-hit:hover, tr.tz-sel td { background: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
+      tr.tz-sel td:first-child { font-weight: 800; }
+      .tz-recv { color: var(--bad); font-weight: 800; }
+      .tz-dim { color: var(--text-faint); font-size: 12px; }
+      #tz-stack div { padding: 2px 0; }
+      @media (max-width: 860px) { .tz-grid { grid-template-columns: minmax(0, 1fr); } .tz-map { height: 520px; } }
     </style>
   </head>
   <body>
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
-        <a class="nav-back" href="#area_1_1">area_1_1</a><a class="nav-back" href="#area_1_2">area_1_2</a><a class="nav-back" href="#area_1_3">area_1_3</a><a class="nav-back" href="#area_1_4">area_1_4</a><a class="nav-back" href="#area_1_5">area_1_5</a>
+        <a class="nav-back" href="#area_1_1">area_1_1</a><a class="nav-back" href="#area_1_2">area_1_2</a><a class="nav-back" href="#area_1_3">area_1_3</a><a class="nav-back" href="#area_1_4">area_1_4</a><a class="nav-back" href="#area_1_5">area_1_5</a><a class="nav-back" href="#touch-overlap">터치영역 겹침</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -62,6 +90,7 @@
           <span class="tag">시트 = CDN 라이브 main_task (최종 수정 2026-09-28 19:31 KST, 197행, in_use·story 제외)</span>
           <span class="tag">2026-10-15</span>
           <span class="tag">NEW = 926c9f5 판(2026-10-08) 대비 새로 생기거나 바뀐 행</span>
+          <span class="tag">터치영역 겹침 섹션 2026-11-05 (area_courtyard 번들 프리팹 실측, 끝난 모습 기준)</span>
         </div>
       </div>
     </header>
@@ -330,6 +359,70 @@
         </details>
       </section>
 
+      <section class="doc-section" id="touch-overlap">
+        <h2 class="doc-h2">
+          꾸미기 터치영역 겹침
+          <span class="doc-h2-sub">끝난 택1 꾸미기 <span id="tz-cnt">-</span>개를 탭했을 때 누가 받나 · 방식 4가지 비교</span>
+        </h2>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">이 섹션을 읽는 법</div>
+            <p>끝난 택1 꾸미기를 탭하면 디자인 바꾸기가 뜹니다. 터치영역이 이미지(스프라이트) 사각형이라, 같은 자리에 터치영역이 여럿 겹치면 <strong>맨 위 하나만 탭을 받고 아래 꾸미기는 못 받습니다.</strong> 지도의 색은 그 칸을 받는 꾸미기, 빨강은 둘 이상 겹친 칸입니다. 지도를 클릭하면 그 자리를 탭할 때 받는 쪽과 가려지는 쪽이 순서대로 나옵니다.</p>
+            <p>아래 비교표는 터치영역을 만드는 방식 4가지를 같은 기준(변형, 구역)으로 잰 것입니다. 행을 누르면 지도가 그 방식으로 바뀝니다. <strong>5% 이하</strong> = 자기 터치영역 중 5% 이하만 탭을 받는 꾸미기 수, <strong>가려짐</strong> = 일부라도 다른 꾸미기에 덮이는 수입니다.</p>
+          </div>
+        </div>
+
+        <div class="tz-row">
+          <span>변형</span>
+          <label><input type="radio" name="tz-v" value="a" checked> A</label>
+          <label><input type="radio" name="tz-v" value="b"> B</label>
+          <label><input type="radio" name="tz-v" value="c"> C</label>
+          <span>구역</span>
+          <select id="tz-sub"><option value="">전체</option></select>
+          <label><input type="checkbox" id="tz-showown" checked> 받는 영역 색칠</label>
+          <label><input type="checkbox" id="tz-showred" checked> 겹침 빨강</label>
+        </div>
+        <div class="tz-key">
+          <span><i class="tz-chip" style="background: rgba(211, 47, 47, .75)"></i>둘 이상 겹침</span>
+          <span><i class="tz-chip" style="background: rgba(40, 120, 255, .75)"></i>순위표에서 고른 꾸미기가 덮는 칸</span>
+          <span>색 = 그 칸을 받는 꾸미기</span>
+        </div>
+
+        <div class="table-scroll">
+          <table id="tz-cmp">
+            <thead><tr><th>방식</th><th class="tz-n">5% 이하</th><th class="tz-n">50% 미만</th><th class="tz-n">가려짐</th><th class="tz-n">터치면적 합(만 px2)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="tz-grid">
+          <div class="tz-map">
+            <canvas id="tz-cv"></canvas>
+            <div id="tz-tip" class="tz-tip">불러오는 중...</div>
+            <div class="tz-zoom"><button type="button" id="tz-zin">+</button><button type="button" id="tz-zout">-</button><button type="button" id="tz-zfit">전체</button></div>
+          </div>
+          <div class="tz-side">
+            <h3>여기를 탭하면 (클릭한 지점)</h3>
+            <div id="tz-stack" class="tz-dim">지도를 클릭해 보세요.</div>
+            <h3 style="margin-top: 14px">못 받는 꾸미기 순위 <span class="tz-dim">(받는 면적 % 낮은 순)</span></h3>
+            <div class="table-scroll">
+              <table id="tz-rank">
+                <thead><tr><th>꾸미기</th><th class="tz-n">받는 %</th><th>주로 가리는 쪽</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes" style="margin-top: 16px">
+          <div class="note" id="tz-def" style="--acc: var(--plan)"></div>
+        </div>
+
+        <div class="foot">
+          <b>확인 범위</b> 끝난 모습(디자인 고정, 애니메이션 끝 프레임, 0 투명 노드 제외)의 보이는 스프라이트를 <code>area_courtyard</code> 번들 프리팹에서 뽑아 4px 격자로 계산한 근사입니다. 위아래 순서는 에리어 프리팹 트리 순서(나중 = 위)로 잡은 <b>추정</b>이고 엔진의 실제 터치 우선순위는 실기에서 확인 전입니다. 알파 임계값 32와 격자 4px는 임의로 잡은 값이며, 슬라이스/타일 스프라이트는 사각형으로 계산했습니다. <code>zIndex</code> 직접 지정, 카메라 드래그/핀치는 반영하지 않았습니다. 같은 그림(플레이스홀더)이라 터치영역이 안 붙는 꾸미기는 현재 <span id="tz-ident">-</span>건입니다. 성능 수치는 노드 87개를 우선순위 순으로 훑는 마이크로 벤치(엔진 밖)이며 구현 뒤 실기 실측이 필요합니다.
+        </div>
+      </section>
+
     </main>
 
     <script>
@@ -344,6 +437,7 @@
         openHash();
       })();
     </script>
+    <script src="js/yard-deco-touch.js"></script>
     <script src="../app.js"></script>
   </body>
 </html>
