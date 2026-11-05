@@ -66,6 +66,19 @@
       .tz-recv { color: var(--bad); font-weight: 800; }
       .tz-dim { color: var(--text-faint); font-size: 12px; }
       #tz-stack div { padding: 2px 0; }
+      .tzf-h { margin: 28px 0 6px; font-size: 16px; }
+      .tzf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 12px; }
+      .tzf-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; box-shadow: var(--shadow); }
+      .tzf-card h4 { margin: 0 0 6px; font-size: 12px; word-break: break-all; }
+      .tzf-card canvas { display: block; max-width: 100%; border-radius: var(--radius-sm); cursor: crosshair; }
+      .tzf-m { margin-top: 6px; }
+      .tzf-r { font-size: 12px; margin-top: 2px; min-height: 18px; }
+      .tzf-ok { color: var(--ok); }
+      .tzf-no { color: var(--bad); }
+      #tzf-st { table-layout: fixed; width: 100%; }
+      #tzf-st th { text-transform: none; }
+      #tzf-st th:first-child { width: 28%; }
+      tr.tz-sel td { background: color-mix(in srgb, var(--warn) 12%, var(--surface)); font-weight: 800; }
       @media (max-width: 860px) { .tz-grid { grid-template-columns: minmax(0, 1fr); } .tz-map { height: 520px; } }
     </style>
   </head>
@@ -418,6 +431,49 @@
           <div class="note" id="tz-def" style="--acc: var(--plan)"></div>
         </div>
 
+        <h3 class="tzf-h" id="tz-fill">
+          구멍 메우기 + 부풀리기
+          <span class="doc-h2-sub">알파 픽셀 방식에서 뚫린 그림이 안 눌리는 문제 · 프레임 <span id="tzf-cnt">-</span>장</span>
+        </h3>
+        <div class="notes">
+          <div class="note" style="--acc: var(--analysis)">
+            <div class="note-title">무엇을 더한 것인가</div>
+            <p>알파 픽셀 방식은 투명한 곳이 눌리지 않아서, 사다리·창살·아치처럼 가운데가 뚫린 그림은 구멍 자리를 누르면 아래 꾸미기가 받습니다. 그래서 두 가지를 더해 봅니다. <strong>막힌 구멍 메우기</strong> = 그림 바깥에서 닿을 수 없는 투명 구멍을 터치영역에 포함시킵니다. <strong>부풀리기</strong> = 윤곽을 정해진 px 만큼 바깥으로 키웁니다(손가락 폭). 둘 다 베이크 단계에서 계산하므로 클라이언트 판정 코드는 그대로입니다.</p>
+            <p>구멍이 옆이나 위로 터진 모양(전구 줄, 울타리 등)은 메우기로 막히지 않고, 부풀리기도 큰 빈칸은 못 메웁니다. 아래 표에서 보듯 <strong>부풀릴수록 터치영역 겹침이 다시 늘어납니다.</strong></p>
+          </div>
+        </div>
+
+        <div class="tz-row">
+          <label><input type="checkbox" id="tzf-fill" checked> 막힌 구멍 메우기</label>
+          <span>부풀리기</span>
+          <select id="tzf-dil"><option value="0">0px</option><option value="1">4px</option><option value="2" selected>8px</option><option value="3">12px</option><option value="4">16px</option></select>
+          <span>정렬</span>
+          <select id="tzf-sort"><option value="gain">늘어난 면적 순</option><option value="name">이름 순</option></select>
+          <label><input type="checkbox" id="tzf-img" checked> 그림 보이기</label>
+          <input type="text" id="tzf-q" placeholder="이름 검색" style="font: inherit; padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm)">
+        </div>
+        <div class="tz-key">
+          <span><i class="tz-chip" style="background: rgba(46, 160, 67, .75)"></i>지금 눌리는 곳</span>
+          <span><i class="tz-chip" style="background: rgba(30, 120, 255, .75)"></i>구멍 메움으로 추가</span>
+          <span><i class="tz-chip" style="background: rgba(255, 140, 0, .75)"></i>부풀리기로 추가</span>
+          <span>카드의 그림을 누르면 그 자리가 눌리는지 나옵니다.</span>
+        </div>
+
+        <div class="tz-row"><span>장면 수치 변형</span>
+          <select id="tzf-var"><option value="a">A</option><option value="b">B</option><option value="c">C</option></select>
+        </div>
+        <div class="table-scroll">
+          <table id="tzf-st">
+            <thead><tr><th>방식</th><th class="tz-n">5% 이하</th><th class="tz-n">50% 미만</th><th class="tz-n">가려짐</th><th class="tz-n">터치면적 합(만 px2)</th><th class="tz-n">겹침 면적(만 px2)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="note" style="--acc: var(--validate); margin-top: 10px">
+          <div class="note-title">이 표를 읽는 법</div>
+          <p>위 비교표와 같은 기준(월드 4px 격자, 끝난 모습)으로 방식만 바꿔 다시 잰 값입니다. <strong>겹침 면적</strong> = 둘 이상의 꾸미기 터치영역이 겹치는 곳의 넓이로, 작을수록 탭이 덜 가려집니다. 프레임 카드는 막힌 구멍이 있는 프레임만 보여 줍니다(전체 프레임의 일부).</p>
+        </div>
+        <div class="tzf-grid" id="tzf-grid"></div>
+
         <div class="foot">
           <b>확인 범위</b> 끝난 모습(디자인 고정, 애니메이션 끝 프레임, 0 투명 노드 제외)의 보이는 스프라이트를 <code>area_courtyard</code> 번들 프리팹에서 뽑아 4px 격자로 계산한 근사입니다. 위아래 순서는 에리어 프리팹 트리 순서(나중 = 위)로 잡은 <b>추정</b>이고 엔진의 실제 터치 우선순위는 실기에서 확인 전입니다. 알파 임계값 32와 격자 4px는 임의로 잡은 값이며, 슬라이스/타일 스프라이트는 사각형으로 계산했습니다. <code>zIndex</code> 직접 지정, 카메라 드래그/핀치는 반영하지 않았습니다. 같은 그림(플레이스홀더)이라 터치영역이 안 붙는 꾸미기는 현재 <span id="tz-ident">-</span>건입니다. 성능 수치는 노드 87개를 우선순위 순으로 훑는 마이크로 벤치(엔진 밖)이며 구현 뒤 실기 실측이 필요합니다.
         </div>
@@ -438,6 +494,7 @@
       })();
     </script>
     <script src="js/yard-deco-touch.js"></script>
+    <script src="js/yard-deco-touch-fill.js"></script>
     <script src="../app.js"></script>
   </body>
 </html>
