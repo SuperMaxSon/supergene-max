@@ -528,7 +528,7 @@ const SECTIONS = [
         project: "smg",
         status: "완료",
         version: "v1.0",
-        updated: "2026-11-09 16:37",
+        updated: "2026-11-09 16:41",
         pinned: false,
         tags: ["프리팹 실측", "데코", "임시", "터치영역"],
       },
