@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-11-10 15:31",
+  updated: "2026-11-10 17:15",
 };
 
 /* --------------------------------------------------------------------------
@@ -73,6 +73,17 @@ const SECTIONS = [
     accent: "analysis",
     desc: "라이브 데이터 · 코드베이스 실측 분석",
     cards: [
+      {
+        title: "스토리 캐릭터 데이터",
+        desc: "스토리 팝업(채팅)과 마을(데코레이션)에서 캐릭터가 쓰는 감정과 현재 들어와 있는 이미지 현황.",
+        url: "docs/story-merge-character-data.html",
+        project: "smg",
+        status: "초안",
+        version: "202083d7",
+        updated: "2026-11-10 17:15",
+        pinned: false,
+        tags: ["코드 실측", "아트"],
+      },
       {
         title: "아이템 아트 ↔ 시트 이름",
         desc: "기획 아이템 242종을 시트(string_code) 영문·한글 이름과 레벨별로 새 아트와 나란히 놓은 격자. 불일치(주황) · 이미지 없음(빨강) 표시, 테마(생산자→생산물)·판정 필터. 검수 결과는 data/item-art-reviewed.json.",
