@@ -375,7 +375,7 @@ const SECTIONS = [
         project: "smg",
         status: "완료",
         version: "main c25d4145 · 빌드 v16 · 캡처 v3",
-        updated: "2026-11-12 16:20",
+        updated: "2026-11-12 16:38",
         pinned: false,
         tags: ["코드 실측", "리소스", "용량"],
       },

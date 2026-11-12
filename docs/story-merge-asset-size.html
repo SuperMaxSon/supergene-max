@@ -50,8 +50,10 @@
       .as-cl-mult { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
       .as-cl-btn { font: inherit; font-size: 12px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); cursor: pointer; }
       .as-cl-btn[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 15%, var(--surface)); font-weight: 700; }
-      .as-cl-def, .as-cl-note { margin: 8px 0; font-size: 12px; color: var(--text-dim); line-height: 1.55; }
-      .as-cl-def code, .as-cl-note code { font-size: 11px; }
+      .as-cl-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 10px 0 8px; }
+      .as-cl-flow i { align-self: center; font-style: normal; color: var(--text-dim); }
+      .as-cl-step { display: flex; flex-direction: column; justify-content: center; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--c) 8%, var(--surface)); font-size: 12px; }
+      .as-cl-step small { font-size: 10.5px; color: var(--text-dim); }
       .as-cl-wrap { overflow-x: auto; }
       .as-cl-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
       .as-cl-tbl th, .as-cl-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
@@ -63,6 +65,17 @@
       .as-cl-bar { display: inline-block; vertical-align: middle; width: 80px; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--c) 15%, var(--surface)); overflow: hidden; }
       .as-cl-bar i { display: block; height: 100%; background: var(--c); }
       .as-cl-top { margin-top: 8px; }
+      .as-cl-rngcell { min-width: 190px; }
+      .as-cl-rngcell small { display: block; margin-top: 3px; font-size: 11px; color: var(--text-dim); }
+      .as-cl-rng { position: relative; display: block; height: 8px; border-radius: 4px; background:
+        repeating-linear-gradient(90deg, transparent 0, transparent calc(16.667% - 1px), var(--border) calc(16.667% - 1px), var(--border) 16.667%),
+        color-mix(in srgb, var(--warn) 12%, var(--surface)); overflow: hidden; }
+      .as-cl-rng i { position: absolute; top: 0; bottom: 0; background: var(--warn); border-radius: 4px; }
+      .as-cl-legend th { font-weight: 700; }
+      .as-cl-legend td:nth-child(2) { text-align: left; white-space: normal; }
+      .as-cl-kind { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); }
+      .as-cl-kind--est { color: var(--warn); border-color: var(--warn); }
+      .as-cl-kind--assume { color: var(--text-dim); }
 
       .as-list {
         border: 1px solid var(--border-soft);
@@ -507,17 +520,21 @@
         <div class="as-body" id="chat-body">
         <p class="as-desc">화자 하나 = 행 프리팹 + 감정 clip 전부. 펼치면 감정별 — 행 프리팹은 말풍선·이름표만 들고 clip 은 쥐지 않는다.</p>
         
-        <div class="as-cl" id="chat-load" data-hold="250" data-up-lo="8" data-up-hi="42" data-frame="16.7">
+        <div class="as-cl" id="chat-load" data-hold="250" data-up-lo="8" data-up-hi="42" data-frame="16.7" data-scale="6000">
           <div class="as-cl-head">
             <b>채팅 한 번의 디바이스 부하</b><span class="as-cl-tag">계산 · 추정 (실기기 실측 아님)</span>
             <span class="as-cl-mult">감정 clip 프레임 수 <button type="button" class="as-cl-btn" data-k="1.0" aria-pressed="true">x1 (현재)</button><button type="button" class="as-cl-btn" data-k="1.5" aria-pressed="false">x1.5</button><button type="button" class="as-cl-btn" data-k="2.0" aria-pressed="false">x2</button></span>
           </div>
-          <p class="as-cl-def">채팅 한 번 = 시트 <code>story</code> 행의 시작(<code>start_scene_1</code>+<code>start_scene_2</code>) 또는 완료(<code>finish_scene_1</code>), 전체 224개.
-            그 채팅이 트는 감정 clip 의 합집합 + 나오는 화자의 행 프리팹을 <em>처음 열 때</em> 기준으로 셌다(다음 채팅과 겹치는 clip 은 덜 올라갈 수 있다).</p>
+          <div class="as-cl-flow" aria-label="채팅 한 번을 세는 순서">
+            <span class="as-cl-step"><b>story 시트 행</b></span><i aria-hidden="true">&rarr;</i>
+            <span class="as-cl-step"><b>채팅 224개</b><small>시작(start_scene_1·2) 또는 완료(finish_scene_1)</small></span><i aria-hidden="true">&rarr;</i>
+            <span class="as-cl-step"><b>쓰는 감정 clip 합집합 + 화자 행 프리팹</b><small>story_emotion 표로 clip 선택</small></span><i aria-hidden="true">&rarr;</i>
+            <span class="as-cl-step"><b>메모리 · 받기 · 올리기</b><small>처음 열 때 기준</small></span>
+          </div>
           <div class="as-cl-wrap"><table class="as-cl-tbl">
             <thead><tr><th scope="col">구분</th><th scope="col">clip</th><th scope="col">올라오는 메모리</th><th scope="col">받기(빌드)</th>
-              <th scope="col">올리기 시간 <em>추정</em></th><th scope="col">프레임 분량 <em>추정</em></th><th scope="col">다음 채팅 보유 예산 250MB 중</th></tr></thead>
-            <tbody><tr data-cm="27.0658" data-rm="2.0925" data-cx="2258739.0" data-rx="442544.0"><th scope="row">보통 (p50)<small>main_ch12_05_begin 시작 · 씬 1 · 대사 9줄</small></th><td>8</td><td class="cl-mem">29.2MB</td><td class="cl-xfer">2.6MB</td><td class="cl-up">0.2-1.2초</td><td class="cl-fr">14-73프레임</td><td><span class="as-cl-bar"><i class="cl-bar" style="width:12%"></i></span> <span class="cl-pct">12%</span></td></tr><tr data-cm="34.0561" data-rm="3.7906" data-cx="2825771.0" data-rx="677745.0"><th scope="row">무거운 (p90)<small>main_ch12_03_begin 시작 · 씬 1 · 대사 14줄</small></th><td>10</td><td class="cl-mem">37.8MB</td><td class="cl-xfer">3.3MB</td><td class="cl-up">0.3-1.6초</td><td class="cl-fr">18-95프레임</td><td><span class="as-cl-bar"><i class="cl-bar" style="width:15%"></i></span> <span class="cl-pct">15%</span></td></tr><tr data-cm="58.9569" data-rm="4.8888" data-cx="4857635.0" data-rx="898576.0"><th scope="row">최악<small>main_ch04_05_begin 시작 · 씬 2 · 대사 29줄</small></th><td>17</td><td class="cl-mem">63.8MB</td><td class="cl-xfer">5.5MB</td><td class="cl-up">0.5-2.7초</td><td class="cl-fr">31-161프레임</td><td><span class="as-cl-bar"><i class="cl-bar" style="width:26%"></i></span> <span class="cl-pct">26%</span></td></tr></tbody>
+              <th scope="col">올리기 시간 <em>추정</em> / 프레임 분량</th><th scope="col">보유 예산 250MB 중</th></tr></thead>
+            <tbody><tr data-cm="27.0658" data-rm="2.0925" data-cx="2258739.0" data-rx="442544.0"><th scope="row">보통 (p50)<small>main_ch12_05_begin 시작 · 씬 1 · 대사 9줄</small></th><td>8</td><td class="cl-mem">29.2MB</td><td class="cl-xfer">2.6MB</td><td class="cl-rngcell"><span class="as-cl-rng"><i class="cl-rng" style="left:3.9%;width:16.5%"></i></span><small><span class="cl-up">0.2-1.2초</span> / <span class="cl-fr">14-73프레임</span></small></td><td><span class="as-cl-bar"><i class="cl-bar" style="width:12%"></i></span> <span class="cl-pct">12%</span></td></tr><tr data-cm="34.0561" data-rm="3.7906" data-cx="2825771.0" data-rx="677745.0"><th scope="row">무거운 (p90)<small>main_ch12_03_begin 시작 · 씬 1 · 대사 14줄</small></th><td>10</td><td class="cl-mem">37.8MB</td><td class="cl-xfer">3.3MB</td><td class="cl-rngcell"><span class="as-cl-rng"><i class="cl-rng" style="left:5.0%;width:21.4%"></i></span><small><span class="cl-up">0.3-1.6초</span> / <span class="cl-fr">18-95프레임</span></small></td><td><span class="as-cl-bar"><i class="cl-bar" style="width:15%"></i></span> <span class="cl-pct">15%</span></td></tr><tr data-cm="58.9569" data-rm="4.8888" data-cx="4857635.0" data-rx="898576.0"><th scope="row">최악<small>main_ch04_05_begin 시작 · 씬 2 · 대사 29줄</small></th><td>17</td><td class="cl-mem">63.8MB</td><td class="cl-xfer">5.5MB</td><td class="cl-rngcell"><span class="as-cl-rng"><i class="cl-rng" style="left:8.5%;width:36.2%"></i></span><small><span class="cl-up">0.5-2.7초</span> / <span class="cl-fr">31-161프레임</span></small></td><td><span class="as-cl-bar"><i class="cl-bar" style="width:26%"></i></span> <span class="cl-pct">26%</span></td></tr></tbody>
           </table></div>
           <details class="fold as-cl-top"><summary>무거운 채팅 상위 5개</summary>
             <div class="fold-body"><div class="as-cl-wrap"><table class="as-cl-tbl">
@@ -525,17 +542,16 @@
               <tbody><tr data-cm="58.9569" data-rm="4.8888" data-cx="4857635.0" data-rx="898576.0"><th scope="row">main_ch04_05_begin <small>시작</small></th><td>2</td><td>29</td><td>17</td><td class="cl-mem">63.8MB</td><td class="cl-xfer">5.5MB</td></tr><tr data-cm="42.1546" data-rm="4.8888" data-cx="3501008.0" data-rx="899586.0"><th scope="row">main_ch06_01_begin <small>시작</small></th><td>1</td><td>16</td><td>12</td><td class="cl-mem">47.0MB</td><td class="cl-xfer">4.2MB</td></tr><tr data-cm="41.4496" data-rm="4.8888" data-cx="3461684.0" data-rx="902772.0"><th scope="row">main_ch13_02_begin <small>시작</small></th><td>1</td><td>15</td><td>13</td><td class="cl-mem">46.3MB</td><td class="cl-xfer">4.2MB</td></tr><tr data-cm="41.0657" data-rm="3.2083" data-cx="3351369.0" data-rx="669090.0"><th scope="row">main_ch15_14_begin <small>완료</small></th><td>1</td><td>11</td><td>11</td><td class="cl-mem">44.3MB</td><td class="cl-xfer">3.8MB</td></tr><tr data-cm="39.5924" data-rm="3.1908" data-cx="3389489.0" data-rx="664167.0"><th scope="row">main_ch12_08_begin <small>시작</small></th><td>1</td><td>14</td><td>11</td><td class="cl-mem">42.8MB</td><td class="cl-xfer">3.9MB</td></tr></tbody>
             </table></div></div>
           </details>
-          <p class="as-cl-note">올리기 시간 = 메모리 MB x 8~42ms/MB (A12 실측 범위로 계산한 추정, 폭의 원인은 미확인). 프레임 분량 = 올리기 시간 / 16.7ms.
-            실제로는 프레임 예산에 맞춰 여러 프레임에 쪼개 올려서 한 프레임이 이만큼 걸린다는 뜻이 아니다. 감정 clip 하나(아틀라스 1장)는 쪼갤 수 없다.
-            막대 = 이 채팅 하나가 다음 채팅 보유 예산(클라 <code>TEXTURE_HOLD_BUDGET_MB</code>)에서 차지하는 몫.
-            프레임 수 배수는 감정 clip 몫만 선형으로 곱한다(아틀라스 페이지 분할·압축률 변화는 반영 안 함).</p>
+          <details class="fold as-cl-top"><summary>칸 읽는 법 (계산 / 추정 / 가정)</summary>
+            <div class="fold-body"><div class="as-cl-wrap"><table class="as-cl-tbl as-cl-legend"><tbody><tr><th scope="row">올라오는 메모리</th><td>그 채팅이 쓰는 감정 clip 과 화자 행 프리팹의 단독 크기 합 (처음 열 때)</td><td><span class="as-cl-kind as-cl-kind--calc">계산</span></td></tr><tr><th scope="row">받기(빌드)</th><td>같은 항목의 빌드 기준 받는 크기 합</td><td><span class="as-cl-kind as-cl-kind--calc">계산</span></td></tr><tr><th scope="row">올리기 시간</th><td>메모리 MB x 8~42ms/MB. 막대 눈금 = 1초</td><td><span class="as-cl-kind as-cl-kind--est">추정</span></td></tr><tr><th scope="row">프레임 분량</th><td>올리기 시간 / 16.7ms. 실제로는 여러 프레임에 쪼개 올림(clip 하나는 못 쪼갬)</td><td><span class="as-cl-kind as-cl-kind--est">추정</span></td></tr><tr><th scope="row">예산 막대</th><td>이 채팅 하나가 다음 채팅 보유 예산 250MB 에서 차지하는 몫</td><td><span class="as-cl-kind as-cl-kind--calc">계산</span></td></tr><tr><th scope="row">프레임 수 배수</th><td>감정 clip 몫만 선형으로 곱함 (페이지 분할 · 압축률 변화 미반영)</td><td><span class="as-cl-kind as-cl-kind--assume">가정</span></td></tr></tbody></table></div></div>
+          </details>
         </div>
         <script>
 (function () {
   var root = document.getElementById("chat-load");
   if (!root) return;
-  var hold = +root.dataset.hold, lo = +root.dataset.upLo, hi = +root.dataset.upHi, fr = +root.dataset.frame;
-  /* 표기는 render.py 의 fmt_mb / mb / cl_up_txt / cl_fr_txt 와 같아야 한다. */
+  var hold = +root.dataset.hold, lo = +root.dataset.upLo, hi = +root.dataset.upHi, fr = +root.dataset.frame, scale = +root.dataset.scale;
+  /* 표기는 render.py 의 fmt_mb / mb / cl_up_txt / cl_fr_txt / cl_rng 와 같아야 한다. */
   function fmt(v) {
     if (!(v > 0)) return "0";
     if (v < 0.01) return Math.max(1, Math.round(v * 1024)) + "KB";
@@ -554,12 +570,19 @@
   }
   function set(tr, cls, text) { var n = tr.querySelector("." + cls); if (n) n.textContent = text; }
   function apply(k) {
-    root.querySelectorAll("tbody tr").forEach(function (tr) {
+    root.querySelectorAll("tbody tr[data-cm]").forEach(function (tr) {
       var mem = +tr.dataset.rm + +tr.dataset.cm * k, xf = (+tr.dataset.rx + +tr.dataset.cx * k) / 1048576;
+      var a = mem * lo, b = mem * hi;
       set(tr, "cl-mem", mbs(mem));
       set(tr, "cl-xfer", mbs(xf));
-      set(tr, "cl-up", up(mem * lo, mem * hi));
-      set(tr, "cl-fr", fp(mem * lo, mem * hi));
+      set(tr, "cl-up", up(a, b));
+      set(tr, "cl-fr", fp(a, b));
+      var rng = tr.querySelector(".cl-rng");
+      if (rng) {
+        var left = Math.min(100, a / scale * 100);
+        rng.style.left = left.toFixed(1) + "%";
+        rng.style.width = Math.max(1.5, Math.min(100 - left, (b - a) / scale * 100)).toFixed(1) + "%";
+      }
       var pct = hold ? mem / hold * 100 : 0, bar = tr.querySelector(".cl-bar");
       set(tr, "cl-pct", Math.round(pct) + "%");
       if (bar) bar.style.width = Math.min(100, pct).toFixed(0) + "%";
