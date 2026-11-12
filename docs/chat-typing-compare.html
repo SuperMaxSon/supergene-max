@@ -34,7 +34,6 @@
       .ct-vhead h3 { font-size: 15px; margin: 0; }
       .ct-vhead .ct-btn { margin-left: auto; padding: 2px 10px; font-size: 12px; }
       .ct-desc { margin: 0; color: var(--text-dim); font-size: 12.5px; line-height: 1.45; }
-      .ct-cost { margin: 0; font-size: 12px; line-height: 1.45; }
       .ct-stages { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
       .ct-stage { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
       .ct-lang { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; color: var(--text-dim); }
@@ -70,8 +69,6 @@
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
         <a class="nav-back" href="#compare">비교</a>
-        <a class="nav-back" href="#cost">비용</a>
-        <a class="nav-back" href="#scope">확인 범위</a>
         <span class="nav-spacer"></span>
       </div>
     </nav>
@@ -87,7 +84,6 @@
         <div class="doc-meta">
           <span class="tag">브라우저 근사치</span>
           <span class="tag">녹화 레퍼런스 1장면(10fps 표본)</span>
-          <span class="tag">비용은 추정(미실측)</span>
           <span class="tag">2026-11-12</span>
         </div>
       </div>
@@ -126,97 +122,6 @@
       </div>
     </section>
 
-    <!-- ── 비용 ─────────────────────────────────────────────── -->
-    <section class="doc-section" id="cost">
-      <div class="wrap wrap--wide">
-        <h2 class="doc-h2">
-          비용
-          <span class="doc-h2-sub">현재 = 1 · 추정</span>
-        </h2>
-
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>방식</th>
-                <th>대사 한 줄(68자) 동안 텍스트를 다시 그리는 횟수</th>
-                <th style="text-align: right">현재 = 1</th>
-                <th>근거</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>현재</td>
-                <td>68회(라벨 1개)</td>
-                <td style="text-align: right">1</td>
-                <td>글자마다 라벨 문자열을 갱신한다. 대사 라벨은 TTF 에 <code>cacheMode=0</code>(NONE)이라 갱신마다 캔버스로 텍스처를 새로 만든다(프리팹 실측).</td>
-              </tr>
-              <tr>
-                <td>A. 투명 꼬리</td>
-                <td>68회 x 조각 2개(RichText)</td>
-                <td style="text-align: right">약 2~4 <span class="pill">추정</span></td>
-                <td>RichText 는 글자마다 조각 라벨(보인 부분 / 투명 부분)을 다시 그리고 태그도 파싱한다. 풀링은 노드 생성/GC 만 줄이고 다시 그리는 비용은 그대로다.</td>
-              </tr>
-              <tr>
-                <td>B. 줄 미리 확정</td>
-                <td>68회(라벨 1개)</td>
-                <td style="text-align: right">약 1 <span class="pill">추정</span></td>
-                <td>현재와 같은 라벨 갱신이다. 줄 나누기는 대사당 1번만 한다.</td>
-              </tr>
-              <tr>
-                <td>C. 통째 팝</td>
-                <td>1회 + 말풍선 팝 트윈</td>
-                <td style="text-align: right">약 0.015 <span class="pill">추정</span></td>
-                <td>문장 설정이 1회라 글자 단위 갱신이 없다. 말풍선 팝은 텍스트를 다시 그리지 않는다.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">이 표를 읽는 법</div>
-            <p>
-              단위는 시간이 아니라 <strong>텍스트를 다시 그리는 횟수와 그 한 번의 비용</strong>이다. 표의 값은 전부 추정이고, 실제 ms 는 재야 안다.
-              A 의 2~4 가 가장 불확실하다. 판정 기준 후보는 모바일 시뮬(4배 CPU)에서 타이핑 구간 프레임 시간 p95 가 16.6ms(60fps) 이하인지다.
-            </p>
-          </div>
-          <div class="note" style="--acc: var(--warn)">
-            <div class="note-title">실기기 로그로는 판정할 수 없다</div>
-            <p>
-              SM-A125N 실기기 판 43개(<code>_ignore/device-runs/raw</code>)에서 PopupChat 화면의 50ms 이상 프레임은 2,205개다.
-              이 중 2,040개(92%)는 로드/텍스처 올림/커튼으로 설명되고, 설명 안 되는(스크립트 CPU) 프레임은 165개(중앙값 64ms, 최대 336ms)다.
-              그러나 <code>HitchProbe</code> 는 50ms 이상(<code>HITCH_MS = 50</code>)만 줄로 남겨서 타이핑 한 글자의 비용은 기록에 없고,
-              165개가 타이핑 때문인지도 알 수 없다(오픈 직후 초상 클립 재생 같은 다른 CPU 작업이 같은 화면에 있다).
-              그래서 다음 단계는 타이핑 구간 프레임 시간만 따로 재는 것이다.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── 확인 범위 ────────────────────────────────────────── -->
-    <section class="doc-section" id="scope">
-      <div class="wrap wrap--wide">
-        <h2 class="doc-h2">
-          확인 범위
-          <span class="doc-h2-sub">실측과 추정, 확인 못 한 것</span>
-        </h2>
-        <div class="notes">
-          <div class="note" style="--acc: var(--validate)">
-            <div class="note-title">확인하지 못한 것</div>
-            <p>
-              <strong>줄바꿈</strong>: 브라우저로 그린 근사치라 실제 Cocos 라벨과 줄바꿈 위치가 다를 수 있다. 한국어가 단어 중간에서 끊기는지(브라우저는 <code>우 / 리가</code> 처럼 끊는다)는 Cocos 에서 확인하지 않았다.
-              <strong>레퍼런스</strong>: 화면 기록에서 말풍선이 나오는 한 장면을 10fps 로 뽑아 본 표본이다. 빈 말풍선이 먼저 뜨고 약 0.1초 뒤 문장 전체가 한 번에 나왔다.
-              다른 장면은 보지 않았고, 0.1초 안에 글자가 페이드로 나오는지는 구분하지 못했다. 팝 시간(0.28초)과 크기 변화는 내가 정한 값이다.
-              <strong>A</strong>: RichText 의 투명색이 엔진에서 실제로 먹는지, 풀링이 어느 정도 줄이는지는 이 엔진 버전에서 확인하지 않았다.
-              <strong>글꼴</strong>: 한국어는 게임이 쓰는 Pretendard-ExtraBold, 영어는 PoetsenOne 이고, 둘 다 글자 일부만 추려 넣었다(한국어는 KS X 1001 의 2,350자). 그 밖의 글자를 입력하면 대체 폰트로 보인다.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <footer class="site-footer">
       <div class="wrap wrap--wide">
         작성 2026-11-12 · Supergene
@@ -228,17 +133,13 @@
          줄 계산은 폰트가 올라온 뒤여야 맞다 - 안 올라온 채 재면 대체 폰트 폭으로 줄이 어긋난다. */
       const VARIANTS = [
         { id: "cur", name: "현재", tag: "지금 구현",
-          desc: "글자마다 부분 문자열을 통째로 다시 배치한다. 가로/세로 가운데 정렬이라 줄이 늘 때마다 글자 덩어리가 밀려 올라간다.",
-          cost: "라벨 1개를 글자마다 갱신." },
+          desc: "글자마다 부분 문자열을 통째로 다시 배치한다. 가로/세로 가운데 정렬이라 줄이 늘 때마다 글자 덩어리가 밀려 올라간다." },
         { id: "a", name: "A. 투명 꼬리", tag: "움직임 0",
-          desc: "전체 문장을 먼저 그려 두고 아직 안 나온 글자만 투명하게 둔다. 줄 수와 글자 위치가 안 변한다.",
-          cost: "웹은 공짜. Cocos RichText 는 글자마다 다시 그려 비싸다(추정, 미실측)." },
+          desc: "전체 문장을 먼저 그려 두고 아직 안 나온 글자만 투명하게 둔다. 줄 수와 글자 위치가 안 변한다." },
         { id: "b", name: "B. 줄 미리 확정", tag: "세로 고정",
-          desc: "줄 수와 줄바꿈을 먼저 정하고 안 나온 줄은 빈 줄로 자리만 잡는다. 가로는 가운데에서 양옆으로 퍼진다.",
-          cost: "지금과 거의 같다. 줄 나누기는 대사당 1번." },
+          desc: "줄 수와 줄바꿈을 먼저 정하고 안 나온 줄은 빈 줄로 자리만 잡는다. 가로는 가운데에서 양옆으로 퍼진다." },
         { id: "c", name: "C. 통째 팝", tag: "레퍼런스",
-          desc: "빈 말풍선이 팝하고 약 0.1초 뒤 문장이 통째로 나온다. 녹화한 레퍼런스 게임의 한 장면을 10fps 로 본 표본이다. 한 글자씩 나오는 맛은 없다.",
-          cost: "글자 단위 갱신이 없어 가장 싸다." },
+          desc: "빈 말풍선이 팝하고 약 0.1초 뒤 문장이 통째로 나온다. 녹화한 레퍼런스 게임의 한 장면을 10fps 로 본 표본이다. 한 글자씩 나오는 맛은 없다." },
       ];
       const LANGS = [{ id: "en", label: "EN" }, { id: "ko", label: "KO" }];
       const TEXT_DELAY_MS = 100;
@@ -254,8 +155,7 @@
         sec.innerHTML =
           '<div class="ct-vlabel"><div class="ct-vhead"><h3>' + v.name + '</h3><span class="tag">' + v.tag + '</span>' +
           '<button class="ct-btn" type="button">재생</button></div>' +
-          '<p class="ct-desc">' + v.desc + '</p>' +
-          '<p class="ct-cost"><b>비용</b> ' + v.cost + '</p></div>' +
+          '<p class="ct-desc">' + v.desc + '</p></div>' +
           '<div class="ct-stages">' + LANGS.map((l) =>
             '<div class="ct-stage"><span class="ct-lang">' + l.label + '</span>' +
             '<div class="ct-fit"><div class="ct-row"><div class="ct-bubble"></div>' +

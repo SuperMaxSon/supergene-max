@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-11-12 11:02",
+  updated: "2026-11-12 11:06",
 };
 
 /* --------------------------------------------------------------------------
@@ -560,8 +560,8 @@ const SECTIONS = [
         url: "docs/chat-typing-compare.html",
         project: "smg",
         status: "초안",
-        version: "v1.0",
-        updated: "2026-11-12 11:02",
+        version: "v1.1",
+        updated: "2026-11-12 11:06",
         pinned: false,
         tags: ["연출", "인터랙티브"],
       },
