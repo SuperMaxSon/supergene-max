@@ -19,8 +19,6 @@
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
-        <a class="nav-back" href="#summary">요약</a>
-        <a class="nav-back" href="#todo">확인 필요</a>
         <a class="nav-back" href="#need">추가 필요</a>
         <a class="nav-back" href="#items">아이템</a>
         <span class="nav-spacer"></span>
@@ -33,54 +31,20 @@
         <h1 class="doc-title">아이템 아트 ↔ 시트 이름 <span class="pill" style="--acc: var(--smg)">시트 v1.25</span></h1>
         <p class="doc-lede">
           기획(item_spec) 아이템 242종(도구 3801 · 3901 포함)을 시트 이름과 같은 코드끼리 놓고 <b>그림이 이름과 맞는지</b> 봤습니다.
-          그림은 클라 보드 아이템 스프라이트(<code>assets/bundle/board/items/p1~p3</code>, 2026-11-02 커밋 e6639530 판, 재화 14종 2701~2905 포함)와 같은 파일입니다.
+          그림은 클라 보드 아이템 스프라이트(<code>assets/bundle/board/items/p1~p3</code>, 2026-11-13 커밋 2a3e17e9 판 · 유리공예 재교체 반영, 재화 14종 2701~2905 포함)와 같은 파일입니다.
           이름은 2026-11-04 시트 export 의 item_spec 242행 · string_code(<code>T_ITEM_NAME_*</code>, 도구는 <code>tool_key</code>)와 대조해 전부 같습니다.
           상자 4종(3301 · 3401 · 3501 · 3601)은 아트팀 확정(10-15)으로 다른 상자와 같은 그림을 씁니다 — 그림을 코드 이름으로 복사해 한 아이템 한 파일로 두었고, 이슈 없음입니다.
           주황색 칸이 안 맞는 항목, 붉은색 칸이 아직 아트가 없는 항목입니다.
         </p>
         <div class="doc-meta">
           <span class="tag">시트 string_code 2026-11-04 export 기준</span>
-          <span class="tag">그림 클라 e6639530 (2026-11-02)</span>
+          <span class="tag">그림 클라 2a3e17e9 (2026-11-13)</span>
           <span class="tag">육안 판정</span>
           <span class="tag">검수 반영 <span id="icg-rev">0</span>장</span>
-          <span class="tag">2026-11-05</span>
+          <span class="tag">2026-11-13</span>
         </div>
       </div>
     </header>
-
-    <section class="doc-section" id="summary">
-      <div class="wrap wrap--wide">
-        <h2 class="doc-h2">요약 <span class="doc-h2-sub">242종</span></h2>
-        <div class="stat-row">
-          <div class="stat" style="--acc: var(--ok)">
-            <div class="stat-num" id="icg-s-ok">242</div>
-            <div class="stat-name">일치</div>
-          </div>
-          <div class="stat" style="--acc: var(--warn)">
-            <div class="stat-num" id="icg-s-bad">0</div>
-            <div class="stat-name">불일치</div>
-            <div class="stat-sub" id="icg-bad-list">없음</div>
-          </div>
-          <div class="stat" style="--acc: var(--bad)">
-            <div class="stat-num" id="icg-s-none">0</div>
-            <div class="stat-name">이미지 없음</div>
-            <div class="stat-sub">없음</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="doc-section" id="todo">
-      <div class="wrap wrap--wide">
-        <h2 class="doc-h2">확인 필요 <span class="doc-h2-sub" id="todo-sub">불일치 0 · 이미지 없음 0 — 아래 전체 격자에서 먼저 모아 본 것</span></h2>
-        <h3 class="doc-h2-sub" id="todo-h-bad" style="display: block; margin: 8px 0" hidden>불일치 0</h3>
-        <div class="icg" id="todo-bad" hidden>
-        </div>
-        <h3 class="doc-h2-sub" id="todo-h-none" style="display: block; margin: 18px 0 8px" hidden>이미지 없음 0</h3>
-        <div class="icg" id="todo-none" hidden>
-        </div>
-      </div>
-    </section>
 
     <section class="doc-section" id="need">
       <div class="wrap wrap--wide">
@@ -2243,9 +2207,9 @@
         var doneEl = el("icg-done");
         var syncEl = el("icg-sync");
         var nums = {
-          bad: [el("icg-n-bad"), el("icg-s-bad")],
-          ok: [el("icg-n-ok"), el("icg-s-ok")],
-          none: [el("icg-n-none"), el("icg-s-none")]
+          bad: el("icg-n-bad"),
+          ok: el("icg-n-ok"),
+          none: el("icg-n-none")
         };
         var local = document.documentElement.classList.contains("icg-local");
         var reviewable = document.querySelectorAll("#icg .icg-chk").length;
@@ -2264,19 +2228,6 @@
           return c.querySelector(".icg-code").textContent;
         }
 
-        // 연속한 코드는 범위로 줄인다: 703, 704, 1701…1707 → "703~704 · 1701~1707"
-        function ranges(list) {
-          var out = [];
-          var i = 0;
-          while (i < list.length) {
-            var j = i;
-            while (j + 1 < list.length && list[j + 1] === list[j] + 1) j++;
-            out.push(j > i ? list[i] + "~" + list[j] : String(list[i]));
-            i = j + 1;
-          }
-          return out.join(" · ");
-        }
-
         function setSync(text, bad) {
           if (!syncEl) return;
           syncEl.textContent = text;
@@ -2289,7 +2240,6 @@
           var n = 0;
           var rev = 0;
           var cnt = { bad: 0, ok: 0, none: 0 };
-          var badCodes = [];
           var visTheme = {};
           var visChain = {};
           cells.forEach(function (c) {
@@ -2300,7 +2250,6 @@
             if (isDone) n++;
             if (isDone && base === "bad") rev++;
             cnt[v]++;
-            if (v === "bad") badCodes.push(+code(c));
             c.classList.toggle("is-bad", v === "bad");
             c.classList.toggle("is-ok", local && isDone);
             if (box) box.checked = isDone;
@@ -2326,39 +2275,9 @@
           count.textContent = "표시 " + shown;
           doneEl.textContent = "✓ " + n + " / " + reviewable;
           ["bad", "ok", "none"].forEach(function (k) {
-            nums[k].forEach(function (e) { e.textContent = cnt[k]; });
+            nums[k].textContent = cnt[k];
           });
-          el("icg-bad-list").textContent = badCodes.length ? ranges(badCodes) : "없음";
           el("icg-rev").textContent = rev;
-          renderTodo();
-        }
-
-        // 맨 위 「확인 필요」는 전체 격자의 현재 판정(검수로 이슈 없음 처리된 칸은 뺀다)에서 매번 다시 만든다.
-        // 복사본이라 체크박스와 클릭 동작은 없다.
-        function renderTodo() {
-          var bad = el("todo-bad");
-          var none = el("todo-none");
-          if (!bad || !none) return;
-          bad.textContent = "";
-          none.textContent = "";
-          var nb = 0;
-          var nn = 0;
-          cells.forEach(function (c) {
-            var box = c.querySelector(".icg-chk");
-            var v = !!box && !!done[code(c)] ? "ok" : c.getAttribute("data-v");
-            if (v === "ok") return;
-            var k = c.cloneNode(true);
-            var kb = k.querySelector(".icg-chk");
-            if (kb) kb.remove();
-            ["hidden", "data-v", "data-t", "data-ch"].forEach(function (a) { k.removeAttribute(a); });
-            k.classList.remove("is-ok");
-            if (v === "bad") { bad.appendChild(k); nb++; } else { none.appendChild(k); nn++; }
-          });
-          el("todo-h-bad").hidden = bad.hidden = nb === 0;
-          el("todo-h-none").hidden = none.hidden = nn === 0;
-          el("todo-h-bad").textContent = "불일치 " + nb;
-          el("todo-h-none").textContent = "이미지 없음 " + nn;
-          el("todo-sub").textContent = "불일치 " + nb + " · 이미지 없음 " + nn + " — 아래 전체 격자에서 먼저 모아 본 것 (검수로 이슈 없음 처리한 칸은 제외)";
         }
 
         // 체크가 바뀌면 잠깐(0.8초) 모아서 한 번에 서버에 보낸다. 응답이 늦게 온 옛 요청은 무시한다.
