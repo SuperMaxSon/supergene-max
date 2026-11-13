@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-11-13 16:22",
+  updated: "2026-11-13 16:29",
 };
 
 /* --------------------------------------------------------------------------
@@ -713,12 +713,12 @@ const SECTIONS = [
     cards: [
       {
         title: "시네마틱 영상 녹화",
-        desc: "첫 실행 인트로와 day 별 새날 전환 영상이 실제 플레이 흐름에서 나오는 모습을 녹화한 영상.",
+        desc: "첫 실행 인트로, day 별 새날 전환 영상, 영상 없는 날의 새날 안내가 실제 플레이 흐름에서 나오는 모습을 녹화한 영상.",
         url: "docs/smg-newday-transition.html",
         project: "smg",
         status: "완료",
         version: "v1.25",
-        updated: "2026-11-13 16:22",
+        updated: "2026-11-13 16:29",
         pinned: false,
         tags: ["코드 실측", "연출"],
       },
