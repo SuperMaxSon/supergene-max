@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-11-16 14:47",
+  updated: "2026-11-16 15:28",
 };
 
 /* --------------------------------------------------------------------------
@@ -113,7 +113,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "55462e02",
-        updated: "2026-11-16 14:47",
+        updated: "2026-11-16 15:28",
         pinned: false,
         tags: ["story-merge", "팝업", "아트", "라이브옵스"],
       },
