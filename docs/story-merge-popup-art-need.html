@@ -36,6 +36,16 @@
       .pa-legend { margin: 10px 0 0; font-size: 12px; color: var(--text-dim); }
       .pa-legend span { display: inline-flex; align-items: center; gap: 5px; margin-right: 12px; }
       .pa-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--c); }
+      /* 라이브옵스 테마 이동 레일 - 오른쪽 고정, 클릭하면 스크롤 연출 없이 즉시 이동 */
+      .pa-grp { scroll-margin-top: calc(var(--nav-h) + 16px); }
+      .pa-rail { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 15; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-lg); }
+      .pa-rail[hidden] { display: none; }
+      .pa-rail-t { padding: 2px 4px 4px; font-size: 11px; font-weight: 700; color: var(--text-faint); text-align: center; }
+      .pa-rail button { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; }
+      .pa-rail button:hover:not(:disabled) { border-color: var(--analysis); color: var(--analysis); }
+      .pa-rail button:disabled { opacity: 0.4; cursor: default; }
+      .pa-rail-n { font-weight: 400; color: var(--text-faint); }
+      @media (max-width: 1280px) { .pa-rail { top: auto; bottom: 10px; left: 10px; right: 10px; transform: none; flex-direction: row; overflow-x: auto; } .pa-rail-t { display: none; } .pa-rail button { flex: none; } }
       @media (max-width: 640px) { .pa-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .pa-empty { padding: 12px 4px; } }
     </style>
   </head>
@@ -117,6 +127,15 @@
       </div>
     </footer>
 
+    <aside class="pa-rail" id="rail" aria-label="라이브옵스 테마 이동" hidden>
+      <div class="pa-rail-t">테마 이동</div>
+      <button type="button" data-theme="구매 오퍼"><span>구매 오퍼</span><span class="pa-rail-n">0</span></button>
+      <button type="button" data-theme="시즈널 패스"><span>시즈널 패스</span><span class="pa-rail-n">0</span></button>
+      <button type="button" data-theme="공방 수레 경주"><span>공방 수레 경주</span><span class="pa-rail-n">0</span></button>
+      <button type="button" data-theme="향초 품평회"><span>향초 품평회</span><span class="pa-rail-n">0</span></button>
+      <button type="button" data-theme="수집 앨범"><span>수집 앨범</span><span class="pa-rail-n">0</span></button>
+      <button type="button" data-theme="포피의 보물찾기"><span>포피의 보물찾기</span><span class="pa-rail-n">0</span></button>
+    </aside>
     <script>
       // 탭(화면 / 라이브옵스) x 판정(추가 / 미교체 / 교체 완료 / 불필요) — 고른 조합의 섹션만 남기고, 탭마다 건수를 바꾼다.
       (function () {
@@ -131,7 +150,35 @@
             x.classList.toggle("is-active", x.getAttribute("data-f") === f);
             x.querySelector(".projbtn-n").textContent = x.getAttribute("data-n-" + tab);
           });
+          updateRail();
         }
+        // 라이브옵스 테마 레일 - 지금 보이는 판정 섹션 안의 테마 묶음(details.pa-grp)으로 즉시 이동한다. 그 판정에 없는 테마는 비활성.
+        var rail = document.getElementById("rail");
+        function groupOf(theme) {
+          var sec = document.querySelector('section[data-g="' + tab + "-" + f + '"]');
+          if (!sec) return null;
+          return Array.prototype.filter.call(sec.querySelectorAll("details.pa-grp"), function (g) {
+            return g.querySelector(".pa-grp-n").textContent.trim() === theme;
+          })[0] || null;
+        }
+        function updateRail() {
+          rail.hidden = tab !== "lo";
+          Array.prototype.forEach.call(rail.querySelectorAll("button"), function (b) {
+            var g = groupOf(b.getAttribute("data-theme"));
+            b.disabled = !g;
+            b.querySelector(".pa-rail-n").textContent = g ? parseInt(g.querySelector(".pa-grp-c").textContent, 10) : 0;
+          });
+        }
+        rail.addEventListener("click", function (e) {
+          var b = e.target.closest("button");
+          var g = b && !b.disabled ? groupOf(b.getAttribute("data-theme")) : null;
+          if (!g) return;
+          g.open = true;
+          var root = document.documentElement, prev = root.style.scrollBehavior;
+          root.style.scrollBehavior = "auto"; // style.css 의 smooth 를 이번 이동에서만 끈다
+          g.scrollIntoView({ block: "start" });
+          root.style.scrollBehavior = prev;
+        });
         tabs.addEventListener("click", function (e) { var b = e.target.closest(".projbtn"); if (b) { tab = b.getAttribute("data-t"); render(); } });
         flt.addEventListener("click", function (e) { var b = e.target.closest(".projbtn"); if (b) { f = b.getAttribute("data-f"); render(); } });
         render();
