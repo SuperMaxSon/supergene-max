@@ -183,7 +183,7 @@
         <div class="notes">
           <div class="note" style="--acc: var(--analysis)">
             <div class="note-title">폰에서 느끼는 방식</div>
-            <p><strong>안드로이드</strong>는 <code>navigator.vibrate</code> 로 길이와 간격을 그대로 울립니다. <strong>iOS</strong>는 진동 API가 없어서 Safari 의 스위치 햅틱(<code>iOS 17.4+</code>)을 씁니다. 애플이 <strong>iOS 26.5 부터 스크립트 진동을 막아서</strong> 그 이상은 한 번 누르면 <strong>1틱만</strong> 울리고 패턴은 못 만듭니다(26.4 이하는 틱을 이어 흉내 냅니다). 둘 다 <strong>세기는 구분되지 않습니다</strong>. 막대는 울리는 타이밍(굵은 칸 = 울림)입니다. 10ms 는 폰에서 거의 안 느껴질 수 있습니다.</p>
+            <p><strong>안드로이드</strong>는 <code>navigator.vibrate</code> 로 길이와 간격을 그대로 울립니다. <strong>iOS</strong>는 진동 API가 없어서 Safari 의 스위치 햅틱(<code>iOS 17.4+</code>)을 씁니다. 애플이 <strong>iOS 26.5 부터 스크립트 진동을 막아서</strong> 그 이상은 한 번 누르면 <strong>1틱만</strong> 울리고 패턴은 못 만듭니다(26.4 이하는 틱을 이어 흉내 냅니다). 둘 다 <strong>세기는 구분되지 않습니다</strong>. 막대는 울리는 타이밍(굵은 칸 = 울림)입니다. 인게임(안드로이드)은 <code>navigator.vibrate(길이)</code> 에 FB 기본 틱을 겹쳐 울려서, 웹은 첫 울림을 <strong>40ms 이상</strong>으로 맞췄습니다(10ms 짜리가 인게임처럼 느껴지게). 40ms 는 실측 없는 근사값입니다.</p>
           </div>
         </div>
       </section>
@@ -233,6 +233,9 @@
     <script>
       // Vibration only (no sound). Android: navigator.vibrate with the executor's timing list. iOS: Safari 17.4+ checkbox[switch] haptic, one tick per segment start (a tick every 35ms inside segments of 100ms+); 26.5+ keeps only the real tap's tick.
       (function () {
+        // In-game on Android the executor calls navigator.vibrate(list) AND one FB haptic tick at the start. The web page has no FB tick,
+        // so the first buzz is stretched to this length. Estimate only - the FB tick length is not published and was not measured.
+        var FB_TICK_MS = 40;
         var IOS_TICK_GAP = 35;
         var IOS_LONG = 100;
         var VIS_MIN = 150; // lit time for a segment on screen, so a 10ms tap is still visible
@@ -312,7 +315,9 @@
           }, t + VIS_MIN + 100));
 
           if (mode === "android") {
-            navigator.vibrate(list);
+            var al = list.slice();
+            al[0] = Math.max(al[0], FB_TICK_MS);
+            navigator.vibrate(al);
           } else if (mode === "ios") {
             var ticks = iosTicks(list);
             var lab = btn.querySelector("label"); // the first tick is the real tap itself; the rest only work below iOS 26.5
