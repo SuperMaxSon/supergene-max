@@ -42,7 +42,7 @@
 const SITE = {
   title: "Supergene 기획 허브",
   subtitle: "팀이 함께 보는 기획 · 수치 · 검증 문서 인덱스",
-  updated: "2026-11-18 17:42",
+  updated: "2026-11-19 16:06",
 };
 
 /* --------------------------------------------------------------------------
@@ -105,6 +105,17 @@ const SECTIONS = [
         updated: "2026-11-13 14:52",
         pinned: false,
         tags: ["story-merge", "아트", "번역시트"],
+      },
+      {
+        title: "오더 요구품 아이템 격자",
+        desc: "일반 아이템 158종 중 오더 요구품으로 안 뜨는 93종(행 비활성 · 자리 범위 밖 · 비중 0 · 행 없음)과 뜨는 65종(추첨 단계순, 뜨는 타입 · 해금 레벨)을 격자로 정리.",
+        url: "docs/order-items-grid.html",
+        project: "smg",
+        status: "초안",
+        version: "시트 2026-11-13",
+        updated: "2026-11-19 16:06",
+        pinned: false,
+        tags: ["story-merge", "오더", "코드 실측"],
       },
       {
         title: "스토리머지 IAP 연결",
