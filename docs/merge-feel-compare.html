@@ -49,13 +49,15 @@
       .mfc-asm { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 0 6px; border-radius: 999px; background: #fdeee7; color: #a3441d; margin-left: 4px; vertical-align: 1px; }
       .mfc-thr { border: 1.5px dashed #c0392b; border-radius: 50%; box-sizing: border-box; }
       .mfc-try-grid { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
-      .mfc-try-col { flex: 0 1 484px; min-width: 0; }
+      .mfc-try-col { flex: 0 1 560px; min-width: 0; }
       .mfc-try-panel { flex: 1 1 300px; min-width: 260px; }
       .mfc-try-panel .table-scroll table { font-size: 11.5px; }
       .mfc-try-panel th, .mfc-try-panel td { padding: 7px 8px; }
       .mfc-try-panel table { table-layout: fixed; width: 100%; }
       .mfc-try-panel td, .mfc-try-panel td:first-child { white-space: normal; word-break: keep-all; }
       .mfc-try-wrap { position: relative; overflow: hidden; }
+      .mfc-plate { position: absolute; border-radius: 17px; background: #d6c4a0; box-shadow: 0 4px 0 rgba(90, 60, 30, 0.18); }
+      .mfc-spr img.mfc-sel { position: absolute; left: -15.5px; top: -15.5px; width: 126px; height: 126px; }
       .mfc-try { transform-origin: 0 0; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
       .mfc-tel { white-space: pre-wrap; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 10px; background: #faf7f0; border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; min-height: 5.4em; color: var(--text-dim); }
       .mfc-pg { font-size: 13px; font-weight: 800; color: var(--text); margin: 14px 0 6px; padding-top: 8px; border-top: 1px solid var(--border); }
@@ -164,11 +166,20 @@
             <div class="note">
               <div class="note-title">해 보는 법</div>
               <p>
-                같은 단계 아이템끼리 끌어서 합치고, 다른 단계 위에 놓으면 자리가 바뀌고, 보드 밖에 놓으면 원래 자리로 돌아갑니다. 생성기(도구함)를 누르면 새 상품이 나옵니다.
+                같은 단계 아이템끼리 끌어서 합치고, 다른 단계 위에 놓으면 자리가 바뀌고, 보드 밖에 놓으면 원래 자리로 돌아갑니다. 생성기(도구함)는 한 번 눌러 고르고, 한 번 더 누르면 새 상품이 나옵니다(클라와 같은 규칙).
                 위에서 <b>현재 / 레퍼런스</b>를 눌러 가며 같은 동작을 해 보세요. 아래 항목을 하나씩 바꿔 섞어 볼 수도 있고(그러면 모드 버튼은 꺼집니다) 끌기 시작 거리와 따라오는 정도는 슬라이더로 직접 맞춥니다.
                 폰으로 열면 끌기 시작 거리가 화면 폭 비율이라 <b>실제 손가락 거리</b>로 느껴집니다(데스크톱 마우스는 거리가 너무 짧아 차이가 안 느껴질 수 있습니다).
                 <b>빠르게 밀어서 대상 칸을 살짝 지나쳐 놓아 보세요</b> - 측정 줄에서 「손 칸 / 칩 칸 / 판정 칸」이 어떻게 갈리는지 보입니다. 0.25배속에서는 칩이 손가락 뒤에서 따라오는 지연이 눈에 보입니다.
                 머지 효과는 두 모드 모두 현재 그대로이고 소리 · 진동은 없습니다. 클라는 건드리지 않았습니다.
+              </p>
+            </div>
+            <div class="note" style="margin-top: 10px">
+              <div class="note-title">클라와 같은 점 / 다른 점</div>
+              <p>
+                <b>같은 점</b> - 보드 모양(7열 x 9행, 칸 96, 화면 폭 720 기준)과 화면에서 보이는 크기 비율, 끌기 시작 거리(게임 화면 단위), 따라오는 정도 계산식, 연출 길이와 모양 값, 놓기 보정,
+                생성기 규칙(처음 누르면 고르기, 같은 생성기를 한 번 더 누르면 생산), 상품이 나올 칸 고르는 순서(가까운 칸부터 나선형)를 클라 코드와 맞췄습니다.<br />
+                <b>다른 점</b> - 웹으로 다시 만든 것이라 <b>클라 엔진(Cocos)의 프레임 처리와 기기 성능은 같지 않습니다.</b> 배경 · 그림자 · 위아래 화면 요소(정보바 · 주문 레일), 진동 · 소리, 에너지 · 보드 가득 안내 문구,
+                상자 · 도구 · 거미줄은 없고 아이템은 5단계까지만 있습니다.
               </p>
             </div>
           </div>
@@ -458,20 +469,32 @@
         };
 
         /* ---------- stage ---------- */
-        function Stage(el, rows) {
+        function Stage(el, rows, geo) {
           rows = rows || ROWS;
+          var cols = geo ? geo.cols : COLS;
           this.el = el;
           this.era = 0;
-          el.style.width = W + "px";
-          el.style.height = rows * CW + "px";
+          this.ox = geo ? geo.ox : 0;
+          this.oy = geo ? geo.oy : 0;
+          el.style.width = (geo ? geo.w : W) + "px";
+          el.style.height = (geo ? geo.h : rows * CW) + "px";
           var bg = document.createElement("div");
           bg.className = "mfc-bg";
-          for (var i = 0; i < COLS * rows; i++) {
+          if (geo && geo.plate) {
+            var pl = document.createElement("div");
+            pl.className = "mfc-plate";
+            pl.style.left = geo.plate.x + "px";
+            pl.style.top = geo.plate.y + "px";
+            pl.style.width = geo.plate.w + "px";
+            pl.style.height = geo.plate.h + "px";
+            bg.appendChild(pl);
+          }
+          for (var i = 0; i < cols * rows; i++) {
             var c = document.createElement("div");
             c.className = "mfc-cell";
-            c.style.left = (i % COLS) * CW + "px";
-            c.style.top = Math.floor(i / COLS) * CW + "px";
-            c.style.background = ((i % COLS) + Math.floor(i / COLS)) % 2 === 0 ? "#eadfcb" : "#e2d5bd";
+            c.style.left = this.ox + (i % cols) * CW + "px";
+            c.style.top = this.oy + Math.floor(i / cols) * CW + "px";
+            c.style.background = ((i % cols) + Math.floor(i / cols)) % 2 === 0 ? "#eadfcb" : "#e2d5bd";
             bg.appendChild(c);
           }
           el.appendChild(bg);
@@ -486,7 +509,7 @@
           this.badge.style.display = "none";
           el.appendChild(this.badge);
         }
-        Stage.prototype.cp = function (c, r) { return { x: c * CW + CW / 2, y: r * CW + CW / 2 }; };
+        Stage.prototype.cp = function (c, r) { return { x: this.ox + c * CW + CW / 2, y: this.oy + r * CW + CW / 2 }; };
         Stage.prototype.reset = function () { this.era++; this.layer.innerHTML = ""; this.cap.textContent = ""; };
         Stage.prototype.caption = function (s) { this.cap.textContent = s; };
         Stage.prototype.tw = function (ms, fn, ease) {
@@ -910,19 +933,23 @@
         };
 
         /* ---------- hands-on sandbox ---------- */
-        var T_COLS = 5, T_ROWS = 4, T_MAX = 5, SNAP_MS = 150;
+        var T_COLS = 7, T_ROWS = 9, T_MAX = 5, SNAP_MS = 150;
+        /* client BoardGeometry: 7x9 cells of 96, gap 0, board padding x8 / top 7 / bottom 11, canvas width 720. The stage is the 720-wide design space, scaled to fit. */
+        var SW = 720, BOARD_PADX = 8, BOARD_PADT = 7, BOARD_PADB = 11, STAGE_MARGIN = 12;
+        var BOARD_BW = T_COLS * CW + BOARD_PADX * 2, BOARD_BH = T_ROWS * CW + BOARD_PADT + BOARD_PADB;
+        var TGEO = { cols: T_COLS, w: SW, h: BOARD_BH + STAGE_MARGIN * 2, ox: (SW - BOARD_BW) / 2 + BOARD_PADX, oy: STAGE_MARGIN + BOARD_PADT, plate: { x: (SW - BOARD_BW) / 2, y: STAGE_MARGIN, w: BOARD_BW, h: BOARD_BH } };
         var PRESET_CUR = { thr: 10 / 720, lerp: CUR_LERP, pick: 1.3, press: 1.2, move: "cur", back: "cur", tap: "cur", spawn: "cur" };
         var PRESET_GH = { thr: 10 / 1080, lerp: 1, pick: 1, press: 1, move: "gh", back: "gh", tap: "gh", spawn: "gh" };
         var CFG = { snap: true };
         for (var pk in PRESET_CUR) CFG[pk] = PRESET_CUR[pk];
-        var tst = new Stage(document.getElementById("try-stage"), T_ROWS);
+        var tst = new Stage(document.getElementById("try-stage"), T_ROWS, TGEO);
         var tel = document.getElementById("try-stage"), telOut = document.getElementById("try-tel");
-        var tcells = [], tstate = { mode: "idle" }, tbound = false, tlast = {};
+        var tcells = [], tstate = { mode: "idle" }, tbound = false, tlast = {}, tsel = -1, tarm = { index: -1, code: 0 };
 
         function mk(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
         function tPos(i) { return tst.cp(i % T_COLS, Math.floor(i / T_COLS)); }
         function tCellAt(p) {
-          var c = Math.floor(p.x / CW), r = Math.floor(p.y / CW);
+          var c = Math.floor((p.x - tst.ox) / CW), r = Math.floor((p.y - tst.oy) / CW);
           if (c < 0 || c >= T_COLS || r < 0 || r >= T_ROWS) return -1;
           return r * T_COLS + c;
         }
@@ -981,13 +1008,54 @@
           tcells[i] = it;
           return it;
         }
+        function tCode(it) { return it.gen ? 104 : 200 + it.tier; }
+        function tMark(it, on) {
+          if (!it || !it.spr) return;
+          var m = it.spr.el.querySelector(".mfc-sel");
+          if (!m) {
+            if (!on) return;
+            m = document.createElement("img");
+            m.className = "mfc-sel"; m.src = "img/ui/select-mark.png"; m.alt = ""; m.draggable = false;
+            it.spr.el.appendChild(m);
+          }
+          m.style.display = on ? "block" : "none";
+        }
+        /* client IngameVM selection: one selected chip; the mark is a child of the chip so it moves and scales with it */
+        function tSetSel(i) {
+          Array.prototype.forEach.call(tst.layer.querySelectorAll(".mfc-sel"), function (m) { m.style.display = "none"; });
+          tsel = i;
+          if (i >= 0 && tcells[i] && tcells[i].spr) tMark(tcells[i], true);
+        }
+        /* client BoardTapFlow: first tap selects and arms, tapping the same armed chip again acts (generator produces) */
+        function tDisarm() { tarm = { index: -1, code: 0 }; }
+        /* client BoardDims.spiralOrderFrom: the cell itself, then rings clockwise from 12 o'clock */
+        function tSpiral(from) {
+          var order = [], col = from % T_COLS, row = Math.floor(from / T_COLS), maxRing = Math.max(T_COLS, T_ROWS) - 1, ring, dc, dr;
+          function push(r, c) { if (r < 0 || r >= T_ROWS || c < 0 || c >= T_COLS) return; order.push(r * T_COLS + c); }
+          order.push(from);
+          for (ring = 1; ring <= maxRing; ring++) {
+            for (dc = 0; dc <= ring; dc++) push(row - ring, col + dc);
+            for (dr = -ring + 1; dr <= ring; dr++) push(row + dr, col + ring);
+            for (dc = ring - 1; dc >= -ring; dc--) push(row + ring, col + dc);
+            for (dr = ring - 1; dr >= -ring; dr--) push(row + dr, col - ring);
+            for (dc = -ring + 1; dc <= -1; dc++) push(row - ring, col + dc);
+          }
+          return order;
+        }
+        function tNearestEmpty(from) {
+          var o = tSpiral(from), k;
+          for (k = 0; k < o.length; k++) if (!tcells[o[k]]) return o[k];
+          return -1;
+        }
         function tryInit() {
           tst.reset();
+          tsel = -1;
+          tDisarm();
           tcells = new Array(T_COLS * T_ROWS);
           tstate = { mode: "idle" };
           tPut(0, 1, 0, true);
-          [[2, 0, 1], [3, 2, 1], [1, 3, 2], [4, 1, 2], [0, 3, 3], [4, 3, 3]].forEach(function (a) { tPut(a[0], a[1], a[2], false); });
-          tst.caption("같은 단계끼리 끌어서 합치기 / 생성기를 누르면 새 상품");
+          [[2, 0, 1], [3, 2, 1], [1, 3, 2], [4, 1, 2], [0, 3, 3], [4, 3, 3], [5, 5, 1], [2, 6, 2], [6, 7, 3], [1, 8, 1]].forEach(function (a) { tPut(a[0], a[1], a[2], false); });
+          tst.caption("같은 단계끼리 끌어서 합치기 / 생성기는 한 번 눌러 고르고 한 번 더 누르면 상품이 나옴");
           buildPanel();
           refreshMode();
           tryBind();
@@ -997,7 +1065,7 @@
 
         function updateTel() {
           var L = [];
-          L.push("모드 " + (CFG.move === "cur" ? "현재" : "레퍼런스") + " / 끌기 시작 기준 거리 " + (CFG.thr * W).toFixed(1) + "px (화면 폭의 " + (CFG.thr * 100).toFixed(2) + "%) / 따라오는 정도 " + CFG.lerp.toFixed(2));
+          L.push("모드 " + (CFG.move === "cur" ? "현재" : "레퍼런스") + " / 끌기 시작 기준 거리 " + (CFG.thr * SW).toFixed(1) + "px (화면 폭의 " + (CFG.thr * 100).toFixed(2) + "%) / 따라오는 정도 " + CFG.lerp.toFixed(2));
           if (tlast.start) L.push("마지막 끌기 시작: 이동 " + tlast.start.px.toFixed(1) + "px, 누른 지 " + Math.round(tlast.start.ms) + "ms (그때 기준 거리 " + tlast.start.thr.toFixed(1) + "px)");
           if (tlast.drop) {
             var d = tlast.drop;
@@ -1012,7 +1080,7 @@
           { g: "드래그 후 놓기", k: "snap", label: "놓기 보정 (빌드에 반영됨)", opts: [["켬", true], ["끔", false]] },
           { g: "탭", k: "tap", label: "탭 반응", opts: [["현재 230ms", "cur"], ["레퍼런스 젤리 900ms", "gh"]] },
           { g: "생산", k: "spawn", label: "생성기 상품 튀어나오기", opts: [["현재 720ms", "cur"], ["레퍼런스 900ms", "gh"]] },
-          { g: "드래그", k: "thr", label: "끌기 시작 거리 (화면 폭 비율)", range: { min: 0.002, max: 0.03, step: 0.0005 }, fmt: function (v) { return (v * 100).toFixed(2) + "% " + (v * W).toFixed(1) + "px"; } },
+          { g: "드래그", k: "thr", label: "끌기 시작 거리 (화면 폭 비율)", range: { min: 0.002, max: 0.03, step: 0.0005 }, fmt: function (v) { return (v * 100).toFixed(2) + "% " + (v * SW).toFixed(1) + "px"; } },
           { g: "드래그", k: "lerp", label: "손가락 따라오는 정도 (1 = 바로 붙음)", range: { min: 0.1, max: 1, step: 0.05 }, fmt: function (v) { return v.toFixed(2); } },
           { g: "드래그", k: "pick", label: "집었을 때 확대", opts: [["현재 1.3배", 1.3], ["없음", 1]] },
           { g: "드래그", k: "press", label: "누를 때 확대", opts: [["현재 1.2배", 1.2], ["없음", 1]] }
@@ -1098,6 +1166,7 @@
         }
         function tBegin(s, dist) {
           s.mode = "drag";
+          tDisarm();
           s.ring.kill();
           s.lit = -1; s.litAt = 0; s.hov = null; s.hovCell = -1;
           s.it.spr.el.style.zIndex = 5;
@@ -1109,20 +1178,19 @@
           tHover(s, s.p);
         }
         function tTap(s) {
-          var it = s.it;
+          var it = s.it, i = s.from;
           tstate = { mode: "idle" };
+          if (!it) { tDisarm(); return; }
           tseq(it, CFG.tap === "cur"
             ? [[80, { sx: 1.1, sy: 1.1 }, "quadOut"], [100, { sx: 1, sy: 1 }, "backOut"]]
             : [[0, { sx: 1, sy: 1 }], [100, { sx: 0.8, sy: 0.8 }, "quadOut"], [200, { sx: 1.2, sy: 1.2 }, "quadOut"], [200, { sx: 1, sy: 1 }, "quadOut"], [200, { sx: 1.1, sy: 1.1 }, "quadOut"], [200, { sx: 1, sy: 1 }, "quadOut"]]);
-          if (it.gen) tSpawn(it);
+          tSetSel(i);
+          var code = tCode(it), armed = tarm.index === i && tarm.code === code;
+          tarm = { index: i, code: code };
+          if (armed && it.gen) tSpawn(it);
         }
         function tSpawn(gen) {
-          var from = tPos(gen.cell), best = -1, bd = 1e9, i;
-          for (i = 0; i < tcells.length; i++) {
-            if (tcells[i]) continue;
-            var d = Math.abs(i % T_COLS - gen.cell % T_COLS) + Math.abs(Math.floor(i / T_COLS) - Math.floor(gen.cell / T_COLS));
-            if (d < bd) { bd = d; best = i; }
-          }
+          var from = tPos(gen.cell), best = tNearestEmpty(gen.cell);
           if (best < 0) { tst.caption("보드가 가득 찼어요"); return; }
           var to = tPos(best), spr = tst.item(201, from.x, from.y);
           spr.el.style.zIndex = 4;
@@ -1162,6 +1230,13 @@
           }
         }
         function tDrop(s, p) {
+          var it = s.it;
+          tDropCore(s, p);
+          var idx = tcells.indexOf(it);
+          if (idx < 0 && tlast.drop) idx = tlast.drop.target;
+          tSetSel(idx);
+        }
+        function tDropCore(s, p) {
           var it = s.it, from = s.from, hand = p ? tCellAt(p) : -1;
           var chip = tCellAt({ x: it.spr.x, y: it.spr.y }), target = hand, snapped = false, now = performance.now();
           s.mode = "done";
@@ -1212,14 +1287,19 @@
           tel.addEventListener("pointerdown", function (e) {
             if (tstate.mode !== "idle") return;
             var p = tToStage(e), i = tCellAt(p);
-            if (i < 0 || !tcells[i] || !tcells[i].spr) return;
+            if (i < 0) return;
+            var it0 = tcells[i] && tcells[i].spr ? tcells[i] : null;
             e.preventDefault();
             try { tel.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
-            var s = { mode: "press", it: tcells[i], from: i, down: p, p: p, downT: performance.now(), pid: e.pointerId, thr: CFG.thr * W };
+            var s = { mode: "press", it: it0, from: i, down: p, p: p, downT: performance.now(), pid: e.pointerId, thr: CFG.thr * SW };
             s.ring = tst.add(s.thr * 2, s.thr * 2, "", "mfc-thr", 8);
             s.ring.set({ x: p.x, y: p.y });
             tstate = s;
-            if (CFG.press !== 1) tseq(s.it, [[50, { sx: CFG.press, sy: CFG.press }, "quadOut"]]);
+            if (it0) {
+              if (tsel !== i) tDisarm();
+              tSetSel(i);
+              if (CFG.press !== 1) tseq(s.it, [[50, { sx: CFG.press, sy: CFG.press }, "quadOut"]]);
+            }
           });
           tel.addEventListener("pointermove", function (e) {
             var s = tstate;
@@ -1228,7 +1308,7 @@
             s.p = p;
             if (s.mode === "press") {
               var d = Math.sqrt((p.x - s.down.x) * (p.x - s.down.x) + (p.y - s.down.y) * (p.y - s.down.y));
-              if (d >= s.thr) tBegin(s, d);
+              if (s.it && d >= s.thr) tBegin(s, d);
             } else {
               tHover(s, p);
             }
