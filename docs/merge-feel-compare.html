@@ -6,7 +6,7 @@
     <title>머지 손맛 비교 연출집 — 가십하버식 vs 현행</title>
     <meta
       name="description"
-      content="가십하버식 머지 연출과 Rosewood 현행 연출을 같은 무대에서 나란히 재생해 체감을 비교하고, 보드를 직접 끌어 보며 항목별로 바꿔 볼 수도 있다. 머지 · 드래그 · 탭 · 생성기 배출 · 대상 하이라이트 · 드래그 시작 거리 6장면과 재생이 안 되는 항목 표, 0.25배속 슬로우 지원."
+      content="가십하버식 머지 연출과 Rosewood 현행 연출을 같은 무대에서 나란히 재생해 체감을 비교하고, 보드를 직접 끌어 보며 현재 / 레퍼런스를 전환해 볼 수도 있다. 머지 · 드래그 · 탭 · 생성기 배출 · 드래그 시작 거리 5장면과 재생이 안 되는 항목 표, 0.25배속 슬로우 지원."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css" />
@@ -24,6 +24,8 @@
       .mfc-cell { position: absolute; width: 96px; height: 96px; }
       .mfc-spr { position: absolute; left: 0; top: 0; will-change: transform, opacity; pointer-events: none; }
       .mfc-spr img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+      .mfc-spr img.mfc-bolt { position: absolute; left: 61px; top: 52px; width: 32px; height: 43px; }
+      .mfc-seg-big button { font-size: 15px; padding: 10px 30px; }
       .mfc-finger { border-radius: 50%; background: rgba(40, 40, 40, 0.28); border: 2px solid rgba(40, 40, 40, 0.55); }
       .mfc-cap { position: absolute; left: 6px; bottom: 4px; right: 6px; font-size: 11.5px; font-weight: 700; color: #6b4a28; z-index: 20; pointer-events: none; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
       .mfc-badge { position: absolute; right: 6px; top: 4px; font-size: 11.5px; font-weight: 800; color: #fff; background: rgba(60, 40, 20, 0.75); padding: 1px 8px; border-radius: 999px; z-index: 20; pointer-events: none; }
@@ -44,6 +46,10 @@
       .mfc-try-grid { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
       .mfc-try-col { flex: 0 1 484px; min-width: 0; }
       .mfc-try-panel { flex: 1 1 300px; min-width: 260px; }
+      .mfc-try-panel .table-scroll table { font-size: 11.5px; }
+      .mfc-try-panel th, .mfc-try-panel td { padding: 7px 8px; }
+      .mfc-try-panel table { table-layout: fixed; width: 100%; }
+      .mfc-try-panel td, .mfc-try-panel td:first-child { white-space: normal; word-break: keep-all; }
       .mfc-try-wrap { position: relative; overflow: hidden; }
       .mfc-try { transform-origin: 0 0; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
       .mfc-tel { white-space: pre-wrap; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 10px; background: #faf7f0; border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; min-height: 5.4em; color: var(--text-dim); }
@@ -84,7 +90,6 @@
         <a class="nav-back" href="#s2">드래그·놓기</a>
         <a class="nav-back" href="#s3">탭</a>
         <a class="nav-back" href="#s4">생성기 배출</a>
-        <a class="nav-back" href="#s5">하이라이트</a>
         <a class="nav-back" href="#s6">시작 거리</a>
         <a class="nav-back" href="#static">재생 없음</a>
         <a class="nav-back" href="#notes">가정·제외</a>
@@ -109,7 +114,7 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">현행 = 클라 9798bffd</span>
           <span class="tag">가십하버 = 원문 값(2026-11-20 조사)</span>
-          <span class="tag">직접 해보기 + 비교 6장면</span>
+          <span class="tag">직접 해보기 + 비교 5장면</span>
         </div>
       </div>
     </header>
@@ -119,7 +124,7 @@
       <div class="wrap wrap--wide">
         <h2 class="doc-h2">
           직접 해보기
-          <span class="doc-h2-sub">보드를 직접 끌어 보며 항목을 하나씩 현행 / 가십하버식으로 바꿔 본다 - 코드로만 따라갈 수 있는 항목만</span>
+          <span class="doc-h2-sub">보드를 직접 끌어 보며 현재 / 레퍼런스를 전환해 비교한다 - 코드로만 따라갈 수 있는 항목만</span>
         </h2>
         <div class="mfc-card">
           <div class="mfc-try-grid">
@@ -128,13 +133,26 @@
               <div class="mfc-tel" id="try-tel"></div>
             </div>
             <div class="mfc-try-panel">
-              <div class="mfc-ctl" style="margin-top: 0">
-                <span class="mfc-l">프리셋</span>
-                <button type="button" class="mfc-btn" id="try-p-cur">현행 전부</button>
-                <button type="button" class="mfc-btn" id="try-p-gh">가십하버식 전부</button>
-                <button type="button" class="mfc-btn" id="try-p-ab">A/B 전환</button>
+              <div class="mfc-pl">모드</div>
+              <div class="mfc-seg mfc-seg-big" id="try-mode">
+                <button type="button" data-m="cur" aria-pressed="true">현재</button>
+                <button type="button" data-m="gh" aria-pressed="false">레퍼런스</button>
               </div>
-              <div id="try-panel"></div>
+              <div class="table-scroll" style="margin-top: 10px">
+                <table>
+                  <thead><tr><th>바뀌는 값</th><th>현재</th><th>레퍼런스</th></tr></thead>
+                  <tbody>
+                    <tr><td>끌기 시작 거리</td><td>화면 폭의 1.39%</td><td>0.93%</td></tr>
+                    <tr><td>손가락 추종</td><td>lerp 0.6</td><td>즉시</td></tr>
+                    <tr><td>집기 / 누름 확대</td><td>1.3배 / 1.2배</td><td>없음</td></tr>
+                    <tr><td>빈 칸에 놓기</td><td>310ms 스냅</td><td>200ms 이동</td></tr>
+                    <tr><td>원위치 복귀</td><td>260ms backOut</td><td>200ms</td></tr>
+                    <tr><td>탭</td><td>230ms</td><td>젤리 900ms</td></tr>
+                    <tr><td>생성기 배출</td><td>720ms</td><td>900ms</td></tr>
+                    <tr><td>놓기 보정</td><td colspan="2">두 모드 모두 켜짐 (빌드와 같음)</td></tr>
+                  </tbody>
+                </table>
+              </div>
               <div class="mfc-ctl">
                 <span class="mfc-l">속도</span>
                 <div class="mfc-seg" data-speed>
@@ -151,16 +169,15 @@
               <div class="note-title">해 보는 법</div>
               <p>
                 같은 단계 아이템끼리 끌어서 합치고, 다른 단계 위에 놓으면 자리가 바뀌고, 보드 밖에 놓으면 원위치로 돌아갑니다. 생성기(도구함)를 누르면 새 상품이 나옵니다.
-                폰으로 열면 <b>화면 폭 비율로 잡은 임계값이 실제 손가락 거리</b>로 느껴집니다(데스크톱 마우스는 거리가 너무 짧아 차이가 안 느껴질 수 있습니다).
-                <b>빠르게 밀어서 대상 칸을 살짝 지나쳐 놓아 보세요</b> - 계측 줄에서 「손 칸 / 칩 칸 / 판정 칸」이 어떻게 갈리는지, 놓기 보정이 언제 켜지는지 보입니다.
-                추종 계수를 1로 하면 칩이 손가락에 붙고, 0.25배속에서는 지연이 눈에 보입니다.
-                머지 연출은 현행 그대로이고 소리 · 햅틱은 없습니다. 클라는 건드리지 않았습니다.
+                위에서 <b>현재 / 레퍼런스</b>를 눌러 가며 같은 동작을 해 보세요. 폰으로 열면 끌기 시작 거리가 화면 폭 비율이라 <b>실제 손가락 거리</b>로 느껴집니다(데스크톱 마우스는 거리가 너무 짧아 차이가 안 느껴질 수 있습니다).
+                <b>빠르게 밀어서 대상 칸을 살짝 지나쳐 놓아 보세요</b> - 계측 줄에서 「손 칸 / 칩 칸 / 판정 칸」이 어떻게 갈리는지 보입니다. 0.25배속에서는 추종 지연이 눈에 보입니다.
+                머지 연출은 두 모드 모두 현재 그대로이고 소리 · 햅틱은 없습니다. 클라는 건드리지 않았습니다.
               </p>
             </div>
           </div>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>항목</th><th>Rosewood 현행</th><th>가십하버 (원문 값)</th><th>현행이 다른 이유</th><th>적용하면 코드 어디</th><th>걸리는 점</th></tr></thead>
+              <thead><tr><th>항목</th><th>현재 (Rosewood)</th><th>레퍼런스 (가십하버 원문 값)</th><th>현재가 다른 이유</th><th>적용하면 코드 어디</th><th>걸리는 점</th></tr></thead>
               <tbody>
                 <tr><td>D13 끌기 시작 거리</td><td>10 디자인 단위 (캔버스 720 폭 기준 1.39%)</td><td>10 물리 px (1080 폭 기준 0.93%)</td><td><b>원작과 비교해서 정한 값이 아님.</b> 계획서 §1(2026-09-21)에서 탭과 드래그를 가르려고 정한 값. 숫자 10 의 이유는 기록 없음</td><td><code>BoardInputNode.ts:26</code> <code>DRAG_THRESHOLD_PX</code> 한 줄</td><td>같은 판별기가 생성기 탭도 가름 - 줄이면 손떨림에 탭이 드래그로 읽힐 수 있음(추정). 50대+ 접근성 기준과 방향이 반대. 터치 좌표 단위(디자인 단위인지)는 미확인</td></tr>
                 <tr><td>D3 추종 lerp</td><td>0.6 (60fps 환산, 조금 끌려옴)</td><td>즉시 (이벤트마다 위치 대입)</td><td><b>의도된 차이.</b> 코드 주석: 「정본이 잡아 둔 조금 끌려오는 감을 유지하기 위해서」. 정본 = 허브 연출집. 원작과 비교한 값 아님. 「무게감」이라는 표현은 못 찾음</td><td><code>MergeFxConfig.ts</code> <code>a3.follow</code> = 1 (값 하나). 허브 연출집 기본값 / Tuner 도 같이 맞춰야 함</td><td>놓기 보정과 같은 증상(칩이 손보다 뒤처져 보임)을 다른 쪽에서 푸는 방법. 둘 다 켜면 이득이 겹칠 수 있음</td></tr>
@@ -170,13 +187,12 @@
                 <tr><td>D5 무효 복귀</td><td>260ms backOut</td><td>200ms OutQuad</td><td>정본 연출집 <code>c1</code> 값. 이유 문장은 못 찾음</td><td><code>c1.snapSec</code> / <code>snapEase</code></td><td>-</td></tr>
                 <tr><td>D8 탭</td><td>1.2 → 1.1 → 1.0 (약 230ms)</td><td>젤리 900ms (5구간)</td><td><b>의도적으로 안 옮김.</b> <code>MergeFxConfig</code> a1 주석: 원위치 복귀(<code>releaseSec</code>)는 탭 반응이 늘어져서 옮기지 않는다</td><td>A1 구현 수정 필요 (<code>a1</code> 은 3구간, 원작은 5구간이라 값만으로 안 됨)</td><td>생성기 연타가 잦아 길게 출렁이면 겹침(추정)</td></tr>
                 <tr><td>D9 생성기 배출</td><td>베지어 420ms + 착지 (약 720ms), 최대 1.25배</td><td>점프 600ms + 슬라이드 250ms (약 900ms), 최대 1.5배</td><td>정본 연출집 <code>a2</code> 값. 이유 문장은 못 찾음</td><td><code>a2</code> 값 + 경로 구현 수정 필요 (원작은 2단, 현행은 1단)</td><td>가십하버 점프 곡선 형태는 원문에 없어 데모는 가정(포물선)</td></tr>
-                <tr><td>D4 놓기 보정</td><td><b>이미 반영</b> (<code>b15ceb89</code>, 11-20): 표시가 켜진 뒤 150ms 안에 이웃 8칸에서 떼면 그 칸으로</td><td>0.15초 안, 인접 1칸이면 마지막 대상과 머지</td><td>-</td><td>-</td><td>데모는 켬/끔 토글(기본 켬)</td></tr>
+                <tr><td>D4 놓기 보정</td><td><b>이미 반영</b> (<code>b15ceb89</code>, 11-20): 표시가 켜진 뒤 150ms 안에 이웃 8칸에서 떼면 그 칸으로</td><td>0.15초 안, 인접 1칸이면 마지막 대상과 머지</td><td>-</td><td>-</td><td>데모는 두 모드 모두 켜 둠</td></tr>
               </tbody>
             </table>
           </div>
           <p class="note" style="margin-top: 8px">
-            표에는 에셋 · 시트 · 구조 변경 없이 코드만으로 따라갈 수 있는 항목만 넣었습니다. 소리(D1) · 햅틱(D10) · 머지 단계 차등(D2) · 머지 구조(D6) · 하이라이트(D7)는
-            아래 비교 장면과 값 표에 있습니다. 「이유 문장은 못 찾음」은 계획서 / 주석 / 커밋 제목을 읽어 본 범위이고 전수 조사는 아닙니다.
+            표에는 에셋 · 시트 · 구조 변경 없이 코드만으로 따라갈 수 있는 항목만 넣었습니다. 머지 단계 차등(D2) · 머지 구조(D6)는 아래 비교 장면에, 소리(D1) · 햅틱(D10)은 값 표에 있습니다. 대상 하이라이트(D7)는 이 문서에서 뺐습니다. 「이유 문장은 못 찾음」은 계획서 / 주석 / 커밋 제목을 읽어 본 범위이고 전수 조사는 아닙니다.
           </p>
         </div>
       </div>
@@ -196,16 +212,16 @@
               <tr><td>D1</td><td>사운드</td><td><a href="#static">재생 없는 항목 표</a> (웹 재생 불가)</td></tr>
               <tr><td>D2</td><td>머지 등급 차등</td><td><a href="#s1">1. 머지</a></td></tr>
               <tr><td>D3</td><td>드래그 집기</td><td><a href="#s2">2. 드래그 · 놓기</a> · <a href="#try">직접 해보기</a></td></tr>
-              <tr><td>D4</td><td>놓기 보정</td><td>클라에 이미 반영돼 비교 장면은 뺌 (<a href="#try">직접 해보기</a>에는 켬/끔 토글)</td></tr>
+              <tr><td>D4</td><td>놓기 보정</td><td>클라에 이미 반영돼 비교 장면은 뺌 (<a href="#try">직접 해보기</a>에는 두 모드 모두 켜 둠)</td></tr>
               <tr><td>D5</td><td>착지 · 이동</td><td><a href="#s2">2. 드래그 · 놓기</a> · <a href="#try">직접 해보기</a></td></tr>
               <tr><td>D6</td><td>머지 타격</td><td><a href="#s1">1. 머지</a></td></tr>
-              <tr><td>D7</td><td>대상 하이라이트</td><td><a href="#s5">5. 대상 하이라이트</a></td></tr>
+              <tr><td>D7</td><td>대상 하이라이트</td><td>뺌</td></tr>
               <tr><td>D8</td><td>탭 반응</td><td><a href="#s3">3. 탭</a> · <a href="#try">직접 해보기</a></td></tr>
               <tr><td>D9</td><td>생성기 배출</td><td><a href="#s4">4. 생성기 배출</a> · <a href="#try">직접 해보기</a></td></tr>
               <tr><td>D10</td><td>햅틱</td><td><a href="#static">재생 없는 항목 표</a> (웹 재생 불가)</td></tr>
               <tr><td>D11</td><td>생성기 탭 규칙</td><td><a href="#static">재생 없는 항목 표</a> (차이 없음)</td></tr>
               <tr><td>D12</td><td>연속 머지 잠금</td><td><a href="#static">재생 없는 항목 표</a> (차이 없음)</td></tr>
-              <tr><td>D13</td><td>드래그 시작 거리</td><td><a href="#s6">6. 드래그 시작 거리</a> · <a href="#try">직접 해보기</a></td></tr>
+              <tr><td>D13</td><td>드래그 시작 거리</td><td><a href="#s6">5. 드래그 시작 거리</a> · <a href="#try">직접 해보기</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -413,59 +429,11 @@
       </div>
     </section>
 
-    <!-- 5. 대상 하이라이트 -->
-    <section class="doc-section" id="s5">
-      <div class="wrap wrap--wide">
-        <h2 class="doc-h2">
-          5. 대상 하이라이트
-          <span class="doc-h2-sub">끌고 가다가 놓으면 합쳐지는 칸 위에 올라갔을 때 - 칸 아래 링·광선 vs 아이템 위 파티클</span>
-        </h2>
-        <div class="mfc-card">
-          <div class="mfc-pair">
-            <div class="mfc-col"><span class="mfc-lab is-cur">Rosewood 현행</span><div class="mfc-stage" id="s5-cur"></div></div>
-            <div class="mfc-col"><span class="mfc-lab is-gh">가십하버식</span><div class="mfc-stage" id="s5-gh"></div></div>
-          </div>
-          <div class="mfc-ctl">
-            <button type="button" class="mfc-btn is-primary" data-play="s5">재생</button>
-            <span class="mfc-l">속도</span>
-            <div class="mfc-seg" data-speed>
-              <button type="button" data-sp="1" aria-pressed="true">1×</button>
-              <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
-              <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
-            </div>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>항목</th><th>Rosewood 현행 (코드 존재 확인)</th><th>가십하버 (원문 값)</th></tr></thead>
-              <tbody>
-                <tr><td>조건</td><td>드래그 중 손가락 아래 칸이 합쳐지는 대상일 때</td><td>손가락 아래 아이템과 머지(또는 흡수) 가능할 때</td></tr>
-                <tr><td>위치</td><td>칸 아래 레이어 (칩보다 먼저 그림)</td><td>대상 <b>아이템 위</b> (자식)</td></tr>
-                <tr><td>등장</td><td>링 불투명 0 → 255 + 배율 1 → 2, 광선 불투명 0 → 255 / <b>0.5초</b> (선형)</td><td>섬광 3겹 burst, 수명 <b>0.5초</b></td></tr>
-                <tr><td>반복</td><td>1초 루프: 링 배율 2 → 1.6 → 2, 광선은 계속 회전(한 바퀴 약 8.9초)</td><td><b>0.34초 뒤</b> 루프 전환: 큰 글로우(<b>초당 5개</b>, 수명 <b>3초</b>) + <b>1초 주기</b> 펄스</td></tr>
-                <tr><td>퇴장</td><td>0.333초 불투명 255 → 0 (등장이 10% 미만이면 즉시 걷음)</td><td>닫힘 이펙트, 수명 <b>0.3초</b></td></tr>
-                <tr><td>크기·색·알파</td><td>링 123px, 광선 252 x 256 (배율 0.8, 색 220/251/255, 가산)</td><td>원문에 없음 <span class="mfc-asm">가정</span> 섬광 1.0/1.6/2.2칸, 글로우 1.6칸 (알파 최대 0.22), 펄스 1.4칸, 닫힘 1.2칸. 알파·배율 곡선도 임의</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="notes">
-            <div class="note">
-              <div class="note-title">읽는 법</div>
-              <p>
-                손은 같습니다. 대상 칸 위로 끌고 가서 약 2초 머물렀다가 빈 칸 쪽으로 빠져나갑니다.
-                가십하버 쪽은 <b>원문에 시간·주기·개수만 있고 크기·색·알파는 없어서 거의 전부 가정</b>입니다. 이 장면은 「아이템 위 파티클 vs 칸 아래 링·광선」이라는
-                <b>구조 차이와 타이밍</b>을 보는 용도이고, 모양이나 밝기를 원작과 같다고 읽으면 안 됩니다.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- 6. 드래그 시작 거리 -->
     <section class="doc-section" id="s6">
       <div class="wrap wrap--wide">
         <h2 class="doc-h2">
-          6. 드래그 시작 거리
+          5. 드래그 시작 거리
           <span class="doc-h2-sub">같은 손이 얼마나 움직여야 「끌기」로 인식되나 - 원작이 더 짧은 거리에서 시작</span>
         </h2>
         <div class="mfc-card">
@@ -555,8 +523,9 @@
             <thead><tr><th>구분</th><th>내용</th></tr></thead>
             <tbody>
               <tr><td>재생 불가</td><td>D1 사운드와 D10 햅틱은 웹에서 재생할 수 없어 값 표만 싣습니다(재생 없는 항목). D11 · D12 는 차이가 없어 값만 싣습니다.</td></tr>
+              <tr><td>제외 - 대상 하이라이트</td><td>D7 은 이 문서에서 뺐습니다. 가십하버 쪽 원문 수치가 시간 · 주기 · 개수뿐이라 비교 대부분이 가정이었습니다.</td></tr>
               <tr><td>제외 - 놓기 보정</td><td>클라에 이미 반영돼 비교 대상에서 뺐습니다.</td></tr>
-              <tr><td>가정</td><td>가십하버 이펙트의 수명 · 감쇠 · 링 확대 곡선 · 파편B 속도, 생성기 점프 곡선 형태, 대상 하이라이트의 크기 · 색 · 알파 · 배율 곡선 전부(원문은 시간 · 주기 · 개수만). 원문에 없어서 임의로 정했습니다. 표에 <span class="mfc-asm">가정</span> 으로 표시했습니다.</td></tr>
+              <tr><td>가정</td><td>가십하버 이펙트의 수명 · 감쇠 · 링 확대 곡선 · 파편B 속도, 생성기 점프 곡선 형태. 원문에 없어서 임의로 정했습니다. 표에 <span class="mfc-asm">가정</span> 으로 표시했습니다.</td></tr>
               <tr><td>모양</td><td>가십하버 이펙트는 우리 <code>glow_01</code> · <code>ring_glow</code> 텍스처에 색(섬광 파랑 / 파편A 보라 / 링 하늘색 / 파편B 흰색)만 입혔습니다.</td></tr>
               <tr><td>출처 - 가십하버</td><td>앱 데이터 직독 값(Play 스토어 설치본, 2026-11-20 조사). 이 문서를 만든 맥에서는 재검증하지 못했습니다.</td></tr>
               <tr><td>출처 - 현행</td><td>클라 <code>MergeFxConfig.ts</code> · <code>BoardChipFx.ts</code> · <code>merge_effect.anim</code> (HEAD 9798bffd). 코드 존재 확인이고 실행 확인은 아닙니다.</td></tr>
@@ -722,7 +691,9 @@
           return o;
         };
         Stage.prototype.item = function (code, x, y) {
-          var o = this.add(95, 95, '<img src="img/items/' + code + '.png" alt="" draggable="false" />', "", 3);
+          /* client BoardItemNode.generatorBolt: energy-using generators carry a bolt (UI_Icon_goods_energy 59x79, scale 0.54, slot (30,-26)) */
+          var bolt = code === 104 ? '<img class="mfc-bolt" src="img/ui/energy-bolt.png" alt="" draggable="false" />' : "";
+          var o = this.add(95, 95, '<img src="img/items/' + code + '.png" alt="" draggable="false" />' + bolt, "", 3);
           o.set({ x: x, y: y });
           return o;
         };
@@ -1082,9 +1053,6 @@
 
         /* ---------- D7: drop-target highlight ---------- */
         var HOVER = { showSec: 0.5, loopSec: 1, hideSec: 1 / 3, ringFrom: 1, ringTo: 2, ringLoopMin: 1.6, rayScale: 0.8, rayDps: 360 * 0.45 / 4, cutBelow: 0.1 };
-        var GH_HOVER = { burstSec: 0.5, loopAfter: 0.34, emitPerSec: 5, glowLife: 3, pulseSec: 1, closeSec: 0.3 };
-        /* assumptions (not in the source table): sizes in cells, alpha peaks */
-        var GHH = { burst: [1.0, 1.6, 2.2], glowSize: 1.6, glowPeak: 0.22, pulseSize: 1.4, pulseLo: 0.12, pulseHi: 0.25, closeSize: 1.2 };
 
         /* per-frame loop bound to a stage era; fn(dtSec) returns true to stop */
         function frameLoop(st, fn) {
@@ -1149,114 +1117,6 @@
           return h;
         }
 
-        function hoverGH(st, at) {
-          function disc(size, tint) {
-            var o = st.add(size * CW, size * CW, '<img src="img/mfx/glow_01.png" alt="" draggable="false" />', "", 4);
-            if (tint) o.el.style.filter = "url(#mfc-" + tint + ")";
-            o.set({ x: at.x, y: at.y, a: 0 });
-            return o;
-          }
-          var bursts = GHH.burst.map(function (sz) { return disc(sz, "blue"); });
-          var pulse = disc(GHH.pulseSize, "sky");
-          var parts = [], closeDisc = null;
-          var h = { t: 0, acc: 0, closing: false, closeT: 0, dead: false };
-          function killAll() {
-            h.dead = true;
-            bursts.forEach(function (o) { o.kill(); });
-            pulse.kill();
-            parts.forEach(function (p) { p.o.kill(); });
-            if (closeDisc) closeDisc.kill();
-          }
-          frameLoop(st, function (dt) {
-            if (h.dead) return true;
-            h.t += dt;
-            var fade = 1, i;
-            if (h.closing) {
-              h.closeT += dt;
-              var cr = Math.min(1, h.closeT / GH_HOVER.closeSec);
-              fade = 1 - cr;
-              closeDisc.set({ sx: 1 - 0.5 * cr, sy: 1 - 0.5 * cr, a: 0.8 * (1 - cr) });
-              if (cr >= 1) { killAll(); return true; }
-            }
-            var br = Math.min(1, h.t / GH_HOVER.burstSec);
-            bursts.forEach(function (o) { var s = 0.4 + 0.6 * EASE.quadOut(br); o.set({ sx: s, sy: s, a: 0.9 * (1 - br) }); });
-            if (!h.closing && h.t >= GH_HOVER.loopAfter) {
-              h.acc += dt * GH_HOVER.emitPerSec;
-              while (h.acc >= 1) { h.acc -= 1; parts.push({ o: disc(GHH.glowSize, "sky"), age: 0 }); }
-            }
-            for (i = parts.length - 1; i >= 0; i--) {
-              var p = parts[i];
-              p.age += dt;
-              var r = p.age / GH_HOVER.glowLife;
-              if (r >= 1) { p.o.kill(); parts.splice(i, 1); continue; }
-              var env = r < 1 / 6 ? r * 6 : 1 - (r - 1 / 6) / (5 / 6);
-              var sc = 0.8 + 0.4 * r;
-              p.o.set({ sx: sc, sy: sc, a: GHH.glowPeak * env * fade });
-            }
-            if (h.t >= GH_HOVER.loopAfter) {
-              var ph = (h.t - GH_HOVER.loopAfter) / GH_HOVER.pulseSec * Math.PI * 2;
-              var k = (1 - Math.cos(ph)) / 2, ramp = Math.min(1, (h.t - GH_HOVER.loopAfter) / 0.2);
-              pulse.set({ sx: 1 + 0.15 * k, sy: 1 + 0.15 * k, a: (GHH.pulseLo + (GHH.pulseHi - GHH.pulseLo) * k) * ramp * fade });
-            }
-            return false;
-          });
-          h.hide = function () {
-            if (h.closing || h.dead) return;
-            h.closing = true; h.closeT = 0;
-            closeDisc = disc(GHH.closeSize, "blue");
-            closeDisc.set({ a: 0.8 });
-          };
-          return h;
-        }
-
-        function s5Side(st, mode) {
-          st.reset();
-          var a0 = st.cp(0, 1), b0 = st.cp(2, 1), out = st.cp(4, 1);
-          st.item(203, b0.x, b0.y);
-          var held = st.item(203, a0.x, a0.y);
-          held.el.style.zIndex = 5;
-          held.set({ sx: 1.3, sy: 1.3 });
-          var fing = st.finger(a0.x, a0.y);
-          var stop = followLoop(st, held, fing, "cur");
-          var hov = null;
-          st.caption("끌어서 합쳐지는 칸 위로");
-          var x0 = fing.x, started = false;
-          var p = st.tw(600, function (e) {
-            fing.set({ x: x0 + (b0.x - x0) * e, y: a0.y });
-            if (!started && fing.x >= b0.x - CW / 2) {
-              started = true;
-              hov = mode === "cur" ? hoverCur(st, b0) : hoverGH(st, b0);
-              st.caption("합쳐지는 칸 위 - 하이라이트");
-            }
-          }, "quadInOut");
-          p = p.then(function (ok) { return ok && st.wait(2200); });
-          p = p.then(function (ok) {
-            if (!ok) return false;
-            var x1 = fing.x, left = false;
-            st.caption("칸 밖으로 - 퇴장");
-            return st.tw(400, function (e) {
-              fing.set({ x: x1 + (out.x - x1) * e });
-              if (!left && fing.x >= b0.x + CW / 2) { left = true; if (hov) hov.hide(); }
-            }, "quadInOut");
-          });
-          p = p.then(function (ok) { return ok && st.wait(900); });
-          return p.then(function (ok) { stop(); if (ok) st.caption(""); return ok; });
-        }
-        S.s5 = {
-          cur: new Stage(document.getElementById("s5-cur")),
-          gh: new Stage(document.getElementById("s5-gh")),
-          setup: function () {
-            [this.cur, this.gh].forEach(function (st) {
-              st.reset();
-              var a = st.cp(0, 1), b = st.cp(2, 1);
-              st.item(203, b.x, b.y);
-              st.item(203, a.x, a.y);
-              st.caption("재생을 누르면 대상 칸 위로 끌기");
-            });
-          },
-          play: function () { return Promise.all([s5Side(this.cur, "cur"), s5Side(this.gh, "gh")]); }
-        };
-
         /* ---------- D13: drag start distance ---------- */
         var DRAG_PX_PER_SEC = 30;
         function s6Side(st, mode, pct) {
@@ -1306,18 +1166,6 @@
         var PRESET_CUR = { thr: 10 / 720, lerp: 0.6, pick: 1.3, press: 1.2, move: "cur", back: "cur", tap: "cur", spawn: "cur" };
         var PRESET_GH = { thr: 10 / 1080, lerp: 1, pick: 1, press: 1, move: "gh", back: "gh", tap: "gh", spawn: "gh" };
         var CFG = { snap: true };
-        var TROWS = [
-          { k: "thr", label: "끌기 시작 거리 (화면 폭 비율)", range: { min: 0.002, max: 0.03, step: 0.0005 }, fmt: function (v) { return (v * 100).toFixed(2) + "% " + (v * W).toFixed(1) + "px"; } },
-          { k: "lerp", label: "손가락 추종 계수 (1 = 즉시)", range: { min: 0.1, max: 1, step: 0.05 }, fmt: function (v) { return v.toFixed(2); } },
-          { k: "pick", label: "집었을 때 확대", opts: [["현행 1.3배", 1.3], ["없음", 1]] },
-          { k: "press", label: "누를 때 확대", opts: [["현행 1.2배", 1.2], ["없음", 1]] },
-          { k: "move", label: "빈 칸에 놓기", opts: [["현행 310ms 스냅", "cur"], ["가십하버 200ms 이동", "gh"]] },
-          { k: "back", label: "안 되는 곳에 놓으면 (원위치)", opts: [["현행 260ms backOut", "cur"], ["가십하버 200ms", "gh"]] },
-          { k: "tap", label: "탭 반응", opts: [["현행 230ms", "cur"], ["가십하버 젤리 900ms", "gh"]] },
-          { k: "spawn", label: "생성기 배출", opts: [["현행 720ms", "cur"], ["가십하버 900ms", "gh"]] },
-          { k: "snap", label: "놓기 보정 (D4, 빌드에 반영됨)", opts: [["켬", true], ["끔", false]] }
-        ];
-        var TREF = {};
         for (var pk in PRESET_CUR) CFG[pk] = PRESET_CUR[pk];
         var tst = new Stage(document.getElementById("try-stage"), T_ROWS);
         var tel = document.getElementById("try-stage"), telOut = document.getElementById("try-tel");
@@ -1392,7 +1240,7 @@
           tPut(0, 1, 0, true);
           [[2, 0, 1], [3, 2, 1], [1, 3, 2], [4, 1, 2], [0, 3, 3], [4, 3, 3]].forEach(function (a) { tPut(a[0], a[1], a[2], false); });
           tst.caption("같은 단계끼리 끌어서 합치기 / 생성기를 누르면 새 상품");
-          buildPanel();
+          refreshMode();
           tryBind();
           tFit();
           updateTel();
@@ -1400,7 +1248,7 @@
 
         function updateTel() {
           var L = [];
-          L.push("현재 임계 " + (CFG.thr * W).toFixed(1) + "px (화면 폭의 " + (CFG.thr * 100).toFixed(2) + "%) / 추종 " + CFG.lerp.toFixed(2));
+          L.push("모드 " + (CFG.move === "cur" ? "현재" : "레퍼런스") + " / 끌기 시작 임계 " + (CFG.thr * W).toFixed(1) + "px (화면 폭의 " + (CFG.thr * 100).toFixed(2) + "%) / 추종 " + CFG.lerp.toFixed(2));
           if (tlast.start) L.push("마지막 끌기 시작: 이동 " + tlast.start.px.toFixed(1) + "px, 누른 지 " + Math.round(tlast.start.ms) + "ms (그때 임계 " + tlast.start.thr.toFixed(1) + "px)");
           if (tlast.drop) {
             var d = tlast.drop;
@@ -1409,54 +1257,13 @@
           telOut.textContent = L.join("\n");
         }
 
-        function buildPanel() {
-          var host = document.getElementById("try-panel");
-          host.innerHTML = "";
-          TREF = {};
-          TROWS.forEach(function (r) {
-            var row = mk("div", "mfc-prow"), body = mk("div", "mfc-pb"), seg = mk("div", "mfc-seg"), ref = { btns: [] };
-            row.appendChild(mk("div", "mfc-pl", r.label));
-            if (r.range) {
-              var inp = mk("input");
-              inp.type = "range"; inp.min = r.range.min; inp.max = r.range.max; inp.step = r.range.step; inp.value = CFG[r.k];
-              inp.addEventListener("input", function () { CFG[r.k] = parseFloat(inp.value); refreshPanel(); updateTel(); });
-              ref.inp = inp; ref.val = mk("span", "mfc-pv");
-              body.appendChild(inp); body.appendChild(ref.val);
-              [["현행", PRESET_CUR[r.k]], ["가십하버", PRESET_GH[r.k]]].forEach(function (o) {
-                var b = mk("button", null, o[0]);
-                b.type = "button";
-                b.addEventListener("click", function () { CFG[r.k] = o[1]; refreshPanel(); updateTel(); });
-                seg.appendChild(b); ref.btns.push(b);
-              });
-              ref.pre = [PRESET_CUR[r.k], PRESET_GH[r.k]];
-            } else {
-              r.opts.forEach(function (o) {
-                var b = mk("button", null, o[0]);
-                b.type = "button";
-                b.addEventListener("click", function () { CFG[r.k] = o[1]; refreshPanel(); updateTel(); });
-                seg.appendChild(b); ref.btns.push(b);
-              });
-              ref.pre = r.opts.map(function (o) { return o[1]; });
-            }
-            body.appendChild(seg);
-            row.appendChild(body);
-            host.appendChild(row);
-            TREF[r.k] = ref;
-          });
-          refreshPanel();
-        }
-        function refreshPanel() {
-          TROWS.forEach(function (r) {
-            var ref = TREF[r.k];
-            if (!ref) return;
-            if (r.range) { ref.inp.value = CFG[r.k]; ref.val.textContent = r.fmt(CFG[r.k]); }
-            ref.btns.forEach(function (b, i) {
-              var on = typeof CFG[r.k] === "number" ? Math.abs(CFG[r.k] - ref.pre[i]) < 1e-9 : CFG[r.k] === ref.pre[i];
-              b.setAttribute("aria-pressed", String(on));
-            });
+        function refreshMode() {
+          var cur = CFG.move === "cur";
+          Array.prototype.forEach.call(document.querySelectorAll("#try-mode button"), function (b) {
+            b.setAttribute("aria-pressed", String((b.getAttribute("data-m") === "cur") === cur));
           });
         }
-        function applyPreset(p) { for (var k in p) CFG[k] = p[k]; refreshPanel(); updateTel(); }
+        function applyPreset(p) { for (var k in p) CFG[k] = p[k]; refreshMode(); updateTel(); }
 
         function tHover(s, p) {
           var i = tCellAt(p), target = (i >= 0 && i !== s.from && tcells[i] && tcells[i].spr && tMergeable(s.it, tcells[i])) ? i : -1;
@@ -1625,9 +1432,9 @@
           tel.addEventListener("pointerup", function (e) { end(e, false); });
           tel.addEventListener("pointercancel", function (e) { end(e, true); });
           window.addEventListener("resize", tFit);
-          document.getElementById("try-p-cur").addEventListener("click", function () { applyPreset(PRESET_CUR); });
-          document.getElementById("try-p-gh").addEventListener("click", function () { applyPreset(PRESET_GH); });
-          document.getElementById("try-p-ab").addEventListener("click", function () { applyPreset(CFG.move === "cur" && CFG.lerp === PRESET_CUR.lerp ? PRESET_GH : PRESET_CUR); });
+          Array.prototype.forEach.call(document.querySelectorAll("#try-mode button"), function (b) {
+            b.addEventListener("click", function () { applyPreset(b.getAttribute("data-m") === "cur" ? PRESET_CUR : PRESET_GH); });
+          });
         }
         S.try = { setup: tryInit, play: tryInit };
 
