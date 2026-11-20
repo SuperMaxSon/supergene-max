@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>머지 손맛 비교 연출집 — 가십하버식 vs 현행</title>
+    <meta
+      name="description"
+      content="가십하버식 머지 연출과 Rosewood 현행 연출을 같은 무대에서 나란히 재생해 체감을 비교한다. 머지 · 드래그 · 탭 · 생성기 배출 · 놓기 보정 5장면, 0.25배속 슬로우 지원."
+    />
+    <meta name="color-scheme" content="light" />
+    <link rel="stylesheet" href="../style.css" />
+    <style>
+      .mfc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); }
+      .mfc-pair { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+      .mfc-col { display: flex; flex-direction: column; gap: 6px; }
+      .mfc-lab { font-size: 12.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; align-self: flex-start; color: #fff; }
+      .mfc-lab.is-cur { background: #2a78d6; }
+      .mfc-lab.is-gh { background: #eb6834; }
+      .mfc-stage { position: relative; width: 480px; height: 288px; overflow: hidden; border-radius: 10px; border: 1px solid var(--border); background: #efe7da; flex: none; }
+      .mfc-bg, .mfc-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+      .mfc-bg { pointer-events: none; }
+      .mfc-layer { pointer-events: none; }
+      .mfc-cell { position: absolute; width: 96px; height: 96px; }
+      .mfc-spr { position: absolute; left: 0; top: 0; will-change: transform, opacity; pointer-events: none; }
+      .mfc-spr img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+      .mfc-finger { border-radius: 50%; background: rgba(40, 40, 40, 0.28); border: 2px solid rgba(40, 40, 40, 0.55); }
+      .mfc-hl { border: 3px dashed #8a5a2b; border-radius: 6px; box-sizing: border-box; background: rgba(255, 255, 255, 0.35); }
+      .mfc-cap { position: absolute; left: 6px; bottom: 4px; right: 6px; font-size: 11.5px; font-weight: 700; color: #6b4a28; z-index: 20; pointer-events: none; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+      .mfc-badge { position: absolute; right: 6px; top: 4px; font-size: 11.5px; font-weight: 800; color: #fff; background: rgba(60, 40, 20, 0.75); padding: 1px 8px; border-radius: 999px; z-index: 20; pointer-events: none; }
+      .mfc-ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0 4px; }
+      .mfc-btn { font: inherit; font-size: 13px; font-weight: 800; padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+      .mfc-btn.is-primary { background: #eb6834; border-color: #eb6834; color: #fff; }
+      .mfc-btn.is-primary::before { content: "\25B6"; font-size: 9px; margin-right: 6px; vertical-align: 1px; }
+      .mfc-l { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--text-faint); }
+      .mfc-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+      .mfc-seg button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 11px; border: 0; border-right: 1px solid var(--border); background: var(--surface); color: var(--text-dim); cursor: pointer; }
+      .mfc-seg button:last-child { border-right: 0; }
+      .mfc-seg button[aria-pressed="true"] { background: #2a2a2a; color: #fff; }
+      .mfc-card .table-scroll { margin-top: 12px; }
+      .mfc-card .table-scroll table { font-size: 12.5px; }
+      .mfc-card td:first-child { white-space: nowrap; font-weight: 700; }
+      .mfc-asm { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 0 6px; border-radius: 999px; background: #fdeee7; color: #a3441d; margin-left: 4px; vertical-align: 1px; }
+      .mfc-warn { margin-top: 10px; padding: 10px 14px; border-left: 4px solid #eb6834; background: rgba(235, 104, 52, 0.09); border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <!-- 가십하버 이펙트 색: 섬광 파랑 / 파편A 보라 / 링 하늘색. 텍스처에 노드 색을 곱하는 방식(클라 연출집 mfx-ray-tint 와 같은 방법) -->
+        <filter id="mfc-blue" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0.3 0 0 0 0  0 0.55 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        </filter>
+        <filter id="mfc-purple" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0.68 0 0 0 0  0 0.42 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        </filter>
+        <filter id="mfc-sky" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0.53 0 0 0 0  0 0.85 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        </filter>
+      </defs>
+    </svg>
+
+    <nav class="nav">
+      <div class="wrap wrap--wide nav-inner">
+        <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#s1">머지</a>
+        <a class="nav-back" href="#s2">드래그·놓기</a>
+        <a class="nav-back" href="#s3">탭</a>
+        <a class="nav-back" href="#s4">생성기 배출</a>
+        <a class="nav-back" href="#s5">놓기 보정</a>
+        <a class="nav-back" href="#notes">가정·제외</a>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <header class="doc-header">
+      <div class="wrap wrap--wide">
+        <div class="doc-eyebrow">기획 · 연출 비교</div>
+        <h1 class="doc-title">머지 손맛 비교 연출집</h1>
+        <p class="doc-lede">
+          왼쪽은 <b>Rosewood 현행</b>, 오른쪽은 <b>가십하버식</b> 연출입니다. 같은 입력(같은 손 위치·같은 타이밍)에서 둘을 동시에 재생하고,
+          <b>0.25배속</b>으로 보면 어디서 손맛이 갈리는지 보입니다. 장면마다 아래에 값 표를 붙였습니다.
+        </p>
+        <p class="mfc-warn doc-lede">
+          <b>읽기 전에.</b> 가십하버 값은 앱 데이터에서 읽은 <b>원문 값</b>이고 이 문서에서 재검증하지 못했습니다.
+          이펙트 <b>모양은 우리 텍스처에 색만 입힌 근사</b>입니다(원작 텍스처 없음). 크기·개수·속도·시간만 원문 값이고, 표에 없는 수명·감쇠는
+          <span class="mfc-asm">가정</span> 으로 표시했습니다. 현행 값은 클라 코드를 열어 옮겼고(실행 확인 아님) 이 문서는 <b>스냅샷</b>이라 클라가 바뀌어도 자동으로 따라가지 않습니다.
+        </p>
+        <div class="doc-meta">
+          <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
+          <span class="tag">현행 = 클라 9798bffd</span>
+          <span class="tag">가십하버 = 원문 값(2026-11-20 조사)</span>
+          <span class="tag">비교 5장면</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 1. 머지 -->
+    <section class="doc-section" id="s1">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          1. 머지
+          <span class="doc-h2-sub">같은 자리에서 놓았을 때 합쳐지는 순간 — 수축 · 결과 팝 · 이펙트 (단계 차등)</span>
+        </h2>
+        <div class="mfc-card">
+          <div class="mfc-pair">
+            <div class="mfc-col"><span class="mfc-lab is-cur">Rosewood 현행</span><div class="mfc-stage" id="s1-cur"></div></div>
+            <div class="mfc-col"><span class="mfc-lab is-gh">가십하버식</span><div class="mfc-stage" id="s1-gh"></div></div>
+          </div>
+          <div class="mfc-ctl">
+            <button type="button" class="mfc-btn is-primary" data-play="s1">재생</button>
+            <span class="mfc-l">속도</span>
+            <div class="mfc-seg" data-speed>
+              <button type="button" data-sp="1" aria-pressed="true">1×</button>
+              <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+              <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
+            </div>
+            <span class="mfc-l">결과 단계 (가십하버 이펙트)</span>
+            <div class="mfc-seg" id="s1-lv">
+              <button type="button" data-lv="3" aria-pressed="false">3</button>
+              <button type="button" data-lv="4" aria-pressed="false">4</button>
+              <button type="button" data-lv="5" aria-pressed="true">5</button>
+              <button type="button" data-lv="6" aria-pressed="false">6</button>
+              <button type="button" data-lv="7" aria-pressed="false">7</button>
+              <button type="button" data-lv="8" aria-pressed="false">8</button>
+              <button type="button" data-lv="9" aria-pressed="false">9</button>
+              <button type="button" data-lv="10" aria-pressed="false">10</button>
+              <button type="button" data-lv="11" aria-pressed="false">11</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>항목</th><th>Rosewood 현행 (코드 존재 확인)</th><th>가십하버 (원문 값)</th></tr></thead>
+              <tbody>
+                <tr><td>수축</td><td>손에 든 쪽만 0.55 · 투명으로 <b>50ms</b> (quadIn). 대상은 그대로</td><td>손에 든 아이템 + <b>대상도 제자리에서</b> 0.3으로 <b>100ms</b> (OutQuad)</td></tr>
+                <tr><td>결과 팝</td><td>손 뗀 자리 1.3 → 칸으로 스냅 1 (60ms) → <b>0.78</b> → 1.3 (150ms quadOut) → 1.0 (200ms backOut). <b>410ms</b></td><td>100ms 시점에 0.3으로 표시 → 1.3 (200ms OutQuad) → 1.0 (100ms OutQuad). <b>400ms</b></td></tr>
+                <tr><td>이펙트</td><td><code>merge_effect</code> 하나. 섬광 2→0 (167ms), 링 1→4 · 불투명 200→0 (333ms), 불티 5개. <b>단계와 무관</b>. 50ms 시점에 시작</td><td>결과 <b>4단계부터</b> lv4~11 (11 상한). 1~3단계는 추가 이펙트 없음. 100ms 시점에 시작</td></tr>
+                <tr><td>이펙트 크기</td><td>섬광 58px x 2 = 116px, 링 123px x 4 = 492px (칸 96px 기준)</td><td>섬광 500~600, 파편A 40/100, 파편B 30/60, 링 800 (원문 단위, <b>145 = 1칸</b>)</td></tr>
+                <tr><td>이펙트 수명·곡선</td><td>클립 0.6초 (클라 <code>merge_effect.anim</code>)</td><td>수명·감쇠·링 확대 곡선은 표에 없음 <span class="mfc-asm">가정</span> 파편 0.6초 선형 소멸, 섬광 0.3초 페이드, 링 0.5초 확대, 파편B 속도 = 파편A의 절반</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>결과 단계</th><th>섬광</th><th>파편A (개수 · 크기 · 속도)</th><th>파편B (개수 · 크기)</th><th>큰 링</th></tr></thead>
+              <tbody>
+                <tr><td>1~3</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+                <tr><td>4</td><td>500</td><td>5 · 40 · 800</td><td>3 · 30</td><td>-</td></tr>
+                <tr><td>5</td><td>600</td><td>10 · 40 · 800</td><td>6 · 30</td><td>-</td></tr>
+                <tr><td>6</td><td>600</td><td>10 · 40 · 800</td><td>3 · 60</td><td>-</td></tr>
+                <tr><td>7</td><td>600</td><td>8 · 100 · 800</td><td>3 · 60</td><td>-</td></tr>
+                <tr><td>8</td><td>600</td><td>5 · 100 · 800</td><td>3 · 60</td><td>800</td></tr>
+                <tr><td>9</td><td>600</td><td>5 · 100 · 800</td><td>6 · 60</td><td>800</td></tr>
+                <tr><td>10</td><td>600</td><td>15 · 100 · 800</td><td>6 · 60</td><td>800</td></tr>
+                <tr><td>11+</td><td>600</td><td>20 · 100 · <b>1600</b> · 회전 360도</td><td>6 · 60</td><td>800</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="notes">
+            <div class="note">
+              <div class="note-title">읽는 법</div>
+              <p>
+                결과 아이템 그림은 단계와 상관없이 같은 그림(203 → 204)을 씁니다. <b>단계 선택은 가십하버 쪽 이펙트만</b> 바꿉니다.
+                현행은 단계를 가리지 않으니 왼쪽은 그대로입니다. 파편 크기·속도의 원문 단위는 145 = 1칸이라 96px 칸으로 환산해 그렸습니다.
+                lv11의 파편 회전은 둥근 모양이라 눈에 보이지 않습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 드래그 · 놓기 -->
+    <section class="doc-section" id="s2">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          2. 드래그 · 놓기
+          <span class="doc-h2-sub">집기 크기 · 손가락 추종 · 빈 칸에 놓기 · 안 되는 곳에 놓으면 원위치</span>
+        </h2>
+        <div class="mfc-card">
+          <div class="mfc-pair">
+            <div class="mfc-col"><span class="mfc-lab is-cur">Rosewood 현행</span><div class="mfc-stage" id="s2-cur"></div></div>
+            <div class="mfc-col"><span class="mfc-lab is-gh">가십하버식</span><div class="mfc-stage" id="s2-gh"></div></div>
+          </div>
+          <div class="mfc-ctl">
+            <button type="button" class="mfc-btn is-primary" data-play="s2">재생</button>
+            <span class="mfc-l">속도</span>
+            <div class="mfc-seg" data-speed>
+              <button type="button" data-sp="1" aria-pressed="true">1×</button>
+              <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+              <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>항목</th><th>Rosewood 현행 (코드 존재 확인)</th><th>가십하버 (원문 값)</th></tr></thead>
+              <tbody>
+                <tr><td>누름</td><td>1 → 1.2 / 50ms (quadOut)</td><td>크기 변화 없음</td></tr>
+                <tr><td>집기</td><td>1 → <b>1.3</b> / 100ms (backOut)</td><td>크기 변화 없음</td></tr>
+                <tr><td>추종</td><td>프레임마다 0.6씩 따라감 (lerp, 60fps 환산) - 2~3프레임 늦음</td><td>이벤트마다 위치 대입 - 즉시</td></tr>
+                <tr><td>빈 칸에 놓기</td><td>스냅 60ms (1.3 → 1) → 0.9 (100ms) → 1 (150ms backOut). <b>310ms</b></td><td>크기 1로 즉시 리셋 → 200ms OutQuad 이동. <b>200ms</b></td></tr>
+                <tr><td>무효 복귀</td><td>260ms backOut (위치 + 크기)</td><td>200ms OutQuad (크기는 즉시 1)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="notes">
+            <div class="note">
+              <div class="note-title">읽는 법</div>
+              <p>
+                손가락(회색 원)은 둘이 똑같이 움직입니다. ① 집기 ② 빈 칸까지 끌고 가서 놓기 ③ 다시 집어서 보드 밖에 놓기 순서로 재생됩니다.
+                빈 칸에 놓을 때는 손 뗀 자리가 칸 중심에서 살짝 어긋나 있어서 <b>이동 궤적</b>이 보입니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 탭 -->
+    <section class="doc-section" id="s3">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          3. 탭
+          <span class="doc-h2-sub">아이템을 눌렀다 뗄 때의 반응 - 짧은 탁 vs 길게 출렁이는 젤리</span>
+        </h2>
+        <div class="mfc-card">
+          <div class="mfc-pair">
+            <div class="mfc-col"><span class="mfc-lab is-cur">Rosewood 현행</span><div class="mfc-stage" id="s3-cur"></div></div>
+            <div class="mfc-col"><span class="mfc-lab is-gh">가십하버식</span><div class="mfc-stage" id="s3-gh"></div></div>
+          </div>
+          <div class="mfc-ctl">
+            <button type="button" class="mfc-btn is-primary" data-play="s3">재생</button>
+            <span class="mfc-l">속도</span>
+            <div class="mfc-seg" data-speed>
+              <button type="button" data-sp="1" aria-pressed="true">1×</button>
+              <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+              <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>항목</th><th>Rosewood 현행 (코드 존재 확인)</th><th>가십하버 (원문 값)</th></tr></thead>
+              <tbody>
+                <tr><td>누를 때</td><td>1 → 1.2 / 50ms (quadOut)</td><td>크기 변화 없음</td></tr>
+                <tr><td>뗄 때</td><td>1.2 → 1.1 (80ms quadOut) → 1.0 (100ms backOut)</td><td>1.0 → 0.8 → 1.2 → 1.0 → 1.1 → 1.0 (100/200/200/200/200ms, 전부 OutQuad)</td></tr>
+                <tr><td>총 길이</td><td>약 <b>230ms</b></td><td>약 <b>900ms</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="notes">
+            <div class="note">
+              <div class="note-title">읽는 법</div>
+              <p>
+                탭은 누름 50ms 뒤 바로 뗀 것으로 재생합니다. 현행은 클라가 일부러 원작의 늘어지는 복귀를 옮기지 않았습니다(<code>MergeFxConfig</code> A1 주석).
+                이 장면은 <b>그 결정을 눈으로 확인하는 용도</b>입니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 생성기 배출 -->
+    <section class="doc-section" id="s4">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          4. 생성기 배출
+          <span class="doc-h2-sub">생성기를 눌러 산출물이 인접 칸으로 튀어나오는 궤적과 크기</span>
+        </h2>
+        <div class="mfc-card">
+          <div class="mfc-pair">
+            <div class="mfc-col"><span class="mfc-lab is-cur">Rosewood 현행</span><div class="mfc-stage" id="s4-cur"></div></div>
+            <div class="mfc-col"><span class="mfc-lab is-gh">가십하버식</span><div class="mfc-stage" id="s4-gh"></div></div>
+          </div>
+          <div class="mfc-ctl">
+            <button type="button" class="mfc-btn is-primary" data-play="s4">재생</button>
+            <span class="mfc-l">속도</span>
+            <div class="mfc-seg" data-speed>
+              <button type="button" data-sp="1" aria-pressed="true">1×</button>
+              <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+              <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>항목</th><th>Rosewood 현행 (코드 존재 확인)</th><th>가십하버 (원문 값)</th></tr></thead>
+              <tbody>
+                <tr><td>궤적</td><td>3차 베지어, 높이 = max(10, 거리 x 0.6), <b>420ms linear</b></td><td>t=50ms부터 점프(목표의 90%까지, 높이 <b>0.41칸</b>, 600ms) → t=650ms부터 남은 10%를 250ms OutQuad로 미끄러짐 <span class="mfc-asm">점프 곡선 형태 가정: 포물선 + 선형 이동</span></td></tr>
+                <tr><td>크기</td><td>0.5 → 1.25 (200ms quadOut) → 1 (200ms quadIn), 착지 1.2 (100ms) → 1 (200ms backOut)</td><td>0 → 0.8 → <b>1.5</b> → 1.0 (50ms 뒤 시작, 100/200/300ms OutQuad)</td></tr>
+                <tr><td>총 길이</td><td>약 <b>720ms</b></td><td>약 <b>900ms</b></td></tr>
+                <tr><td>착지 이펙트</td><td>없음</td><td>3겹 있음 - <b>이 장면에서는 그리지 않음</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 놓기 보정 -->
+    <section class="doc-section" id="s5">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          5. 놓기 보정
+          <span class="doc-h2-sub">대상 칸을 살짝 지나쳐서 이웃 칸에서 놓았을 때 - 이동이 되나, 머지가 되나</span>
+        </h2>
+        <div class="mfc-card">
+          <div class="mfc-pair">
+            <div class="mfc-col"><span class="mfc-lab is-cur">보정 없음 (HEAD)</span><div class="mfc-stage" id="s5-cur"></div></div>
+            <div class="mfc-col"><span class="mfc-lab is-gh">보정 있음 (가십하버 / 작업 트리 구현)</span><div class="mfc-stage" id="s5-gh"></div></div>
+          </div>
+          <div class="mfc-ctl">
+            <button type="button" class="mfc-btn is-primary" data-play="s5">재생</button>
+            <span class="mfc-l">속도</span>
+            <div class="mfc-seg" data-speed>
+              <button type="button" data-sp="1" aria-pressed="true">1×</button>
+              <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+              <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>항목</th><th>보정 없음 (현행 HEAD)</th><th>보정 있음</th></tr></thead>
+              <tbody>
+                <tr><td>판정</td><td>손가락 아래 칸만 본다</td><td>가십하버: 마지막 머지 대상 후 <b>0.15초 안</b>, <b>인접 1칸</b>(dx, dy 각각 1 이내)이면 그 대상과 머지<br />Rosewood 작업 트리(미커밋): 놓을 칸 표시가 켜진 뒤 <b>150ms 안</b>에 그 칸의 8방향 이웃에서 떼면 표시된 칸으로 보정</td></tr>
+                <tr><td>이 장면의 손</td><td colspan="2">대상 칸에 들어간 뒤 약 100ms 만에 이웃 칸으로 빠져나가 놓는 빠른 플릭 (두 쪽 같은 손)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="notes">
+            <div class="note">
+              <div class="note-title">읽는 법</div>
+              <p>
+                <b>보정 판정만 비교</b>합니다. 머지가 일어날 때의 연출은 양쪽 모두 현행입니다. 점선 칸이 지금 놓으면 합쳐지는 대상 칸입니다.
+                오른쪽 기준은 가십하버 규칙이고, 우리 쪽 구현은 아직 커밋 전(작업 트리)이라 반영 여부는 클라 커밋을 따로 봐야 합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 가정 · 제외 -->
+    <section class="doc-section" id="notes">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          가정 · 제외 · 출처
+          <span class="doc-h2-sub">이 문서가 맞추지 못한 것</span>
+        </h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>구분</th><th>내용</th></tr></thead>
+            <tbody>
+              <tr><td>제외 - 소리</td><td>가십하버는 머지 효과음이 결과 단계별 7종 + 탭·생산음이 있고, Rosewood 보드는 0개입니다. 웹에서 체감 비교가 안 되고 에셋도 없어 뺐습니다.</td></tr>
+              <tr><td>제외 - 햅틱</td><td>원작 머지 Medium / 집기 Light / 이동 Soft, 우리는 시트 haptic 이 정본입니다. 웹에서 재생할 수 없어 뺐습니다.</td></tr>
+              <tr><td>제외 - 대상 하이라이트</td><td>원작은 아이템 위 파티클 3단, 우리는 칸 아래 아트 클립입니다. 원문 수치가 부분만 있어 뺐습니다.</td></tr>
+              <tr><td>제외 - 그 외</td><td>생성기 탭 규칙 / 연속 머지 잠금 / 드래그 시작 거리는 재생으로 비교할 차이가 없거나 입력 조건이라 뺐습니다.</td></tr>
+              <tr><td>가정</td><td>가십하버 이펙트의 수명 · 감쇠 · 링 확대 곡선 · 파편B 속도, 생성기 점프 곡선 형태. 원문에 없어서 임의로 정했습니다. 표에 <span class="mfc-asm">가정</span> 으로 표시했습니다.</td></tr>
+              <tr><td>모양</td><td>가십하버 이펙트는 우리 <code>glow_01</code> · <code>ring_glow</code> 텍스처에 색(섬광 파랑 / 파편A 보라 / 링 하늘색 / 파편B 흰색)만 입혔습니다.</td></tr>
+              <tr><td>출처 - 가십하버</td><td>앱 데이터 직독 값(Play 스토어 설치본, 2026-11-20 조사). 이 문서를 만든 맥에서는 재검증하지 못했습니다.</td></tr>
+              <tr><td>출처 - 현행</td><td>클라 <code>MergeFxConfig.ts</code> · <code>BoardChipFx.ts</code> · <code>merge_effect.anim</code> (HEAD 9798bffd). 코드 존재 확인이고 실행 확인은 아닙니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var CW = 96, COLS = 5, ROWS = 3, W = COLS * CW, H = ROWS * CW;
+        var SPEED = 1;
+        var K = CW / 145;                      /* gossip harbor units: 145 = one cell */
+
+        /* ---------- easing ---------- */
+        var EASE = {
+          linear: function (t) { return t; },
+          quadOut: function (t) { return 1 - (1 - t) * (1 - t); },
+          quadIn: function (t) { return t * t; },
+          quadInOut: function (t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; },
+          backOut: function (t) { var s = 1.70158; t -= 1; return t * t * ((s + 1) * t + s) + 1; }
+        };
+        function cubic(x1, y1, x2, y2) {
+          function bx(s) { var u = 1 - s; return 3 * u * u * s * x1 + 3 * u * s * s * x2 + s * s * s; }
+          function by(s) { var u = 1 - s; return 3 * u * u * s * y1 + 3 * u * s * s * y2 + s * s * s; }
+          return function (x) {
+            if (x <= 0) return 0;
+            if (x >= 1) return 1;
+            var lo = 0, hi = 1, s = x;
+            for (var i = 0; i < 30; i++) {
+              var v = bx(s);
+              if (Math.abs(v - x) < 1e-6) break;
+              if (v < x) lo = s; else hi = s;
+              s = (lo + hi) / 2;
+            }
+            return by(s);
+          };
+        }
+        /* keys = [time sec, value (number or [x,y]), ease fn or undefined]; holds first/last value outside range */
+        function keyAt(keys, t) {
+          if (t <= keys[0][0]) return keys[0][1];
+          for (var i = 0; i < keys.length - 1; i++) {
+            var k0 = keys[i], k1 = keys[i + 1];
+            if (t > k1[0]) continue;
+            var r = (t - k0[0]) / (k1[0] - k0[0]);
+            if (k0[2]) r = k0[2](r);
+            if (typeof k0[1] === "number") return k0[1] + (k1[1] - k0[1]) * r;
+            return [k0[1][0] + (k1[1][0] - k0[1][0]) * r, k0[1][1] + (k1[1][1] - k0[1][1]) * r];
+          }
+          return keys[keys.length - 1][1];
+        }
+
+        /* ---------- current merge_effect clip (client merge_effect.anim, 0.6s) ---------- */
+        var CLIP_SEC = 0.6;
+        var SPARK_EASE = cubic(0.024025974025974013, 0.5786796536796537, 0.46190476190476193, 0.9462121212121212);
+        var CLIP = {
+          glow: [[0, 2], [1 / 6, 0]],
+          ringScale: [[0, 1, cubic(0.07272727272727271, 0.5029220779220779, 0.5133116883116884, 0.9083333333333332)], [1 / 3, 4]],
+          ringAlpha: [[0, 200 / 255], [1 / 3, 0]],
+          dotY: [
+            [0, 0, cubic(0.061904761904761886, 0.5408008658008658, 0.4348484848484849, 0.9218614718614718)],
+            [0.26666666666666666, 28.597, cubic(0.46504329004329, 0.03755411255411256, 0.8731601732, 0.44025974025974024)],
+            [0.6, -37.008]
+          ],
+          sparks: [
+            { end: 0.5, scale: 0.5, to: [37.008, 67.287] },
+            { end: 0.6, scale: 0.2, to: [-40, 104] },
+            { end: 0.43333333333333335, scale: 0.3, to: [13, 44] },
+            { end: 0.5, scale: 0.3, to: [-91, -64] },
+            { end: 0.5333333333333333, scale: 0.4, to: [37, -91] }
+          ]
+        };
+
+        /* ---------- gossip harbor effect table (original values) ---------- */
+        var GH_FX = {
+          4: { f: 500, a: [5, 40, 800], b: [3, 30], r: 0 },
+          5: { f: 600, a: [10, 40, 800], b: [6, 30], r: 0 },
+          6: { f: 600, a: [10, 40, 800], b: [3, 60], r: 0 },
+          7: { f: 600, a: [8, 100, 800], b: [3, 60], r: 0 },
+          8: { f: 600, a: [5, 100, 800], b: [3, 60], r: 800 },
+          9: { f: 600, a: [5, 100, 800], b: [6, 60], r: 800 },
+          10: { f: 600, a: [15, 100, 800], b: [6, 60], r: 800 },
+          11: { f: 600, a: [20, 100, 1600], b: [6, 60], r: 800, spin: true }
+        };
+        /* assumptions (not in the source table) */
+        var GH_FRAG_LIFE = 0.6, GH_FLASH_LIFE = 0.3, GH_RING_LIFE = 0.5, GH_B_SPEED_RATIO = 0.5;
+
+        /* ---------- stage ---------- */
+        function Stage(el) {
+          this.el = el;
+          this.era = 0;
+          el.style.width = W + "px";
+          el.style.height = H + "px";
+          var bg = document.createElement("div");
+          bg.className = "mfc-bg";
+          for (var i = 0; i < COLS * ROWS; i++) {
+            var c = document.createElement("div");
+            c.className = "mfc-cell";
+            c.style.left = (i % COLS) * CW + "px";
+            c.style.top = Math.floor(i / COLS) * CW + "px";
+            c.style.background = ((i % COLS) + Math.floor(i / COLS)) % 2 === 0 ? "#eadfcb" : "#e2d5bd";
+            bg.appendChild(c);
+          }
+          el.appendChild(bg);
+          this.layer = document.createElement("div");
+          this.layer.className = "mfc-layer";
+          el.appendChild(this.layer);
+          this.cap = document.createElement("div");
+          this.cap.className = "mfc-cap";
+          el.appendChild(this.cap);
+          this.badge = document.createElement("div");
+          this.badge.className = "mfc-badge";
+          this.badge.style.display = "none";
+          el.appendChild(this.badge);
+        }
+        Stage.prototype.cp = function (c, r) { return { x: c * CW + CW / 2, y: r * CW + CW / 2 }; };
+        Stage.prototype.reset = function () { this.era++; this.layer.innerHTML = ""; this.cap.textContent = ""; };
+        Stage.prototype.caption = function (s) { this.cap.textContent = s; };
+        Stage.prototype.tw = function (ms, fn, ease) {
+          var st = this, era = st.era, f0 = EASE[ease || "linear"];
+          return new Promise(function (res) {
+            var t0 = performance.now();
+            function f(now) {
+              if (era !== st.era) { res(false); return; }
+              var r = Math.max(0, Math.min(1, (now - t0) * SPEED / ms));
+              if (fn) fn(f0(r), r);
+              if (r < 1) requestAnimationFrame(f); else res(true);
+            }
+            requestAnimationFrame(f);
+          });
+        };
+        Stage.prototype.wait = function (ms) { return this.tw(ms, null, "linear"); };
+        Stage.prototype.add = function (w, h, html, cls, z) {
+          var st = this, e = document.createElement("div");
+          e.className = "mfc-spr " + (cls || "");
+          e.style.width = w + "px";
+          e.style.height = h + "px";
+          if (z) e.style.zIndex = z;
+          e.innerHTML = html;
+          this.layer.appendChild(e);
+          var o = { el: e, x: 0, y: 0, sx: 1, sy: 1, a: 1, rot: 0 };
+          o.set = function (p) {
+            for (var k in p) o[k] = p[k];
+            e.style.opacity = o.a;
+            e.style.transform = "translate(" + o.x + "px," + o.y + "px) translate(-50%,-50%) rotate(" + o.rot + "deg) scale(" + o.sx + "," + o.sy + ")";
+            return o;
+          };
+          o.to = function (ms, p, ease) {
+            var s0 = {}, k;
+            for (k in p) s0[k] = o[k];
+            return st.tw(ms, function (e2) {
+              var q = {};
+              for (var key in p) q[key] = s0[key] + (p[key] - s0[key]) * e2;
+              o.set(q);
+            }, ease);
+          };
+          o.kill = function () { if (e.parentNode) e.parentNode.removeChild(e); };
+          o.set({});
+          return o;
+        };
+        Stage.prototype.item = function (code, x, y) {
+          var o = this.add(95, 95, '<img src="img/items/' + code + '.png" alt="" draggable="false" />', "", 3);
+          o.set({ x: x, y: y });
+          return o;
+        };
+        Stage.prototype.finger = function (x, y) {
+          var o = this.add(30, 30, "", "mfc-finger", 9);
+          o.set({ x: x, y: y });
+          return o;
+        };
+        Stage.prototype.hl = function (cell) {
+          var o = this.add(CW, CW, "", "mfc-hl", 1);
+          o.set({ x: cell.x, y: cell.y });
+          return o;
+        };
+        Stage.prototype.fxImg = function (src, size, tint, x, y) {
+          var o = this.add(size, size, '<img src="img/mfx/' + src + '.png" alt="" draggable="false" />', "", 6);
+          if (tint) o.el.style.filter = "url(#mfc-" + tint + ")";
+          o.set({ x: x, y: y });
+          return o;
+        };
+
+        /* run a list of segments on a sprite: [ms, props, ease]; ms 0 = instant set */
+        function runSegs(o, segs) {
+          var p = Promise.resolve(true);
+          segs.forEach(function (sg) {
+            p = p.then(function (ok) {
+              if (!ok) return false;
+              if (sg[0] === 0) { o.set(sg[1]); return true; }
+              return o.to(sg[0], sg[1], sg[2]);
+            });
+          });
+          return p;
+        }
+        /* pure sampler of the same segment list (for the self check) */
+        function sampleSegs(init, segs, tMs, prop) {
+          var cur = {}, k;
+          for (k in init) cur[k] = init[k];
+          var t = 0;
+          for (var i = 0; i < segs.length; i++) {
+            var ms = segs[i][0], p = segs[i][1], ease = segs[i][2];
+            if (ms === 0) { for (k in p) cur[k] = p[k]; continue; }
+            if (tMs >= t + ms) { for (k in p) cur[k] = p[k]; t += ms; continue; }
+            var r = EASE[ease || "linear"]((tMs - t) / ms);
+            var out = cur[prop];
+            if (p[prop] !== undefined) out = cur[prop] + (p[prop] - cur[prop]) * r;
+            return out;
+          }
+          return cur[prop];
+        }
+
+        /* ---------- merge: current ---------- */
+        function mergeClip(st, at) {
+          var ang = 37, rad = ang * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);   /* client rotates the rot node randomly; fixed here so both runs match */
+          var glow = st.fxImg("glow_01", 58, null, at.x, at.y);
+          var sp = CLIP.sparks.map(function () { return st.fxImg("glow_01", 58, null, at.x, at.y); });
+          var ring = st.fxImg("ring_glow", 123, null, at.x, at.y);
+          function pose(t) {
+            var g = keyAt(CLIP.glow, t), rs = keyAt(CLIP.ringScale, t), dy = keyAt(CLIP.dotY, t);
+            glow.set({ sx: g, sy: g });
+            ring.set({ sx: rs, sy: rs, a: keyAt(CLIP.ringAlpha, t) });
+            for (var i = 0; i < sp.length; i++) {
+              var k = CLIP.sparks[i], r = Math.min(1, t / k.end), e = SPARK_EASE(r), s = k.scale * (1 - r);
+              var px = k.to[0] * e, py = k.to[1] * e;
+              var lx = px * cos - py * sin, ly = px * sin + py * cos;
+              sp[i].set({ x: at.x + lx, y: at.y - (dy + ly), sx: s, sy: s });
+            }
+          }
+          pose(0);
+          return st.tw(CLIP_SEC * 1000, function (e, r) { pose(r * CLIP_SEC); }).then(function () {
+            glow.kill(); ring.kill();
+            sp.forEach(function (s) { s.kill(); });
+          });
+        }
+        var CUR_RESULT = function (at, from) {
+          return [
+            [60, { x: at.x, y: at.y, sx: 1, sy: 1 }, "quadOut"],
+            [0, { sx: 0.78, sy: 0.78 }],
+            [150, { sx: 1.3, sy: 1.3 }, "quadOut"],
+            [200, { sx: 1, sy: 1 }, "backOut"]
+          ];
+        };
+        function mergeCurrent(st, aCode, bCode, from, at, onDone) {
+          var ghost = st.item(aCode, from.x, from.y);
+          var res = st.item(bCode, from.x, from.y);
+          res.set({ sx: 1.3, sy: 1.3 });
+          ghost.to(50, { x: at.x, y: at.y, sx: 0.55, sy: 0.55, a: 0 }, "quadIn").then(function () { ghost.kill(); });
+          var fx = st.wait(50).then(function (ok) { return ok && mergeClip(st, at); });
+          var chip = runSegs(res, CUR_RESULT(at, from));
+          return Promise.all([fx, chip]).then(function () { if (onDone) onDone(res); });
+        }
+
+        /* ---------- merge: gossip harbor ---------- */
+        var GH_RESULT = [
+          [200, { sx: 1.3, sy: 1.3 }, "quadOut"],
+          [100, { sx: 1, sy: 1 }, "quadOut"]
+        ];
+        function ghFx(st, at, lv) {
+          var d = GH_FX[Math.min(lv, 11)];
+          if (!d) return Promise.resolve(true);
+          var flash = st.fxImg("glow_01", d.f * K, "blue", at.x, at.y);
+          var ring = d.r ? st.fxImg("ring_glow", d.r * K, "sky", at.x, at.y) : null;
+          if (ring) ring.set({ sx: 0.2, sy: 0.2, a: 1 });
+          var fa = [], fb = [], i;
+          for (i = 0; i < d.a[0]; i++) fa.push({ spr: st.fxImg("glow_01", d.a[1] * K, "purple", at.x, at.y), ang: (i / d.a[0]) * 360 + (i * 37) % 25 });
+          for (i = 0; i < d.b[0]; i++) fb.push({ spr: st.fxImg("glow_01", d.b[1] * K, null, at.x, at.y), ang: (i / d.b[0]) * 360 + 15 + (i * 53) % 20 });
+          var vA = d.a[2] * K, vB = vA * GH_B_SPEED_RATIO;
+          function pose(t) {
+            var fr = Math.min(1, t / GH_FLASH_LIFE);
+            flash.set({ a: 1 - fr, sx: 1 - 0.3 * fr, sy: 1 - 0.3 * fr });
+            if (ring) {
+              var rr = Math.min(1, t / GH_RING_LIFE), s = 0.2 + 0.8 * EASE.quadOut(rr);
+              ring.set({ sx: s, sy: s, a: 1 - rr });
+            }
+            var life = Math.min(1, t / GH_FRAG_LIFE);
+            fa.forEach(function (f) {
+              var rad = f.ang * Math.PI / 180, dist = vA * t;
+              f.spr.set({ x: at.x + Math.cos(rad) * dist, y: at.y - Math.sin(rad) * dist, a: 1 - life, sx: 1 - 0.7 * life, sy: 1 - 0.7 * life, rot: d.spin ? 360 * life : 0 });
+            });
+            fb.forEach(function (f) {
+              var rad = f.ang * Math.PI / 180, dist = vB * t;
+              f.spr.set({ x: at.x + Math.cos(rad) * dist, y: at.y - Math.sin(rad) * dist, a: 1 - life, sx: 1 - 0.7 * life, sy: 1 - 0.7 * life });
+            });
+          }
+          pose(0);
+          return st.tw(GH_FRAG_LIFE * 1000, function (e, r) { pose(r * GH_FRAG_LIFE); }).then(function () {
+            flash.kill();
+            if (ring) ring.kill();
+            fa.concat(fb).forEach(function (f) { f.spr.kill(); });
+          });
+        }
+        function mergeGH(st, aCode, bCode, held, target, at, lv) {
+          held.to(100, { x: at.x, y: at.y, sx: 0.3, sy: 0.3 }, "quadOut");
+          var shrinkTarget = target.to(100, { sx: 0.3, sy: 0.3 }, "quadOut");
+          return shrinkTarget.then(function (ok) {
+            if (!ok) return false;
+            held.kill(); target.kill();
+            var res = st.item(bCode, at.x, at.y);
+            res.set({ sx: 0.3, sy: 0.3 });
+            var fx = ghFx(st, at, lv);
+            var chip = runSegs(res, GH_RESULT);
+            return Promise.all([fx, chip]);
+          });
+        }
+
+        /* ---------- scenes ---------- */
+        var S = {};
+        var LV = 5;
+
+        S.s1 = {
+          cur: new Stage(document.getElementById("s1-cur")),
+          gh: new Stage(document.getElementById("s1-gh")),
+          setup: function () {
+            var c = this.cur, g = this.gh, at = c.cp(2, 1), from = { x: at.x + 22, y: at.y + 14 };
+            c.reset(); g.reset();
+            this.curB = c.item(203, at.x, at.y);
+            this.curA = c.item(203, from.x, from.y);
+            this.ghB = g.item(203, at.x, at.y);
+            this.ghA = g.item(203, from.x, from.y);
+            c.caption("A를 B 근처에서 놓은 순간");
+            g.caption("A를 B 근처에서 놓은 순간");
+            g.badge.style.display = "";
+            g.badge.textContent = LV >= 4 ? "결과 " + LV + "단계 - 이펙트 lv" + Math.min(LV, 11) : "결과 " + LV + "단계 - 이펙트 없음";
+          },
+          play: function () {
+            this.setup();
+            var c = this.cur, g = this.gh, at = c.cp(2, 1), from = { x: at.x + 22, y: at.y + 14 };
+            this.curB.kill();
+            this.curA.kill();
+            c.caption("");
+            g.caption("");
+            return Promise.all([
+              mergeCurrent(c, 203, 204, from, at),
+              mergeGH(g, 203, 204, this.ghA, this.ghB, at, LV)
+            ]);
+          }
+        };
+
+        /* shared finger follow: current = lerp 0.6/frame (60fps), gossip = instant */
+        function followLoop(st, item, finger, mode) {
+          var stop = false, last = performance.now(), era = st.era;
+          function f(now) {
+            if (stop || era !== st.era) return;
+            var dt = Math.min(0.05, (now - last) / 1000) * SPEED;
+            last = now;
+            if (mode === "cur") {
+              var k = 1 - Math.pow(1 - 0.6, dt * 60);
+              item.set({ x: item.x + (finger.x - item.x) * k, y: item.y + (finger.y - item.y) * k });
+            } else {
+              item.set({ x: finger.x, y: finger.y });
+            }
+            requestAnimationFrame(f);
+          }
+          requestAnimationFrame(f);
+          return function () { stop = true; };
+        }
+        function moveFinger(st, finger, to, ms, ease) {
+          var x0 = finger.x, y0 = finger.y;
+          return st.tw(ms, function (e) { finger.set({ x: x0 + (to.x - x0) * e, y: y0 + (to.y - y0) * e }); }, ease || "quadInOut");
+        }
+
+        function s2Side(st, mode) {
+          st.reset();
+          var home = st.cp(0, 1), tgt = st.cp(3, 1);
+          var item = st.item(201, home.x, home.y);
+          var fing = st.finger(home.x, home.y);
+          var stop;
+          st.caption("1. 집기");
+          var p = Promise.resolve(true);
+          function step(fn) { p = p.then(function (ok) { return ok ? fn() : false; }); }
+          step(function () {
+            if (mode === "cur") {
+              return item.to(50, { sx: 1.2, sy: 1.2 }, "quadOut").then(function (ok) {
+                return ok && st.wait(80);
+              }).then(function (ok) {
+                if (!ok) return false;
+                item.set({ sx: 1, sy: 1 });
+                return item.to(100, { sx: 1.3, sy: 1.3 }, "backOut");
+              });
+            }
+            return st.wait(230);
+          });
+          step(function () { st.caption("2. 빈 칸까지 끌어서 놓기"); stop = followLoop(st, item, fing, mode); return moveFinger(st, fing, { x: tgt.x + 16, y: tgt.y - 12 }, 700); });
+          step(function () { return st.wait(120); });
+          step(function () {
+            stop();
+            if (mode === "cur") {
+              return runSegs(item, [
+                [60, { x: tgt.x, y: tgt.y, sx: 1, sy: 1 }, "quadOut"],
+                [100, { sx: 0.9, sy: 0.9 }, "quadOut"],
+                [150, { sx: 1, sy: 1 }, "backOut"]
+              ]);
+            }
+            item.set({ sx: 1, sy: 1 });
+            return item.to(200, { x: tgt.x, y: tgt.y }, "quadOut");
+          });
+          step(function () { return fing.to(150, { a: 0 }, "linear"); });
+          step(function () { return st.wait(500); });
+          step(function () {
+            st.caption("3. 다시 집어서 보드 밖에 놓기");
+            fing.set({ x: tgt.x, y: tgt.y, a: 1 });
+            if (mode === "cur") {
+              return item.to(50, { sx: 1.2, sy: 1.2 }, "quadOut").then(function (ok) { return ok && st.wait(80); }).then(function (ok) {
+                if (!ok) return false;
+                item.set({ sx: 1, sy: 1 });
+                return item.to(100, { sx: 1.3, sy: 1.3 }, "backOut");
+              });
+            }
+            return st.wait(230);
+          });
+          step(function () { stop = followLoop(st, item, fing, mode); return moveFinger(st, fing, { x: tgt.x - 30, y: -28 }, 500); });
+          step(function () { return st.wait(120); });
+          step(function () {
+            stop();
+            if (mode === "cur") return item.to(260, { x: tgt.x, y: tgt.y, sx: 1, sy: 1 }, "backOut");
+            item.set({ sx: 1, sy: 1 });
+            return item.to(200, { x: tgt.x, y: tgt.y }, "quadOut");
+          });
+          step(function () { return fing.to(150, { a: 0 }, "linear"); });
+          step(function () { st.caption(""); return true; });
+          return p;
+        }
+        S.s2 = {
+          cur: new Stage(document.getElementById("s2-cur")),
+          gh: new Stage(document.getElementById("s2-gh")),
+          setup: function () {
+            [this.cur, this.gh].forEach(function (st) {
+              st.reset();
+              var h = st.cp(0, 1);
+              st.item(201, h.x, h.y);
+              st.caption("재생을 누르면 집기 - 끌기 - 놓기");
+            });
+          },
+          play: function () { return Promise.all([s2Side(this.cur, "cur"), s2Side(this.gh, "gh")]); }
+        };
+
+        function s3Side(st, mode) {
+          st.reset();
+          var at = st.cp(2, 1), item = st.item(201, at.x, at.y);
+          st.caption("탭: 누름 50ms 뒤 뗌");
+          if (mode === "cur") {
+            return item.to(50, { sx: 1.2, sy: 1.2 }, "quadOut")
+              .then(function (ok) { return ok && item.to(80, { sx: 1.1, sy: 1.1 }, "quadOut"); })
+              .then(function (ok) { return ok && item.to(100, { sx: 1, sy: 1 }, "backOut"); });
+          }
+          return st.wait(50).then(function (ok) {
+            return ok && runSegs(item, [
+              [100, { sx: 0.8, sy: 0.8 }, "quadOut"],
+              [200, { sx: 1.2, sy: 1.2 }, "quadOut"],
+              [200, { sx: 1.0, sy: 1.0 }, "quadOut"],
+              [200, { sx: 1.1, sy: 1.1 }, "quadOut"],
+              [200, { sx: 1.0, sy: 1.0 }, "quadOut"]
+            ]);
+          });
+        }
+        S.s3 = {
+          cur: new Stage(document.getElementById("s3-cur")),
+          gh: new Stage(document.getElementById("s3-gh")),
+          setup: function () {
+            [this.cur, this.gh].forEach(function (st) {
+              st.reset();
+              var a = st.cp(2, 1);
+              st.item(201, a.x, a.y);
+              st.caption("재생을 누르면 탭");
+            });
+          },
+          play: function () { return Promise.all([s3Side(this.cur, "cur"), s3Side(this.gh, "gh")]); }
+        };
+
+        function bez(p0, p1, p2, p3, t) {
+          var u = 1 - t;
+          return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+        }
+        function s4Side(st, mode) {
+          st.reset();
+          var gen = st.cp(1, 1), to = st.cp(3, 1);
+          st.item(104, gen.x, gen.y);
+          var prod = st.item(201, gen.x, gen.y);
+          prod.el.style.zIndex = 4;
+          st.caption("생성기를 누르면 산출물이 칸 밖으로");
+          if (mode === "cur") {
+            prod.set({ sx: 0.5, sy: 0.5 });
+            var dx = to.x - gen.x, dy = to.y - gen.y, lift = Math.max(10, Math.sqrt(dx * dx + dy * dy) * 0.6);
+            /* cocos y is up, screen y is down: control points raise by lift (c1) and lift*0.6 (c2) */
+            var fly = st.tw(420, function (e, r) {
+              prod.set({ x: bez(gen.x, gen.x, to.x, to.x, r), y: bez(gen.y, gen.y - lift, to.y - lift * 0.6, to.y, r) });
+            }, "linear");
+            var pop = runSegs(prod, [[200, { sx: 1.25, sy: 1.25 }, "quadOut"], [200, { sx: 1, sy: 1 }, "quadIn"]]);
+            return Promise.all([fly, pop]).then(function (ok) {
+              return runSegs(prod, [[100, { sx: 1.2, sy: 1.2 }, "quadOut"], [200, { sx: 1, sy: 1 }, "backOut"]]);
+            });
+          }
+          prod.set({ sx: 0, sy: 0 });
+          var jx = gen.x + (to.x - gen.x) * 0.9, jy = gen.y + (to.y - gen.y) * 0.9, hgt = 60 * K;
+          var jump = st.wait(50).then(function (ok) {
+            return ok && st.tw(600, function (e, r) {
+              prod.set({ x: gen.x + (jx - gen.x) * r, y: gen.y + (jy - gen.y) * r - hgt * 4 * r * (1 - r) });
+            }, "linear");
+          }).then(function (ok) {
+            return ok && prod.to(250, { x: to.x, y: to.y }, "quadOut");
+          });
+          var sc = st.wait(50).then(function (ok) {
+            return ok && runSegs(prod, [
+              [100, { sx: 0.8, sy: 0.8 }, "quadOut"],
+              [200, { sx: 1.5, sy: 1.5 }, "quadOut"],
+              [300, { sx: 1.0, sy: 1.0 }, "quadOut"]
+            ]);
+          });
+          return Promise.all([jump, sc]);
+        }
+        S.s4 = {
+          cur: new Stage(document.getElementById("s4-cur")),
+          gh: new Stage(document.getElementById("s4-gh")),
+          setup: function () {
+            [this.cur, this.gh].forEach(function (st) {
+              st.reset();
+              var g = st.cp(1, 1);
+              st.item(104, g.x, g.y);
+              st.caption("재생을 누르면 생성기 탭");
+            });
+          },
+          play: function () { return Promise.all([s4Side(this.cur, "cur"), s4Side(this.gh, "gh")]); }
+        };
+
+        /* S5: drop assist. both sides run the same hand; only the drop resolution differs, and the merge fx is the current one on both */
+        function s5Side(st, assist) {
+          st.reset();
+          var a0 = st.cp(0, 1), b0 = st.cp(2, 1), c3 = st.cp(3, 1);
+          var tgt = st.item(203, b0.x, b0.y);
+          var held = st.item(203, a0.x, a0.y);
+          held.set({ sx: 1.3, sy: 1.3 });
+          var fing = st.finger(a0.x, a0.y);
+          var hl = null;
+          st.caption(assist ? "보정 있음: 지나쳐도 합쳐진다" : "보정 없음: 지나치면 그냥 이동");
+          var stop = followLoop(st, held, fing, "cur");
+          var releaseX = c3.x - 36;
+          var p = moveFinger(st, fing, { x: b0.x - 48, y: b0.y }, 300, "linear");
+          p = p.then(function (ok) {
+            if (!ok) return false;
+            hl = st.hl(b0);
+            return moveFinger(st, fing, { x: releaseX, y: b0.y }, 100, "linear");
+          });
+          p = p.then(function (ok) {
+            if (!ok) return false;
+            stop();
+            if (hl) hl.kill();
+            if (assist) {
+              fing.to(150, { a: 0 }, "linear");
+              var from = { x: held.x, y: held.y };
+              tgt.kill(); held.kill();
+              return mergeCurrent(st, 203, 204, from, b0);
+            }
+            fing.to(150, { a: 0 }, "linear");
+            return runSegs(held, [
+              [60, { x: c3.x, y: c3.y, sx: 1, sy: 1 }, "quadOut"],
+              [100, { sx: 0.9, sy: 0.9 }, "quadOut"],
+              [150, { sx: 1, sy: 1 }, "backOut"]
+            ]);
+          });
+          return p;
+        }
+        S.s5 = {
+          cur: new Stage(document.getElementById("s5-cur")),
+          gh: new Stage(document.getElementById("s5-gh")),
+          setup: function () {
+            [this.cur, this.gh].forEach(function (st) {
+              st.reset();
+              var a = st.cp(0, 1), b = st.cp(2, 1);
+              st.item(203, b.x, b.y);
+              st.item(203, a.x, a.y);
+              st.caption("재생을 누르면 빠른 플릭");
+            });
+          },
+          play: function () { return Promise.all([s5Side(this.cur, false), s5Side(this.gh, true)]); }
+        };
+
+        /* ---------- wiring ---------- */
+        function setSpeed(v) {
+          SPEED = v;
+          Array.prototype.forEach.call(document.querySelectorAll("[data-speed]"), function (grp) {
+            Array.prototype.forEach.call(grp.querySelectorAll("button"), function (b) {
+              b.setAttribute("aria-pressed", String(parseFloat(b.getAttribute("data-sp")) === v));
+            });
+          });
+        }
+        Array.prototype.forEach.call(document.querySelectorAll("[data-speed] button"), function (b) {
+          b.addEventListener("click", function () { setSpeed(parseFloat(b.getAttribute("data-sp"))); });
+        });
+        Array.prototype.forEach.call(document.querySelectorAll("[data-play]"), function (b) {
+          b.addEventListener("click", function () { S[b.getAttribute("data-play")].play(); });
+        });
+        Array.prototype.forEach.call(document.querySelectorAll("#s1-lv button"), function (b) {
+          b.addEventListener("click", function () {
+            LV = parseInt(b.getAttribute("data-lv"), 10);
+            Array.prototype.forEach.call(document.querySelectorAll("#s1-lv button"), function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+            S.s1.play();
+          });
+        });
+        Object.keys(S).forEach(function (k) { S[k].setup(); });
+
+        /* self-check hooks: closed-form samplers over the same data the animations use */
+        window.__mfc = {
+          curResult: function (t) { var at = { x: 0, y: 0 }; return sampleSegs({ sx: 1.3 }, CUR_RESULT(at, at), t, "sx"); },
+          ghResult: function (t) { return t < 100 ? 0.3 : sampleSegs({ sx: 0.3 }, GH_RESULT, t - 100, "sx"); },
+          clip: CLIP, ghFx: GH_FX, ease: EASE
+        };
+      })();
+    </script>
+    <script src="../app.js"></script>
+  </body>
+</html>
