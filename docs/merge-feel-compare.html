@@ -63,6 +63,21 @@
       .mfc-pb { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       .mfc-pb input[type="range"] { flex: 1 1 120px; min-width: 100px; }
       .mfc-pv { font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-dim); min-width: 96px; }
+      /* right-side navigator: docked from 1400px (content 1040px + navigator 150px + gaps fit), floating button below */
+      .doc-section { scroll-margin-top: 64px; }
+      .mfc-toc { display: none; position: fixed; right: 16px; top: 96px; width: 150px; z-index: 40; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 6px 6px; box-shadow: var(--shadow-lg); max-height: calc(100vh - 120px); overflow-y: auto; }
+      .mfc-toc-title { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--text-faint); padding: 2px 10px 6px; }
+      .mfc-toc ol { list-style: none; margin: 0; padding: 0; }
+      .mfc-toc a { display: flex; align-items: center; min-height: 36px; padding: 6px 10px; font-size: 13px; line-height: 1.3; color: var(--text-dim); text-decoration: none; border-radius: 8px; border-left: 3px solid transparent; }
+      .mfc-toc a:hover { background: var(--surface-2); color: var(--text); }
+      .mfc-toc a:focus-visible { outline: 2px solid var(--smg); outline-offset: -2px; }
+      .mfc-toc a[aria-current="true"] { background: var(--surface-2); color: var(--text); font-weight: 800; border-left-color: var(--smg); }
+      .mfc-toc-fab { position: fixed; right: 16px; bottom: 16px; z-index: 41; font: inherit; font-size: 14px; font-weight: 800; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--text); color: #fff; cursor: pointer; box-shadow: var(--shadow-lg); }
+      .mfc-toc.is-open { display: block; top: auto; bottom: 70px; right: 16px; width: 190px; max-height: 60vh; }
+      @media (min-width: 1400px) {
+        .mfc-toc { display: block; }
+        .mfc-toc-fab { display: none; }
+      }
       .mfc-warn { margin-top: 10px; padding: 10px 14px; border-left: 4px solid #eb6834; background: rgba(235, 104, 52, 0.09); border-radius: 6px; }
     </style>
   </head>
@@ -1524,6 +1539,69 @@
           clip: CLIP, ghFx: GH_FX, ease: EASE,
           tryInfo: function () { return { cfg: CFG, last: tlast, mode: tstate.mode, cells: tcells.map(function (c, i) { return c ? { i: i, tier: c.tier, gen: c.gen, x: c.spr ? c.spr.x : null, y: c.spr ? c.spr.y : null, sx: c.spr ? c.spr.sx : null } : null; }) }; }
         };
+      })();
+    </script>
+    <aside class="mfc-toc" id="mfc-toc" aria-label="목차">
+      <div class="mfc-toc-title">목차</div>
+      <ol>
+        <li><a href="#try">직접 해보기</a></li>
+        <li><a href="#map">D1~D13</a></li>
+        <li><a href="#s1">1 머지</a></li>
+        <li><a href="#s2">2 드래그 · 놓기</a></li>
+        <li><a href="#s3">3 탭</a></li>
+        <li><a href="#s4">4 생성기 배출</a></li>
+        <li><a href="#s6">5 시작 거리</a></li>
+        <li><a href="#static">재생 없는 항목</a></li>
+        <li><a href="#notes">가정 · 제외</a></li>
+      </ol>
+    </aside>
+    <button type="button" class="mfc-toc-fab" id="mfc-toc-fab" aria-expanded="false" aria-controls="mfc-toc">목차</button>
+
+    <script>
+      (function () {
+        "use strict";
+        var toc = document.getElementById("mfc-toc"), fab = document.getElementById("mfc-toc-fab");
+        var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+        var secs = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+        var ticking = false;
+
+        function setOpen(on) {
+          toc.classList.toggle("is-open", on);
+          fab.setAttribute("aria-expanded", String(on));
+        }
+        function spy() {
+          ticking = false;
+          var cur = 0, i;
+          /* active = last section whose top has passed the line 40% down the viewport; at the page bottom, the last one */
+          var line = window.innerHeight * 0.4;
+          for (i = 0; i < secs.length; i++) {
+            if (secs[i] && secs[i].getBoundingClientRect().top <= line) cur = i;
+          }
+          if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = secs.length - 1;
+          links.forEach(function (a, k) {
+            if (k === cur) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+          });
+        }
+        function onScroll() {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(spy);
+        }
+        fab.addEventListener("click", function (e) { e.stopPropagation(); setOpen(!toc.classList.contains("is-open")); });
+        links.forEach(function (a, k) {
+          a.addEventListener("click", function (e) {
+            e.preventDefault();
+            if (secs[k]) secs[k].scrollIntoView({ behavior: "smooth", block: "start" });
+            setOpen(false);
+          });
+        });
+        document.addEventListener("click", function (e) {
+          if (toc.classList.contains("is-open") && !toc.contains(e.target)) setOpen(false);
+        });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape") setOpen(false); });
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onScroll);
+        spy();
       })();
     </script>
     <script src="../app.js"></script>
