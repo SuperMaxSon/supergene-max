@@ -6,13 +6,13 @@
     <title>머지 손맛 비교 연출집 — 가십하버식 vs 현행</title>
     <meta
       name="description"
-      content="가십하버식 머지 연출과 Rosewood 현행 연출을 같은 무대에서 나란히 재생해 체감을 비교한다. 머지 · 드래그 · 탭 · 생성기 배출 · 대상 하이라이트 · 드래그 시작 거리 6장면과 재생이 안 되는 항목 표, 0.25배속 슬로우 지원."
+      content="가십하버식 머지 연출과 Rosewood 현행 연출을 같은 무대에서 나란히 재생해 체감을 비교하고, 보드를 직접 끌어 보며 항목별로 바꿔 볼 수도 있다. 머지 · 드래그 · 탭 · 생성기 배출 · 대상 하이라이트 · 드래그 시작 거리 6장면과 재생이 안 되는 항목 표, 0.25배속 슬로우 지원."
     />
     <meta name="color-scheme" content="light" />
     <link rel="stylesheet" href="../style.css" />
     <style>
       .mfc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); }
-      .mfc-pair { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+      .mfc-pair { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 100%; overflow-x: auto; }
       .mfc-col { display: flex; flex-direction: column; gap: 6px; }
       .mfc-lab { font-size: 12.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; align-self: flex-start; color: #fff; }
       .mfc-lab.is-cur { background: #2a78d6; }
@@ -41,6 +41,17 @@
       .mfc-card td:first-child { white-space: nowrap; font-weight: 700; }
       .mfc-asm { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 0 6px; border-radius: 999px; background: #fdeee7; color: #a3441d; margin-left: 4px; vertical-align: 1px; }
       .mfc-thr { border: 1.5px dashed #c0392b; border-radius: 50%; box-sizing: border-box; }
+      .mfc-try-grid { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+      .mfc-try-col { flex: 0 1 484px; min-width: 0; }
+      .mfc-try-panel { flex: 1 1 300px; min-width: 260px; }
+      .mfc-try-wrap { position: relative; overflow: hidden; }
+      .mfc-try { transform-origin: 0 0; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+      .mfc-tel { white-space: pre-wrap; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 10px; background: #faf7f0; border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; min-height: 5.4em; color: var(--text-dim); }
+      .mfc-prow { margin-bottom: 9px; }
+      .mfc-pl { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 3px; }
+      .mfc-pb { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .mfc-pb input[type="range"] { flex: 1 1 120px; min-width: 100px; }
+      .mfc-pv { font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-dim); min-width: 96px; }
       .mfc-warn { margin-top: 10px; padding: 10px 14px; border-left: 4px solid #eb6834; background: rgba(235, 104, 52, 0.09); border-radius: 6px; }
     </style>
   </head>
@@ -67,6 +78,7 @@
     <nav class="nav">
       <div class="wrap wrap--wide nav-inner">
         <a class="nav-back" href="../index.html">← 허브</a>
+        <a class="nav-back" href="#try">직접 해보기</a>
         <a class="nav-back" href="#map">D1~D13</a>
         <a class="nav-back" href="#s1">머지</a>
         <a class="nav-back" href="#s2">드래그·놓기</a>
@@ -97,10 +109,78 @@
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">현행 = 클라 9798bffd</span>
           <span class="tag">가십하버 = 원문 값(2026-11-20 조사)</span>
-          <span class="tag">비교 6장면 + 표</span>
+          <span class="tag">직접 해보기 + 비교 6장면</span>
         </div>
       </div>
     </header>
+
+    <!-- 직접 해보기 -->
+    <section class="doc-section" id="try">
+      <div class="wrap wrap--wide">
+        <h2 class="doc-h2">
+          직접 해보기
+          <span class="doc-h2-sub">보드를 직접 끌어 보며 항목을 하나씩 현행 / 가십하버식으로 바꿔 본다 - 코드로만 따라갈 수 있는 항목만</span>
+        </h2>
+        <div class="mfc-card">
+          <div class="mfc-try-grid">
+            <div class="mfc-try-col">
+              <div class="mfc-try-wrap" id="try-wrap"><div class="mfc-stage mfc-try" id="try-stage"></div></div>
+              <div class="mfc-tel" id="try-tel"></div>
+            </div>
+            <div class="mfc-try-panel">
+              <div class="mfc-ctl" style="margin-top: 0">
+                <span class="mfc-l">프리셋</span>
+                <button type="button" class="mfc-btn" id="try-p-cur">현행 전부</button>
+                <button type="button" class="mfc-btn" id="try-p-gh">가십하버식 전부</button>
+                <button type="button" class="mfc-btn" id="try-p-ab">A/B 전환</button>
+              </div>
+              <div id="try-panel"></div>
+              <div class="mfc-ctl">
+                <span class="mfc-l">속도</span>
+                <div class="mfc-seg" data-speed>
+                  <button type="button" data-sp="1" aria-pressed="true">1×</button>
+                  <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+                  <button type="button" data-sp="0.25" aria-pressed="false">0.25×</button>
+                </div>
+                <button type="button" class="mfc-btn" data-play="try">보드 초기화</button>
+              </div>
+            </div>
+          </div>
+          <div class="notes">
+            <div class="note">
+              <div class="note-title">해 보는 법</div>
+              <p>
+                같은 단계 아이템끼리 끌어서 합치고, 다른 단계 위에 놓으면 자리가 바뀌고, 보드 밖에 놓으면 원위치로 돌아갑니다. 생성기(도구함)를 누르면 새 상품이 나옵니다.
+                폰으로 열면 <b>화면 폭 비율로 잡은 임계값이 실제 손가락 거리</b>로 느껴집니다(데스크톱 마우스는 거리가 너무 짧아 차이가 안 느껴질 수 있습니다).
+                <b>빠르게 밀어서 대상 칸을 살짝 지나쳐 놓아 보세요</b> - 계측 줄에서 「손 칸 / 칩 칸 / 판정 칸」이 어떻게 갈리는지, 놓기 보정이 언제 켜지는지 보입니다.
+                추종 계수를 1로 하면 칩이 손가락에 붙고, 0.25배속에서는 지연이 눈에 보입니다.
+                머지 연출은 현행 그대로이고 소리 · 햅틱은 없습니다. 클라는 건드리지 않았습니다.
+              </p>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>항목</th><th>Rosewood 현행</th><th>가십하버 (원문 값)</th><th>현행이 다른 이유</th><th>적용하면 코드 어디</th><th>걸리는 점</th></tr></thead>
+              <tbody>
+                <tr><td>D13 끌기 시작 거리</td><td>10 디자인 단위 (캔버스 720 폭 기준 1.39%)</td><td>10 물리 px (1080 폭 기준 0.93%)</td><td><b>원작과 비교해서 정한 값이 아님.</b> 계획서 §1(2026-09-21)에서 탭과 드래그를 가르려고 정한 값. 숫자 10 의 이유는 기록 없음</td><td><code>BoardInputNode.ts:26</code> <code>DRAG_THRESHOLD_PX</code> 한 줄</td><td>같은 판별기가 생성기 탭도 가름 - 줄이면 손떨림에 탭이 드래그로 읽힐 수 있음(추정). 50대+ 접근성 기준과 방향이 반대. 터치 좌표 단위(디자인 단위인지)는 미확인</td></tr>
+                <tr><td>D3 추종 lerp</td><td>0.6 (60fps 환산, 조금 끌려옴)</td><td>즉시 (이벤트마다 위치 대입)</td><td><b>의도된 차이.</b> 코드 주석: 「정본이 잡아 둔 조금 끌려오는 감을 유지하기 위해서」. 정본 = 허브 연출집. 원작과 비교한 값 아님. 「무게감」이라는 표현은 못 찾음</td><td><code>MergeFxConfig.ts</code> <code>a3.follow</code> = 1 (값 하나). 허브 연출집 기본값 / Tuner 도 같이 맞춰야 함</td><td>놓기 보정과 같은 증상(칩이 손보다 뒤처져 보임)을 다른 쪽에서 푸는 방법. 둘 다 켜면 이득이 겹칠 수 있음</td></tr>
+                <tr><td>D3 집기 확대</td><td>1.3배 (100ms backOut)</td><td>변화 없음</td><td>정본 연출집 <code>a3.pickScale</code> 값(계획서 1.08 에서 재튜닝). 이유를 적은 문장은 못 찾음</td><td><code>a3.pickScale</code> = 1</td><td>손가락에 가려지는 칩을 키워 「잡았다」를 알리는 역할(추정). 시각 피드백은 접근성 기준</td></tr>
+                <tr><td>D3 누름 확대</td><td>1.2배 (50ms quadOut)</td><td>변화 없음</td><td>정본 연출집 <code>a1</code> 값. 이유 문장은 못 찾음</td><td><code>a1.pressSX</code> / <code>pressSY</code> = 1</td><td>누르는 순간 반응이 사라짐</td></tr>
+                <tr><td>D5 빈 칸에 놓기</td><td>스냅 60ms + 0.9 스쿼시 + backOut 150ms (310ms)</td><td>200ms OutQuad 이동</td><td>정본 연출집 <code>a3</code> 값. 이유 문장은 못 찾음</td><td><code>a3.snapSec</code> / <code>landSX</code> / <code>landSY</code> / <code>landOutSec</code> 값 (스쿼시는 1 로 눕혀 근사)</td><td>스냅 단계가 값만으로는 완전히 같아지지 않음(근사)</td></tr>
+                <tr><td>D5 무효 복귀</td><td>260ms backOut</td><td>200ms OutQuad</td><td>정본 연출집 <code>c1</code> 값. 이유 문장은 못 찾음</td><td><code>c1.snapSec</code> / <code>snapEase</code></td><td>-</td></tr>
+                <tr><td>D8 탭</td><td>1.2 → 1.1 → 1.0 (약 230ms)</td><td>젤리 900ms (5구간)</td><td><b>의도적으로 안 옮김.</b> <code>MergeFxConfig</code> a1 주석: 원위치 복귀(<code>releaseSec</code>)는 탭 반응이 늘어져서 옮기지 않는다</td><td>A1 구현 수정 필요 (<code>a1</code> 은 3구간, 원작은 5구간이라 값만으로 안 됨)</td><td>생성기 연타가 잦아 길게 출렁이면 겹침(추정)</td></tr>
+                <tr><td>D9 생성기 배출</td><td>베지어 420ms + 착지 (약 720ms), 최대 1.25배</td><td>점프 600ms + 슬라이드 250ms (약 900ms), 최대 1.5배</td><td>정본 연출집 <code>a2</code> 값. 이유 문장은 못 찾음</td><td><code>a2</code> 값 + 경로 구현 수정 필요 (원작은 2단, 현행은 1단)</td><td>가십하버 점프 곡선 형태는 원문에 없어 데모는 가정(포물선)</td></tr>
+                <tr><td>D4 놓기 보정</td><td><b>이미 반영</b> (<code>b15ceb89</code>, 11-20): 표시가 켜진 뒤 150ms 안에 이웃 8칸에서 떼면 그 칸으로</td><td>0.15초 안, 인접 1칸이면 마지막 대상과 머지</td><td>-</td><td>-</td><td>데모는 켬/끔 토글(기본 켬)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note" style="margin-top: 8px">
+            표에는 에셋 · 시트 · 구조 변경 없이 코드만으로 따라갈 수 있는 항목만 넣었습니다. 소리(D1) · 햅틱(D10) · 머지 단계 차등(D2) · 머지 구조(D6) · 하이라이트(D7)는
+            아래 비교 장면과 값 표에 있습니다. 「이유 문장은 못 찾음」은 계획서 / 주석 / 커밋 제목을 읽어 본 범위이고 전수 조사는 아닙니다.
+          </p>
+        </div>
+      </div>
+    </section>
 
     <!-- D1~D13 대응 -->
     <section class="doc-section" id="map">
@@ -115,17 +195,17 @@
             <tbody>
               <tr><td>D1</td><td>사운드</td><td><a href="#static">재생 없는 항목 표</a> (웹 재생 불가)</td></tr>
               <tr><td>D2</td><td>머지 등급 차등</td><td><a href="#s1">1. 머지</a></td></tr>
-              <tr><td>D3</td><td>드래그 집기</td><td><a href="#s2">2. 드래그 · 놓기</a></td></tr>
-              <tr><td>D4</td><td>놓기 보정</td><td>클라에 이미 반영돼 뺌</td></tr>
-              <tr><td>D5</td><td>착지 · 이동</td><td><a href="#s2">2. 드래그 · 놓기</a></td></tr>
+              <tr><td>D3</td><td>드래그 집기</td><td><a href="#s2">2. 드래그 · 놓기</a> · <a href="#try">직접 해보기</a></td></tr>
+              <tr><td>D4</td><td>놓기 보정</td><td>클라에 이미 반영돼 비교 장면은 뺌 (<a href="#try">직접 해보기</a>에는 켬/끔 토글)</td></tr>
+              <tr><td>D5</td><td>착지 · 이동</td><td><a href="#s2">2. 드래그 · 놓기</a> · <a href="#try">직접 해보기</a></td></tr>
               <tr><td>D6</td><td>머지 타격</td><td><a href="#s1">1. 머지</a></td></tr>
               <tr><td>D7</td><td>대상 하이라이트</td><td><a href="#s5">5. 대상 하이라이트</a></td></tr>
-              <tr><td>D8</td><td>탭 반응</td><td><a href="#s3">3. 탭</a></td></tr>
-              <tr><td>D9</td><td>생성기 배출</td><td><a href="#s4">4. 생성기 배출</a></td></tr>
+              <tr><td>D8</td><td>탭 반응</td><td><a href="#s3">3. 탭</a> · <a href="#try">직접 해보기</a></td></tr>
+              <tr><td>D9</td><td>생성기 배출</td><td><a href="#s4">4. 생성기 배출</a> · <a href="#try">직접 해보기</a></td></tr>
               <tr><td>D10</td><td>햅틱</td><td><a href="#static">재생 없는 항목 표</a> (웹 재생 불가)</td></tr>
               <tr><td>D11</td><td>생성기 탭 규칙</td><td><a href="#static">재생 없는 항목 표</a> (차이 없음)</td></tr>
               <tr><td>D12</td><td>연속 머지 잠금</td><td><a href="#static">재생 없는 항목 표</a> (차이 없음)</td></tr>
-              <tr><td>D13</td><td>드래그 시작 거리</td><td><a href="#s6">6. 드래그 시작 거리</a></td></tr>
+              <tr><td>D13</td><td>드래그 시작 거리</td><td><a href="#s6">6. 드래그 시작 거리</a> · <a href="#try">직접 해보기</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -568,14 +648,15 @@
         var GH_FRAG_LIFE = 0.6, GH_FLASH_LIFE = 0.3, GH_RING_LIFE = 0.5, GH_B_SPEED_RATIO = 0.5;
 
         /* ---------- stage ---------- */
-        function Stage(el) {
+        function Stage(el, rows) {
+          rows = rows || ROWS;
           this.el = el;
           this.era = 0;
           el.style.width = W + "px";
-          el.style.height = H + "px";
+          el.style.height = rows * CW + "px";
           var bg = document.createElement("div");
           bg.className = "mfc-bg";
-          for (var i = 0; i < COLS * ROWS; i++) {
+          for (var i = 0; i < COLS * rows; i++) {
             var c = document.createElement("div");
             c.className = "mfc-cell";
             c.style.left = (i % COLS) * CW + "px";
@@ -818,7 +899,7 @@
           var stop = false, last = performance.now(), era = st.era;
           function f(now) {
             if (stop || era !== st.era) return;
-            var dt = Math.min(0.05, (now - last) / 1000) * SPEED;
+            var dt = Math.max(0, Math.min(0.05, (now - last) / 1000)) * SPEED;
             last = now;
             if (mode === "cur") {
               var k = 1 - Math.pow(1 - 0.6, dt * 60);
@@ -1010,7 +1091,7 @@
           var era = st.era, last = performance.now();
           function f(now) {
             if (era !== st.era) return;
-            var dt = Math.min(0.05, (now - last) / 1000) * SPEED;
+            var dt = Math.max(0, Math.min(0.05, (now - last) / 1000)) * SPEED;
             last = now;
             if (fn(dt)) return;
             requestAnimationFrame(f);
@@ -1220,6 +1301,336 @@
           play: function () { return Promise.all([s6Side(this.cur, "cur", 10 / 720), s6Side(this.gh, "gh", 10 / 1080)]); }
         };
 
+        /* ---------- hands-on sandbox ---------- */
+        var T_COLS = 5, T_ROWS = 4, T_MAX = 5, SNAP_MS = 150;
+        var PRESET_CUR = { thr: 10 / 720, lerp: 0.6, pick: 1.3, press: 1.2, move: "cur", back: "cur", tap: "cur", spawn: "cur" };
+        var PRESET_GH = { thr: 10 / 1080, lerp: 1, pick: 1, press: 1, move: "gh", back: "gh", tap: "gh", spawn: "gh" };
+        var CFG = { snap: true };
+        var TROWS = [
+          { k: "thr", label: "끌기 시작 거리 (화면 폭 비율)", range: { min: 0.002, max: 0.03, step: 0.0005 }, fmt: function (v) { return (v * 100).toFixed(2) + "% " + (v * W).toFixed(1) + "px"; } },
+          { k: "lerp", label: "손가락 추종 계수 (1 = 즉시)", range: { min: 0.1, max: 1, step: 0.05 }, fmt: function (v) { return v.toFixed(2); } },
+          { k: "pick", label: "집었을 때 확대", opts: [["현행 1.3배", 1.3], ["없음", 1]] },
+          { k: "press", label: "누를 때 확대", opts: [["현행 1.2배", 1.2], ["없음", 1]] },
+          { k: "move", label: "빈 칸에 놓기", opts: [["현행 310ms 스냅", "cur"], ["가십하버 200ms 이동", "gh"]] },
+          { k: "back", label: "안 되는 곳에 놓으면 (원위치)", opts: [["현행 260ms backOut", "cur"], ["가십하버 200ms", "gh"]] },
+          { k: "tap", label: "탭 반응", opts: [["현행 230ms", "cur"], ["가십하버 젤리 900ms", "gh"]] },
+          { k: "spawn", label: "생성기 배출", opts: [["현행 720ms", "cur"], ["가십하버 900ms", "gh"]] },
+          { k: "snap", label: "놓기 보정 (D4, 빌드에 반영됨)", opts: [["켬", true], ["끔", false]] }
+        ];
+        var TREF = {};
+        for (var pk in PRESET_CUR) CFG[pk] = PRESET_CUR[pk];
+        var tst = new Stage(document.getElementById("try-stage"), T_ROWS);
+        var tel = document.getElementById("try-stage"), telOut = document.getElementById("try-tel");
+        var tcells = [], tstate = { mode: "idle" }, tbound = false, tlast = {};
+
+        function mk(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+        function tPos(i) { return tst.cp(i % T_COLS, Math.floor(i / T_COLS)); }
+        function tCellAt(p) {
+          var c = Math.floor(p.x / CW), r = Math.floor(p.y / CW);
+          if (c < 0 || c >= T_COLS || r < 0 || r >= T_ROWS) return -1;
+          return r * T_COLS + c;
+        }
+        function tNeigh(a, b) {
+          var dc = Math.abs(a % T_COLS - b % T_COLS), dr = Math.abs(Math.floor(a / T_COLS) - Math.floor(b / T_COLS));
+          return dc <= 1 && dr <= 1 && dc + dr > 0;
+        }
+        function tLab(i) { return i < 0 ? "보드 밖" : "(" + (i % T_COLS + 1) + "열 " + (Math.floor(i / T_COLS) + 1) + "행)"; }
+        function tMergeable(a, b) { return !a.gen && !b.gen && a.tier === b.tier && a.tier < T_MAX; }
+        function tToStage(e) {
+          var r = tel.getBoundingClientRect();
+          return { x: (e.clientX - r.left) * (tel.offsetWidth / r.width) - tel.clientLeft, y: (e.clientY - r.top) * (tel.offsetHeight / r.height) - tel.clientTop };
+        }
+        function tFit() {
+          var wrap = document.getElementById("try-wrap");
+          var s = Math.min(1, wrap.parentNode.clientWidth / tel.offsetWidth);
+          tel.style.transform = "scale(" + s + ")";
+          wrap.style.width = tel.offsetWidth * s + "px";
+          wrap.style.height = tel.offsetHeight * s + "px";
+        }
+
+        /* sequence of segments on an item; every new sequence cancels the older one (token) */
+        function tseq(it, segs, keep) {
+          var tok = keep ? it.tok : ++it.tok, p = Promise.resolve(true);
+          segs.forEach(function (sg) {
+            p = p.then(function (ok) {
+              if (!ok || it.tok !== tok) return false;
+              if (sg[0] === 0) { it.spr.set(sg[1]); return true; }
+              var s0 = {}, k;
+              for (k in sg[1]) s0[k] = it.spr[k];
+              return tst.tw(sg[0], function (e) {
+                if (it.tok !== tok) return;
+                var q = {};
+                for (var key in sg[1]) q[key] = s0[key] + (sg[1][key] - s0[key]) * e;
+                it.spr.set(q);
+              }, sg[2]).then(function (ok2) { return ok2 && it.tok === tok; });
+            });
+          });
+          return p;
+        }
+        function tHome(it) { return function () { if (it.spr && it.spr.el) it.spr.el.style.zIndex = 3; }; }
+        function tSettle(at) {
+          return CFG.move === "cur"
+            ? [[60, { x: at.x, y: at.y, sx: 1, sy: 1 }, "quadOut"], [100, { sx: 0.9, sy: 0.9 }, "quadOut"], [150, { sx: 1, sy: 1 }, "backOut"]]
+            : [[0, { sx: 1, sy: 1 }], [200, { x: at.x, y: at.y }, "quadOut"]];
+        }
+        function tBack(at) {
+          return CFG.back === "cur"
+            ? [[260, { x: at.x, y: at.y, sx: 1, sy: 1 }, "backOut"]]
+            : [[0, { sx: 1, sy: 1 }], [200, { x: at.x, y: at.y }, "quadOut"]];
+        }
+
+        function tPut(c, r, tier, gen) {
+          var i = r * T_COLS + c, p = tPos(i);
+          var it = { tier: tier, gen: !!gen, cell: i, tok: 0, spr: tst.item(gen ? 104 : 200 + tier, p.x, p.y) };
+          tcells[i] = it;
+          return it;
+        }
+        function tryInit() {
+          tst.reset();
+          tcells = new Array(T_COLS * T_ROWS);
+          tstate = { mode: "idle" };
+          tPut(0, 1, 0, true);
+          [[2, 0, 1], [3, 2, 1], [1, 3, 2], [4, 1, 2], [0, 3, 3], [4, 3, 3]].forEach(function (a) { tPut(a[0], a[1], a[2], false); });
+          tst.caption("같은 단계끼리 끌어서 합치기 / 생성기를 누르면 새 상품");
+          buildPanel();
+          tryBind();
+          tFit();
+          updateTel();
+        }
+
+        function updateTel() {
+          var L = [];
+          L.push("현재 임계 " + (CFG.thr * W).toFixed(1) + "px (화면 폭의 " + (CFG.thr * 100).toFixed(2) + "%) / 추종 " + CFG.lerp.toFixed(2));
+          if (tlast.start) L.push("마지막 끌기 시작: 이동 " + tlast.start.px.toFixed(1) + "px, 누른 지 " + Math.round(tlast.start.ms) + "ms (그때 임계 " + tlast.start.thr.toFixed(1) + "px)");
+          if (tlast.drop) {
+            var d = tlast.drop;
+            L.push("마지막 놓기: 손 " + tLab(d.hand) + " / 칩 " + tLab(d.chip) + " / 판정 " + tLab(d.target) + (d.snapped ? "  [놓기 보정 적용]" : "") + (d.hand !== d.chip ? "  [손과 칩이 다른 칸]" : ""));
+          }
+          telOut.textContent = L.join("\n");
+        }
+
+        function buildPanel() {
+          var host = document.getElementById("try-panel");
+          host.innerHTML = "";
+          TREF = {};
+          TROWS.forEach(function (r) {
+            var row = mk("div", "mfc-prow"), body = mk("div", "mfc-pb"), seg = mk("div", "mfc-seg"), ref = { btns: [] };
+            row.appendChild(mk("div", "mfc-pl", r.label));
+            if (r.range) {
+              var inp = mk("input");
+              inp.type = "range"; inp.min = r.range.min; inp.max = r.range.max; inp.step = r.range.step; inp.value = CFG[r.k];
+              inp.addEventListener("input", function () { CFG[r.k] = parseFloat(inp.value); refreshPanel(); updateTel(); });
+              ref.inp = inp; ref.val = mk("span", "mfc-pv");
+              body.appendChild(inp); body.appendChild(ref.val);
+              [["현행", PRESET_CUR[r.k]], ["가십하버", PRESET_GH[r.k]]].forEach(function (o) {
+                var b = mk("button", null, o[0]);
+                b.type = "button";
+                b.addEventListener("click", function () { CFG[r.k] = o[1]; refreshPanel(); updateTel(); });
+                seg.appendChild(b); ref.btns.push(b);
+              });
+              ref.pre = [PRESET_CUR[r.k], PRESET_GH[r.k]];
+            } else {
+              r.opts.forEach(function (o) {
+                var b = mk("button", null, o[0]);
+                b.type = "button";
+                b.addEventListener("click", function () { CFG[r.k] = o[1]; refreshPanel(); updateTel(); });
+                seg.appendChild(b); ref.btns.push(b);
+              });
+              ref.pre = r.opts.map(function (o) { return o[1]; });
+            }
+            body.appendChild(seg);
+            row.appendChild(body);
+            host.appendChild(row);
+            TREF[r.k] = ref;
+          });
+          refreshPanel();
+        }
+        function refreshPanel() {
+          TROWS.forEach(function (r) {
+            var ref = TREF[r.k];
+            if (!ref) return;
+            if (r.range) { ref.inp.value = CFG[r.k]; ref.val.textContent = r.fmt(CFG[r.k]); }
+            ref.btns.forEach(function (b, i) {
+              var on = typeof CFG[r.k] === "number" ? Math.abs(CFG[r.k] - ref.pre[i]) < 1e-9 : CFG[r.k] === ref.pre[i];
+              b.setAttribute("aria-pressed", String(on));
+            });
+          });
+        }
+        function applyPreset(p) { for (var k in p) CFG[k] = p[k]; refreshPanel(); updateTel(); }
+
+        function tHover(s, p) {
+          var i = tCellAt(p), target = (i >= 0 && i !== s.from && tcells[i] && tcells[i].spr && tMergeable(s.it, tcells[i])) ? i : -1;
+          if (target === s.hovCell) return;
+          if (s.hov) { s.hov.hide(); s.hov = null; }
+          s.hovCell = target;
+          if (target >= 0) { s.hov = hoverCur(tst, tPos(target)); s.lit = target; s.litAt = performance.now(); }
+        }
+        function tFollow(s) {
+          var era = tst.era, last = performance.now(), it = s.it;
+          function f(now) {
+            if (era !== tst.era || s.mode !== "drag") return;
+            var dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+            last = now;
+            var k = 1 - Math.pow(1 - CFG.lerp, dt * SPEED * 60);
+            it.spr.set({ x: it.spr.x + (s.p.x - it.spr.x) * k, y: it.spr.y + (s.p.y - it.spr.y) * k });
+            requestAnimationFrame(f);
+          }
+          requestAnimationFrame(f);
+        }
+        function tBegin(s, dist) {
+          s.mode = "drag";
+          s.ring.kill();
+          s.lit = -1; s.litAt = 0; s.hov = null; s.hovCell = -1;
+          s.it.spr.el.style.zIndex = 5;
+          s.it.spr.set({ sx: 1, sy: 1 });
+          if (CFG.pick !== 1) tseq(s.it, [[100, { sx: CFG.pick, sy: CFG.pick }, "backOut"]]); else ++s.it.tok;
+          tlast.start = { px: dist, ms: performance.now() - s.downT, thr: s.thr };
+          updateTel();
+          tFollow(s);
+          tHover(s, s.p);
+        }
+        function tTap(s) {
+          var it = s.it;
+          tstate = { mode: "idle" };
+          tseq(it, CFG.tap === "cur"
+            ? [[80, { sx: 1.1, sy: 1.1 }, "quadOut"], [100, { sx: 1, sy: 1 }, "backOut"]]
+            : [[0, { sx: 1, sy: 1 }], [100, { sx: 0.8, sy: 0.8 }, "quadOut"], [200, { sx: 1.2, sy: 1.2 }, "quadOut"], [200, { sx: 1, sy: 1 }, "quadOut"], [200, { sx: 1.1, sy: 1.1 }, "quadOut"], [200, { sx: 1, sy: 1 }, "quadOut"]]);
+          if (it.gen) tSpawn(it);
+        }
+        function tSpawn(gen) {
+          var from = tPos(gen.cell), best = -1, bd = 1e9, i;
+          for (i = 0; i < tcells.length; i++) {
+            if (tcells[i]) continue;
+            var d = Math.abs(i % T_COLS - gen.cell % T_COLS) + Math.abs(Math.floor(i / T_COLS) - Math.floor(gen.cell / T_COLS));
+            if (d < bd) { bd = d; best = i; }
+          }
+          if (best < 0) { tst.caption("보드가 가득 찼어요"); return; }
+          var to = tPos(best), spr = tst.item(201, from.x, from.y);
+          spr.el.style.zIndex = 4;
+          var it = { tier: 1, gen: false, cell: best, tok: 0, spr: spr };
+          tcells[best] = it;
+          var tok = ++it.tok;
+          if (CFG.spawn === "cur") {
+            spr.set({ sx: 0.5, sy: 0.5 });
+            var dx = to.x - from.x, dy = to.y - from.y, lift = Math.max(10, Math.sqrt(dx * dx + dy * dy) * 0.6);
+            var fly = tst.tw(420, function (e, r) {
+              if (it.tok !== tok) return;
+              var u = 1 - r;
+              spr.set({ x: from.x + (to.x - from.x) * (3 * u * r * r + r * r * r), y: u * u * u * from.y + 3 * u * u * r * (from.y - lift) + 3 * u * r * r * (to.y - lift * 0.6) + r * r * r * to.y });
+            }, "linear");
+            var pop = tseq(it, [[200, { sx: 1.25, sy: 1.25 }, "quadOut"], [200, { sx: 1, sy: 1 }, "quadIn"]], true);
+            Promise.all([fly, pop]).then(function () {
+              if (it.tok !== tok) return;
+              spr.set({ x: to.x, y: to.y });
+              return tseq(it, [[100, { sx: 1.2, sy: 1.2 }, "quadOut"], [200, { sx: 1, sy: 1 }, "backOut"]], true);
+            }).then(tHome(it));
+          } else {
+            spr.set({ sx: 0, sy: 0 });
+            var jx = from.x + (to.x - from.x) * 0.9, jy = from.y + (to.y - from.y) * 0.9, hgt = 60 * K;
+            tst.wait(50).then(function (ok) {
+              return ok && tst.tw(600, function (e, r) {
+                if (it.tok !== tok) return;
+                spr.set({ x: from.x + (jx - from.x) * r, y: from.y + (jy - from.y) * r - hgt * 4 * r * (1 - r) });
+              }, "linear");
+            }).then(function (ok) {
+              if (!ok || it.tok !== tok) return false;
+              var x1 = spr.x, y1 = spr.y;
+              return tst.tw(250, function (e) { if (it.tok !== tok) return; spr.set({ x: x1 + (to.x - x1) * e, y: y1 + (to.y - y1) * e }); }, "quadOut");
+            }).then(tHome(it));
+            tst.wait(50).then(function (ok) {
+              return ok && tseq(it, [[100, { sx: 0.8, sy: 0.8 }, "quadOut"], [200, { sx: 1.5, sy: 1.5 }, "quadOut"], [300, { sx: 1, sy: 1 }, "quadOut"]], true);
+            });
+          }
+        }
+        function tDrop(s, p) {
+          var it = s.it, from = s.from, hand = p ? tCellAt(p) : -1;
+          var chip = tCellAt({ x: it.spr.x, y: it.spr.y }), target = hand, snapped = false, now = performance.now();
+          s.mode = "done";
+          tstate = { mode: "idle" };
+          if (CFG.snap && target >= 0 && s.lit >= 0 && target !== s.lit && now - s.litAt <= SNAP_MS && tNeigh(s.lit, target)) { target = s.lit; snapped = true; }
+          tlast.drop = { hand: hand, chip: chip, target: target, snapped: snapped };
+          updateTel();
+          if (s.hov) s.hov.hide();
+          var cur = { x: it.spr.x, y: it.spr.y }, other = target >= 0 ? tcells[target] : null;
+          if (target < 0 || target === from) {
+            tseq(it, tBack(tPos(from))).then(tHome(it));
+            return;
+          }
+          if (!other) {
+            tcells[from] = null; tcells[target] = it; it.cell = target;
+            tseq(it, tSettle(tPos(target))).then(tHome(it));
+            return;
+          }
+          if (tMergeable(it, other)) { tMerge(it, other, from, target, cur); return; }
+          if (!it.gen && !other.gen && it.tier === other.tier) {
+            tseq(it, tBack(tPos(from))).then(tHome(it));
+            return;
+          }
+          tcells[from] = other; tcells[target] = it; it.cell = target; other.cell = from;
+          other.spr.set({ sx: 1, sy: 1 });
+          tseq(other, tSettle(tPos(from)));
+          tseq(it, tSettle(tPos(target))).then(tHome(it));
+        }
+        function tMerge(it, other, from, dst, cur) {
+          var at = tPos(dst), code = 200 + it.tier;
+          tcells[from] = null;
+          var ghost = tst.item(code, cur.x, cur.y);
+          ghost.el.style.zIndex = 7;
+          it.spr.kill();
+          other.spr.kill();
+          var res = tst.item(code + 1, cur.x, cur.y);
+          res.set({ sx: 1.3, sy: 1.3 });
+          var nit = { tier: it.tier + 1, gen: false, cell: dst, tok: 0, spr: res };
+          tcells[dst] = nit;
+          ghost.to(50, { x: at.x, y: at.y, sx: 0.55, sy: 0.55, a: 0 }, "quadIn").then(function () { ghost.kill(); });
+          tst.wait(50).then(function (ok) { return ok && mergeClip(tst, at); });
+          tseq(nit, CUR_RESULT(at, cur));
+        }
+
+        function tryBind() {
+          if (tbound) return;
+          tbound = true;
+          tel.addEventListener("pointerdown", function (e) {
+            if (tstate.mode !== "idle") return;
+            var p = tToStage(e), i = tCellAt(p);
+            if (i < 0 || !tcells[i] || !tcells[i].spr) return;
+            e.preventDefault();
+            try { tel.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+            var s = { mode: "press", it: tcells[i], from: i, down: p, p: p, downT: performance.now(), pid: e.pointerId, thr: CFG.thr * W };
+            s.ring = tst.add(s.thr * 2, s.thr * 2, "", "mfc-thr", 8);
+            s.ring.set({ x: p.x, y: p.y });
+            tstate = s;
+            if (CFG.press !== 1) tseq(s.it, [[50, { sx: CFG.press, sy: CFG.press }, "quadOut"]]);
+          });
+          tel.addEventListener("pointermove", function (e) {
+            var s = tstate;
+            if (s.mode === "idle" || e.pointerId !== s.pid) return;
+            var p = tToStage(e);
+            s.p = p;
+            if (s.mode === "press") {
+              var d = Math.sqrt((p.x - s.down.x) * (p.x - s.down.x) + (p.y - s.down.y) * (p.y - s.down.y));
+              if (d >= s.thr) tBegin(s, d);
+            } else {
+              tHover(s, p);
+            }
+          });
+          function end(e, cancel) {
+            var s = tstate;
+            if (s.mode === "idle" || e.pointerId !== s.pid) return;
+            var p = tToStage(e);
+            s.p = p;
+            if (s.ring) s.ring.kill();
+            if (s.mode === "press") tTap(s); else tDrop(s, cancel ? null : p);
+          }
+          tel.addEventListener("pointerup", function (e) { end(e, false); });
+          tel.addEventListener("pointercancel", function (e) { end(e, true); });
+          window.addEventListener("resize", tFit);
+          document.getElementById("try-p-cur").addEventListener("click", function () { applyPreset(PRESET_CUR); });
+          document.getElementById("try-p-gh").addEventListener("click", function () { applyPreset(PRESET_GH); });
+          document.getElementById("try-p-ab").addEventListener("click", function () { applyPreset(CFG.move === "cur" && CFG.lerp === PRESET_CUR.lerp ? PRESET_GH : PRESET_CUR); });
+        }
+        S.try = { setup: tryInit, play: tryInit };
+
         /* ---------- wiring ---------- */
         function setSpeed(v) {
           SPEED = v;
@@ -1248,7 +1659,8 @@
         window.__mfc = {
           curResult: function (t) { var at = { x: 0, y: 0 }; return sampleSegs({ sx: 1.3 }, CUR_RESULT(at, at), t, "sx"); },
           ghResult: function (t) { return t < 100 ? 0.3 : sampleSegs({ sx: 0.3 }, GH_RESULT, t - 100, "sx"); },
-          clip: CLIP, ghFx: GH_FX, ease: EASE
+          clip: CLIP, ghFx: GH_FX, ease: EASE,
+          tryInfo: function () { return { cfg: CFG, last: tlast, mode: tstate.mode, cells: tcells.map(function (c, i) { return c ? { i: i, tier: c.tier, gen: c.gen, x: c.spr ? c.spr.x : null, y: c.spr ? c.spr.y : null, sx: c.spr ? c.spr.sx : null } : null; }) }; }
         };
       })();
     </script>
