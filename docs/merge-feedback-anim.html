@@ -82,8 +82,8 @@
         <div class="doc-meta">
           <span class="pill" style="--acc: var(--smg)">스토리 머지 프로토</span>
           <span class="tag">디자이너 튜닝용</span>
-          <span class="tag">연출 16종 · 값 저장 · 주고받기</span>
-          <span class="tag" id="mfx-ver">v4.4 · 2026-11-20 18:24</span>
+          <span class="tag">연출 15종 · 값 저장 · 주고받기</span>
+          <span class="tag" id="mfx-ver">v4.5 · 2026-11-24 16:00</span>
         </div>
       </div>
     </header>
@@ -337,26 +337,6 @@
         Spr.prototype.kill = function () { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); };
 
         /* 공통 조각 — 모든 인자를 밖에서 받는다. 수치는 표에서 온다. ------- */
-        /* 흔들림은 감쇠가 있어야 "거부" 로 읽힌다. 등폭 왕복은 그냥 진동이다.
-           클라와 같은 식이다 — 감쇠표 앞에서 cycles 칸만 밟고, 한 칸 = dur / (cycles + 2),
-           복귀만 2칸 길이 backOut. cycles 를 안 주면 4(= 예전 dur/6 4회)라 기존 호출은 그대로다. */
-        var SHAKE_DAMPING = [1, -0.7, 0.45, -0.25];   // 클라 BoardDragController.ts:30
-        function shake(s, amp, dur, cycles) {
-          var x0 = s.x;
-          amp = px(amp);                                 // 진폭은 클라 px — 무대 칸 비율로 옮긴다(PX_K)
-          // 클라 BoardDragController.ts:462-463 — cycles 는 감쇠표 길이로 자르고 step = sec / (cycles + 2)
-          var n = Math.min(cycles == null ? SHAKE_DAMPING.length : cycles, SHAKE_DAMPING.length);
-          var step = dur / (n + 2);
-          var p = Promise.resolve();
-          for (var i = 0; i < n; i++) {
-            (function (d) {
-              // 클라 BoardDragController.ts:469 — 구간마다 quadOut, 절대 좌표로 밟는다
-              p = p.then(function () { return s.to(step, { x: x0 + amp * d }, "quadOut"); });
-            })(SHAKE_DAMPING[i]);
-          }
-          // 클라 BoardDragController.ts:477 — 복귀는 step * 2 · backOut
-          return p.then(function () { return s.to(step * 2, { x: x0 }, "backOut"); });
-        }
         /* 곡선 높이 — 거리(무대 px)에 비율을 곱하고, 최소 높이(클라 px)는 무대 칸 비율로 옮겨 비교한다 */
         function flyLift(from, to, liftRatio, minLift) {
           return Math.max(px(minLift), Math.hypot(to.x - from.x, to.y - from.y) * liftRatio);
@@ -489,7 +469,7 @@
         ];
         var STYLE_PARAM = { rise: "f1", arc: "f2", punch: "f3", slide: "f4", wave: "f5" };
         /* 메모 — f1 rise · f2 arc 는 아직 어느 클라 장면도 고르지 않는다(클라 MergeFxConfig.ts textStyle:
-           b1·c4 = punch, c6 = wave). 값은 클라에 있지만 실제 플레이에서는 재생되지 않는다. */
+           b1 = punch, c6 = wave). 값은 클라에 있지만 실제 플레이에서는 재생되지 않는다. */
 
         /* 연타로 겹칠 때만 시작 높이를 계단처럼 올린다. 다 사라지면 다시 0 단이다.
            좌우로 흩뿌리지 않는다 — 산개는 전투처럼 초당 수십 개가 뜨는 판의 변형이다. */
@@ -1499,15 +1479,6 @@
             { k:"breathSec",  label:"숨쉬기 반주기", v:0.5,  min:0.05, max:2, step:0.01, unit:"s", easeK:"breathEase", ease:"sineInOut",cfg:"C3_BREATH_SEC",                  note:"팝 뒤 한 번 부풀었다 돌아온다 — 오갈 때 같은 값" },
             { k:"breathScale",label:"숨쉬기 크기",   v:1.05, min:1,    max:1.5,step:0.01,unit:"×",                                     cfg:"C3_BREATH_SCALE" },
           ],
-          c4: [
-            { k:"textStyle",  label:"문구 스타일",   sv:"punch", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
-            { k:"hitInSec",   label:"대상 눌림",     v:0.06, min:0.01, max:1, step:0.01, unit:"s", easeK:"hitEase",    ease:"quadOut", cfg:"MERGE_MAX_HIT_IN_SEC" },
-            { k:"hitSX",      label:"대상 가로",     v:1.10, min:0.6,  max:2,  step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_X" },
-            { k:"hitSY",      label:"대상 세로",     v:0.90, min:0.4,  max:1.6,step:0.01,unit:"×",                                     cfg:"MERGE_MAX_HIT_Y" },
-            { k:"hitOutSec",  label:"대상 복귀",     v:0.18, min:0.02, max:1.5,step:0.01, unit:"s", easeK:"hitOutEase", ease:"backOut", cfg:"MERGE_MAX_HIT_OUT_SEC" },
-            { k:"shakeSec",   label:"흔들림 시간",   v:0.22, min:0.02, max:1.5,step:0.01, unit:"s",                                     cfg:"MERGE_MAX_SHAKE_SEC" },
-            { k:"shakeAmp",   label:"흔들림 진폭",   v:4,    min:0,    max:40, step:1,   unit:"px",                                    cfg:"MERGE_MAX_SHAKE_AMPLITUDE",      note:"흔들림은 여기만 — 드롭 거부는 안 흔든다" },
-          ],
           c6: [
             { k:"textStyle",  label:"문구 스타일",   sv:"wave", opts:"FLOAT_STYLES",                                                cfg:"MERGE_FLOAT_TEXT_STYLE",         note:"아래 표가 이 스타일 값으로 바뀐다" },
             { k:"stagger",    label:"STAGGER",       v:0, min:0,    max:0.5,step:0.01, unit:"s",                                     cfg:"DELIVERY_STAGGER_SEC",           note:"시안: 동시 출발(0)" },
@@ -1628,7 +1599,7 @@
         })();
 
         /* ======================================================================
-           데모 16종 — 모든 수치는 위 V[id] 에서 읽는다.
+           데모 15종 — 모든 수치는 위 V[id] 에서 읽는다.
            표의 입력을 바꾸면 다음 재생부터 그 값으로 논다.
            ====================================================================== */
         var DEMOS = {};
@@ -2560,60 +2531,6 @@
           return { st: st, reset: reset, play: play, stop: function () { alive = false; }, hint: "흐린 공구함을 눌러 개봉을 끝내 보세요" };
         };
 
-        /* C4 · 최대 단계 ----------------------------------------------------- */
-        DEMOS.c4 = function (host) {
-          var st = makeStage(host, { cols: 3, rows: 2 }), P = V.c4, a, b, AI = 3, BI = 4;
-          /* 최고 레벨끼리라 두 칩이 똑같이 생겼다. 어느 쪽을 잡아야 하는지 알 수 없으면
-             "드래그가 안 된다" 로 읽힌다 — 그래서 둘 다 끌 수 있게 한다. */
-          function reset() {
-            st.clear();
-            var pa = st.cellPos(AI), pb = st.cellPos(BI);
-            b = st.tile("mfx-product", 4);
-            b.set({ x: pb.x, y: pb.y });
-            a = st.tile("mfx-product", 4);
-            a.set({ x: pa.x, y: pa.y });
-            hook(a, b);
-            hook(b, a);
-          }
-          /* 끈 칩(mover)이 상대 칩(other) 위에서 놓이면 최대 단계 고지 */
-          function hook(mover, other) {
-            dragify(st, mover, {
-              onDrop: function (cell) {
-                if (cell === other.cell) return maxed(mover, other);
-                // 클라 BoardDragController.ts:438,454 — 원위치 복귀는 어느 장면이든 V.c1(snapSec/snapEase)
-                if (cell < 0 || cell === mover.cell) return snapBack(st, mover, V.c1);
-                return settle(st, mover, cell, null);
-              },
-            });
-          }
-          function maxed(a, b) {
-            /* 클라 BoardDropFlow.ts:354-356 — 대상 타격 → 셀 문구 → 흔들림 복귀, 셋이 같은 순간에 시작한다 */
-            // 클라 BoardChipFx.ts:331-333 beginChipFx — 타격 전에 대상의 배율·기울기를 1·0 으로 굳힌다
-            fxBegin(b);
-            var hit = fxTo(b, P.hitInSec, { sx: P.hitSX, sy: P.hitSY }, P.hitEase)
-              .then(function (ok) { return ok && fxTo(b, P.hitOutSec, { sx: 1, sy: 1 }, P.hitOutEase); })
-              .then(function (ok) { return fxEnd(b, ok); });
-            /* 도장이 아니라 단순 텍스트다 — 이 문서의 문구는 전부 같은 5종을 쓴다 */
-            floatText(st, "Max Level!", { x: b.home.x, y: b.home.y }, P);
-            /* 부정이 아니라 상태 고지 — 흔들림을 거부(C1)보다 약하게 준다.
-               클라 BoardDragController.ts:454 — 복귀는 V.c1 값, 흔들림은 같은 트윈 꼬리에 붙는다.
-               클라 BoardDropFlow.ts:41 — cycles 2: +1 · −0.7 두 칸, 한 칸 = shakeSec / 4, 복귀 2칸 backOut */
-            return Promise.all([
-              snapBack(st, a, V.c1).then(function () { return shake(a, P.shakeAmp, P.shakeSec, 2); }),
-              hit,
-            ]);
-          }
-          function play() {
-            reset();
-            var pb = st.cellPos(BI);
-            return playPick(a)
-              .then(function () { return a.to(0.3, { x: pb.x, y: pb.y + 8 }, "quadInOut"); })
-              .then(function () { fxStop(a); return maxed(a, b); })
-              .then(function () { a.el.style.zIndex = ""; });
-          }
-          return { st: st, reset: reset, play: play, hint: "두 칩 다 끌 수 있습니다 · 하나를 다른 하나 위에 놓아 보세요" };
-        };
-
         /* C6 · 오더 납품 — 보드 밖 오더 카드의 "요구 칩" 으로 날아간다 --------
 
            목적지는 카드 한 장이 아니라 그 안의 요구 칩 각각이다. 요구는 2칸 고정이고
@@ -3535,21 +3452,7 @@
 "    this.playLandFx(card);                                 // serve_effect 0.567초 — fxRoot 소속이라 hide 와 무관하게 끝난다\n" +
 "    this.flyCoins(card);\n" +
 "    await this.wait(this.playHide(card) + SERVE_SHOW_GAP_SEC);   // hide 0.367 + 틈 0.13 -> 새 카드 show\n" +
-"}" },          { group: "gap", id: "c4", no: "C5", title: "최대 단계 도달", state: "ok", label: "클라 구현",
-            why: "최고 레벨끼리 겹치면 아무 일도 안 일어납니다. 유저는 \"버그인가\" 를 먼저 의심합니다. 거부(C1)와 <b>같은 모양이면 안 됩니다</b> — 이건 실수가 아니라 <b>다 키웠다</b>는 뜻이라, 붉은 거부음과 흔들림 대신 <b>문구</b>로 알립니다. 별도의 도장 프리팹을 만들지 않고 다른 문구와 같은 <b>F3 임팩트 스탬프</b> 를 씁니다 — 연출이 하나 늘면 만들 것도 튜닝할 것도 하나 늘어납니다. 클라 순서대로 <b>대상 타격 · 문구 · 복귀</b>가 같은 순간에 시작합니다. 타격 전에 대상 배율을 1 로 굳히고, 복귀는 <b>C1 값</b>(snapSec · snapEase)을 그대로 씁니다. 흔들림은 <b>+1 · −0.7 두 번</b>(한 칸 = shakeSec ÷ 4) 뒤 두 칸 길이 backOut 으로 앉습니다. 참고 — 문구 5종 중 <b>F1 상승 페이드 · F2 포물선 튐</b>은 아직 어느 클라 장면도 고르지 않습니다(B1·C5 = F3, B2 = F4, C4 = F5).",
-            code:
-"private async playMaxTierFeedback(item: MergeBoardDragItem, target: MergeBoardDragItem, sourceCell: number): Promise<void> {\n" +
-"    // 부정이 아니라 상태 고지 — FX_TILE_ERROR 를 쓰지 않는다\n" +
-"    GameSound.play(\"FX_ITEM_HINT\", target.node);\n" +
-"    this.showFloatText(Localization.getString(\"merge_max_level\"), target.node);  // \"최고 레벨이에요\" — 도장 아님\n" +
-"    cc.tween(target.node)\n" +
-"        .to(0.06, { scaleX: 1.10, scaleY: 0.90 }, { easing: \"quadOut\" })\n" +
-"        .to(0.18, { scaleX: 1, scaleY: 1 }, { easing: \"backOut\" })\n" +
-"        .start();\n" +
-"    await this.playRejectDrop(item, sourceCell);           // 복귀는 C1 과 같은 함수\n" +
-"}" },
-
-          { group: "hint", id: "h1", no: "H1", title: "방치 힌트 — 튕김", state: "ok", label: "클라 구현",
+"}" },          { group: "hint", id: "h1", no: "H1", title: "방치 힌트 — 튕김", state: "ok", label: "클라 구현",
             memo: "입력 없이 delaySec 이 지나면 우선순위에서 처음 성립하는 대상 하나가 motionCount 번 튕기고, 연출 뒤 repeatSec 쉬었다가 다시 고른다 — 입력이 올 때까지 반복(무대는 두 번에서 자른다). 입력이 오면 연출을 끊고 자세를 되돌린 뒤 대기부터 다시 센다. 우선순위(위가 먼저 · 성립하는 하나만): 오더 납품 → 심부름 → 상자 개봉 → 상자 탭 → 병합 → 체인끝 수확 → 보상함 → 생성기 → 에너지 아이템 — 순서는 IdleHintConfig.ts 의 IDLE_HINT_PRIORITY 배열이라 표 밖이다.",
             dropped: "손 커서 없음 (2026-09-28 결정).",
             code:
