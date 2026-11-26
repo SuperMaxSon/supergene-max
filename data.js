@@ -135,7 +135,7 @@ const SECTIONS = [
         project: "smg",
         status: "초안",
         version: "55462e02",
-        updated: "2026-11-26 17:40",
+        updated: "2026-11-26 17:52",
         pinned: false,
         tags: ["story-merge", "팝업", "아트", "라이브옵스"],
       },
