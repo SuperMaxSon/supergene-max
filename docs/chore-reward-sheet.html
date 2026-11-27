@@ -320,30 +320,6 @@
       .cr-stage .cr-vd.is-none { margin-left: 0; }
       .cr-stage-miss { align-self: center; margin-left: 6px; font: 600 11.5px/1.3 ui-monospace, Menlo, monospace; color: var(--text-dim); }
 
-      /* 확인 필요 — 어긋난 행을 표에서 찾아다니지 않게 한곳에 모은다. 칩을 누르면 그 행으로 간다 */
-      .cr-chk { margin: 18px 0 6px; padding: 14px 16px; border-radius: 12px; background: var(--surface);
-                box-shadow: inset 0 0 0 1px var(--border), inset 4px 0 0 var(--deploy); }
-      .cr-chk-h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
-      .cr-chk-h b { font-size: 15px; font-weight: 800; }
-      .cr-chk-h span { font-size: 12px; color: var(--text-faint); }
-      .cr-chk-g { padding: 8px 0; border-top: 1px solid var(--border-soft, var(--border)); scroll-margin-top: 80px; }
-      .cr-chk-g:first-of-type { border-top: 0; padding-top: 0; }
-      .cr-chk-g .ds { font-size: 12px; color: var(--text-dim); margin-left: 8px; }
-      .cr-chk-ks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-      .cr-chk-k { font: 700 11.5px/1 ui-monospace, Menlo, monospace; padding: 5px 8px; border-radius: 6px; cursor: pointer;
-                  border: 1px solid var(--border); background: var(--surface-2, var(--surface)); color: var(--text); }
-      .cr-chk-k:hover { border-color: var(--deploy); color: var(--deploy); }
-      .cr-chk-k em { font-style: normal; font-family: inherit; font-weight: 600; color: var(--text-dim); margin-left: 6px; }
-      .cr-chk-ref { margin-top: 4px; font-size: 12px; color: var(--text-faint); }
-      .cr-chk-cnt { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0 0 10px; font-size: 12.5px; }
-      .cr-chk-cnt th { text-align: left; font-size: 11px; font-weight: 800; color: var(--text-faint); padding: 4px 8px; border-bottom: 1px solid var(--border);
-                       text-transform: none; letter-spacing: 0; white-space: normal; }
-      .cr-chk-cnt td { padding: 5px 8px; border-bottom: 1px solid var(--border-soft); }
-      .cr-chk-cnt .num { width: 150px; font-variant-numeric: tabular-nums; }
-      .cr-chk-cnt th:first-child { width: 96px; }
-      .cr-chk-cnt b.bad { color: var(--deploy); font-weight: 800; }
-      .cr-chk-cnt .ok { color: var(--text-faint); }
-      .cr-chk-ref summary { cursor: pointer; }
       /* 확인 필요 행 — 연한 붉은 바탕. 펼침이 있는 행의 hover(흰색)보다 뒤에 와야 지워지지 않는다 */
       .cr-tb tr.cr-row.is-flag > td { background: color-mix(in srgb, var(--deploy) 9%, var(--surface)); }
       .cr-tb tr.cr-row.is-flash > td { background: color-mix(in srgb, var(--deploy) 24%, var(--surface)); transition: background .6s; }
@@ -633,8 +609,6 @@
         </h2>
 
         <div class="stat-row" id="crKpi"></div>
-
-        <div class="cr-chk" id="crCheck"></div>
 
         <div class="cr-bar">
           <label class="cr-btn" style="cursor: default; background: var(--surface-2)">
@@ -2072,22 +2046,9 @@
         }).join("");
       }
 
-      /* ── 확인 필요 ─────────────────────────────────────────────────────── */
-      /* 문서 안의 어긋남을 한곳에 모은다. 앞 다섯은 「확인 필요」, 뒤 둘은 미완 현황이라 참고로만 접어 둔다. */
-      const CHK_CATS = [
-        ["stage-bad", "is-bad", `${SRC_B.client} ≠ ${SRC_B.plan}`, `채팅 직전 ${SRC_B.client} 마을 캐릭터가 ${SRC_B.plan} 대사 화자와 다름`, "클라 ≠ 기획"],
-        ["stage-nofinish", "is-none", "구역 완료 task_story 없음", "구역 완료 대화 때 마을이 빔", "구역 완료 task_story"],
-        ["stage-nosub", "is-none", "소구역 없음", "원안에 소구역이 없어 마을이 빔", "소구역 없음"],
-        ["deco-diff", "is-bad", "꾸미기 종류 다름", "아트(수선·택1)와 시트 유형이 다름", "꾸미기 종류 다름"],
-        ["deco-noart", "is-none", "꾸미기 아트 필요", "시트엔 꾸미기가 있는데 원안에 task_deco 없음", "꾸미기 아트 필요"],
-        ["deco-unwired", "is-none", "꾸미기 미연결", "프리팹은 있는데 게임에 안 붙음", "꾸미기 미연결"],
-        ["stage-prev", "is-na", "클라 지점 없음 · 앞 지점 씀", "클라 task_story 지점이 없어 같은 소구역 앞 지점을 씀"],
-        ["deco-noclient", "is-na", "클라 아트 필요", "클라 프리팹 아직 없음"],
-      ];
+      /* 어긋남으로 치는 꾸미기 종류 - 꾸미기 행에 붉은 바탕(is-flag)을 건다. */
       const CHK_MAIN = new Set(["stage-bad", "stage-nofinish", "stage-nosub", "deco-diff", "deco-noart", "deco-unwired"]);
-      const STAGE_CAT = { bad: "stage-bad", nofinish: "stage-nofinish", nosub: "stage-nosub", nopoint: "stage-nofinish", prev: "stage-prev" };
       const chkIdOf = (ev) => (ev.kind === "first" ? "talk-first" : ev.kind === "start" ? `start-${ev.key}` : `talk-${ev.key}`);
-      const hasDeco = (row) => { const f = row[9]; return !!(YARD[keyOfRow(row)] || f["비포"] || f["애프터"] || f["디자인 A"]); };
       function decoIssues(key) {
         const out = [];
         const y = YARD[key];
@@ -2098,123 +2059,6 @@
         if (!CLIENT_DECO[key]) out.push("deco-noclient");
         return out;
       }
-      /* 항목: { cat, go(이동할 행 data-chk), label, at(ORDER 순번), day, note(낱개 메모), grp(묶음 키), range(묶음 메모 함수) } */
-      const storyNum = (node) => Number(String(node).replace("task_story_", ""));
-      const CHECKS = (() => {
-        const out = [];
-        const idx = new Map(ORDER.map((r, i) => [keyOfRow(r), i]));
-        TIMELINE.forEach((e) => {
-          if (e.t !== "talk") return;
-          const at = e.kind === "first" ? -1 : idx.get(e.key);
-          const label = e.kind === "first" ? "첫 진입" : e.key;
-          const c = stageCheck(e);
-          const cat = STAGE_CAT[c.st];
-          if (cat) {
-            const s = c.s;
-            const it = { cat, go: chkIdOf(e), label, at, day: e.row[0], note: stageMissText(c), noteHtml: c.st === "bad" ? stageMissHtml(c) : "", grp: "", range: null };
-            /* 같은 소구역에서 같은 노드를 돌려 쓰는 재사용 · 같은 소구역이 없는 구간은 한 칩으로 묶는다 */
-            if (c.st === "prev") {
-              it.grp = `${s[0]}/${s[5]}`;
-              it.range = (x, y) => `${s[0]} task_story_${storyNum(x.s4)}~${storyNum(y.s4)} 없음`;
-              it.s4 = s[4];
-            }
-            if (c.st === "nosub") { it.grp = s[4]; it.range = () => `${s[4]} 없음`; }
-            out.push(it);
-          }
-          if (e.kind === "clear") {
-            /* 완료 씬 — 무대가 시작 씬 지점에 붙들려 있어 완료 씬 화자도 그 지점에 서 있어야 한다 */
-            const fs = e.segs.filter((g) => g.slot === "f");
-            if (fs.length) {
-              const fev = talkEv("finish", e.key, e.row, fs);
-              const fc = stageCheck(fev);
-              if (STAGE_CAT[fc.st] === "stage-bad") out.push({ cat: "stage-bad", go: chkIdOf(fev), label: `${e.key} 완료`, at, day: e.row[0], note: stageMissText(fc), noteHtml: stageMissHtml(fc), grp: "", range: null });
-            }
-          }
-          if (e.kind === "clear" && hasDeco(e.row)) {
-            const y = YARD[e.key];
-            decoIssues(e.key).forEach((k) => {
-              const it = { cat: k, go: `deco-${e.key}`, label: e.key, at, day: e.row[0], note: "", grp: "*", range: null };
-              if (y && k === "deco-noart") {
-                it.grp = y[0]; it.n = y[1];
-                it.note = `${y[0]} ${y[1]}번째 task_deco 없음`;
-                it.range = (a, b) => `${y[0]} ${a.n}~${b.n}번째 task_deco 없음`;
-              }
-              if (y && k === "deco-diff") {
-                it.grp = y[0]; it.pt = y[2];
-                it.note = `${y[2]} 아트 ${y[3] === "choice" ? "택1" : "수선"} · 시트 ${e.row[7]}`;
-                it.range = (a, b) => `${y[0]} ${a.pt} ~ ${b.pt}`;
-              }
-              out.push(it);
-            });
-          }
-        });
-        return out;
-      })();
-      /* 이어지는 순번은 한 칩으로 묶는다(재사용 127 · 소구역 없음 40 을 낱개로 늘어놓으면 패널이 표가 된다). 묶음 키가 없는 건 낱개로. */
-      function chkChips(items) {
-        const runs = [];
-        items.forEach((it) => {
-          const last = runs[runs.length - 1];
-          const tail = last && last[last.length - 1];
-          if (tail && it.grp && it.grp === tail.grp && it.at === tail.at + 1) last.push(it);
-          else runs.push([it]);
-        });
-        return runs.map((r) => {
-          const a = r[0];
-          const b = r[r.length - 1];
-          const many = r.length > 1;
-          const note = many ? (a.range ? a.range(a, b) : "") : a.note;
-          const label = many ? `${esc(a.label)} ~ ${esc(b.label)} · ${r.length}건` : esc(a.label);
-          const noteHtml = !many && a.noteHtml ? a.noteHtml : esc(note);
-          return `<button class="cr-chk-k" type="button" data-go="${esc(a.go)}">${label}${note ? `<em>${noteHtml}</em>` : ""}</button>`;
-        }).join("");
-      }
-      /* 소구역별 개수 — 원안(AreaCourtyard.prefab) 노드 수를 필요한 수와 맞춘다.
-         task_story 필요 = 심부름 수 + 1(구역 완료 대화) · task_deco 필요 = 시트 수선·택1 수. */
-      const numRanges = (ns) => {
-        const out = [];
-        ns.forEach((n) => { const r = out[out.length - 1]; if (r && n === r[1] + 1) r[1] = n; else out.push([n, n]); });
-        return out.map(([a, b]) => (a === b ? `${a}` : `${a}~${b}`)).join(", ");
-      };
-      function countTableHtml() {
-        const deco = new Map(YARD_AREAS.map((r) => [r[0], r]));
-        const rows = Object.entries(STAGE_SRC).filter(([area]) => TRACKED.has(area)).map(([area, src]) => {
-          const need = src.tasks + (src.finish ? 1 : 0);
-          const have = Object.keys(src.nodes).map(storyNum).sort((a, b) => a - b);
-          const miss = Array.from({ length: need }, (_, i) => i + 1).filter((n) => !have.includes(n));
-          const extra = have.filter((n) => n > need);
-          const st = src.nosub ? `<b class="bad">소구역 없음</b>`
-            : [miss.length ? `<b class="bad">task_story_${numRanges(miss)} 없음</b>` : "",
-              extra.length ? `<b class="bad">task_story_${numRanges(extra)} 남음</b>` : ""].filter(Boolean).join(" · ") || `<span class="ok">맞음</span>`;
-          const d = deco.get(area);
-          const dt = !d ? `<span class="cr-nil">—</span>`
-            : [d[9] ? `<b class="bad">task_deco ${d[9]}개 없음</b>` : "", d[8] ? `<b class="bad">종류 다름 ${d[8]}</b>` : ""].filter(Boolean).join(" · ") || `<span class="ok">맞음</span>`;
-          return `<tr><td class="cr-key">${esc(area)}</td><td class="num">${have.length} / ${need}</td><td>${st}</td>`
-            + `<td class="num">${d ? `${d[1]} / ${d[5]}` : "—"}</td><td>${dt}</td></tr>`;
-        }).join("");
-        return `<table class="cr-chk-cnt"><thead><tr><th>원안 소구역</th><th class="num">task_story 원안 / 필요</th><th>어긋남</th>`
-          + `<th class="num">task_deco 원안 / 시트</th><th>어긋남</th></tr></thead><tbody>${rows}</tbody></table>`;
-      }
-
-      function renderCheck() {
-        const by = (cat) => CHECKS.filter((c) => c.cat === cat);
-        const main = CHK_CATS.filter(([cat]) => CHK_MAIN.has(cat));
-        const total = main.reduce((a, [cat]) => a + by(cat).length, 0);
-        const group = ([cat, cls, label, ds]) => {
-          const items = by(cat);
-          return `<div class="cr-chk-g" id="chk-${cat}"><span class="cr-vd ${cls}">${label} ${items.length}</span><span class="ds">${ds}</span>`
-            + `<div class="cr-chk-ks">${chkChips(items)}</div></div>`;
-        };
-        const ref = CHK_CATS.filter(([cat]) => !CHK_MAIN.has(cat) && by(cat).length);
-        $("#crCheck").innerHTML = `<div class="cr-chk-h"><b>확인 필요 ${total}건</b>`
-          + `<span>원안 AreaCourtyard.prefab 기준 · 작업 끝난 ${[...TRACKED].join("·")} 만 추적 · 칩을 누르면 그 행으로 이동</span></div>`
-          + countTableHtml()
-
-          + (total ? main.filter(([cat]) => by(cat).length).map(group).join("") : `<div class="cr-chk-ref">어긋난 행이 없습니다</div>`)
-          + ref.map((g) => `<details class="cr-chk-ref"><summary>참고 · ${g[2]} ${by(g[0]).length} · ${g[3]}</summary>`
-            + `<div class="cr-chk-ks">${chkChips(by(g[0]))}</div></details>`).join("");
-      }
-
       /* 표의 행으로 이동 — 필터가 걸려 있으면 풀고 다시 그린 뒤 찾는다. 펼침이 있으면 연다. */
       const NAV_OFFSET = 72;
       const scrollToEl = (el, center) => window.scrollTo({ behavior: "instant",
@@ -2420,16 +2264,11 @@
           return `<button type="button" data-day="${d}" style="--zc: ${row ? zoneColor(row[8]) : "transparent"}"`
             + ` title="Day ${d}${row ? ` · ${esc(row[8])}` : ""}">${d}</button>`;
         }).join("");
-        const chk = CHK_CATS.filter(([cat]) => CHK_MAIN.has(cat) && CHECKS.some((c) => c.cat === cat)).map(([cat, , , , label]) => {
-          const n = CHECKS.filter((c) => c.cat === cat).length;
-          return `<a href="#chk-${cat}" data-go-chk="${cat}">${label}<span class="n${n ? "" : " is-zero"}">${n}</span></a>`;
-        }).join("");
         const nav = document.createElement("aside");
         nav.className = "cr-rnav";
         nav.setAttribute("aria-label", "문서 내비");
         nav.innerHTML = `<div class="gh">목차</div>`
           + NAV_SECS.map(([id, label, sub]) => `<a href="#${id}" data-sec="${id}"${sub ? ` class="is-sub"` : ""}>${label}</a>`).join("")
-          + `<div class="gh">확인 필요</div>${chk}`
           + `<div class="gh">대사 어색 ${issKeys.size}</div>`
           + `<div class="cr-rleg">${["bad", "weak", "none"].map((v) => `<span class="is-${v}">${ISS_LABEL[v]} ${[...issKeys].filter((k) => issVerdictOf(k) === v).length}</span>`).join("")}</div>`
           + `<div class="cr-riss">${issChipsHtml()}</div>`
@@ -2627,11 +2466,6 @@
 
         renderKpi();
         renderLedger();
-        renderCheck();
-        $("#crCheck").addEventListener("click", (ev) => {
-          const k = ev.target.closest("[data-go]");
-          if (k) goRow(k.dataset.go);
-        });
         renderYardAreas();
         /* 어색한 곳 이동 칩(심부름 순서). 한 심부름에 둘이면 센 쪽 색을 쓴다. */
         $("#crIssChips").innerHTML = issChipsHtml();
